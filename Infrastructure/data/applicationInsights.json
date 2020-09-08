@@ -1,0 +1,59 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": {
+      "type": "string",
+      "metadata": {
+        "description": "Enter a name for application insights resource."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "West US 2",
+      "allowedValues": [
+        "South Central US",
+        "West Europe",
+        "East US",
+        "North Europe",
+        "West US 2"
+      ],
+      "metadata": {
+        "description": "Enter the application location."
+      }
+    },
+    "kind": {
+      "type": "string",
+      "defaultValue": "web",
+      "allowedValues": ["web", "java", "HockeyAppBridge", "other"],
+      "metadata": {
+        "description": "Enter the application type."
+      }
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "type": "Microsoft.Insights/components",
+      "kind": "[parameters('kind')]",
+      "name": "[parameters('name')]",
+      "apiVersion": "2015-05-01",
+      "location": "[parameters('location')]",
+      "properties": {
+        "ApplicationId": "[parameters('name')]",
+        "Application_Type": "[parameters('kind')]"
+      },
+      "dependsOn": []
+    }
+  ],
+  "outputs": {
+    "appId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Insights/components', parameters('name')), '2015-05-01').AppId]"
+    },
+    "instrumentationKey": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Insights/components', parameters('name')), '2015-05-01').InstrumentationKey]"
+    }
+  }
+}

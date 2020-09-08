@@ -1,0 +1,14 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "<gmmdata-storage-account>",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+    "logAnalyticsCustomerId": "",
+    "logAnalyticsPrimarySharedKey": "",
+    "jobsStorageAccountConnectionString": "",
+    "jobsTableName": "",
+    "serviceBusConnectionString": "",
+    "serviceBusSyncJobTopic": "",
+    "jobTriggerSchedule": "0 0 */6 * * *"
+  }
+}

@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches:
+    - master
+
+env:
+  VERSION_MAJOR: 1
+  VERSION_MINOR: 0
+
+jobs:
+  GMMBuildAndRelease:
+    strategy:
+      matrix:
+        BuildConfiguration:
+        - debug
+        - release
+      max-parallel: 2
+
+    runs-on: windows-2019
+
+    steps:
+    
+    - name: Checkout Action
+      uses: actions/checkout@v1
+    
+    - name: Use .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.201
+    
+    - name: dotnet build
+      run: |
+        cd Service\GroupMembershipManagement
+        dotnet build --configuration ${{ matrix.BuildConfiguration }}
+
+    - name: dotnet test
+      run: |
+        cd Service\GroupMembershipManagement
+        dotnet test --configuration ${{ matrix.BuildConfiguration }} /p:CollectCoverage=true /p:MergeWith="Coverage/coverage.json" /p:CoverletOutputFormat="cobertura%2cjson" /p:CoverletOutput="Coverage/" -m:1
+      if: ${{ success() && matrix.BuildConfiguration == 'debug' }}
+
+    - name: dotnet publish job trigger
+      run: dotnet publish Service/GroupMembershipManagement/Hosts/JobTrigger/Function/JobTrigger.csproj --configuration Release --output upload/function_packages/JobTrigger
+
+    - name: copy job trigger function arm templates
+      run: Copy 'Service/GroupMembershipManagement/Hosts/JobTrigger/Infrastructure/' 'upload/functions_arm_templates/JobTrigger/Infrastructure/' -recurse
+      shell: powershell
+
+    - name: dotnet publish graph updater
+      run: dotnet publish Service/GroupMembershipManagement/Hosts/GraphUpdater/Function/GraphUpdater.csproj --configuration Release --output upload/function_packages/GraphUpdater
+
+    - name: copy graph updater function arm templates
+      run: Copy 'Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/' 'upload/functions_arm_templates/GraphUpdater/Infrastructure/' -recurse
+      shell: powershell
+
+    - name: dotnet publish security group
+      run: dotnet publish Service/GroupMembershipManagement/Hosts/SecurityGroup/Function/SecurityGroup.csproj --configuration Release --output upload/function_packages/SecurityGroup
+
+    - name: copy security group function arm templates
+      run: Copy 'Service/GroupMembershipManagement/Hosts/SecurityGroup/Infrastructure/' 'upload/functions_arm_templates/SecurityGroup/Infrastructure/' -recurse
+      shell: powershell
+
+    - name: publish functions to artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ github.run_number }}
+        path: upload/**
+
+    - name: copy arm templates
+      run: Copy 'Infrastructure/' '${{ github.workspace }}/Infrastructure'
+      shell: powershell
+      
+    - name: copy release management scripts
+      run: Copy 'Scripts/' '${{ github.workspace }}/Scripts'
+      shell: powershell
+      
+    - name: publish artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ github.run_number }}
+        path: |
+          ${{ github.workspace }}/Infrastructure
+          ${{ github.workspace }}/Scripts
