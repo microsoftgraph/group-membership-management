@@ -1,0 +1,50 @@
+parameters:
+- name: solutionAbbreviation
+  type: string
+- name: environmentAbbreviation
+  type: string
+- name: location
+  type: string
+- name: serviceConnection
+  type: string
+- name: dependsOn
+  type: object
+- name: stageName
+  type: string
+- name: condition
+  type: object
+- name: functionApps
+  type: object
+
+stages:
+- stage: ${{ parameters.stageName }}
+  dependsOn: ${{ parameters.dependsOn }}
+  condition: ${{ parameters.condition }}
+
+  jobs:
+  - deployment: DeployResources
+    displayName: ${{ parameters.stageName }}    
+    pool:
+      vmImage: "vs2017-win2016"
+    # creates an environment if it doesn't exist
+    environment: ${{ parameters.environmentAbbreviation }}
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - template: deploy-resources.yml
+            parameters:
+              solutionAbbreviation: ${{ parameters.solutionAbbreviation }}
+              environmentAbbreviation: ${{ parameters.environmentAbbreviation }}
+              location: ${{ parameters.location }}
+              root: $(Pipeline.Workspace)/$(Build.BuildNumber)
+              serviceConnection: ${{ parameters.serviceConnection }}
+          
+          - ${{ each func in parameters.functionApps }}:
+            - template: deploy-functionapps.yml
+              parameters:
+                solutionAbbreviation: ${{ parameters.solutionAbbreviation }}
+                environmentAbbreviation: ${{ parameters.environmentAbbreviation }}
+                location: ${{ parameters.location }}
+                serviceConnection: ${{ parameters.serviceConnection }}
+                name: ${{ func.name }}

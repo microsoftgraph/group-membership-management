@@ -1,0 +1,30 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"serviceBusName": {
+			"type": "string",
+			"minLength": 1
+		},
+		"topicName": {
+			"type": "string",
+			"minLength": 1
+		}
+	},
+	"variables": {
+	},
+	"resources": [
+		{
+			"apiVersion": "2017-04-01",
+			"name": "[concat(parameters('serviceBusName'), '/', parameters('topicName'))]",
+			"type": "Microsoft.ServiceBus/namespaces/topics",
+			"properties": {
+				"path": "[parameters('topicName')]",
+				"requiresDuplicateDetection": true,
+				"defaultMessageTimeToLive": "P14D"
+			}
+		}
+	],
+	"outputs": {
+	}
+}

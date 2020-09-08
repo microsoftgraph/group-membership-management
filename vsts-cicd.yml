@@ -1,0 +1,43 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+name: $(major).$(minor).$(Date:yyMM).$(Rev:r)
+
+trigger:
+- develop
+- master
+- users/*
+
+pool:
+  vmImage: "windows-2019"
+
+variables:
+  "major": '1'
+  "minor": '0'
+  "BuildConfiguration": 'debug'
+  "SolutionAbbreviation": 'gmm'
+  "ProjectName": 'Source'
+
+stages:
+
+- template: build-services.yml  
+  parameters:
+    solutionAbbreviation: '$(SolutionAbbreviation)'
+    environmentAbbreviation: 'int'
+    location: 'westus2'
+    serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
+    stageName: 'int'
+    functionApps:
+    - name: 'JobTrigger'
+    condition: |                
+      or(
+        and(
+          in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/develop'),
+          eq(variables['Build.Reason'], 'Manual')
+        ),
+        and(
+          in(variables['Build.SourceBranch'], 'refs/heads/develop'),
+          eq(variables['Build.Reason'], 'IndividualCI')
+        )
+      )

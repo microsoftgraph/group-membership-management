@@ -1,0 +1,38 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "containerBaseUrl": {
+      "type": "string"
+    },
+    "containerSasToken": {
+      "type": "string"
+    },    
+    "environmentAbbreviation": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 4,
+      "metadata": {
+        "description": "Enter an abbreviation for the environment."
+      }
+    },
+    "solutionAbbreviation": {
+      "type": "string",
+      "defaultValue": "gmm",
+      "minLength": 2,
+      "maxLength": 3,
+      "metadata": {
+        "description": "Enter an abbreviation for the solution."
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Enter storage account name."
+      }
+    }            
+  },
+  "variables": {},
+  "resources": [],
+  "outputs": {}
+}

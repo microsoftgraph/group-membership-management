@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 24,
+      "metadata": {
+        "description": "Storage account alphanumeric name."
+      }
+    },
+    "sku": {
+      "type": "string",
+      "allowedValues": [
+        "Standard_LRS",
+        "Standard_GRS",
+        "Standard_ZRS",
+        "Premium_LRS"
+      ],
+      "defaultValue": "Standard_LRS"
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('name')]",
+      "apiVersion": "2019-04-01",
+      "location": "[resourceGroup().location]",
+      "kind": "StorageV2",
+      "sku": {
+        "name": "[parameters('sku')]"
+      },
+      "properties": {
+        "supportsHttpsTrafficOnly": true
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      }
+    }
+  ],
+  "outputs": {
+    "connectionString": {
+      "type": "string",
+      "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('name'), ';AccountKey=', listkeys(resourceId(resourcegroup().name, 'Microsoft.Storage/storageAccounts', parameters('name')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]"
+    }
+  }
+}
