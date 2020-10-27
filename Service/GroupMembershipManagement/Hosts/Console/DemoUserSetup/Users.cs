@@ -83,6 +83,7 @@ namespace DemoUserSetup
 				AccountEnabled = true,
 				PasswordProfile = new PasswordProfile { Password = RandomString() },
 				MailNickname = $"testuser{number}",
+				UsageLocation = "US",
 				UserPrincipalName = $"{csvUser.Alias}@{AppSettings.LoadAppSettings().TenantName}",
 				OnPremisesImmutableId = csvUser.ImmutableId
 			};
