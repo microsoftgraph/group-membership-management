@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Entities;
 using Newtonsoft.Json;
 using Repositories.Contracts;
@@ -19,13 +16,27 @@ namespace Repositories.Logging
         private readonly string _workSpaceId;
         private readonly string _sharedKey;
         private readonly string _location;
-        public LoggingRepository(ILogAnalyticsSecret<LoggingRepository> logAnalytics)
+
+        // you should only have one httpClient for the life of your program
+        // see https://aspnetmonsters.com/2016/08/2016-08-27-httpclientwrong/?fbclid=IwAR2aNRweTjGdx5Foev4XvHj2Xldeg_UAb6xW3eLTFQDB7Xghv65LvrVa5wA
+		private static readonly HttpClient _httpClient = MakeClient();
+           
+		public LoggingRepository(ILogAnalyticsSecret<LoggingRepository> logAnalytics)
         {            
             if (logAnalytics == null) throw new ArgumentNullException(nameof(logAnalytics));
             _workSpaceId = logAnalytics.WorkSpaceId ?? throw new ArgumentNullException(nameof(logAnalytics.WorkSpaceId));
             _sharedKey = logAnalytics.SharedKey ?? throw new ArgumentNullException(nameof(logAnalytics.SharedKey));
             _location = logAnalytics.Location ?? throw new ArgumentNullException(nameof(logAnalytics.Location));
         }
+        
+        private static HttpClient MakeClient()
+		{
+            var client = new HttpClient();
+			client.DefaultRequestHeaders.Add("Log-Type", "ApplicationLog");
+            return client;
+		}
+
+		public string SyncJobInfo { get; set; } = "";
 
         public async Task LogMessageAsync(LogMessage logMessage)
         {
@@ -35,13 +46,11 @@ namespace Repositories.Logging
                 instanceId = logMessage.InstanceId,
                 runId = logMessage.RunId,
                 messageTypeName = logMessage.MessageTypeName,
-                message = logMessage.Message,
+                message = logMessage.Message + SyncJobInfo,
                 location = _location
             });
 
             var url = $"https://{_workSpaceId}.ods.opinsights.azure.com/api/logs?api-version=2016-04-01";
-            var _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Add("Log-Type", "ApplicationLog");
             var dateString = DateTime.UtcNow.ToString("r");
             var jsonBytes = Encoding.UTF8.GetBytes(serializedMessage);
             var contentType = "application/json";

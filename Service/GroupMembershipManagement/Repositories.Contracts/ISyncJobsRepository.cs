@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Entities;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -14,4 +11,3 @@ namespace Repositories.Contracts
         Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status);
     }
 }
-

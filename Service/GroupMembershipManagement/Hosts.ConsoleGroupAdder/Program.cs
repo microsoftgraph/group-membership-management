@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Repositories.Contracts.InjectConfig;
 using Entities;
 using Entities.ServiceBus;
@@ -33,7 +30,7 @@ namespace Hosts.ConsoleGroupAdder
 				.WithAuthority(AzureCloudInstance.AzurePublic, Tenant)
 				.Build();
 
-			var repo = new GraphGroupRepository(new InteractiveAuthenticationProvider(publicClientApp));
+			var repo = new GraphGroupRepository(new InteractiveAuthenticationProvider(publicClientApp), new Logger());
 
 			var sbqueue = new MembershipServiceBusRepository(serviceBusNamespace, "membership");
 
@@ -53,6 +50,15 @@ namespace Hosts.ConsoleGroupAdder
 		{
 			public string Secret { get; set; }
 		}
+		private class Logger : ILoggingRepository
+		{
+			public string SyncJobInfo { get; set; }
+
+			public Task LogMessageAsync(LogMessage logMessage)
+			{
+				// You can put a console.writeline in here if you want to see output while it runs.
+				return Task.CompletedTask;
+			}
+		}
 	}
 }
-

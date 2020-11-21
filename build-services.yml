@@ -1,24 +1,13 @@
 parameters:
-- name: solutionAbbreviation
+- name: repoToCheckout
   type: string
-- name: environmentAbbreviation
+- name: checkoutPath
   type: string
-- name: location
-  type: string
-- name: serviceConnection
-  type: string
-- name: stageName
-  type: string  
-- name: condition
-  type: object  
-- name: functionApps
-  type: object
 
 stages:
 
-- stage: ${{ parameters.stageName }}
-  condition: ${{ parameters.condition }}
 
+- stage: BuildCommon
   jobs:
   - job: GMMBuildAndRelease
     strategy:
@@ -30,6 +19,10 @@ stages:
           BuildConfiguration: release
 
     steps:
+
+    - checkout: ${{ parameters.repoToCheckout }}
+      path: ${{ parameters.checkoutPath }}
+
     - task: UseDotNet@2
       inputs:
         packageType: 'sdk'
@@ -72,118 +65,30 @@ stages:
         checkCoverage: true
         coverageFailOption: fixed
         coverageType: lines
-        coverageThreshold: 30
+        coverageThreshold: 19
       condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
-    - task: DotNetCoreCLI@2
-      displayName: 'dotnet publish graph updater'
-      inputs:
-        command: publish
-        arguments: '--configuration Release --output updater_publish_output'
-        projects: 'Service/GroupMembershipManagement/Hosts.GraphUpdater/*.csproj'
-        publishWebProjects: false
-        modifyOutputPath: false
-        zipAfterPublish: false
-      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'release'))
-
-    - task: ArchiveFiles@2
-      displayName: 'archive graph updater files'
-      inputs:
-        rootFolderOrFile: "$(System.DefaultWorkingDirectory)/updater_publish_output"
-        includeRootFolder: false
-        archiveFile: "$(System.DefaultWorkingDirectory)/Hosts.GraphUpdater.zip"
-      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'release'))
-
-    - task: PublishBuildArtifacts@1
-      displayName: 'publish graph updater files'
-      inputs:
-        PathtoPublish: '$(System.DefaultWorkingDirectory)/Hosts.GraphUpdater.zip'
-        ArtifactName: '$(Build.BuildNumber)'
-      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'release'))
-
-    - task: DotNetCoreCLI@2
-      displayName: 'dotnet publish SG calculator'
-      inputs:
-        command: publish
-        arguments: '--configuration Release --output sg_publish_output'
-        projects: 'Service/GroupMembershipManagement/Hosts.SecurityGroupMembershipCalculator/*.csproj'
-        publishWebProjects: false
-        modifyOutputPath: false
-        zipAfterPublish: false
-      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'release'))
-
-    - task: ArchiveFiles@2
-      displayName: 'archive SG calculator files'
-      inputs:
-        rootFolderOrFile: "$(System.DefaultWorkingDirectory)/sg_publish_output"
-        includeRootFolder: false
-        archiveFile: "$(System.DefaultWorkingDirectory)/Hosts.SecurityGroupMembershipCalculator.zip"
-      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'release'))
-
-    - task: PublishBuildArtifacts@1
-      displayName: 'publish SG calculator files'
-      inputs:
-        PathtoPublish: '$(System.DefaultWorkingDirectory)/Hosts.SecurityGroupMembershipCalculator.zip'
-        ArtifactName: '$(Build.BuildNumber)'
-      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'release'))
-      
     - task: CopyFiles@2
       displayName: 'copy arm templates'
       inputs:
         SourceFolder: Infrastructure
         TargetFolder: '$(build.artifactstagingdirectory)/Infrastructure'
-      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'release'))
 
     - task: CopyFiles@2
       displayName: 'copy release management scripts'
       inputs:
         SourceFolder: Scripts
         TargetFolder: '$(build.artifactstagingdirectory)/Scripts'
-      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'release'))
+
+    - task: CopyFiles@2
+      displayName: 'copy service'
+      inputs:
+        SourceFolder: 'Service\GroupMembershipManagement'
+        contents: '**'
+        TargetFolder: '$(build.artifactstagingdirectory)'
 
     - task: PublishBuildArtifacts@1
       displayName: 'publish artifact'
       inputs:
-        PathtoPublish: '$(build.artifactstagingdirectory)'
-        ArtifactName: '$(Build.BuildNumber)'
-      condition: and(succeededOrFailed(), eq(variables['BuildConfiguration'], 'release'))
-     
-  - job: BuildFunctions
-    dependsOn: GMMBuildAndRelease
-    condition: succeeded('GMMBuildAndRelease')
-    strategy:
-        maxParallel: 2
-        matrix: 
-          debug:
-            BuildConfiguration: debug
-          release:
-            BuildConfiguration: release    
-
-    steps:
-    - ${{ each func in parameters.functionApps }}:
-      - template: yaml/build-functionapps.yml
-        parameters:
-          solutionAbbreviation: ${{ parameters.solutionAbbreviation }}
-          environmentAbbreviation: ${{ parameters.environmentAbbreviation }}
-          serviceConnection: ${{ parameters.serviceConnection }}
-          name: ${{ func.name }}
-
-  - job: DeployResources
-    dependsOn: BuildFunctions
-    condition: succeeded('BuildFunctions')  
-    steps:
-      - template: yaml/deploy-resources.yml
-        parameters:
-          solutionAbbreviation: ${{ parameters.solutionAbbreviation }}
-          environmentAbbreviation: ${{ parameters.environmentAbbreviation }}
-          location: ${{ parameters.location }}
-          root: $(Pipeline.Workspace)/$(Build.BuildNumber)
-          serviceConnection: ${{ parameters.serviceConnection }}
-          
-      - ${{ each func in parameters.functionApps }}:
-        - template: yaml/deploy-functionapps.yml
-          parameters:
-            solutionAbbreviation: ${{ parameters.solutionAbbreviation }}
-            environmentAbbreviation: ${{ parameters.environmentAbbreviation }}
-            serviceConnection: ${{ parameters.serviceConnection }}
-            name: ${{ func.name }}          
+        PathtoPublish: '$(build.artifactstagingdirectory)'        
+        ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'

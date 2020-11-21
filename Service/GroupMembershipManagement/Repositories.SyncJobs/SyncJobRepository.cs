@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Entities;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.Cosmos.Table.Queryable;
@@ -88,6 +85,8 @@ namespace Repositories.SyncJobsRepository
                 foreach (var job in group.AsEnumerable())
                 {
                     job.Status = status.ToString();
+                    job.ETag = "*";
+
                     batchOperation.Add(TableOperation.Replace(job));
 
                     if (++currentSize == batchSize)
@@ -127,4 +126,3 @@ namespace Repositories.SyncJobsRepository
         }
     }
 }
-

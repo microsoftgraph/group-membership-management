@@ -1,12 +1,9 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Microsoft.Azure.ServiceBus;
 using Repositories.Contracts;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Tests.Repositories.Common;
+using Repositories.Mocks;
 
 namespace Repositories.ServiceBusSubscriptions.Tests
 {
@@ -24,4 +21,3 @@ namespace Repositories.ServiceBusSubscriptions.Tests
         }
     }
 }
-

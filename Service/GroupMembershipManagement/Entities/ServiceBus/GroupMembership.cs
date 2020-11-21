@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -15,8 +12,10 @@ namespace Entities.ServiceBus
 		public AzureADGroup[] Sources { get; set; }
 		public AzureADGroup Destination { get; set; }
 		public List<AzureADUser> SourceMembers { get; set; } = new List<AzureADUser>();
+		public Guid RunId { get; set; }
 		public string SyncJobRowKey { get; set; }
 		public string SyncJobPartitionKey { get; set; }
+		public bool Errored { get; set; } = false;
 
 		/// <summary>
 		/// Don't worry about setting this yourself, this is for Split and the serializer to set.
@@ -26,12 +25,12 @@ namespace Entities.ServiceBus
 		/// <summary>
 		/// This is made public mostly for testing, but you can use it to get an idea of how many GroupMemberships[] you'll get after calling Split if you want.
 		/// </summary>
-		public const int MembersPerChunk = 3766;
+		public const int MembersPerChunk = 3765;
 		public GroupMembership[] Split(int perChunk = MembersPerChunk)
 		{
 			var toReturn = ChunksOfSize(SourceMembers, perChunk).
 				Select(x => new GroupMembership { Sources = Sources, Destination = Destination, SyncJobPartitionKey = SyncJobPartitionKey, SyncJobRowKey = SyncJobRowKey,
-					SourceMembers = x, IsLastMessage = false }).ToArray();
+					SourceMembers = x, RunId = RunId, Errored = Errored, IsLastMessage = false }).ToArray();
 			toReturn.Last().IsLastMessage = true;
 			return toReturn;
 		}
@@ -58,4 +57,3 @@ namespace Entities.ServiceBus
 
 	}
 }
-

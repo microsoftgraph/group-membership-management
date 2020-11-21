@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
@@ -22,7 +19,7 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName("JobTrigger")]
-        public async Task Run([TimerTrigger("%jobTriggerSchedule%")]TimerInfo myTimer, ILogger log)
+        public async Task Run([TimerTrigger("%jobTriggerSchedule%", RunOnStartup = true)]TimerInfo myTimer, ILogger log)
         {
             _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"JobTrigger function started at: {DateTime.UtcNow}" });
             await _syncJobTopicService.ProcessSyncJobsAsync();
@@ -30,4 +27,3 @@ namespace Hosts.JobTrigger
         }
     }
 }
-

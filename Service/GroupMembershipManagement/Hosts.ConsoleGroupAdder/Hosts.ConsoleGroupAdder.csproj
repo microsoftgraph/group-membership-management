@@ -12,9 +12,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Repositories.Contracts\Repositories.Contracts.csproj" />
-    <ProjectReference Include="..\Repositories.DifferenceCalculatorServiceBus\Repositories.ServiceBusQueue.csproj" />
     <ProjectReference Include="..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
-    <ProjectReference Include="..\Repositories.MembershipDifference\Repositories.MembershipDifference.csproj" />
+    <ProjectReference Include="..\Repositories.ServiceBusQueue\Repositories.ServiceBusQueue.csproj" />
   </ItemGroup>
 
 </Project>

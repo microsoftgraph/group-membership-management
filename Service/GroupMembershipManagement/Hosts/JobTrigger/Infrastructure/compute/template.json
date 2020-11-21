@@ -28,7 +28,7 @@
     "environmentAbbreviation": {
       "type": "string",
       "minLength": 2,
-      "maxLength": 4,
+      "maxLength": 6,
       "metadata": {
         "description": "Enter an abbreviation for the environment."
       }
@@ -37,6 +37,20 @@
       "type": "string",
       "metadata": {
         "description": "Tenant id."
+      }
+    },
+    "prereqsKeyVaultName": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-prereqs-', parameters('environmentAbbreviation'))]",
+      "metadata": {
+        "description": "Name of the resource group where the 'prereqs' key vault is located."
+      }
+    },
+    "prereqsKeyVaultResourceGroup": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-prereqs-', parameters('environmentAbbreviation'))]",
+      "metadata": {
+        "description": "Name of the resource group where the 'prereqs' key vault is located."
       }
     },
     "servicePlanName": {
@@ -164,7 +178,10 @@
     "jobsStorageAccountConnectionString": "[resourceId(subscription().subscriptionId, parameters('dataKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('dataKeyVaultName'), 'jobsStorageAccountConnectionString')]",
     "jobsTableName": "[resourceId(subscription().subscriptionId, parameters('dataKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('dataKeyVaultName'), 'jobsTableName')]",
     "serviceBusConnectionString": "[resourceId(subscription().subscriptionId, parameters('dataKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('dataKeyVaultName'), 'serviceBusConnectionString')]",
-    "serviceBusSyncJobTopic": "[resourceId(subscription().subscriptionId, parameters('dataKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('dataKeyVaultName'), 'serviceBusSyncJobTopic')]"
+    "serviceBusSyncJobTopic": "[resourceId(subscription().subscriptionId, parameters('dataKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('dataKeyVaultName'), 'serviceBusSyncJobTopic')]",
+    "graphAppClientId": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppClientId')]",
+    "graphAppCertificateName": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppCertificateName')]",
+    "graphAppTenantId": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppTenantId')]"
   },
   "resources": [
     {
@@ -261,6 +278,31 @@
                 "slotSetting": false
               },
               {
+                "name": "graphCredentials:CertificateName",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('graphAppCertificateName'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "graphCredentials:ClientId",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('graphAppClientId'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "graphCredentials:TenantId",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('graphAppTenantId'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "graphCredentials:KeyVaultName",
+                "value": "[parameters('prereqsKeyVaultName')]",
+                "slotSetting": false
+              },
+              {
+                "name": "graphCredentials:KeyVaultTenantId",
+                "value": "[parameters('tenantId')]",
+                "slotSetting": false
+              },
+              {
                   "name": "serviceBusConnectionString",
                   "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('serviceBusConnectionString'), '2019-09-01').secretUriWithVersion, ')')]",
                   "slotSetting": false
@@ -296,6 +338,39 @@
               {
                 "objectId": "[reference('functionAppTemplate-JobTrigger').outputs.msi.value]",
                 "permissions": ["get", "list"]
+              }
+            ]
+          },
+          "tenantId": {
+            "value": "[parameters('tenantId')]"
+          }
+        }
+      },
+      "dependsOn": [
+        "Microsoft.Resources/deployments/functionAppTemplate-JobTrigger"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "PrereqsKeyVaultPoliciesTemplate",
+      "resourceGroup": "[parameters('prereqsKeyVaultResourceGroup')]",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(uri(parameters('containerBaseUrl'), 'keyVaultAccessPolicy.json'), parameters('containerSasToken'))]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "name": {
+            "value": "[parameters('prereqsKeyVaultName')]"
+          },
+          "policies": {
+            "value": [
+              {
+                "objectId": "[reference('functionAppTemplate-JobTrigger').outputs.msi.value]",
+                "permissions": ["get"],
+                "type": "secrets"
               }
             ]
           },

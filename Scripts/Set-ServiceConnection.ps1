@@ -52,6 +52,9 @@ function Set-ServiceConnection {
 
     . ($scriptsDirectory + '\Scripts\Add-AzAccountIfNeeded.ps1')
 	Add-AzAccountIfNeeded | Out-Null
+
+	. ($scriptsDirectory + '\Scripts\Install-VSTeamModuleIfNeeded.ps1')
+	Install-VSTeamModuleIfNeeded | Out-Null
 		    	
 	$servicePrincipalName = "$SolutionAbbreviation-serviceconnection-$EnvironmentAbbreviation"
 
@@ -70,7 +73,7 @@ function Set-ServiceConnection {
     {        
         Set-AzContext -SubscriptionId $SubscriptionId
         $currentSubscription = (Get-AzContext).Subscription
-        "Selected subscription: $($currentSubscription.Name) -  $($currentSubscription.Id)"
+        Write-Host "Selected subscription: $($currentSubscription.Name) -  $($currentSubscription.Id)"
     }
 	
 	if($null -eq $SecurePersonalAccessToken)

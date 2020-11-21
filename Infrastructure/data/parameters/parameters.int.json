@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "jobsTableName": {
+      "value": "syncJobs"
+    },
+    "serviceBusTopicSubscriptions": {
+      "value": [
+        {
+          "name": "Organization",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'Organization'"
+        },
+        {
+          "name": "SecurityGroup",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'SecurityGroup'"
+        }
+      ]
+    },
+    "serviceBusTopicName": {
+      "value": "syncJobs"
+    },
+    "serviceBusQueueName": {
+      "value": "membership"
+    },
+    "tenantId": {
+      "value": "72f988bf-86f1-41af-91ab-2d7cd011db47"
+    },
+    "keyVaultReaders": {
+      "value": [
+        {
+          "objectId": "1acb4330-a77d-43b8-ace5-a0b2d19162f6",
+          "permissions": ["get", "set", "list"]
+        },
+        {
+          "objectId": "7e2cf9fe-7159-4db4-8e83-f29710a7beea",
+          "permissions": ["get", "set", "list"]
+        }
+      ],
+      "metadata": {
+        "decription": "User(s) and/or Group(s) AAD Object Ids to which access to the keyvault will be granted to."
+      }
+    }    
+  }
+}

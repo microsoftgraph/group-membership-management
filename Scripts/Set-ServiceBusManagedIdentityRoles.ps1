@@ -13,13 +13,24 @@ The abbreviation for your solution.
 .PARAMETER EnvironmentAbbreviation
 A 2-4 character abbreviation for your environment.
 
+.PARAMETER FunctionAppName
+Function app name
+
+.PARAMETER QueueName
+Queue name. Optional.
+
+.PARAMETER TopicName
+Topic name. Optional
+
 .PARAMETER ErrorActionPreference
 Parameter description
+
+QueueName and TopicName are optionals but one must be provided.
 
 .EXAMPLE
 Set-ServiceBusManagedIdentityRoles  -SolutionAbbreviation "gmm" `
                                     -EnvironmentAbbreviation "<env>" `
-                                    -AppServiceName "<app service name>" `
+                                    -FunctionAppName "<function app name>" `
                                     -QueueName "<queue name>" `
                                     -TopicName "<topic name>" `
                                     -Verbose
@@ -32,7 +43,7 @@ function Set-ServiceBusManagedIdentityRoles {
         [Parameter(Mandatory=$True)]
         [string] $EnvironmentAbbreviation,
         [Parameter(Mandatory=$True)]
-        [string] $AppServiceName,        
+        [string] $FunctionAppName,        
         [Parameter(Mandatory=$False)]
         [string] $QueueName,
         [Parameter(Mandatory=$False)]
@@ -44,7 +55,7 @@ function Set-ServiceBusManagedIdentityRoles {
     Write-Host "Granting app service access to service bus queue and/or topic";
 
     $resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
-    $appServicePrincipal = Get-AzADServicePrincipal -DisplayName $AppServiceName;
+    $appServicePrincipal = Get-AzADServicePrincipal -DisplayName $FunctionAppName;
     
     if ($EnvironmentAbbreviation -like "prod")
     {
@@ -63,11 +74,11 @@ function Set-ServiceBusManagedIdentityRoles {
         if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $queueObject.Id))
         {
             New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $queueObject.Id -RoleDefinitionName "Azure Service Bus Data Sender";
-            Write-Host "Added role assignment to allow $AppServiceName to send on the $QueueName queue.";
+            Write-Host "Added role assignment to allow $FunctionAppName to send on the $QueueName queue.";
         }
         else
         {
-            Write-Host "$AppServiceName can already send on the $QueueName queue.";
+            Write-Host "$FunctionAppName can already send on the $QueueName queue.";
         }
     
         if ($null -eq (Get-AzRoleAssignment -ObjectId $ownerGroup.Id -Scope $queueObject.Id))
@@ -84,16 +95,16 @@ function Set-ServiceBusManagedIdentityRoles {
     # Grant the app service access to the topic    
     if(![string]::IsNullOrEmpty($TopicName))
     {
-        $topicObject = Get-AzServiceBusQueue -ResourceGroupName $resourceGroupName -Namespace $resourceGroupName -Name $TopicName;
+        $topicObject = Get-AzServiceBusTopic -ResourceGroupName $resourceGroupName -Namespace $resourceGroupName -Name $TopicName;
 
         if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $topicObject.Id))
         {
             New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $topicObject.Id -RoleDefinitionName "Azure Service Bus Data Sender";
-            Write-Host "Added role assignment to allow $AppServiceName to send on the $TopicName topic.";
+            Write-Host "Added role assignment to allow $FunctionAppName to send on the $TopicName topic.";
         }
         else
         {
-            Write-Host "$AppServiceName can already send on the $TopicName topic.";    
+            Write-Host "$FunctionAppName can already send on the $TopicName topic.";    
         }
     
         if ($null -eq (Get-AzRoleAssignment -ObjectId $ownerGroup.Id -Scope $topicObject.Id))

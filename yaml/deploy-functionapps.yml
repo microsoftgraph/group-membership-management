@@ -3,7 +3,8 @@ parameters:
   environmentAbbreviation: ''
   serviceConnection: ''
   name: ''
-  location: ''  
+  location: ''
+  root: ''  
 
 steps:
 
@@ -13,13 +14,13 @@ steps:
     azureSubscription: ${{parameters.serviceConnection}}
     resourceGroupName: ${{parameters.solutionAbbreviation}}-data-${{parameters.environmentAbbreviation}}
     location: ${{parameters.location}}
-    csmFile: $(Pipeline.Workspace)/$(Build.BuildNumber)/functions_arm_templates/${{ parameters.name }}/Infrastructure/data/template.json
-    csmParametersFile: $(Pipeline.Workspace)/$(Build.BuildNumber)/functions_arm_templates/${{ parameters.name }}/Infrastructure/data/parameters/parameters.${{parameters.environmentAbbreviation}}.json
+    csmFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/data/template.json
+    csmParametersFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/data/parameters/parameters.${{parameters.environmentAbbreviation}}.json
     overrideParameters: '-environmentAbbreviation "${{parameters.environmentAbbreviation}}" 
                         -solutionAbbreviation "${{parameters.solutionAbbreviation}}" 
-                        -containerBaseUrl "$(copyFunctionsTemplates.containerEndPoint)functions/${{ parameters.name }}/Infrastructure/data/" 
-                        -containerSasToken $(copyFunctionsTemplates.containerSASToken) 
-                        -storageAccountName $(dataVariables.data_storageAccountName) '
+                        -containerBaseUrl "$(data_containerEndPoint)functions/${{ parameters.name }}/Infrastructure/data/" 
+                        -containerSasToken $(data_containerSASToken) 
+                        -storageAccountName $(data_storageAccountName) '
     deploymentMode: 'Incremental'
 
 - task: AzureResourceGroupDeployment@2
@@ -28,21 +29,21 @@ steps:
     azureSubscription: ${{parameters.serviceConnection}}
     resourceGroupName: ${{parameters.solutionAbbreviation}}-compute-${{parameters.environmentAbbreviation}}
     location: ${{parameters.location}}
-    csmFile: $(Pipeline.Workspace)/$(Build.BuildNumber)/functions_arm_templates/${{ parameters.name }}/Infrastructure/compute/template.json
-    csmParametersFile: $(Pipeline.Workspace)/$(Build.BuildNumber)/functions_arm_templates/${{ parameters.name }}/Infrastructure/compute/parameters/parameters.${{parameters.environmentAbbreviation}}.json
+    csmFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/compute/template.json
+    csmParametersFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/compute/parameters/parameters.${{parameters.environmentAbbreviation}}.json
     overrideParameters: '-environmentAbbreviation "${{parameters.environmentAbbreviation}}" 
                         -solutionAbbreviation "${{parameters.solutionAbbreviation}}" 
-                        -containerBaseUrl "$(copyFunctionsTemplates.containerEndPoint)functions/${{ parameters.name }}/Infrastructure/compute/" 
-                        -containerSasToken $(copyFunctionsTemplates.containerSASToken) 
-                        -storageAccountName $(dataVariables.data_storageAccountName) '
+                        -containerBaseUrl "$(data_containerEndPoint)functions/${{ parameters.name }}/Infrastructure/compute/" 
+                        -containerSasToken $(data_containerSASToken) 
+                        -storageAccountName $(data_storageAccountName) '
     deploymentMode: 'Incremental'
 
 - task: AzureFunctionApp@1
-  displayName: 'Deploy ${{ parameters.name }} function app'  
+  displayName: 'deploy ${{ parameters.name }} function app'  
   inputs:
     appType: 'functionapp'
     azureSubscription: ${{parameters.serviceConnection}}
     appName: '${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}-${{ parameters.name }}'
-    Package: '$(Pipeline.Workspace)/$(Build.BuildNumber)/function_packages/${{ parameters.name }}.zip'
+    Package: '${{ parameters.root }}/function_packages/${{ parameters.name }}.zip'
     deploymentMethod: 'auto'
     resourceGroupName: '${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}'

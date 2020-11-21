@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Entities;
 using Repositories.Contracts;
 using System;
@@ -57,4 +54,3 @@ namespace Repositories.SyncJobs.Tests
         }
     }
 }
-

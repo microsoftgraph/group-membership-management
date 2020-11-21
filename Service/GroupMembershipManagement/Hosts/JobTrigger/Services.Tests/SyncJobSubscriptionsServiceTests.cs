@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Entities;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -11,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Tests.Repositories.Common;
+using Repositories.Mocks;
 
 namespace Tests.Repositories
 {
@@ -125,4 +122,3 @@ namespace Tests.Repositories
         }
     }
 }
-

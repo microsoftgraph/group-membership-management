@@ -1,15 +1,10 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Entities;
 using Repositories.Contracts;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace Repositories.SecurityGroupCrawler
@@ -113,4 +108,3 @@ namespace Repositories.SecurityGroupCrawler
 
 
 }
-

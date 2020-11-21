@@ -42,8 +42,10 @@ function Set-ServicePrincipalAndServiceConnection {
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
     . ($scriptsDirectory + '/Scripts/Set-ServicePrincipal.ps1')
-    $subscriptionId = Set-ServicePrincipal -ServicePrincipalName ("$solutionAbbreviation-serviceconnection-$environmentAbbreviation")
-
+	$subscriptionId = Set-ServicePrincipal 	-ServicePrincipalName ("$solutionAbbreviation-serviceconnection-$environmentAbbreviation") `
+											-SolutionAbbreviation $SolutionAbbreviation `
+											-EnvironmentAbbreviation $EnvironmentAbbreviation
+	
     . ($scriptsDirectory + '/Scripts/Set-ServiceConnection.ps1')
     Set-ServiceConnection	-SolutionAbbreviation $SolutionAbbreviation `
 						    -EnvironmentAbbreviation $EnvironmentAbbreviation `

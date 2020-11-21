@@ -28,7 +28,7 @@
     "environmentAbbreviation": {
       "type": "string",
       "minLength": 2,
-      "maxLength": 4,
+      "maxLength": 6,
       "metadata": {
         "description": "Enter an abbreviation for the environment."
       }
@@ -176,7 +176,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 24,
-      "defaultValue": "[concat(parameters('solutionAbbreviation'), parameters('resourceGroupClassification'), parameters('environmentAbbreviation'), uniqueString(resourcegroup().id))]",
+      "defaultValue": "[concat(parameters('solutionAbbreviation'), parameters('environmentAbbreviation'), uniqueString(resourcegroup().id))]",
       "metadata": {
         "description": "Enter storage account name."
       }
@@ -197,7 +197,7 @@
     "jobsStorageAccountName": {
       "type": "string",
       "minLength": 1,
-      "defaultValue": "[concat(parameters('solutionAbbreviation'), 'jobs', parameters('environmentAbbreviation'), uniqueString(resourcegroup().id))]",
+      "defaultValue": "[concat('jobs', parameters('environmentAbbreviation'), uniqueString(resourcegroup().id))]",
       "metadata": {
         "description": "Enter storage account name."
       }

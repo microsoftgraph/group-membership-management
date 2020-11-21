@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Entities;
 using Microsoft.Azure.ServiceBus;
 using Repositories.Contracts;
@@ -39,4 +36,3 @@ namespace Repositories.ServiceBusTopics
         }
     }
 }
-

@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Entities;
 using Microsoft.Graph;
 using Microsoft.Graph.Core.Requests;
@@ -21,24 +18,47 @@ namespace Repositories.GraphGroups
 	public class GraphGroupRepository : IGraphGroupRepository
 	{
 		private readonly GraphServiceClient _graphServiceClient;
+		private readonly ILoggingRepository _log;
 
-		public GraphGroupRepository(IAuthenticationProvider authProvider)
+		public Guid RunId { get; set; }
+
+		public GraphGroupRepository(IAuthenticationProvider authProvider, ILoggingRepository logger)
 		{
 			_graphServiceClient = new GraphServiceClient(authProvider);
+			_log = logger;
+		}
+
+		public async Task<bool> GroupExists(Guid objectId)
+		{
+			try
+			{
+				var group = await _graphServiceClient.Groups[objectId.ToString()].Request().GetAsync();
+				return group != null;
+			}
+			catch (ServiceException)
+			{
+				// it throws if the group doesn't exist.
+				return false;
+			}
 		}
 
 		public async Task<List<AzureADUser>> GetUsersInGroupTransitively(Guid objectId)
 		{
+			var nonUserGraphObjects = new Dictionary<string, int>();
+
 			var members = await _graphServiceClient.Groups[objectId.ToString()].TransitiveMembers.Request()
 							.WithMaxRetry(10)
 							.Select("id")
 							.GetAsync();
-			var toReturn = new List<AzureADUser>(ToUsers(members.CurrentPage));
+			var toReturn = new List<AzureADUser>(ToUsers(members.CurrentPage, nonUserGraphObjects));
 			while (members.NextPageRequest != null)
 			{
 				members = await members.NextPageRequest.GetAsync();
-				toReturn.AddRange(ToUsers(members.CurrentPage));
+				toReturn.AddRange(ToUsers(members.CurrentPage, nonUserGraphObjects));
 			}
+
+			var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, nonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
+			_ = _log.LogMessageAsync(new LogMessage { RunId = RunId, Message = $"From group {objectId}, read {toReturn.Count} users, and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
 			return toReturn;
 		}
 
@@ -123,13 +143,11 @@ namespace Repositories.GraphGroups
 				}
 
 			} while (!queue.IsEmpty); // basically, that last ProcessBatch may have put more stuff in the queue
-
-			//Console.WriteLine($"Thread {threadNumber} finished.");
 		}
 
 		private async Task ProcessBatch(ConcurrentQueue<ChunkOfUsers> queue, List<ChunkOfUsers> toSend, MakeBulkRequest makeRequest, int threadNumber)
 		{
-			//Console.WriteLine($"{threadNumber}: Sending a batch of {toSend.Count} requests.");
+			var _ = _log.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: Sending a batch of {toSend.Count} requests.", RunId = RunId });
 			int requeued = 0;
 			try
 			{
@@ -139,15 +157,10 @@ namespace Repositories.GraphGroups
 					var chunkToRetry = toSend.First(x => x.Id == idToRetry);
 					if (chunkToRetry.ShouldRetry)
 					{
-						//Console.WriteLine($"{threadNumber}: Retrying batch ID {idToRetry} later.");
 						queue.Enqueue(chunkToRetry.UpdateIdForRetry(threadNumber));
 					}
-					else
-					{
-						//Console.WriteLine($"{threadNumber}: {idToRetry} has reached its retry limit and is okay to be dropped.");
-					}
 				}
-				//Console.WriteLine($"{threadNumber}: {toSend.Count - requeued}/{toSend.Count} succeeded. {queue.Count} left.");
+				_ = _log.LogMessageAsync(new LogMessage { Message = $"{threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.", RunId = RunId });
 			}
 			catch (ServiceException)
 			{
@@ -217,7 +230,7 @@ namespace Repositories.GraphGroups
 					yield return kvp.Key;
 				}
 				else if (_shouldRetry.Contains(status)) { yield return kvp.Key; }
-				else { /*Console.WriteLine($"Got an unexpected error: {status} {response.ReasonPhrase} {badRequestBody}.");*/ }
+				else { var _ = _log.LogMessageAsync(new LogMessage { Message = $"Got an unexpected error from Graph: {status} {response.ReasonPhrase} {badRequestBody}.", RunId = RunId }); }
 			}
 		}
 
@@ -231,7 +244,6 @@ namespace Repositories.GraphGroups
 			TimeSpan waitFor = TimeSpan.FromSeconds(120);
 			if (wait.Delta.HasValue) { waitFor = wait.Delta.Value; }
 			if (wait.Date.HasValue) { waitFor = wait.Date.Value - DateTimeOffset.UtcNow; }
-			//Console.WriteLine($"Got throttled, waiting for {waitFor.TotalSeconds} seconds.");
 			return Task.Delay(waitFor);
 		}
 
@@ -296,7 +308,7 @@ namespace Repositories.GraphGroups
 			}
 		}
 
-		private IEnumerable<AzureADUser> ToUsers(IEnumerable<DirectoryObject> fromGraph)
+		private IEnumerable<AzureADUser> ToUsers(IEnumerable<DirectoryObject> fromGraph, Dictionary<string, int> nonUserGraphObjects)
 		{
 			foreach (var directoryObj in fromGraph)
 			{
@@ -307,11 +319,15 @@ namespace Repositories.GraphGroups
 						break;
 					// We only care about users
 					// I'd prefer to be able to filter these out from the results on Graph's side, but the library doesn't support that yet.
+					// we do want to log the count of non-user graph objects, though
 					default:
+						if (nonUserGraphObjects.TryGetValue(directoryObj.ODataType, out int count))
+							nonUserGraphObjects[directoryObj.ODataType] = count + 1;
+						else
+							nonUserGraphObjects[directoryObj.ODataType] = 1;
 						break;
 				}
 			}
 		}
 	}
 }
-

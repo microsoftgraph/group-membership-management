@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Microsoft.Azure.Cosmos.Table;

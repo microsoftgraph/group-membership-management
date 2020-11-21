@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Entities;
 using System;
 using System.Collections.Generic;
@@ -26,4 +23,3 @@ namespace Repositories.Contracts
 
 	}
 }
-

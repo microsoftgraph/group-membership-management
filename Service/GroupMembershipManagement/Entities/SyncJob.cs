@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Microsoft.Azure.Cosmos.Table;
 using System;
 using System.Diagnostics.CodeAnalysis;
@@ -47,4 +44,3 @@ namespace Entities
         public bool Enabled { get; set; }
     }
 }
-

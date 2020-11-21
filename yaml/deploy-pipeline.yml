@@ -8,43 +8,67 @@ parameters:
 - name: serviceConnection
   type: string
 - name: dependsOn
-  type: object
+  type: object  
 - name: stageName
-  type: string
+  type: string  
 - name: condition
-  type: object
+  type: object  
 - name: functionApps
   type: object
 
 stages:
-- stage: ${{ parameters.stageName }}
-  dependsOn: ${{ parameters.dependsOn }}
-  condition: ${{ parameters.condition }}
+  - stage: ${{ parameters.stageName }}
+    dependsOn: ${{ parameters.dependsOn }}
+    condition: ${{ parameters.condition }}
 
-  jobs:
-  - deployment: DeployResources
-    displayName: ${{ parameters.stageName }}    
-    pool:
-      vmImage: "vs2017-win2016"
-    # creates an environment if it doesn't exist
-    environment: ${{ parameters.environmentAbbreviation }}
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - template: deploy-resources.yml
+    jobs:
+    - deployment: DeployResources
+      displayName: DeployResources
+      pool:
+        vmImage: "vs2017-win2016"
+      # creates an environment if it doesn't exist
+      variables:
+        ${{ if in(parameters.stageName, 'production', 'ua') }}:
+          buildType: 'release'
+        ${{ if notIn(parameters.stageName, 'production', 'ua') }}:
+          buildType: 'debug'
+      environment: ${{ parameters.solutionAbbreviation }}-${{ parameters.environmentAbbreviation }}
+      strategy:
+        runOnce:
+          deploy:
+           steps:
+           - template: deploy-resources.yml
+             parameters:
+               solutionAbbreviation: ${{ parameters.solutionAbbreviation }}
+               environmentAbbreviation: ${{ parameters.environmentAbbreviation }}
+               serviceConnection: ${{ parameters.serviceConnection }}               
+               root: $(Pipeline.Workspace)/$(Build.BuildNumber)_$(buildType)
+               location: ${{ parameters.location }}
+
+    - job: DeployFunctions
+      dependsOn: DeployResources
+      variables: 
+        data_storageAccountName: $[ dependencies.DeployResources.outputs['DeployResources.dataVariables.data_storageAccountName'] ]
+        data_containerEndPoint: $[ dependencies.DeployResources.outputs['DeployResources.dataVariables.data_containerEndPoint'] ]
+        data_containerSASToken: $[ dependencies.DeployResources.outputs['DeployResources.dataVariables.data_containerSASToken'] ]
+        ${{ if in(parameters.stageName, 'production', 'ua') }}:
+          buildType: 'release'
+        ${{ if notIn(parameters.stageName, 'production', 'ua') }}:
+          buildType: 'debug'
+      steps:
+
+        - task: DownloadBuildArtifacts@0
+          inputs:
+            buildType: 'current'
+            downloadType: 'single'
+            artifactName: $(Build.BuildNumber)_$(buildType)
+            
+        - ${{ each func in parameters.functionApps }}:
+          - template: deploy-functionapps.yml
             parameters:
               solutionAbbreviation: ${{ parameters.solutionAbbreviation }}
               environmentAbbreviation: ${{ parameters.environmentAbbreviation }}
-              location: ${{ parameters.location }}
-              root: $(Pipeline.Workspace)/$(Build.BuildNumber)
               serviceConnection: ${{ parameters.serviceConnection }}
-          
-          - ${{ each func in parameters.functionApps }}:
-            - template: deploy-functionapps.yml
-              parameters:
-                solutionAbbreviation: ${{ parameters.solutionAbbreviation }}
-                environmentAbbreviation: ${{ parameters.environmentAbbreviation }}
-                location: ${{ parameters.location }}
-                serviceConnection: ${{ parameters.serviceConnection }}
-                name: ${{ func.name }}
+              root: $(System.ArtifactsDirectory)/$(Build.BuildNumber)_$(buildType)
+              name: ${{ func.name }}
+              

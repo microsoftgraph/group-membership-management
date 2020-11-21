@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Entities;
 using System.Threading.Tasks;
 
@@ -11,4 +8,3 @@ namespace Repositories.Contracts
         Task AddMessageAsync(SyncJob job);
     }
 }
-

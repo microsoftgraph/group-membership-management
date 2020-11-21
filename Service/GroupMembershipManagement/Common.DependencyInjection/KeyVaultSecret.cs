@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
@@ -13,4 +10,3 @@ namespace Common.DependencyInjection
 		public string Secret { get; set; }
 	}
 }
-

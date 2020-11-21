@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
@@ -8,8 +5,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Repositories.SyncJobs.Tests;
-using Tests.Repositories.Common;
+using Repositories.Mocks;
 using Tests.Repositories;
+using Repositories.ServiceBusTopics.Tests;
 
 namespace Services.Tests
 {
@@ -20,8 +18,9 @@ namespace Services.Tests
         private MockSyncJobRepository _syncJobRepository = null;
         private MockLoggingRepository _loggingRepository = null;
         private MockServiceBusTopicsRepository _serviceBusTopicsRepository = null;
+		private MockGraphGroupRepository _graphGroupRepository;
 
-        private const string Organization = "Organization";
+		private const string Organization = "Organization";
         private const string SecurityGroup = "SecurityGroup";
 
         [TestInitialize]
@@ -30,7 +29,8 @@ namespace Services.Tests
             _syncJobRepository = new MockSyncJobRepository();
             _loggingRepository = new MockLoggingRepository();
             _serviceBusTopicsRepository = new MockServiceBusTopicsRepository();
-            _syncJobTopicsService = new SyncJobTopicsService(_loggingRepository, _syncJobRepository, _serviceBusTopicsRepository);
+            _graphGroupRepository = new MockGraphGroupRepository();
+            _syncJobTopicsService = new SyncJobTopicsService(_loggingRepository, _syncJobRepository, _serviceBusTopicsRepository, _graphGroupRepository);
         }
 
         [TestMethod]
@@ -41,6 +41,8 @@ namespace Services.Tests
 
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(organizationJobCount, Organization));
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(securityGroupJobCount, SecurityGroup));
+
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
 
             await _syncJobTopicsService.ProcessSyncJobsAsync();
 
@@ -57,11 +59,36 @@ namespace Services.Tests
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(enabledJobs, Organization, enabled: true));
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(disabledJobs, Organization, enabled: false));
 
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
+
             await _syncJobTopicsService.ProcessSyncJobsAsync();
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
             Assert.AreEqual(enabledJobs, jobsToProcessCount);
+        }
+
+
+        [TestMethod]
+        public async Task VerifyJobsWithNonexistentTargetGroupsAreErrored()
+        {
+            var enabledJobs = 5;
+            var disabledJobs = 3;
+
+            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(enabledJobs, Organization, enabled: true));
+            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(disabledJobs, Organization, enabled: false));
+
+            await _syncJobTopicsService.ProcessSyncJobsAsync();
+
+            var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
+
+            Assert.AreEqual(0, jobsToProcessCount);
+
+            foreach (var job in _syncJobRepository.Jobs.Take(enabledJobs))
+			{
+                Assert.IsFalse(job.Enabled);
+                Assert.AreEqual("Error", job.Status);
+			}
         }
 
         [TestMethod]
@@ -72,6 +99,8 @@ namespace Services.Tests
 
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(validStartDateJobs, Organization, enabled: true));
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(futureStartDateJobs, Organization, enabled: true, startDateBase: DateTime.UtcNow.AddDays(5)));
+
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
 
             await _syncJobTopicsService.ProcessSyncJobsAsync();
 
@@ -88,6 +117,8 @@ namespace Services.Tests
 
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(jobsWithValidPeriods, Organization, enabled: true));
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(jobsWithInvalidPeriods, Organization, enabled: true, lastRunTime: DateTime.UtcNow.AddMinutes(30)));
+
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
 
             await _syncJobTopicsService.ProcessSyncJobsAsync();
 
@@ -124,4 +155,3 @@ namespace Services.Tests
         }
     }
 }
-

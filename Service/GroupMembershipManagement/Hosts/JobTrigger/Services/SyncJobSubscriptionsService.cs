@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Entities;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -71,4 +68,3 @@ namespace Services
         }
     }
 }
-

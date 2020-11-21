@@ -34,6 +34,7 @@ Set-GraphCredentialsAzureADApplication	-SubscriptionName "GMM-Preprod" `
 									-EnvironmentAbbreviation "<env>" `
 									-TenantIdToCreateAppIn "19589c67-5cfd-4863-a0b6-2fb6726ab368" `
 									-TenantIdWithKeyVault "8b7e3ea9-d3b0-410e-b4b1-77e1280842cc" `
+									-CertificateName "CertificateName"
 									-Clean $false `
 									-Verbose
 #>
@@ -51,7 +52,9 @@ function Set-GraphCredentialsAzureADApplication {
 		[Guid] $TenantIdToCreateAppIn,
 		[Parameter(Mandatory=$True)]
 		[Guid] $TenantIdWithKeyVault,
-		[Parameter(Mandatory=$False)]
+		[Parameter(Mandatory=$True)]
+		[string] $CertificateName,		
+		[Parameter(Mandatory=$False)]		
 		[boolean] $Clean = $False,
 		[Parameter(Mandatory=$False)]
 		[string] $ErrorActionPreference = $Stop
@@ -74,6 +77,7 @@ function Set-GraphCredentialsAzureADApplication {
 	} 
 	
 	#region Delete Application / Service Principal if they already exist
+	Connect-AzureAD -TenantId $TenantIdToCreateAppIn
     $graphAppDisplayName = "$SolutionAbbreviation-Graph-$EnvironmentAbbreviation"
 	$graphApp = (Get-AzureADApplication -Filter "DisplayName eq '$graphAppDisplayName'")
 	
@@ -105,7 +109,7 @@ function Set-GraphCredentialsAzureADApplication {
     #endregion
     
     # These are the function apps that need to interact with the graph.
-    $replyUrls = @("graphupdater", "securitygroupmembershipcalculator") | 
+    $replyUrls = @("graphupdater", "securitygroup") | 
         ForEach-Object { "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$_.azurewebsites.net"};
     $replyUrls += "http://localhost";
     
@@ -150,14 +154,7 @@ function Set-GraphCredentialsAzureADApplication {
 	$graphAppClientId = $graphApp.AppId;
 
 	# as well as the secret:
-
-	$clientSecret = Get-AzureADApplicationPasswordCredential -ObjectId $graphApp.ObjectId;
-
-	if (($null -eq $clientSecret) -or ($clientSecret.EndDate -gt [DateTime]::UtcNow))
-	{
-		$clientSecret =  New-AzureADApplicationPasswordCredential -ObjectId $graphApp.ObjectId -CustomKeyIdentifier "GraphCredentials PowerShell";
-	}
-
+	
 	do {
 		Write-Host "Please sign in with an account that can write to the prereqs key vault."
         Add-AzAccount -TenantId $TenantIdWithKeyVault -Subscription $SubscriptionName
@@ -185,14 +182,13 @@ function Set-GraphCredentialsAzureADApplication {
 						 -SecretValue $graphClientIdSecret
 	Write-Verbose "$graphClientIdKeyVaultSecretName added to vault for $graphAppDisplayName."
 
-	# Store Application (client) secret in KeyVault
-	$graphClientSecretValue = $clientSecret.Value
-	$graphClientSecretName = "graphAppClientSecret"
-	$graphClientSecret = ConvertTo-SecureString -AsPlainText -Force  $graphClientSecretValue
+	# Store certificate name in KeyVault
+	$graphAppCertificateName = "graphAppCertificateName"
+	$graphAppCertificateSecret = ConvertTo-SecureString -AsPlainText -Force  $CertificateName
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-						 -Name $graphClientSecretName `
-						 -SecretValue $graphClientSecret
-	Write-Verbose "$graphClientSecretName added to vault for $graphAppDisplayName."
+						 -Name $graphAppCertificateName `
+						 -SecretValue $graphAppCertificateSecret
+	Write-Verbose "$graphAppCertificateName added to vault for $graphAppDisplayName."
 
 	# Store tenantID in KeyVault
 	$graphTenantSecretName = "graphAppTenantId"

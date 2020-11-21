@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 namespace Repositories.Contracts.InjectConfig
 {
     public interface ILogAnalyticsSecret<TType>
@@ -10,4 +7,3 @@ namespace Repositories.Contracts.InjectConfig
         string Location { get; }
     }
 }
-

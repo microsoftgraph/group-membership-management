@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-
 using Microsoft.Graph;
 using System;
 using System.Text;
@@ -77,15 +74,15 @@ namespace Console
 		private static readonly DemoData _preprodGraphUsers = new DemoData();
 		private async Task AddNewUser(int number)
 		{
-			var oneCatalogData = _preprodGraphUsers.GetMockUserInfo(number);
+			var csvUser = _preprodGraphUsers.GetMockUserInfo(number);
 			var user = new User
 			{
 				DisplayName = $"Test User {number}",
 				AccountEnabled = true,
 				PasswordProfile = new PasswordProfile { Password = RandomString() },
 				MailNickname = $"testuser{number}",
-				UserPrincipalName = $"{oneCatalogData.Alias}@{AppSettings.LoadAppSettings().TenantName}",
-				OnPremisesImmutableId = oneCatalogData.ImmutableId
+				UserPrincipalName = $"{csvUser.Alias}@{AppSettings.LoadAppSettings().TenantName}",
+				OnPremisesImmutableId = csvUser.ImmutableId
 			};
 
 			_testUsers[number] = ToEntity(await _graphServiceClient.Users.Request().AddAsync(user));
