@@ -1,4 +1,4 @@
-## GMM Setup Test
+## GMM Setup Test 1
 ### This document will provide guidance on how to setup GMM.
 
 ## Prerequisites
