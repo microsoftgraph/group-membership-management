@@ -1,0 +1,6 @@
+{
+  "ClientId": "",
+  "TenantId": "",
+  "TenantName": "<tenantname>.onmicrosoft.com",
+  "UserCount": <number-less-than-35000>
+}

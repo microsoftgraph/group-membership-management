@@ -1,0 +1,49 @@
+parameters:
+  solutionAbbreviation: ''
+  environmentAbbreviation: ''
+  serviceConnection: ''
+  name: ''
+  location: ''
+  root: ''  
+
+steps:
+
+- task: AzureResourceGroupDeployment@2
+  displayName: 'deploy ${{ parameters.name }} data resources'
+  inputs:
+    azureSubscription: ${{parameters.serviceConnection}}
+    resourceGroupName: ${{parameters.solutionAbbreviation}}-data-${{parameters.environmentAbbreviation}}
+    location: ${{parameters.location}}
+    csmFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/data/template.json
+    csmParametersFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/data/parameters/parameters.${{parameters.environmentAbbreviation}}.json
+    overrideParameters: '-environmentAbbreviation "${{parameters.environmentAbbreviation}}" 
+                        -solutionAbbreviation "${{parameters.solutionAbbreviation}}" 
+                        -containerBaseUrl "$(data_containerEndPoint)functions/${{ parameters.name }}/Infrastructure/data/" 
+                        -containerSasToken $(data_containerSASToken) 
+                        -storageAccountName $(data_storageAccountName) '
+    deploymentMode: 'Incremental'
+
+- task: AzureResourceGroupDeployment@2
+  displayName: 'deploy ${{ parameters.name }} compute resources'
+  inputs:
+    azureSubscription: ${{parameters.serviceConnection}}
+    resourceGroupName: ${{parameters.solutionAbbreviation}}-compute-${{parameters.environmentAbbreviation}}
+    location: ${{parameters.location}}
+    csmFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/compute/template.json
+    csmParametersFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/compute/parameters/parameters.${{parameters.environmentAbbreviation}}.json
+    overrideParameters: '-environmentAbbreviation "${{parameters.environmentAbbreviation}}" 
+                        -solutionAbbreviation "${{parameters.solutionAbbreviation}}" 
+                        -containerBaseUrl "$(data_containerEndPoint)functions/${{ parameters.name }}/Infrastructure/compute/" 
+                        -containerSasToken $(data_containerSASToken) 
+                        -storageAccountName $(data_storageAccountName) '
+    deploymentMode: 'Incremental'
+
+- task: AzureFunctionApp@1
+  displayName: 'deploy ${{ parameters.name }} function app'  
+  inputs:
+    appType: 'functionapp'
+    azureSubscription: ${{parameters.serviceConnection}}
+    appName: '${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}-${{ parameters.name }}'
+    Package: '${{ parameters.root }}/function_packages/${{ parameters.name }}.zip'
+    deploymentMethod: 'auto'
+    resourceGroupName: '${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}'

@@ -1,0 +1,38 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+name: $(major).$(minor).$(Date:yyMM).$(Rev:r)
+
+trigger:
+- develop
+- master
+- users/*
+
+pool:
+  vmImage: "windows-2019"
+
+variables:
+  "major": '2'
+  "minor": '0'
+  "BuildConfiguration": 'debug'
+  "SolutionAbbreviation": 'gmm'
+  "ProjectName": 'Source'
+
+stages:
+
+- template: build-services.yml
+  parameters:
+    repoToCheckout: ''
+    checkoutPath: ''
+
+- template: yaml/build-functionapps.yml
+  parameters:
+    dependsOn: BuildCommon
+    condition: succeeded('BuildCommon')
+    repoToCheckout: ''
+    checkoutPath: ''
+    functionApps:
+    - name: 'JobTrigger'
+    - name: 'GraphUpdater'
+    - name: 'SecurityGroup'
