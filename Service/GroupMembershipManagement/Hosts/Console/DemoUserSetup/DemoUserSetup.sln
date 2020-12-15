@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30320.27
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Console", "Console.csproj", "{2D301612-7127-4EE0-8DFA-33AB1924F6F3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DemoUserSetup", "DemoUserSetup.csproj", "{2D301612-7127-4EE0-8DFA-33AB1924F6F3}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Entities", "..\..\..\Entities\Entities.csproj", "{3AB60334-3EE7-4CF1-990A-32554FE54292}"
 EndProject
