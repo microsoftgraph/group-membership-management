@@ -55,7 +55,7 @@ namespace Hosts.GraphUpdater
 			})
 			.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(services => services.GetService<IOptions<LogAnalyticsSecret<LoggingRepository>>>().Value)
 			.AddScoped<SessionMessageCollector>()
-			.AddScoped<ILoggingRepository, LoggingRepository>()
+			.AddSingleton<ILoggingRepository, LoggingRepository>()
 			.AddScoped<IGraphUpdater, GraphUpdaterApplication>();
 		}
 
