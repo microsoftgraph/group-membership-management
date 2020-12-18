@@ -47,7 +47,7 @@ namespace Hosts.GraphUpdater
 			{
 				return FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value);
 			})
-			.AddScoped<IGraphGroupRepository, GraphGroupRepository>()
+			.AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
 			.AddSingleton<ISyncJobRepository>(services =>
 			{
 				var creds = services.GetService<IOptions<SyncJobRepoCredentials>>();

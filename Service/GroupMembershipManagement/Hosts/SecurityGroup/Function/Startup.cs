@@ -49,7 +49,7 @@ namespace Hosts.SecurityGroup
 				var config = services.GetService<IOptions<ServiceBusConfiguration>>().Value;
 				return new MembershipServiceBusRepository(serviceBusNamespacePrefix: config.Namespace, queueName: config.QueueName);
 			})
-			.AddScoped<IGraphGroupRepository, GraphGroupRepository>()
+			.AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
 			.AddScoped<SGMembershipCalculator>()
 			.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(services => services.GetService<IOptions<LogAnalyticsSecret<LoggingRepository>>>().Value)
 			.AddSingleton<ILoggingRepository, LoggingRepository>();
