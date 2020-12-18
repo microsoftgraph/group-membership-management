@@ -17,13 +17,17 @@ namespace Services
         private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly string _gmmAppId;
+        private readonly IMailRepository _mailRepository;
+        private readonly ILocalizationRepository _localizationRepository;
 
         public SyncJobTopicsService(
             ILoggingRepository loggingRepository,
             ISyncJobRepository syncJobRepository,
             IServiceBusTopicsRepository serviceBusTopicsRepository,
             IGraphGroupRepository graphGroupRepository,
-            IKeyVaultSecret<ISyncJobTopicService> gmmAppId
+            IKeyVaultSecret<ISyncJobTopicService> gmmAppId,
+            IMailRepository mailRepository,
+            ILocalizationRepository localizationRepository
             )
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
@@ -31,8 +35,10 @@ namespace Services
             _serviceBusTopicsRepository = serviceBusTopicsRepository ?? throw new ArgumentNullException(nameof(serviceBusTopicsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _gmmAppId = gmmAppId.Secret;
+            _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
+            _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
         }
-
+        
         public async Task ProcessSyncJobsAsync()
         {
             var jobs = _syncJobRepository.GetSyncJobsAsync(SyncStatus.Idle);
@@ -42,6 +48,13 @@ namespace Services
             var startedTasks = new List<Task>();
             await foreach (var job in jobs)
             {
+                var jobMinDateValue = DateTime.FromFileTimeUtc(0);
+                if (job.LastRunTime == jobMinDateValue)
+                {
+                    var emailSubjectToRequestor = _localizationRepository.TranslateSetting("EmailSubject");
+                    var emailContentToRequestor = _localizationRepository.TranslateSetting("SyncStartedEmailBody", job.TargetOfficeGroupId.ToString());
+                    await _mailRepository.SendMail(emailSubjectToRequestor, emailContentToRequestor, job.Requestor);
+                }
                 job.RunId = _graphGroupRepository.RunId = Guid.NewGuid();
                 _loggingRepository.SyncJobProperties = job.ToDictionary();
 

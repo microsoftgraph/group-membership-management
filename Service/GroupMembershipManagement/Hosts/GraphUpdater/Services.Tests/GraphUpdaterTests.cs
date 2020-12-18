@@ -67,7 +67,9 @@ namespace Services.Tests
 			var mockGroups = new MockGraphGroupRepository();
 			var mockSyncJobs = new MockSyncJobRepository();
 			var mockLogs = new MockLoggingRepository();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs);
+			var mockMails = new MockMailRepository();
+			var mockLocs = new MockLocalizationRepository();
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockLocs);
 			var sessionCollector = new SessionMessageCollector(updater);
 
 			var mockSession = new MockMessageSession()
@@ -117,7 +119,9 @@ namespace Services.Tests
 			var mockGroups = new MockGraphGroupRepository();
 			var mockSyncJobs = new MockSyncJobRepository();
 			var mockLogs = new MockLoggingRepository();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs);
+			var mockMails = new MockMailRepository();
+			var mockLocs = new MockLocalizationRepository();
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockLocs);
 			var sessionCollector = new SessionMessageCollector(updater);
 
 			var mockSession = new MockMessageSession()
@@ -170,7 +174,9 @@ namespace Services.Tests
 			var mockGroups = new MockGraphGroupRepository();
 			var mockSyncJobs = new MockSyncJobRepository();
 			var mockLogs = new MockLoggingRepository();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs);
+			var mockMails = new MockMailRepository();
+			var mockLocs = new MockLocalizationRepository();
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockLocs);
 			var sessionCollector = new SessionMessageCollector(updater);
 
 			var mockSession = new MockMessageSession()
