@@ -54,9 +54,9 @@ namespace Hosts.GraphUpdater
 				return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName);
 			})
 			.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(services => services.GetService<IOptions<LogAnalyticsSecret<LoggingRepository>>>().Value)
-			.AddScoped<SessionMessageCollector>()
+			.AddSingleton<SessionMessageCollector>()
 			.AddSingleton<ILoggingRepository, LoggingRepository>()
-			.AddScoped<IGraphUpdater, GraphUpdaterApplication>();
+			.AddSingleton<IGraphUpdater, GraphUpdaterApplication>();
 		}
 
 		private class SyncJobRepoCredentials

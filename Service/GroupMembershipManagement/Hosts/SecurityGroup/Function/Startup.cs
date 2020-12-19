@@ -40,17 +40,17 @@ namespace Hosts.SecurityGroup
 				settings.Location = nameof(SecurityGroup);
 			});
 
-			builder.Services.AddScoped((services) =>
+			builder.Services.AddSingleton((services) =>
 			 {
 				 return FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value);
 			 })
-			.AddScoped<IMembershipServiceBusRepository, MembershipServiceBusRepository>((services) =>
+			.AddSingleton<IMembershipServiceBusRepository, MembershipServiceBusRepository>((services) =>
 			{
 				var config = services.GetService<IOptions<ServiceBusConfiguration>>().Value;
 				return new MembershipServiceBusRepository(serviceBusNamespacePrefix: config.Namespace, queueName: config.QueueName);
 			})
 			.AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
-			.AddScoped<SGMembershipCalculator>()
+			.AddSingleton<SGMembershipCalculator>()
 			.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(services => services.GetService<IOptions<LogAnalyticsSecret<LoggingRepository>>>().Value)
 			.AddSingleton<ILoggingRepository, LoggingRepository>();
 		}
