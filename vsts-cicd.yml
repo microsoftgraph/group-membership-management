@@ -23,6 +23,15 @@ stages:
 
 - template: build-services.yml
   parameters:
+    repoToCheckout: ''
+    checkoutPath: ''
+
+- template: yaml/build-functionapps.yml
+  parameters:
+    dependsOn: BuildCommon
+    condition: succeeded('BuildCommon')
+    repoToCheckout: ''
+    checkoutPath: ''
     functionApps:
     - name: 'JobTrigger'
     - name: 'GraphUpdater'
