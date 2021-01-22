@@ -1,0 +1,68 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "metadata": {
+        "description": "Key vault name."
+      }
+    },
+    "skuName": {
+      "type": "string",
+      "allowedValues": ["Premium", "Standard"],
+      "defaultValue": "Standard",
+      "metadata": {
+        "description": "Key vault sku name."
+      }
+    },
+    "skuFamily": {
+      "type": "string",
+      "defaultValue": "A",
+      "metadata": {
+        "description": "Key vault sku family."
+      }
+    },
+    "location": {
+      "type": "string",
+      "allowedValues": [
+        "South Central US",
+        "West Europe",
+        "East US",
+        "North Europe",
+        "West US 2"
+      ],
+      "metadata": {
+        "description": "Key vault location."
+      }
+    },
+    "tenantId": {
+      "type": "string",
+      "metadata": {
+        "description": "Key vault tenant id."
+      }
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2016-10-01",
+      "name": "[parameters('name')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "enabledForDeployment": true,
+        "enabledForTemplateDeployment": true,
+        "enabledForVolumeEncryption": true,
+        "sku": {
+          "name": "[parameters('skuName')]",
+          "family": "[parameters('skuFamily')]"
+        },
+        "tenantId": "[parameters('tenantId')]",
+        "accessPolicies": []
+      }
+    }
+  ],
+  "outputs": {}
+}

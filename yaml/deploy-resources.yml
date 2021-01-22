@@ -1,0 +1,69 @@
+parameters:  
+- name: solutionAbbreviation
+  type: string
+- name: environmentAbbreviation
+  type: string
+- name: location
+  type: string
+- name: serviceConnection
+  type: string
+- name: root
+  type: string
+- name: tenantId
+  type: string
+- name: keyVaultReaders
+  type: object
+
+steps:
+
+- task: AzurePowerShell@4
+  displayName: 'Azure PowerShell script: FilePath CopyChildTemplatesToContainer'
+  inputs:
+    azureSubscription: ${{parameters.serviceConnection}}
+    ScriptPath: ${{ parameters.root }}/Scripts/ReleaseManagement/CopyChildTemplatesToContainer.ps1
+    ScriptArguments: '-resourceGroupName ''${{ parameters.solutionAbbreviation}}-data-${{ parameters.environmentAbbreviation}}'' 
+        -storageAccountName ''${{ parameters.solutionAbbreviation}}data${{ parameters.environmentAbbreviation}}'' 
+        -storageContainerName ''${{ parameters.solutionAbbreviation}}data${{ parameters.environmentAbbreviation}}'' 
+        -sourceFolderPath "${{ parameters.root }}\Infrastructure\" 
+        -Verbose'
+    azurePowerShellVersion: LatestVersion
+  name: copyChildTemplates
+
+- task: AzurePowerShell@4
+  displayName: 'Copy functions templates'
+  inputs:
+    azureSubscription: ${{parameters.serviceConnection}}
+    ScriptPath: ${{ parameters.root }}/Scripts/ReleaseManagement/CopyChildTemplatesToContainer.ps1
+    ScriptArguments: '-resourceGroupName ''${{ parameters.solutionAbbreviation}}-data-${{ parameters.environmentAbbreviation}}'' 
+        -storageAccountName ''${{ parameters.solutionAbbreviation}}data${{ parameters.environmentAbbreviation}}'' 
+        -storageContainerName ''${{ parameters.solutionAbbreviation}}data${{ parameters.environmentAbbreviation}}'' 
+        -sourceFolderPath "${{ parameters.root }}\functions_arm_templates\" 
+        -targetFolderPathPrefix functions
+        -Verbose'
+    azurePowerShellVersion: LatestVersion
+  name: copyFunctionsTemplates
+
+- task: AzureResourceGroupDeployment@2
+  displayName: 'deploy persistent data'
+  inputs:
+    azureSubscription: ${{parameters.serviceConnection}}
+    resourceGroupName: ${{parameters.solutionAbbreviation}}-data-${{parameters.environmentAbbreviation}}
+    location: ${{parameters.location}}
+    csmFile: ${{ parameters.root }}/Infrastructure/data/template.json
+    csmParametersFile: ${{parameters.root}}/Infrastructure/data/parameters/parameters.${{parameters.environmentAbbreviation}}.json
+    overrideParameters: '-environmentAbbreviation "${{parameters.environmentAbbreviation}}" -solutionAbbreviation "${{parameters.solutionAbbreviation}}" -tenantId "${{parameters.tenantId}}" -keyVaultReaders "${{parameters.keyVaultReaders}}" -containerBaseUrl "$(copyChildTemplates.containerEndPoint)data/" -containerSasToken $(copyChildTemplates.containerSASToken) '
+    deploymentMode: 'Incremental'
+    deploymentOutputs: dataoutputs
+
+- powershell: |
+    Write-Host $ENV:dataoutputs;
+    $outputs = ConvertFrom-Json -InputObject $ENV:dataoutputs;
+  
+    foreach ($output in $outputs.PSObject.Properties) {
+      Write-Host "##vso[task.setvariable variable=data_$($output.Name);isOutput=true]$($output.Value.value)"
+    }
+
+    Write-Host "##vso[task.setvariable variable=data_containerSASToken;isOutput=true]$(copyFunctionsTemplates.containerSASToken)"
+    Write-Host "##vso[task.setvariable variable=data_containerEndPoint;isOutput=true]$(copyFunctionsTemplates.containerEndPoint)"
+  displayName: 'set data output variables'
+  name: dataVariables

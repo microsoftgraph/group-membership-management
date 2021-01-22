@@ -1,0 +1,1 @@
+For support on the GMM tool installation, set up or use of the tool, please submit an issue on GitHub. A GMM support team member will respond within 5 business days.

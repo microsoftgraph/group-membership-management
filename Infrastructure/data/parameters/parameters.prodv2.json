@@ -1,0 +1,29 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "jobsTableName": {
+      "value": "syncJobs"
+    },
+    "serviceBusTopicSubscriptions": {
+      "value": [
+        {
+          "name": "Organization",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'Organization'"
+        },
+        {
+          "name": "SecurityGroup",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'SecurityGroup'"
+        }
+      ]
+    },
+    "serviceBusTopicName": {
+      "value": "syncJobs"
+    },
+    "serviceBusQueueName": {
+      "value": "membership"
+    }    
+  }
+}

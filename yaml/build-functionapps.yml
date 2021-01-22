@@ -1,0 +1,104 @@
+parameters:
+- name: functionApps
+  type: object
+- name: repoToCheckout
+  type: string
+- name: checkoutPath
+  type: string
+- name: dependsOn
+  type: object
+- name: condition
+  type: object
+
+stages:
+
+- stage: BuildFunctions
+  dependsOn: ${{ parameters.dependsOn }}
+  condition: ${{ parameters.condition }}
+
+  jobs:
+  - ${{ each func in parameters.functionApps }}:
+      - job: Build_${{ func.name }}
+        strategy:
+          maxParallel: 2
+          matrix: 
+            debug:
+              BuildConfiguration: debug
+            release:
+              BuildConfiguration: release
+
+        steps:
+          
+        - ${{ if ne(parameters.repoToCheckout, '') }}: 
+          - checkout: ${{ parameters.repoToCheckout }}
+            path: ${{ parameters.checkoutPath }}
+
+        - task: DotNetCoreCLI@2
+          displayName: 'dotnet build ${{ func.name }} function'
+          inputs:
+            command: build
+            projects: 'Service/GroupMembershipManagement/Hosts/${{ func.name }}/Function/*.csproj'
+            arguments: '--configuration $(buildConfiguration)'
+
+        - task: DotNetCoreCLI@2
+          displayName: 'dotnet test ${{ func.name }} function'
+          inputs:
+            command: test
+            projects: 'Service/GroupMembershipManagement/Hosts/${{ func.name }}/Services.Tests'
+            arguments: '--configuration $(BuildConfiguration) /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\${{ func.name }}\ /p:Exclude="[*.Tests]*"'
+          condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
+
+        - task: PublishCodeCoverageResults@1
+          displayName: 'collect code coverage'
+          inputs:
+            codeCoverageTool: 'cobertura'
+            summaryFileLocation: $(Build.SourcesDirectory)/TestResults/Coverage/${{ func.name }}/coverage.cobertura.xml
+            reportDirectory: $(Build.SourcesDirectory)/TestResults/Coverage/Reports
+            failIfCoverageEmpty: false
+          condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))      
+
+        - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@8
+          displayName: 'Check build quality'
+          inputs:
+            checkCoverage: true
+            coverageFailOption: fixed
+            coverageType: lines
+            coverageThreshold: 19
+          condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))    
+
+        - task: DotNetCoreCLI@2
+          displayName: 'dotnet publish ${{ func.name }} function'
+          inputs:
+            command: publish
+            arguments: '--configuration $(BuildConfiguration) --output ${{ func.name }}'
+            projects: 'Service/GroupMembershipManagement/Hosts/${{ func.name }}/Function/*.csproj'
+            publishWebProjects: false
+            modifyOutputPath: false
+            zipAfterPublish: false
+
+        - task: ArchiveFiles@2
+          displayName: 'archive ${{ func.name }} function'
+          inputs:
+            rootFolderOrFile: "$(System.DefaultWorkingDirectory)/${{ func.name }}"
+            includeRootFolder: false
+            archiveFile: "$(System.DefaultWorkingDirectory)/functions/${{ func.name }}.zip"
+
+        - task: CopyFiles@2
+          displayName: 'copy ${{ func.name }} function package'
+          inputs:
+            SourceFolder: $(System.DefaultWorkingDirectory)/functions
+            Contents: ${{ func.name }}.zip
+            TargetFolder: '$(build.artifactstagingdirectory)/function_packages/'
+
+        - task: CopyFiles@2
+          displayName: 'copy ${{ func.name }} function arm templates'
+          inputs:
+            SourceFolder: Service/GroupMembershipManagement/Hosts/${{ func.name }}
+            Contents: '**\Infrastructure\**'
+            TargetFolder: '$(build.artifactstagingdirectory)/functions_arm_templates/${{ func.name }}'
+
+        - task: PublishBuildArtifacts@1
+          displayName: 'publish functions artifacts'
+          inputs:
+            PathtoPublish: '$(build.artifactstagingdirectory)'
+            ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'

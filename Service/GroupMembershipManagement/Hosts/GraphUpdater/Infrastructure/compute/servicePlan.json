@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "metadata": {
+        "description": "Service plan name."
+      }
+    },
+    "sku": {
+      "type": "string",
+      "metadata": {
+        "description": "Service plan sku."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "West US 2",
+      "allowedValues": [
+        "South Central US",
+        "West Europe",
+        "East US",
+        "North Europe",
+        "West US 2"
+      ],
+      "metadata": {
+        "description": "Service plan location."
+      }
+    },
+    "maximumElasticWorkerCount": {
+      "type": "int",
+      "metadata": {
+        "description": "Maximum elastic worker count."
+      }
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "name": "[parameters('name')]",
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2018-02-01",
+      "location": "[parameters('location')]",
+      "sku": {
+          "name": "[parameters('sku')]",
+          "tier": "ElasticPremium"
+      },
+      "kind": "elastic",
+      "properties": {
+          "maximumElasticWorkerCount": "[parameters('maximumElasticWorkerCount')]"
+      }
+    }
+  ],
+  "outputs": {}
+}

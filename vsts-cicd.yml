@@ -1,0 +1,103 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+name: $(major).$(minor).$(Date:yyMM).$(Rev:r)
+
+trigger:
+- develop
+- master
+- users/*
+
+pool:
+  vmImage: "windows-2019"
+
+variables:
+  "major": '2'
+  "minor": '0'
+  "BuildConfiguration": 'debug'
+  "SolutionAbbreviation": 'gmm'
+  "ProjectName": 'Source'
+
+stages:
+
+- template: build-services.yml
+  parameters:
+    repoToCheckout: ''
+    checkoutPath: ''
+
+- template: yaml/build-functionapps.yml
+  parameters:
+    dependsOn: BuildCommon
+    condition: succeeded('BuildCommon')
+    repoToCheckout: ''
+    checkoutPath: ''
+    functionApps:
+    - name: 'JobTrigger'
+    - name: 'GraphUpdater'
+    - name: 'SecurityGroup'
+
+- template: yaml/deploy-pipeline.yml
+  parameters:
+    solutionAbbreviation: '$(SolutionAbbreviation)'
+    environmentAbbreviation: 'int'
+    tenantId: $(tenantId)
+    keyVaultReaders: $(keyVaultReaders_nonprod)
+    location: 'westus2'
+    serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
+    dependsOn: BuildFunctions
+    stageName: 'int'
+    functionApps:
+    - name: 'JobTrigger'
+    - name: 'GraphUpdater'
+    - name: 'SecurityGroup'
+    condition: |
+      and(
+        succeeded('BuildFunctions'),
+        eq(variables['Build.SourceBranch'], 'refs/heads/develop'),
+        in(variables['Build.Reason'], 'IndividualCI', 'Manual')
+      )
+
+- template: yaml/deploy-pipeline.yml
+  parameters:
+    solutionAbbreviation: '$(SolutionAbbreviation)'
+    environmentAbbreviation: 'ua'
+    tenantId: $(tenantId)
+    keyVaultReaders: $(keyVaultReaders_nonprod)
+    location: 'westus2'    
+    serviceConnection: '$(SolutionAbbreviation)-serviceconnection-ua'
+    dependsOn: BuildFunctions
+    stageName: 'ua'
+    functionApps:
+    - name: 'JobTrigger'
+    - name: 'GraphUpdater'
+    - name: 'SecurityGroup'
+    condition: |                
+      and(
+          succeeded('BuildFunctions'),
+          eq(variables['Build.SourceBranch'], 'refs/heads/master'),
+          in(variables['Build.Reason'], 'IndividualCI', 'Manual')
+      )
+
+
+- template: yaml/deploy-pipeline.yml
+  parameters:
+    solutionAbbreviation: '$(SolutionAbbreviation)'
+    environmentAbbreviation: 'prodv2'
+    tenantId: $(tenantId)
+    keyVaultReaders: $(keyVaultReaders_prod)
+    location: 'westus2'    
+    serviceConnection: '$(SolutionAbbreviation)-serviceconnection-prodv2'
+    dependsOn: ua
+    stageName: 'production'
+    functionApps:
+    - name: 'JobTrigger'
+    - name: 'GraphUpdater'
+    - name: 'SecurityGroup'
+    condition: |                
+      and(
+        succeeded('ua'),
+        succeeded('BuildFunctions'),
+        eq(variables['Build.SourceBranch'], 'refs/heads/master'),
+        in(variables['Build.Reason'], 'IndividualCI', 'Manual')
+      )
