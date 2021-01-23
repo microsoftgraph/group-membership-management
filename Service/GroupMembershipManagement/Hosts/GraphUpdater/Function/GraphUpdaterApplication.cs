@@ -47,6 +47,20 @@ namespace Hosts.GraphUpdater
 				job.RunId = membership.RunId;
 				job.Enabled = changeTo == SyncStatus.Error ? false : job.Enabled; // disable the job if the destination group doesn't exist
 				await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo);
+				_ = _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo}.", RunId = membership.RunId });
+			}
+
+			// this is a grasping-at-straws troubleshooting step
+			await foreach (var job in _syncJobRepo.GetSyncJobsAsync(new[] { (membership.SyncJobPartitionKey, membership.SyncJobRowKey) }))
+			{
+				_ = _log.LogMessageAsync(new LogMessage { Message = $"On another read, job's status is {job.Status}.", RunId = membership.RunId });
+
+				if (job.Status == "InProgress")
+				{
+					_ = _log.LogMessageAsync(new LogMessage { Message = "Job is stuck in progress. Attempting to force it back to Idle.", RunId = membership.RunId });
+					job.Status = "Idle";
+					await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.Idle);
+				}
 			}
 
 			_ = _log.LogMessageAsync(new LogMessage { Message = $"Syncing {fromto} done.", RunId = membership.RunId });
