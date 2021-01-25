@@ -50,17 +50,17 @@ namespace Hosts.GraphUpdater
 			{
 				return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
 			})
-
-			.AddScoped<IGraphGroupRepository, GraphGroupRepository>()
+			.AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
+			
+			.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(services => services.GetService<IOptions<LogAnalyticsSecret<LoggingRepository>>>().Value)
+			.AddSingleton<SessionMessageCollector>()
+			.AddSingleton<ILoggingRepository, LoggingRepository>()
 			.AddSingleton<ISyncJobRepository>(services =>
 			{
 				var creds = services.GetService<IOptions<SyncJobRepoCredentials>>();
-				return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName);
+				return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
 			})
-			.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(services => services.GetService<IOptions<LogAnalyticsSecret<LoggingRepository>>>().Value)
-			.AddScoped<SessionMessageCollector>()
-			.AddScoped<ILoggingRepository, LoggingRepository>()
-			.AddScoped<IGraphUpdater, GraphUpdaterApplication>();
+			.AddSingleton<IGraphUpdater, GraphUpdaterApplication>();
 		}
 
 		private class SyncJobRepoCredentials

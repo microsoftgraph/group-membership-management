@@ -16,13 +16,15 @@ namespace Repositories.SyncJobsRepository
         private readonly CloudStorageAccount _cloudStorageAccount = null;
         private readonly CloudTableClient _tableClient = null;
         private readonly string _syncJobsTableName = null;
+        private readonly ILoggingRepository _log = null;
 
-        public SyncJobRepository(string connectionString, string syncJobTableName)
+        public SyncJobRepository(string connectionString, string syncJobTableName, ILoggingRepository loggingRepository)
         {
             _syncJobsTableName = syncJobTableName;
             _cloudStorageAccount = CreateStorageAccountFromConnectionString(connectionString);
             _tableClient = _cloudStorageAccount.CreateCloudTableClient(new TableClientConfiguration());
             _tableClient.GetTableReference(syncJobTableName).CreateIfNotExistsAsync();
+            _log = loggingRepository;
         }
 
         public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false)
@@ -80,8 +82,13 @@ namespace Repositories.SyncJobsRepository
             var table = _tableClient.GetTableReference(_syncJobsTableName);
             var groupedJobs = jobs.GroupBy(x => x.PartitionKey);
 
+            _ = _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key", RunId = Guid.Empty });
+
             foreach (var group in groupedJobs)
             {
+                foreach (var groupEnum in Enum.GetValues(typeof(IGrouping<string, SyncJob>)))
+                    _ = _log.LogMessageAsync(new LogMessage { Message = $"Job: {groupEnum}", RunId = Guid.Empty });
+
                 var batchOperation = new TableBatchOperation();
 
                 foreach (var job in group.AsEnumerable())
@@ -104,6 +111,7 @@ namespace Repositories.SyncJobsRepository
                     await table.ExecuteBatchAsync(batchOperation);
                 }
             }
+            _ = _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key complete", RunId = Guid.Empty });
         }
 
         private IEnumerable<SyncJob> ApplyFilters(IEnumerable<SyncJob> jobs)
