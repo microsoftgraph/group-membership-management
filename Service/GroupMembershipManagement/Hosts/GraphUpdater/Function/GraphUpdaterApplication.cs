@@ -40,13 +40,21 @@ namespace Hosts.GraphUpdater
            
 			SyncStatus changeTo = await SynchronizeGroups(membership, fromto);
 
+			var syncJobBeingProcessed = _syncJobRepo.GetSyncJobsAsync(new[] { (membership.SyncJobPartitionKey, membership.SyncJobRowKey) });
+			_ = _log.LogMessageAsync(new LogMessage { Message = $"syncJobBeingProcesses is {syncJobBeingProcessed} ", RunId = membership.RunId });
+
 			// should only be one sync job in here, doesn't hurt to iterate over "all" of them
-			await foreach (var job in _syncJobRepo.GetSyncJobsAsync(new[] { (membership.SyncJobPartitionKey, membership.SyncJobRowKey) }))
+			await foreach (var job in syncJobBeingProcessed)
 			{
+				_ = _log.LogMessageAsync(new LogMessage { Message = $"syncJobBeingProcesses is being processed as part of RunId: {job.RunId} ", RunId = membership.RunId });
+				_ = _log.LogMessageAsync(new LogMessage { Message = $"Job's status is {job.Status}.", RunId = membership.RunId });
+
 				job.LastRunTime = DateTime.UtcNow;
 				job.RunId = membership.RunId;
 				job.Enabled = changeTo == SyncStatus.Error ? false : job.Enabled; // disable the job if the destination group doesn't exist
+				_ = _log.LogMessageAsync(new LogMessage { Message = $"Sync jobs being batched : Partition key {job.PartitionKey} , Row key {job.RowKey}", RunId = membership.RunId });
 				await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo);
+<<<<<<< HEAD
 				_ = _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo}.", RunId = membership.RunId });
 			}
 
@@ -61,6 +69,9 @@ namespace Hosts.GraphUpdater
 					job.Status = "Idle";
 					await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.Idle);
 				}
+=======
+				_ = _log.LogMessageAsync(new LogMessage { Message = $"Updated sync job status to {job.Status}", RunId = membership.RunId });
+>>>>>>> 60877de... changes to root cause InProgress issue
 			}
 
 			_ = _log.LogMessageAsync(new LogMessage { Message = $"Syncing {fromto} done.", RunId = membership.RunId });
