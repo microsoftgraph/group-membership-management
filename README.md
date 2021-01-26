@@ -151,7 +151,7 @@ GMM logically separates the resources it uses into three [resource groups](https
 
 Throughout this document we will use these tokens `<SolutionAbbreviation>`, `<ResourceGroupName>`, `<EnvironmentAbbreviation>`as place holders, when setting up GMM you will need to provide the value for each one of them as they will be used to name the Azure resources. Some Azure resources require to have a unique name across all tenants globally. So please avoid using the names used on this document as they are already in use.
 
-- `<SolutionAbbreviation>` - This is a name prefix (2 to 3 characters long) the current default value is 'gmm', to change this value see the Notes section below for more information on how to do that.
+- `<SolutionAbbreviation>` - This is a name prefix (2 to 3 characters long) the current default value is 'gmm'. To change this value see the Notes section below for more information on how to do that.
 - `<ResourceGroupName>` - This is the name of the resource group, the current values supported are prereqs, data, and compute.
 - `<EnvironmentAbbreviation>` - This the name of your environment (2 to 6 characters long), use a unique value here to prevent name collisions. See the Notes section below for more information on how to set the value for this setting.
 
@@ -165,7 +165,7 @@ You will need to replace `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>
 
 ### Note:
 
-Currently `<SolutionAbbreviation>` default value is 'gmm' to change this value, see `solutionAbbreviation` variable in vsts-cicd.yml file. You can make this change as part of 'Getting GMM code ready' step.
+Currently `<SolutionAbbreviation>` default value is 'gmm'. To change this value, update the `solutionAbbreviation` variable in vsts-cicd.yml file. You can make this change as part of 'Getting GMM code ready' step.
 
 `<SolutionAbbreviation>` currently support names of 2 or 3 characters long. `<EnvironmentAbbreviation>` currently support names from 2 to 6 characters long. This can be changed in the ARM templates (template.json) by updating the `minLength` and `maxLength` settings for `solutionAbbreviation` and `environmentAbbreviation` parameters.
 
@@ -322,7 +322,7 @@ Uploading the certificate:
     Infrastructure folder contains all the ARM templates, it has separate folders for data and compute resources, which in turn have a parameters folder.
 
     Note:  
-    Currently `<SolutionAbbreviation>` default value is 'gmm' to change this value, see `solutionAbbreviation` variable in vsts-cicd.yml file.
+    Currently `<SolutionAbbreviation>` default value is 'gmm'. To change this value, update the `solutionAbbreviation` variable in vsts-cicd.yml file.
 
 -   ### Pushing GMM code to your repository
 
