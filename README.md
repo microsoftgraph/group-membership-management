@@ -530,20 +530,22 @@ In order to add the application as an owner of a group follow the next steps:
 3. Locate and open the group you would like to use.
 4. Take note of the group's `Object Id`.
 5. Navigate back (out of the 'Groups' blade) to the `Azure Active Directory` section of the portal.
-6. Navigate to the `App registrations` blade on the left menu.
-7. Locate and open the `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` app registration and select it from the results list.
-8. Take note of the app registration's `Application (client) ID`.
+6. Navigate to the `Enterprise applications` blade on the left menu.
+7. Locate and open the `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application and select it from the results list.
+8. Take note of the enterprise application's `Object ID`.
 9. Open a PowerShell terminal as an administrator.
 10. If not already installed, install the [`AzureAD` module]( https://www.powershellgallery.com/packages/AzureAD) version `2.0.2.128` or higher.  
 `Install-Module -Name AzureAD -RequiredVersion 2.0.2.128`
 11. Import the AzureAD PowerShell Module  
 `Import-Module -Name AzureAD -RequiredVersion 2.0.2.128`
-12. Execute the following command:  
-`Add-AzureADGroupOwner -ObjectId [Group Id (from step 4)] -RefObjectId [App Id (from step 8)]`
+12. Connect with an authenticated account to use Active Directory cmdlet requests:
+`Connect-AzureAD`
+13. Execute the following command:  
+`Add-AzureADGroupOwner -ObjectId [Group Id (from step 4)] -RefObjectId [Object Id (from step 8)]`
 
-*Note: regarding steps 10 - 12:  
+*Note: regarding steps 10 - 13:  
 A newer version of this cmdlet is under development.  It will be available in an entirely different PowerShell module, [`Az.Resources`](https://www.powershellgallery.com/packages/Az.Resources).  The cmdlet will be renamed to `Add-AzADGroupOwner`.*
-
+ 
 # Setting GMM in a demo tenant
 
 In the event that you are setting up GMM in a demo tenant refer to [Setting GMM in a demo tenant](/Documentation/DemoTenant.md) for additional guidance.
