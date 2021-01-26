@@ -66,6 +66,8 @@ stages:
         coverageFailOption: fixed
         coverageType: lines
         coverageThreshold: 19
+        coverageVariance: 0
+        allowCoverageVariance: false
       condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
     - task: CopyFiles@2
