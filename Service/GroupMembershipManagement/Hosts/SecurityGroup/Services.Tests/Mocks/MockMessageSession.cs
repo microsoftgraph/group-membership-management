@@ -167,7 +167,12 @@ namespace Tests.FunctionApps.Mocks
 			throw new NotImplementedException();
 		}
 
-		public void UnregisterPlugin(string serviceBusPluginName)
+        public Task UnregisterMessageHandlerAsync(TimeSpan inflightMessageHandlerTasksWaitTimeout)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void UnregisterPlugin(string serviceBusPluginName)
 		{
 			throw new NotImplementedException();
 		}
