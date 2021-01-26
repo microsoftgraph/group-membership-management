@@ -321,6 +321,9 @@ Uploading the certificate:
 
     Infrastructure folder contains all the ARM templates, it has separate folders for data and compute resources, which in turn have a parameters folder.
 
+    Note:  
+    Currently `<SolutionAbbreviation>` default value is 'gmm' to change this see `solutionAbbreviation` variable in vsts-cicd.yml file.
+
 -   ### Pushing GMM code to your repository
 
     In order to push GMM code to your repository see [Manually import a repo](https://docs.microsoft.com/en-us/azure/devops/repos/git/import-git-repository?view=azure-devops#manually-import-a-repo) documentation.
@@ -509,10 +512,12 @@ Flag to enable or disable a synchronization job.
 
 A PowerShell script [New-GmmSecurityGroupSyncJob.ps1](/Service/GroupMembershipManagement/Hosts/SecurityGroup/Scripts/New-GmmSecurityGroupSyncJob.ps1) is provided to help you create the synchronization jobs.
 
+The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGroup\Scripts folder.
+
     1. . ./New-GmmSecurityGroupSyncJob.ps1
     2. New-GmmSecurityGroupSyncJob	-SubscriptionName "<SubscriptionName>" `
 							-EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-							-Owner "<RequestorEmailAddress>" `
+							-Requestor "<RequestorEmailAddress>" `
 							-TargetOfficeGroupId "<DestinationGroupObjectId>" `
 							-Query "<source group object id(s) (separated by ';')>" `
 							-Enabled $True `
