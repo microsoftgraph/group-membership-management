@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
+using Microsoft.Graph;
 using Microsoft.Graph.Auth;
 using Microsoft.Identity.Client;
 using Repositories.Contracts;
@@ -29,7 +30,8 @@ namespace CircularGroupChecker
 				.WithAuthority(AzureCloudInstance.AzurePublic, Tenant)
 				.Build();
 
-			var repo = new GraphGroupRepository(new InteractiveAuthenticationProvider(publicClientApp), new Logger());
+			var graphServiceClient = new GraphServiceClient(new InteractiveAuthenticationProvider(publicClientApp));
+			var repo = new GraphGroupRepository(graphServiceClient, new Logger());
 
 			bool compareGroups = args.Length == 2;
 			var users = new List<HashSet<AzureADUser>>();

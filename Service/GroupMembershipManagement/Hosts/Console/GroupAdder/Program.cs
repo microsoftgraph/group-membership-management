@@ -13,6 +13,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Repositories.ServiceBusQueue;
 using System.Collections.Generic;
+using Microsoft.Graph;
 
 namespace GroupAdder
 {
@@ -33,7 +34,8 @@ namespace GroupAdder
 				.WithAuthority(AzureCloudInstance.AzurePublic, Tenant)
 				.Build();
 
-			var repo = new GraphGroupRepository(new InteractiveAuthenticationProvider(publicClientApp), new Logger());
+			var graphServiceClient = new GraphServiceClient(new InteractiveAuthenticationProvider(publicClientApp));
+			var repo = new GraphGroupRepository(graphServiceClient, new Logger());
 
 			var sbqueue = new MembershipServiceBusRepository(serviceBusNamespace, "membership");
 
