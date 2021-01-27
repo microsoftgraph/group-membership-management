@@ -18,6 +18,7 @@ variables:
   "BuildConfiguration": 'debug'
   "SolutionAbbreviation": 'gmm'
   "ProjectName": 'Source'
+  disable.coverage.autogenerate: 'true'
 
 stages:
 
