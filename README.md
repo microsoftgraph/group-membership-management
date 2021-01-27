@@ -151,7 +151,7 @@ GMM logically separates the resources it uses into three [resource groups](https
 
 Throughout this document we will use these tokens `<SolutionAbbreviation>`, `<ResourceGroupName>`, `<EnvironmentAbbreviation>`as place holders, when setting up GMM you will need to provide the value for each one of them as they will be used to name the Azure resources. Some Azure resources require to have a unique name across all tenants globally. So please avoid using the names used on this document as they are already in use.
 
-- `<SolutionAbbreviation>` - This is a name prefix (2 to 3 characters long) the current default value is 'gmm', to change this value see the Notes section below for more information on how to do that.
+- `<SolutionAbbreviation>` - This is a name prefix (2 to 3 characters long) the current default value is 'gmm'. To change this value see the Notes section below for more information on how to do that.
 - `<ResourceGroupName>` - This is the name of the resource group, the current values supported are prereqs, data, and compute.
 - `<EnvironmentAbbreviation>` - This the name of your environment (2 to 6 characters long), use a unique value here to prevent name collisions. See the Notes section below for more information on how to set the value for this setting.
 
@@ -165,7 +165,7 @@ You will need to replace `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>
 
 ### Note:
 
-Currently `<SolutionAbbreviation>` default value is 'gmm' to change this see `solutionAbbreviation` variable in vsts-cicd.yml file. You can make this change as part of 'Getting GMM code ready' step.
+Currently `<SolutionAbbreviation>` default value is 'gmm'. To change this value, update the `solutionAbbreviation` variable in vsts-cicd.yml file. You can make this change as part of 'Getting GMM code ready' step.
 
 `<SolutionAbbreviation>` currently support names of 2 or 3 characters long. `<EnvironmentAbbreviation>` currently support names from 2 to 6 characters long. This can be changed in the ARM templates (template.json) by updating the `minLength` and `maxLength` settings for `solutionAbbreviation` and `environmentAbbreviation` parameters.
 
@@ -320,6 +320,9 @@ Uploading the certificate:
     Under Service folder, locate Hosts folder, this folder may contain one or more folders each representing a function, all of them will follow the same folder structure, open a function folder (i.e. JobTrigger) and locate the Infrastructure folder, this folder might contain a compute and data folder, similar to what we just did, review the parameters files on both compute and data folders, and provide the required values specific to your environment. This needs to be done to all the functions that may be present under Hosts folder.
 
     Infrastructure folder contains all the ARM templates, it has separate folders for data and compute resources, which in turn have a parameters folder.
+
+    Note:  
+    Currently `<SolutionAbbreviation>` default value is 'gmm'. To change this value, update the `solutionAbbreviation` variable in vsts-cicd.yml file.
 
 -   ### Pushing GMM code to your repository
 
@@ -509,10 +512,12 @@ Flag to enable or disable a synchronization job.
 
 A PowerShell script [New-GmmSecurityGroupSyncJob.ps1](/Service/GroupMembershipManagement/Hosts/SecurityGroup/Scripts/New-GmmSecurityGroupSyncJob.ps1) is provided to help you create the synchronization jobs.
 
+The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGroup\Scripts folder.
+
     1. . ./New-GmmSecurityGroupSyncJob.ps1
     2. New-GmmSecurityGroupSyncJob	-SubscriptionName "<SubscriptionName>" `
 							-EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-							-Owner "<RequestorEmailAddress>" `
+							-Requestor "<RequestorEmailAddress>" `
 							-TargetOfficeGroupId "<DestinationGroupObjectId>" `
 							-Query "<source group object id(s) (separated by ';')>" `
 							-Enabled $True `
@@ -530,20 +535,22 @@ In order to add the application as an owner of a group follow the next steps:
 3. Locate and open the group you would like to use.
 4. Take note of the group's `Object Id`.
 5. Navigate back (out of the 'Groups' blade) to the `Azure Active Directory` section of the portal.
-6. Navigate to the `App registrations` blade on the left menu.
-7. Locate and open the `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` app registration and select it from the results list.
-8. Take note of the app registration's `Application (client) ID`.
+6. Navigate to the `Enterprise applications` blade on the left menu.
+7. Locate and open the `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application and select it from the results list.
+8. Take note of the enterprise application's `Object ID`.
 9. Open a PowerShell terminal as an administrator.
 10. If not already installed, install the [`AzureAD` module]( https://www.powershellgallery.com/packages/AzureAD) version `2.0.2.128` or higher.  
 `Install-Module -Name AzureAD -RequiredVersion 2.0.2.128`
 11. Import the AzureAD PowerShell Module  
 `Import-Module -Name AzureAD -RequiredVersion 2.0.2.128`
-12. Execute the following command:  
-`Add-AzureADGroupOwner -ObjectId [Group Id (from step 4)] -RefObjectId [App Id (from step 8)]`
+12. Connect with an authenticated account to use Active Directory cmdlet requests:
+`Connect-AzureAD`
+13. Execute the following command:  
+`Add-AzureADGroupOwner -ObjectId [Group Id (from step 4)] -RefObjectId [Object Id (from step 8)]`
 
-*Note: regarding steps 10 - 12:  
+*Note: regarding steps 10 - 13:  
 A newer version of this cmdlet is under development.  It will be available in an entirely different PowerShell module, [`Az.Resources`](https://www.powershellgallery.com/packages/Az.Resources).  The cmdlet will be renamed to `Add-AzADGroupOwner`.*
-
+ 
 # Setting GMM in a demo tenant
 
 In the event that you are setting up GMM in a demo tenant refer to [Setting GMM in a demo tenant](/Documentation/DemoTenant.md) for additional guidance.
