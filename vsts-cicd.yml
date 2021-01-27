@@ -34,9 +34,15 @@ stages:
     repoToCheckout: ''
     checkoutPath: ''
     functionApps:
-    - name: 'JobTrigger'
-    - name: 'GraphUpdater'
-    - name: 'SecurityGroup'
+    - function: 
+       name: 'JobTrigger'
+       coverageThreshold: 75
+    - function: 
+       name: 'GraphUpdater'
+       coverageThreshold: 15
+    - function: 
+       name: 'SecurityGroup'
+       coverageThreshold: 75
 
 - template: yaml/deploy-pipeline.yml
   parameters:
