@@ -45,25 +45,25 @@ namespace Hosts.GraphUpdater
 			// should only be one sync job in here, doesn't hurt to iterate over "all" of them
 			await foreach (var job in syncJobsBeingProcessed)
 			{
-				_ = _log.LogMessageAsync(new LogMessage { Message = $"syncJobsBeingProcessed is being processed as part of RunId: {job.RunId} ", RunId = membership.RunId });
-				_ = _log.LogMessageAsync(new LogMessage { Message = $"Job's status is {job.Status}.", RunId = membership.RunId });
+				await _log.LogMessageAsync(new LogMessage { Message = $"syncJobsBeingProcessed is being processed as part of RunId: {job.RunId} ", RunId = membership.RunId });
+				await _log.LogMessageAsync(new LogMessage { Message = $"Job's status is {job.Status}.", RunId = membership.RunId });
 
 				job.LastRunTime = DateTime.UtcNow;
 				job.RunId = membership.RunId;
 				job.Enabled = changeTo == SyncStatus.Error ? false : job.Enabled; // disable the job if the destination group doesn't exist
-				_ = _log.LogMessageAsync(new LogMessage { Message = $"Sync jobs being batched : Partition key {job.PartitionKey} , Row key {job.RowKey}", RunId = membership.RunId });
+				await _log.LogMessageAsync(new LogMessage { Message = $"Sync jobs being batched : Partition key {job.PartitionKey} , Row key {job.RowKey}", RunId = membership.RunId });
 				await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo);
-				_ = _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo}.", RunId = membership.RunId });
+				await _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo}.", RunId = membership.RunId });
 			}
 
 			// this is a grasping-at-straws troubleshooting step
 			await foreach (var job in syncJobsBeingProcessed)
 			{
-				_ = _log.LogMessageAsync(new LogMessage { Message = $"On another read, job's status is {job.Status}.", RunId = membership.RunId });
+				await _log.LogMessageAsync(new LogMessage { Message = $"On another read, job's status is {job.Status}.", RunId = membership.RunId });
 
 				if (job.Status == "InProgress")
 				{
-					_ = _log.LogMessageAsync(new LogMessage { Message = "Job is stuck in progress. Attempting to force it back to Idle.", RunId = membership.RunId });
+					await _log.LogMessageAsync(new LogMessage { Message = "Job is stuck in progress. Attempting to force it back to Idle.", RunId = membership.RunId });
 					job.Status = "Idle";
 					await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.Idle);
 				}
@@ -95,17 +95,17 @@ namespace Hosts.GraphUpdater
 
 		private async Task DoSynchronization(GroupMembership membership, string fromto)
 		{
-			var _ = _log.LogMessageAsync(new LogMessage { Message = $"Calculating membership difference {fromto}.", RunId = membership.RunId });
+			await _log.LogMessageAsync(new LogMessage { Message = $"Calculating membership difference {fromto}.", RunId = membership.RunId });
 			Stopwatch stopwatch = Stopwatch.StartNew();
 			var delta = _differenceCalculator.CalculateDifference(membership.SourceMembers, await _graphGroups.GetUsersInGroupTransitively(membership.Destination.ObjectId));
 			stopwatch.Stop();
-			_ = _log.LogMessageAsync(new LogMessage { Message = $"Calculated membership difference {fromto} in {stopwatch.Elapsed.TotalSeconds} seconds. Adding {delta.ToAdd.Count} users and removing {delta.ToRemove.Count}.", RunId = membership.RunId });
+			await _log.LogMessageAsync(new LogMessage { Message = $"Calculated membership difference {fromto} in {stopwatch.Elapsed.TotalSeconds} seconds. Adding {delta.ToAdd.Count} users and removing {delta.ToRemove.Count}.", RunId = membership.RunId });
 
 			stopwatch.Restart();
 			await _graphGroups.AddUsersToGroup(delta.ToAdd, membership.Destination);
 			await _graphGroups.RemoveUsersFromGroup(delta.ToRemove, membership.Destination);
 			stopwatch.Stop();
-			_ = _log.LogMessageAsync(new LogMessage { Message = $"Synchronization {fromto} complete in {stopwatch.Elapsed.TotalSeconds} seconds. {delta.ToAdd.Count / stopwatch.Elapsed.TotalSeconds} users added per second. {delta.ToRemove.Count / stopwatch.Elapsed.TotalSeconds} users removed per second. Marking job as idle.", RunId = membership.RunId });
+			await _log.LogMessageAsync(new LogMessage { Message = $"Synchronization {fromto} complete in {stopwatch.Elapsed.TotalSeconds} seconds. {delta.ToAdd.Count / stopwatch.Elapsed.TotalSeconds} users added per second. {delta.ToRemove.Count / stopwatch.Elapsed.TotalSeconds} users removed per second. Marking job as idle.", RunId = membership.RunId });
 		}
 
 		private string PrettyprintSources(AzureADGroup[] sources)

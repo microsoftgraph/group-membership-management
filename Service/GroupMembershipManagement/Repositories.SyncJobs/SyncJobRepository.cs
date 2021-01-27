@@ -82,12 +82,12 @@ namespace Repositories.SyncJobsRepository
             var table = _tableClient.GetTableReference(_syncJobsTableName);
             var groupedJobs = jobs.GroupBy(x => x.PartitionKey);
 
-            _ = _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key", RunId = Guid.Empty });
+            await _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key", RunId = Guid.Empty });
 
             foreach (var group in groupedJobs)
             {
                 foreach (var groupEnum in Enum.GetValues(typeof(IGrouping<string, SyncJob>)))
-                    _ = _log.LogMessageAsync(new LogMessage { Message = $"Job: {groupEnum}", RunId = Guid.Empty });
+                    await _log.LogMessageAsync(new LogMessage { Message = $"Job: {groupEnum}", RunId = Guid.Empty });
 
                 var batchOperation = new TableBatchOperation();
 
@@ -111,7 +111,7 @@ namespace Repositories.SyncJobsRepository
                     await table.ExecuteBatchAsync(batchOperation);
                 }
             }
-            _ = _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key complete", RunId = Guid.Empty });
+            await _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key complete", RunId = Guid.Empty });
         }
 
         private IEnumerable<SyncJob> ApplyFilters(IEnumerable<SyncJob> jobs)
