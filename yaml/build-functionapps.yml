@@ -17,8 +17,8 @@ stages:
   condition: ${{ parameters.condition }}
 
   jobs:
-  - ${{ each func in parameters.functionApps }}:
-      - job: Build_${{ func.name }}
+  - ${{ each app in parameters.functionApps }}:
+      - job: Build_${{ app.function.name }}
         strategy:
           maxParallel: 2
           matrix: 
@@ -34,25 +34,25 @@ stages:
             path: ${{ parameters.checkoutPath }}
 
         - task: DotNetCoreCLI@2
-          displayName: 'dotnet build ${{ func.name }} function'
+          displayName: 'dotnet build ${{ app.function.name }} function'
           inputs:
             command: build
-            projects: 'Service/GroupMembershipManagement/Hosts/${{ func.name }}/Function/*.csproj'
+            projects: 'Service/GroupMembershipManagement/Hosts/${{ app.function.name }}/Function/*.csproj'
             arguments: '--configuration $(buildConfiguration)'
 
         - task: DotNetCoreCLI@2
-          displayName: 'dotnet test ${{ func.name }} function'
+          displayName: 'dotnet test ${{ app.function.name }} function'
           inputs:
             command: test
-            projects: 'Service/GroupMembershipManagement/Hosts/${{ func.name }}/Services.Tests'
-            arguments: '--configuration $(BuildConfiguration) /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\${{ func.name }}\ /p:Exclude="[*.Tests]*"'
+            projects: 'Service/GroupMembershipManagement/Hosts/${{ app.function.name }}/Services.Tests'
+            arguments: '--configuration $(BuildConfiguration) /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\${{ app.function.name }}\ /p:Exclude="[*.Tests]*"'
           condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
         - task: PublishCodeCoverageResults@1
           displayName: 'collect code coverage'
           inputs:
             codeCoverageTool: 'cobertura'
-            summaryFileLocation: $(Build.SourcesDirectory)/TestResults/Coverage/${{ func.name }}/coverage.cobertura.xml
+            summaryFileLocation: $(Build.SourcesDirectory)/TestResults/Coverage/${{ app.function.name }}/coverage.cobertura.xml
             reportDirectory: $(Build.SourcesDirectory)/TestResults/Coverage/Reports
             failIfCoverageEmpty: false
           condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))      
@@ -63,41 +63,41 @@ stages:
             checkCoverage: true
             coverageFailOption: fixed
             coverageType: lines
-            coverageThreshold: 10
+            coverageThreshold: ${{ app.function.coverageThreshold }}
             coverageVariance: 0
             allowCoverageVariance: false
           condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))    
 
         - task: DotNetCoreCLI@2
-          displayName: 'dotnet publish ${{ func.name }} function'
+          displayName: 'dotnet publish ${{ app.function.name }} function'
           inputs:
             command: publish
-            arguments: '--configuration $(BuildConfiguration) --output ${{ func.name }}'
-            projects: 'Service/GroupMembershipManagement/Hosts/${{ func.name }}/Function/*.csproj'
+            arguments: '--configuration $(BuildConfiguration) --output ${{ app.function.name }}'
+            projects: 'Service/GroupMembershipManagement/Hosts/${{ app.function.name }}/Function/*.csproj'
             publishWebProjects: false
             modifyOutputPath: false
             zipAfterPublish: false
 
         - task: ArchiveFiles@2
-          displayName: 'archive ${{ func.name }} function'
+          displayName: 'archive ${{ app.function.name }} function'
           inputs:
-            rootFolderOrFile: "$(System.DefaultWorkingDirectory)/${{ func.name }}"
+            rootFolderOrFile: "$(System.DefaultWorkingDirectory)/${{ app.function.name }}"
             includeRootFolder: false
-            archiveFile: "$(System.DefaultWorkingDirectory)/functions/${{ func.name }}.zip"
+            archiveFile: "$(System.DefaultWorkingDirectory)/functions/${{ app.function.name }}.zip"
 
         - task: CopyFiles@2
-          displayName: 'copy ${{ func.name }} function package'
+          displayName: 'copy ${{ app.function.name }} function package'
           inputs:
             SourceFolder: $(System.DefaultWorkingDirectory)/functions
-            Contents: ${{ func.name }}.zip
+            Contents: ${{ app.function.name }}.zip
             TargetFolder: '$(build.artifactstagingdirectory)/function_packages/'
 
         - task: CopyFiles@2
-          displayName: 'copy ${{ func.name }} function arm templates'
+          displayName: 'copy ${{ app.function.name }} function arm templates'
           inputs:
-            SourceFolder: Service/GroupMembershipManagement/Hosts/${{ func.name }}
+            SourceFolder: Service/GroupMembershipManagement/Hosts/${{ app.function.name }}
             Contents: '**\Infrastructure\**'
-            TargetFolder: '$(build.artifactstagingdirectory)/functions_arm_templates/${{ func.name }}'
+            TargetFolder: '$(build.artifactstagingdirectory)/functions_arm_templates/${{ app.function.name }}'
 
         - task: PublishBuildArtifacts@1
           displayName: 'publish functions artifacts'
