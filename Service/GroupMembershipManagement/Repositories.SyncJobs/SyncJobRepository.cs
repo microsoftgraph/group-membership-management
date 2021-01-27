@@ -86,8 +86,8 @@ namespace Repositories.SyncJobsRepository
 
             foreach (var group in groupedJobs)
             {
-                foreach (var groupEnum in Enum.GetValues(typeof(IGrouping<string, SyncJob>)))
-                    await _log.LogMessageAsync(new LogMessage { Message = $"Job: {groupEnum}", RunId = Guid.Empty });
+                
+                await _log.LogMessageAsync(new LogMessage { Message = $"Job: {group}", RunId = Guid.Empty });
 
                 var batchOperation = new TableBatchOperation();
 

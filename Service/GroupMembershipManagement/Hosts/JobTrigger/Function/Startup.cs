@@ -40,19 +40,13 @@ namespace Hosts.JobTrigger
 
 			builder.Services.AddSingleton<ISyncJobRepository>(services =>
              {
-                 var creds = services.GetService<IOptions<SyncJobRepoCredentials>>();
+                 var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
                  return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
              });
             builder.Services.AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(GetValueOrThrow("serviceBusConnectionString"), GetValueOrThrow("serviceBusSyncJobTopic")));
             builder.Services.AddSingleton<ISyncJobTopicService, SyncJobTopicsService>();
             builder.Services.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(new LogAnalyticsSecret<LoggingRepository>(GetValueOrThrow("logAnalyticsCustomerId"), GetValueOrThrow("logAnalyticsPrimarySharedKey"), nameof(JobTrigger)));
             builder.Services.AddSingleton<ILoggingRepository, LoggingRepository>();
-        }
-        private class SyncJobRepoCredentials
-        {
-            public string ConnectionString { get; set; }
-            public string TableName { get; set; }
-        }
-    
+        }   
     }
 }

@@ -51,6 +51,7 @@ namespace Hosts.GraphUpdater
 				job.LastRunTime = DateTime.UtcNow;
 				job.RunId = membership.RunId;
 				job.Enabled = changeTo == SyncStatus.Error ? false : job.Enabled; // disable the job if the destination group doesn't exist
+				
 				await _log.LogMessageAsync(new LogMessage { Message = $"Sync jobs being batched : Partition key {job.PartitionKey} , Row key {job.RowKey}", RunId = membership.RunId });
 				await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo);
 				await _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo}.", RunId = membership.RunId });
