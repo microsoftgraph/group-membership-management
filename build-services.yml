@@ -9,6 +9,9 @@ stages:
 - stage: BuildCommon
   jobs:
   - job: GMMBuildAndRelease
+    variables:
+    - name: DECODE_PERCENTS
+      value: false
     strategy:
       maxParallel: 2
       matrix: 

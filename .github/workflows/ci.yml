@@ -11,6 +11,9 @@ env:
 
 jobs:
   GMMBuildAndRelease:
+  variables:
+    - name: DECODE_PERCENTS
+      value: false
     strategy:
       matrix:
         BuildConfiguration:
