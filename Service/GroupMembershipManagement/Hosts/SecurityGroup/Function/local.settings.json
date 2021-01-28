@@ -1,0 +1,17 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "differenceServiceBusNamespace": "",
+    "graphCredentials:CertificateName" : "",
+    "graphCredentials:ClientId": "",
+    "graphCredentials:KeyVaultName": "",
+    "graphCredentials:KeyVaultTenantId": "",
+    "graphCredentials:TenantId": "",
+    "logAnalyticsCustomerId": "",
+    "logAnalyticsPrimarySharedKey": "",
+    "membershipQueueName": "",
+    "serviceBusSyncJobTopic": "",
+    "serviceBusTopicConnection": ""   
+  }
+}
