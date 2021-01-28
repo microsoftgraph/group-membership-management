@@ -181,7 +181,7 @@ namespace Services.Tests
                     Status = SyncStatus.Idle.ToString(),
                     TargetOfficeGroupId = Guid.NewGuid(),
                     Type = syncType,
-                    LastRunTime = lastRunTime ?? DateTime.SpecifyKind(new DateTime(), DateTimeKind.Utc)
+                    LastRunTime = lastRunTime ?? DateTime.FromFileTimeUtc(0)
                 };
 
                 jobs.Add(job);
