@@ -31,6 +31,12 @@ namespace Hosts.JobTrigger
 				configuration.GetSection("graphCredentials").Bind(settings);
 			});
 
+            builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
+                settings.TableName = configuration.GetValue<string>("jobsTableName");
+            });
+
             builder.Services.AddSingleton<IKeyVaultSecret<ISyncJobTopicService>>(services => new KeyVaultSecret<ISyncJobTopicService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
            .AddSingleton<IGraphServiceClient>((services) =>
            {

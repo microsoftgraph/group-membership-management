@@ -46,7 +46,7 @@ namespace Hosts.GraphUpdater
 			await foreach (var job in syncJobsBeingProcessed)
 			{
 				await _log.LogMessageAsync(new LogMessage { Message = $"syncJobsBeingProcessed is being processed as part of RunId: {job.RunId} ", RunId = membership.RunId });
-				await _log.LogMessageAsync(new LogMessage { Message = $"Job's status is {job.Status}.", RunId = membership.RunId });
+				await _log.LogMessageAsync(new LogMessage { Message = $"{job.TargetOfficeGroupId} job's status is {job.Status}.", RunId = membership.RunId });
 
 				job.LastRunTime = DateTime.UtcNow;
 				job.RunId = membership.RunId;
@@ -67,6 +67,7 @@ namespace Hosts.GraphUpdater
 					await _log.LogMessageAsync(new LogMessage { Message = "Job is stuck in progress. Attempting to force it back to Idle.", RunId = membership.RunId });
 					job.Status = "Idle";
 					await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.Idle);
+					await _log.LogMessageAsync(new LogMessage { Message = $"Forced set job status to {job.Status}", RunId = membership.RunId });
 				}
 			}
 
