@@ -96,5 +96,4 @@ namespace Hosts.GraphUpdater
 			builder.Services.AddSingleton<ILocalizationRepository, LocalizationRepository>();
 		}
 	}
-
 }
