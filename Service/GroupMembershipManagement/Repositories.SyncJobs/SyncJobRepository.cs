@@ -16,10 +16,12 @@ namespace Repositories.SyncJobsRepository
         private readonly CloudStorageAccount _cloudStorageAccount = null;
         private readonly CloudTableClient _tableClient = null;
         private readonly string _syncJobsTableName = null;
+        private readonly ILoggingRepository _log;
 
-        public SyncJobRepository(string connectionString, string syncJobTableName)
+        public SyncJobRepository(string connectionString, string syncJobTableName, ILoggingRepository logger)
         {
             _syncJobsTableName = syncJobTableName;
+            _log = logger;
             _cloudStorageAccount = CreateStorageAccountFromConnectionString(connectionString);
             _tableClient = _cloudStorageAccount.CreateCloudTableClient(new TableClientConfiguration());
             _tableClient.GetTableReference(syncJobTableName).CreateIfNotExistsAsync();
@@ -117,12 +119,14 @@ namespace Repositories.SyncJobsRepository
             {
                 return CloudStorageAccount.Parse(storageConnectionString);
             }
-            catch (FormatException)
+            catch (FormatException ex)
             {
+                _log.LogMessageAsync(new LogMessage { Message = ex.GetBaseException().ToString() });
                 throw;
             }
-            catch (ArgumentException)
+            catch (ArgumentException ex)
             {
+                _log.LogMessageAsync(new LogMessage { Message = ex.GetBaseException().ToString() });
                 throw;
             }
         }

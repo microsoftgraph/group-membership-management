@@ -38,7 +38,7 @@ namespace Hosts.JobTrigger
            })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>();
 
-			builder.Services.AddSingleton<ISyncJobRepository>(new SyncJobRepository(GetValueOrThrow("jobsStorageAccountConnectionString"), GetValueOrThrow("jobsTableName")));
+			builder.Services.AddSingleton<ISyncJobRepository>((services) => new SyncJobRepository(GetValueOrThrow("jobsStorageAccountConnectionString"), GetValueOrThrow("jobsTableName"), services.GetService<ILoggingRepository>()));
             builder.Services.AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(GetValueOrThrow("serviceBusConnectionString"), GetValueOrThrow("serviceBusSyncJobTopic")));
             builder.Services.AddSingleton<ISyncJobTopicService, SyncJobTopicsService>();
             builder.Services.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(new LogAnalyticsSecret<LoggingRepository>(GetValueOrThrow("logAnalyticsCustomerId"), GetValueOrThrow("logAnalyticsPrimarySharedKey"), nameof(JobTrigger)));

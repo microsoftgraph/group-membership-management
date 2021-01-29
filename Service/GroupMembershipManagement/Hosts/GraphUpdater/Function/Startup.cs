@@ -55,7 +55,8 @@ namespace Hosts.GraphUpdater
 			.AddSingleton<ISyncJobRepository>(services =>
 			{
 				var creds = services.GetService<IOptions<SyncJobRepoCredentials>>();
-				return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName);
+				var logger = services.GetService<ILoggingRepository>();
+				return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, logger);
 			})
 			.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(services => services.GetService<IOptions<LogAnalyticsSecret<LoggingRepository>>>().Value)
 			.AddScoped<ILoggingRepository, LoggingRepository>()
