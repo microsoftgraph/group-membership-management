@@ -21,7 +21,8 @@ namespace Services.Tests
 		public void AccumulatesMessagesAndUpdatesGraph()
 		{
 			var mockUpdater = new MockGraphUpdater();
-			var sessionCollector = new SessionMessageCollector(mockUpdater);
+			var mockLogs = new MockLoggingRepository();
+			var sessionCollector = new SessionMessageCollector(mockUpdater, mockLogs);
 
 			var mockSession = new MockMessageSession()
 			{
@@ -68,7 +69,7 @@ namespace Services.Tests
 			var mockSyncJobs = new MockSyncJobRepository();
 			var mockLogs = new MockLoggingRepository();
 			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs);
-			var sessionCollector = new SessionMessageCollector(updater);
+			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
 			{
@@ -118,7 +119,7 @@ namespace Services.Tests
 			var mockSyncJobs = new MockSyncJobRepository();
 			var mockLogs = new MockLoggingRepository();
 			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs);
-			var sessionCollector = new SessionMessageCollector(updater);
+			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
 			{
@@ -171,7 +172,7 @@ namespace Services.Tests
 			var mockSyncJobs = new MockSyncJobRepository();
 			var mockLogs = new MockLoggingRepository();
 			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs);
-			var sessionCollector = new SessionMessageCollector(updater);
+			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
 			{

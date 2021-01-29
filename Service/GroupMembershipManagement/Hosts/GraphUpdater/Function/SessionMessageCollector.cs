@@ -2,27 +2,29 @@
 // Licensed under the MIT license.
 using Entities.ServiceBus;
 using Microsoft.Azure.ServiceBus;
+using Repositories.Contracts;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Hosts.GraphUpdater
 {
-	public class SessionMessageCollector
+    public class SessionMessageCollector
 	{
 		private readonly IGraphUpdater _graphUpdater;
+		private readonly ILoggingRepository _logger;
 
 		// at the moment, each instance of the function only handles one message a time for memory usage reasons
 		// but this is good to have for later if things change
-        private static readonly ConcurrentDictionary<string, List<GroupMembershipMessage>> _receivedMessages = new ConcurrentDictionary<string, List<GroupMembershipMessage>>();
+		private static readonly ConcurrentDictionary<string, List<GroupMembershipMessage>> _receivedMessages = new ConcurrentDictionary<string, List<GroupMembershipMessage>>();
 
-		public SessionMessageCollector(IGraphUpdater graphUpdater)
+		public SessionMessageCollector(IGraphUpdater graphUpdater, ILoggingRepository logger)
 		{
 			_graphUpdater = graphUpdater;
+			_logger = logger;
 		}
 
 		public async Task HandleNewMessage(GroupMembershipMessage body, IMessageSession messageSession)
@@ -32,7 +34,6 @@ namespace Hosts.GraphUpdater
 				messages.Add(body); return messages;
 			});
 
-			//Console.WriteLine($"Session {sessionId} got {body.Body.SourceMembers.Count} users.");
             if (body.Body.IsLastMessage)
 			{
 				if (!_receivedMessages.TryRemove(sessionId, out var allReceivedMessages))
@@ -57,6 +58,10 @@ namespace Hosts.GraphUpdater
 
 					await messageSession.CloseAsync();
 				}
+				catch(Exception ex)
+                {
+					await _logger.LogMessageAsync(new Entities.LogMessage { Message = ex.GetBaseException().ToString(), RunId = body.Body.RunId });
+                }
 				finally
 				{
 					source.Cancel();

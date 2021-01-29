@@ -39,6 +39,7 @@ namespace DemoUserSetup
 			}
 			catch (ServiceException ex)
 			{
+				Console.WriteLine(ex.GetBaseException().Message);
 			}
 		}
 
