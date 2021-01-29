@@ -23,7 +23,8 @@ namespace Services.Tests
 		public async Task AccumulatesMessagesAndUpdatesGraphAsync()
 		{
 			var mockUpdater = new MockGraphUpdater();
-			var sessionCollector = new SessionMessageCollector(mockUpdater);
+			var mockLogs = new MockLoggingRepository();
+			var sessionCollector = new SessionMessageCollector(mockUpdater, mockLogs);
 
 			var mockSession = new MockMessageSession()
 			{
@@ -72,7 +73,7 @@ namespace Services.Tests
 			var mockGraph = new MockGraphGroupRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
 			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
-			var sessionCollector = new SessionMessageCollector(updater);
+			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
 			{
@@ -127,7 +128,7 @@ namespace Services.Tests
 			var mockGraph = new MockGraphGroupRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
 			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
-			var sessionCollector = new SessionMessageCollector(updater);
+			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
 			{
@@ -186,7 +187,7 @@ namespace Services.Tests
 			var mockGraph = new MockGraphGroupRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
 			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
-			var sessionCollector = new SessionMessageCollector(updater);
+			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
 			{
