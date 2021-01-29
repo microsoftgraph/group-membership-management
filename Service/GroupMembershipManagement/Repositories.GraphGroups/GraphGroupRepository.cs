@@ -108,11 +108,26 @@ namespace Repositories.GraphGroups
 		public async Task<List<AzureADUser>> GetUsersInGroupTransitively(Guid objectId)
 		{
 			var nonUserGraphObjects = new Dictionary<string, int>();
+			IGroupTransitiveMembersCollectionWithReferencesPage members;
 
-			var members = await _graphServiceClient.Groups[objectId.ToString()].TransitiveMembers.Request()
+			try
+            {
+				members = await _graphServiceClient.Groups[objectId.ToString()].TransitiveMembers.Request()
 							.WithMaxRetry(10)
 							.Select("id")
 							.GetAsync();
+			}
+            catch (ServiceException ex)
+            {
+				_ = _log.LogMessageAsync(new LogMessage
+				{
+					Message = ex.GetBaseException().ToString(),
+					RunId = RunId
+				});
+
+				throw;
+			}
+
 			var toReturn = new List<AzureADUser>(ToUsers(members.CurrentPage, nonUserGraphObjects));
 			while (members.NextPageRequest != null)
 			{
@@ -127,10 +142,26 @@ namespace Repositories.GraphGroups
 
 		public async Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid objectId)
 		{
-			var members = await _graphServiceClient.Groups[objectId.ToString()].Members.Request()
+			IGroupMembersCollectionWithReferencesPage members;
+
+            try
+            {
+				members = await _graphServiceClient.Groups[objectId.ToString()].Members.Request()
 				.WithMaxRetry(10)
 				.Select("id")
 				.GetAsync();
+			}
+            catch (ServiceException ex)
+            {
+				_ = _log.LogMessageAsync(new LogMessage
+				{
+					Message = ex.GetBaseException().ToString(),
+					RunId = RunId
+				});
+
+				throw;
+			}
+
 			var toReturn = new List<IAzureADObject>(ToEntities(members.CurrentPage));
 			while (members.NextPageRequest != null)
 			{
@@ -249,8 +280,21 @@ namespace Repositories.GraphGroups
 
 		private async Task<IAsyncEnumerable<string>> SendBatch(BatchRequestContent tosend)
 		{
-			var response = await _graphServiceClient.Batch.Request().WithMaxRetry(10).PostAsync(tosend);
-			return GetStepIdsToRetry(await response.GetResponsesAsync());
+            try
+            {
+				var response = await _graphServiceClient.Batch.Request().WithMaxRetry(10).PostAsync(tosend);
+				return GetStepIdsToRetry(await response.GetResponsesAsync());
+			}
+            catch (ServiceException ex)
+            {
+				_ = _log.LogMessageAsync(new LogMessage
+				{
+					Message = ex.GetBaseException().ToString(),
+					RunId = RunId
+				});
+
+				throw;
+            }
 		}
 
 		private static readonly HttpStatusCode[] _shouldRetry = new[] { HttpStatusCode.ServiceUnavailable, HttpStatusCode.GatewayTimeout, HttpStatusCode.BadGateway, HttpStatusCode.InternalServerError };
