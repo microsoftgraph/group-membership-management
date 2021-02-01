@@ -31,6 +31,12 @@ namespace Hosts.JobTrigger
 				configuration.GetSection("graphCredentials").Bind(settings);
 			});
 
+            builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
+                settings.TableName = configuration.GetValue<string>("jobsTableName");
+            });
+
             builder.Services.AddSingleton<IKeyVaultSecret<ISyncJobTopicService>>(services => new KeyVaultSecret<ISyncJobTopicService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
            .AddSingleton<IGraphServiceClient>((services) =>
            {
@@ -38,11 +44,15 @@ namespace Hosts.JobTrigger
            })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>();
 
-			builder.Services.AddSingleton<ISyncJobRepository>(new SyncJobRepository(GetValueOrThrow("jobsStorageAccountConnectionString"), GetValueOrThrow("jobsTableName")));
+			builder.Services.AddSingleton<ISyncJobRepository>(services =>
+             {
+                 var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
+                 return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
+             });
             builder.Services.AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(GetValueOrThrow("serviceBusConnectionString"), GetValueOrThrow("serviceBusSyncJobTopic")));
             builder.Services.AddSingleton<ISyncJobTopicService, SyncJobTopicsService>();
             builder.Services.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(new LogAnalyticsSecret<LoggingRepository>(GetValueOrThrow("logAnalyticsCustomerId"), GetValueOrThrow("logAnalyticsPrimarySharedKey"), nameof(JobTrigger)));
             builder.Services.AddSingleton<ILoggingRepository, LoggingRepository>();
-        }
+        }   
     }
 }

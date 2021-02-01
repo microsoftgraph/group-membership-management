@@ -32,7 +32,7 @@ namespace Hosts.GraphUpdater
 				configuration.GetSection("graphCredentials").Bind(settings);
 			});
 
-			builder.Services.AddOptions<SyncJobRepoCredentials>().Configure<IConfiguration>((settings, configuration) =>
+			builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
 			{
 				settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
 				settings.TableName = configuration.GetValue<string>("jobsTableName");
@@ -50,24 +50,17 @@ namespace Hosts.GraphUpdater
 			{
 				return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
 			})
-
 			.AddScoped<IGraphGroupRepository, GraphGroupRepository>()
 			.AddSingleton<ISyncJobRepository>(services =>
 			{
-				var creds = services.GetService<IOptions<SyncJobRepoCredentials>>();
-				return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName);
+				var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
+				return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
 			})
 			.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(services => services.GetService<IOptions<LogAnalyticsSecret<LoggingRepository>>>().Value)
 			.AddScoped<SessionMessageCollector>()
 			.AddScoped<ILoggingRepository, LoggingRepository>()
 			.AddScoped<IGraphUpdater, GraphUpdaterApplication>();
 		}
-
-		private class SyncJobRepoCredentials
-		{
-			public string ConnectionString { get; set; }
-			public string TableName { get; set; }
-		}
-	}
+    }
 
 }
