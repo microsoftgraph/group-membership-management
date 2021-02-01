@@ -32,7 +32,7 @@ If you would like to customize GMM code, you could do so by using any of the fol
 
 You can download Visual Studio or Visual Studio Code from here [Download](https://visualstudio.microsoft.com/downloads/).
 
-Currently GMM is targeting .NET SDK version 3.1.201, this is being set in [global.json](/Service/GroupMembershipManagement/global.json), you can download this specific version from [Download .NET Core 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1) or alternatively download the latest version and update the global.json file.
+Currently GMM is targeting .NET SDK version 3.1.405, this is being set in [global.json](/Service/GroupMembershipManagement/global.json), you can download this specific version from [Download .NET Core 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1) or alternatively download the latest version and update the global.json file.
 
 To find out what .NET SDK versions you currently have installed run this command from the command line:   
     
