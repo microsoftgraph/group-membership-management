@@ -19,10 +19,9 @@ Sender Username
 Sender Password
 
 .EXAMPLE
-$EnvironmentAbbreviation = "<env>"
-Set-SenderCredentials	-SubscriptionName "MSFT-STSolution-02" `
+Set-SenderCredentials	-SubscriptionName "<subscription name>" `
                         -SolutionAbbreviation "gmm" `
-                        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                        -EnvironmentAbbreviation "<env>" `
                         -SenderUsername "<sender username>" `
                         -SenderPassword "<sender password>" `
                         -Verbose
@@ -62,7 +61,7 @@ function Set-SenderCredentials {
 
     if($null -eq $keyVault)
 	{
-		throw "The KeyVault Group ($keyVaultName) does not exist. Unable to continue."
+		throw "The KeyVault ($keyVaultName) does not exist. Unable to continue."
 	}
 
 	#region Store Sender Username in KeyVault

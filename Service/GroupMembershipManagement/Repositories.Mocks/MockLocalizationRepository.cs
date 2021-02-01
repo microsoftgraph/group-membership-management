@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 using Repositories.Contracts;
 using System.Threading.Tasks;
 

@@ -24,8 +24,7 @@ namespace Services.Tests
         private MockServiceBusTopicsRepository _serviceBusTopicsRepository = null;
 		private MockGraphGroupRepository _graphGroupRepository;
         private MockMailRepository _mailRepository = null;
-        private MockLocalizationRepository _localizationRepository = null;
-
+       
         private const string Organization = "Organization";
         private const string SecurityGroup = "SecurityGroup";
 
@@ -37,8 +36,7 @@ namespace Services.Tests
             _serviceBusTopicsRepository = new MockServiceBusTopicsRepository();
             _graphGroupRepository = new MockGraphGroupRepository();
             _mailRepository = new MockMailRepository();
-            _localizationRepository = new MockLocalizationRepository();
-            _syncJobTopicsService = new SyncJobTopicsService(_loggingRepository, _syncJobRepository, _serviceBusTopicsRepository, _graphGroupRepository, new MockKeyVaultSecret<ISyncJobTopicService>(), _mailRepository, _localizationRepository);
+            _syncJobTopicsService = new SyncJobTopicsService(_loggingRepository, _syncJobRepository, _serviceBusTopicsRepository, _graphGroupRepository, new MockKeyVaultSecret<ISyncJobTopicService>(), _mailRepository);
         }
 
         [TestMethod]

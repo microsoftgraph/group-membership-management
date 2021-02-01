@@ -67,12 +67,12 @@ namespace Hosts.GraphUpdater
 			.AddScoped<IGraphUpdater, GraphUpdaterApplication>();
 
 			var graphCredentials = builder.Services.BuildServiceProvider().GetService<IOptions<GraphCredentials>>().Value;
-			builder.Services.AddOptions<SenderEmail<IMailRepository>>().Configure<IConfiguration>((settings, configuration) =>
+			builder.Services.AddOptions<EmailSender>().Configure<IConfiguration>((settings, configuration) =>
 			{
 				settings.Email = configuration.GetValue<string>("senderAddress");
 				settings.Password = configuration.GetValue<string>("senderPassword");
 			});
-			builder.Services.AddSingleton<IMailRepository>(services => new MailRepository(new GraphServiceClient(FunctionAppDI.CreateMailAuthProvider(graphCredentials)), services.GetService<IOptions<SenderEmail<IMailRepository>>>().Value));
+			builder.Services.AddSingleton<IMailRepository>(services => new MailRepository(new GraphServiceClient(FunctionAppDI.CreateMailAuthProvider(graphCredentials)), services.GetService<IOptions<EmailSender>>().Value, services.GetService<ILocalizationRepository>()));
 			builder.Services.AddLocalization(opts => { opts.ResourcesPath = "Resources"; });
 			builder.Services.Configure<RequestLocalizationOptions>(opts =>
 			{

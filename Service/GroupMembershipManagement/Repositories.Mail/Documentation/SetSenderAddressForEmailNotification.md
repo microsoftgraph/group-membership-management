@@ -9,10 +9,9 @@
     * Open the script in Windows PowerShell ISE
     * Add the following lines to the the end before running the script:
         ```
-        $EnvironmentAbbreviation = "<env>"
-        Set-SenderCredentials	-SubscriptionName "MSFT-STSolution-02" `
+        Set-SenderCredentials	-SubscriptionName "<SubscriptionName>" `
                                 -SolutionAbbreviation "gmm" `
-                                -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
                                 -SenderUsername "<username-of-the-test-user>" `
                                 -SenderPassword "<password-of-the-test-user>" `
                                 -Verbose

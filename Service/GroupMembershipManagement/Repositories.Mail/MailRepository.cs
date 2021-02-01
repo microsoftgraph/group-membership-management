@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 using Microsoft.Graph;
 using Microsoft.Graph.Auth;
 using Repositories.Contracts;
@@ -11,27 +13,29 @@ namespace Repositories.Mail
 {
     public class MailRepository : IMailRepository
     {
+        private readonly ILocalizationRepository _localizationRepository;
         private readonly IGraphServiceClient _graphClient;
         private readonly string _senderAddress = null;
         private readonly string _senderPassword = null;
 
-        public MailRepository(IGraphServiceClient graphClient, ISenderEmail<IMailRepository> senderAddress)
+        public MailRepository(IGraphServiceClient graphClient, IEmailSender senderAddress, ILocalizationRepository localizationRepository)
         {
+            _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
             _senderAddress = senderAddress.Email;
             _senderPassword = senderAddress.Password;
         }
 
-        public async Task SendMail(string subject, string content, string recipientAddress)
+        public async Task SendMail(string subject, string content, string recipientAddress, params string[] additionalParams)
         {          
 
             var message = new Message
             {
-                Subject = subject,
+                Subject = _localizationRepository.TranslateSetting(subject),
                 Body = new ItemBody
                 {
                     ContentType = BodyType.Text,
-                    Content = content
+                    Content = _localizationRepository.TranslateSetting(content, additionalParams)
                 },
                 ToRecipients = new List<Recipient>()
                 {
@@ -46,10 +50,8 @@ namespace Repositories.Mail
             foreach (char c in _senderPassword)
                 securePassword.AppendChar(c);
 
-            var saveToSentItems = true;
-
             await _graphClient.Me
-                    .SendMail(message, saveToSentItems)
+                    .SendMail(message, SaveToSentItems: true)
                     .Request().WithUsernamePassword(_senderAddress, securePassword)
                     .PostAsync();
 
