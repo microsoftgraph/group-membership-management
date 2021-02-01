@@ -16,15 +16,15 @@ namespace Repositories.SyncJobsRepository
         private readonly CloudStorageAccount _cloudStorageAccount = null;
         private readonly CloudTableClient _tableClient = null;
         private readonly string _syncJobsTableName = null;
-        private readonly ILoggingRepository _log;
+        private readonly ILoggingRepository _log = null;
 
-        public SyncJobRepository(string connectionString, string syncJobTableName, ILoggingRepository logger)
+        public SyncJobRepository(string connectionString, string syncJobTableName, ILoggingRepository loggingRepository)
         {
             _syncJobsTableName = syncJobTableName;
-            _log = logger;
+            _log = loggingRepository;
             _cloudStorageAccount = CreateStorageAccountFromConnectionString(connectionString);
             _tableClient = _cloudStorageAccount.CreateCloudTableClient(new TableClientConfiguration());
-            _tableClient.GetTableReference(syncJobTableName).CreateIfNotExistsAsync();
+            _tableClient.GetTableReference(syncJobTableName).CreateIfNotExistsAsync();            
         }
 
         public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false)
@@ -82,6 +82,9 @@ namespace Repositories.SyncJobsRepository
             var table = _tableClient.GetTableReference(_syncJobsTableName);
             var groupedJobs = jobs.GroupBy(x => x.PartitionKey);
 
+            await _log.LogMessageAsync(new LogMessage { Message = $"Number of grouped jobs: {groupedJobs.Count()}", RunId = Guid.Empty });
+            await _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key started", RunId = Guid.Empty });
+
             foreach (var group in groupedJobs)
             {
                 var batchOperation = new TableBatchOperation();
@@ -90,6 +93,9 @@ namespace Repositories.SyncJobsRepository
                 {
                     job.Status = status.ToString();
                     job.ETag = "*";
+
+                    foreach (var jobProperty in job.GetType().GetProperties())
+                        await _log.LogMessageAsync(new LogMessage { Message = $"{jobProperty.Name} : {jobProperty.GetValue(job, null)}", RunId = job.RunId });
 
                     batchOperation.Add(TableOperation.Replace(job));
 
@@ -106,6 +112,7 @@ namespace Repositories.SyncJobsRepository
                     await table.ExecuteBatchAsync(batchOperation);
                 }
             }
+            await _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key completed", RunId = Guid.Empty });
         }
 
         private IEnumerable<SyncJob> ApplyFilters(IEnumerable<SyncJob> jobs)

@@ -106,7 +106,7 @@ namespace Services.Tests
 			sessionCollector.HandleNewMessage(incomingMessages.Last(), mockSession);
 
 			Assert.IsTrue(mockSession.Closed);
-			Assert.AreEqual(4, mockLogs.MessagesLogged);
+			Assert.AreEqual(7, mockLogs.MessagesLogged);
 			Assert.AreEqual("Error", syncJob.Status);
 			Assert.IsFalse(syncJob.Enabled);
 			Assert.AreEqual(0, mockGroups.GroupsToUsers.Count);
@@ -158,7 +158,7 @@ namespace Services.Tests
 			sessionCollector.HandleNewMessage(incomingMessages.Last(), mockSession);
 
 			Assert.IsTrue(mockSession.Closed);
-			Assert.AreEqual(6, mockLogs.MessagesLogged);
+			Assert.AreEqual(9, mockLogs.MessagesLogged);
 			Assert.AreEqual("Idle", syncJob.Status);
 			Assert.IsTrue(syncJob.Enabled);
 			Assert.AreEqual(1, mockGroups.GroupsToUsers.Count);
