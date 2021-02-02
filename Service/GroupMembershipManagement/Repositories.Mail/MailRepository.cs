@@ -26,7 +26,7 @@ namespace Repositories.Mail
             _senderPassword = senderAddress.Password;
         }
 
-        public async Task SendMail(string subject, string content, string recipientAddress, params string[] additionalParams)
+        public async Task SendMail(string subject, string content, string recipientAddress, params string[] additionalContentParams)
         {          
 
             var message = new Message
@@ -35,7 +35,7 @@ namespace Repositories.Mail
                 Body = new ItemBody
                 {
                     ContentType = BodyType.Text,
-                    Content = _localizationRepository.TranslateSetting(content, additionalParams)
+                    Content = _localizationRepository.TranslateSetting(content, additionalContentParams)
                 },
                 ToRecipients = new List<Recipient>()
                 {
