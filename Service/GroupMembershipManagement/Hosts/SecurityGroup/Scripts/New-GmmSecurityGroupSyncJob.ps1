@@ -25,7 +25,7 @@ The destination M365 Group into which source users will be synced.
 The date that the sync job should start.
 
 .PARAMETER Period
-Sets the frequency for the job execution. In hours. Integers only. Deault is 6 hours.
+Sets the frequency for the job execution. In hours. Integers only. Default is 6 hours.
 
 .PARAMETER Enabled
 Sets the sync job to enabled if $True and disabled if $False
@@ -63,7 +63,7 @@ function New-GmmSecurityGroupSyncJob {
 		[string] $Query,
 		[Parameter(Mandatory=$False)]
 		[DateTime] $StartDate,
-		[Parameter(Mandatory=$True)]
+		[Parameter(Mandatory=$False)]
 		[int] $Period = 6,
 		[Parameter(Mandatory=$True)]
 		[boolean] $Enabled,
@@ -93,15 +93,14 @@ function New-GmmSecurityGroupSyncJob {
 		$StartDate = ([System.DateTime]::UtcNow)
 	}
 
-	$lastRunTime = Get-Date -Year 1601 -Month 1 -Day 1 -Hour 0 -Minute 0 -Second 0 -Millisecond 0
-	$lastRunTime = $lastRunTime.AddHours(-8)
+	$lastRunTime = Get-Date -Date "1601-01-01T00:00:00.0000000Z"
 	
 	$property  = @{
 			"Requestor"=$Requestor;
 			"Type"="SecurityGroup";
 			"TargetOfficeGroupId"=$TargetOfficeGroupId;
 			"Status"="Idle";
-			"LastRunTime"=$lastRunTime
+			"LastRunTime"=$lastRunTime;
 			"Period"=$Period;  # in hours, integers only
 			"Query"=$Query;
 			"StartDate"=$StartDate;
@@ -113,5 +112,5 @@ function New-GmmSecurityGroupSyncJob {
 		-partitionKey $partitionKey `
 		-rowKey ($rowKey) -property $property
 
-		"New-GmmSecurityGroupSyncJob completed."
+	"New-GmmSecurityGroupSyncJob completed."
 }
