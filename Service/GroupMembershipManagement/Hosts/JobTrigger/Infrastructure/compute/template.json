@@ -235,6 +235,11 @@
           "secretSettings": {
             "value": [
               {
+                "name": "SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT",
+                "value": "0",
+                "slotSetting": false
+              },
+              {
                 "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
                 "value": "[reference(resourceId(parameters('appInsightsResourceGroup'), 'microsoft.insights/components/', parameters('appInsightsName')), '2015-05-01').InstrumentationKey]",
                 "slotSetting": false
@@ -242,6 +247,16 @@
               {
                 "name": "AzureWebJobsStorage",
                 "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('storageAccountName'), ';AccountKey=', listKeys(resourceId(parameters('storageAccountResourceGroup'), 'Microsoft.Storage/storageAccounts', parameters('storageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]",
+                "slotSetting": false
+              },
+              {
+                "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('storageAccountName'), ';AccountKey=', listKeys(resourceId(parameters('storageAccountResourceGroup'), 'Microsoft.Storage/storageAccounts', parameters('storageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]",
+                "slotSetting": false
+              },
+              {
+                "name": "WEBSITE_CONTENTSHARE",
+                "value": "[toLower('functionApp-JobTrigger')]",
                 "slotSetting": false
               },
               {

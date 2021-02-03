@@ -47,5 +47,5 @@ steps:
     azureSubscription: ${{parameters.serviceConnection}}
     appName: '${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}-${{ parameters.name }}'
     Package: '${{ parameters.root }}/function_packages/${{ parameters.name }}.zip'
-    deploymentMethod: 'auto'
-    resourceGroupName: '${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}'
+    deploymentMethod: 'runFromPackage'
+    resourceGroupName: '${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}'    

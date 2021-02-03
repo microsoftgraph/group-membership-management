@@ -53,7 +53,7 @@ stages:
           inputs:
             codeCoverageTool: 'cobertura'
             summaryFileLocation: $(Build.SourcesDirectory)/TestResults/Coverage/${{ app.function.name }}/coverage.cobertura.xml
-            reportDirectory: $(Build.SourcesDirectory)/TestResults/Coverage/Reports
+            reportDirectory: $(Build.SourcesDirectory)/TestResults/Coverage/${{ app.function.name }}/Reports
             failIfCoverageEmpty: false
           condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))      
 
