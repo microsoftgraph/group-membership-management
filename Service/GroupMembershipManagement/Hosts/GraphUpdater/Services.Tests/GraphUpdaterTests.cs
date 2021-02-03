@@ -68,7 +68,8 @@ namespace Services.Tests
 			var mockGroups = new MockGraphGroupRepository();
 			var mockSyncJobs = new MockSyncJobRepository();
 			var mockLogs = new MockLoggingRepository();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs);
+			var mockMails = new MockMailRepository();
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails);
 			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
@@ -118,7 +119,8 @@ namespace Services.Tests
 			var mockGroups = new MockGraphGroupRepository();
 			var mockSyncJobs = new MockSyncJobRepository();
 			var mockLogs = new MockLoggingRepository();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs);
+			var mockMails = new MockMailRepository();
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails);
 			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
@@ -171,7 +173,8 @@ namespace Services.Tests
 			var mockGroups = new MockGraphGroupRepository();
 			var mockSyncJobs = new MockSyncJobRepository();
 			var mockLogs = new MockLoggingRepository();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs);
+			var mockMails = new MockMailRepository();
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails);
 			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()

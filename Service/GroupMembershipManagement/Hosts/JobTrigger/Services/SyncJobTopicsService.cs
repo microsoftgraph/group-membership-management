@@ -12,18 +12,23 @@ namespace Services
 {
     public class SyncJobTopicsService : ISyncJobTopicService
     {
+        private const string EmailSubject = "EmailSubject";
+        private const string EmailBody = "SyncStartedEmailBody";
+
         private readonly ILoggingRepository _loggingRepository;
         private readonly ISyncJobRepository _syncJobRepository;
         private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly string _gmmAppId;
-
+        private readonly IMailRepository _mailRepository;
+        
         public SyncJobTopicsService(
             ILoggingRepository loggingRepository,
             ISyncJobRepository syncJobRepository,
             IServiceBusTopicsRepository serviceBusTopicsRepository,
             IGraphGroupRepository graphGroupRepository,
-            IKeyVaultSecret<ISyncJobTopicService> gmmAppId
+            IKeyVaultSecret<ISyncJobTopicService> gmmAppId,
+            IMailRepository mailRepository
             )
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
@@ -31,8 +36,9 @@ namespace Services
             _serviceBusTopicsRepository = serviceBusTopicsRepository ?? throw new ArgumentNullException(nameof(serviceBusTopicsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _gmmAppId = gmmAppId.Secret;
+            _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
         }
-
+        
         public async Task ProcessSyncJobsAsync()
         {
             var jobs = _syncJobRepository.GetSyncJobsAsync(SyncStatus.Idle);
@@ -42,6 +48,11 @@ namespace Services
             var startedTasks = new List<Task>();
             await foreach (var job in jobs)
             {
+                var jobMinDateValue = DateTime.FromFileTimeUtc(0);
+                if (job.LastRunTime == jobMinDateValue)
+                {
+                    await _mailRepository.SendMail(EmailSubject, EmailBody, job.Requestor, job.TargetOfficeGroupId.ToString());
+                }
                 job.RunId = _graphGroupRepository.RunId = Guid.NewGuid();
                 _loggingRepository.SyncJobProperties = job.ToDictionary();
 

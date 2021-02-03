@@ -23,6 +23,16 @@ namespace Common.DependencyInjection
             return new ClientCredentialProvider(confidentialClientApplication);
         }
 
+        public static IAuthenticationProvider CreateMailAuthProvider(GraphCredentials creds)
+        {
+            var publicClientApplication = PublicClientApplicationBuilder
+            .Create(creds.ClientId)
+            .WithTenantId(creds.TenantId)
+            .Build();
+
+            return new UsernamePasswordProvider(publicClientApplication);
+        }
+
         private static X509Certificate2 GetCertificate(string certificateName, string keyVaultName, string keyVaultTenantId)
         {
             var options = new DefaultAzureCredentialOptions();

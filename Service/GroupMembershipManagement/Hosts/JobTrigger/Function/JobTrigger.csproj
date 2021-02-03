@@ -6,6 +6,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
     <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.6.0" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.25.0" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="3.0.11" />
   </ItemGroup>
   <ItemGroup>
@@ -13,6 +14,8 @@
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Localization\Repositories.Localization.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Mail\Repositories.Mail.csproj" />
     <ProjectReference Include="..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Topics\Repositories.ServiceBusTopics.csproj" />
     <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />

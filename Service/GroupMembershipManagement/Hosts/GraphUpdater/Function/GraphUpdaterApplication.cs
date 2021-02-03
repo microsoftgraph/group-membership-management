@@ -14,17 +14,28 @@ namespace Hosts.GraphUpdater
 {
 	public class GraphUpdaterApplication : IGraphUpdater
 	{
+		private const string EmailSubject = "EmailSubject";
+        private const string EmailBody = "SyncCompletedEmailBody";
+
 		private readonly IMembershipDifferenceCalculator<AzureADUser> _differenceCalculator;
 		private readonly IGraphGroupRepository _graphGroups;
 		private readonly ISyncJobRepository _syncJobRepo;
 		private readonly ILoggingRepository _log;
-
-		public GraphUpdaterApplication(IMembershipDifferenceCalculator<AzureADUser> differenceCalculator, IGraphGroupRepository graphGroups, ISyncJobRepository syncJobRepository, ILoggingRepository logging)
+		private readonly IMailRepository _mailRepository;
+		
+		public GraphUpdaterApplication(
+			IMembershipDifferenceCalculator<AzureADUser> differenceCalculator,
+			IGraphGroupRepository graphGroups,
+			ISyncJobRepository syncJobRepository,
+			ILoggingRepository logging,
+			IMailRepository mailRepository
+			)
 		{
 			_differenceCalculator = differenceCalculator;
 			_graphGroups = graphGroups;
 			_syncJobRepo = syncJobRepository;
 			_log = logging;
+			_mailRepository = mailRepository;
 		}
 
 		public async Task CalculateDifference(GroupMembership membership)
@@ -38,7 +49,7 @@ namespace Hosts.GraphUpdater
 				{ "targetOfficeGroupId", membership.Destination.ObjectId.ToString() }
 			};
            
-			SyncStatus changeTo = await SynchronizeGroups(membership, fromto);
+			var changeTo = await SynchronizeGroups(membership, fromto);
 
 			var syncJobsBeingProcessed = _syncJobRepo.GetSyncJobsAsync(new[] { (membership.SyncJobPartitionKey, membership.SyncJobRowKey) });
 
@@ -48,13 +59,22 @@ namespace Hosts.GraphUpdater
 				await _log.LogMessageAsync(new LogMessage { Message = $"syncJobsBeingProcessed is being processed as part of RunId: {job.RunId} ", RunId = membership.RunId });
 				await _log.LogMessageAsync(new LogMessage { Message = $"{job.TargetOfficeGroupId} job's status is {job.Status}.", RunId = membership.RunId });
 
+				bool isInitialSync = job.LastRunTime == DateTime.FromFileTimeUtc(0);
 				job.LastRunTime = DateTime.UtcNow;
 				job.RunId = membership.RunId;
-				job.Enabled = changeTo == SyncStatus.Error ? false : job.Enabled; // disable the job if the destination group doesn't exist
-				
+				if (changeTo.syncStatus == SyncStatus.Error)
+				{
+					job.Enabled = false;
+				}				
 				await _log.LogMessageAsync(new LogMessage { Message = $"Sync jobs being batched : Partition key {job.PartitionKey} , Row key {job.RowKey}", RunId = membership.RunId });
-				await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo);
-				await _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo}.", RunId = membership.RunId });
+				await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo.syncStatus);
+				
+				if (isInitialSync)
+                {
+					await _mailRepository.SendMail(EmailSubject, EmailBody, job.Requestor, job.TargetOfficeGroupId.ToString(), changeTo.AddMembersCount.ToString(), changeTo.RemoveMembersCount.ToString());
+				}
+
+				await _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo.syncStatus}.", RunId = membership.RunId });
 			}
 
 			// this is a grasping-at-straws troubleshooting step
@@ -74,28 +94,28 @@ namespace Hosts.GraphUpdater
 			await _log.LogMessageAsync(new LogMessage { Message = $"Syncing {fromto} done.", RunId = membership.RunId });
 		}
 
-		private async Task<SyncStatus> SynchronizeGroups(GroupMembership membership, string fromto)
+		private async Task<(SyncStatus syncStatus, int AddMembersCount, int RemoveMembersCount)> SynchronizeGroups(GroupMembership membership, string fromto)
 		{
 			if (membership.Errored)
 			{
 				await _log.LogMessageAsync(new LogMessage { Message = $"When syncing {fromto}, calculator reported an error. Not syncing and marking as error.", RunId = membership.RunId });
-				return SyncStatus.Error;
+				return (SyncStatus.Error, 0, 0);
 			}
 
 			// this gets checked for in the job trigger, but no harm in checking it here, too.
 			if (await _graphGroups.GroupExists(membership.Destination.ObjectId))
 			{
-				await DoSynchronization(membership, fromto);
-				return SyncStatus.Idle;
+				var response = await DoSynchronization(membership, fromto);
+				return (SyncStatus.Idle, response.AddMembersCount, response.RemoveMembersCount);
 			}
 			else
 			{
 				await _log.LogMessageAsync(new LogMessage { Message = $"When syncing {fromto}, destination group {membership.Destination} doesn't exist. Not syncing and marking as error.", RunId = membership.RunId });
-				return SyncStatus.Error;
+				return (SyncStatus.Error, 0, 0);
 			}
 		}
 
-		private async Task DoSynchronization(GroupMembership membership, string fromto)
+		private async Task<(int AddMembersCount, int RemoveMembersCount)> DoSynchronization(GroupMembership membership, string fromto)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"Calculating membership difference {fromto}.", RunId = membership.RunId });
 			Stopwatch stopwatch = Stopwatch.StartNew();
@@ -108,6 +128,7 @@ namespace Hosts.GraphUpdater
 			await _graphGroups.RemoveUsersFromGroup(delta.ToRemove, membership.Destination);
 			stopwatch.Stop();
 			await _log.LogMessageAsync(new LogMessage { Message = $"Synchronization {fromto} complete in {stopwatch.Elapsed.TotalSeconds} seconds. {delta.ToAdd.Count / stopwatch.Elapsed.TotalSeconds} users added per second. {delta.ToRemove.Count / stopwatch.Elapsed.TotalSeconds} users removed per second. Marking job as idle.", RunId = membership.RunId });
+			return (delta.ToAdd.Count, delta.ToRemove.Count);
 		}
 
 		private string PrettyprintSources(AzureADGroup[] sources)

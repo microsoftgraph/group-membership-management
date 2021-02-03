@@ -27,6 +27,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Logging", "..\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DIConcreteTypes", "..\..\..\DIConcreteTypes\DIConcreteTypes.csproj", "{87BFAA25-59F6-4766-B121-858A0425906D}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mail", "..\..\..\Repositories.Mail\Repositories.Mail.csproj", "{764A3B56-39FB-45B7-9018-ACF66CD72FC3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Localization", "..\..\..\Repositories.Localization\Repositories.Localization.csproj", "{E6AA94CE-51FB-496D-A4DF-533499470271}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -81,6 +85,14 @@ Global
 		{87BFAA25-59F6-4766-B121-858A0425906D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{87BFAA25-59F6-4766-B121-858A0425906D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{87BFAA25-59F6-4766-B121-858A0425906D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{764A3B56-39FB-45B7-9018-ACF66CD72FC3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{764A3B56-39FB-45B7-9018-ACF66CD72FC3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{764A3B56-39FB-45B7-9018-ACF66CD72FC3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{764A3B56-39FB-45B7-9018-ACF66CD72FC3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E6AA94CE-51FB-496D-A4DF-533499470271}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E6AA94CE-51FB-496D-A4DF-533499470271}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E6AA94CE-51FB-496D-A4DF-533499470271}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E6AA94CE-51FB-496D-A4DF-533499470271}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

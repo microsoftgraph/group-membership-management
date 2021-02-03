@@ -16,6 +16,7 @@ using Common.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Repositories.GraphGroups;
 using Microsoft.Graph;
+using Repositories.Mail;
 
 [assembly: FunctionsStartup(typeof(Hosts.JobTrigger.Startup))]
 
@@ -54,6 +55,13 @@ namespace Hosts.JobTrigger
             builder.Services.AddSingleton<ISyncJobTopicService, SyncJobTopicsService>();
             builder.Services.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(new LogAnalyticsSecret<LoggingRepository>(GetValueOrThrow("logAnalyticsCustomerId"), GetValueOrThrow("logAnalyticsPrimarySharedKey"), nameof(JobTrigger)));
             builder.Services.AddSingleton<ILoggingRepository, LoggingRepository>();
+            var graphCredentials = builder.Services.BuildServiceProvider().GetService<IOptions<GraphCredentials>>().Value;
+            builder.Services.AddOptions<EmailSender>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.Email = configuration.GetValue<string>("senderAddress");
+                settings.Password = configuration.GetValue<string>("senderPassword");
+            });
+            builder.Services.AddSingleton<IMailRepository>(services => new MailRepository(new GraphServiceClient(FunctionAppDI.CreateMailAuthProvider(graphCredentials)), services.GetService<IOptions<EmailSender>>().Value, services.GetService<ILocalizationRepository>()));
         }   
     }
 }

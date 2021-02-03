@@ -23,8 +23,9 @@ namespace Services.Tests
         private MockLoggingRepository _loggingRepository = null;
         private MockServiceBusTopicsRepository _serviceBusTopicsRepository = null;
 		private MockGraphGroupRepository _graphGroupRepository;
-
-		private const string Organization = "Organization";
+        private MockMailRepository _mailRepository = null;
+       
+        private const string Organization = "Organization";
         private const string SecurityGroup = "SecurityGroup";
 
         [TestInitialize]
@@ -34,7 +35,8 @@ namespace Services.Tests
             _loggingRepository = new MockLoggingRepository();
             _serviceBusTopicsRepository = new MockServiceBusTopicsRepository();
             _graphGroupRepository = new MockGraphGroupRepository();
-            _syncJobTopicsService = new SyncJobTopicsService(_loggingRepository, _syncJobRepository, _serviceBusTopicsRepository, _graphGroupRepository, new MockKeyVaultSecret<ISyncJobTopicService>());
+            _mailRepository = new MockMailRepository();
+            _syncJobTopicsService = new SyncJobTopicsService(_loggingRepository, _syncJobRepository, _serviceBusTopicsRepository, _graphGroupRepository, new MockKeyVaultSecret<ISyncJobTopicService>(), _mailRepository);
         }
 
         [TestMethod]
@@ -177,7 +179,7 @@ namespace Services.Tests
                     Status = SyncStatus.Idle.ToString(),
                     TargetOfficeGroupId = Guid.NewGuid(),
                     Type = syncType,
-                    LastRunTime = lastRunTime ?? DateTime.SpecifyKind(new DateTime(), DateTimeKind.Utc)
+                    LastRunTime = lastRunTime ?? DateTime.FromFileTimeUtc(0)
                 };
 
                 jobs.Add(job);
