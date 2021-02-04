@@ -27,6 +27,12 @@ namespace Repositories.SecurityGroupCrawler.Tests
 			throw new NotImplementedException();
 		}
 
+		public Task<string> GetGroupName(Guid objectId)
+		{
+			return Task.FromResult("GroupName");
+		}
+
+
 		public async Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid objectId)
 		{
 			await Task.Delay(_delay);

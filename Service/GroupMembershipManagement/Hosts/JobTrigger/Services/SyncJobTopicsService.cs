@@ -48,10 +48,12 @@ namespace Services
             var startedTasks = new List<Task>();
             await foreach (var job in jobs)
             {
+                var groupName = await _graphGroupRepository.GetGroupName(job.TargetOfficeGroupId);
+
                 var jobMinDateValue = DateTime.FromFileTimeUtc(0);
                 if (job.LastRunTime == jobMinDateValue)
                 {
-                    await _mailRepository.SendMail(EmailSubject, EmailBody, job.Requestor, job.TargetOfficeGroupId.ToString());
+                    await _mailRepository.SendMail(EmailSubject, EmailBody, job.Requestor, groupName, job.TargetOfficeGroupId.ToString());
                 }
                 job.RunId = _graphGroupRepository.RunId = Guid.NewGuid();
                 _loggingRepository.SyncJobProperties = job.ToDictionary();

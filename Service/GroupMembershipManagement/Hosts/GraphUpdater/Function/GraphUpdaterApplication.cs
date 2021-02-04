@@ -22,13 +22,15 @@ namespace Hosts.GraphUpdater
 		private readonly ISyncJobRepository _syncJobRepo;
 		private readonly ILoggingRepository _log;
 		private readonly IMailRepository _mailRepository;
-		
+		private readonly IGraphGroupRepository _graphGroupRepository;
+
 		public GraphUpdaterApplication(
 			IMembershipDifferenceCalculator<AzureADUser> differenceCalculator,
 			IGraphGroupRepository graphGroups,
 			ISyncJobRepository syncJobRepository,
 			ILoggingRepository logging,
-			IMailRepository mailRepository
+			IMailRepository mailRepository,
+			IGraphGroupRepository graphGroupRepository
 			)
 		{
 			_differenceCalculator = differenceCalculator;
@@ -36,6 +38,7 @@ namespace Hosts.GraphUpdater
 			_syncJobRepo = syncJobRepository;
 			_log = logging;
 			_mailRepository = mailRepository;
+			_graphGroupRepository = graphGroupRepository;
 		}
 
 		public async Task CalculateDifference(GroupMembership membership)
@@ -56,6 +59,8 @@ namespace Hosts.GraphUpdater
 			// should only be one sync job in here, doesn't hurt to iterate over "all" of them
 			await foreach (var job in syncJobsBeingProcessed)
 			{
+				var groupName = await _graphGroupRepository.GetGroupName(job.TargetOfficeGroupId);
+
 				await _log.LogMessageAsync(new LogMessage { Message = $"syncJobsBeingProcessed is being processed as part of RunId: {job.RunId} ", RunId = membership.RunId });
 				await _log.LogMessageAsync(new LogMessage { Message = $"{job.TargetOfficeGroupId} job's status is {job.Status}.", RunId = membership.RunId });
 
@@ -71,7 +76,7 @@ namespace Hosts.GraphUpdater
 				
 				if (isInitialSync)
                 {
-					await _mailRepository.SendMail(EmailSubject, EmailBody, job.Requestor, job.TargetOfficeGroupId.ToString(), changeTo.AddMembersCount.ToString(), changeTo.RemoveMembersCount.ToString());
+					await _mailRepository.SendMail(EmailSubject, EmailBody, job.Requestor, groupName, job.TargetOfficeGroupId.ToString(), changeTo.AddMembersCount.ToString(), changeTo.RemoveMembersCount.ToString());
 				}
 
 				await _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo.syncStatus}.", RunId = membership.RunId });

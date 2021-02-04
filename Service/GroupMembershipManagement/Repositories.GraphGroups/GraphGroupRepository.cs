@@ -83,6 +83,28 @@ namespace Repositories.GraphGroups
 			}
 		}
 
+		public async Task<string> GetGroupName(Guid objectId)
+		{
+			try
+			{
+				var group = await _graphServiceClient.Groups[objectId.ToString()].Request().GetAsync();
+				return group != null ? group.DisplayName : string.Empty;
+			}
+			catch (ServiceException ex)
+			{
+				if (ex.StatusCode == HttpStatusCode.NotFound)
+					return string.Empty;
+
+				_ = _log.LogMessageAsync(new LogMessage
+				{
+					Message = ex.GetBaseException().ToString(),
+					RunId = RunId
+				});
+
+				throw;
+			}
+		}
+
 		public async Task<List<AzureADUser>> GetUsersInGroupTransitively(Guid objectId)
 		{
 			var nonUserGraphObjects = new Dictionary<string, int>();

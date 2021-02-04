@@ -21,6 +21,11 @@ namespace Repositories.ServiceBusTopics.Tests
 			throw new NotImplementedException();
 		}
 
+		public Task<string> GetGroupName(Guid objectId)
+		{
+			return Task.FromResult("GroupName");
+		}
+
 		public Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid objectId)
 		{
 			throw new NotImplementedException();

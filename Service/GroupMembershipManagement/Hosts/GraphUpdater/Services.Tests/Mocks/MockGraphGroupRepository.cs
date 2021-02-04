@@ -31,6 +31,11 @@ namespace Services.Tests.Mocks
 			return Task.FromResult(GroupsToUsers[objectId]);
 		}
 
+		public Task<string> GetGroupName(Guid objectId)
+		{
+			return Task.FromResult("GroupName");
+		}
+
 		public Task<bool> GroupExists(Guid objectId)
 		{
 			return Task.FromResult(GroupsToUsers.Keys.Contains(objectId));
