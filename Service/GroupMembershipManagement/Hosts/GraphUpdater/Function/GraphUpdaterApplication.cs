@@ -57,15 +57,18 @@ namespace Hosts.GraphUpdater
 
 			var syncJobsBeingProcessed = _syncJobRepo.GetSyncJobsAsync(new[] { (membership.SyncJobPartitionKey, membership.SyncJobRowKey) });
 
+			var isInitialSync = true;
+			var groupName = "";
+
 			// should only be one sync job in here, doesn't hurt to iterate over "all" of them
 			await foreach (var job in syncJobsBeingProcessed)
 			{
-				var groupName = await _graphGroupRepository.GetGroupName(job.TargetOfficeGroupId);
+				groupName = await _graphGroupRepository.GetGroupName(job.TargetOfficeGroupId);
 
 				await _log.LogMessageAsync(new LogMessage { Message = $"syncJobsBeingProcessed is being processed as part of RunId: {job.RunId} ", RunId = membership.RunId });
 				await _log.LogMessageAsync(new LogMessage { Message = $"{job.TargetOfficeGroupId} job's status is {job.Status}.", RunId = membership.RunId });
 
-				bool isInitialSync = job.LastRunTime == DateTime.FromFileTimeUtc(0);
+				isInitialSync = job.LastRunTime == DateTime.FromFileTimeUtc(0);
 				job.LastRunTime = DateTime.UtcNow;
 				job.RunId = membership.RunId;
 				if (changeTo.syncStatus == SyncStatus.Error)
@@ -74,12 +77,6 @@ namespace Hosts.GraphUpdater
 				}				
 				await _log.LogMessageAsync(new LogMessage { Message = $"Sync jobs being batched : Partition key {job.PartitionKey} , Row key {job.RowKey}", RunId = membership.RunId });
 				await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo.syncStatus);
-				
-				if (isInitialSync)
-                {
-					await _mailRepository.SendMail(EmailSubject, EmailBody, job.Requestor, SyncCompletedCCEmailAddress, groupName, job.TargetOfficeGroupId.ToString(), changeTo.AddMembersCount.ToString(), changeTo.RemoveMembersCount.ToString());
-				}
-
 				await _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo.syncStatus}.", RunId = membership.RunId });
 			}
 
@@ -94,6 +91,11 @@ namespace Hosts.GraphUpdater
 					job.Status = "Idle";
 					await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.Idle);
 					await _log.LogMessageAsync(new LogMessage { Message = $"Forced set job status to {job.Status}", RunId = membership.RunId });
+				}
+
+				if (isInitialSync && job.Status == "Idle")
+				{
+					await _mailRepository.SendMail(EmailSubject, EmailBody, job.Requestor, SyncCompletedCCEmailAddress, groupName, job.TargetOfficeGroupId.ToString(), changeTo.AddMembersCount.ToString(), changeTo.RemoveMembersCount.ToString());
 				}
 			}
 
