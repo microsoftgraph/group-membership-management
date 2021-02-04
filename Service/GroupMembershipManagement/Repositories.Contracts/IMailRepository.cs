@@ -6,6 +6,6 @@ namespace Repositories.Contracts
 {
     public interface IMailRepository
     {
-        Task SendMail(string subject, string content, string toEmailAddress, params string[] additionalContentParams);
+        Task SendMail(string subject, string content, string toEmailAddress, string ccEmailAddress, params string[] additionalContentParams);
     }
 }

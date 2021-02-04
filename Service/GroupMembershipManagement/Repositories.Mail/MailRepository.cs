@@ -26,7 +26,7 @@ namespace Repositories.Mail
             _senderPassword = senderAddress.Password;
         }
 
-        public async Task SendMail(string subject, string content, string recipientAddress, params string[] additionalContentParams)
+        public async Task SendMail(string subject, string content, string recipientAddress, string ccEmailAddress, params string[] additionalContentParams)
         {          
 
             var message = new Message
@@ -44,7 +44,18 @@ namespace Repositories.Mail
                         EmailAddress = new EmailAddress { Address = recipientAddress }
                     }
                 }
-            };                       
+            };
+
+            if (!string.IsNullOrEmpty(ccEmailAddress))
+            {
+                message.CcRecipients = new List<Recipient>()
+                {
+                    new Recipient
+                    {
+                        EmailAddress = new EmailAddress { Address = ccEmailAddress }
+                    }
+                };
+            }            
 
             var securePassword = new SecureString();
             foreach (char c in _senderPassword)

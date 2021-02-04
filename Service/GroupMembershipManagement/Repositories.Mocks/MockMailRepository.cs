@@ -7,7 +7,7 @@ namespace Repositories.Mocks
 {
     public class MockMailRepository : IMailRepository
     {
-        public Task SendMail(string subject, string content, string toEmailAddress, params string[] additionalParams)
+        public Task SendMail(string subject, string content, string toEmailAddress, string ccEmailAddress, params string[] additionalParams)
         {
             return Task.CompletedTask;
         }        

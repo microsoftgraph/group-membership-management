@@ -16,6 +16,7 @@ namespace Hosts.GraphUpdater
 	{
 		private const string EmailSubject = "EmailSubject";
         private const string EmailBody = "SyncCompletedEmailBody";
+		private const string SyncCompletedCCEmailAddress = "SyncCompletedCCEmailAddress";
 
 		private readonly IMembershipDifferenceCalculator<AzureADUser> _differenceCalculator;
 		private readonly IGraphGroupRepository _graphGroups;
@@ -76,7 +77,7 @@ namespace Hosts.GraphUpdater
 				
 				if (isInitialSync)
                 {
-					await _mailRepository.SendMail(EmailSubject, EmailBody, job.Requestor, groupName, job.TargetOfficeGroupId.ToString(), changeTo.AddMembersCount.ToString(), changeTo.RemoveMembersCount.ToString());
+					await _mailRepository.SendMail(EmailSubject, EmailBody, job.Requestor, SyncCompletedCCEmailAddress, groupName, job.TargetOfficeGroupId.ToString(), changeTo.AddMembersCount.ToString(), changeTo.RemoveMembersCount.ToString());
 				}
 
 				await _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo.syncStatus}.", RunId = membership.RunId });
