@@ -40,7 +40,7 @@ namespace Repositories.GraphGroups
 				if (ex.StatusCode == HttpStatusCode.NotFound)
 					return false;
 
-				_ = _log.LogMessageAsync(new LogMessage
+				await _log.LogMessageAsync(new LogMessage
 				{
 					Message = ex.GetBaseException().ToString(),
 					RunId = RunId
@@ -57,7 +57,7 @@ namespace Repositories.GraphGroups
 			// get the service principal ID by its app ID
 			var servicePrincipal = (await _graphServiceClient.ServicePrincipals.Request().Filter($"appId eq '{appId}'").GetAsync()).Single();
 
-			var _ = _log.LogMessageAsync(new LogMessage
+			await _log.LogMessageAsync(new LogMessage
 			{
 				RunId = RunId,
 				Message = $"Checking if app ID {appId} (service principal with object ID {servicePrincipal.Id}) owns the group {groupObjectId}."
@@ -73,7 +73,7 @@ namespace Repositories.GraphGroups
 				if (ex.StatusCode == HttpStatusCode.NotFound)
 					return false;
 
-				_ = _log.LogMessageAsync(new LogMessage
+				await _log.LogMessageAsync(new LogMessage
 				{
 					Message = ex.GetBaseException().ToString(),
 					RunId = RunId
@@ -99,7 +99,7 @@ namespace Repositories.GraphGroups
 			}
 
 			var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, nonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
-			_ = _log.LogMessageAsync(new LogMessage { RunId = RunId, Message = $"From group {objectId}, read {toReturn.Count} users, and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
+			await _log.LogMessageAsync(new LogMessage { RunId = RunId, Message = $"From group {objectId}, read {toReturn.Count} users, and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
 			return toReturn;
 		}
 
@@ -188,7 +188,7 @@ namespace Repositories.GraphGroups
 
 		private async Task ProcessBatch(ConcurrentQueue<ChunkOfUsers> queue, List<ChunkOfUsers> toSend, MakeBulkRequest makeRequest, int threadNumber)
 		{
-			var _ = _log.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: Sending a batch of {toSend.Count} requests.", RunId = RunId });
+			await _log.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: Sending a batch of {toSend.Count} requests.", RunId = RunId });
 			int requeued = 0;
 			try
 			{
@@ -201,7 +201,7 @@ namespace Repositories.GraphGroups
 						queue.Enqueue(chunkToRetry.UpdateIdForRetry(threadNumber));
 					}
 				}
-				_ = _log.LogMessageAsync(new LogMessage { Message = $"{threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.", RunId = RunId });
+				await _log.LogMessageAsync(new LogMessage { Message = $"{threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.", RunId = RunId });
 			}
 			catch (ServiceException ex)
 			{
@@ -211,7 +211,7 @@ namespace Repositories.GraphGroups
 				// but if a chunk has already been queued five times or so, drop it on the floor so we don't go forever
 				// in the future, log the exception and which ones get dropped.
 
-				_ = _log.LogMessageAsync(new LogMessage
+				await _log.LogMessageAsync(new LogMessage
 				{
 					Message = ex.GetBaseException().ToString(),
 					RunId = RunId
@@ -277,7 +277,7 @@ namespace Repositories.GraphGroups
 					yield return kvp.Key;
 				}
 				else if (_shouldRetry.Contains(status)) { yield return kvp.Key; }
-				else { var _ = _log.LogMessageAsync(new LogMessage { Message = $"Got an unexpected error from Graph: {status} {response.ReasonPhrase} {badRequestBody}.", RunId = RunId }); }
+				else { await _log.LogMessageAsync(new LogMessage { Message = $"Got an unexpected error from Graph: {status} {response.ReasonPhrase} {badRequestBody}.", RunId = RunId }); }
 			}
 		}
 

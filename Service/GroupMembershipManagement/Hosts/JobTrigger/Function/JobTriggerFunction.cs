@@ -23,9 +23,9 @@ namespace Hosts.JobTrigger
         [FunctionName("JobTrigger")]
         public async Task Run([TimerTrigger("%jobTriggerSchedule%")]TimerInfo myTimer, ILogger log)
         {
-            _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"JobTrigger function started at: {DateTime.UtcNow}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"JobTrigger function started at: {DateTime.UtcNow}" });
             await _syncJobTopicService.ProcessSyncJobsAsync();
-            _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"JobTrigger function completed at: {DateTime.UtcNow}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"JobTrigger function completed at: {DateTime.UtcNow}" });
         }
     }
 }
