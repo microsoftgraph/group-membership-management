@@ -14,6 +14,8 @@ namespace Services
     {
         private const string EmailSubject = "EmailSubject";
         private const string EmailBody = "SyncStartedEmailBody";
+        private const string SyncDisabledEmailBody = "SyncDisabledEmailBody";
+        private const string SyncDisabledCCEmailAddress = "SyncDisabledCCEmailAddress";
 
         private readonly ILoggingRepository _loggingRepository;
         private readonly ISyncJobRepository _syncJobRepository;
@@ -38,7 +40,7 @@ namespace Services
             _gmmAppId = gmmAppId.Secret;
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
         }
-        
+
         public async Task ProcessSyncJobsAsync()
         {
             var jobs = _syncJobRepository.GetSyncJobsAsync(SyncStatus.Idle);
@@ -79,12 +81,17 @@ namespace Services
                 // to make it easier to log information like the run ID and so on without having to pass all that around.
                 // However, the same logging repository gets reused for the life of the program, which means that, without this line,
                 // it'll append that information to the logs that say "JobTrigger function started" and "JobTrigger function completed".
-                
+
                 _loggingRepository.SyncJobProperties = null;
             }
             startedTasks.Add(_syncJobRepository.UpdateSyncJobStatusAsync(runningJobs, SyncStatus.InProgress));
             startedTasks.Add(_syncJobRepository.UpdateSyncJobStatusAsync(failedJobs, SyncStatus.Error));
             await Task.WhenAll(startedTasks);
+
+            foreach (var failedJob in failedJobs)
+            {
+                await _mailRepository.SendMail(EmailSubject, SyncDisabledEmailBody, failedJob.Requestor, SyncDisabledCCEmailAddress, failedJob.TargetOfficeGroupId.ToString());
+            }
         }
 
         private async Task<bool> CanWriteToGroup(SyncJob job)

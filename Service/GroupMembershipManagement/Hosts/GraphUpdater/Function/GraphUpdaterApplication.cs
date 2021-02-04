@@ -15,8 +15,10 @@ namespace Hosts.GraphUpdater
 	public class GraphUpdaterApplication : IGraphUpdater
 	{
 		private const string EmailSubject = "EmailSubject";
-        private const string EmailBody = "SyncCompletedEmailBody";
+        private const string EmailBody = "SyncCompletedEmailBody";		
+		private const string SyncDisabledEmailBody = "SyncDisabledEmailBody";
 		private const string SyncCompletedCCEmailAddress = "SyncCompletedCCEmailAddress";
+		private const string SyncDisabledCCEmailAddress = "SyncDisabledCCEmailAddress";
 
 		private readonly IMembershipDifferenceCalculator<AzureADUser> _differenceCalculator;
 		private readonly IGraphGroupRepository _graphGroups;
@@ -77,6 +79,12 @@ namespace Hosts.GraphUpdater
 				}				
 				await _log.LogMessageAsync(new LogMessage { Message = $"Sync jobs being batched : Partition key {job.PartitionKey} , Row key {job.RowKey}", RunId = membership.RunId });
 				await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo.syncStatus);
+
+				if (job.Status == "Error")
+				{
+					await _mailRepository.SendMail(EmailSubject, SyncDisabledEmailBody, job.Requestor, SyncDisabledCCEmailAddress, PrettyprintSources(membership.Sources));
+				}
+
 				await _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo.syncStatus}.", RunId = membership.RunId });
 			}
 

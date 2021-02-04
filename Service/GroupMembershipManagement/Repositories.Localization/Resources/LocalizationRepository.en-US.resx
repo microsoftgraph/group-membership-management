@@ -124,6 +124,10 @@
     <value>The group {0} with Id: {1} has completed its initial sync. Added {2} users and removed {3} users.
 This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
   </data>
+  <data name="SyncDisabledEmailBody" xml:space="preserve">
+    <value>The sync has been disabled because the group(s) with object Id(s): {0} doesn't/don't exist.
+This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
+  </data>
   <data name="SyncStartedEmailBody" xml:space="preserve">
     <value>The group {0} with Id: {1} has started its initial sync.
 This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
