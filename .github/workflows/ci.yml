@@ -38,7 +38,7 @@ jobs:
     - name: dotnet test
       run: |
         cd Service\GroupMembershipManagement
-        dotnet test --configuration ${{ matrix.BuildConfiguration }} /p:CollectCoverage=true /p:MergeWith="Coverage/coverage.json" /p:CoverletOutputFormat="cobertura%2cjson" /p:CoverletOutput="Coverage/" -m:1
+        dotnet test --configuration ${{ matrix.BuildConfiguration }} /p:CollectCoverage=true /p:MergeWith="Coverage/coverage.json" /p:CoverletOutputFormat="cobertura" /p:CoverletOutput="Coverage/" -m:1
       if: ${{ success() && matrix.BuildConfiguration == 'debug' }}
 
     - name: dotnet publish job trigger
