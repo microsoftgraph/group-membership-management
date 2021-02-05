@@ -13,7 +13,7 @@ namespace Services
     public class SyncJobTopicsService : ISyncJobTopicService
     {
         private const string EmailSubject = "EmailSubject";
-        private const string EmailBody = "SyncStartedEmailBody";
+        private const string SyncStartedEmailBody = "SyncStartedEmailBody";
         private const string SyncDisabledEmailBody = "SyncDisabledEmailBody";
         private const string SyncDisabledCCEmailAddress = "SyncDisabledCCEmailAddress";
 
@@ -55,7 +55,7 @@ namespace Services
                 var jobMinDateValue = DateTime.FromFileTimeUtc(0);
                 if (job.LastRunTime == jobMinDateValue)
                 {
-                    await _mailRepository.SendMail(EmailSubject, EmailBody, job.Requestor, string.Empty, groupName, job.TargetOfficeGroupId.ToString());
+                    await _mailRepository.SendMail(EmailSubject, SyncStartedEmailBody, job.Requestor, string.Empty, groupName, job.TargetOfficeGroupId.ToString());
                 }
                 job.RunId = _graphGroupRepository.RunId = Guid.NewGuid();
                 _loggingRepository.SyncJobProperties = job.ToDictionary();

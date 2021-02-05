@@ -15,7 +15,7 @@ namespace Hosts.GraphUpdater
 	public class GraphUpdaterApplication : IGraphUpdater
 	{
 		private const string EmailSubject = "EmailSubject";
-        private const string EmailBody = "SyncCompletedEmailBody";		
+        private const string SyncCompletedEmailBody = "SyncCompletedEmailBody";		
 		private const string SyncDisabledEmailBody = "SyncDisabledEmailBody";
 		private const string SyncCompletedCCEmailAddress = "SyncCompletedCCEmailAddress";
 		private const string SyncDisabledCCEmailAddress = "SyncDisabledCCEmailAddress";
@@ -103,7 +103,7 @@ namespace Hosts.GraphUpdater
 
 				if (isInitialSync && job.Status == "Idle")
 				{
-					await _mailRepository.SendMail(EmailSubject, EmailBody, job.Requestor, SyncCompletedCCEmailAddress, groupName, job.TargetOfficeGroupId.ToString(), changeTo.AddMembersCount.ToString(), changeTo.RemoveMembersCount.ToString());
+					await _mailRepository.SendMail(EmailSubject, SyncCompletedEmailBody, job.Requestor, SyncCompletedCCEmailAddress, groupName, job.TargetOfficeGroupId.ToString(), changeTo.AddMembersCount.ToString(), changeTo.RemoveMembersCount.ToString());
 				}
 			}
 

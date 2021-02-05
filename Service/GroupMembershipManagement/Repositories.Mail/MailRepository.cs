@@ -26,7 +26,7 @@ namespace Repositories.Mail
             _senderPassword = senderAddress.Password;
         }
 
-        public async Task SendMail(string subject, string content, string recipientAddress, string ccEmailAddress, params string[] additionalContentParams)
+        public async Task SendMail(string subject, string content, string toEmailAddress, string ccEmailAddress, params string[] additionalContentParams)
         {          
 
             var message = new Message
@@ -41,7 +41,7 @@ namespace Repositories.Mail
                 {
                     new Recipient
                     {
-                        EmailAddress = new EmailAddress { Address = recipientAddress }
+                        EmailAddress = new EmailAddress { Address = toEmailAddress }
                     }
                 }
             };
