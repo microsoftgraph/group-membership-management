@@ -3,6 +3,7 @@
 using Entities;
 using Entities.ServiceBus;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,15 +18,15 @@ namespace Hosts.GraphUpdater
 		private const string EmailSubject = "EmailSubject";
         private const string SyncCompletedEmailBody = "SyncCompletedEmailBody";		
 		private const string SyncDisabledEmailBody = "SyncDisabledEmailBody";
-		private const string SyncCompletedCCEmailAddress = "SyncCompletedCCEmailAddress";
-		private const string SyncDisabledCCEmailAddress = "SyncDisabledCCEmailAddress";
-
+		
 		private readonly IMembershipDifferenceCalculator<AzureADUser> _differenceCalculator;
 		private readonly IGraphGroupRepository _graphGroups;
 		private readonly ISyncJobRepository _syncJobRepo;
 		private readonly ILoggingRepository _log;
 		private readonly IMailRepository _mailRepository;
 		private readonly IGraphGroupRepository _graphGroupRepository;
+		private readonly string _syncCompletedCCAddress;
+		private readonly string _syncDisabledCCAddress;
 
 		public GraphUpdaterApplication(
 			IMembershipDifferenceCalculator<AzureADUser> differenceCalculator,
@@ -33,7 +34,8 @@ namespace Hosts.GraphUpdater
 			ISyncJobRepository syncJobRepository,
 			ILoggingRepository logging,
 			IMailRepository mailRepository,
-			IGraphGroupRepository graphGroupRepository
+			IGraphGroupRepository graphGroupRepository,
+			IEmail email
 			)
 		{
 			_differenceCalculator = differenceCalculator;
@@ -42,6 +44,8 @@ namespace Hosts.GraphUpdater
 			_log = logging;
 			_mailRepository = mailRepository;
 			_graphGroupRepository = graphGroupRepository;
+			_syncCompletedCCAddress = email.SyncCompletedCCAddress;
+			_syncDisabledCCAddress = email.SyncDisabledCCAddress;
 		}
 
 		public async Task CalculateDifference(GroupMembership membership)
@@ -82,7 +86,7 @@ namespace Hosts.GraphUpdater
 
 				if (job.Status == "Error")
 				{
-					await _mailRepository.SendMail(EmailSubject, SyncDisabledEmailBody, job.Requestor, SyncDisabledCCEmailAddress, PrettyprintSources(membership.Sources));
+					await _mailRepository.SendMail(EmailSubject, SyncDisabledEmailBody, job.Requestor, _syncDisabledCCAddress, PrettyprintSources(membership.Sources));
 				}
 
 				await _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo.syncStatus}.", RunId = membership.RunId });
@@ -103,7 +107,7 @@ namespace Hosts.GraphUpdater
 
 				if (isInitialSync && job.Status == "Idle")
 				{
-					await _mailRepository.SendMail(EmailSubject, SyncCompletedEmailBody, job.Requestor, SyncCompletedCCEmailAddress, groupName, job.TargetOfficeGroupId.ToString(), changeTo.AddMembersCount.ToString(), changeTo.RemoveMembersCount.ToString());
+					await _mailRepository.SendMail(EmailSubject, SyncCompletedEmailBody, job.Requestor, _syncCompletedCCAddress, groupName, job.TargetOfficeGroupId.ToString(), changeTo.AddMembersCount.ToString(), changeTo.RemoveMembersCount.ToString());
 				}
 			}
 

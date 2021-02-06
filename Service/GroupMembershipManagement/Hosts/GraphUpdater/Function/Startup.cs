@@ -61,18 +61,25 @@ namespace Hosts.GraphUpdater
 				var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
 				return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
 			})
+			.AddSingleton<IEmail>(services =>
+			{
+				var creds = services.GetService<IOptions<Email>>();
+				return new Email(creds.Value.SenderAddress, creds.Value.SenderPassword, creds.Value.SyncCompletedCCAddress, creds.Value.SyncDisabledCCAddress);
+			})
 			.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(services => services.GetService<IOptions<LogAnalyticsSecret<LoggingRepository>>>().Value)
 			.AddScoped<SessionMessageCollector>()
 			.AddScoped<ILoggingRepository, LoggingRepository>()
 			.AddScoped<IGraphUpdater, GraphUpdaterApplication>();
 
 			var graphCredentials = builder.Services.BuildServiceProvider().GetService<IOptions<GraphCredentials>>().Value;
-			builder.Services.AddOptions<EmailSender>().Configure<IConfiguration>((settings, configuration) =>
+			builder.Services.AddOptions<Email>().Configure<IConfiguration>((settings, configuration) =>
 			{
-				settings.Email = configuration.GetValue<string>("senderAddress");
-				settings.Password = configuration.GetValue<string>("senderPassword");
+				settings.SenderAddress = configuration.GetValue<string>("senderAddress");
+				settings.SenderPassword = configuration.GetValue<string>("senderPassword");
+				settings.SyncCompletedCCAddress = configuration.GetValue<string>("syncCompletedCCEmailAddress");
+				settings.SyncDisabledCCAddress = configuration.GetValue<string>("syncDisabledCCEmailAddress");
 			});
-			builder.Services.AddSingleton<IMailRepository>(services => new MailRepository(new GraphServiceClient(FunctionAppDI.CreateMailAuthProvider(graphCredentials)), services.GetService<IOptions<EmailSender>>().Value, services.GetService<ILocalizationRepository>()));
+			builder.Services.AddSingleton<IMailRepository>(services => new MailRepository(new GraphServiceClient(FunctionAppDI.CreateMailAuthProvider(graphCredentials)), services.GetService<IOptions<Email>>().Value, services.GetService<ILocalizationRepository>()));
 			builder.Services.AddLocalization(opts => { opts.ResourcesPath = "Resources"; });
 			builder.Services.Configure<RequestLocalizationOptions>(opts =>
 			{

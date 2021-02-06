@@ -18,12 +18,12 @@ namespace Repositories.Mail
         private readonly string _senderAddress = null;
         private readonly string _senderPassword = null;
 
-        public MailRepository(IGraphServiceClient graphClient, IEmailSender senderAddress, ILocalizationRepository localizationRepository)
+        public MailRepository(IGraphServiceClient graphClient, IEmail email, ILocalizationRepository localizationRepository)
         {
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
-            _senderAddress = senderAddress.Email;
-            _senderPassword = senderAddress.Password;
+            _senderAddress = email.SenderAddress;
+            _senderPassword = email.SenderPassword;
         }
 
         public async Task SendMail(string subject, string content, string toEmailAddress, string ccEmailAddress, params string[] additionalContentParams)

@@ -15,22 +15,23 @@ namespace Services
         private const string EmailSubject = "EmailSubject";
         private const string SyncStartedEmailBody = "SyncStartedEmailBody";
         private const string SyncDisabledEmailBody = "SyncDisabledEmailBody";
-        private const string SyncDisabledCCEmailAddress = "SyncDisabledCCEmailAddress";
-
+       
         private readonly ILoggingRepository _loggingRepository;
         private readonly ISyncJobRepository _syncJobRepository;
         private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly string _gmmAppId;
         private readonly IMailRepository _mailRepository;
-        
+        private readonly string _syncDisabledCCAddress;
+
         public SyncJobTopicsService(
             ILoggingRepository loggingRepository,
             ISyncJobRepository syncJobRepository,
             IServiceBusTopicsRepository serviceBusTopicsRepository,
             IGraphGroupRepository graphGroupRepository,
             IKeyVaultSecret<ISyncJobTopicService> gmmAppId,
-            IMailRepository mailRepository
+            IMailRepository mailRepository,
+            IEmail email
             )
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
@@ -39,6 +40,7 @@ namespace Services
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _gmmAppId = gmmAppId.Secret;
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
+            _syncDisabledCCAddress = email.SyncDisabledCCAddress;
         }
 
         public async Task ProcessSyncJobsAsync()
@@ -90,7 +92,7 @@ namespace Services
 
             foreach (var failedJob in failedJobs)
             {
-                await _mailRepository.SendMail(EmailSubject, SyncDisabledEmailBody, failedJob.Requestor, SyncDisabledCCEmailAddress, failedJob.TargetOfficeGroupId.ToString());
+                await _mailRepository.SendMail(EmailSubject, SyncDisabledEmailBody, failedJob.Requestor, _syncDisabledCCAddress, failedJob.TargetOfficeGroupId.ToString());
             }
         }
 

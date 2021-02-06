@@ -11,6 +11,7 @@ using Repositories.MembershipDifference;
 using Entities;
 using Repositories.Mocks;
 using System.Runtime.InteropServices;
+using Repositories.Contracts.InjectConfig;
 
 namespace Services.Tests
 {
@@ -69,7 +70,8 @@ namespace Services.Tests
 			var mockLogs = new MockLoggingRepository();
 			var mockMails = new MockMailRepository();
 			var mockGraph = new MockGraphGroupRepository();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph);
+			var mockEmail = new MockEmail<IEmail>();
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
 			var sessionCollector = new SessionMessageCollector(updater);
 
 			var mockSession = new MockMessageSession()
@@ -121,7 +123,8 @@ namespace Services.Tests
 			var mockLogs = new MockLoggingRepository();
 			var mockMails = new MockMailRepository();
 			var mockGraph = new MockGraphGroupRepository();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph);
+			var mockEmail = new MockEmail<IEmail>();
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
 			var sessionCollector = new SessionMessageCollector(updater);
 
 			var mockSession = new MockMessageSession()
@@ -176,7 +179,8 @@ namespace Services.Tests
 			var mockLogs = new MockLoggingRepository();
 			var mockMails = new MockMailRepository();
 			var mockGraph = new MockGraphGroupRepository();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph);
+			var mockEmail = new MockEmail<IEmail>();
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
 			var sessionCollector = new SessionMessageCollector(updater);
 
 			var mockSession = new MockMessageSession()
@@ -220,6 +224,16 @@ namespace Services.Tests
 			Assert.AreEqual(1, mockGroups.GroupsToUsers.Values.Single().Count);
 		}
 
+		private class MockEmail<T> : IEmail
+		{
+			public string SenderAddress => "";
+
+			public string SenderPassword => "";
+
+			public string SyncCompletedCCAddress => "";
+
+			public string SyncDisabledCCAddress => "";
+		}
 
 		public GroupMembershipMessage[] MakeMembershipMessages()
 		{
