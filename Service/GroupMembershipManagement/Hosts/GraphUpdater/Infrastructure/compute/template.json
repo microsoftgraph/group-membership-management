@@ -226,6 +226,11 @@
           "secretSettings": {
             "value": [
               {
+                "name": "SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT",
+                "value": "0",
+                "slotSetting": false
+              },
+              {
                 "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
                 "value": "[reference(resourceId(parameters('appInsightsResourceGroup'), 'microsoft.insights/components/', parameters('appInsightsName')), '2015-05-01').InstrumentationKey]",
                 "slotSetting": false

@@ -11,9 +11,6 @@ env:
 
 jobs:
   GMMBuildAndRelease:
-  variables:
-    - name: DECODE_PERCENTS
-      value: false
     strategy:
       matrix:
         BuildConfiguration:
@@ -31,7 +28,7 @@ jobs:
     - name: Use .NET Core
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 3.1.201
+        dotnet-version: 3.1.405
     
     - name: dotnet build
       run: |
@@ -41,7 +38,7 @@ jobs:
     - name: dotnet test
       run: |
         cd Service\GroupMembershipManagement
-        dotnet test --configuration ${{ matrix.BuildConfiguration }} /p:CollectCoverage=true /p:MergeWith="Coverage/coverage.json" /p:CoverletOutputFormat="cobertura%2cjson" /p:CoverletOutput="Coverage/" -m:1
+        dotnet test --configuration ${{ matrix.BuildConfiguration }} /p:CollectCoverage=true /p:MergeWith="Coverage/coverage.json" /p:CoverletOutputFormat="cobertura" /p:CoverletOutput="Coverage/" -m:1
       if: ${{ success() && matrix.BuildConfiguration == 'debug' }}
 
     - name: dotnet publish job trigger

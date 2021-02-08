@@ -9,9 +9,6 @@ stages:
 - stage: BuildCommon
   jobs:
   - job: GMMBuildAndRelease
-    variables:
-    - name: DECODE_PERCENTS
-      value: false
     strategy:
       maxParallel: 2
       matrix: 
@@ -51,7 +48,7 @@ stages:
         command: test
         workingDirectory: 'Service\GroupMembershipManagement'
         # see https://github.com/coverlet-coverage/coverlet/blob/master/Documentation/Examples/MSBuild/MergeWith/HowTo.md for how to merge all the test output into one report
-        arguments: '--configuration $(BuildConfiguration) /p:CollectCoverage=true /p:MergeWith="$(Build.SourcesDirectory)/Coverage/coverage.json" /p:CoverletOutputFormat="cobertura%2cjson" /p:CoverletOutput="$(Build.SourcesDirectory)/Coverage/" -m:1'
+        arguments: '--configuration $(BuildConfiguration) /p:CollectCoverage=true /p:MergeWith="$(Build.SourcesDirectory)/Coverage/coverage.json" /p:CoverletOutputFormat="cobertura" /p:CoverletOutput="$(Build.SourcesDirectory)/Coverage/" -m:1'
       condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
     - task: PublishCodeCoverageResults@1
