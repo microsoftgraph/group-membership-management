@@ -172,8 +172,8 @@
     "graphAppTenantId": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppTenantId')]",
     "senderUsername": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'senderUsername')]",
     "senderPassword": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'senderPassword')]",
-    "syncCompletedCCEmailAddress": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'syncCompletedCCEmailAddress')]",
-    "syncDisabledCCEmailAddress": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'syncDisabledCCEmailAddress')]"
+    "syncCompletedCCEmailAddresses": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'syncCompletedCCEmailAddresses')]",
+    "syncDisabledCCEmailAddresses": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'syncDisabledCCEmailAddresses')]"
   },
   "resources": [
     {
@@ -328,13 +328,13 @@
                 "slotSetting": false
               },
               {
-                "name": "syncCompletedCCEmailAddress",
-                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('syncCompletedCCEmailAddress'), '2019-09-01').secretUriWithVersion, ')')]",
+                "name": "syncCompletedCCEmailAddresses",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('syncCompletedCCEmailAddresses'), '2019-09-01').secretUriWithVersion, ')')]",
                 "slotSetting": false
               },
               {
-                "name": "syncDisabledCCEmailAddress",
-                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('syncDisabledCCEmailAddress'), '2019-09-01').secretUriWithVersion, ')')]",
+                "name": "syncDisabledCCEmailAddresses",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('syncDisabledCCEmailAddresses'), '2019-09-01').secretUriWithVersion, ')')]",
                 "slotSetting": false
               }
             ]

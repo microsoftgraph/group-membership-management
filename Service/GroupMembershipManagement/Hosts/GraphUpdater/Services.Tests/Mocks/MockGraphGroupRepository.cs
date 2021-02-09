@@ -31,7 +31,7 @@ namespace Services.Tests.Mocks
 			return Task.FromResult(GroupsToUsers[objectId]);
 		}
 
-		public Task<string> GetGroupName(Guid objectId)
+		public Task<string> GetGroupNameAsync(Guid objectId)
 		{
 			return Task.FromResult("GroupName");
 		}

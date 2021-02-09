@@ -36,7 +36,7 @@ namespace Services.Tests
             _serviceBusTopicsRepository = new MockServiceBusTopicsRepository();
             _graphGroupRepository = new MockGraphGroupRepository();
             _mailRepository = new MockMailRepository();
-            _syncJobTopicsService = new SyncJobTopicsService(_loggingRepository, _syncJobRepository, _serviceBusTopicsRepository, _graphGroupRepository, new MockKeyVaultSecret<ISyncJobTopicService>(), _mailRepository, new MockEmail<IEmail>());
+            _syncJobTopicsService = new SyncJobTopicsService(_loggingRepository, _syncJobRepository, _serviceBusTopicsRepository, _graphGroupRepository, new MockKeyVaultSecret<ISyncJobTopicService>(), _mailRepository, new MockEmail<IEmailSenderRecipient>());
         }
 
         [TestMethod]
@@ -188,15 +188,15 @@ namespace Services.Tests
             return jobs;
         }
 
-        private class MockEmail<T> : IEmail
+        private class MockEmail<T> : IEmailSenderRecipient
         {
             public string SenderAddress => "";
 
             public string SenderPassword => "";
 
-            public string SyncCompletedCCAddress => "";
+            public string SyncCompletedCCAddresses => "";
 
-            public string SyncDisabledCCAddress => "";
+            public string SyncDisabledCCAddresses => "";
         }
 
         private class MockKeyVaultSecret<T> : IKeyVaultSecret<T>

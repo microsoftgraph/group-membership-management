@@ -25,9 +25,8 @@ namespace Hosts.GraphUpdater
 		private readonly ILoggingRepository _log;
 		private readonly IMailRepository _mailRepository;
 		private readonly IGraphGroupRepository _graphGroupRepository;
-		private readonly string _syncCompletedCCAddress;
-		private readonly string _syncDisabledCCAddress;
-
+		private readonly IEmailSenderRecipient _emailSenderAndRecipients;
+		
 		public GraphUpdaterApplication(
 			IMembershipDifferenceCalculator<AzureADUser> differenceCalculator,
 			IGraphGroupRepository graphGroups,
@@ -35,23 +34,22 @@ namespace Hosts.GraphUpdater
 			ILoggingRepository logging,
 			IMailRepository mailRepository,
 			IGraphGroupRepository graphGroupRepository,
-			IEmail email
+			IEmailSenderRecipient emailSenderAndRecipients
 			)
 		{
+			_emailSenderAndRecipients = emailSenderAndRecipients;
 			_differenceCalculator = differenceCalculator;
 			_graphGroups = graphGroups;
 			_syncJobRepo = syncJobRepository;
 			_log = logging;
 			_mailRepository = mailRepository;
 			_graphGroupRepository = graphGroupRepository;
-			_syncCompletedCCAddress = email.SyncCompletedCCAddress;
-			_syncDisabledCCAddress = email.SyncDisabledCCAddress;
 		}
 
 		public async Task CalculateDifference(GroupMembership membership)
 		{
 			_graphGroups.RunId = membership.RunId;
-			var fromto = $"from {PrettyprintSources(membership.Sources)} to {membership.Destination}";
+			var fromto = $"from {PrettyPrintSources(membership.Sources)} to {membership.Destination}";
             _log.SyncJobProperties = new Dictionary<string, string>
             {
 				{ "partitionKey", membership.SyncJobPartitionKey },
@@ -69,7 +67,7 @@ namespace Hosts.GraphUpdater
 			// should only be one sync job in here, doesn't hurt to iterate over "all" of them
 			await foreach (var job in syncJobsBeingProcessed)
 			{
-				groupName = await _graphGroupRepository.GetGroupName(job.TargetOfficeGroupId);
+				groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
 
 				await _log.LogMessageAsync(new LogMessage { Message = $"syncJobsBeingProcessed is being processed as part of RunId: {job.RunId} ", RunId = membership.RunId });
 				await _log.LogMessageAsync(new LogMessage { Message = $"{job.TargetOfficeGroupId} job's status is {job.Status}.", RunId = membership.RunId });
@@ -84,9 +82,34 @@ namespace Hosts.GraphUpdater
 				await _log.LogMessageAsync(new LogMessage { Message = $"Sync jobs being batched : Partition key {job.PartitionKey} , Row key {job.RowKey}", RunId = membership.RunId });
 				await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo.syncStatus);
 
+				if (isInitialSync && job.Status == "Idle")
+				{
+					var message = new EmailMessage
+					{
+						Subject = EmailSubject,
+						Content = SyncCompletedEmailBody,
+						SenderAddress = _emailSenderAndRecipients.SenderAddress,
+						SenderPassword = _emailSenderAndRecipients.SenderPassword,
+						ToEmailAddresses = job.Requestor,
+						CcEmailAddresses = _emailSenderAndRecipients.SyncCompletedCCAddresses,
+						AdditionalContentParams = new[] { groupName, job.TargetOfficeGroupId.ToString(), changeTo.AddMembersCount.ToString(), changeTo.RemoveMembersCount.ToString() }
+					};
+					
+					await _mailRepository.SendMailAsync(message);
+				}
 				if (job.Status == "Error")
 				{
-					await _mailRepository.SendMail(EmailSubject, SyncDisabledEmailBody, job.Requestor, _syncDisabledCCAddress, PrettyprintSources(membership.Sources));
+					var message = new EmailMessage
+					{
+						Subject = EmailSubject,
+						Content = SyncDisabledEmailBody,
+						SenderAddress = _emailSenderAndRecipients.SenderAddress,
+						SenderPassword = _emailSenderAndRecipients.SenderPassword,
+						ToEmailAddresses = job.Requestor,
+						CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
+						AdditionalContentParams = new[] { PrettyPrintSources(membership.Sources) }
+					};
+					await _mailRepository.SendMailAsync(message);
 				}
 
 				await _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo.syncStatus}.", RunId = membership.RunId });
@@ -103,11 +126,6 @@ namespace Hosts.GraphUpdater
 					job.Status = "Idle";
 					await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.Idle);
 					await _log.LogMessageAsync(new LogMessage { Message = $"Forced set job status to {job.Status}", RunId = membership.RunId });
-				}
-
-				if (isInitialSync && job.Status == "Idle")
-				{
-					await _mailRepository.SendMail(EmailSubject, SyncCompletedEmailBody, job.Requestor, _syncCompletedCCAddress, groupName, job.TargetOfficeGroupId.ToString(), changeTo.AddMembersCount.ToString(), changeTo.RemoveMembersCount.ToString());
 				}
 			}
 
@@ -151,7 +169,7 @@ namespace Hosts.GraphUpdater
 			return (delta.ToAdd.Count, delta.ToRemove.Count);
 		}
 
-		private string PrettyprintSources(AzureADGroup[] sources)
+		private string PrettyPrintSources(AzureADGroup[] sources)
 		{
 			if (sources == null || sources.Length == 0)
 				return "a non-security group sync";

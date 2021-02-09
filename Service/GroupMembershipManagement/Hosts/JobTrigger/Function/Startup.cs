@@ -43,10 +43,10 @@ namespace Hosts.JobTrigger
            {
                return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
            })
-           .AddSingleton<IEmail>(services =>
+           .AddSingleton<IEmailSenderRecipient>(services =>
            {
-               var creds = services.GetService<IOptions<Email>>();
-               return new Email(creds.Value.SenderAddress, creds.Value.SenderPassword, creds.Value.SyncCompletedCCAddress, creds.Value.SyncDisabledCCAddress);
+               var creds = services.GetService<IOptions<EmailSenderRecipient>>();
+               return new EmailSenderRecipient(creds.Value.SenderAddress, creds.Value.SenderPassword, creds.Value.SyncCompletedCCAddresses, creds.Value.SyncDisabledCCAddresses);
            })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>();
 
@@ -60,13 +60,13 @@ namespace Hosts.JobTrigger
             builder.Services.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(new LogAnalyticsSecret<LoggingRepository>(GetValueOrThrow("logAnalyticsCustomerId"), GetValueOrThrow("logAnalyticsPrimarySharedKey"), nameof(JobTrigger)));
             builder.Services.AddSingleton<ILoggingRepository, LoggingRepository>();
             var graphCredentials = builder.Services.BuildServiceProvider().GetService<IOptions<GraphCredentials>>().Value;
-            builder.Services.AddOptions<Email>().Configure<IConfiguration>((settings, configuration) =>
+            builder.Services.AddOptions<EmailSenderRecipient>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.SenderAddress = configuration.GetValue<string>("senderAddress");
                 settings.SenderPassword = configuration.GetValue<string>("senderPassword");
-                settings.SyncDisabledCCAddress = configuration.GetValue<string>("syncDisabledCCEmailAddress");
+                settings.SyncDisabledCCAddresses = configuration.GetValue<string>("syncDisabledCCEmailAddresses");
             });
-            builder.Services.AddSingleton<IMailRepository>(services => new MailRepository(new GraphServiceClient(FunctionAppDI.CreateMailAuthProvider(graphCredentials)), services.GetService<IOptions<Email>>().Value, services.GetService<ILocalizationRepository>()));
+            builder.Services.AddSingleton<IMailRepository>(services => new MailRepository(new GraphServiceClient(FunctionAppDI.CreateMailAuthProvider(graphCredentials)), services.GetService<ILocalizationRepository>()));
         }   
     }
 }

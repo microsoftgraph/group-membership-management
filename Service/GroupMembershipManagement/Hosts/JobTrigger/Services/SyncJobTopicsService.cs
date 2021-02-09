@@ -22,7 +22,7 @@ namespace Services
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly string _gmmAppId;
         private readonly IMailRepository _mailRepository;
-        private readonly string _syncDisabledCCAddress;
+        private readonly IEmailSenderRecipient _emailSenderAndRecipients;
 
         public SyncJobTopicsService(
             ILoggingRepository loggingRepository,
@@ -31,16 +31,16 @@ namespace Services
             IGraphGroupRepository graphGroupRepository,
             IKeyVaultSecret<ISyncJobTopicService> gmmAppId,
             IMailRepository mailRepository,
-            IEmail email
+            IEmailSenderRecipient emailSenderAndRecipients
             )
         {
+            _emailSenderAndRecipients = emailSenderAndRecipients;
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _serviceBusTopicsRepository = serviceBusTopicsRepository ?? throw new ArgumentNullException(nameof(serviceBusTopicsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _gmmAppId = gmmAppId.Secret;
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
-            _syncDisabledCCAddress = email.SyncDisabledCCAddress;
         }
 
         public async Task ProcessSyncJobsAsync()
@@ -52,12 +52,21 @@ namespace Services
             var startedTasks = new List<Task>();
             await foreach (var job in jobs)
             {
-                var groupName = await _graphGroupRepository.GetGroupName(job.TargetOfficeGroupId);
+                var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
 
-                var jobMinDateValue = DateTime.FromFileTimeUtc(0);
-                if (job.LastRunTime == jobMinDateValue)
+                if (job.LastRunTime == DateTime.FromFileTimeUtc(0))
                 {
-                    await _mailRepository.SendMail(EmailSubject, SyncStartedEmailBody, job.Requestor, string.Empty, groupName, job.TargetOfficeGroupId.ToString());
+                    var message = new EmailMessage
+                    {
+                        Subject = EmailSubject,
+                        Content = SyncStartedEmailBody,
+                        SenderAddress = _emailSenderAndRecipients.SenderAddress,
+                        SenderPassword = _emailSenderAndRecipients.SenderPassword,
+                        ToEmailAddresses = job.Requestor,
+                        CcEmailAddresses = string.Empty,
+                        AdditionalContentParams = new[] { groupName, job.TargetOfficeGroupId.ToString() }
+                    };
+                    await _mailRepository.SendMailAsync(message);
                 }
                 job.RunId = _graphGroupRepository.RunId = Guid.NewGuid();
                 _loggingRepository.SyncJobProperties = job.ToDictionary();
@@ -92,7 +101,17 @@ namespace Services
 
             foreach (var failedJob in failedJobs)
             {
-                await _mailRepository.SendMail(EmailSubject, SyncDisabledEmailBody, failedJob.Requestor, _syncDisabledCCAddress, failedJob.TargetOfficeGroupId.ToString());
+                var message = new EmailMessage
+                {
+                    Subject = EmailSubject,
+                    Content = SyncDisabledEmailBody,
+                    SenderAddress = _emailSenderAndRecipients.SenderAddress,
+                    SenderPassword = _emailSenderAndRecipients.SenderPassword,
+                    ToEmailAddresses = failedJob.Requestor,
+                    CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
+                    AdditionalContentParams = new[] { failedJob.TargetOfficeGroupId.ToString() }
+                };
+                await _mailRepository.SendMailAsync(message);
             }
         }
 

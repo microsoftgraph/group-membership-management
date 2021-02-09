@@ -83,7 +83,7 @@ namespace Repositories.GraphGroups
 			}
 		}
 
-		public async Task<string> GetGroupName(Guid objectId)
+		public async Task<string> GetGroupNameAsync(Guid objectId)
 		{
 			try
 			{
@@ -95,7 +95,7 @@ namespace Repositories.GraphGroups
 				if (ex.StatusCode == HttpStatusCode.NotFound)
 					return string.Empty;
 
-				_ = _log.LogMessageAsync(new LogMessage
+				await _log.LogMessageAsync(new LogMessage
 				{
 					Message = ex.GetBaseException().ToString(),
 					RunId = RunId

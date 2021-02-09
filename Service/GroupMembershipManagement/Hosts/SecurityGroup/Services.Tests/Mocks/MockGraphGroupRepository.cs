@@ -20,7 +20,7 @@ namespace Tests.FunctionApps.Mocks
 			throw new NotImplementedException();
 		}
 
-		public Task<string> GetGroupName(Guid objectId)
+		public Task<string> GetGroupNameAsync(Guid objectId)
 		{
 			return Task.FromResult("GroupName");
 		}
