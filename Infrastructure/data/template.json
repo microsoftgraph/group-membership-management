@@ -62,10 +62,10 @@
         "description": "Key vault sku family."
       }
     },
-    "keyVaultLocation": {
+    "location": {
       "type": "string",
       "metadata": {
-        "description": "Key vault location."
+        "description": "Resource location."
       }
     },
     "keyVaultReaders": {
@@ -79,12 +79,6 @@
       "defaultValue": "[concat(parameters('solutionAbbreviation'), '-', parameters('resourceGroupClassification'), '-', parameters('environmentAbbreviation'))]",
       "metadata": {
         "description": "Enter application insights name."
-      }
-    },
-    "appInsightsLocation": {
-      "type": "string",
-      "metadata": {
-        "description": "Location for the application insights account."
       }
     },
     "appInsightsKind": {
@@ -108,12 +102,6 @@
       "defaultValue": "Standard",
       "metadata": {
         "description": "Enter service bus sku."
-      }
-    },
-    "serviceBusLocation": {
-      "type": "string",
-      "metadata": {
-        "description": "Location for the service bus."
       }
     },
     "serviceBusTopicName": {
@@ -200,12 +188,6 @@
         "Premium"
       ],
       "defaultValue": "pergb2018"
-    },
-    "logAnalyticsLocation": {
-      "type": "string",
-      "metadata": {
-        "description": "Enter the application location."
-      }
     }
   },
   "variables": {
@@ -232,7 +214,7 @@
             "value": "[parameters('keyVaultSkuFamily')]"
           },
           "location": {
-            "value": "[parameters('keyVaultLocation')]"
+            "value": "[parameters('location')]"
           },
           "tenantId": {
             "value": "[parameters('tenantId')]"
@@ -281,7 +263,7 @@
             "value": "[parameters('appInsightsName')]"
           },
           "location": {
-            "value": "[parameters('appInsightsLocation')]"
+            "value": "[parameters('location')]"
           },
           "kind": {
             "value": "[parameters('appInsightsKind')]"
@@ -307,7 +289,7 @@
             "value": "[parameters('serviceBusSku')]"
           },
           "location": {
-            "value": "[parameters('serviceBusLocation')]"
+            "value": "[parameters('location')]"
           }
         }
       }
@@ -439,7 +421,7 @@
             "value": "[parameters('logAnalyticsSku')]"
           },
           "location": {
-            "value": "[parameters('logAnalyticsLocation')]"
+            "value": "[parameters('location')]"
           }
         }
       }

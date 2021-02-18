@@ -52,7 +52,7 @@ steps:
     resourceGroupName: ${{parameters.solutionAbbreviation}}-data-${{parameters.environmentAbbreviation}}
     csmFile: ${{ parameters.root }}/Infrastructure/data/template.json
     csmParametersFile: ${{parameters.root}}/Infrastructure/data/parameters/parameters.${{parameters.environmentAbbreviation}}.json
-    overrideParameters: '-environmentAbbreviation "${{parameters.environmentAbbreviation}}" -keyVaultLocation "${{parameters.location}}" -appInsightsLocation "${{parameters.location}}" -serviceBusLocation "${{parameters.location}}" -logAnalyticsLocation "${{parameters.location}}" -solutionAbbreviation "${{parameters.solutionAbbreviation}}" -tenantId "${{parameters.tenantId}}" -keyVaultReaders "${{parameters.keyVaultReaders}}" -containerBaseUrl "$(copyChildTemplates.containerEndPoint)data/" -containerSasToken $(copyChildTemplates.containerSASToken) '
+    overrideParameters: '-environmentAbbreviation "${{parameters.environmentAbbreviation}}" -location "${{parameters.location}}" -solutionAbbreviation "${{parameters.solutionAbbreviation}}" -tenantId "${{parameters.tenantId}}" -keyVaultReaders "${{parameters.keyVaultReaders}}" -containerBaseUrl "$(copyChildTemplates.containerEndPoint)data/" -containerSasToken $(copyChildTemplates.containerSASToken) '
     deploymentMode: 'Incremental'
     deploymentOutputs: dataoutputs
 
