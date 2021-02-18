@@ -18,9 +18,10 @@ Azure location where the resource groups and its resources are going to be creat
 If set to $true, it will delete the resource groups if they already exist.
 
 .EXAMPLE
-Set-Environment -solutionAbbreviation "<solutionAbbreviation>" `
+Set-Environment -solutionAbbreviation "<solutionAbbreviation>" `                
                 -environmentAbbreviation "<environmentAbbreviation>" `
                 -objectId "<objectId>" `
+                -resourceGroupLocation "<resourceGroupLocation>" `
                 -overwrite $true
    
 #>
@@ -74,8 +75,9 @@ function Set-Environment {
             HelpMessage="The Azure location where the resource groups are going to be created."
         )]
         [string]
-        $resourceGroupLocation = "West US 2",
+        $resourceGroupLocation,
         [Parameter (
+            Mandatory=$true,
             HelpMessage="By default, this script will not overwrite an existing environment.  If you really want to overwrite your environment, set this value to True."
         )]
         [bool] $overwrite = $false

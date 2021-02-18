@@ -55,14 +55,6 @@
     },
     "servicePlanLocation": {
       "type": "string",
-      "defaultValue": "West US 2",
-      "allowedValues": [
-        "South Central US",
-        "West Europe",
-        "East US",
-        "North Europe",
-        "West US 2"
-      ],
       "metadata": {
         "description": "Service plan location."
       }
@@ -84,14 +76,6 @@
     },
     "functionAppLocation": {
       "type": "string",
-      "defaultValue": "West US 2",
-      "allowedValues": [
-        "South Central US",
-        "West Europe",
-        "East US",
-        "North Europe",
-        "West US 2"
-      ],
       "metadata": {
         "description": "Location for the function app."
       }

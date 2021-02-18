@@ -210,7 +210,7 @@ From your PowerShell command prompt navigate to the Scripts folder then type the
                         -resourceGroupLocation "<resourceGroupLocation>"
 
 `<objectId>` is the Azure Object Id of the user, group or service principal to which access to the prereqs keyvault is going to be granted. This object Id must be located in the same Azure tenant where the keyvault is going to be created.
-`<resourceGroupLocation>` is an optional parameter to specify the Azure location where the resources are going to be created. The default location in the script is "West US 2".
+`<resourceGroupLocation>` is the Azure location where the resources are going to be created.
 
 If you get an error stating "script is not digitally signed" when running any of the provided PowerShell scripts, try running this cmdlet
     
@@ -370,6 +370,8 @@ Uploading the certificate:
         8. Click continue.
         9. You will be presented with the "Review your pipeline YAML" screen. Locate and click on the "Variables" button on the top right side of your screen. We need to create the variables used by the pipeline.
            
+               location - This is your Azure location where the resources are going to be created.  
+
                tenantId - This is your Azure Active Directory tenant Id, where GMM Azure resources were created.  
 
                keyVaultReaders_prod - This is a list of service principals that will have access to the keyvaults in production environment. i.e. your own Azure user id, an Azure group id.

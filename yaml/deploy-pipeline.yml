@@ -76,6 +76,7 @@ stages:
               environmentAbbreviation: ${{ parameters.environmentAbbreviation }}
               serviceConnection: ${{ parameters.serviceConnection }}
               tenantId: ${{ parameters.tenantId }}
+              location: ${{ parameters.location }}
               root: $(System.ArtifactsDirectory)/$(Build.BuildNumber)_$(buildType)
               name: ${{ func.name }}
               

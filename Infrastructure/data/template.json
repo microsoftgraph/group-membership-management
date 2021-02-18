@@ -64,14 +64,6 @@
     },
     "keyVaultLocation": {
       "type": "string",
-      "defaultValue": "West US 2",
-      "allowedValues": [
-        "South Central US",
-        "West Europe",
-        "East US",
-        "North Europe",
-        "West US 2"
-      ],
       "metadata": {
         "description": "Key vault location."
       }
@@ -91,14 +83,6 @@
     },
     "appInsightsLocation": {
       "type": "string",
-      "defaultValue": "West US 2",
-      "allowedValues": [
-        "South Central US",
-        "West Europe",
-        "East US",
-        "North Europe",
-        "West US 2"
-      ],
       "metadata": {
         "description": "Location for the application insights account."
       }
@@ -128,14 +112,6 @@
     },
     "serviceBusLocation": {
       "type": "string",
-      "defaultValue": "West US 2",
-      "allowedValues": [
-        "South Central US",
-        "West Europe",
-        "East US",
-        "North Europe",
-        "West US 2"
-      ],
       "metadata": {
         "description": "Location for the service bus."
       }
@@ -227,14 +203,6 @@
     },
     "logAnalyticsLocation": {
       "type": "string",
-      "defaultValue": "West US 2",
-      "allowedValues": [
-        "South Central US",
-        "West Europe",
-        "East US",
-        "North Europe",
-        "West US 2"
-      ],
       "metadata": {
         "description": "Enter the application location."
       }

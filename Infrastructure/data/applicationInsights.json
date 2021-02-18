@@ -10,14 +10,6 @@
     },
     "location": {
       "type": "string",
-      "defaultValue": "West US 2",
-      "allowedValues": [
-        "South Central US",
-        "West Europe",
-        "East US",
-        "North Europe",
-        "West US 2"
-      ],
       "metadata": {
         "description": "Enter the application location."
       }

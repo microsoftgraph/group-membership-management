@@ -29,11 +29,12 @@ steps:
   inputs:
     azureSubscription: ${{parameters.serviceConnection}}
     resourceGroupName: ${{parameters.solutionAbbreviation}}-compute-${{parameters.environmentAbbreviation}}
-    location: ${{parameters.location}}
     csmFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/compute/template.json
     csmParametersFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/compute/parameters/parameters.${{parameters.environmentAbbreviation}}.json
     overrideParameters: '-environmentAbbreviation "${{parameters.environmentAbbreviation}}" 
-                        -tenantId "${{parameters.tenantId}}" 
+                        -tenantId "${{parameters.tenantId}}"
+                        -servicePlanLocation "${{parameters.location}}"
+                        -functionAppLocation "${{parameters.location}}"
                         -solutionAbbreviation "${{parameters.solutionAbbreviation}}" 
                         -containerBaseUrl "$(data_containerEndPoint)functions/${{ parameters.name }}/Infrastructure/compute/" 
                         -containerSasToken $(data_containerSASToken) 
