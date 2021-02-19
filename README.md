@@ -210,7 +210,7 @@ From your PowerShell command prompt navigate to the Scripts folder then type the
                         -resourceGroupLocation "<resourceGroupLocation>"
 
 `<objectId>` is the Azure Object Id of the user, group or service principal to which access to the prereqs keyvault is going to be granted. This object Id must be located in the same Azure tenant where the keyvault is going to be created.
-`<resourceGroupLocation>` is the Azure location where the resources are going to be created.
+`<resourceGroupLocation>` is the Azure location where the resources are going to be created. Please refer to [this](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/resource-location?tabs=azure-powershell) documentation to know the available resource locations.
 
 If you get an error stating "script is not digitally signed" when running any of the provided PowerShell scripts, try running this cmdlet
     
