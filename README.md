@@ -355,6 +355,10 @@ Uploading the certificate:
 
         Locate the service connection name on the screen. It follows this naming convention: `<SolutionAbbreviation>`-serviceconnection-`<EnvironmentAbbreviation>`.
 
+-   ### Email Notification
+
+    In order to notify the requestor regarding the synchronization job status, please follow the steps in [this](/Service/GroupMembershipManagement/Repositories.Mail/Documentation/SetSenderAddressForEmailNotification.md) documentation.
+
 -   ### Create a pipeline
 
     In Azure DevOps we need to create a pipeline that will create your resources and deploy your code.

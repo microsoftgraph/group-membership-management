@@ -2,7 +2,7 @@
 
 * Add Mail.Send Delegated Permission in `gmm-Graph-<env>` application
 * Enable 'Allow public client flows' in `gmm-Graph-<env>` application -> Authentication
-* Create a test user in your demo tenant. This test user will be set as sender for email notifications. Please note username & password of the test user.
+* Create a new service account. This account will be used as the sender for emails sent out by the GMM application. Please note username & password of the test user.
 * Run [Set-SenderRecipientCredentials.ps1](/Scripts/Set-SenderRecipientCredentials.ps1) to store sender and secondary recipient information in prereqs keyvault
 
     * Please make sure that a prereqs keyvault exists in your environment
