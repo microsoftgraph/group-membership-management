@@ -6,9 +6,11 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -41,11 +43,17 @@ namespace Repositories.Logging
             client.DefaultRequestHeaders.Add("Log-Type", "ApplicationLog");
             return client;
         }
-        
-        public async Task LogMessageAsync(LogMessage logMessage)
+
+        public async Task LogMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
         {
             var properties = CreatePropertiesDictionary(logMessage);
             properties.Add("location", _location);
+
+            if (!string.IsNullOrWhiteSpace(caller))
+                properties.Add("event", caller);
+
+            if (!string.IsNullOrWhiteSpace(file))
+                properties.Add("operation", Path.GetFileNameWithoutExtension(file));
 
             var serializedMessage = JsonConvert.SerializeObject(properties);
 
