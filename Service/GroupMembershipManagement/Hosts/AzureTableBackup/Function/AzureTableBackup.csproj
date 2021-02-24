@@ -9,11 +9,11 @@
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="3.0.11" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
-    <ProjectReference Include="..\..\..\..\Repositories.AzureTableBackupRepository\Repositories.AzureTableBackupRepository.csproj" />
-    <ProjectReference Include="..\..\Services.Contract\Services.Contracts.csproj" />
-    <ProjectReference Include="..\..\Services.Entities\Services.Entities.csproj" />
-    <ProjectReference Include="..\..\Services\Services.csproj" />
+    <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.AzureTableBackupRepository\Repositories.AzureTableBackupRepository.csproj" />
+    <ProjectReference Include="..\Services.Contract\Services.Contracts.csproj" />
+    <ProjectReference Include="..\Services.Entities\Services.Entities.csproj" />
+    <ProjectReference Include="..\Services\Services.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">
