@@ -1,11 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Entities;
+using Repositories.Contracts.InjectConfig;
 using System.Threading.Tasks;
 
 namespace Repositories.Contracts
 {
     public interface IMailRepository
     {
-        Task SendMail(string subject, string content, string toEmailAddress, params string[] additionalContentParams);
+        Task SendMailAsync(EmailMessage emailMessage);
     }
 }

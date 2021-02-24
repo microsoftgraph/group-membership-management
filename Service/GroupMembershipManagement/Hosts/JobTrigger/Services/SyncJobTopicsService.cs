@@ -13,24 +13,28 @@ namespace Services
     public class SyncJobTopicsService : ISyncJobTopicService
     {
         private const string EmailSubject = "EmailSubject";
-        private const string EmailBody = "SyncStartedEmailBody";
-
+        private const string SyncStartedEmailBody = "SyncStartedEmailBody";
+        private const string SyncDisabledEmailBody = "SyncDisabledEmailBody";
+       
         private readonly ILoggingRepository _loggingRepository;
         private readonly ISyncJobRepository _syncJobRepository;
         private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly string _gmmAppId;
         private readonly IMailRepository _mailRepository;
-        
+        private readonly IEmailSenderRecipient _emailSenderAndRecipients;
+
         public SyncJobTopicsService(
             ILoggingRepository loggingRepository,
             ISyncJobRepository syncJobRepository,
             IServiceBusTopicsRepository serviceBusTopicsRepository,
             IGraphGroupRepository graphGroupRepository,
             IKeyVaultSecret<ISyncJobTopicService> gmmAppId,
-            IMailRepository mailRepository
+            IMailRepository mailRepository,
+            IEmailSenderRecipient emailSenderAndRecipients
             )
         {
+            _emailSenderAndRecipients = emailSenderAndRecipients;
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _serviceBusTopicsRepository = serviceBusTopicsRepository ?? throw new ArgumentNullException(nameof(serviceBusTopicsRepository));
@@ -38,7 +42,7 @@ namespace Services
             _gmmAppId = gmmAppId.Secret;
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
         }
-        
+
         public async Task ProcessSyncJobsAsync()
         {
             var jobs = _syncJobRepository.GetSyncJobsAsync(SyncStatus.Idle);
@@ -48,17 +52,28 @@ namespace Services
             var startedTasks = new List<Task>();
             await foreach (var job in jobs)
             {
-                var jobMinDateValue = DateTime.FromFileTimeUtc(0);
-                if (job.LastRunTime == jobMinDateValue)
+                var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
+
+                if (job.LastRunTime == DateTime.FromFileTimeUtc(0))
                 {
-                    await _mailRepository.SendMail(EmailSubject, EmailBody, job.Requestor, job.TargetOfficeGroupId.ToString());
+                    var message = new EmailMessage
+                    {
+                        Subject = EmailSubject,
+                        Content = SyncStartedEmailBody,
+                        SenderAddress = _emailSenderAndRecipients.SenderAddress,
+                        SenderPassword = _emailSenderAndRecipients.SenderPassword,
+                        ToEmailAddresses = job.Requestor,
+                        CcEmailAddresses = string.Empty,
+                        AdditionalContentParams = new[] { groupName, job.TargetOfficeGroupId.ToString() }
+                    };
+                    await _mailRepository.SendMailAsync(message);
                 }
                 job.RunId = _graphGroupRepository.RunId = Guid.NewGuid();
                 _loggingRepository.SyncJobProperties = job.ToDictionary();
 
                 if (await CanWriteToGroup(job))
                 {
-                    _ = _loggingRepository.LogMessageAsync(new LogMessage
+                    await _loggingRepository.LogMessageAsync(new LogMessage
                     {
                         RunId = job.RunId,
                         Message = $"Starting job."
@@ -77,12 +92,27 @@ namespace Services
                 // to make it easier to log information like the run ID and so on without having to pass all that around.
                 // However, the same logging repository gets reused for the life of the program, which means that, without this line,
                 // it'll append that information to the logs that say "JobTrigger function started" and "JobTrigger function completed".
-                
+
                 _loggingRepository.SyncJobProperties = null;
             }
             startedTasks.Add(_syncJobRepository.UpdateSyncJobStatusAsync(runningJobs, SyncStatus.InProgress));
             startedTasks.Add(_syncJobRepository.UpdateSyncJobStatusAsync(failedJobs, SyncStatus.Error));
             await Task.WhenAll(startedTasks);
+
+            foreach (var failedJob in failedJobs)
+            {
+                var message = new EmailMessage
+                {
+                    Subject = EmailSubject,
+                    Content = SyncDisabledEmailBody,
+                    SenderAddress = _emailSenderAndRecipients.SenderAddress,
+                    SenderPassword = _emailSenderAndRecipients.SenderPassword,
+                    ToEmailAddresses = failedJob.Requestor,
+                    CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
+                    AdditionalContentParams = new[] { failedJob.TargetOfficeGroupId.ToString() }
+                };
+                await _mailRepository.SendMailAsync(message);
+            }
         }
 
         private async Task<bool> CanWriteToGroup(SyncJob job)
@@ -91,16 +121,16 @@ namespace Services
                 new JobVerificationStrategy { TestFunction = _graphGroupRepository.GroupExists, StatusMessage = $"Destination group {job.TargetOfficeGroupId} exists.", ErrorMessage = $"destination group {job.TargetOfficeGroupId} doesn't exist." },
                 new JobVerificationStrategy { TestFunction = (groupId) => _graphGroupRepository.IsAppIDOwnerOfGroup(_gmmAppId, groupId), StatusMessage = $"GMM is an owner of destination group {job.TargetOfficeGroupId}.", ErrorMessage = $"GMM is not an owner of destination group {job.TargetOfficeGroupId}." }})
             {
-                var _ = _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Checking: " + strat.StatusMessage });
+                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Checking: " + strat.StatusMessage });
                 // right now, we stop after the first failed strategy, because it doesn't make sense to find that the destination group doesn't exist and then check if we own it.
                 // this can change in the future, when/if we have more than two things to check here.
                 if (await strat.TestFunction(job.TargetOfficeGroupId) == false)
                 {
-                    _ = _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Marking sync job as failed because " + strat.ErrorMessage });
+                    await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Marking sync job as failed because " + strat.ErrorMessage });
                     return false;
                 }
 
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Check passed: " + strat.StatusMessage });
+                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Check passed: " + strat.StatusMessage });
             }
 
             return true;

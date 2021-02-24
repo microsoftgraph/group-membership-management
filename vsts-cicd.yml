@@ -17,7 +17,6 @@ variables:
   "minor": '0'
   "BuildConfiguration": 'debug'
   "SolutionAbbreviation": 'gmm'
-  "ProjectName": 'Source'
   disable.coverage.autogenerate: 'true'
 
 stages:
@@ -50,7 +49,7 @@ stages:
     environmentAbbreviation: 'int'
     tenantId: $(tenantId)
     keyVaultReaders: $(keyVaultReaders_nonprod)
-    location: 'westus2'
+    location: $(location)
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
     dependsOn: BuildFunctions
     stageName: 'int'
@@ -71,7 +70,7 @@ stages:
     environmentAbbreviation: 'ua'
     tenantId: $(tenantId)
     keyVaultReaders: $(keyVaultReaders_nonprod)
-    location: 'westus2'    
+    location: $(location)    
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-ua'
     dependsOn: BuildFunctions
     stageName: 'ua'
@@ -93,7 +92,7 @@ stages:
     environmentAbbreviation: 'prodv2'
     tenantId: $(tenantId)
     keyVaultReaders: $(keyVaultReaders_prod)
-    location: 'westus2'    
+    location: $(location)
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-prodv2'
     dependsOn: ua
     stageName: 'production'

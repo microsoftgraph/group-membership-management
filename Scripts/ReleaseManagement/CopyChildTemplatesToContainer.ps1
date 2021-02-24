@@ -4,7 +4,8 @@ Param(
     [Parameter(Mandatory=$True)]
     [string] $storageAccountName,
     [string] $storageAccountSku = "Standard_LRS",
-    [string] $storageAccountLocation = "West US 2",
+    [Parameter(Mandatory=$True)]    
+    [string] $storageAccountLocation,
     [string] $storageAccountKind = "StorageV2",
     [Parameter(Mandatory=$True)]
     [string] $storageContainerName,

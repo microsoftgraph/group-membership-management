@@ -53,18 +53,10 @@
         "description": "Service plan sku"
       }
     },
-    "servicePlanLocation": {
+    "location": {
       "type": "string",
-      "defaultValue": "West US 2",
-      "allowedValues": [
-        "South Central US",
-        "West Europe",
-        "East US",
-        "North Europe",
-        "West US 2"
-      ],
       "metadata": {
-        "description": "Service plan location."
+        "description": "Resource location."
       }
     },
     "functionAppName": {
@@ -80,20 +72,6 @@
       "defaultValue": "functionapp",
       "metadata": {
         "description": "Function app kind."
-      }
-    },
-    "functionAppLocation": {
-      "type": "string",
-      "defaultValue": "West US 2",
-      "allowedValues": [
-        "South Central US",
-        "West Europe",
-        "East US",
-        "North Europe",
-        "West US 2"
-      ],
-      "metadata": {
-        "description": "Location for the function app."
       }
     },
     "maximumElasticWorkerCount": {
@@ -171,7 +149,9 @@
     "graphAppCertificateName": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppCertificateName')]",
     "graphAppTenantId": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppTenantId')]",
     "senderUsername": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'senderUsername')]",
-    "senderPassword": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'senderPassword')]"
+    "senderPassword": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'senderPassword')]",
+    "syncCompletedCCEmailAddresses": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'syncCompletedCCEmailAddresses')]",
+    "syncDisabledCCEmailAddresses": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'syncDisabledCCEmailAddresses')]"
   },
   "resources": [
     {
@@ -192,7 +172,7 @@
             "value": "[parameters('servicePlanSku')]"
           },
           "location": {
-            "value": "[parameters('servicePlanLocation')]"
+            "value": "[parameters('location')]"
           },
           "maximumElasticWorkerCount": {
             "value": "[parameters('maximumElasticWorkerCount')]"
@@ -218,7 +198,7 @@
             "value": "[parameters('functionAppKind')]"
           },
           "location": {
-            "value": "[parameters('functionAppLocation')]"
+            "value": "[parameters('location')]"
           },
           "servicePlanName": {
             "value": "[parameters('servicePlanName')]"
@@ -323,6 +303,16 @@
               {
                 "name": "senderPassword",
                 "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('senderPassword'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "syncCompletedCCEmailAddresses",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('syncCompletedCCEmailAddresses'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "syncDisabledCCEmailAddresses",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('syncDisabledCCEmailAddresses'), '2019-09-01').secretUriWithVersion, ')')]",
                 "slotSetting": false
               }
             ]

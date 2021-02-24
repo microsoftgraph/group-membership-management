@@ -33,7 +33,7 @@ namespace Hosts.SecurityGroup
 				.Where(x => x != Guid.Empty)
 				.Select(x => new AzureADGroup { ObjectId = x }).ToArray();
 
-			var _ = _log.LogMessageAsync(new LogMessage
+			await _log.LogMessageAsync(new LogMessage
 			{
 				RunId = runId,
 				Message =
@@ -42,7 +42,7 @@ namespace Hosts.SecurityGroup
 
 			if (sourceGroups.Length == 0)
 			{
-				_ = _log.LogMessageAsync(new LogMessage
+				await _log.LogMessageAsync(new LogMessage
 				{
 					RunId = runId,
 					Message =
@@ -54,7 +54,7 @@ namespace Hosts.SecurityGroup
 
 			if (allusers != null)
 			{
-				_ = _log.LogMessageAsync(new LogMessage
+				await _log.LogMessageAsync(new LogMessage
 				{
 					RunId = runId,
 					Message =
@@ -63,7 +63,7 @@ namespace Hosts.SecurityGroup
 			}
 			else
 			{
-				_ = _log.LogMessageAsync(new LogMessage
+				await _log.LogMessageAsync(new LogMessage
 				{
 					RunId = runId,
 					Message =
@@ -101,16 +101,16 @@ namespace Hosts.SecurityGroup
 			{
 				if (await _graphGroupRepository.GroupExists(group.ObjectId))
 				{
-					var _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {group.ObjectId}." });
+					await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {group.ObjectId}." });
 					var users = await _graphGroupRepository.GetUsersInGroupTransitively(group.ObjectId);
 					var newUsers = users.Except(toReturn).ToArray();
-					_ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Got {users.Count} users from the group with ID {group.ObjectId}. " +
+					await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Got {users.Count} users from the group with ID {group.ObjectId}. " +
 						$"The group contains {users.Count - newUsers.Length} users who have already been read from earlier groups." });
 					toReturn.AddRange(newUsers);
 				}
 				else
 				{
-					var _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Group with ID {group.ObjectId} doesn't exist. Stopping sync and marking as error." });
+					await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Group with ID {group.ObjectId} doesn't exist. Stopping sync and marking as error." });
 					return null;
 				}
 			}

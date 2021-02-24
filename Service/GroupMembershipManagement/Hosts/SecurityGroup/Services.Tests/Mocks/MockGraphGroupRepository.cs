@@ -20,6 +20,11 @@ namespace Tests.FunctionApps.Mocks
 			throw new NotImplementedException();
 		}
 
+		public Task<string> GetGroupNameAsync(Guid objectId)
+		{
+			return Task.FromResult("GroupName");
+		}
+
 		public Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid objectId)
 		{
 			throw new NotImplementedException();

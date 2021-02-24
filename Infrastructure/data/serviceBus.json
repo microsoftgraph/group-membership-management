@@ -13,13 +13,6 @@
     },
     "location": {
       "type": "string",
-      "allowedValues": [
-        "South Central US",
-        "West Europe",
-        "East US",
-        "North Europe",
-        "West US 2"
-      ],
       "metadata": {
         "description": "Location for the service bus."
       }
