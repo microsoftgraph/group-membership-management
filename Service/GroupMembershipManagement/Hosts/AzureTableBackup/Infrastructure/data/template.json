@@ -1,0 +1,122 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "containerBaseUrl": {
+      "type": "string"
+    },
+    "containerSasToken": {
+      "type": "string"
+    },
+    "environmentAbbreviation": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 6,
+      "metadata": {
+        "description": "Enter an abbreviation for the environment."
+      }
+    },
+    "solutionAbbreviation": {
+      "type": "string",
+      "defaultValue": "gmm",
+      "minLength": 2,
+      "maxLength": 3,
+      "metadata": {
+        "description": "Enter an abbreviation for the solution."
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Enter storage account name."
+      }
+    }
+  },
+  "variables": {
+    "dataKeyVault": "[resourceId(subscription().subscriptionId, concat(parameters('solutionAbbreviation'), '-data-', parameters('environmentAbbreviation')), 'Microsoft.KeyVault/vaults/', concat(parameters('solutionAbbreviation'), '-data-', parameters('environmentAbbreviation')))]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2015-01-01",
+      "name": "getSecretsTemplate",
+      "type": "Microsoft.Resources/deployments",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "jobsTableNameSecret": {
+              "type": "securestring"
+            },
+            "jobsTableConnectionStringSecret": {
+              "type": "securestring"
+            }
+          },
+          "resources": [],
+          "outputs": {
+            "jobsTableNameSecret": {
+              "type": "string",
+              "value": "[parameters('jobsTableNameSecret')]"
+            },
+            "jobsTableConnectionStringSecret": {
+              "type": "string",
+              "value": "[parameters('jobsTableConnectionStringSecret')]"
+            }
+          }
+        },
+        "parameters": {
+          "jobsTableNameSecret": {
+            "reference": {
+              "keyVault": {
+                "id": "[variables('dataKeyVault')]"
+              },
+              "secretName": "jobsTableName"
+            }
+          },
+          "jobsTableConnectionStringSecret": {
+            "reference": {
+              "keyVault": {
+                "id": "[variables('dataKeyVault')]"
+              },
+              "secretName": "jobsStorageAccountConnectionString"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2018-05-01",
+      "name": "secretsTemplate",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(uri(parameters('containerBaseUrl'), 'keyVaultSecrets.json'), parameters('containerSasToken'))]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "keyVaultName": {
+            "value": "[concat(parameters('solutionAbbreviation'), '-data-', parameters('environmentAbbreviation'))]"
+          },
+          "keyVaultParameters": {
+            "value": [
+              {
+                "name": "tablesToBackup",
+                "value": "[concat('[ { \"SourceTableName\":\"', reference('getSecretsTemplate').outputs.jobsTableNameSecret.value, '\"', ', \"SourceConnectionString\":\"', reference('getSecretsTemplate').outputs.jobsTableConnectionStringSecret.value, '\"', ', \"DestinationConnectionString\":\"', reference('getSecretsTemplate').outputs.jobsTableConnectionStringSecret.value, '\"', ', \"DeleteAfterDays\":7 }]')]"
+              }
+            ]
+          }
+        }
+      },
+      "dependsOn": [
+        "Microsoft.Resources/deployments/getSecretsTemplate"
+      ]
+    }
+  ],
+  "outputs": {
+  }
+}
