@@ -1,15 +1,21 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Azure.Cosmos.Table;
+
 namespace Entities.AzureTableBackup
 {
-    public class BackupResult
+    public class BackupResult : TableEntity
     {
-        public string TableName { get; }
-        public int RowCount { get; }
+        public string BackupTableName { get; set; }
+        public int RowCount { get; set; }
 
-        public BackupResult(string tableName, int rowCount)
+        public BackupResult()
         {
-            this.TableName = tableName;
+        }
+
+        public BackupResult(string backupTableName, int rowCount)
+        {
+            this.BackupTableName = backupTableName;
             this.RowCount = rowCount;
         }
     }

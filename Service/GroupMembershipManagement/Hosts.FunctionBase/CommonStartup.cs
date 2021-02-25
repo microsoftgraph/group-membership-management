@@ -52,5 +52,10 @@ namespace Hosts.FunctionBase
                 throw new ArgumentNullException($"Could not start because of missing configuration option: {key}. Requested by file {callerFile}:{callerLine}.");
             return value;
         }
+
+        public string GetValueOrDefault(string key, [CallerFilePath] string callerFile = "", [CallerLineNumber] int callerLine = 0)
+        {
+            return _configuration.GetValue<string>(key) ?? string.Empty;
+        }
     }
 }
