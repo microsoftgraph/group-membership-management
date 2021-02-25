@@ -11,6 +11,7 @@ using Repositories.MembershipDifference;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -437,7 +438,7 @@ namespace Repositories.Integration.Tests
 		{
             public Dictionary<string, string> SyncJobProperties { get; set; }
 
-			public Task LogMessageAsync(LogMessage logMessage)
+			public Task LogMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
 			{
 				return Task.CompletedTask;
 			}

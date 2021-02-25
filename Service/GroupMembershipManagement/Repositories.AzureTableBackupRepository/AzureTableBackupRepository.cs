@@ -16,7 +16,7 @@ namespace Repositories.AzureTableBackupRepository
     public class AzureTableBackupRepository : IAzureTableBackupRepository
     {
         private const string BACKUP_PREFIX = "Backup";
-        private const string BACKUP_TABLE_NAME = "ATBBackupTracker";
+        private const string BACKUP_TABLE_NAME_SUFFIX = "BackupTracker";
         private readonly ILoggingRepository _loggingRepository = null;
 
         public AzureTableBackupRepository(ILoggingRepository loggingRepository)
@@ -41,7 +41,7 @@ namespace Repositories.AzureTableBackupRepository
 
         public async Task<List<DynamicTableEntity>> GetEntitiesAsync(IAzureTableBackup backupSettings)
         {
-            var table = GetCloudTable(backupSettings.DestinationConnectionString, backupSettings.SourceTableName);
+            var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, backupSettings.SourceTableName);
             var entities = new List<DynamicTableEntity>();
             var query = table.CreateQuery<DynamicTableEntity>().AsTableQuery();
 
@@ -60,7 +60,7 @@ namespace Repositories.AzureTableBackupRepository
         public async Task<BackupResult> BackupEntitiesAsync(IAzureTableBackup backupSettings, List<DynamicTableEntity> entities)
         {
             var tableName = $"{BACKUP_PREFIX}{backupSettings.SourceTableName}{DateTime.UtcNow.ToString("yyyyMMddHHmmss")}";
-            var table = GetCloudTable(backupSettings.DestinationConnectionString, tableName);
+            var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, tableName);
 
             if (!await table.ExistsAsync())
             {
@@ -121,7 +121,7 @@ namespace Repositories.AzureTableBackupRepository
         {
             await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Deleting backup table: {tableName}" });
 
-            var table = GetCloudTable(backupSettings.DestinationConnectionString, tableName);
+            var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, tableName);
 
             if (!await table.ExistsAsync())
             {
@@ -140,7 +140,7 @@ namespace Repositories.AzureTableBackupRepository
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Creating backup tracker for {backupSettings.SourceTableName}" });
 
-            var table = GetCloudTable(backupSettings.DestinationConnectionString, BACKUP_TABLE_NAME);
+            var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, backupSettings.SourceTableName + BACKUP_TABLE_NAME_SUFFIX);
 
             if (!await table.ExistsAsync())
             {
@@ -159,7 +159,7 @@ namespace Repositories.AzureTableBackupRepository
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Getting latest backup tracker for {backupSettings.SourceTableName}" });
 
-            var table = GetCloudTable(backupSettings.DestinationConnectionString, BACKUP_TABLE_NAME);
+            var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, backupSettings.SourceTableName + BACKUP_TABLE_NAME_SUFFIX);
 
             if (!await table.ExistsAsync())
             {
@@ -186,11 +186,28 @@ namespace Repositories.AzureTableBackupRepository
             return backupResult;
         }
 
-        private CloudTable GetCloudTable(string connectionString, string tableName)
+        public async Task<CloudTableClient> GetCloudTableClientAsync(string connectionString)
         {
-            var storageAccount = CloudStorageAccount.Parse(connectionString);
-            var tableClient = storageAccount.CreateCloudTableClient();
-            return tableClient.GetTableReference(tableName);
+            try
+            {
+                return CloudStorageAccount.Parse(connectionString).CreateCloudTableClient();
+            }
+            catch (FormatException)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Azure Table Storage connection string format is not valid" });
+                throw;
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unable to create cloud table client.\n{ex}" });
+                throw;
+            }
+
+        }
+        public async Task<CloudTable> GetCloudTableAsync(string connectionString, string tableName)
+        {
+            var cloudTableClient = await GetCloudTableClientAsync(connectionString);
+            return cloudTableClient.GetTableReference(tableName);
         }
     }
 }
