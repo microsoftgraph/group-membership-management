@@ -267,6 +267,7 @@ namespace Repositories.AzureTableBackupRepository
             }
 
         }
+        
         private async Task<CloudTable> GetCloudTableAsync(string connectionString, string tableName)
         {
             var cloudTableClient = await GetCloudTableClientAsync(connectionString);

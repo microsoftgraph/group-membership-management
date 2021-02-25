@@ -17,5 +17,7 @@ namespace Repositories.Contracts
         Task AddBackupResultTrackerAsync(IAzureTableBackup backupSettings, BackupResult backupResult);
         Task DeleteBackupTrackersAsync(IAzureTableBackup backupSettings, List<(string PartitionKey, string RowKey)> keys);
         Task<BackupResult> GetLastestBackupResultTrackerAsync(IAzureTableBackup backupSettings);
+        Task<CloudTableClient> GetCloudTableClientAsync(string connectionString);
+        Task<CloudTable> GetCloudTableAsync(string connectionString, string tableName);
     }
 }
