@@ -16,6 +16,7 @@ namespace Repositories.AzureTableBackupRepository
     public class AzureTableBackupRepository : IAzureTableBackupRepository
     {
         private const string BACKUP_PREFIX = "Backup";
+        private const string BACKUP_TABLE_NAME = "ATBBackupTracker";
         private readonly ILoggingRepository _loggingRepository = null;
 
         public AzureTableBackupRepository(ILoggingRepository loggingRepository)
@@ -40,10 +41,7 @@ namespace Repositories.AzureTableBackupRepository
 
         public async Task<List<DynamicTableEntity>> GetEntitiesAsync(IAzureTableBackup backupSettings)
         {
-            var storageAccount = CloudStorageAccount.Parse(backupSettings.SourceConnectionString);
-            var tableClient = storageAccount.CreateCloudTableClient();
-            var table = tableClient.GetTableReference(backupSettings.SourceTableName);
-
+            var table = GetCloudTable(backupSettings.DestinationConnectionString, backupSettings.SourceTableName);
             var entities = new List<DynamicTableEntity>();
             var query = table.CreateQuery<DynamicTableEntity>().AsTableQuery();
 
@@ -62,15 +60,17 @@ namespace Repositories.AzureTableBackupRepository
         public async Task<BackupResult> BackupEntitiesAsync(IAzureTableBackup backupSettings, List<DynamicTableEntity> entities)
         {
             var tableName = $"{BACKUP_PREFIX}{backupSettings.SourceTableName}{DateTime.UtcNow.ToString("yyyyMMddHHmmss")}";
-            var storageAccount = CloudStorageAccount.Parse(backupSettings.DestinationConnectionString);
-            var tableClient = storageAccount.CreateCloudTableClient();
-            var table = tableClient.GetTableReference(tableName);
-            table.CreateIfNotExists();
+            var table = GetCloudTable(backupSettings.DestinationConnectionString, tableName);
+
+            if (!await table.ExistsAsync())
+            {
+                await table.CreateIfNotExistsAsync();
+            }
 
             await _loggingRepository.LogMessageAsync(
                 new LogMessage
                 {
-                    Message = $"Backing up data to table: {tableName} started.",
+                    Message = $"Backing up data to table: {tableName} started",
                     DynamicProperties = { { "status", "Started" } }
                 });
 
@@ -107,7 +107,7 @@ namespace Repositories.AzureTableBackupRepository
             await _loggingRepository.LogMessageAsync(
                 new LogMessage
                 {
-                    Message = $"Backing up data to table: {tableName} completed.",
+                    Message = $"Backing up data to table: {tableName} completed",
                     DynamicProperties = {
                         { "status", "Completed" },
                         { "rowCount", backupCount.ToString() }
@@ -121,11 +121,9 @@ namespace Repositories.AzureTableBackupRepository
         {
             await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Deleting backup table: {tableName}" });
 
-            var storageAccount = CloudStorageAccount.Parse(backupSettings.DestinationConnectionString);
-            var tableClient = storageAccount.CreateCloudTableClient();
-            var table = tableClient.GetTableReference(tableName);
+            var table = GetCloudTable(backupSettings.DestinationConnectionString, tableName);
 
-            if (table == null)
+            if (!await table.ExistsAsync())
             {
                 await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Table not found : {tableName}" });
                 return;
@@ -137,5 +135,62 @@ namespace Repositories.AzureTableBackupRepository
         }
 
         private bool IsSuccessStatusCode(int statusCode) => statusCode >= 200 && statusCode <= 299;
+
+        public async Task AddBackupResultTrackerAsync(IAzureTableBackup backupSettings, BackupResult backupResult)
+        {
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Creating backup tracker for {backupSettings.SourceTableName}" });
+
+            var table = GetCloudTable(backupSettings.DestinationConnectionString, BACKUP_TABLE_NAME);
+
+            if (!await table.ExistsAsync())
+            {
+                await table.CreateIfNotExistsAsync();
+            }
+
+            backupResult.PartitionKey = backupSettings.SourceTableName;
+            backupResult.RowKey = backupResult.BackupTableName;
+
+            await table.ExecuteAsync(TableOperation.Insert(backupResult));
+
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Created backup tracker ({backupResult.RowKey}) for {backupSettings.SourceTableName}" });
+        }
+
+        public async Task<BackupResult> GetLastestBackupResultTrackerAsync(IAzureTableBackup backupSettings)
+        {
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Getting latest backup tracker for {backupSettings.SourceTableName}" });
+
+            var table = GetCloudTable(backupSettings.DestinationConnectionString, BACKUP_TABLE_NAME);
+
+            if (!await table.ExistsAsync())
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"No backup tracker found for {backupSettings.SourceTableName}" });
+                return null;
+            }
+
+            var results = new List<BackupResult>();
+            var query = table.CreateQuery<BackupResult>().Where(x => x.PartitionKey == backupSettings.SourceTableName).AsTableQuery();
+
+            TableContinuationToken continuationToken = null;
+            do
+            {
+                var segmentResult = await table.ExecuteQuerySegmentedAsync(query, continuationToken);
+                continuationToken = segmentResult.ContinuationToken;
+                results.AddRange(segmentResult.Results);
+
+            } while (continuationToken != null);
+
+            var backupResult = results.OrderByDescending(x => x.Timestamp).FirstOrDefault();
+
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Found latest backup tracker ([{backupResult.Timestamp.UtcDateTime}] - {backupResult.RowKey}) for {backupSettings.SourceTableName}" });
+
+            return backupResult;
+        }
+
+        private CloudTable GetCloudTable(string connectionString, string tableName)
+        {
+            var storageAccount = CloudStorageAccount.Parse(connectionString);
+            var tableClient = storageAccount.CreateCloudTableClient();
+            return tableClient.GetTableReference(tableName);
+        }
     }
 }
