@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Entities.AzureTableBackup;
 using Microsoft.Azure.Cosmos.Table;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -26,13 +27,21 @@ namespace Services
 
         public async Task BackupTablesAsync()
         {
+            if (!_tablesToBackup.Any())
+            {
+                await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"No backup settings have been found." });
+                return;
+            }
+
             foreach (var table in _tablesToBackup)
             {
                 await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Starting backup for table: {table.SourceTableName}" });
                 var entities = await _azureTableBackupRepository.GetEntitiesAsync(table);
 
                 await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Backing up {entities.Count} entites from table: {table.SourceTableName}" });
-                await _azureTableBackupRepository.BackupEntitiesAsync(table, entities);
+                var backupResult = await _azureTableBackupRepository.BackupEntitiesAsync(table, entities);
+
+                await CompareBackupResults(table, backupResult);
 
                 await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Deleting old backups for table: {table.SourceTableName}" });
                 await DeleteOldBackupTablesAsync(table);
@@ -52,6 +61,21 @@ namespace Services
                 if (message == null || message.Timestamp < cutOffDate)
                     await _azureTableBackupRepository.DeleteBackupTableAsync(backupSettings, table.Name);
             }
+        }
+
+        private async Task CompareBackupResults(IAzureTableBackup backupSettings, BackupResult currentBackup)
+        {
+            var previousBackupTracker = await _azureTableBackupRepository.GetLastestBackupResultTrackerAsync(backupSettings);
+            await _azureTableBackupRepository.AddBackupResultTrackerAsync(backupSettings, currentBackup);
+
+            if (previousBackupTracker == null)
+            {
+                return;
+            }
+
+            var delta = currentBackup.RowCount - previousBackupTracker.RowCount;
+            var message = delta == 0 ? " same number of" : ((delta > 0) ? " more" : " less");
+            await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Current backup for {backupSettings.SourceTableName} has {delta}{message} rows than previous backup" });
         }
     }
 }
