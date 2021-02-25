@@ -75,7 +75,16 @@ namespace Services
 
             var delta = currentBackup.RowCount - previousBackupTracker.RowCount;
             var message = delta == 0 ? " same number of" : ((delta > 0) ? " more" : " less");
-            await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Current backup for {backupSettings.SourceTableName} has {delta}{message} rows than previous backup" });
+            await _loggingRepository.LogMessageAsync(
+                new Entities.LogMessage
+                {
+                    Message = $"Current backup for {backupSettings.SourceTableName} has {delta}{message} rows than previous backup",
+                    DynamicProperties =
+                    {
+                        { "status", "Delta" },
+                        { "rowCount", delta.ToString() }
+                    }
+                });
         }
     }
 }
