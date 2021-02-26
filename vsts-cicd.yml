@@ -44,7 +44,7 @@ stages:
        coverageThreshold: 75
     - function:
         name: 'AzureTableBackup'
-        coverageThreshold: 0
+        coverageThreshold: 25
 
 - template: yaml/deploy-pipeline.yml
   parameters:
