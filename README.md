@@ -334,26 +334,35 @@ Uploading the certificate:
 
     GMM provides a PowerShell script to accomplish this.
 
-    1.  Set-ServicePrincipalAndServiceConnection.ps1
+    1.  Set-ServicePrincipal.ps1
 
-        This script will create a new service principal and a service connection.  
-        It takes these arguments `<SolutionAbbreviation>`, `<EnvironmentAbbreviation>`, `<OrganizationName>`, `<ProjectName>`.
+        This script will create a new service principal.  
+        It takes two arguments: `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>`.
+
+        From your PowerShell command prompt navigate to the Scripts folder then type these commands. This script must be run by someone with the Owner role on the subscription.
+
+            1. . ./Set-ServicePrincipal.ps1
+            2. Set-ServicePrincipal -SolutionAbbreviation "<SolutionAbbreviation>"  `
+            		                              -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
+            		                              -Verbose
+
+        Follow the instructions on the screen.
+
+        Locate the service connection name on the screen. It follows this naming convention: `<SolutionAbbreviation>`-serviceconnection-`<EnvironmentAbbreviation>`.
+
+    2. Set-ServiceConnection
+
+        This script sets up the service connection. Ensure that you're an owner of the service connection you created in the last step. Then, run the following command. `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` are as before, plus two new ones.
 
         `<OrganizationName>` - This is the name of your organization used in Azure DevOps.  
         `<ProjectName>` - This is the name of the project in Azure DevOps we just created in a previous step.
 
-        From your PowerShell command prompt navigate to the Scripts folder then type these commands:
-
-            1. . ./Set-ServicePrincipalAndServiceConnection.ps1
-            2. Set-ServicePrincipalAndServiceConnection -SolutionAbbreviation "<SolutionAbbreviation>"  `
+            1. . ./Set-ServiceConnection.ps1
+            2. Set-ServiceConnection -SolutionAbbreviation "<SolutionAbbreviation>"  `
             		                              -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-            		                              -OrganizationName "<OrganizationName>" `
-            		                              -ProjectName "<ProjectName>" `
+                                                 -OrganizationName "<OrganizationName>" `
+                                                 -ProjectName "<ProjectName>" `
             		                              -Verbose
-
-            Follow the instructions on the screen.
-
-        Locate the service connection name on the screen. It follows this naming convention: `<SolutionAbbreviation>`-serviceconnection-`<EnvironmentAbbreviation>`.
 
 -   ### Email Notification
 

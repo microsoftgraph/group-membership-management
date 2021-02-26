@@ -40,8 +40,6 @@ function Set-ServiceConnection {
 		[Parameter(Mandatory=$True)]
         [boolean] $Clean,
 		[Parameter(Mandatory=$False)]
-		[string] $SubscriptionId,
-		[Parameter(Mandatory=$False)]
 		[securestring] $SecurePersonalAccessToken,		
 		[Parameter(Mandatory=$False)]
 		[string] $ErrorActionPreference = $Stop
@@ -58,16 +56,14 @@ function Set-ServiceConnection {
 		    	
 	$servicePrincipalName = "$SolutionAbbreviation-serviceconnection-$EnvironmentAbbreviation"
 
-	if (-not $SubscriptionId) {
-		Write-Host "`nCurrent subscription:`n"
-		$currentSubscription = (Get-AzContext).Subscription	
-		Write-Host "$($currentSubscription.Name) -  $($currentSubscription.Id)"
+	Write-Host "`nCurrent subscription:`n"
+	$currentSubscription = (Get-AzContext).Subscription	
+	Write-Host "$($currentSubscription.Name) -  $($currentSubscription.Id)"
 
-		Write-Host "`nAvailable subscriptions:"
-		Write-Host (Get-AzSubscription | Select-Object -Property Name, Id)
-		Write-Host "`n"
-		$SubscriptionId = Read-Host -Prompt "If you would like to use other subscription than '$($currentSubscription.Name)' `nprovide the subscription id, otherwise press enter to continue."
-	}
+	Write-Host "`nAvailable subscriptions:"
+	Write-Host (Get-AzSubscription | Select-Object -Property Name, Id)
+	Write-Host "`n"
+	$SubscriptionId = Read-Host -Prompt "If you would like to use other subscription than '$($currentSubscription.Name)' `nprovide the subscription id, otherwise press enter to continue."
 
     if ($SubscriptionId)
     {        
@@ -128,8 +124,6 @@ function Set-ServiceConnection {
 							-Password $securepass `
 							-StartDate (Get-Date).AddHours(-1) `
 							-EndDate (Get-Date).AddYears(1)
-
-	Write-Host "`nNew application client secret: $passString"
 
 	Write-Host "`nThe Azure DevOps RM App ServicePrincipal ObjectID is: $($serviceConnectionServicePrincipal.Id)"
 
