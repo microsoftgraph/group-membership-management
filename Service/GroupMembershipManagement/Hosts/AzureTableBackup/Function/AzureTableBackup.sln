@@ -27,6 +27,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.AzureTableBack
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Entities", "..\..\..\Entities\Entities.csproj", "{A09094E7-B8F6-4551-AAC0-63C62F34F2C2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Services.Tests", "..\Services.Tests\Services.Tests.csproj", "{08C337C1-DE5C-4942-9E6E-6E752B8474F5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -77,6 +79,10 @@ Global
 		{A09094E7-B8F6-4551-AAC0-63C62F34F2C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A09094E7-B8F6-4551-AAC0-63C62F34F2C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A09094E7-B8F6-4551-AAC0-63C62F34F2C2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08C337C1-DE5C-4942-9E6E-6E752B8474F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08C337C1-DE5C-4942-9E6E-6E752B8474F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08C337C1-DE5C-4942-9E6E-6E752B8474F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08C337C1-DE5C-4942-9E6E-6E752B8474F5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
