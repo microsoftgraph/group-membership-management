@@ -24,19 +24,31 @@ namespace Repositories.AzureTableBackupRepository
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        public async Task<List<CloudTable>> GetBackupTablesAsync(IAzureTableBackup backupSettings)
+        public async Task<List<BackupTable>> GetBackupTablesAsync(IAzureTableBackup backupSettings)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Getting backup tables for table {backupSettings.SourceTableName}" });
 
             var storageAccount = CloudStorageAccount.Parse(backupSettings.DestinationConnectionString);
             var tableClient = storageAccount.CreateCloudTableClient();
-            var tables = tableClient.ListTables()
-                                    .Where(x => x.Name.StartsWith(BACKUP_PREFIX + backupSettings.SourceTableName, StringComparison.InvariantCultureIgnoreCase))
-                                    .ToList();
+            var tables = tableClient.ListTables(prefix: BACKUP_PREFIX + backupSettings.SourceTableName).ToList();
+
+            var backupCloudTables = new List<BackupTable>();
+            var query = new TableQuery<DynamicTableEntity>();
+            foreach (var table in tables)
+            {
+                var message = table.ExecuteQuery(query).FirstOrDefault();
+                var backupTable = new BackupTable
+                {
+                    TableName = table.Name,
+                    TimeStamp = message?.Timestamp
+                };
+
+                backupCloudTables.Add(backupTable);
+            }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Found {tables.Count} backup tables for table {backupSettings.SourceTableName}" });
 
-            return tables;
+            return backupCloudTables;
         }
 
         public async Task<List<DynamicTableEntity>> GetEntitiesAsync(IAzureTableBackup backupSettings)
@@ -186,7 +198,7 @@ namespace Repositories.AzureTableBackupRepository
             return backupResult;
         }
 
-        public async Task<CloudTableClient> GetCloudTableClientAsync(string connectionString)
+        private async Task<CloudTableClient> GetCloudTableClientAsync(string connectionString)
         {
             try
             {
@@ -204,7 +216,7 @@ namespace Repositories.AzureTableBackupRepository
             }
 
         }
-        public async Task<CloudTable> GetCloudTableAsync(string connectionString, string tableName)
+        private async Task<CloudTable> GetCloudTableAsync(string connectionString, string tableName)
         {
             var cloudTableClient = await GetCloudTableClientAsync(connectionString);
             return cloudTableClient.GetTableReference(tableName);
