@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities.AzureTableBackup;
-using Microsoft.Azure.Cosmos.Table;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -52,14 +51,11 @@ namespace Services
         {
             var backupTables = await _azureTableBackupRepository.GetBackupTablesAsync(backupSettings);
             var cutOffDate = new DateTimeOffset(DateTime.UtcNow).AddDays(-backupSettings.DeleteAfterDays);
-            var query = new TableQuery<DynamicTableEntity>();
 
             foreach (var table in backupTables)
             {
-                var message = table.ExecuteQuery(query).FirstOrDefault();
-
-                if (message == null || message.Timestamp < cutOffDate)
-                    await _azureTableBackupRepository.DeleteBackupTableAsync(backupSettings, table.Name);
+                if (!table.TimeStamp.HasValue || table.TimeStamp < cutOffDate)
+                    await _azureTableBackupRepository.DeleteBackupTableAsync(backupSettings, table.TableName);
             }
         }
 
