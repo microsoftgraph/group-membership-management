@@ -69,6 +69,46 @@ namespace Repositories.AzureTableBackupRepository
             return entities;
         }
 
+        public async Task DeleteBackupTrackersAsync(IAzureTableBackup backupSettings, List<(string PartitionKey, string RowKey)> entities)
+        {
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleting old backup trackers from {backupSettings.SourceTableName}" });
+
+            var batchSize = 100;
+            var currentSize = 0;
+            var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, backupSettings.SourceTableName + BACKUP_TABLE_NAME_SUFFIX);
+            var groupedEntities = entities.GroupBy(x => x.PartitionKey);
+            var deletedEntitiesCount = 0;
+
+            foreach (var group in groupedEntities)
+            {
+                var deleteBatchOperation = new TableBatchOperation();
+
+                foreach (var entity in group.AsEnumerable())
+                {
+                    var entityToDelete = table.Execute(TableOperation.Retrieve<BackupResult>(entity.PartitionKey, entity.RowKey));
+                    if (entityToDelete.HttpStatusCode != 404)
+                        deleteBatchOperation.Delete(entityToDelete.Result as BackupResult);
+
+                    if (++currentSize == batchSize)
+                    {
+                        var deleteResponse = await table.ExecuteBatchAsync(deleteBatchOperation);
+                        deletedEntitiesCount += deleteResponse.Count(x => IsSuccessStatusCode(x.HttpStatusCode));
+
+                        deleteBatchOperation = new TableBatchOperation();
+                        currentSize = 0;
+                    }
+                }
+
+                if (deleteBatchOperation.Any())
+                {
+                    var deleteResponse = await table.ExecuteBatchAsync(deleteBatchOperation);
+                    deletedEntitiesCount += deleteResponse.Count(x => IsSuccessStatusCode(x.HttpStatusCode));
+                }
+            }
+
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleted {deletedEntitiesCount} old backup trackers from {backupSettings.SourceTableName}" });
+        }
+
         public async Task<BackupResult> BackupEntitiesAsync(IAzureTableBackup backupSettings, List<DynamicTableEntity> entities)
         {
             var tableName = $"{BACKUP_PREFIX}{backupSettings.SourceTableName}{DateTime.UtcNow.ToString("yyyyMMddHHmmss")}";
