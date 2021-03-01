@@ -125,5 +125,11 @@ namespace Services
                     }
                 });
         }
+
+        private async Task DeleteOldBackupTrackersAsync(IAzureTableBackup backupSettings, List<string> deletedTables)
+        {
+            var keys = deletedTables.Select(x => (backupSettings.SourceTableName, x)).ToList();
+            await _azureTableBackupRepository.DeleteBackupTrackersAsync(backupSettings, keys);
+        }
     }
 }
