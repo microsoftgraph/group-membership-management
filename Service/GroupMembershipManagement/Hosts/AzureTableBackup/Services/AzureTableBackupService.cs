@@ -43,20 +43,27 @@ namespace Services
                 await CompareBackupResults(table, backupResult);
 
                 await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Deleting old backups for table: {table.SourceTableName}" });
-                await DeleteOldBackupTablesAsync(table);
+                var deletedTables = await DeleteOldBackupTablesAsync(table);
+                await DeleteOldBackupTrackersAsync(table, deletedTables);
             }
         }
 
-        private async Task DeleteOldBackupTablesAsync(IAzureTableBackup backupSettings)
+        private async Task<List<string>> DeleteOldBackupTablesAsync(IAzureTableBackup backupSettings)
         {
             var backupTables = await _azureTableBackupRepository.GetBackupTablesAsync(backupSettings);
             var cutOffDate = new DateTimeOffset(DateTime.UtcNow).AddDays(-backupSettings.DeleteAfterDays);
+            var deletedTables = new List<string>();
 
             foreach (var table in backupTables)
             {
                 if (!table.TimeStamp.HasValue || table.TimeStamp < cutOffDate)
+                {
                     await _azureTableBackupRepository.DeleteBackupTableAsync(backupSettings, table.TableName);
+                    deletedTables.Add(table.TableName);
+                }
             }
+
+            return deletedTables;
         }
 
         private async Task CompareBackupResults(IAzureTableBackup backupSettings, BackupResult currentBackup)
@@ -81,6 +88,12 @@ namespace Services
                         { "rowCount", delta.ToString() }
                     }
                 });
+        }
+
+        private async Task DeleteOldBackupTrackersAsync(IAzureTableBackup backupSettings, List<string> deletedTables)
+        {
+            var keys = deletedTables.Select(x => (backupSettings.SourceTableName, x)).ToList();
+            await _azureTableBackupRepository.DeleteBackupTrackersAsync(backupSettings, keys);
         }
     }
 }
