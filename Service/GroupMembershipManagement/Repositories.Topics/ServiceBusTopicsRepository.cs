@@ -32,7 +32,7 @@ namespace Repositories.ServiceBusTopics
             };
 
             message.UserProperties.Add("Type", job.Type);
-            message.MessageId = $"{job.PartitionKey}_{job.RowKey}";
+            message.MessageId = $"{job.PartitionKey}_{job.RowKey}_{job.RunId}";
 
             return message;
         }
