@@ -30,7 +30,7 @@ namespace Tests.Repositories
             await Task.CompletedTask;
         }
 
-        private Message CreateMessage(SyncJob job)
+        public Message CreateMessage(SyncJob job)
         {
             var body = JsonSerializer.Serialize(job);
             var message = new Message
@@ -39,7 +39,7 @@ namespace Tests.Repositories
             };
 
             message.UserProperties.Add("Type", job.Type);
-            message.MessageId = $"{job.PartitionKey}_{job.RowKey}";
+            message.MessageId = $"{job.PartitionKey}_{job.RowKey}_{job.RunId}";
 
             return message;
         }
