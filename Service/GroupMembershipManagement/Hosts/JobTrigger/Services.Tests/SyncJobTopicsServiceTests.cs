@@ -161,6 +161,38 @@ namespace Services.Tests
             Assert.AreEqual(jobsWithValidPeriods, jobsToProcessCount);
         }
 
+        [TestMethod]
+        public async Task VerifyUniqueMessageIdsAreCreated()
+        {
+            var MessageIdOne = "";
+            var MessageIdTwo = "";
+
+            var securityGroupJobCount = 1;
+            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(securityGroupJobCount, SecurityGroup));
+
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
+
+            await _syncJobTopicsService.ProcessSyncJobsAsync();
+
+            foreach (var job in _syncJobRepository.Jobs)
+            {
+                var message = _serviceBusTopicsRepository.CreateMessage(job);
+                MessageIdOne = message.MessageId;
+                job.Status = SyncStatus.Idle.ToString();
+            }
+
+            await _syncJobTopicsService.ProcessSyncJobsAsync();
+
+            foreach (var job in _syncJobRepository.Jobs)
+            {
+                var message = _serviceBusTopicsRepository.CreateMessage(job);
+                MessageIdTwo = message.MessageId;
+            }
+
+            Assert.AreNotEqual(MessageIdOne, MessageIdTwo);
+        }
+
         private List<SyncJob> CreateSampleSyncJobs(int numberOfJobs, string syncType, bool enabled = true, int period = 1, DateTime? startDateBase = null, DateTime? lastRunTime = null)
         {
             var jobs = new List<SyncJob>();
