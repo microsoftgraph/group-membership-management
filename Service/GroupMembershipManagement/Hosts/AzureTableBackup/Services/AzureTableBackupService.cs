@@ -37,6 +37,9 @@ namespace Services
                 await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Starting backup for table: {table.SourceTableName}" });
                 var entities = await _azureTableBackupRepository.GetEntitiesAsync(table);
 
+                if (entities == null)
+                    continue;
+
                 await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Backing up {entities.Count} entites from table: {table.SourceTableName}" });
                 var backupResult = await _azureTableBackupRepository.BackupEntitiesAsync(table, entities);
 
@@ -51,12 +54,12 @@ namespace Services
         private async Task<List<string>> DeleteOldBackupTablesAsync(IAzureTableBackup backupSettings)
         {
             var backupTables = await _azureTableBackupRepository.GetBackupTablesAsync(backupSettings);
-            var cutOffDate = new DateTimeOffset(DateTime.UtcNow).AddDays(-backupSettings.DeleteAfterDays);
+            var cutOffDate = DateTime.UtcNow.AddDays(-backupSettings.DeleteAfterDays);
             var deletedTables = new List<string>();
 
             foreach (var table in backupTables)
             {
-                if (!table.TimeStamp.HasValue || table.TimeStamp < cutOffDate)
+                if (table.CreatedDate < cutOffDate)
                 {
                     await _azureTableBackupRepository.DeleteBackupTableAsync(backupSettings, table.TableName);
                     deletedTables.Add(table.TableName);
