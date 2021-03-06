@@ -89,7 +89,7 @@ namespace Services.Tests
             azureTableBackupRepository.Setup(x => x.BackupEntitiesAsync(backupSettings[0], entities))
                                         .ReturnsAsync(new BackupResult { BackupTableName = "backupTableName", RowCount = entities.Count });
             azureTableBackupRepository.Setup(x => x.GetBackupTablesAsync(backupSettings[0]))
-                                        .ReturnsAsync(new List<BackupTable> { new BackupTable { TableName = "backupTableName", TimeStamp = new DateTimeOffset(DateTime.UtcNow).AddDays(-7) } });
+                                        .ReturnsAsync(new List<BackupTable> { new BackupTable { TableName = "backupTableName", CreatedDate = DateTime.UtcNow.AddDays(-7) } });
             azureTableBackupRepository.Setup(x => x.GetLastestBackupResultTrackerAsync(It.IsAny<IAzureTableBackup>()))
                                         .ReturnsAsync(new BackupResult { BackupTableName = "backupTableName", RowCount = 1 });
 
