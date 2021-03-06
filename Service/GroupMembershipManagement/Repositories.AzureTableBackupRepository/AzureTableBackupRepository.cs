@@ -8,6 +8,7 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -17,6 +18,7 @@ namespace Repositories.AzureTableBackupRepository
     {
         private const string BACKUP_PREFIX = "Backup";
         private const string BACKUP_TABLE_NAME_SUFFIX = "BackupTracker";
+        private const string BACKUP_DATE_FORMAT = "yyyyMMddHHmmss";
         private readonly ILoggingRepository _loggingRepository = null;
 
         public AzureTableBackupRepository(ILoggingRepository loggingRepository)
@@ -31,16 +33,19 @@ namespace Repositories.AzureTableBackupRepository
             var storageAccount = CloudStorageAccount.Parse(backupSettings.DestinationConnectionString);
             var tableClient = storageAccount.CreateCloudTableClient();
             var tables = tableClient.ListTables(prefix: BACKUP_PREFIX + backupSettings.SourceTableName).ToList();
-
             var backupCloudTables = new List<BackupTable>();
-            var query = new TableQuery<DynamicTableEntity>();
+
             foreach (var table in tables)
             {
-                var message = table.ExecuteQuery(query).FirstOrDefault();
                 var backupTable = new BackupTable
                 {
                     TableName = table.Name,
-                    TimeStamp = message?.Timestamp
+                    CreatedDate = DateTime.SpecifyKind(
+                                            DateTime.ParseExact(table.Name.Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
+                                                BACKUP_DATE_FORMAT,
+                                                CultureInfo.InvariantCulture,
+                                                DateTimeStyles.AssumeUniversal), 
+                                        DateTimeKind.Utc)
                 };
 
                 backupCloudTables.Add(backupTable);
@@ -53,9 +58,15 @@ namespace Repositories.AzureTableBackupRepository
 
         public async Task<List<DynamicTableEntity>> GetEntitiesAsync(IAzureTableBackup backupSettings)
         {
-            var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, backupSettings.SourceTableName);
+            var table = await GetCloudTableAsync(backupSettings.SourceConnectionString, backupSettings.SourceTableName);
             var entities = new List<DynamicTableEntity>();
             var query = table.CreateQuery<DynamicTableEntity>().AsTableQuery();
+
+            if (!(await table.ExistsAsync()))
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Source table {backupSettings.SourceTableName} was not found!" });
+                return null;
+            }
 
             TableContinuationToken continuationToken = null;
             do
@@ -111,7 +122,7 @@ namespace Repositories.AzureTableBackupRepository
 
         public async Task<BackupResult> BackupEntitiesAsync(IAzureTableBackup backupSettings, List<DynamicTableEntity> entities)
         {
-            var tableName = $"{BACKUP_PREFIX}{backupSettings.SourceTableName}{DateTime.UtcNow.ToString("yyyyMMddHHmmss")}";
+            var tableName = $"{BACKUP_PREFIX}{backupSettings.SourceTableName}{DateTime.UtcNow.ToString(BACKUP_DATE_FORMAT)}";
             var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, tableName);
 
             if (!await table.ExistsAsync())

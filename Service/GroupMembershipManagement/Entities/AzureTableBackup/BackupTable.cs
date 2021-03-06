@@ -7,6 +7,6 @@ namespace Entities.AzureTableBackup
     public class BackupTable
     {
         public string TableName { get; set; }
-        public DateTimeOffset? TimeStamp { get; set; }
+        public DateTime CreatedDate { get; set; }
     }
 }
