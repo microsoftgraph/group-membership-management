@@ -13,10 +13,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Common.DependencyInjection\Common.DependencyInjection.csproj" />
     <ProjectReference Include="..\DIConcreteTypes\DIConcreteTypes.csproj" />
     <ProjectReference Include="..\Repositories.Contracts\Repositories.Contracts.csproj" />
     <ProjectReference Include="..\Repositories.Localization\Repositories.Localization.csproj" />
     <ProjectReference Include="..\Repositories.Logging\Repositories.Logging.csproj" />
+    <ProjectReference Include="..\Repositories.Mail\Repositories.Mail.csproj" />
     <ProjectReference Include="..\Repositories.TableStorage\Repositories.TableStorage.csproj" />
   </ItemGroup>
 
