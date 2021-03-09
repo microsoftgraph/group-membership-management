@@ -82,7 +82,7 @@ namespace Hosts.GraphUpdater
 				await _log.LogMessageAsync(new LogMessage { Message = $"Sync jobs being batched : Partition key {job.PartitionKey} , Row key {job.RowKey}", RunId = membership.RunId });
 				await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo.syncStatus);
 
-				if (isInitialSync && job.Status == "Idle")
+				if (isInitialSync && job.Status == SyncStatus.Idle.ToString())
 				{
 					var message = new EmailMessage
 					{
@@ -97,7 +97,7 @@ namespace Hosts.GraphUpdater
 					
 					await _mailRepository.SendMailAsync(message);
 				}
-				if (job.Status == "Error")
+				if (job.Status == SyncStatus.Error.ToString())
 				{
 					var message = new EmailMessage
 					{
@@ -120,10 +120,10 @@ namespace Hosts.GraphUpdater
 			{
 				await _log.LogMessageAsync(new LogMessage { Message = $"On another read, job's status is {job.Status}.", RunId = membership.RunId });
 
-				if (job.Status == "InProgress")
+				if (job.Status == SyncStatus.InProgress.ToString())
 				{
 					await _log.LogMessageAsync(new LogMessage { Message = "Job is stuck in progress. Attempting to force it back to Idle.", RunId = membership.RunId });
-					job.Status = "Idle";
+					job.Status = SyncStatus.Idle.ToString();
 					await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.Idle);
 					await _log.LogMessageAsync(new LogMessage { Message = $"Forced set job status to {job.Status}", RunId = membership.RunId });
 				}
