@@ -7,7 +7,6 @@ using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.Logging;
 using Repositories.ServiceBusTopics;
 using Repositories.SyncJobsRepository;
 using Services.Contracts;
@@ -16,7 +15,6 @@ using Common.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Repositories.GraphGroups;
 using Microsoft.Graph;
-using Repositories.Mail;
 
 [assembly: FunctionsStartup(typeof(Hosts.JobTrigger.Startup))]
 
@@ -24,13 +22,11 @@ namespace Hosts.JobTrigger
 {
     public class Startup : CommonStartup
     {
+        protected override string FunctionName => nameof(JobTrigger);
+
         public override void Configure(IFunctionsHostBuilder builder)
         {
             base.Configure(builder);
-			builder.Services.AddOptions<GraphCredentials>().Configure<IConfiguration>((settings, configuration) =>
-			{
-				configuration.GetSection("graphCredentials").Bind(settings);
-			});
 
             builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {
@@ -43,30 +39,16 @@ namespace Hosts.JobTrigger
            {
                return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
            })
-           .AddSingleton<IEmailSenderRecipient>(services =>
-           {
-               var creds = services.GetService<IOptions<EmailSenderRecipient>>();
-               return new EmailSenderRecipient(creds.Value.SenderAddress, creds.Value.SenderPassword, creds.Value.SyncCompletedCCAddresses, creds.Value.SyncDisabledCCAddresses);
-           })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>();
 
-			builder.Services.AddSingleton<ISyncJobRepository>(services =>
+            builder.Services.AddSingleton<ISyncJobRepository>(services =>
              {
                  var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
                  return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
              });
+
             builder.Services.AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(GetValueOrThrow("serviceBusConnectionString"), GetValueOrThrow("serviceBusSyncJobTopic")));
             builder.Services.AddSingleton<ISyncJobTopicService, SyncJobTopicsService>();
-            builder.Services.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(new LogAnalyticsSecret<LoggingRepository>(GetValueOrThrow("logAnalyticsCustomerId"), GetValueOrThrow("logAnalyticsPrimarySharedKey"), nameof(JobTrigger)));
-            builder.Services.AddSingleton<ILoggingRepository, LoggingRepository>();
-            var graphCredentials = builder.Services.BuildServiceProvider().GetService<IOptions<GraphCredentials>>().Value;
-            builder.Services.AddOptions<EmailSenderRecipient>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.SenderAddress = configuration.GetValue<string>("senderAddress");
-                settings.SenderPassword = configuration.GetValue<string>("senderPassword");
-                settings.SyncDisabledCCAddresses = configuration.GetValue<string>("syncDisabledCCEmailAddresses");
-            });
-            builder.Services.AddSingleton<IMailRepository>(services => new MailRepository(new GraphServiceClient(FunctionAppDI.CreateMailAuthProvider(graphCredentials)), services.GetService<ILocalizationRepository>()));
-        }   
+        }
     }
 }
