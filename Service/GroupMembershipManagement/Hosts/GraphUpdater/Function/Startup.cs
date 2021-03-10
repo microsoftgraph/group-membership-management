@@ -15,6 +15,8 @@ using Repositories.Logging;
 using Repositories.MembershipDifference;
 using Repositories.SyncJobsRepository;
 using System.Linq;
+using Repositories.MembershipDifference;
+using Repositories.SyncJobsRepository;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
 [assembly: FunctionsStartup(typeof(Hosts.GraphUpdater.Startup))]
