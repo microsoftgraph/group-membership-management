@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.Contracts;
@@ -25,18 +24,9 @@ namespace Hosts.FunctionBase
     public abstract class CommonStartup : FunctionsStartup
     {
         protected abstract string FunctionName { get; }
-        protected IConfigurationRoot _configuration;
 
         public override void Configure(IFunctionsHostBuilder builder)
         {
-            var serviceProvider = builder.Services.BuildServiceProvider();
-            var configurationRoot = serviceProvider.GetService<IConfiguration>();
-            var configurationBuilder = new ConfigurationBuilder().AddEnvironmentVariables();
-
-            configurationBuilder.AddConfiguration(configurationRoot);
-
-            _configuration = configurationBuilder.Build();
-            builder.Services.Replace(ServiceDescriptor.Singleton(typeof(IConfiguration), _configuration));
             builder.Services.AddLocalization(opts => { opts.ResourcesPath = "Resources"; });
             builder.Services.Configure<RequestLocalizationOptions>(opts =>
             {
@@ -78,7 +68,7 @@ namespace Hosts.FunctionBase
 
         public string GetValueOrThrow(string key, [CallerFilePath] string callerFile = "", [CallerLineNumber] int callerLine = 0)
         {
-            var value = _configuration.GetValue<string>(key);
+            var value = Environment.GetEnvironmentVariable(key, EnvironmentVariableTarget.Process);
             if (string.IsNullOrWhiteSpace(value))
                 throw new ArgumentNullException($"Could not start because of missing configuration option: {key}. Requested by file {callerFile}:{callerLine}.");
             return value;
