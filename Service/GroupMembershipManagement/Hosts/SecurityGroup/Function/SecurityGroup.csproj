@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj" />
     <ProjectReference Include="..\..\..\DIConcreteTypes\DIConcreteTypes.csproj" />
+    <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Logging\Repositories.Logging.csproj" />
