@@ -62,6 +62,7 @@ namespace Hosts.FunctionBase
                 settings.SenderAddress = configuration.GetValue<string>("senderAddress");
                 settings.SenderPassword = configuration.GetValue<string>("senderPassword");
                 settings.SyncDisabledCCAddresses = configuration.GetValue<string>("syncDisabledCCEmailAddresses");
+                settings.SyncCompletedCCAddresses = configuration.GetValue<string>("syncCompletedCCEmailAddresses");
             });
 
             builder.Services.AddSingleton<IEmailSenderRecipient>(services =>
