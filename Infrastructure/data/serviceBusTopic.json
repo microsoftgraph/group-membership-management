@@ -21,7 +21,8 @@
 			"properties": {
 				"path": "[parameters('topicName')]",
 				"requiresDuplicateDetection": true,
-				"defaultMessageTimeToLive": "P14D"
+				"defaultMessageTimeToLive": "P14D",
+				"duplicateDetectionHistoryTimeWindow": "PT01M"
 			}
 		}
 	],
