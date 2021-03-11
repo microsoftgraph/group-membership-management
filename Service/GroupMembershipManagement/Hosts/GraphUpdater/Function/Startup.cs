@@ -11,8 +11,10 @@ using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.Contracts;
 using Repositories.GraphGroups;
+using Repositories.Logging;
 using Repositories.MembershipDifference;
 using Repositories.SyncJobsRepository;
+using System.Linq;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
 [assembly: FunctionsStartup(typeof(Hosts.GraphUpdater.Startup))]
@@ -27,6 +29,10 @@ namespace Hosts.GraphUpdater
         {
             base.Configure(builder);
 
+            var logger = builder.Services.Where(s => s.ServiceType == typeof(ILoggingRepository) && s.Lifetime == ServiceLifetime.Singleton).First();
+            builder.Services.Remove(logger);
+            builder.Services.AddScoped<ILoggingRepository, LoggingRepository>();
+
             builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
@@ -39,7 +45,7 @@ namespace Hosts.GraphUpdater
                 return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
             })
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
-            .AddSingleton<ISyncJobRepository>(services =>
+            .AddScoped<ISyncJobRepository>(services =>
             {
                 var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
                 return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
@@ -48,5 +54,4 @@ namespace Hosts.GraphUpdater
             .AddScoped<IGraphUpdater, GraphUpdaterApplication>();
         }
     }
-
 }
