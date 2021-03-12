@@ -63,7 +63,6 @@ function Set-SenderRecipientCredentials {
 
 	Set-AzContext -SubscriptionName $SubscriptionName
 
-	#Connect-AzureAD
 
 	. ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
 	Install-AzModuleIfNeeded
@@ -123,5 +122,3 @@ function Set-SenderRecipientCredentials {
 	#endregion
 	Write-Verbose "Set-SenderRecipientCredentials completed."
 }
-
-Set-SenderRecipientCredentials -SubscriptionName "MSFT-STSolution-02" -SolutionAbbreviation "gmm" -EnvironmentAbbreviation "gl" -SenderUsername "gmmmailsender@gracegmm.onmicrosoft.com" -SenderPassword "2IjyP2mHSAkwuMb3sNnmobKjJsK4bp" -SyncCompletedCCEmailAddresses "glovelace@microsoft.com" -SyncDisabledCCEmailAddresses "glovelace@microsoft.com" -Verbose
