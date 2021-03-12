@@ -63,10 +63,10 @@ function Set-SenderRecipientCredentials {
 
 	Set-AzContext -SubscriptionName $SubscriptionName
 
-	Connect-AzureAD
+	#Connect-AzureAD
 
-	. ($scriptsDirectory + '\Scripts\Install-AzKeyVaultModuleIfNeeded.ps1')
-	Install-AzKeyVaultModuleIfNeeded
+	. ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
+	Install-AzModuleIfNeeded
 	
 	$keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
     $keyVault = Get-AzKeyVault -VaultName $keyVaultName
@@ -123,3 +123,5 @@ function Set-SenderRecipientCredentials {
 	#endregion
 	Write-Verbose "Set-SenderRecipientCredentials completed."
 }
+
+Set-SenderRecipientCredentials -SubscriptionName "MSFT-STSolution-02" -SolutionAbbreviation "gmm" -EnvironmentAbbreviation "gl" -SenderUsername "gmmmailsender@gracegmm.onmicrosoft.com" -SenderPassword "2IjyP2mHSAkwuMb3sNnmobKjJsK4bp" -SyncCompletedCCEmailAddresses "glovelace@microsoft.com" -SyncDisabledCCEmailAddresses "glovelace@microsoft.com" -Verbose
