@@ -555,7 +555,7 @@ A newer version of this cmdlet is under development.  It will be available in an
 
 # Setting AzureTableBackup function
 `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureTableBackup function can create backups for Azure Storage Tables and delete older backups automatically.
-Out of the box AzureTableBackup function will backup the 'syncJobs' table, this is where all the jobs are being defined, the function is set to run every day at midnight and will delete backups older than 7 days.
+Out of the box, the AzureTableBackup function will backup the 'syncJobs' table; where all the groups' sync parameters are defined. The function is set to run every day at midnight and will delete backups older than 7 days.
 
 The function reads the backup configuration settings from the data keyvault (`<SolutionAbbreviation>`-data-`<EnvironmentAbbreviation>`), specifically from a secret named 'tablesToBackup' which is a string that represents a json array of backup configurations.
 
@@ -568,9 +568,9 @@ The function reads the backup configuration settings from the data keyvault (`<S
         }
     ]
 
-The default configuration for the 'syncJobs' table is generated via ARM template, for more details see the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureTableBackup\Infrastructure\data\template.json
+The default configuration for the 'syncJobs' table is generated via an ARM template. For more details see the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureTableBackup\Infrastructure\data\template.json
 
-The run frequency is set to every day at midnight, it is defined as a NCRONTAB expression in the application setting named 'backupTriggerSchedule' which can be updated on the Azure Portal, it's located under the Configuration blade for `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureTableBackup Function App, additionaly it can be updated directly in the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureTableBackup\Infrastructure\compute\template.json
+The run frequency is set to every day at midnight, it is defined as a NCRONTAB expression in the application setting named 'backupTriggerSchedule' which can be updated on the Azure Portal, it's located under the Configuration blade for `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureTableBackup Function App, additionally it can be updated directly in the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureTableBackup\Infrastructure\compute\template.json
 
 # Setting GMM in a demo tenant
 
