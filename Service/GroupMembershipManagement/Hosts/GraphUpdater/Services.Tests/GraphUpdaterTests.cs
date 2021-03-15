@@ -12,6 +12,7 @@ using Entities;
 using Repositories.Mocks;
 using System.Runtime.InteropServices;
 using Repositories.Contracts.InjectConfig;
+using System.Threading.Tasks;
 
 namespace Services.Tests
 {
@@ -19,7 +20,7 @@ namespace Services.Tests
 	public class GraphUpdaterTests
 	{
 		[TestMethod]
-		public void AccumulatesMessagesAndUpdatesGraph()
+		public async Task AccumulatesMessagesAndUpdatesGraphAsync()
 		{
 			var mockUpdater = new MockGraphUpdater();
 			var sessionCollector = new SessionMessageCollector(mockUpdater);
@@ -28,31 +29,30 @@ namespace Services.Tests
 			{
 				SessionId = "someId"
 			};
+			var sessionId = "someId";
 
 			var incomingMessages = MakeMembershipMessages();
 
 			foreach (var message in incomingMessages.SkipLast(1))
 			{
-				sessionCollector.HandleNewMessage(message, mockSession);
+				var result = await sessionCollector.HandleNewMessageAsync(message, sessionId);
 
 				// sessionCollector doesn't do anything until it gets the last message.
 				Assert.AreEqual(0, mockUpdater.Actual.Count);
 				Assert.IsFalse(mockSession.Closed);
 				Assert.AreEqual(0, mockSession.CompletedLockTokens.Count);
+				Assert.AreEqual(false, result.ShouldCompleteMessage);
 			}
 
-			sessionCollector.HandleNewMessage(incomingMessages.Last(), mockSession);
+			var groupMembershipMessageResponse = await sessionCollector.HandleNewMessageAsync(incomingMessages.Last(), sessionId);
 
-			Assert.IsTrue(mockSession.Closed);
-
+			Assert.IsFalse(mockSession.Closed);
+			Assert.IsTrue(groupMembershipMessageResponse.ShouldCompleteMessage);
 			Assert.AreEqual(1, mockUpdater.Actual.Count);
 			var mergedMembership = mockUpdater.Actual.Single();
 
-			Assert.AreEqual(incomingMessages.Length, mockSession.CompletedLockTokens.Count);
 			for (int i = 0; i < incomingMessages.Length; i++)
 			{
-				Assert.AreEqual(incomingMessages[i].LockToken, mockSession.CompletedLockTokens[i]);
-
 				var currentBody = incomingMessages[i].Body;
 				Assert.AreEqual(currentBody.SyncJobRowKey, mergedMembership.SyncJobRowKey);
 				Assert.AreEqual(currentBody.SyncJobPartitionKey, mergedMembership.SyncJobPartitionKey);
@@ -63,7 +63,7 @@ namespace Services.Tests
 		}
 
 		[TestMethod]
-		public void IgnoresMissingDestinationGroup()
+		public async Task IgnoresMissingDestinationGroupAsync()
 		{
 			var mockGroups = new MockGraphGroupRepository();
 			var mockSyncJobs = new MockSyncJobRepository();
@@ -78,6 +78,7 @@ namespace Services.Tests
 			{
 				SessionId = "someId"
 			};
+			var sessionId = "someId";
 
 			var syncJobKeys = (Guid.NewGuid().ToString(), Guid.NewGuid().ToString());
 
@@ -98,17 +99,18 @@ namespace Services.Tests
 
 			foreach (var message in incomingMessages.SkipLast(1))
 			{
-				sessionCollector.HandleNewMessage(message, mockSession);
+				var result = await sessionCollector.HandleNewMessageAsync(message, sessionId);
 
 				// sessionCollector doesn't do anything until it gets the last message.
 				Assert.AreEqual(0, mockLogs.MessagesLogged);
 				Assert.IsFalse(mockSession.Closed);
 				Assert.AreEqual(0, mockSession.CompletedLockTokens.Count);
+				Assert.IsFalse(result.ShouldCompleteMessage);
 			}
 
-			sessionCollector.HandleNewMessage(incomingMessages.Last(), mockSession);
+			var groupMembershipMessageResponse = await sessionCollector.HandleNewMessageAsync(incomingMessages.Last(), sessionId);
 
-			Assert.IsTrue(mockSession.Closed);
+			Assert.IsFalse(mockSession.Closed);
 			Assert.AreEqual(7, mockLogs.MessagesLogged);
 			Assert.AreEqual("Error", syncJob.Status);
 			Assert.IsFalse(syncJob.Enabled);
@@ -116,7 +118,7 @@ namespace Services.Tests
 		}
 
 		[TestMethod]
-		public void SyncsGroupsCorrectly()
+		public async Task SyncsGroupsCorrectlyAsync()
 		{
 			var mockGroups = new MockGraphGroupRepository();
 			var mockSyncJobs = new MockSyncJobRepository();
@@ -131,6 +133,7 @@ namespace Services.Tests
 			{
 				SessionId = "someId"
 			};
+			var sessionId = "someId";
 
 			var syncJobKeys = (Guid.NewGuid().ToString(), Guid.NewGuid().ToString());
 
@@ -153,18 +156,20 @@ namespace Services.Tests
 
 			foreach (var message in incomingMessages.SkipLast(1))
 			{
-				sessionCollector.HandleNewMessage(message, mockSession);
+				var result = await sessionCollector.HandleNewMessageAsync(message, sessionId);
 
 				// sessionCollector doesn't do anything until it gets the last message.
 				Assert.AreEqual(0, mockLogs.MessagesLogged);
 				Assert.IsFalse(mockSession.Closed);
 				Assert.AreEqual(0, mockSession.CompletedLockTokens.Count);
+				Assert.IsFalse(result.ShouldCompleteMessage);
 			}
 
-			sessionCollector.HandleNewMessage(incomingMessages.Last(), mockSession);
+			var groupMembershipMessageResponse = await sessionCollector.HandleNewMessageAsync(incomingMessages.Last(), sessionId);
 
-			Assert.IsTrue(mockSession.Closed);
+			Assert.IsFalse(mockSession.Closed);
 			Assert.AreEqual(9, mockLogs.MessagesLogged);
+			Assert.IsTrue(groupMembershipMessageResponse.ShouldCompleteMessage);
 			Assert.AreEqual("Idle", syncJob.Status);
 			Assert.IsTrue(syncJob.Enabled);
 			Assert.AreEqual(1, mockGroups.GroupsToUsers.Count);
@@ -172,7 +177,7 @@ namespace Services.Tests
 		}
 
 		[TestMethod]
-		public void HandlesErroredJobs()
+		public async Task HandlesErroredJobsAsync()
 		{
 			var mockGroups = new MockGraphGroupRepository();
 			var mockSyncJobs = new MockSyncJobRepository();
@@ -187,6 +192,7 @@ namespace Services.Tests
 			{
 				SessionId = "someId"
 			};
+			var sessionId = "someId";
 
 			var syncJobKeys = (Guid.NewGuid().ToString(), Guid.NewGuid().ToString());
 
@@ -215,10 +221,11 @@ namespace Services.Tests
 
 			mockGroups.GroupsToUsers.Add(incomingMessage.Body.Destination.ObjectId, new List<AzureADUser>() { new AzureADUser { ObjectId = Guid.NewGuid() } });
 
-			sessionCollector.HandleNewMessage(incomingMessage, mockSession);
+			var groupMembershipMessageResponse = await sessionCollector.HandleNewMessageAsync(incomingMessage, sessionId);
 
-			Assert.IsTrue(mockSession.Closed);
+			Assert.IsFalse(mockSession.Closed);
 			Assert.AreEqual("Error", syncJob.Status);
+			Assert.IsTrue(groupMembershipMessageResponse.ShouldCompleteMessage);
 			Assert.IsFalse(syncJob.Enabled);
 			Assert.AreEqual(1, mockGroups.GroupsToUsers.Count);
 			Assert.AreEqual(1, mockGroups.GroupsToUsers.Values.Single().Count);
