@@ -76,7 +76,7 @@ namespace Hosts.FunctionBase
 
         public string GetValueOrDefault(string key, [CallerFilePath] string callerFile = "", [CallerLineNumber] int callerLine = 0)
         {
-            return _configuration.GetValue<string>(key) ?? string.Empty;
+            return Environment.GetEnvironmentVariable(key, EnvironmentVariableTarget.Process) ?? string.Empty;
         }
     }
 }

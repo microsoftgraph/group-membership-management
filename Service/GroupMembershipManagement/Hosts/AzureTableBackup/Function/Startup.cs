@@ -1,12 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using DIConcreteTypes;
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.Logging;
 using Hosts.AzureTableBackup;
 using Services;
 using Services.Contracts;
@@ -21,14 +19,11 @@ namespace Hosts.AzureTableBackup
 {
     public class Startup : CommonStartup
     {
+        protected override string FunctionName => nameof(AzureTableBackup);
+
         public override void Configure(IFunctionsHostBuilder builder)
         {
-
             base.Configure(builder);
-
-            builder.Services.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(
-              new LogAnalyticsSecret<LoggingRepository>(GetValueOrThrow("logAnalyticsCustomerId"), GetValueOrThrow("logAnalyticsPrimarySharedKey"), nameof(AzureTableBackup)));
-            builder.Services.AddScoped<ILoggingRepository, LoggingRepository>();
 
             builder.Services.AddScoped<IAzureTableBackupRepository, AzureTableBackupRepository>();
             builder.Services.AddScoped<IAzureTableBackupService>(services =>
