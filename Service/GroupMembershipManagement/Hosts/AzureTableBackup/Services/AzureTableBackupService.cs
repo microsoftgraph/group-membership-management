@@ -17,7 +17,10 @@ namespace Services
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly IAzureTableBackupRepository _azureTableBackupRepository = null;
 
-        public AzureTableBackupService(List<IAzureTableBackup> tablesToBackup, ILoggingRepository loggingRepository, IAzureTableBackupRepository azureTableBackupRepository)
+        public AzureTableBackupService(
+            List<IAzureTableBackup> tablesToBackup,
+            ILoggingRepository loggingRepository,
+            IAzureTableBackupRepository azureTableBackupRepository)
         {
             _tablesToBackup = tablesToBackup;
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
