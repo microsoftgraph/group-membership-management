@@ -20,7 +20,7 @@ namespace Hosts.GraphUpdater
     public class StarterFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly int MAX_RETRY_ATTEMPTS = 12;
+        private readonly int MAX_RETRY_ATTEMPTS = 8;
 
         public StarterFunction(ILoggingRepository loggingRepository)
         {
@@ -79,6 +79,8 @@ namespace Hosts.GraphUpdater
                 completedGroupMembershipMessages = orchestratorResponseOutput.CompletedGroupMembershipMessages;
                 isLastMessage = orchestratorResponseOutput.ShouldCompleteMessage;
             }
+
+            renew = RenewMessages(messageSession, message.SystemProperties.LockToken, cancellationToken);
 
             if (isLastMessage)
             {
