@@ -24,7 +24,7 @@ namespace Repositories.SyncJobsRepository
             _log = loggingRepository;
             _cloudStorageAccount = CreateStorageAccountFromConnectionString(connectionString);
             _tableClient = _cloudStorageAccount.CreateCloudTableClient(new TableClientConfiguration());
-            _tableClient.GetTableReference(syncJobTableName).CreateIfNotExistsAsync();            
+            _tableClient.GetTableReference(syncJobTableName).CreateIfNotExistsAsync();
         }
 
         public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false)
@@ -128,12 +128,12 @@ namespace Repositories.SyncJobsRepository
             }
             catch (FormatException ex)
             {
-                _log.LogMessageAsync(new LogMessage { Message = ex.GetBaseException().ToString() });
+                _log.LogMessageAsync(new LogMessage { Message = "The connection string does not have a valid format.\n" + ex.GetBaseException().ToString() });
                 throw;
             }
             catch (ArgumentException ex)
             {
-                _log.LogMessageAsync(new LogMessage { Message = ex.GetBaseException().ToString() });
+                _log.LogMessageAsync(new LogMessage { Message = "Unable to parse the connection string.\n" + ex.GetBaseException().ToString() });
                 throw;
             }
         }
