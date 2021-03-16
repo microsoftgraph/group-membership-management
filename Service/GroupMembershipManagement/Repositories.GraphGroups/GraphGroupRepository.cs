@@ -155,7 +155,7 @@ namespace Repositories.GraphGroups
             {
 				_ = _log.LogMessageAsync(new LogMessage
 				{
-					Message = ex.GetBaseException().ToString(),
+					Message = "Unable to retrieve group members.\n" + ex.GetBaseException().ToString(),
 					RunId = RunId
 				});
 
