@@ -128,12 +128,12 @@ namespace Repositories.SyncJobsRepository
             }
             catch (FormatException ex)
             {
-                _log.LogMessageAsync(new LogMessage { Message = ex.GetBaseException().ToString() });
+                _log.LogMessageAsync(new LogMessage { Message = "The connection string does not have a valid format.\n" + ex.GetBaseException().ToString() });
                 throw;
             }
             catch (ArgumentException ex)
             {
-                _log.LogMessageAsync(new LogMessage { Message = ex.GetBaseException().ToString() });
+                _log.LogMessageAsync(new LogMessage { Message = "Unable to parse the connection string.\n" + ex.GetBaseException().ToString() });
                 throw;
             }
         }
