@@ -6,6 +6,9 @@ using System.Text;
 using System.Threading.Tasks;
 using Entities;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Diagnostics;
 
 namespace DemoUserSetup
 {
@@ -31,24 +34,37 @@ namespace DemoUserSetup
 
 			try
 			{
+				Stopwatch timer = Stopwatch.StartNew();
 				for (int i = 0; i < _testUsers.Length; i++)
 				{
 					if (_testUsers[i] == null)
 						await AddNewUser(i);
+
+					if (i % 500 == 0)
+					{
+						var rate = timer.ElapsedMilliseconds / 500.0;
+						var millisecondsLeft = rate * (_testUsers.Length - i);
+						Console.WriteLine($"Added {i}/{_testUsers.Length} users ({i * 100.0 / _testUsers.Length:0.00}%). ETA: {TimeSpan.FromMilliseconds(millisecondsLeft)}");
+						timer.Restart();
+					}
 				}
 			}
 			catch (ServiceException ex)
 			{
+				Console.WriteLine(ex);
 			}
 		}
 
-		private async Task PermanentlyDeleteItems(IEnumerable<DirectoryObject> toDelete)
+		private int _permanentlyDeleted = 0;
+		private Task PermanentlyDeleteItems(IEnumerable<DirectoryObject> toDelete)
 		{
-			foreach (var obj in toDelete)
+			return Task.WhenAll(toDelete.Select(async obj =>
 			{
 				await _graphServiceClient.Directory.DeletedItems[obj.Id].Request().DeleteAsync();
-			}
+				Interlocked.Increment(ref _permanentlyDeleted);
+			}));
 		}
+
 		private async Task DeleteOldObjects(string type)
 		{
 			var deletedItemsUrl = _graphServiceClient.Directory.DeletedItems.AppendSegmentToRequestUrl(type);
@@ -61,9 +77,11 @@ namespace DemoUserSetup
 			{
 				deletedItems = await deletedItems.NextPageRequest.GetAsync();
 				await PermanentlyDeleteItems(deletedItems);
+				Console.WriteLine($"Cleaned up {_permanentlyDeleted} deleted items so far.");
 			}
 		}
-		private static void HandleExistingUsers(IEnumerable<User> users)
+
+		private void HandleExistingUsers(IEnumerable<User> users)
 		{
 			foreach (var user in users)
 			{
