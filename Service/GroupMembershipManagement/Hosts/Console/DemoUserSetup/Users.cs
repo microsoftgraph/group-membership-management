@@ -48,6 +48,8 @@ namespace DemoUserSetup
 						timer.Restart();
 					}
 				}
+
+				Console.WriteLine("Done!");
 			}
 			catch (ServiceException ex)
 			{
