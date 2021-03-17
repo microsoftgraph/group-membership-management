@@ -25,6 +25,12 @@
         "description": "Enter an abbreviation for the solution."
       }
     },
+    "tenantId": {
+      "type": "string",
+      "metadata": {
+        "description": "Enter tenant Id."
+      }
+    },
     "storageAccountName": {
       "type": "string",
       "metadata": {
