@@ -11,12 +11,16 @@ namespace DemoUserSetup
     {
         static async Task Main(string[] args)
         {
+			// use an Azure AD app in your demo tenant with http://localhost as a redirect URI under "Mobile and Desktop Applications"
+			// (it won't work if it's under Web, which is the default!)
+			// and the following delegated permissions:
+			// - GroupMember.Read.All
+			// - User.Read.All
+			// When you run this, sign in with your demo tenant administrator credentials.
             string clientId = AppSettings.LoadAppSettings().ClientId;
             string tenantId = AppSettings.LoadAppSettings().TenantId;
 
-            // if this doesn't work, make sure localhost is set as a reply url under Native/Desktop Client!
-            // it won't work if localhost is under web
-            var publicClientApp = PublicClientApplicationBuilder.Create(clientId)
+			var publicClientApp = PublicClientApplicationBuilder.Create(clientId)
             .WithRedirectUri("http://localhost")
             .WithAuthority(AzureCloudInstance.AzurePublic, tenantId)
             .Build();
