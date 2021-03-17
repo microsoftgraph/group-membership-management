@@ -5,18 +5,16 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Services.Tests.Mocks;
 using Repositories.MembershipDifference;
 using Entities;
 using Repositories.Mocks;
-using System.Runtime.InteropServices;
 using Repositories.Contracts.InjectConfig;
 using System.Threading.Tasks;
 
 namespace Services.Tests
 {
-	[TestClass]
+    [TestClass]
 	public class GraphUpdaterTests
 	{
 		[TestMethod]
@@ -24,7 +22,7 @@ namespace Services.Tests
 		{
 			var mockUpdater = new MockGraphUpdater();
 			var mockLogs = new MockLoggingRepository();
-			var sessionCollector = new SessionMessageCollector(mockUpdater, mockLogs);
+			var sessionCollector = new SessionMessageCollector(mockUpdater);
 
 			var mockSession = new MockMessageSession()
 			{
@@ -73,7 +71,7 @@ namespace Services.Tests
 			var mockGraph = new MockGraphGroupRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
 			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
-			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
+			var sessionCollector = new SessionMessageCollector(updater);
 
 			var mockSession = new MockMessageSession()
 			{
@@ -128,7 +126,7 @@ namespace Services.Tests
 			var mockGraph = new MockGraphGroupRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
 			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
-			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
+			var sessionCollector = new SessionMessageCollector(updater);
 
 			var mockSession = new MockMessageSession()
 			{
@@ -187,7 +185,7 @@ namespace Services.Tests
 			var mockGraph = new MockGraphGroupRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
 			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
-			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
+			var sessionCollector = new SessionMessageCollector(updater);
 
 			var mockSession = new MockMessageSession()
 			{
