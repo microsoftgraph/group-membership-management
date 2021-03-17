@@ -21,8 +21,8 @@ namespace DemoUserSetup
 			while (_readSoFar.Count < index + 1 && !_file.EndOfStream)
 			{
 				var nextLine = _file.ReadLine().Split(',');
-				_readSoFar.Add(new EmailIDPair { ImmutableId = nextLine[0], 
-					Alias = (nextLine.Length == 1 || string.IsNullOrWhiteSpace(nextLine[1])) ? $"testuser{index}" : nextLine[1] });
+				_readSoFar.Add(new EmailIDPair { ImmutableId = nextLine[0].Trim('"'), 
+					Alias = (nextLine.Length == 1 || string.IsNullOrWhiteSpace(nextLine[1])) ? $"testuser{index}" : nextLine[1].Trim('"') });
 			}
 
 			return _readSoFar[index];

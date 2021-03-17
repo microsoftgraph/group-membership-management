@@ -1,6 +1,6 @@
 {
-  "ClientId": "",
-  "TenantId": "",
-  "TenantName": "<tenantname>.onmicrosoft.com",
-  "UserCount": <number-less-than-35000>
+  "ClientId": "2b7d9161-5a54-42f6-a645-148691dca135",
+  "TenantId": "e71dd140-fdbf-4eaf-8c02-cee5f4a6af63",
+  "TenantName": "gracegmm.onmicrosoft.com",
+  "UserCount": 34000
 }
