@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Hosts.GraphUpdater
@@ -16,9 +15,9 @@ namespace Hosts.GraphUpdater
 	public class GraphUpdaterApplication : IGraphUpdater
 	{
 		private const string EmailSubject = "EmailSubject";
-        private const string SyncCompletedEmailBody = "SyncCompletedEmailBody";		
+		private const string SyncCompletedEmailBody = "SyncCompletedEmailBody";
 		private const string SyncDisabledEmailBody = "SyncDisabledEmailBody";
-		
+
 		private readonly IMembershipDifferenceCalculator<AzureADUser> _differenceCalculator;
 		private readonly IGraphGroupRepository _graphGroups;
 		private readonly ISyncJobRepository _syncJobRepo;
@@ -26,7 +25,7 @@ namespace Hosts.GraphUpdater
 		private readonly IMailRepository _mailRepository;
 		private readonly IGraphGroupRepository _graphGroupRepository;
 		private readonly IEmailSenderRecipient _emailSenderAndRecipients;
-		
+
 		public GraphUpdaterApplication(
 			IMembershipDifferenceCalculator<AzureADUser> differenceCalculator,
 			IGraphGroupRepository graphGroups,
@@ -50,13 +49,13 @@ namespace Hosts.GraphUpdater
 		{
 			_graphGroups.RunId = membership.RunId;
 			var fromto = $"from {PrettyPrintSources(membership.Sources)} to {membership.Destination}";
-            _log.SyncJobProperties = new Dictionary<string, string>
-            {
+			_log.SyncJobProperties = new Dictionary<string, string>
+			{
 				{ "partitionKey", membership.SyncJobPartitionKey },
 				{ "rowKey", membership.SyncJobRowKey },
 				{ "targetOfficeGroupId", membership.Destination.ObjectId.ToString() }
 			};
-           
+
 			var changeTo = await SynchronizeGroups(membership, fromto);
 
 			var syncJobsBeingProcessed = _syncJobRepo.GetSyncJobsAsync(new[] { (membership.SyncJobPartitionKey, membership.SyncJobRowKey) });
@@ -78,7 +77,7 @@ namespace Hosts.GraphUpdater
 				if (changeTo.syncStatus == SyncStatus.Error)
 				{
 					job.Enabled = false;
-				}				
+				}
 				await _log.LogMessageAsync(new LogMessage { Message = $"Sync jobs being batched : Partition key {job.PartitionKey} , Row key {job.RowKey}", RunId = membership.RunId });
 				await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo.syncStatus);
 
@@ -94,7 +93,7 @@ namespace Hosts.GraphUpdater
 						CcEmailAddresses = _emailSenderAndRecipients.SyncCompletedCCAddresses,
 						AdditionalContentParams = new[] { groupName, job.TargetOfficeGroupId.ToString(), changeTo.AddMembersCount.ToString(), changeTo.RemoveMembersCount.ToString() }
 					};
-					
+
 					await _mailRepository.SendMailAsync(message);
 				}
 				if (job.Status == SyncStatus.Error.ToString())

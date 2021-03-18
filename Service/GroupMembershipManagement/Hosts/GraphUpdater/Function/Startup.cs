@@ -21,7 +21,6 @@ using Repositories.SyncJobsRepository;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
 [assembly: FunctionsStartup(typeof(Hosts.GraphUpdater.Startup))]
@@ -50,8 +49,9 @@ namespace Hosts.GraphUpdater
 				settings.Location = nameof(GraphUpdater);
 			});
 
-			builder.Services.AddSingleton<IMembershipDifferenceCalculator<AzureADUser>, MembershipDifferenceCalculator<AzureADUser>>()
-			.AddSingleton<IGraphServiceClient>((services) =>
+			builder.Services.AddSingleton<IMembershipDifferenceCalculator<AzureADUser>, MembershipDifferenceCalculator<AzureADUser>>();
+
+			builder.Services.AddSingleton<IGraphServiceClient>((services) =>
 			{
 				return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
 			})
@@ -67,8 +67,8 @@ namespace Hosts.GraphUpdater
 				return new EmailSenderRecipient(creds.Value.SenderAddress, creds.Value.SenderPassword, creds.Value.SyncCompletedCCAddresses, creds.Value.SyncDisabledCCAddresses);
 			})
 			.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(services => services.GetService<IOptions<LogAnalyticsSecret<LoggingRepository>>>().Value)
-			.AddScoped<SessionMessageCollector>()
 			.AddScoped<ILoggingRepository, LoggingRepository>()
+			.AddScoped<SessionMessageCollector>()
 			.AddScoped<IGraphUpdater, GraphUpdaterApplication>();
 
 			var graphCredentials = builder.Services.BuildServiceProvider().GetService<IOptions<GraphCredentials>>().Value;
@@ -95,6 +95,5 @@ namespace Hosts.GraphUpdater
 			});
 			builder.Services.AddSingleton<ILocalizationRepository, LocalizationRepository>();
 		}
-    }
-
+	}
 }
