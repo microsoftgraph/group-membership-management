@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 
 namespace Repositories.GraphGroups
 {
-    public class GraphGroupRepository : IGraphGroupRepository
+	public class GraphGroupRepository : IGraphGroupRepository
 	{
 		private readonly IGraphServiceClient _graphServiceClient;
 		private readonly ILoggingRepository _log;
@@ -111,14 +111,25 @@ namespace Repositories.GraphGroups
 			IGroupTransitiveMembersCollectionWithReferencesPage members;
 
 			try
-            {
+			{
 				members = await _graphServiceClient.Groups[objectId.ToString()].TransitiveMembers.Request()
 							.WithMaxRetry(10)
 							.Select("id")
 							.GetAsync();
+
+				var toReturn = new List<AzureADUser>(ToUsers(members.CurrentPage, nonUserGraphObjects));
+				while (members.NextPageRequest != null)
+				{
+					members = await members.NextPageRequest.GetAsync();
+					toReturn.AddRange(ToUsers(members.CurrentPage, nonUserGraphObjects));
+				}
+
+				var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, nonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
+				await _log.LogMessageAsync(new LogMessage { RunId = RunId, Message = $"From group {objectId}, read {toReturn.Count} users, and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
+				return toReturn;
 			}
-            catch (ServiceException ex)
-            {
+			catch (ServiceException ex)
+			{
 				_ = _log.LogMessageAsync(new LogMessage
 				{
 					Message = ex.GetBaseException().ToString(),
@@ -127,32 +138,29 @@ namespace Repositories.GraphGroups
 
 				throw;
 			}
-
-			var toReturn = new List<AzureADUser>(ToUsers(members.CurrentPage, nonUserGraphObjects));
-			while (members.NextPageRequest != null)
-			{
-				members = await members.NextPageRequest.GetAsync();
-				toReturn.AddRange(ToUsers(members.CurrentPage, nonUserGraphObjects));
-			}
-
-			var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, nonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
-			await _log.LogMessageAsync(new LogMessage { RunId = RunId, Message = $"From group {objectId}, read {toReturn.Count} users, and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
-			return toReturn;
 		}
 
 		public async Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid objectId)
 		{
 			IGroupMembersCollectionWithReferencesPage members;
 
-            try
-            {
+			try
+			{
 				members = await _graphServiceClient.Groups[objectId.ToString()].Members.Request()
 				.WithMaxRetry(10)
 				.Select("id")
 				.GetAsync();
+
+				var toReturn = new List<IAzureADObject>(ToEntities(members.CurrentPage));
+				while (members.NextPageRequest != null)
+				{
+					members = await members.NextPageRequest.GetAsync();
+					toReturn.AddRange(ToEntities(members.CurrentPage));
+				}
+				return toReturn;
 			}
-            catch (ServiceException ex)
-            {
+			catch (ServiceException ex)
+			{
 				_ = _log.LogMessageAsync(new LogMessage
 				{
 					Message = "Unable to retrieve group members.\n" + ex.GetBaseException().ToString(),
@@ -161,14 +169,6 @@ namespace Repositories.GraphGroups
 
 				throw;
 			}
-
-			var toReturn = new List<IAzureADObject>(ToEntities(members.CurrentPage));
-			while (members.NextPageRequest != null)
-			{
-				members = await members.NextPageRequest.GetAsync();
-				toReturn.AddRange(ToEntities(members.CurrentPage));
-			}
-			return toReturn;
 		}
 
 		const int GraphBatchLimit = 20;
@@ -280,13 +280,13 @@ namespace Repositories.GraphGroups
 
 		private async Task<IAsyncEnumerable<string>> SendBatch(BatchRequestContent tosend)
 		{
-            try
-            {
+			try
+			{
 				var response = await _graphServiceClient.Batch.Request().WithMaxRetry(10).PostAsync(tosend);
 				return GetStepIdsToRetry(await response.GetResponsesAsync());
 			}
-            catch (ServiceException ex)
-            {
+			catch (ServiceException ex)
+			{
 				_ = _log.LogMessageAsync(new LogMessage
 				{
 					Message = ex.GetBaseException().ToString(),
@@ -294,7 +294,7 @@ namespace Repositories.GraphGroups
 				});
 
 				throw;
-            }
+			}
 		}
 
 		private static readonly HttpStatusCode[] _shouldRetry = new[] { HttpStatusCode.ServiceUnavailable, HttpStatusCode.GatewayTimeout, HttpStatusCode.BadGateway, HttpStatusCode.InternalServerError };
