@@ -15,7 +15,7 @@ namespace Services
         private const string EmailSubject = "EmailSubject";
         private const string SyncStartedEmailBody = "SyncStartedEmailBody";
         private const string SyncDisabledEmailBody = "SyncDisabledEmailBody";
-       
+
         private readonly ILoggingRepository _loggingRepository;
         private readonly ISyncJobRepository _syncJobRepository;
         private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
@@ -78,7 +78,6 @@ namespace Services
                         RunId = job.RunId,
                         Message = $"Starting job."
                     });
-                    startedTasks.Add(_serviceBusTopicsRepository.AddMessageAsync(job));
                     runningJobs.Add(job);
                 }
                 else
@@ -95,9 +94,12 @@ namespace Services
 
                 _loggingRepository.SyncJobProperties = null;
             }
+
             startedTasks.Add(_syncJobRepository.UpdateSyncJobStatusAsync(runningJobs, SyncStatus.InProgress));
             startedTasks.Add(_syncJobRepository.UpdateSyncJobStatusAsync(failedJobs, SyncStatus.Error));
             await Task.WhenAll(startedTasks);
+
+            runningJobs.ForEach(async job => await _serviceBusTopicsRepository.AddMessageAsync(job));
 
             foreach (var failedJob in failedJobs)
             {
