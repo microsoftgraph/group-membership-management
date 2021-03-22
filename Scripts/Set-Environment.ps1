@@ -19,19 +19,19 @@ Azure location where the resource groups and its resources are going to be creat
 If set to $true, it will delete the resource groups if they already exist.
 
 .EXAMPLE
-Set-Environment -solutionAbbreviation "<solutionAbbreviation>" `                
+Set-Environment -solutionAbbreviation "<solutionAbbreviation>" `
                 -environmentAbbreviation "<environmentAbbreviation>" `
                 -objectId "<objectId>" `
                 -resourceGroupLocation "<resourceGroupLocation>" `
                 -overwrite $true
-   
+
 #>
- 
+
 function Set-Subscription {
-    
+
     if (-not $SubscriptionId) {
 		Write-Host "`nCurrent subscription:`n"
-		$currentSubscription = (Get-AzContext).Subscription	
+		$currentSubscription = (Get-AzContext).Subscription
 		Write-Host "$($currentSubscription.Name) -  $($currentSubscription.Id)"
 
 		Write-Host "`nAvailable subscriptions:"
@@ -41,7 +41,7 @@ function Set-Subscription {
 	}
 
     if ($SubscriptionId)
-    {        
+    {
         Set-AzContext -SubscriptionId $SubscriptionId
         $currentSubscription = (Get-AzContext).Subscription
         Write-Host "Selected subscription: $($currentSubscription.Name) -  $($currentSubscription.Id)"
@@ -88,7 +88,7 @@ function Set-Environment {
 
     . ($scriptsDirectory + '\Scripts\Add-AzAccountIfNeeded.ps1')
     Add-AzAccountIfNeeded | Out-Null
-    
+
     Set-Subscription
 
     foreach ($namespace in @("Microsoft.ServiceBus", "Microsoft.Insights", "Microsoft.OperationalInsights", "Microsoft.AlertsManagement", "Microsoft.Storage"))
@@ -104,7 +104,7 @@ function Set-Environment {
 
         Write-Host "$namespace is registered."
     }
-    
+
     #region Generate Resource Group Names
     $resourceGroupTypes = "compute", "data", "prereqs"
     $resourceGroupNames = @()
@@ -121,7 +121,7 @@ function Set-Environment {
         $resourceGroup = Get-AzResourceGroup `
             -Name $resourceGroupName `
             -ErrorAction SilentlyContinue `
-            -ErrorVariable ev 
+            -ErrorVariable ev
         if(-not $ev -and $resourceGroup)
         {
             if($overwrite -eq $false)
@@ -156,22 +156,22 @@ function Set-Environment {
                                         -EnabledForDeployment `
                                         -EnabledForTemplateDeployment `
                                         -Name $resourceGroupName
-                                        
+
     Write-Host "Prereqs keyvault $($prereqsKeyVault.VaultName) created."
     #endregion
 
 
     #region Set PreReqs KeyVault Access Policies
     Write-Host "Setting keyvault $($prereqsKeyVault.VaultName) access policies..."
-    
+
     #Start-Sleep -Seconds 5
     Set-AzKeyVaultAccessPolicy  -VaultName $prereqsKeyVault.VaultName `
                                 -ObjectId $objectId `
                                 -PermissionsToSecrets list,get,set,delete `
                                 -PermissionsToCertificates  list,get,create,update,delete
-    
+
     Write-Host "Prereqs keyvault $($prereqsKeyVault.VaultName) access policies set."
     #endregion
-    
+
     Write-Host "Set-Environment complete."
 }
