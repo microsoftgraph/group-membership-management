@@ -3,7 +3,6 @@
 using Entities;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.Cosmos.Table.Queryable;
-using Microsoft.Azure.Documents.SystemFunctions;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
@@ -26,7 +25,6 @@ namespace Repositories.SyncJobsRepository
             _cloudStorageAccount = CreateStorageAccountFromConnectionString(connectionString);
             _tableClient = _cloudStorageAccount.CreateCloudTableClient(new TableClientConfiguration());
             _tableClient.GetTableReference(syncJobTableName).CreateIfNotExists();
-            _log = loggingRepository;
         }
 
         public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false)
@@ -52,7 +50,7 @@ namespace Repositories.SyncJobsRepository
                 var segmentResult = await table.ExecuteQuerySegmentedAsync(linqQuery.AsTableQuery(), continuationToken);
                 continuationToken = segmentResult.ContinuationToken;
 
-                if(segmentResult.Results.Count == 0)
+                if (segmentResult.Results.Count == 0)
                     await _log.LogMessageAsync(new LogMessage { Message = $"Warning: Number of enabled jobs in your sync jobs table is: {segmentResult.Results.Count}. Please confirm this is the case.", RunId = Guid.Empty });
 
                 foreach (var job in ApplyFilters(segmentResult.Results))
@@ -127,9 +125,7 @@ namespace Repositories.SyncJobsRepository
 
         private CloudStorageAccount CreateStorageAccountFromConnectionString(string storageConnectionString)
         {
-
-                return CloudStorageAccount.Parse(storageConnectionString);
-           
+            return CloudStorageAccount.Parse(storageConnectionString);
         }
     }
 }
