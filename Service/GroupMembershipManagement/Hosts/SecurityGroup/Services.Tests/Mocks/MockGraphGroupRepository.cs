@@ -15,7 +15,9 @@ namespace Tests.FunctionApps.Mocks
 	{
 		public Dictionary<Guid, List<AzureADUser>> GroupsToUsers { get; set; }
 		public int ThrowSocketExceptionsFromGroupExistsBeforeSuccess { get; set; } = 0;
+		public bool ThrowNonSocketExceptionFromGroupExists { get; set; } = false;
 		public int ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess { get; set; } = 0;
+		public bool ThrowNonSocketExceptionFromGetUsersInGroup { get; set; } = false;
 		public Guid RunId { get; set; }
 
 		public Task AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
@@ -40,6 +42,7 @@ namespace Tests.FunctionApps.Mocks
 				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess--;
 				throw new SocketException();
 			}
+			if (ThrowNonSocketExceptionFromGetUsersInGroup) { throw new Exception("This should be handled gracefully."); }
 			return Task.FromResult(GroupsToUsers[objectId]);
 		}
 
@@ -50,6 +53,7 @@ namespace Tests.FunctionApps.Mocks
 				ThrowSocketExceptionsFromGroupExistsBeforeSuccess--;
 				throw new SocketException();
 			}
+			if (ThrowNonSocketExceptionFromGroupExists) { throw new Exception("This should be handled gracefully."); }
 			return Task.FromResult(GroupsToUsers.ContainsKey(objectId));
 		}
 

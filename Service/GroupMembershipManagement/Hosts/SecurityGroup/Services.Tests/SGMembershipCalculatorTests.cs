@@ -145,6 +145,51 @@ namespace Tests.FunctionApps
 		}
 
 		[TestMethod]
+		[DataRow(true, false)]
+		[DataRow(false, true)]
+		[DataRow(true, true)]
+		public async Task ProperlyErrorsOnUnexpectedException(bool errorOnGroupExists, bool errorOnGetUsers)
+		{
+			const int userCount = 2500213;
+			Guid[] sourceGroups = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray();
+			Guid destinationGroup = Guid.NewGuid();
+
+			var mockGroups = new Dictionary<Guid, List<AzureADUser>>();
+			for (int i = 0; i < userCount; i++)
+			{
+				var currentGroup = sourceGroups[i % sourceGroups.Length];
+				var userToAdd = new AzureADUser { ObjectId = Guid.NewGuid() };
+				if (mockGroups.TryGetValue(currentGroup, out var users))
+				{
+					users.Add(userToAdd);
+				}
+				else
+				{
+					mockGroups.Add(currentGroup, new List<AzureADUser> { userToAdd });
+				}
+			}
+
+			var graphRepo = new MockGraphGroupRepository()
+			{
+				GroupsToUsers = mockGroups,
+				ThrowNonSocketExceptionFromGetUsersInGroup = errorOnGetUsers,
+				ThrowNonSocketExceptionFromGroupExists = errorOnGroupExists
+			};
+			var serviceBus = new MockMembershipServiceBusRepository();
+
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
+
+			await calc.SendMembership(new SyncJob
+			{
+				TargetOfficeGroupId = destinationGroup,
+				Query = string.Join(';', sourceGroups)
+			});
+
+			Assert.IsTrue(serviceBus.Sent.Errored);
+			Assert.AreEqual(0, serviceBus.Sent.SourceMembers.Count);
+		}
+
+		[TestMethod]
 		[DataRow(0, 0)]
 		[DataRow(3, 0)]
 		[DataRow(0, 3)]

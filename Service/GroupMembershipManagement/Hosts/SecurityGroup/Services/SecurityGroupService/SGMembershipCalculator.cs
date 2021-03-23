@@ -67,7 +67,20 @@ namespace Hosts.SecurityGroup
 				});
 			}
 
-			var allusers = await GetUsersForEachGroup(sourceGroups, runId);
+			List<AzureADUser> allusers;
+			try
+			{
+				allusers = await GetUsersForEachGroup(sourceGroups, runId);
+			}
+			catch (Exception ex)
+			{
+				await _log.LogMessageAsync(new LogMessage
+				{
+					Message = "Caught unexpected exception, marking sync job as errored. Exception:\n" + ex,
+					RunId = runId
+				});
+				allusers = null;
+			}
 
 			if (allusers != null)
 			{
@@ -84,7 +97,7 @@ namespace Hosts.SecurityGroup
 				{
 					RunId = runId,
 					Message =
-					$"At least one group in {syncJob.Query} does not exist. Not syncing and marking job as errored."
+					$"Something went wrong while trying to read users from groups. Not syncing and marking job as errored."
 				});
 			}
 
