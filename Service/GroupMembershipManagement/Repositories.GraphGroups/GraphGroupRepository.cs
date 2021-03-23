@@ -130,7 +130,7 @@ namespace Repositories.GraphGroups
 			}
 			catch (ServiceException ex)
 			{
-				_ = _log.LogMessageAsync(new LogMessage
+				await _log.LogMessageAsync(new LogMessage
 				{
 					Message = ex.GetBaseException().ToString(),
 					RunId = RunId
@@ -161,7 +161,7 @@ namespace Repositories.GraphGroups
 			}
 			catch (ServiceException ex)
 			{
-				_ = _log.LogMessageAsync(new LogMessage
+				await _log.LogMessageAsync(new LogMessage
 				{
 					Message = "Unable to retrieve group members.\n" + ex.GetBaseException().ToString(),
 					RunId = RunId
@@ -287,7 +287,7 @@ namespace Repositories.GraphGroups
 			}
 			catch (ServiceException ex)
 			{
-				_ = _log.LogMessageAsync(new LogMessage
+				await _log.LogMessageAsync(new LogMessage
 				{
 					Message = ex.GetBaseException().ToString(),
 					RunId = RunId

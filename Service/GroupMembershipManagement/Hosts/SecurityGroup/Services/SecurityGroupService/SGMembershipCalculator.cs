@@ -92,18 +92,18 @@ namespace Hosts.SecurityGroup
 			});
 		}
 
-		private Task<List<AzureADUser>> GetUsersInGroupWithRetry(AzureADGroup group, Guid runId)
+		private async Task<List<AzureADUser>> GetUsersInGroupWithRetry(AzureADGroup group, Guid runId)
 		{
 			const int number_of_retries = 5;
 			for (int i = 0; i < number_of_retries; i++)
 			{
 				try
 				{
-					return _graphGroupRepository.GetUsersInGroupTransitively(group.ObjectId);
+					return await _graphGroupRepository.GetUsersInGroupTransitively(group.ObjectId);
 				}
 				catch (SocketException ex)
 				{
-					_ = _log.LogMessageAsync(new LogMessage
+					await _log.LogMessageAsync(new LogMessage
 					{
 						// i + 1 because when i is 0, we're on our first try, and so on
 						Message = $"Got a transient SocketException. Retrying GetUsersInGroupTransitively(). This was try {i + 1} out of {number_of_retries}.\n" + ex.ToString(),
@@ -112,7 +112,7 @@ namespace Hosts.SecurityGroup
 				}
 			}
 
-			_ = _log.LogMessageAsync(new LogMessage
+			await _log.LogMessageAsync(new LogMessage
 			{
 				Message = $"GetUsersInGroupTransitively() failed after {number_of_retries} attemps. Marking job as errored.",
 				RunId = runId
