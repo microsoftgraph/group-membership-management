@@ -5,6 +5,7 @@ using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -13,6 +14,8 @@ namespace Tests.FunctionApps.Mocks
 	class MockGraphGroupRepository : IGraphGroupRepository
 	{
 		public Dictionary<Guid, List<AzureADUser>> GroupsToUsers { get; set; }
+		public int ThrowSocketExceptionsFromGroupExistsBeforeSuccess { get; set; } = 0;
+		public int ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess { get; set; } = 0;
 		public Guid RunId { get; set; }
 
 		public Task AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
@@ -32,11 +35,21 @@ namespace Tests.FunctionApps.Mocks
 
 		public Task<List<AzureADUser>> GetUsersInGroupTransitively(Guid objectId)
 		{
+			if (ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess > 0)
+			{
+				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess--;
+				throw new SocketException();
+			}
 			return Task.FromResult(GroupsToUsers[objectId]);
 		}
 
 		public Task<bool> GroupExists(Guid objectId)
 		{
+			if (ThrowSocketExceptionsFromGroupExistsBeforeSuccess > 0)
+			{
+				ThrowSocketExceptionsFromGroupExistsBeforeSuccess--;
+				throw new SocketException();
+			}
 			return Task.FromResult(GroupsToUsers.ContainsKey(objectId));
 		}
 

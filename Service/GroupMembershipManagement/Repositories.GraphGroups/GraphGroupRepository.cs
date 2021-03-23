@@ -55,7 +55,7 @@ namespace Repositories.GraphGroups
 			if (await GroupExists(groupObjectId) == false) { return false; }
 
 			// get the service principal ID by its app ID
-			var servicePrincipal = (await _graphServiceClient.ServicePrincipals.Request().Filter($"appId eq '{appId}'").GetAsync()).Single();
+			var servicePrincipal = (await _graphServiceClient.ServicePrincipals.Request().WithMaxRetry(10).Filter($"appId eq '{appId}'").GetAsync()).Single();
 
 			await _log.LogMessageAsync(new LogMessage
 			{
@@ -65,7 +65,7 @@ namespace Repositories.GraphGroups
 
 			try
 			{
-				var groupOwners = await _graphServiceClient.Groups[groupObjectId.ToString()].Owners.Request().Filter($"id eq '{servicePrincipal.Id}'").GetAsync();
+				var groupOwners = await _graphServiceClient.Groups[groupObjectId.ToString()].Owners.Request().WithMaxRetry(10).Filter($"id eq '{servicePrincipal.Id}'").GetAsync();
 				return groupOwners.Any();
 			}
 			catch (ServiceException ex)
@@ -87,7 +87,7 @@ namespace Repositories.GraphGroups
 		{
 			try
 			{
-				var group = await _graphServiceClient.Groups[objectId.ToString()].Request().GetAsync();
+				var group = await _graphServiceClient.Groups[objectId.ToString()].Request().WithMaxRetry(10).GetAsync();
 				return group != null ? group.DisplayName : string.Empty;
 			}
 			catch (ServiceException ex)
@@ -120,7 +120,7 @@ namespace Repositories.GraphGroups
 				var toReturn = new List<AzureADUser>(ToUsers(members.CurrentPage, nonUserGraphObjects));
 				while (members.NextPageRequest != null)
 				{
-					members = await members.NextPageRequest.GetAsync();
+					members = await members.NextPageRequest.WithMaxRetry(10).GetAsync();
 					toReturn.AddRange(ToUsers(members.CurrentPage, nonUserGraphObjects));
 				}
 
@@ -154,7 +154,7 @@ namespace Repositories.GraphGroups
 				var toReturn = new List<IAzureADObject>(ToEntities(members.CurrentPage));
 				while (members.NextPageRequest != null)
 				{
-					members = await members.NextPageRequest.GetAsync();
+					members = await members.NextPageRequest.WithMaxRetry(10).GetAsync();
 					toReturn.AddRange(ToEntities(members.CurrentPage));
 				}
 				return toReturn;

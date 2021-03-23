@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 using Entities;
 using Entities.ServiceBus;
+using Polly;
+using Polly.Retry;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
@@ -11,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace Hosts.SecurityGroup
 {
-    public class SGMembershipCalculator
+	public class SGMembershipCalculator
 	{
 		private readonly IGraphGroupRepository _graphGroupRepository;
 		private readonly IMembershipServiceBusRepository _membershipServiceBus;
@@ -24,11 +26,25 @@ namespace Hosts.SecurityGroup
 			_log = logging;
 		}
 
+		private const int NumberOfGraphRetries = 5;
+		private AsyncRetryPolicy _graphRetryPolicy;
 		public async Task SendMembership(SyncJob syncJob)
 		{
 			_log.SyncJobProperties = syncJob.ToDictionary();
 			var runId = syncJob.RunId.GetValueOrDefault(Guid.NewGuid());
 			_graphGroupRepository.RunId = runId;
+
+			// make this fresh every time because the lambda has to capture the run ID
+			_graphRetryPolicy = Policy.Handle<SocketException>().WaitAndRetryAsync(NumberOfGraphRetries, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+				   onRetry: async (ex, count) =>
+				   {
+					   await _log.LogMessageAsync(new LogMessage
+					   {
+						   Message = $"Got a transient SocketException. Retrying. This was try {count} out of {NumberOfGraphRetries}.\n" + ex.ToString(),
+						   RunId = runId
+					   });
+				   });
+
 
 			var sourceGroups = syncJob.Query.Split(';').Select(x => Guid.TryParse(x, out var parsed) ? parsed : Guid.Empty)
 				.Where(x => x != Guid.Empty)
@@ -94,32 +110,21 @@ namespace Hosts.SecurityGroup
 
 		private async Task<List<AzureADUser>> GetUsersInGroupWithRetry(AzureADGroup group, Guid runId)
 		{
-			const int number_of_retries = 5;
-			for (int i = 0; i < number_of_retries; i++)
+			var result = await _graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GetUsersInGroupTransitively(group.ObjectId));
+
+			if (result.Outcome == OutcomeType.Failure)
 			{
-				try
+				await _log.LogMessageAsync(new LogMessage
 				{
-					return await _graphGroupRepository.GetUsersInGroupTransitively(group.ObjectId);
-				}
-				catch (SocketException ex)
-				{
-					await _log.LogMessageAsync(new LogMessage
-					{
-						// i + 1 because when i is 0, we're on our first try, and so on
-						Message = $"Got a transient SocketException. Retrying GetUsersInGroupTransitively(). This was try {i + 1} out of {number_of_retries}.\n" + ex.ToString(),
-						RunId = runId
-					});
-				}
+					Message = $"GetUsersInGroupTransitively() failed after {NumberOfGraphRetries} attempts. Marking job as errored.",
+					RunId = runId
+				});
+				return null;
 			}
 
-			await _log.LogMessageAsync(new LogMessage
-			{
-				Message = $"GetUsersInGroupTransitively() failed after {number_of_retries} attemps. Marking job as errored.",
-				RunId = runId
-			});
-
-			return null;
+			return result.Result;
 		}
+
 
 		private async Task<List<AzureADUser>> GetUsersForEachGroup(IEnumerable<AzureADGroup> groups, Guid runId)
 		{
@@ -129,19 +134,27 @@ namespace Hosts.SecurityGroup
 
 			foreach (var group in groups)
 			{
-				if (await _graphGroupRepository.GroupExists(group.ObjectId))
+				var groupExistsResult = await _graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(group.ObjectId));
+				if (groupExistsResult.Outcome == OutcomeType.Successful && groupExistsResult.Result)
 				{
 					await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {group.ObjectId}." });
 					var users = await GetUsersInGroupWithRetry(group, runId);
 					if (users == null) { return null; }
 					var newUsers = users.Except(toReturn).ToArray();
-					await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Got {users.Count} users from the group with ID {group.ObjectId}. " +
-						$"The group contains {users.Count - newUsers.Length} users who have already been read from earlier groups." });
+					await _log.LogMessageAsync(new LogMessage
+					{
+						RunId = runId,
+						Message = $"Got {users.Count} users from the group with ID {group.ObjectId}. " +
+						$"The group contains {users.Count - newUsers.Length} users who have already been read from earlier groups."
+					});
 					toReturn.AddRange(newUsers);
 				}
 				else
 				{
-					await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Group with ID {group.ObjectId} doesn't exist. Stopping sync and marking as error." });
+					if (groupExistsResult.Outcome == OutcomeType.Successful)
+						await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Group with ID {group.ObjectId} doesn't exist. Stopping sync and marking as error." });
+					else
+						await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Exceeded {NumberOfGraphRetries} while trying to determine if a group exists. Stopping sync and marking as error." });
 					return null;
 				}
 			}
