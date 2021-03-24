@@ -93,7 +93,7 @@ namespace Hosts.GraphUpdater
 
         }
 
-        private static readonly TimeSpan _waitBetweenRenew = TimeSpan.FromMinutes(4);
+        private static readonly TimeSpan _waitBetweenRenew = TimeSpan.FromSeconds(30);
         private async Task RenewMessages(IMessageSession messageSession, string lockToken, CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
