@@ -42,7 +42,7 @@ namespace Tests.FunctionApps
 
 			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
 
-			await calc.SendMembership(new SyncJob
+			await calc.SendMembershipAsync(new SyncJob
 			{
 				TargetOfficeGroupId = destinationGroup,
 				Query = sourceGroup.ToString()
@@ -89,7 +89,7 @@ namespace Tests.FunctionApps
 
 			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
 
-			await calc.SendMembership(new SyncJob
+			await calc.SendMembershipAsync(new SyncJob
 			{
 				TargetOfficeGroupId = destinationGroup,
 				Query = string.Join(';', sourceGroups)
@@ -135,7 +135,7 @@ namespace Tests.FunctionApps
 
 			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
 
-			await Assert.ThrowsExceptionAsync<SocketException>(() => calc.SendMembership(new SyncJob
+			await Assert.ThrowsExceptionAsync<SocketException>(() => calc.SendMembershipAsync(new SyncJob
 			{
 				TargetOfficeGroupId = destinationGroup,
 				Query = string.Join(';', sourceGroups)
@@ -180,7 +180,7 @@ namespace Tests.FunctionApps
 
 			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
 
-		 	await Assert.ThrowsExceptionAsync<MockException>(() => calc.SendMembership(new SyncJob
+		 	await Assert.ThrowsExceptionAsync<MockException>(() => calc.SendMembershipAsync(new SyncJob
 			{
 				TargetOfficeGroupId = destinationGroup,
 				Query = string.Join(';', sourceGroups)
@@ -227,7 +227,7 @@ namespace Tests.FunctionApps
 			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
 
 			Guid nonexistentGroupId = Guid.NewGuid();
-			await calc.SendMembership(new SyncJob
+			await calc.SendMembershipAsync(new SyncJob
 			{
 				TargetOfficeGroupId = destinationGroup,
 				Query = string.Join(';', sourceGroups) + $";{nonexistentGroupId}"
@@ -257,7 +257,7 @@ namespace Tests.FunctionApps
 
 			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
 
-			await calc.SendMembership(new SyncJob
+			await calc.SendMembershipAsync(new SyncJob
 			{
 				TargetOfficeGroupId = destinationGroup,
 				Query = string.Join(';', sourceGroups) + $";{Guid.NewGuid()}"
@@ -303,7 +303,7 @@ namespace Tests.FunctionApps
 
 			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
 
-			await calc.SendMembership(new SyncJob
+			await calc.SendMembershipAsync(new SyncJob
 			{
 				TargetOfficeGroupId = destinationGroup,
 				Query = string.Join(';', sourceGroups) + ";nasdfasfd;;;"

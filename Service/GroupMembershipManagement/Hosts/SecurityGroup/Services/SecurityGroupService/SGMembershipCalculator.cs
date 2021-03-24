@@ -28,7 +28,7 @@ namespace Hosts.SecurityGroup
 
 		private const int NumberOfGraphRetries = 5;
 		private AsyncRetryPolicy _graphRetryPolicy;
-		public async Task SendMembership(SyncJob syncJob)
+		public async Task SendMembershipAsync(SyncJob syncJob)
 		{
 			_log.SyncJobProperties = syncJob.ToDictionary();
 			var runId = syncJob.RunId.GetValueOrDefault(Guid.NewGuid());
@@ -119,7 +119,7 @@ namespace Hosts.SecurityGroup
 			});
 		}
 
-		private async Task<List<AzureADUser>> GetUsersInGroupWithRetry(AzureADGroup group, Guid runId)
+		private async Task<List<AzureADUser>> GetUsersInGroupWithRetryAsync(AzureADGroup group, Guid runId)
 		{
 			var result = await _graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GetUsersInGroupTransitively(group.ObjectId));
 
@@ -152,7 +152,7 @@ namespace Hosts.SecurityGroup
 				if (groupExistsResult.Outcome == OutcomeType.Successful && groupExistsResult.Result)
 				{
 					await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {group.ObjectId}." });
-					var users = await GetUsersInGroupWithRetry(group, runId);
+					var users = await GetUsersInGroupWithRetryAsync(group, runId);
 					if (users == null) { return null; }
 					var newUsers = users.Except(toReturn).ToArray();
 					await _log.LogMessageAsync(new LogMessage
@@ -167,9 +167,9 @@ namespace Hosts.SecurityGroup
 				{
 					if (groupExistsResult.Outcome == OutcomeType.Successful)
 						await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Group with ID {group.ObjectId} doesn't exist. Stopping sync and marking as error." });
-					else
+					else if (groupExistsResult.FaultType == FaultType.ExceptionHandledByThisPolicy)
 						await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Exceeded {NumberOfGraphRetries} while trying to determine if a group exists. Stopping sync and marking as error." });
-					if (groupExistsResult.FinalException != null) { throw groupExistsResult.FinalException; }
+					else if (groupExistsResult.FinalException != null) { throw groupExistsResult.FinalException; }
 					return null;
 				}
 			}
