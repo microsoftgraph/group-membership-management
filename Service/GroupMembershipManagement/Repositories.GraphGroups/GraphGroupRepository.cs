@@ -28,11 +28,13 @@ namespace Repositories.GraphGroups
 			_log = logger;
 		}
 
+		private const int MaxRetries = 10;
+
 		public async Task<bool> GroupExists(Guid objectId)
 		{
 			try
 			{
-				var group = await _graphServiceClient.Groups[objectId.ToString()].Request().GetAsync();
+				var group = await _graphServiceClient.Groups[objectId.ToString()].Request().WithMaxRetry(MaxRetries).GetAsync();
 				return group != null;
 			}
 			catch (ServiceException ex)
@@ -55,7 +57,7 @@ namespace Repositories.GraphGroups
 			if (await GroupExists(groupObjectId) == false) { return false; }
 
 			// get the service principal ID by its app ID
-			var servicePrincipal = (await _graphServiceClient.ServicePrincipals.Request().WithMaxRetry(10).Filter($"appId eq '{appId}'").GetAsync()).Single();
+			var servicePrincipal = (await _graphServiceClient.ServicePrincipals.Request().WithMaxRetry(MaxRetries).Filter($"appId eq '{appId}'").GetAsync()).Single();
 
 			await _log.LogMessageAsync(new LogMessage
 			{
@@ -65,7 +67,7 @@ namespace Repositories.GraphGroups
 
 			try
 			{
-				var groupOwners = await _graphServiceClient.Groups[groupObjectId.ToString()].Owners.Request().WithMaxRetry(10).Filter($"id eq '{servicePrincipal.Id}'").GetAsync();
+				var groupOwners = await _graphServiceClient.Groups[groupObjectId.ToString()].Owners.Request().WithMaxRetry(MaxRetries).Filter($"id eq '{servicePrincipal.Id}'").GetAsync();
 				return groupOwners.Any();
 			}
 			catch (ServiceException ex)
@@ -87,7 +89,7 @@ namespace Repositories.GraphGroups
 		{
 			try
 			{
-				var group = await _graphServiceClient.Groups[objectId.ToString()].Request().WithMaxRetry(10).GetAsync();
+				var group = await _graphServiceClient.Groups[objectId.ToString()].Request().WithMaxRetry(MaxRetries).GetAsync();
 				return group != null ? group.DisplayName : string.Empty;
 			}
 			catch (ServiceException ex)
@@ -113,14 +115,14 @@ namespace Repositories.GraphGroups
 			try
 			{
 				members = await _graphServiceClient.Groups[objectId.ToString()].TransitiveMembers.Request()
-							.WithMaxRetry(10)
+							.WithMaxRetry(MaxRetries)
 							.Select("id")
 							.GetAsync();
 
 				var toReturn = new List<AzureADUser>(ToUsers(members.CurrentPage, nonUserGraphObjects));
 				while (members.NextPageRequest != null)
 				{
-					members = await members.NextPageRequest.WithMaxRetry(10).GetAsync();
+					members = await members.NextPageRequest.WithMaxRetry(MaxRetries).GetAsync();
 					toReturn.AddRange(ToUsers(members.CurrentPage, nonUserGraphObjects));
 				}
 
@@ -147,14 +149,14 @@ namespace Repositories.GraphGroups
 			try
 			{
 				members = await _graphServiceClient.Groups[objectId.ToString()].Members.Request()
-				.WithMaxRetry(10)
+				.WithMaxRetry(MaxRetries)
 				.Select("id")
 				.GetAsync();
 
 				var toReturn = new List<IAzureADObject>(ToEntities(members.CurrentPage));
 				while (members.NextPageRequest != null)
 				{
-					members = await members.NextPageRequest.WithMaxRetry(10).GetAsync();
+					members = await members.NextPageRequest.WithMaxRetry(MaxRetries).GetAsync();
 					toReturn.AddRange(ToEntities(members.CurrentPage));
 				}
 				return toReturn;
@@ -282,7 +284,7 @@ namespace Repositories.GraphGroups
 		{
 			try
 			{
-				var response = await _graphServiceClient.Batch.Request().WithMaxRetry(10).PostAsync(tosend);
+				var response = await _graphServiceClient.Batch.Request().WithMaxRetry(MaxRetries).PostAsync(tosend);
 				return GetStepIdsToRetry(await response.GetResponsesAsync());
 			}
 			catch (ServiceException ex)
