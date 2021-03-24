@@ -169,7 +169,8 @@ namespace Hosts.SecurityGroup
 						await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Group with ID {group.ObjectId} doesn't exist. Stopping sync and marking as error." });
 					else if (groupExistsResult.FaultType == FaultType.ExceptionHandledByThisPolicy)
 						await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Exceeded {NumberOfGraphRetries} while trying to determine if a group exists. Stopping sync and marking as error." });
-					else if (groupExistsResult.FinalException != null) { throw groupExistsResult.FinalException; }
+					
+					if (groupExistsResult.FinalException != null) { throw groupExistsResult.FinalException; }
 					return null;
 				}
 			}
