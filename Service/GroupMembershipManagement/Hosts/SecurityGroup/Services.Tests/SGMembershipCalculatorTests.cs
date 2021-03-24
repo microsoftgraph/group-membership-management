@@ -8,6 +8,7 @@ using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -134,11 +135,11 @@ namespace Tests.FunctionApps
 
 			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
 
-			await calc.SendMembership(new SyncJob
+			await Assert.ThrowsExceptionAsync<SocketException>(() => calc.SendMembership(new SyncJob
 			{
 				TargetOfficeGroupId = destinationGroup,
 				Query = string.Join(';', sourceGroups)
-			});
+			}));
 
 			Assert.IsTrue(serviceBus.Sent.Errored);
 			Assert.AreEqual(0, serviceBus.Sent.SourceMembers.Count);
