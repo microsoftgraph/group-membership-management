@@ -95,15 +95,6 @@ namespace Hosts.SecurityGroup
 						$"Read {allusers.Count} users from source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
 					});
 				}
-				else
-				{
-					await _log.LogMessageAsync(new LogMessage
-					{
-						RunId = runId,
-						Message =
-						$"Something went wrong while trying to read users from groups. Not syncing and marking job as errored."
-					});
-				}
 
 				// the important thing is to make sure that this message gets sent so that the group gets marked as Error, even if an exception gets thrown.
 				await _membershipServiceBus.SendMembership(new GroupMembership
