@@ -67,7 +67,7 @@ namespace Hosts.SecurityGroup
 				});
 			}
 
-			List<AzureADUser> allusers;
+			List<AzureADUser> allusers = null;
 			try
 			{
 				allusers = await GetUsersForEachGroup(sourceGroups, runId);
@@ -80,37 +80,44 @@ namespace Hosts.SecurityGroup
 					RunId = runId
 				});
 				allusers = null;
-			}
 
-			if (allusers != null)
-			{
-				await _log.LogMessageAsync(new LogMessage
-				{
-					RunId = runId,
-					Message =
-					$"Read {allusers.Count} users from source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
-				});
+				// make sure this gets thrown to where App Insights will handle it
+				throw;
 			}
-			else
+			finally
 			{
-				await _log.LogMessageAsync(new LogMessage
+				if (allusers != null)
 				{
-					RunId = runId,
-					Message =
-					$"Something went wrong while trying to read users from groups. Not syncing and marking job as errored."
-				});
-			}
+					await _log.LogMessageAsync(new LogMessage
+					{
+						RunId = runId,
+						Message =
+						$"Read {allusers.Count} users from source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
+					});
+				}
+				else
+				{
+					await _log.LogMessageAsync(new LogMessage
+					{
+						RunId = runId,
+						Message =
+						$"Something went wrong while trying to read users from groups. Not syncing and marking job as errored."
+					});
+				}
 
-			await _membershipServiceBus.SendMembership(new GroupMembership
-			{
-				SourceMembers = allusers ?? new List<AzureADUser>(),
-				Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
-				Sources = sourceGroups,
-				RunId = runId,
-				SyncJobRowKey = syncJob.RowKey,
-				SyncJobPartitionKey = syncJob.PartitionKey,
-				Errored = allusers == null
-			});
+				// the important thing is to make sure that this message gets sent so that the group gets marked as Error, even if an exception gets thrown.
+				await _membershipServiceBus.SendMembership(new GroupMembership
+				{
+					SourceMembers = allusers ?? new List<AzureADUser>(),
+					Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
+					Sources = sourceGroups,
+					RunId = runId,
+					SyncJobRowKey = syncJob.RowKey,
+					SyncJobPartitionKey = syncJob.PartitionKey,
+					Errored = allusers == null
+				});
+
+			}
 
 			await _log.LogMessageAsync(new LogMessage
 			{
@@ -132,6 +139,9 @@ namespace Hosts.SecurityGroup
 					Message = $"GetUsersInGroupTransitively() failed after {NumberOfGraphRetries} attempts. Marking job as errored.",
 					RunId = runId
 				});
+
+				// throw captured exception so it bubbles up to app insights
+				if (result.FinalException != null) { throw result.FinalException; }
 				return null;
 			}
 
@@ -168,6 +178,7 @@ namespace Hosts.SecurityGroup
 						await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Group with ID {group.ObjectId} doesn't exist. Stopping sync and marking as error." });
 					else
 						await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Exceeded {NumberOfGraphRetries} while trying to determine if a group exists. Stopping sync and marking as error." });
+					if (groupExistsResult.FinalException != null) { throw groupExistsResult.FinalException; }
 					return null;
 				}
 			}

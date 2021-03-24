@@ -42,7 +42,7 @@ namespace Tests.FunctionApps.Mocks
 				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess--;
 				throw new SocketException();
 			}
-			if (ThrowNonSocketExceptionFromGetUsersInGroup) { throw new Exception("This should be handled gracefully."); }
+			if (ThrowNonSocketExceptionFromGetUsersInGroup) { throw new MockException(); }
 			return Task.FromResult(GroupsToUsers[objectId]);
 		}
 
@@ -53,7 +53,7 @@ namespace Tests.FunctionApps.Mocks
 				ThrowSocketExceptionsFromGroupExistsBeforeSuccess--;
 				throw new SocketException();
 			}
-			if (ThrowNonSocketExceptionFromGroupExists) { throw new Exception("This should be handled gracefully."); }
+			if (ThrowNonSocketExceptionFromGroupExists) { throw new MockException(); }
 			return Task.FromResult(GroupsToUsers.ContainsKey(objectId));
 		}
 
@@ -67,4 +67,6 @@ namespace Tests.FunctionApps.Mocks
 			throw new NotImplementedException();
 		}
 	}
+
+	public class MockException : Exception { }
 }

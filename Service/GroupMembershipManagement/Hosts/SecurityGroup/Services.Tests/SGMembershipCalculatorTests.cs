@@ -179,11 +179,11 @@ namespace Tests.FunctionApps
 
 			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
 
-			await calc.SendMembership(new SyncJob
+		 	await Assert.ThrowsExceptionAsync<MockException>(() => calc.SendMembership(new SyncJob
 			{
 				TargetOfficeGroupId = destinationGroup,
 				Query = string.Join(';', sourceGroups)
-			});
+			}));
 
 			Assert.IsTrue(serviceBus.Sent.Errored);
 			Assert.AreEqual(0, serviceBus.Sent.SourceMembers.Count);
