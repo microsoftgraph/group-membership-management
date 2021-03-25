@@ -208,14 +208,12 @@ namespace Services.Tests
                                     graphGroupsRepository,
                                     senderRecipients);
 
-            var users = _membership.SourceMembers;
-            _membership.SourceMembers = users.Take(2).ToList();
+            var targetGroupUsers = MakeUsers(10, 0);
+
             _job.LastRunTime = DateTime.UtcNow.AddDays(-1);
 
-            var targetGroupUsers = users.Take(6).ToList();
-
             syncjobRepository.ExistingSyncJobs.Add((_partitionKey, _rowKey), _job);
-            graphGroupsRepository.GroupsToUsers.Add(_sources[0].ObjectId, _membership.SourceMembers);
+            graphGroupsRepository.GroupsToUsers.Add(_sources[0].ObjectId, _users.Take(1).ToList());
             graphGroupsRepository.GroupsToUsers.Add(_targetGroupId, targetGroupUsers);
 
             await graphUpdater.CalculateDifference(_membership);
