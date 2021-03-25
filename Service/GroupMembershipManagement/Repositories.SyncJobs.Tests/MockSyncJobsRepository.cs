@@ -13,6 +13,12 @@ namespace Repositories.SyncJobs.Tests
     {
         public List<SyncJob> Jobs { get; set; } = new List<SyncJob>();
 
+        public async Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey)
+        {
+            var job = Jobs.FirstOrDefault(x => x.PartitionKey == partitionKey && x.RowKey == rowKey);
+            return await Task.FromResult(job);
+        }
+
         public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false)
         {
             var jobs = Jobs.Where(x => x.StartDate <= DateTime.UtcNow);

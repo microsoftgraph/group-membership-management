@@ -27,6 +27,17 @@ namespace Repositories.SyncJobsRepository
             _tableClient.GetTableReference(syncJobTableName).CreateIfNotExists();
         }
 
+        public async Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey)
+        {
+            var table = _tableClient.GetTableReference(_syncJobsTableName);
+            var result = await table.ExecuteAsync(TableOperation.Retrieve<SyncJob>(partitionKey, rowKey));
+
+            if (result.HttpStatusCode != 404)
+                return result.Result as SyncJob;
+
+            return null;
+        }
+
         public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false)
         {
             var syncJobs = new List<SyncJob>();
