@@ -9,13 +9,14 @@ namespace Repositories.Mocks
 {
     public class MockLoggingRepository : ILoggingRepository
     {
-        public int MessagesLogged { get; private set; } = 0;
-        
+        public List<LogMessage> MessagesLogged { get; set; } = new List<LogMessage>();
+        public int MessagesLoggedCount => MessagesLogged.Count;
+
         public Dictionary<string, string> SyncJobProperties { get; set; }
 
         public Task LogMessageAsync(LogMessage logMessage)
         {
-            MessagesLogged++;
+            MessagesLogged.Add(logMessage);
             return Task.CompletedTask;
         }
     }

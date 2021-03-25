@@ -68,9 +68,8 @@ namespace Services.Tests
 			var mockSyncJobs = new MockSyncJobRepository();
 			var mockLogs = new MockLoggingRepository();
 			var mockMails = new MockMailRepository();
-			var mockGraph = new MockGraphGroupRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockSyncJobs, mockLogs, mockMails, mockGroups, mockEmail);
 			var sessionCollector = new SessionMessageCollector(updater);
 
 			var mockSession = new MockMessageSession()
@@ -101,7 +100,7 @@ namespace Services.Tests
 				var result = await sessionCollector.HandleNewMessageAsync(message, sessionId);
 
 				// sessionCollector doesn't do anything until it gets the last message.
-				Assert.AreEqual(0, mockLogs.MessagesLogged);
+				Assert.AreEqual(0, mockLogs.MessagesLoggedCount);
 				Assert.IsFalse(mockSession.Closed);
 				Assert.AreEqual(0, mockSession.CompletedLockTokens.Count);
 				Assert.IsFalse(result.ShouldCompleteMessage);
@@ -110,7 +109,7 @@ namespace Services.Tests
 			var groupMembershipMessageResponse = await sessionCollector.HandleNewMessageAsync(incomingMessages.Last(), sessionId);
 
 			Assert.IsFalse(mockSession.Closed);
-			Assert.AreEqual(5, mockLogs.MessagesLogged);
+			Assert.AreEqual(5, mockLogs.MessagesLoggedCount);
 			Assert.AreEqual("Error", syncJob.Status);
 			Assert.IsFalse(syncJob.Enabled);
 			Assert.AreEqual(0, mockGroups.GroupsToUsers.Count);
@@ -123,9 +122,8 @@ namespace Services.Tests
 			var mockSyncJobs = new MockSyncJobRepository();
 			var mockLogs = new MockLoggingRepository();
 			var mockMails = new MockMailRepository();
-			var mockGraph = new MockGraphGroupRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockSyncJobs, mockLogs, mockMails, mockGroups, mockEmail);
 			var sessionCollector = new SessionMessageCollector(updater);
 
 			var mockSession = new MockMessageSession()
@@ -158,7 +156,7 @@ namespace Services.Tests
 				var result = await sessionCollector.HandleNewMessageAsync(message, sessionId);
 
 				// sessionCollector doesn't do anything until it gets the last message.
-				Assert.AreEqual(0, mockLogs.MessagesLogged);
+				Assert.AreEqual(0, mockLogs.MessagesLoggedCount);
 				Assert.IsFalse(mockSession.Closed);
 				Assert.AreEqual(0, mockSession.CompletedLockTokens.Count);
 				Assert.IsFalse(result.ShouldCompleteMessage);
@@ -167,7 +165,7 @@ namespace Services.Tests
 			var groupMembershipMessageResponse = await sessionCollector.HandleNewMessageAsync(incomingMessages.Last(), sessionId);
 
 			Assert.IsFalse(mockSession.Closed);
-			Assert.AreEqual(7, mockLogs.MessagesLogged);
+			Assert.AreEqual(7, mockLogs.MessagesLoggedCount);
 			Assert.IsTrue(groupMembershipMessageResponse.ShouldCompleteMessage);
 			Assert.AreEqual("Idle", syncJob.Status);
 			Assert.IsTrue(syncJob.Enabled);
@@ -182,9 +180,8 @@ namespace Services.Tests
 			var mockSyncJobs = new MockSyncJobRepository();
 			var mockLogs = new MockLoggingRepository();
 			var mockMails = new MockMailRepository();
-			var mockGraph = new MockGraphGroupRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockSyncJobs, mockLogs, mockMails, mockGroups, mockEmail);
 			var sessionCollector = new SessionMessageCollector(updater);
 
 			var mockSession = new MockMessageSession()
