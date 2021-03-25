@@ -132,4 +132,10 @@ This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@s
     <value>The group {0} with Id: {1} has started its initial sync.
 This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
   </data>
+  <data name="SyncThresholdEmailBody" xml:space="preserve">
+    <value>The group {0} with Id: {1} has exceeded the specified threshold.
+Increase membership threshold {2}%. Detected threshold {3}%.
+Decrease membership threshold {4}%. Detected threshold {5}%.
+This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
+  </data>
 </root>
