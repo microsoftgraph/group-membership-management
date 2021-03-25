@@ -7,7 +7,7 @@ Installs a module if it is needed.
 Installs a module if it is needed.
 
 .EXAMPLE
-Install-AzKeyVaultModuleIfNeeded
+Install-VSTeamModuleIfNeeded
 
 #>
 function Install-VSTeamModuleIfNeeded {
@@ -15,7 +15,7 @@ function Install-VSTeamModuleIfNeeded {
     param(
     )
         $scriptsDirectory = Split-Path $PSScriptRoot -Parent
-    
+
         . ($scriptsDirectory + '\Scripts\Install-ModuleIfNeeded.ps1')
         Install-ModuleIfNeeded -Name VSTeam -Version "6.1.3" -Verbose
 }

@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-<# 
+<#
 .SYNOPSIS
 This script adds secrets to a key vault
 
@@ -22,14 +22,14 @@ function Set-KeyVaultSecrets {
         [Parameter(Mandatory=$True)]
         [string[]] $secrets
     )
-    
+
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
-    
+
     . ($scriptsDirectory + '\Scripts\Add-AzAccountIfNeeded.ps1')
     Add-AzAccountIfNeeded
-    
-    . ($scriptsDirectory + '\Scripts\Install-AzKeyVaultModuleIfNeeded.ps1')
-	Install-AzKeyVaultModuleIfNeeded
+
+    . ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
+	Install-AzModuleIfNeeded
 
     Write-Host "`nCurrent subscription:`n"
     $currentSubscription = (Get-AzContext).Subscription
@@ -41,12 +41,12 @@ function Set-KeyVaultSecrets {
 
     $subscriptionId = Read-Host -Prompt "If you would like to use other subscription than '$($currentSubscription.Name)' `nprovide the subscription id, otherwise press enter to continue."
     if ($subscriptionId)
-    {        
+    {
         Set-AzContext -SubscriptionId $subscriptionId
         $currentSubscription = (Get-AzContext).Subscription
         Write-Host "Selected subscription: $($currentSubscription.Name) -  $($currentSubscription.Id)"
     }
-                            
+
     Write-Host "`nSaving secrets..."
 
     $keyVault = Get-AzKeyVault -VaultName $keyVaultName
@@ -62,6 +62,6 @@ function Set-KeyVaultSecrets {
 						 -Name $secretName `
 						 -SecretValue $secretValue
     }
-                
+
     Write-Host "`nSaving secrets complete."
 }
