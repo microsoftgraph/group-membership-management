@@ -5,16 +5,21 @@ using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Services.Tests.Mocks
 {
-	class MockSyncJobRepository : ISyncJobRepository
+    class MockSyncJobRepository : ISyncJobRepository
 	{
 		public Dictionary<(string, string), SyncJob> ExistingSyncJobs = new Dictionary<(string, string), SyncJob>();
 
-		public IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false)
+		public async Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey)
+		{
+			var job = ExistingSyncJobs.ContainsKey((partitionKey, rowKey)) ? ExistingSyncJobs[(partitionKey, rowKey)] : null;
+			return await Task.FromResult(job);
+		}
+
+        public IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false)
 		{
 			return ExistingSyncJobs.Values.Where(x => Enum.Parse<SyncStatus>(x.Status) == status || status == SyncStatus.All).Where(x => includeDisabled && x.Enabled).ToAsyncEnumerable();
 		}

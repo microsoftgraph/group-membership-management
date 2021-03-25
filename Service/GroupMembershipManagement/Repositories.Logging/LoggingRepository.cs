@@ -71,7 +71,6 @@ namespace Repositories.Logging
             httpRequestMessage.Content = new StringContent(serializedMessage, Encoding.UTF8);
             httpRequestMessage.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
             var response = await _httpClient.SendAsync(httpRequestMessage);
-            var result = await response.Content.ReadAsStringAsync();
             response.EnsureSuccessStatusCode();
         }
 

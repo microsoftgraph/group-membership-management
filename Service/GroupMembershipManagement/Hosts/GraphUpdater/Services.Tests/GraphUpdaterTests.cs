@@ -112,7 +112,7 @@ namespace Services.Tests
 			var groupMembershipMessageResponse = await sessionCollector.HandleNewMessageAsync(incomingMessages.Last(), sessionId);
 
 			Assert.IsFalse(mockSession.Closed);
-			Assert.AreEqual(expectedLogs + 8, mockLogs.MessagesLogged);
+			Assert.AreEqual(expectedLogs + 7, mockLogs.MessagesLogged);
 			Assert.AreEqual("Error", syncJob.Status);
 			Assert.IsFalse(syncJob.Enabled);
 			Assert.AreEqual(0, mockGroups.GroupsToUsers.Count);
@@ -172,7 +172,7 @@ namespace Services.Tests
 			var groupMembershipMessageResponse = await sessionCollector.HandleNewMessageAsync(incomingMessages.Last(), sessionId);
 
 			Assert.IsFalse(mockSession.Closed);
-			Assert.AreEqual(expectedLogs + 10, mockLogs.MessagesLogged);
+			Assert.AreEqual(expectedLogs + 9, mockLogs.MessagesLogged);
 			Assert.IsTrue(groupMembershipMessageResponse.ShouldCompleteMessage);
 			Assert.AreEqual("Idle", syncJob.Status);
 			Assert.IsTrue(syncJob.Enabled);
