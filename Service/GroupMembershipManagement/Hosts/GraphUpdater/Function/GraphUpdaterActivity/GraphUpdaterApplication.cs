@@ -21,6 +21,7 @@ namespace Hosts.GraphUpdater
         private const string SyncThresholdEmailBody = "SyncThresholdEmailBody";
 
         private readonly IMembershipDifferenceCalculator<AzureADUser> _differenceCalculator;
+        private readonly IGraphGroupRepository _graphGroups;
         private readonly ISyncJobRepository _syncJobRepo;
         private readonly ILoggingRepository _log;
         private readonly IMailRepository _mailRepository;
@@ -29,6 +30,7 @@ namespace Hosts.GraphUpdater
 
         public GraphUpdaterApplication(
             IMembershipDifferenceCalculator<AzureADUser> differenceCalculator,
+            IGraphGroupRepository graphGroups,
             ISyncJobRepository syncJobRepository,
             ILoggingRepository logging,
             IMailRepository mailRepository,
@@ -38,6 +40,7 @@ namespace Hosts.GraphUpdater
         {
             _emailSenderAndRecipients = emailSenderAndRecipients;
             _differenceCalculator = differenceCalculator;
+            _graphGroups = graphGroups;
             _syncJobRepo = syncJobRepository;
             _log = logging;
             _mailRepository = mailRepository;
@@ -46,7 +49,7 @@ namespace Hosts.GraphUpdater
 
         public async Task CalculateDifference(GroupMembership membership)
         {
-            _graphGroupRepository.RunId = membership.RunId;
+            _graphGroups.RunId = membership.RunId;
             _log.SyncJobProperties = new Dictionary<string, string>
             {
                 { "partitionKey", membership.SyncJobPartitionKey },
@@ -67,7 +70,7 @@ namespace Hosts.GraphUpdater
 
             await _log.LogMessageAsync(new LogMessage { Message = $"{job.TargetOfficeGroupId} job's status is {job.Status}.", RunId = membership.RunId });
 
-            if (!(await _graphGroupRepository.GroupExists(membership.Destination.ObjectId)))
+            if (!(await _graphGroups.GroupExists(membership.Destination.ObjectId)))
             {
                 await _log.LogMessageAsync(new LogMessage { Message = $"When syncing {fromto}, destination group {membership.Destination} doesn't exist. Not syncing and marking as error.", RunId = membership.RunId });
                 changeTo = SyncStatus.Error;
@@ -99,7 +102,7 @@ namespace Hosts.GraphUpdater
 
             var isInitialSync = job.LastRunTime == DateTime.FromFileTimeUtc(0);
             var delta = await CalculateDeltaAsync(membership, fromto);
-            var threshold = isInitialSync ? new ThresholdResult() : await CalculateThresholdAsync(job, delta.Delta, delta.TotalMembersCount, membership.RunId);
+            var threshold = await CalculateThresholdAsync(job, delta.Delta, delta.TotalMembersCount, membership.RunId);
 
             if (isInitialSync || !threshold.IsThresholdExceeded)
             {
@@ -115,9 +118,6 @@ namespace Hosts.GraphUpdater
             else
             {
                 var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
-
-                await _log.LogMessageAsync(new LogMessage { Message = $"Threshold exceeded, no changes made to group {groupName} ({membership.Destination.ObjectId}). ", RunId = membership.RunId });
-
                 var additonalContent = new[]
                 { groupName, job.TargetOfficeGroupId.ToString(),
                   job.ThresholdPercentageForAdditions.ToString(), threshold.IncreaseThresholdPercentage.ToString(),
@@ -133,8 +133,8 @@ namespace Hosts.GraphUpdater
         private async Task DoSynchronization(MembershipDelta<AzureADUser> delta, GroupMembership membership, string fromto)
         {
             var stopwatch = Stopwatch.StartNew();
-            await _graphGroupRepository.AddUsersToGroup(delta.ToAdd, membership.Destination);
-            await _graphGroupRepository.RemoveUsersFromGroup(delta.ToRemove, membership.Destination);
+            await _graphGroups.AddUsersToGroup(delta.ToAdd, membership.Destination);
+            await _graphGroups.RemoveUsersFromGroup(delta.ToRemove, membership.Destination);
             stopwatch.Stop();
 
             await _log.LogMessageAsync(new LogMessage { Message = $"Synchronization {fromto} complete in {stopwatch.Elapsed.TotalSeconds} seconds. {delta.ToAdd.Count / stopwatch.Elapsed.TotalSeconds} users added per second. {delta.ToRemove.Count / stopwatch.Elapsed.TotalSeconds} users removed per second. Marking job as idle.", RunId = membership.RunId });
@@ -145,7 +145,7 @@ namespace Hosts.GraphUpdater
             await _log.LogMessageAsync(new LogMessage { Message = $"Calculating membership difference {fromto}.", RunId = membership.RunId });
 
             var stopwatch = Stopwatch.StartNew();
-            var destinationMembers = await _graphGroupRepository.GetUsersInGroupTransitively(membership.Destination.ObjectId);
+            var destinationMembers = await _graphGroups.GetUsersInGroupTransitively(membership.Destination.ObjectId);
             var delta = _differenceCalculator.CalculateDifference(membership.SourceMembers, destinationMembers);
 
             stopwatch.Stop();
@@ -160,11 +160,10 @@ namespace Hosts.GraphUpdater
             double percentageDecrease = 0;
             bool isAdditionsThresholdExceeded = false;
             bool isRemovalsThresholdExceeded = false;
-            totalMembersCount = totalMembersCount == 0 ? 1 : totalMembersCount;
 
             if (job.ThresholdPercentageForAdditions > 0)
             {
-                percentageIncrease = (double)delta.ToAdd.Count / totalMembersCount * 100;
+                percentageIncrease = delta.ToAdd.Count / totalMembersCount * 100;
                 isAdditionsThresholdExceeded = percentageIncrease > job.ThresholdPercentageForAdditions;
 
                 if (isAdditionsThresholdExceeded)
@@ -175,7 +174,7 @@ namespace Hosts.GraphUpdater
 
             if (job.ThresholdPercentageForRemovals > 0)
             {
-                percentageDecrease = (double)delta.ToRemove.Count / totalMembersCount * 100;
+                percentageDecrease = delta.ToRemove.Count / totalMembersCount * 100;
                 isRemovalsThresholdExceeded = percentageDecrease > job.ThresholdPercentageForRemovals;
 
                 if (isRemovalsThresholdExceeded)
