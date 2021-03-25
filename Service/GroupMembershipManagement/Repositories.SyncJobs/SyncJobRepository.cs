@@ -24,7 +24,7 @@ namespace Repositories.SyncJobsRepository
             _log = logger;
             _cloudStorageAccount = CreateStorageAccountFromConnectionString(connectionString);
             _tableClient = _cloudStorageAccount.CreateCloudTableClient(new TableClientConfiguration());
-            _tableClient.GetTableReference(syncJobTableName).CreateIfNotExistsAsync();
+            _tableClient.GetTableReference(syncJobTableName).CreateIfNotExists();
         }
 
         public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false)
@@ -49,6 +49,9 @@ namespace Repositories.SyncJobsRepository
             {
                 var segmentResult = await table.ExecuteQuerySegmentedAsync(linqQuery.AsTableQuery(), continuationToken);
                 continuationToken = segmentResult.ContinuationToken;
+
+                if (segmentResult.Results.Count == 0)
+                    await _log.LogMessageAsync(new LogMessage { Message = $"Warning: Number of enabled jobs in your sync jobs table is: {segmentResult.Results.Count}. Please confirm this is the case.", RunId = Guid.Empty });
 
                 foreach (var job in ApplyFilters(segmentResult.Results))
                 {
@@ -122,20 +125,7 @@ namespace Repositories.SyncJobsRepository
 
         private CloudStorageAccount CreateStorageAccountFromConnectionString(string storageConnectionString)
         {
-            try
-            {
-                return CloudStorageAccount.Parse(storageConnectionString);
-            }
-            catch (FormatException ex)
-            {
-                _log.LogMessageAsync(new LogMessage { Message = "The connection string does not have a valid format.\n" + ex.GetBaseException().ToString() });
-                throw;
-            }
-            catch (ArgumentException ex)
-            {
-                _log.LogMessageAsync(new LogMessage { Message = "Unable to parse the connection string.\n" + ex.GetBaseException().ToString() });
-                throw;
-            }
+            return CloudStorageAccount.Parse(storageConnectionString);
         }
     }
 }

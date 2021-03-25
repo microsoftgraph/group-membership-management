@@ -25,7 +25,9 @@
 			"properties": {
 				"requiresDuplicateDetection": true,
 				"defaultMessageTimeToLive": "P14D",
-				"requiresSession": "[parameters('requiresSession')]"
+				"requiresSession": "[parameters('requiresSession')]",
+				"lockDuration": "PT5M",
+				"maxDeliveryCount": 1
 			}
 		}
 	],

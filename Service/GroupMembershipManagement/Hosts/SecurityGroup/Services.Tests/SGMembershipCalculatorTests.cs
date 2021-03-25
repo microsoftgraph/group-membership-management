@@ -8,6 +8,7 @@ using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -19,7 +20,11 @@ namespace Tests.FunctionApps
 	public class SGMembershipCalculatorTests
 	{
 		[TestMethod]
-		public async Task ProperlyGetsAndSendsMembership()
+		[DataRow(0, 0)]
+		[DataRow(3, 0)]
+		[DataRow(0, 3)]
+		[DataRow(3, 3)]
+		public async Task ProperlyGetsAndSendsMembership(int getGroupExceptions, int getMembersExceptions)
 		{
 			const int userCount = 2500213;
 			Guid sourceGroup = Guid.NewGuid();
@@ -27,12 +32,17 @@ namespace Tests.FunctionApps
 			var initialUsers = Enumerable.Range(0, userCount).Select(
 					x => new AzureADUser { ObjectId = Guid.NewGuid() }).ToList();
 
-			var graphRepo = new MockGraphGroupRepository() { GroupsToUsers = new Dictionary<Guid, List<AzureADUser>> { { sourceGroup, initialUsers } } };
+			var graphRepo = new MockGraphGroupRepository()
+			{
+				GroupsToUsers = new Dictionary<Guid, List<AzureADUser>> { { sourceGroup, initialUsers } },
+				ThrowSocketExceptionsFromGroupExistsBeforeSuccess = getGroupExceptions,
+				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
+			};
 			var serviceBus = new MockMembershipServiceBusRepository();
 
 			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
 
-			await calc.SendMembership(new SyncJob
+			await calc.SendMembershipAsync(new SyncJob
 			{
 				TargetOfficeGroupId = destinationGroup,
 				Query = sourceGroup.ToString()
@@ -44,7 +54,11 @@ namespace Tests.FunctionApps
 		}
 
 		[TestMethod]
-		public async Task ProperlyGetsAndSendsMembershipWithMultipleSources()
+		[DataRow(0, 0)]
+		[DataRow(3, 0)]
+		[DataRow(0, 3)]
+		[DataRow(3, 3)]
+		public async Task ProperlyGetsAndSendsMembershipWithMultipleSources(int getGroupExceptions, int getMembersExceptions)
 		{
 			const int userCount = 2500213;
 			Guid[] sourceGroups = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray();
@@ -65,12 +79,17 @@ namespace Tests.FunctionApps
 				}
 			}
 
-			var graphRepo = new MockGraphGroupRepository() { GroupsToUsers = mockGroups };
+			var graphRepo = new MockGraphGroupRepository()
+			{
+				GroupsToUsers = mockGroups,
+				ThrowSocketExceptionsFromGroupExistsBeforeSuccess = getGroupExceptions,
+				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
+			};
 			var serviceBus = new MockMembershipServiceBusRepository();
 
 			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
 
-			await calc.SendMembership(new SyncJob
+			await calc.SendMembershipAsync(new SyncJob
 			{
 				TargetOfficeGroupId = destinationGroup,
 				Query = string.Join(';', sourceGroups)
@@ -82,7 +101,101 @@ namespace Tests.FunctionApps
 		}
 
 		[TestMethod]
-		public async Task ProperlyErrorsOnNonexistentGroups()
+		[DataRow(10, 0)]
+		[DataRow(0, 10)]
+		[DataRow(10, 10)]
+		public async Task ProperlyErrorsAfterTooManyRetries(int getGroupExceptions, int getMembersExceptions)
+		{
+			const int userCount = 2500213;
+			Guid[] sourceGroups = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray();
+			Guid destinationGroup = Guid.NewGuid();
+
+			var mockGroups = new Dictionary<Guid, List<AzureADUser>>();
+			for (int i = 0; i < userCount; i++)
+			{
+				var currentGroup = sourceGroups[i % sourceGroups.Length];
+				var userToAdd = new AzureADUser { ObjectId = Guid.NewGuid() };
+				if (mockGroups.TryGetValue(currentGroup, out var users))
+				{
+					users.Add(userToAdd);
+				}
+				else
+				{
+					mockGroups.Add(currentGroup, new List<AzureADUser> { userToAdd });
+				}
+			}
+
+			var graphRepo = new MockGraphGroupRepository()
+			{
+				GroupsToUsers = mockGroups,
+				ThrowSocketExceptionsFromGroupExistsBeforeSuccess = getGroupExceptions,
+				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
+			};
+			var serviceBus = new MockMembershipServiceBusRepository();
+
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
+
+			await Assert.ThrowsExceptionAsync<SocketException>(() => calc.SendMembershipAsync(new SyncJob
+			{
+				TargetOfficeGroupId = destinationGroup,
+				Query = string.Join(';', sourceGroups)
+			}));
+
+			Assert.IsTrue(serviceBus.Sent.Errored);
+			Assert.AreEqual(0, serviceBus.Sent.SourceMembers.Count);
+		}
+
+		[TestMethod]
+		[DataRow(true, false)]
+		[DataRow(false, true)]
+		[DataRow(true, true)]
+		public async Task ProperlyErrorsOnUnexpectedException(bool errorOnGroupExists, bool errorOnGetUsers)
+		{
+			const int userCount = 2500213;
+			Guid[] sourceGroups = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray();
+			Guid destinationGroup = Guid.NewGuid();
+
+			var mockGroups = new Dictionary<Guid, List<AzureADUser>>();
+			for (int i = 0; i < userCount; i++)
+			{
+				var currentGroup = sourceGroups[i % sourceGroups.Length];
+				var userToAdd = new AzureADUser { ObjectId = Guid.NewGuid() };
+				if (mockGroups.TryGetValue(currentGroup, out var users))
+				{
+					users.Add(userToAdd);
+				}
+				else
+				{
+					mockGroups.Add(currentGroup, new List<AzureADUser> { userToAdd });
+				}
+			}
+
+			var graphRepo = new MockGraphGroupRepository()
+			{
+				GroupsToUsers = mockGroups,
+				ThrowNonSocketExceptionFromGetUsersInGroup = errorOnGetUsers,
+				ThrowNonSocketExceptionFromGroupExists = errorOnGroupExists
+			};
+			var serviceBus = new MockMembershipServiceBusRepository();
+
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
+
+		 	await Assert.ThrowsExceptionAsync<MockException>(() => calc.SendMembershipAsync(new SyncJob
+			{
+				TargetOfficeGroupId = destinationGroup,
+				Query = string.Join(';', sourceGroups)
+			}));
+
+			Assert.IsTrue(serviceBus.Sent.Errored);
+			Assert.AreEqual(0, serviceBus.Sent.SourceMembers.Count);
+		}
+
+		[TestMethod]
+		[DataRow(0, 0)]
+		[DataRow(3, 0)]
+		[DataRow(0, 3)]
+		[DataRow(3, 3)]
+		public async Task ProperlyErrorsOnNonexistentGroups(int getGroupExceptions, int getMembersExceptions)
 		{
 			const int userCount = 2500213;
 			var sourceGroups = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray();
@@ -103,13 +216,18 @@ namespace Tests.FunctionApps
 				}
 			}
 
-			var graphRepo = new MockGraphGroupRepository() { GroupsToUsers = mockGroups };
+			var graphRepo = new MockGraphGroupRepository()
+			{
+				GroupsToUsers = mockGroups,
+				ThrowSocketExceptionsFromGroupExistsBeforeSuccess = getGroupExceptions,
+				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
+			};
 			var serviceBus = new MockMembershipServiceBusRepository();
 
 			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
 
 			Guid nonexistentGroupId = Guid.NewGuid();
-			await calc.SendMembership(new SyncJob
+			await calc.SendMembershipAsync(new SyncJob
 			{
 				TargetOfficeGroupId = destinationGroup,
 				Query = string.Join(';', sourceGroups) + $";{nonexistentGroupId}"
@@ -120,17 +238,26 @@ namespace Tests.FunctionApps
 		}
 
 		[TestMethod]
-		public async Task ProperlyErrorsOnAllNonexistentGroups()
+		[DataRow(0, 0)]
+		[DataRow(3, 0)]
+		[DataRow(0, 3)]
+		[DataRow(3, 3)]
+		public async Task ProperlyErrorsOnAllNonexistentGroups(int getGroupExceptions, int getMembersExceptions)
 		{
 			Guid[] sourceGroups = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray();
 			Guid destinationGroup = Guid.NewGuid();
 
-			var graphRepo = new MockGraphGroupRepository() { GroupsToUsers = new Dictionary<Guid, List<AzureADUser>>() };
+			var graphRepo = new MockGraphGroupRepository()
+			{
+				GroupsToUsers = new Dictionary<Guid, List<AzureADUser>>(),
+				ThrowSocketExceptionsFromGroupExistsBeforeSuccess = getGroupExceptions,
+				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
+			};
 			var serviceBus = new MockMembershipServiceBusRepository();
 
 			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
 
-			await calc.SendMembership(new SyncJob
+			await calc.SendMembershipAsync(new SyncJob
 			{
 				TargetOfficeGroupId = destinationGroup,
 				Query = string.Join(';', sourceGroups) + $";{Guid.NewGuid()}"
@@ -141,7 +268,11 @@ namespace Tests.FunctionApps
 		}
 
 		[TestMethod]
-		public async Task IgnoresNonGuidArguments()
+		[DataRow(0, 0)]
+		[DataRow(3, 0)]
+		[DataRow(0, 3)]
+		[DataRow(3, 3)]
+		public async Task IgnoresNonGuidArguments(int getGroupExceptions, int getMembersExceptions)
 		{
 			const int userCount = 2500213;
 			Guid[] sourceGroups = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray();
@@ -162,12 +293,17 @@ namespace Tests.FunctionApps
 				}
 			}
 
-			var graphRepo = new MockGraphGroupRepository() { GroupsToUsers = mockGroups };
+			var graphRepo = new MockGraphGroupRepository()
+			{
+				GroupsToUsers = mockGroups,
+				ThrowSocketExceptionsFromGroupExistsBeforeSuccess = getGroupExceptions,
+				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
+			};
 			var serviceBus = new MockMembershipServiceBusRepository();
 
 			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
 
-			await calc.SendMembership(new SyncJob
+			await calc.SendMembershipAsync(new SyncJob
 			{
 				TargetOfficeGroupId = destinationGroup,
 				Query = string.Join(';', sourceGroups) + ";nasdfasfd;;;"
@@ -179,8 +315,8 @@ namespace Tests.FunctionApps
 		}
 
 		private class MockLogger : ILoggingRepository
-		{			
-            public Dictionary<string, string> SyncJobProperties { get; set; }
+		{
+			public Dictionary<string, string> SyncJobProperties { get; set; }
 
 			public Task LogMessageAsync(LogMessage logMessage)
 			{
