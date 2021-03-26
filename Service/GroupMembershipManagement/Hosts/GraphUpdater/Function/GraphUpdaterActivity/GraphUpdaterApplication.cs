@@ -115,6 +115,9 @@ namespace Hosts.GraphUpdater
             else
             {
                 var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
+
+                await _log.LogMessageAsync(new LogMessage { Message = $"Threshold exceeded, no changes made to group {groupName} ({membership.Destination.ObjectId}). ", RunId = membership.RunId });
+
                 var additonalContent = new[]
                 { groupName, job.TargetOfficeGroupId.ToString(),
                   job.ThresholdPercentageForAdditions.ToString(), threshold.IncreaseThresholdPercentage.ToString(),
