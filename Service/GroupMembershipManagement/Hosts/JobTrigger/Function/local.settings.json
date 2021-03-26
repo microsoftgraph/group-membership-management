@@ -9,6 +9,14 @@
     "jobsTableName": "",
     "serviceBusConnectionString": "",
     "serviceBusSyncJobTopic": "",
-    "jobTriggerSchedule": "0 0 */6 * * *"
+    "jobTriggerSchedule": "0 */1 * * * *",
+    "syncDisabledCCEmailAddresses": "",
+    "senderAddress": "",
+    "senderPassword": "",
+    "graphCredentials:ClientId": "",
+    "graphCredentials:CertificateName": "gmm-Graph-<env>",
+    "graphCredentials:KeyVaultName": "gmm-prereqs-<env>",
+    "graphCredentials:KeyVaultTenantId": "<demo-tenant-id>",
+    "graphCredentials:TenantId": "<demo-tenant-id>"
   }
 }

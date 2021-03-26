@@ -5,24 +5,23 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Services.Tests.Mocks;
 using Repositories.MembershipDifference;
 using Entities;
 using Repositories.Mocks;
-using System.Runtime.InteropServices;
 using Repositories.Contracts.InjectConfig;
 using System.Threading.Tasks;
 
 namespace Services.Tests
 {
-	[TestClass]
+    [TestClass]
 	public class GraphUpdaterTests
 	{
 		[TestMethod]
 		public async Task AccumulatesMessagesAndUpdatesGraphAsync()
 		{
 			var mockUpdater = new MockGraphUpdater();
+			var mockLogs = new MockLoggingRepository();
 			var sessionCollector = new SessionMessageCollector(mockUpdater);
 
 			var mockSession = new MockMessageSession()
@@ -111,7 +110,7 @@ namespace Services.Tests
 			var groupMembershipMessageResponse = await sessionCollector.HandleNewMessageAsync(incomingMessages.Last(), sessionId);
 
 			Assert.IsFalse(mockSession.Closed);
-			Assert.AreEqual(7, mockLogs.MessagesLogged);
+			Assert.AreEqual(6, mockLogs.MessagesLogged);
 			Assert.AreEqual("Error", syncJob.Status);
 			Assert.IsFalse(syncJob.Enabled);
 			Assert.AreEqual(0, mockGroups.GroupsToUsers.Count);
@@ -168,7 +167,7 @@ namespace Services.Tests
 			var groupMembershipMessageResponse = await sessionCollector.HandleNewMessageAsync(incomingMessages.Last(), sessionId);
 
 			Assert.IsFalse(mockSession.Closed);
-			Assert.AreEqual(9, mockLogs.MessagesLogged);
+			Assert.AreEqual(8, mockLogs.MessagesLogged);
 			Assert.IsTrue(groupMembershipMessageResponse.ShouldCompleteMessage);
 			Assert.AreEqual("Idle", syncJob.Status);
 			Assert.IsTrue(syncJob.Enabled);

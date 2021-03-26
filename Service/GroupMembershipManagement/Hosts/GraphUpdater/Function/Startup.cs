@@ -67,8 +67,8 @@ namespace Hosts.GraphUpdater
 				return new EmailSenderRecipient(creds.Value.SenderAddress, creds.Value.SenderPassword, creds.Value.SyncCompletedCCAddresses, creds.Value.SyncDisabledCCAddresses);
 			})
 			.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(services => services.GetService<IOptions<LogAnalyticsSecret<LoggingRepository>>>().Value)
-			.AddScoped<SessionMessageCollector>()
 			.AddScoped<ILoggingRepository, LoggingRepository>()
+			.AddScoped<SessionMessageCollector>()
 			.AddScoped<IGraphUpdater, GraphUpdaterApplication>();
 
 			var graphCredentials = builder.Services.BuildServiceProvider().GetService<IOptions<GraphCredentials>>().Value;
@@ -96,5 +96,4 @@ namespace Hosts.GraphUpdater
 			builder.Services.AddSingleton<ILocalizationRepository, LocalizationRepository>();
 		}
 	}
-
 }

@@ -1,3 +1,4 @@
+$ErrorActionPreference = "Stop"
 <#
 .SYNOPSIS
 Script to set up the general environment (will be run on SAW)
@@ -85,18 +86,24 @@ function Set-Environment {
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
-    . ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
-    Install-AzModuleIfNeeded | Out-Null
-    
     . ($scriptsDirectory + '\Scripts\Add-AzAccountIfNeeded.ps1')
     Add-AzAccountIfNeeded | Out-Null
     
     Set-Subscription
 
-    Register-AzResourceProvider -ProviderNamespace Microsoft.ServiceBus
-    Register-AzResourceProvider -ProviderNamespace Microsoft.Insights
-    Register-AzResourceProvider -ProviderNamespace Microsoft.OperationalInsights			
-    Register-AzResourceProvider -ProviderNamespace Microsoft.AlertsManagement
+    foreach ($namespace in @("Microsoft.ServiceBus", "Microsoft.Insights", "Microsoft.OperationalInsights", "Microsoft.AlertsManagement", "Microsoft.Storage"))
+    {
+        Write-Host "Checking if the resource provider $namespace is registered..."
+        $provider = Get-AzResourceProvider -ProviderNamespace $namespace
+
+        if ($provider.Where({$_.RegistrationState -ne "Registered"}).Count -gt 0)
+        {
+            Write-Host "$namespace is not registered. Registering..."
+            Register-AzResourceProvider -ProviderNamespace $namespace
+        }
+
+        Write-Host "$namespace is registered."
+    }
     
     #region Generate Resource Group Names
     $resourceGroupTypes = "compute", "data", "prereqs"
@@ -134,7 +141,7 @@ function Set-Environment {
         Write-Host "Creating resource group $resourceGroupName..."
         $resourceGroup = New-AzResourceGroup -Name $resourceGroupName `
             -Location $resourceGroupLocation `
-            -ErrorAction SilentlyContinue
+            -ErrorAction Stop
         Write-Host "Created resource group $resourceGroupName."
         #endregion
     }

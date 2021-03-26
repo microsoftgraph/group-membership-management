@@ -28,7 +28,7 @@ function Install-ModuleIfNeeded {
         Write-Verbose "Will not install Module: $Name, Version: $Version while running in Azure DevOps."
         return
     }
-    $moduleVersions = Get-Module -ListAvailable -Name $Name
+    $moduleVersions = Get-InstalledModule -Name $Name -ErrorAction SilentlyContinue
     if ($moduleVersions | Where {$_.Version -eq $Version}) {
         Write-Verbose "$Name Module Version: $Version is installed.  Skipping installation."
     } else {

@@ -16,15 +16,15 @@ namespace Repositories.SyncJobsRepository
         private readonly CloudStorageAccount _cloudStorageAccount = null;
         private readonly CloudTableClient _tableClient = null;
         private readonly string _syncJobsTableName = null;
-        private readonly ILoggingRepository _log = null;
+        private readonly ILoggingRepository _log;
 
-        public SyncJobRepository(string connectionString, string syncJobTableName, ILoggingRepository loggingRepository)
+        public SyncJobRepository(string connectionString, string syncJobTableName, ILoggingRepository logger)
         {
             _syncJobsTableName = syncJobTableName;
+            _log = logger;
             _cloudStorageAccount = CreateStorageAccountFromConnectionString(connectionString);
             _tableClient = _cloudStorageAccount.CreateCloudTableClient(new TableClientConfiguration());
-            _tableClient.GetTableReference(syncJobTableName).CreateIfNotExistsAsync();
-            _log = loggingRepository;
+            _tableClient.GetTableReference(syncJobTableName).CreateIfNotExists();
         }
 
         public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false)
@@ -49,6 +49,9 @@ namespace Repositories.SyncJobsRepository
             {
                 var segmentResult = await table.ExecuteQuerySegmentedAsync(linqQuery.AsTableQuery(), continuationToken);
                 continuationToken = segmentResult.ContinuationToken;
+
+                if (segmentResult.Results.Count == 0)
+                    await _log.LogMessageAsync(new LogMessage { Message = $"Warning: Number of enabled jobs in your sync jobs table is: {segmentResult.Results.Count}. Please confirm this is the case.", RunId = Guid.Empty });
 
                 foreach (var job in ApplyFilters(segmentResult.Results))
                 {
@@ -122,18 +125,7 @@ namespace Repositories.SyncJobsRepository
 
         private CloudStorageAccount CreateStorageAccountFromConnectionString(string storageConnectionString)
         {
-            try
-            {
-                return CloudStorageAccount.Parse(storageConnectionString);
-            }
-            catch (FormatException)
-            {
-                throw;
-            }
-            catch (ArgumentException)
-            {
-                throw;
-            }
+            return CloudStorageAccount.Parse(storageConnectionString);
         }
     }
 }

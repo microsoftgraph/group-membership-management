@@ -17,5 +17,5 @@ function Install-AzureADModuleIfNeeded {
         $scriptsDirectory = Split-Path $PSScriptRoot -Parent
             
         . ($scriptsDirectory + '\Scripts\Install-ModuleIfNeeded.ps1')
-        Install-ModuleIfNeeded -Name AzureAD -Version "2.0.2.76" -Verbose
+        Install-ModuleIfNeeded -Name AzureAD -Version "2.0.2.130" -Verbose
 }

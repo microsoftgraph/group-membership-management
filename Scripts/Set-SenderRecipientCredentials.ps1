@@ -63,10 +63,9 @@ function Set-SenderRecipientCredentials {
 
 	Set-AzContext -SubscriptionName $SubscriptionName
 
-	Connect-AzureAD
 
-	. ($scriptsDirectory + '\Scripts\Install-AzKeyVaultModuleIfNeeded.ps1')
-	Install-AzKeyVaultModuleIfNeeded
+	. ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
+	Install-AzModuleIfNeeded
 	
 	$keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
     $keyVault = Get-AzKeyVault -VaultName $keyVaultName

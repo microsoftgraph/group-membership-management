@@ -18,7 +18,7 @@
                                         -SyncDisabledCCEmailAddresses "<cc-email-address-when-sync-is-disabled>" `
                                         -Verbose
         ```
-5) Assign the following two licenses to this user by going to [this](https://admin.microsoft.com/AdminPortal/Home#/licenses) link from your demo tenant page :
+5) Assign the following two licenses to this user by going to [this](https://admin.microsoft.com/AdminPortal/Home#/licenses) link from your demo tenant page. You may have to unassign some licenses from other users to do this.
 
 - Enterprise Mobility + Security E5
 - Office 365 E5

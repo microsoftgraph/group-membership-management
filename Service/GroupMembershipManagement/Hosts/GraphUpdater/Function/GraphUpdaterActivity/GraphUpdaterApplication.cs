@@ -114,20 +114,6 @@ namespace Hosts.GraphUpdater
 				await _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo.syncStatus}.", RunId = membership.RunId });
 			}
 
-			// this is a grasping-at-straws troubleshooting step
-			await foreach (var job in syncJobsBeingProcessed)
-			{
-				await _log.LogMessageAsync(new LogMessage { Message = $"On another read, job's status is {job.Status}.", RunId = membership.RunId });
-
-				if (job.Status == SyncStatus.InProgress.ToString())
-				{
-					await _log.LogMessageAsync(new LogMessage { Message = "Job is stuck in progress. Attempting to force it back to Idle.", RunId = membership.RunId });
-					job.Status = SyncStatus.Idle.ToString();
-					await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.Idle);
-					await _log.LogMessageAsync(new LogMessage { Message = $"Forced set job status to {job.Status}", RunId = membership.RunId });
-				}
-			}
-
 			await _log.LogMessageAsync(new LogMessage { Message = $"Syncing {fromto} done.", RunId = membership.RunId });
 		}
 
