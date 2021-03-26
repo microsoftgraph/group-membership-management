@@ -73,7 +73,6 @@ function New-GmmSecurityGroupSyncJob {
 	"New-GmmSecurityGroupSyncJob starting..."
 	
 	Set-AzContext -SubscriptionName $SubscriptionName
-	Install-Module AzTable -Scope CurrentUser
 
 	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
 	$storageAccounts = Get-AzStorageAccount -ResourceGroupName $resourceGroupName

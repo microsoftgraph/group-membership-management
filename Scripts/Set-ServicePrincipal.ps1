@@ -56,8 +56,6 @@ function Set-Role {
 function Set-ServicePrincipal {
     [CmdletBinding()]
 	param(
-		[Parameter(Mandatory=$True)]
-        [string] $servicePrincipalName,
         [Parameter(Mandatory=$True)]
         [string] $solutionAbbreviation,
 		[Parameter(Mandatory=$True)]
@@ -88,9 +86,12 @@ function Set-ServicePrincipal {
         Write-Host "Selected subscription: $($currentSubscription.Name) -  $($currentSubscription.Id)"
     }
                         
+    Write-Host "Please ensure you have ownership permissions on this subscription."
     Write-Host "The service principals name is $servicePrincipalName"
 
     $scope = "/subscriptions/$($subscription.Id)"
+
+    $servicePrincipalName = "$solutionAbbreviation-serviceconnection-$environmentAbbreviation";
 
     #region Remove service principal if it exists
     $servicePrincipal = Get-AzADServicePrincipal -DisplayName $servicePrincipalName
@@ -110,14 +111,14 @@ function Set-ServicePrincipal {
     #endregion
 
     #region Assing role to resource groups
+    Write-Host "Waiting for service principal to propagate..."
+    # basically, 
+    Start-Sleep -Seconds 30
     Write-Host "Assigning service principal to resouce groups..."
-    Start-Sleep -Seconds 10
     $resourceGroupTypes = "compute", "data", "prereqs"
     foreach ($resourceGroupType in $resourceGroupTypes)
     {
         $resourceGroupName = "$solutionAbbreviation-$resourceGroupType-$environmentAbbreviation"        
-        Set-Role -RoleDefinitionName "Contributor" -ResourceGroupName $resourceGroupName -ObjectId $servicePrincipal.Id | Out-Null
+        Set-Role -RoleDefinitionName "Contributor" -ResourceGroupName $resourceGroupName -ObjectId $servicePrincipal.Id
     }
-
-    return $currentSubscription.Id
 }

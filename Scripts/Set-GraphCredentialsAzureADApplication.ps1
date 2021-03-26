@@ -75,26 +75,21 @@ function Set-GraphCredentialsAzureADApplication {
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
-    . ($scriptsDirectory + '\Scripts\Install-AzAccountsModuleIfNeeded.ps1')
-    Install-AzAccountsModuleIfNeeded
+    . ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
+    Install-AzModuleIfNeeded
 
     Write-Host "Please sign in as an account that can make Azure AD Apps in your target tenant."
 	Connect-AzAccount -Tenant $TenantIdToCreateAppIn
 
-    . ($scriptsDirectory + '\Scripts\Add-AzAccountIfNeeded.ps1')
 	while ((Set-AzContext -TenantId $TenantIdToCreateAppIn).Tenant.Id -ne $TenantIdToCreateAppIn)
 	{
 		Write-Host "Please sign in as an account that can make Azure AD Apps in your target tenant."
 		Add-AzAccount -TenantId $TenantIdToCreateAppIn
 	} 
 	
-	. ($scriptsDirectory + '\Scripts\Install-AzureADModuleIfNeeded.ps1')
-	Install-AzureADModuleIfNeeded
-
 	#region Delete Application / Service Principal if they already exist
-	Connect-AzureAD -TenantId $TenantIdToCreateAppIn
     $graphAppDisplayName = "$SolutionAbbreviation-Graph-$EnvironmentAbbreviation"
-	$graphApp = (Get-AzureADApplication -Filter "DisplayName eq '$graphAppDisplayName'")
+	$graphApp = (Get-AzADApplication -DisplayName $graphAppDisplayName)
 	
 	if ($null -ne $graphApp)
 	{
@@ -104,7 +99,7 @@ function Set-GraphCredentialsAzureADApplication {
 	if($graphApp -and $Clean)
 	{
         Write-Verbose "Removing existing $graphAppDisplayName"
-		Set-AzureADApplication	-ObjectId $graphApp.ObjectId `
+		Update-AzADApplication	-ObjectId $graphApp.ObjectId `
                                 -AvailableToOtherTenants $false 
 
         Write-Verbose "Removing Application for $graphAppDisplayName..."
@@ -113,12 +108,12 @@ function Set-GraphCredentialsAzureADApplication {
 			$secondsToSleep = 5
             Write-Verbose "Waiting $secondsToSleep seconds for $graphAppDisplayName's Application to be removed."
 			Start-Sleep -Seconds $secondsToSleep
-			Remove-AzureADApplication 	-ObjectId $graphApp.ObjectId `
+			Remove-AzADApplication 	-ObjectId $graphApp.ObjectId `
 										-ErrorAction SilentlyContinue `
 										-ErrorVariable $removeAdAppError
 		}
 		while($removeAdAppError)
-        $graphApp = Get-AzureADApplication -Filter "DisplayName eq '$graphAppDisplayName'"
+        $graphApp = Get-AzADApplication -DisplayName $graphAppDisplayName
         Write-Verbose "Removed existing $graphAppDisplayName"
 	}
     #endregion
@@ -127,6 +122,12 @@ function Set-GraphCredentialsAzureADApplication {
     $replyUrls = @("graphupdater", "securitygroup") | 
         ForEach-Object { "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$_.azurewebsites.net"};
     $replyUrls += "http://localhost";
+
+	# get the azure AD module here because you can only set permissions with this guy
+	. ($scriptsDirectory + '\Scripts\Install-AzureADModuleIfNeeded.ps1')
+	Install-AzureADModuleIfNeeded
+	Write-Host "Please sign in again as an account that can make Azure AD Apps in your target tenant."
+	Connect-AzureAD -TenantId $TenantIdToCreateAppIn
     
     # Basically, read the app permissions ("AppRoles" is what this API calls application permissions) Microsoft Graph has, 
 	# then filter out the ones we want so we can give them to our AD app.
@@ -155,7 +156,7 @@ function Set-GraphCredentialsAzureADApplication {
 	else
 	{
 		Write-Verbose "Updating Azure AD app $graphAppDisplayName"
-		Set-AzureADApplication	-ObjectId $($graphApp.ObjectId) `
+		Update-AzureADApplication	-ObjectId $($graphApp.ObjectId) `
                                 -DisplayName $graphAppDisplayName `
                                 -ReplyUrls $replyUrls `
                                 -RequiredResourceAccess $requiredResourceAccess `
@@ -177,8 +178,6 @@ function Set-GraphCredentialsAzureADApplication {
 
    Write-Host (Get-AzContext)
 
-	. ($scriptsDirectory + '\Scripts\Install-AzKeyVaultModuleIfNeeded.ps1')
-	Install-AzKeyVaultModuleIfNeeded
 	$keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
     $keyVault = Get-AzKeyVault -VaultName $keyVaultName
 

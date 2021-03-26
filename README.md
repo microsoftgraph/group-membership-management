@@ -60,6 +60,8 @@ These names must not be reused, see [`'Resource groups'`](#resource-groups) for 
 
 The steps in this document will setup a single environment i.e. prodv2, if you would like to setup other enviroments i.e. int and ua, you will need to go through these steps again replacing `<EnvironmentAbbreviation>` accordingly.
 
+Both `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` must be all numbers and lowercase letters! Using capital letters in either will cause problems later down the line!
+
 ### Add new environments
 If you would like to add additional environments, follow these steps:
 
@@ -169,7 +171,9 @@ Currently `<SolutionAbbreviation>` default value is 'gmm'. To change this value,
 
 `<SolutionAbbreviation>` currently support names of 2 or 3 characters long. `<EnvironmentAbbreviation>` currently support names from 2 to 6 characters long. This can be changed in the ARM templates (template.json) by updating the `minLength` and `maxLength` settings for `solutionAbbreviation` and `environmentAbbreviation` parameters.
 
-We recommend trying to use unique `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` names, since some resources in Azure require to have unique names globally so it is possible to have name collisions.
+We recommend trying to use unique `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` names, since some resources in Azure require to have unique names globally so it is possible to have name collisions. 
+
+Both `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` must be all numbers and lowercase letters! Using capital letters in either will cause problems later down the line!
 
 The changes required are:
 - Rename the parameter files provided (parameters.int.json, parameters.ua.json and parameters.prodv2.json) updating the environment part. parameters.`<EnvironmentAbbreviation>`.json.   
@@ -334,26 +338,35 @@ Uploading the certificate:
 
     GMM provides a PowerShell script to accomplish this.
 
-    1.  Set-ServicePrincipalAndServiceConnection.ps1
+    1.  Set-ServicePrincipal.ps1
 
-        This script will create a new service principal and a service connection.  
-        It takes these arguments `<SolutionAbbreviation>`, `<EnvironmentAbbreviation>`, `<OrganizationName>`, `<ProjectName>`.
+        This script will create a new service principal.  
+        It takes two arguments: `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>`.
+
+        From your PowerShell command prompt navigate to the Scripts folder then type these commands. This script must be run by someone with the Owner role on the subscription.
+
+            1. . ./Set-ServicePrincipal.ps1
+            2. Set-ServicePrincipal -SolutionAbbreviation "<SolutionAbbreviation>"  `
+            		                              -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
+            		                              -Verbose
+
+        Follow the instructions on the screen.
+
+        Locate the service connection name on the screen. It follows this naming convention: `<SolutionAbbreviation>`-serviceconnection-`<EnvironmentAbbreviation>`.
+
+    2. Set-ServiceConnection
+
+        This script sets up the service connection. Ensure that you're an owner of the service connection you created in the last step. Then, run the following command. `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` are as before, plus two new ones.
 
         `<OrganizationName>` - This is the name of your organization used in Azure DevOps.  
         `<ProjectName>` - This is the name of the project in Azure DevOps we just created in a previous step.
 
-        From your PowerShell command prompt navigate to the Scripts folder then type these commands:
-
-            1. . ./Set-ServicePrincipalAndServiceConnection.ps1
-            2. Set-ServicePrincipalAndServiceConnection -SolutionAbbreviation "<SolutionAbbreviation>"  `
+            1. . ./Set-ServiceConnection.ps1
+            2. Set-ServiceConnection -SolutionAbbreviation "<SolutionAbbreviation>"  `
             		                              -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-            		                              -OrganizationName "<OrganizationName>" `
-            		                              -ProjectName "<ProjectName>" `
+                                                 -OrganizationName "<OrganizationName>" `
+                                                 -ProjectName "<ProjectName>" `
             		                              -Verbose
-
-            Follow the instructions on the screen.
-
-        Locate the service connection name on the screen. It follows this naming convention: `<SolutionAbbreviation>`-serviceconnection-`<EnvironmentAbbreviation>`.
 
 -   ### Email Notification
 

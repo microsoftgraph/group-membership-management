@@ -23,8 +23,9 @@ namespace Repositories.Integration.Tests
 		// an Azure AD app in your demo tenant with http://localhost as a redirect URI under "Mobile and Desktop Applications"
 		// (it won't work if it's under Web, which is the default!)
 		// and the following delegated permissions:
-		// - GroupMember.Read.All
-		// - User.Read.All
+		// - GroupMember.ReadWrite.All to add users to groups and clean out old ones
+		// - Group.ReadWrite.All to make the groups
+		// - User.ReadWrite.All to clean up deleted users 
 		// When you run this, sign in with your demo tenant administrator credentials.
 
 		const string ClientId = "2ac03521-fa6c-48c4-bf03-033eb930df5e";

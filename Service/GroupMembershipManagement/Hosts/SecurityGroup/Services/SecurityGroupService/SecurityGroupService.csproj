@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Polly" Version="7.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
   </ItemGroup>
 

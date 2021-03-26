@@ -6,6 +6,9 @@ using System.Text;
 using System.Threading.Tasks;
 using Entities;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Diagnostics;
 
 namespace DemoUserSetup
 {
@@ -29,50 +32,66 @@ namespace DemoUserSetup
                 HandleExistingUsers(users.CurrentPage);
             }
 
-            try
-            {
-                for (int i = 0; i < _testUsers.Length; i++)
-                {
-                    if (_testUsers[i] == null)
-                        await AddNewUser(i);
-                }
-            }
-            catch (ServiceException ex)
-            {
-                Console.WriteLine("An error occurred while adding users to your demo tenant.\n" + ex.GetBaseException().Message);
-            }
-        }
+			try
+			{
+				Stopwatch timer = Stopwatch.StartNew();
+				for (int i = 0; i < _testUsers.Length; i++)
+				{
+					if (_testUsers[i] == null)
+						await AddNewUser(i);
 
-        private async Task PermanentlyDeleteItems(IEnumerable<DirectoryObject> toDelete)
-        {
-            foreach (var obj in toDelete)
-            {
-                await _graphServiceClient.Directory.DeletedItems[obj.Id].Request().DeleteAsync();
-            }
-        }
-        private async Task DeleteOldObjects(string type)
-        {
-            var deletedItemsUrl = _graphServiceClient.Directory.DeletedItems.AppendSegmentToRequestUrl(type);
-            var builder = new DirectoryDeletedItemsCollectionRequestBuilder(deletedItemsUrl, _graphServiceClient);
-            var deletedItems = await builder.Request().GetAsync();
+					if (i % 500 == 0)
+					{
+						var rate = timer.ElapsedMilliseconds / 500.0;
+						var millisecondsLeft = rate * (_testUsers.Length - i);
+						Console.WriteLine($"Added {i}/{_testUsers.Length} users ({i * 100.0 / _testUsers.Length:0.00}%). ETA: {TimeSpan.FromMilliseconds(millisecondsLeft)}");
+						timer.Restart();
+					}
+				}
+
+				Console.WriteLine("Done!");
+			}
+			catch (ServiceException ex)
+			{
+				Console.WriteLine(ex);
+			}
+		}
+
+		private int _permanentlyDeleted = 0;
+		private Task PermanentlyDeleteItems(IEnumerable<DirectoryObject> toDelete)
+		{
+			return Task.WhenAll(toDelete.Select(async obj =>
+			{
+				await _graphServiceClient.Directory.DeletedItems[obj.Id].Request().DeleteAsync();
+				Interlocked.Increment(ref _permanentlyDeleted);
+			}));
+		}
+
+		private async Task DeleteOldObjects(string type)
+		{
+			var deletedItemsUrl = _graphServiceClient.Directory.DeletedItems.AppendSegmentToRequestUrl(type);
+			var builder = new DirectoryDeletedItemsCollectionRequestBuilder(deletedItemsUrl, _graphServiceClient);
+			var deletedItems = await builder.Request().GetAsync();
 
             await PermanentlyDeleteItems(deletedItems);
 
-            while (deletedItems.NextPageRequest != null)
-            {
-                deletedItems = await deletedItems.NextPageRequest.GetAsync();
-                await PermanentlyDeleteItems(deletedItems);
-            }
-        }
-        private static void HandleExistingUsers(IEnumerable<User> users)
-        {
-            foreach (var user in users)
-            {
-                var userNumber = int.Parse(user.DisplayName.Substring("Test User ".Length));
-                if (userNumber < _testUsers.Length)
-                    _testUsers[userNumber] = ToEntity(user);
-            }
-        }
+			while (deletedItems.NextPageRequest != null)
+			{
+				deletedItems = await deletedItems.NextPageRequest.GetAsync();
+				await PermanentlyDeleteItems(deletedItems);
+				Console.WriteLine($"Cleaned up {_permanentlyDeleted} deleted items so far.");
+			}
+		}
+
+		private void HandleExistingUsers(IEnumerable<User> users)
+		{
+			foreach (var user in users)
+			{
+				var userNumber = int.Parse(user.DisplayName.Substring("Test User ".Length));
+				if (userNumber < _testUsers.Length)
+					_testUsers[userNumber] = ToEntity(user);
+			}
+		}
 
         private static readonly DemoData _preprodGraphUsers = new DemoData();
         private async Task AddNewUser(int number)

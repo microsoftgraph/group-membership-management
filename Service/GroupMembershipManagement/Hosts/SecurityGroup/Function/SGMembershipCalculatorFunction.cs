@@ -22,7 +22,7 @@ namespace Hosts.SecurityGroup
 		[FunctionName(nameof(SecurityGroup))]
         public async Task Run([ServiceBusTrigger("%serviceBusSyncJobTopic%", "SecurityGroup", Connection = "serviceBusTopicConnection")]Message message)
         {
-            await _calculator.SendMembership(JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body)));
+            await _calculator.SendMembershipAsync(JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body)));
 		}
     }
 }
