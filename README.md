@@ -9,7 +9,7 @@ Please read before proceeding
 -   The tool allows specifying the source security groups, destination Microsoft 365 Group, frequency of sync, start date of sync.
 -   Microsoft is releasing the tool without support, other than answering questions about how we use it internally. Link to the demo video: [Making IT more efficient with improvements to Microsoft 365 Groups](https://aka.ms/Admin1011).
 
-Limitations:  
+Limitations:
 - Note that this tool can not use on-premise mastered SGs as destination groups since we are not able to add GMM Graph application (see "Create `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` Azure Application" section.) as owner to such groups as the owner does not sync to AAD.
 
 ## GMM Setup
@@ -27,15 +27,15 @@ Limitations:
 
 If you would like to customize GMM code, you could do so by using any of the following IDEs:
 
-- Visual Studio Community, Professional or Enterprise Edition(s) 
+- Visual Studio Community, Professional or Enterprise Edition(s)
 - Visual Studio Code
 
 You can download Visual Studio or Visual Studio Code from here [Download](https://visualstudio.microsoft.com/downloads/).
 
 Currently GMM is targeting .NET SDK version 3.1.405, this is being set in [global.json](/Service/GroupMembershipManagement/global.json), you can download this specific version from [Download .NET Core 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1) or alternatively download the latest version and update the global.json file.
 
-To find out what .NET SDK versions you currently have installed run this command from the command line:   
-    
+To find out what .NET SDK versions you currently have installed run this command from the command line:
+
     dotnet --list-sdks
 
 
@@ -67,7 +67,7 @@ If you would like to add additional environments, follow these steps:
 
 1. Locate and open file [vsts-cicd.yml](/vsts-cicd.yml)
 2. Locate `int` environment `yaml/deploy-pipeline.yml` template.
-   
+
         - template: yaml/deploy-pipeline.yml
         parameters:
             solutionAbbreviation: '$(SolutionAbbreviation)'
@@ -109,7 +109,7 @@ If you would like to remove environments, follow these steps:
 
 1. Locate and open file [vsts-cicd.yml](/vsts-cicd.yml)
 2. Locate the `yaml/deploy-pipeline.yml` template for the environment you would like to delete.
-   
+
         - template: yaml/deploy-pipeline.yml
         parameters:
             solutionAbbreviation: '$(SolutionAbbreviation)'
@@ -145,7 +145,7 @@ If you would like to remove environments, follow these steps:
 
 ## Resource groups
 
-GMM logically separates the resources it uses into three [resource groups](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/manage-resource-groups-portal#what-is-a-resource-group). 
+GMM logically separates the resources it uses into three [resource groups](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/manage-resource-groups-portal#what-is-a-resource-group).
 
 -   prereqs
 -   data
@@ -159,7 +159,7 @@ Throughout this document we will use these tokens `<SolutionAbbreviation>`, `<Re
 
 The naming convention for the resource groups and other resources is `<SolutionAbbreviation>`-`<ResourceGroupName>`-`<EnvironmentAbbreviation>`, i.e gmm-data-ua, gmm-data-prod, gmm-compute-prod.
 
-A PowerShell script has been provided to create the resource groups, see section [`'Resource Groups and prereqs keyvault creation script'`](#resource-groups-and-prereqs-keyvault-creation-script). 
+A PowerShell script has been provided to create the resource groups, see section [`'Resource Groups and prereqs keyvault creation script'`](#resource-groups-and-prereqs-keyvault-creation-script).
 
 We create these resource groups in order for the ARM templates to be able to create additional resources and deploy the code.
 
@@ -171,12 +171,12 @@ Currently `<SolutionAbbreviation>` default value is 'gmm'. To change this value,
 
 `<SolutionAbbreviation>` currently support names of 2 or 3 characters long. `<EnvironmentAbbreviation>` currently support names from 2 to 6 characters long. This can be changed in the ARM templates (template.json) by updating the `minLength` and `maxLength` settings for `solutionAbbreviation` and `environmentAbbreviation` parameters.
 
-We recommend trying to use unique `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` names, since some resources in Azure require to have unique names globally so it is possible to have name collisions. 
+We recommend trying to use unique `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` names, since some resources in Azure require to have unique names globally so it is possible to have name collisions.
 
 Both `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` must be all numbers and lowercase letters! Using capital letters in either will cause problems later down the line!
 
 The changes required are:
-- Rename the parameter files provided (parameters.int.json, parameters.ua.json and parameters.prodv2.json) updating the environment part. parameters.`<EnvironmentAbbreviation>`.json.   
+- Rename the parameter files provided (parameters.int.json, parameters.ua.json and parameters.prodv2.json) updating the environment part. parameters.`<EnvironmentAbbreviation>`.json.
 The files are located in these folders:
   - Infrastructure\data\parameters
   - Service\GroupMembershipManagement\Hosts\GraphUpdater\Infrastructure\data\parameters
@@ -217,7 +217,7 @@ From your PowerShell command prompt navigate to the Scripts folder then type the
 `<resourceGroupLocation>` is the Azure location where the resources are going to be created. Please refer to [this](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/resource-location?tabs=azure-powershell) documentation to know the available resource locations.
 
 If you get an error stating "script is not digitally signed" when running any of the provided PowerShell scripts, try running this cmdlet
-    
+
     Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 ## Populate prereqs keyvault
@@ -243,10 +243,10 @@ From your PowerShell command prompt navigate to the Scripts folder then type the
                                                 -SolutionAbbreviation "<SolutionAbbreviation>" `
                                                 -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
                                                 -TenantIdToCreateAppIn "<TenantId>" `
-                                                -TenantIdWithKeyVault "<TenantId>" ` 
+                                                -TenantIdWithKeyVault "<TenantId>" `
                                                 -CertificateName "<CertificateName>" `
                                                 -Verbose
-    	    									
+
     Follow the instructions on the screen.
 
 Once your application is created we need to grant the requested permissions to use Microsoft Graph API.
@@ -289,7 +289,7 @@ Uploading the certificate:
 
     The pipeline provided with GMM uses Build Quality Checks to add quality gates to the build process.
 
-    You can install Build Quality Checks from [here](https://marketplace.visualstudio.com/items?itemName=mspremier.BuildQualityChecks).  
+    You can install Build Quality Checks from [here](https://marketplace.visualstudio.com/items?itemName=mspremier.BuildQualityChecks).
     At the time of writing this document the latest version was 8, make sure to update mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@`<version>` to the latest one in [build-services.yml](/build-services.yml) and [build-functionapps.yml](/yaml/build-functionapps.yml).
 
 -   ### Create a project
@@ -320,12 +320,12 @@ Uploading the certificate:
         -   Hosts
             -   JobTrigger
     -   yaml
-   
+
     Under Service folder, locate Hosts folder, this folder may contain one or more folders each representing a function, all of them will follow the same folder structure, open a function folder (i.e. JobTrigger) and locate the Infrastructure folder, this folder might contain a compute and data folder, similar to what we just did, review the parameters files on both compute and data folders, and provide the required values specific to your environment. This needs to be done to all the functions that may be present under Hosts folder.
 
     Infrastructure folder contains all the ARM templates, it has separate folders for data and compute resources, which in turn have a parameters folder.
 
-    Note:  
+    Note:
     Currently `<SolutionAbbreviation>` default value is 'gmm'. To change this value, update the `solutionAbbreviation` variable in vsts-cicd.yml file.
 
 -   ### Pushing GMM code to your repository
@@ -340,7 +340,7 @@ Uploading the certificate:
 
     1.  Set-ServicePrincipal.ps1
 
-        This script will create a new service principal.  
+        This script will create a new service principal.
         It takes two arguments: `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>`.
 
         From your PowerShell command prompt navigate to the Scripts folder then type these commands. This script must be run by someone with the Owner role on the subscription.
@@ -358,7 +358,7 @@ Uploading the certificate:
 
         This script sets up the service connection. Ensure that you're an owner of the service connection you created in the last step. Then, run the following command. `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` are as before, plus two new ones.
 
-        `<OrganizationName>` - This is the name of your organization used in Azure DevOps.  
+        `<OrganizationName>` - This is the name of your organization used in Azure DevOps.
         `<ProjectName>` - This is the name of the project in Azure DevOps we just created in a previous step.
 
             1. . ./Set-ServiceConnection.ps1
@@ -370,7 +370,8 @@ Uploading the certificate:
 
 -   ### Email Notification
 
-    In order to notify the requestor regarding the synchronization job status, please follow the steps in [this](/Service/GroupMembershipManagement/Repositories.Mail/Documentation/SetSenderAddressForEmailNotification.md) documentation.
+    Please follow the steps in this documentation, which will ensure that the requestor is notified regarding the synchronization job status:
+    [SetSenderAddressForEmailNotification.md](/Service/GroupMembershipManagement/Repositories.Mail/Documentation/SetSenderAddressForEmailNotification.md)
 
 -   ### Create a pipeline
 
@@ -386,10 +387,10 @@ Uploading the certificate:
         7. Select '/vsts-cicd.yml' in the Path field.
         8. Click continue.
         9. You will be presented with the "Review your pipeline YAML" screen. Locate and click on the "Variables" button on the top right side of your screen. We need to create the variables used by the pipeline.
-           
-               location - This is your Azure location where the resources are going to be created.  
 
-               tenantId - This is your Azure Active Directory tenant Id, where GMM Azure resources were created.  
+               location - This is your Azure location where the resources are going to be created.
+
+               tenantId - This is your Azure Active Directory tenant Id, where GMM Azure resources were created.
 
                keyVaultReaders_prod - This is a list of service principals that will have access to the keyvaults in production environment. i.e. your own Azure user id, an Azure group id.
 
@@ -415,13 +416,13 @@ Uploading the certificate:
 
 
             To find the  group or user id in Azure follow these steps:
-            1. In the Azure Portal navigate to your 'Azure Active Directory'. If you don't see it on your screen you can use the top search bar to locate it.  
+            1. In the Azure Portal navigate to your 'Azure Active Directory'. If you don't see it on your screen you can use the top search bar to locate it.
             2. For users locate the 'Users' blade and for groups locate the 'Groups' blade on the left menu.
             3. Search for the name of the user or group and select it from the results list.
             4. Locate the Object ID field. This is the value that you will need to copy.
 
         10. Click on the "New variable" button. Provide the name and value, then click on the "OK" button. To add a new variable click on the button with the plus sign icon.
-        11. Once all variables have been created click on the "Save" button.                                 
+        11. Once all variables have been created click on the "Save" button.
         12. Run your pipeline.
 
         When running the pipeline for the first time you might be prompted to authorize resources, click on "Authorize resources" buttons.
@@ -501,7 +502,7 @@ Azure Object Id of destination group.
 ### Status
 Current synchronization job status; Set to Idle for new synchronization jobs.
 - DataType: string
-- Valid values: Idle, InProgress, Error  
+- Valid values: Idle, InProgress, Error
 
 ### LastRunTime
 Last date time the synchronization job ran. Set to 1601-01-01T00:00:00.000Z for new synchronization jobs.
@@ -513,8 +514,8 @@ Defines in hours, how often a synchronization job will run.
 - DataType: int
 
 ### Query
-Defines the Azure ObjectId of the security group that will be used as the source for the synchronization. One or multiple ids separated by semicolon ";" can be provided.  
-i.e. (single id) dffad54b-88fe-4459-9dd1-e2e2a415d586  
+Defines the Azure ObjectId of the security group that will be used as the source for the synchronization. One or multiple ids separated by semicolon ";" can be provided.
+i.e. (single id) dffad54b-88fe-4459-9dd1-e2e2a415d586
 i.e. (multiple ids) dffad54b-88fe-4459-9dd1-e2e2a415d586;065cfbc2-ad4f-47c8-8233-3cf55edd0509
 - DataType: string
 - Format: Guid
@@ -540,7 +541,7 @@ The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGrou
 							-TargetOfficeGroupId "<DestinationGroupObjectId>" `
 							-Query "<source group object id(s) (separated by ';')>" `
 							-Enabled $True `
-							-Verbose    
+							-Verbose
 
 You can also use Microsoft Azure Storage Explorer to add, edit or delete synchronization jobs. see [Get started with Storage Explorer](https://docs.microsoft.com/en-us/azure/vs-azure-tools-storage-manage-with-storage-explorer?tabs=windows).
 
@@ -558,16 +559,16 @@ In order to add the application as an owner of a group follow the next steps:
 7. Locate and open the `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application and select it from the results list.
 8. Take note of the enterprise application's `Object ID`.
 9. Open a PowerShell terminal as an administrator.
-10. If not already installed, install the [`AzureAD` module]( https://www.powershellgallery.com/packages/AzureAD) version `2.0.2.128` or higher.  
+10. If not already installed, install the [`AzureAD` module]( https://www.powershellgallery.com/packages/AzureAD) version `2.0.2.128` or higher.
 `Install-Module -Name AzureAD -RequiredVersion 2.0.2.128`
-11. Import the AzureAD PowerShell Module  
+11. Import the AzureAD PowerShell Module
 `Import-Module -Name AzureAD -RequiredVersion 2.0.2.128`
 12. Connect with an authenticated account to use Active Directory cmdlet requests:
 `Connect-AzureAD`
-13. Execute the following command:  
+13. Execute the following command:
 `Add-AzureADGroupOwner -ObjectId [Group Id (from step 4)] -RefObjectId [Object Id (from step 8)]`
 
-*Note: regarding steps 10 - 13:  
+*Note: regarding steps 10 - 13:
 A newer version of this cmdlet is under development.  It will be available in an entirely different PowerShell module, [`Az.Resources`](https://www.powershellgallery.com/packages/Az.Resources).  The cmdlet will be renamed to `Add-AzADGroupOwner`.*
 
 # Setting AzureTableBackup function
