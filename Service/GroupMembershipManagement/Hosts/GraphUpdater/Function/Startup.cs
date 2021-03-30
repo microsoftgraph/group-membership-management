@@ -55,7 +55,7 @@ namespace Hosts.GraphUpdater
 			{
 				return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
 			})
-			.AddScoped<IGraphGroupRepository, GraphGroupRepository>()
+			.AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
 			.AddSingleton<ISyncJobRepository>(services =>
 			{
 				var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
@@ -67,9 +67,9 @@ namespace Hosts.GraphUpdater
 				return new EmailSenderRecipient(creds.Value.SenderAddress, creds.Value.SenderPassword, creds.Value.SyncCompletedCCAddresses, creds.Value.SyncDisabledCCAddresses);
 			})
 			.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(services => services.GetService<IOptions<LogAnalyticsSecret<LoggingRepository>>>().Value)
-			.AddScoped<ILoggingRepository, LoggingRepository>()
-			.AddScoped<SessionMessageCollector>()
-			.AddScoped<IGraphUpdater, GraphUpdaterApplication>();
+			.AddSingleton<ILoggingRepository, LoggingRepository>()
+			.AddSingleton<SessionMessageCollector>()
+			.AddSingleton<IGraphUpdater, GraphUpdaterApplication>();
 
 			var graphCredentials = builder.Services.BuildServiceProvider().GetService<IOptions<GraphCredentials>>().Value;
 			builder.Services.AddOptions<EmailSenderRecipient>().Configure<IConfiguration>((settings, configuration) =>
