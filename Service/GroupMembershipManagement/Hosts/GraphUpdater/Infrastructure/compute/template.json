@@ -244,7 +244,7 @@
                 "name": "jobsStorageAccountConnectionString",
                 "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('jobsStorageAccountConnectionString'), '2019-09-01').secretUriWithVersion, ')')]",
                 "slotSetting": false
-              },              
+              },
               {
                 "name": "jobsTableName",
                 "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('jobsTableName'), '2019-09-01').secretUriWithVersion, ')')]",
@@ -318,6 +318,11 @@
               {
                 "name": "WEBSITE_MAX_DYNAMIC_APPLICATION_SCALE_OUT",
                 "value": "[parameters('maximumElasticWorkerCount')]",
+                "slotSetting": false
+              },
+              {
+                "name": "dryRun",
+                "value": false,
                 "slotSetting": false
               }
             ]
