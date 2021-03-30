@@ -24,12 +24,12 @@ namespace Hosts.GraphUpdater
             [OrchestrationTrigger] IDurableOrchestrationContext context,
             ILogger log)
         {
-            _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(OrchestratorFunction) + " function started" }).ConfigureAwait(false);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(OrchestratorFunction) + " function started" }).ConfigureAwait(false);
             var graphRequest = context.GetInput<GraphUpdaterFunctionRequest>();
 
             var graphActivityResult = await context.CallActivityAsync<GroupMembershipMessageResponse>(nameof(GraphUpdaterFunction), graphRequest);
 
-            _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(OrchestratorFunction) + " function completed" }).ConfigureAwait(false);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(OrchestratorFunction) + " function completed" }).ConfigureAwait(false);
 
             return graphActivityResult;
         }
