@@ -97,10 +97,9 @@ namespace Repositories.SyncJobsRepository
                     job.Status = status.ToString();
                     job.ETag = "*";
 
-                    foreach (var jobProperty in job.GetType().GetProperties())
-                        await _log.LogMessageAsync(new LogMessage { Message = $"{jobProperty.Name} : {jobProperty.GetValue(job, null)}", RunId = job.RunId });
+					await _log.LogMessageAsync(new LogMessage { Message = string.Join('\n', job.GetType().GetProperties().Select(jobProperty => $"{jobProperty.Name} : {jobProperty.GetValue(job, null)}")), RunId = job.RunId });
 
-                    batchOperation.Add(TableOperation.Replace(job));
+					batchOperation.Add(TableOperation.Replace(job));
 
                     if (++currentSize == batchSize)
                     {
