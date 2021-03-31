@@ -243,7 +243,7 @@ namespace Repositories.GraphGroups
 
 		private async Task ProcessBatch(ConcurrentQueue<ChunkOfUsers> queue, List<ChunkOfUsers> toSend, MakeBulkRequest makeRequest, int threadNumber)
 		{
-			await _log.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: Sending a batch of {toSend.Count} requests.", RunId = RunId });
+			//await _log.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: Sending a batch of {toSend.Count} requests.", RunId = RunId });
 			int requeued = 0;
 			try
 			{
@@ -256,7 +256,7 @@ namespace Repositories.GraphGroups
 						queue.Enqueue(chunkToRetry.UpdateIdForRetry(threadNumber));
 					}
 				}
-				await _log.LogMessageAsync(new LogMessage { Message = $"{threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.", RunId = RunId });
+				//await _log.LogMessageAsync(new LogMessage { Message = $"{threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.", RunId = RunId });
 			}
 			catch (ServiceException ex)
 			{
