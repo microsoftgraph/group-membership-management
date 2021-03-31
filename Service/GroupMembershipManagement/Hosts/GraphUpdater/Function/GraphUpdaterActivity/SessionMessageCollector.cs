@@ -40,9 +40,9 @@ namespace Hosts.GraphUpdater
 
 			await _logger.LogMessageAsync(new LogMessage {
 				RunId = body.Body.RunId,
-				Message = $"Got a message in {nameof(SessionMessageCollector)}." +
-				$"The message we just received has {body.Body.SourceMembers} users." +
-				$"There are currently {_receivedMessages.Count} sessions in flight." +
+				Message = $"Got a message in {nameof(SessionMessageCollector)}. " +
+				$"The message we just received has {body.Body.SourceMembers.Count} users and is {(body.Body.IsLastMessage ? "" : "not ")}the last message in its session. " +
+				$"There are currently {_receivedMessages.Count} sessions in flight. " +
 				$"The current session, the one with ID {messageSessionId}, has {receivedSoFar.Count} messages with {receivedSoFar.Sum(x => x.Body.SourceMembers.Count)} users in total."
 			});
 

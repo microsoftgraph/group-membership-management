@@ -87,6 +87,7 @@ namespace Hosts.GraphUpdater
                 var completedLockTokens = completedGroupMembershipMessages.Select(x => x.LockToken);
                 await messageSession.CompleteAsync(completedLockTokens);
                 await messageSession.CloseAsync();
+                source.Cancel();
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(StarterFunction) + " function completed" });
