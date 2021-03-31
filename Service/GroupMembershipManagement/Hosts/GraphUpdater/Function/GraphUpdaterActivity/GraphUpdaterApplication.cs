@@ -56,7 +56,9 @@ namespace Hosts.GraphUpdater
 				{ "targetOfficeGroupId", membership.Destination.ObjectId.ToString() }
 			};
 
-			var changeTo = await SynchronizeGroups(membership, fromto);
+			var isDryRun = Convert.ToBoolean(Environment.GetEnvironmentVariable("dryRun", EnvironmentVariableTarget.Process));
+
+			var changeTo = await SynchronizeGroups(membership, fromto, isDryRun);
 
 			var syncJobsBeingProcessed = _syncJobRepo.GetSyncJobsAsync(new[] { (membership.SyncJobPartitionKey, membership.SyncJobRowKey) });
 
@@ -78,7 +80,7 @@ namespace Hosts.GraphUpdater
 				await _log.LogMessageAsync(new LogMessage { Message = $"Sync jobs being batched : Partition key {job.PartitionKey} , Row key {job.RowKey}", RunId = membership.RunId });
 				await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo.syncStatus);
 
-				if (isInitialSync && job.Status == SyncStatus.Idle.ToString())
+				if (isInitialSync && job.Status == SyncStatus.Idle.ToString() && !isDryRun)
 				{
 					var message = new EmailMessage
 					{
@@ -114,7 +116,7 @@ namespace Hosts.GraphUpdater
 			await _log.LogMessageAsync(new LogMessage { Message = $"Syncing {fromto} done.", RunId = membership.RunId });
 		}
 
-		private async Task<(SyncStatus syncStatus, int AddMembersCount, int RemoveMembersCount)> SynchronizeGroups(GroupMembership membership, string fromto)
+		private async Task<(SyncStatus syncStatus, int AddMembersCount, int RemoveMembersCount)> SynchronizeGroups(GroupMembership membership, string fromto, bool isDryRun)
 		{
 			if (membership.Errored)
 			{
@@ -125,7 +127,7 @@ namespace Hosts.GraphUpdater
 			// this gets checked for in the job trigger, but no harm in checking it here, too.
 			if (await _graphGroups.GroupExists(membership.Destination.ObjectId))
 			{
-				var response = await DoSynchronization(membership, fromto);
+				var response = await DoSynchronization(membership, fromto, isDryRun);
 				return (SyncStatus.Idle, response.AddMembersCount, response.RemoveMembersCount);
 			}
 			else
@@ -135,7 +137,7 @@ namespace Hosts.GraphUpdater
 			}
 		}
 
-		private async Task<(int AddMembersCount, int RemoveMembersCount)> DoSynchronization(GroupMembership membership, string fromto)
+		private async Task<(int AddMembersCount, int RemoveMembersCount)> DoSynchronization(GroupMembership membership, string fromto, bool isDryRun)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"Calculating membership difference {fromto}.", RunId = membership.RunId });
 			Stopwatch stopwatch = Stopwatch.StartNew();
@@ -143,11 +145,17 @@ namespace Hosts.GraphUpdater
 			stopwatch.Stop();
 			await _log.LogMessageAsync(new LogMessage { Message = $"Calculated membership difference {fromto} in {stopwatch.Elapsed.TotalSeconds} seconds. Adding {delta.ToAdd.Count} users and removing {delta.ToRemove.Count}.", RunId = membership.RunId });
 
-			stopwatch.Restart();
-			await _graphGroups.AddUsersToGroup(delta.ToAdd, membership.Destination);
-			await _graphGroups.RemoveUsersFromGroup(delta.ToRemove, membership.Destination);
-			stopwatch.Stop();
-			await _log.LogMessageAsync(new LogMessage { Message = $"Synchronization {fromto} complete in {stopwatch.Elapsed.TotalSeconds} seconds. {delta.ToAdd.Count / stopwatch.Elapsed.TotalSeconds} users added per second. {delta.ToRemove.Count / stopwatch.Elapsed.TotalSeconds} users removed per second. Marking job as idle.", RunId = membership.RunId });
+			if (!isDryRun)
+			{
+				stopwatch.Restart();
+				await _graphGroups.AddUsersToGroup(delta.ToAdd, membership.Destination);
+				await _graphGroups.RemoveUsersFromGroup(delta.ToRemove, membership.Destination);
+				stopwatch.Stop();
+				await _log.LogMessageAsync(new LogMessage { Message = $"Synchronization {fromto} complete in {stopwatch.Elapsed.TotalSeconds} seconds. {delta.ToAdd.Count / stopwatch.Elapsed.TotalSeconds} users added per second. {delta.ToRemove.Count / stopwatch.Elapsed.TotalSeconds} users removed per second. Marking job as idle.", RunId = membership.RunId });
+			}
+			else
+				await _log.LogMessageAsync(new LogMessage { Message = $"Synchronization dry run for {fromto} complete. {delta.ToAdd.Count} users to be added. {delta.ToRemove.Count} users to be removed. Marking job as idle.", RunId = membership.RunId });
+
 			return (delta.ToAdd.Count, delta.ToRemove.Count);
 		}
 
