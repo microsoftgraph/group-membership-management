@@ -47,7 +47,7 @@ namespace Hosts.GraphUpdater
 
             var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), graphRequest);
 
-            IEnumerable<GroupMembershipMessage> completedGroupMembershipMessages = null;
+            List<GroupMembershipMessage> completedGroupMembershipMessages = null;
             bool isLastMessage = false;
 
             OrchestrationRuntimeStatus[] orchestratorRuntimeStatusCodesWorthRetrying = {

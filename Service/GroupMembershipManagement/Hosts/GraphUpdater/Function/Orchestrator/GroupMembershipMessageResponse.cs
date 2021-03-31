@@ -6,7 +6,7 @@ namespace Hosts.GraphUpdater
 {
 	public class GroupMembershipMessageResponse
 	{
-		public IEnumerable<GroupMembershipMessage> CompletedGroupMembershipMessages { get; set; }
+		public List<GroupMembershipMessage> CompletedGroupMembershipMessages { get; set; }
 		public bool ShouldCompleteMessage { get; set; }
 	}
 }
