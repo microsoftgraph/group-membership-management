@@ -56,9 +56,9 @@ namespace Hosts.GraphUpdater
 				{ "targetOfficeGroupId", membership.Destination.ObjectId.ToString() }
 			};
 
-			var isDryRun = Convert.ToBoolean(Environment.GetEnvironmentVariable("dryRun", EnvironmentVariableTarget.Process));
+			var isDryRunEnabled = Convert.ToBoolean(Environment.GetEnvironmentVariable("dryRunEnabled", EnvironmentVariableTarget.Process));
 
-			var changeTo = await SynchronizeGroups(membership, fromto, isDryRun);
+			var changeTo = await SynchronizeGroups(membership, fromto, isDryRunEnabled);
 
 			var syncJobsBeingProcessed = _syncJobRepo.GetSyncJobsAsync(new[] { (membership.SyncJobPartitionKey, membership.SyncJobRowKey) });
 
@@ -80,7 +80,7 @@ namespace Hosts.GraphUpdater
 				await _log.LogMessageAsync(new LogMessage { Message = $"Sync jobs being batched : Partition key {job.PartitionKey} , Row key {job.RowKey}", RunId = membership.RunId });
 				await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo.syncStatus);
 
-				if (isInitialSync && job.Status == SyncStatus.Idle.ToString() && !isDryRun)
+				if (isInitialSync && job.Status == SyncStatus.Idle.ToString() && !isDryRunEnabled)
 				{
 					var message = new EmailMessage
 					{
@@ -137,7 +137,7 @@ namespace Hosts.GraphUpdater
 			}
 		}
 
-		private async Task<(int AddMembersCount, int RemoveMembersCount)> DoSynchronization(GroupMembership membership, string fromto, bool isDryRun)
+		private async Task<(int AddMembersCount, int RemoveMembersCount)> DoSynchronization(GroupMembership membership, string fromto, bool isDryRunEnabled)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"Calculating membership difference {fromto}.", RunId = membership.RunId });
 			Stopwatch stopwatch = Stopwatch.StartNew();
@@ -145,7 +145,7 @@ namespace Hosts.GraphUpdater
 			stopwatch.Stop();
 			await _log.LogMessageAsync(new LogMessage { Message = $"Calculated membership difference {fromto} in {stopwatch.Elapsed.TotalSeconds} seconds. Adding {delta.ToAdd.Count} users and removing {delta.ToRemove.Count}.", RunId = membership.RunId });
 
-			if (!isDryRun)
+			if (!isDryRunEnabled)
 			{
 				stopwatch.Restart();
 				await _graphGroups.AddUsersToGroup(delta.ToAdd, membership.Destination);

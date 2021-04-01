@@ -321,7 +321,7 @@
                 "slotSetting": false
               },
               {
-                "name": "dryRun",
+                "name": "dryRunEnabled",
                 "value": false,
                 "slotSetting": false
               }
