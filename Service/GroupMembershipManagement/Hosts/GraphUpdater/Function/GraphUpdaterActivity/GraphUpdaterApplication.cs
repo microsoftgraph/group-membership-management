@@ -56,12 +56,13 @@ namespace Hosts.GraphUpdater
 				{ "targetOfficeGroupId", membership.Destination.ObjectId.ToString() }
 			};
 
+			// If the value for dry run enabled is null then we want the default value to be false
 			var dryRunEnabledConfigurationValue = ((!String.IsNullOrEmpty(Environment.GetEnvironmentVariable("dryRunEnabled", EnvironmentVariableTarget.Process))) ? 
 													Environment.GetEnvironmentVariable("dryRunEnabled", EnvironmentVariableTarget.Process) : 
 													false.ToString());
 
 			var isDryRunEnabled = Convert.ToBoolean(dryRunEnabledConfigurationValue);
-			await _log.LogMessageAsync(new LogMessage { Message = $"The Dry Run Enabled configuration is currently set to {isDryRunEnabled}", RunId = membership.RunId });
+			await _log.LogMessageAsync(new LogMessage { Message = $"The Dry Run Enabled configuration is currently set to {isDryRunEnabled}. We will not be syncing members if Dry Run Enabled configuration is set to True.", RunId = membership.RunId });
 
 			var changeTo = await SynchronizeGroups(membership, fromto, isDryRunEnabled);
 
@@ -119,7 +120,7 @@ namespace Hosts.GraphUpdater
 			}
 
 			if(isDryRunEnabled)
-				await _log.LogMessageAsync(new LogMessage { Message = $"Dry Run of a sync {fromto} is done.", RunId = membership.RunId });
+				await _log.LogMessageAsync(new LogMessage { Message = $"Dry Run of a sync {fromto} is complete. Membership will not be updated.", RunId = membership.RunId });
 			else
 				await _log.LogMessageAsync(new LogMessage { Message = $"Syncing {fromto} done.", RunId = membership.RunId });
 		}
@@ -151,7 +152,7 @@ namespace Hosts.GraphUpdater
 			Stopwatch stopwatch = Stopwatch.StartNew();
 			var delta = _differenceCalculator.CalculateDifference(membership.SourceMembers, await _graphGroups.GetUsersInGroupTransitively(membership.Destination.ObjectId));
 			stopwatch.Stop();
-			await _log.LogMessageAsync(new LogMessage { Message = $"Calculated membership difference {fromto} in {stopwatch.Elapsed.TotalSeconds} seconds. Adding {delta.ToAdd.Count} users and removing {delta.ToRemove.Count}.", RunId = membership.RunId });
+			await _log.LogMessageAsync(new LogMessage { Message = $"Calculated membership difference {fromto} in {stopwatch.Elapsed.TotalSeconds} seconds. Users to be added: {delta.ToAdd.Count} users and users to be removed: {delta.ToRemove.Count}.", RunId = membership.RunId });
 
 			if (!isDryRunEnabled)
 			{
@@ -162,7 +163,7 @@ namespace Hosts.GraphUpdater
 				await _log.LogMessageAsync(new LogMessage { Message = $"Synchronization {fromto} complete in {stopwatch.Elapsed.TotalSeconds} seconds. {delta.ToAdd.Count / stopwatch.Elapsed.TotalSeconds} users added per second. {delta.ToRemove.Count / stopwatch.Elapsed.TotalSeconds} users removed per second. Marking job as idle.", RunId = membership.RunId });
 			}
 			else
-				await _log.LogMessageAsync(new LogMessage { Message = $"Synchronization dry run for {fromto} complete. {delta.ToAdd.Count} users to be added. {delta.ToRemove.Count} users to be removed. Marking job as idle.", RunId = membership.RunId });
+				await _log.LogMessageAsync(new LogMessage { Message = $"A Dry Run Synchronization {fromto} is now complete. {delta.ToAdd.Count} users would have been added. {delta.ToRemove.Count} users would have been removed. Marking job as idle.", RunId = membership.RunId });
 
 			return (delta.ToAdd.Count, delta.ToRemove.Count);
 		}
