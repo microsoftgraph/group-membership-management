@@ -56,7 +56,12 @@ namespace Hosts.GraphUpdater
 				{ "targetOfficeGroupId", membership.Destination.ObjectId.ToString() }
 			};
 
-			var isDryRunEnabled = Convert.ToBoolean(Environment.GetEnvironmentVariable("dryRunEnabled", EnvironmentVariableTarget.Process));
+			var dryRunEnabledConfigurationValue = ((!String.IsNullOrEmpty(Environment.GetEnvironmentVariable("dryRunEnabled", EnvironmentVariableTarget.Process))) ? 
+													Environment.GetEnvironmentVariable("dryRunEnabled", EnvironmentVariableTarget.Process) : 
+													false.ToString());
+
+			var isDryRunEnabled = Convert.ToBoolean(dryRunEnabledConfigurationValue);
+			await _log.LogMessageAsync(new LogMessage { Message = $"The Dry Run Enabled configuration is currently set to {isDryRunEnabled}", RunId = membership.RunId });
 
 			var changeTo = await SynchronizeGroups(membership, fromto, isDryRunEnabled);
 
@@ -113,7 +118,10 @@ namespace Hosts.GraphUpdater
 				await _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo.syncStatus}.", RunId = membership.RunId });
 			}
 
-			await _log.LogMessageAsync(new LogMessage { Message = $"Syncing {fromto} done.", RunId = membership.RunId });
+			if(isDryRunEnabled)
+				await _log.LogMessageAsync(new LogMessage { Message = $"Dry Run of a sync {fromto} is done.", RunId = membership.RunId });
+			else
+				await _log.LogMessageAsync(new LogMessage { Message = $"Syncing {fromto} done.", RunId = membership.RunId });
 		}
 
 		private async Task<(SyncStatus syncStatus, int AddMembersCount, int RemoveMembersCount)> SynchronizeGroups(GroupMembership membership, string fromto, bool isDryRun)
