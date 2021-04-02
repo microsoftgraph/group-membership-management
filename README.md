@@ -586,6 +586,11 @@ In order to add the application as an owner of a group follow the next steps:
 *Note: regarding steps 10 - 13:
 A newer version of this cmdlet is under development.  It will be available in an entirely different PowerShell module, [`Az.Resources`](https://www.powershellgallery.com/packages/Az.Resources).  The cmdlet will be renamed to `Add-AzADGroupOwner`.*
 
+### Dry Run Settings
+
+A dry run setting is present in GMM to provide users the ability to test new changes without affecting the group membership. This configuration is present in the GraphUpdater function app would need to be changed to false after the intial deployment.
+If you would like to have the default setting to be false, then please update the dryRunEnabled configuration to false in the parameters file for the GraphUpdater.
+
 # Setting AzureTableBackup function
 `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureTableBackup function can create backups for Azure Storage Tables and delete older backups automatically.
 Out of the box, the AzureTableBackup function will backup the 'syncJobs' table; where all the groups' sync parameters are defined. The function is set to run every day at midnight and will delete backups older than 7 days.

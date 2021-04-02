@@ -69,7 +69,8 @@ namespace Services.Tests
 			var mockLogs = new MockLoggingRepository();
 			var mockMails = new MockMailRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockSyncJobs, mockLogs, mockMails, mockGroups, mockEmail);
+			var mockDryRun = new MockDryRun<IDryRunValue>();
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockSyncJobs, mockLogs, mockMails, mockGroups, mockEmail, mockDryRun);
 			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
@@ -111,7 +112,7 @@ namespace Services.Tests
 			var groupMembershipMessageResponse = await sessionCollector.HandleNewMessageAsync(incomingMessages.Last(), sessionId);
 
 			Assert.IsFalse(mockSession.Closed);
-			Assert.AreEqual(expectedLogs + 7, mockLogs.MessagesLoggedCount);
+			Assert.AreEqual(expectedLogs + 8, mockLogs.MessagesLoggedCount);
 			Assert.AreEqual("Error", syncJob.Status);
 			Assert.IsFalse(syncJob.Enabled);
 			Assert.AreEqual(0, mockGroups.GroupsToUsers.Count);
@@ -126,7 +127,8 @@ namespace Services.Tests
 			var mockLogs = new MockLoggingRepository();
 			var mockMails = new MockMailRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockSyncJobs, mockLogs, mockMails, mockGroups, mockEmail);
+			var mockDryRun = new MockDryRun<IDryRunValue>();
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockSyncJobs, mockLogs, mockMails, mockGroups, mockEmail, mockDryRun);
 			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
@@ -170,7 +172,7 @@ namespace Services.Tests
 			var groupMembershipMessageResponse = await sessionCollector.HandleNewMessageAsync(incomingMessages.Last(), sessionId);
 
 			Assert.IsFalse(mockSession.Closed);
-			Assert.AreEqual(expectedLogs + 9, mockLogs.MessagesLoggedCount);
+			Assert.AreEqual(expectedLogs + 10, mockLogs.MessagesLoggedCount);
 			Assert.IsTrue(groupMembershipMessageResponse.ShouldCompleteMessage);
 			Assert.AreEqual("Idle", syncJob.Status);
 			Assert.IsTrue(syncJob.Enabled);
@@ -186,7 +188,8 @@ namespace Services.Tests
 			var mockLogs = new MockLoggingRepository();
 			var mockMails = new MockMailRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockSyncJobs, mockLogs, mockMails, mockGroups, mockEmail);
+			var mockDryRun = new MockDryRun<IDryRunValue>();
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockSyncJobs, mockLogs, mockMails, mockGroups, mockEmail, mockDryRun);
 			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
@@ -241,6 +244,11 @@ namespace Services.Tests
 			public string SyncCompletedCCAddresses => "";
 
 			public string SyncDisabledCCAddresses => "";
+		}
+
+		private class MockDryRun<T> : IDryRunValue
+		{
+			public bool DryRunEnabled => false;
 		}
 
 		public GroupMembershipMessage[] MakeMembershipMessages()

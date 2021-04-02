@@ -81,14 +81,16 @@ namespace Services.Tests
             var syncjobRepository = new MockSyncJobRepository();
             var loggingRepository = new MockLoggingRepository();
             var mailRepository = new MockMailRepository();
+            var dryRun = new DryRunValue();
 
             var graphUpdater = new GraphUpdaterApplication(
-                                    calculator,
-                                    syncjobRepository,
-                                    loggingRepository,
-                                    mailRepository,
-                                    graphGroupsRepository,
-                                    senderRecipients);
+                                     calculator,
+                                     syncjobRepository,
+                                     loggingRepository,
+                                     mailRepository,
+                                     graphGroupsRepository,
+                                     senderRecipients,
+                                     dryRun);
 
 
             syncjobRepository.ExistingSyncJobs.Add((_partitionKey, _rowKey), _job);
@@ -110,6 +112,7 @@ namespace Services.Tests
             var syncjobRepository = new MockSyncJobRepository();
             var loggingRepository = new MockLoggingRepository();
             var mailRepository = new MockMailRepository();
+            var dryRun = new DryRunValue();
 
             var graphUpdater = new GraphUpdaterApplication(
                                     calculator,
@@ -117,7 +120,8 @@ namespace Services.Tests
                                     loggingRepository,
                                     mailRepository,
                                     graphGroupsRepository,
-                                    senderRecipients);
+                                    senderRecipients,
+                                    dryRun);
 
 
             syncjobRepository.ExistingSyncJobs.Add((_partitionKey, _rowKey), _job);
@@ -139,6 +143,7 @@ namespace Services.Tests
             var syncjobRepository = new MockSyncJobRepository();
             var loggingRepository = new MockLoggingRepository();
             var mailRepository = new MockMailRepository();
+            var dryRun = new DryRunValue();
 
             var graphUpdater = new GraphUpdaterApplication(
                                     calculator,
@@ -146,7 +151,8 @@ namespace Services.Tests
                                     loggingRepository,
                                     mailRepository,
                                     graphGroupsRepository,
-                                    senderRecipients);
+                                    senderRecipients,
+                                    dryRun);
 
 
             syncjobRepository.ExistingSyncJobs.Add((_partitionKey, _rowKey), _job);
@@ -170,6 +176,7 @@ namespace Services.Tests
             var syncjobRepository = new MockSyncJobRepository();
             var loggingRepository = new MockLoggingRepository();
             var mailRepository = new MockMailRepository();
+            var dryRun = new DryRunValue();
 
             var graphUpdater = new GraphUpdaterApplication(
                                     calculator,
@@ -177,7 +184,8 @@ namespace Services.Tests
                                     loggingRepository,
                                     mailRepository,
                                     graphGroupsRepository,
-                                    senderRecipients);
+                                    senderRecipients,
+                                    dryRun);
 
             var targetGroupUsers = new List<AzureADUser>();
 
@@ -208,6 +216,7 @@ namespace Services.Tests
             var syncjobRepository = new MockSyncJobRepository();
             var loggingRepository = new MockLoggingRepository();
             var mailRepository = new MockMailRepository();
+            var dryRun = new DryRunValue();
 
             var graphUpdater = new GraphUpdaterApplication(
                                     calculator,
@@ -215,7 +224,8 @@ namespace Services.Tests
                                     loggingRepository,
                                     mailRepository,
                                     graphGroupsRepository,
-                                    senderRecipients);
+                                    senderRecipients,
+                                    dryRun);
 
             var users = _membership.SourceMembers;
             _membership.SourceMembers = users.Take(2).ToList();
@@ -248,6 +258,7 @@ namespace Services.Tests
             var syncjobRepository = new MockSyncJobRepository();
             var loggingRepository = new MockLoggingRepository();
             var mailRepository = new MockMailRepository();
+            var dryRun = new DryRunValue();
 
             var graphUpdater = new GraphUpdaterApplication(
                                     calculator,
@@ -255,7 +266,8 @@ namespace Services.Tests
                                     loggingRepository,
                                     mailRepository,
                                     graphGroupsRepository,
-                                    senderRecipients);
+                                    senderRecipients,
+                                    dryRun);
 
             var users = _membership.SourceMembers;
             _membership.SourceMembers = users.Take(2).ToList();
