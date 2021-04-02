@@ -18,6 +18,10 @@ namespace Services.Tests
     [TestClass]
     public class MembershipThresholdTests
     {
+        const string SyncThresholdIncreaseEmailBody = "SyncThresholdIncreaseEmailBody";
+        const string SyncThresholdDecreaseEmailBody = "SyncThresholdDecreaseEmailBody";
+        const string SyncThresholdBothEmailBody = "SyncThresholdBothEmailBody";
+
         Guid _rundId;
         Guid _targetGroupId;
         string _partitionKey;
@@ -185,9 +189,14 @@ namespace Services.Tests
 
             await graphUpdater.CalculateDifference(_membership);
 
+            var emailMessage = mailRepository.SentEmails.Single();
+
             Assert.AreEqual(SyncStatus.Idle.ToString(), _job.Status);
             Assert.AreEqual(targetGroupUsers.Count, graphGroupsRepository.GroupsToUsers[_targetGroupId].Count);
             Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is greater than threshold value")));
+            Assert.AreEqual(SyncThresholdIncreaseEmailBody, emailMessage.Content);
+            Assert.AreEqual(_targetGroupId.ToString(), emailMessage.AdditionalContentParams[1]);
+            Assert.AreEqual(4, emailMessage.AdditionalContentParams.Length);
         }
 
         [TestMethod]
@@ -220,9 +229,54 @@ namespace Services.Tests
 
             await graphUpdater.CalculateDifference(_membership);
 
+            var emailMessage = mailRepository.SentEmails.Single();
+
             Assert.AreEqual(SyncStatus.Idle.ToString(), _job.Status);
             Assert.AreEqual(targetGroupUsers.Count, graphGroupsRepository.GroupsToUsers[_targetGroupId].Count);
             Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is lesser than threshold value")));
+            Assert.AreEqual(SyncThresholdDecreaseEmailBody, emailMessage.Content);
+            Assert.AreEqual(_targetGroupId.ToString(), emailMessage.AdditionalContentParams[1]);
+            Assert.AreEqual(4, emailMessage.AdditionalContentParams.Length);
+        }
+
+        [TestMethod]
+        public async Task NonInitialGroupSyncExceedingBothThresholds()
+        {
+            var calculator = new MembershipDifferenceCalculator<AzureADUser>();
+            var senderRecipients = new EmailSenderRecipient();
+            var graphGroupsRepository = new MockGraphGroupRepository();
+            var syncjobRepository = new MockSyncJobRepository();
+            var loggingRepository = new MockLoggingRepository();
+            var mailRepository = new MockMailRepository();
+
+            var graphUpdater = new GraphUpdaterApplication(
+                                    calculator,
+                                    syncjobRepository,
+                                    loggingRepository,
+                                    mailRepository,
+                                    graphGroupsRepository,
+                                    senderRecipients);
+
+            var users = _membership.SourceMembers;
+            _membership.SourceMembers = users.Take(2).ToList();
+            _job.LastRunTime = DateTime.UtcNow.AddDays(-1);
+
+            var targetGroupUsers = users.Skip(2).Take(2).ToList();
+
+            syncjobRepository.ExistingSyncJobs.Add((_partitionKey, _rowKey), _job);
+            graphGroupsRepository.GroupsToUsers.Add(_sources[0].ObjectId, _membership.SourceMembers);
+            graphGroupsRepository.GroupsToUsers.Add(_targetGroupId, targetGroupUsers);
+
+            await graphUpdater.CalculateDifference(_membership);
+
+            var emailMessage = mailRepository.SentEmails.Single();
+
+            Assert.AreEqual(SyncStatus.Idle.ToString(), _job.Status);
+            Assert.AreEqual(targetGroupUsers.Count, graphGroupsRepository.GroupsToUsers[_targetGroupId].Count);
+            Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is lesser than threshold value")));
+            Assert.AreEqual(SyncThresholdBothEmailBody, emailMessage.Content);
+            Assert.AreEqual(_targetGroupId.ToString(), emailMessage.AdditionalContentParams[1]);
+            Assert.AreEqual(6, emailMessage.AdditionalContentParams.Length);
         }
 
         private List<AzureADUser> MakeUsers(int size, int startIdx)
