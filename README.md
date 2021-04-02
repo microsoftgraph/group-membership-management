@@ -530,6 +530,21 @@ i.e. 2021-01-01T00:00:00.000Z
 Flag to enable or disable a synchronization job.
 - DataType: bool
 
+## ThresholdPercentageForAdditions
+Threshold percentage for users being added.
+If the threshold is exceeded GMM is not going to make any changes to the destination group and an email notification will be sent describing the issue. 
+The email notification will be sent to the recipients defined in the 'SyncDisabledEmailBody' setting located in the prereqs keyvault. Multiple email addresses can be specified separated by semicolon.
+To continue processing the job increase the threshold value or disable the threshold check by set it to 0 (zero).
+- DataType: int
+
+## ThresholdPercentageForRemovals
+Threshold percentage for users being removed.
+If the threshold is exceeded GMM is not going to make any changes to the destination group and an email notification will be sent describing the issue. 
+The email notification will be sent to the recipients defined in the 'SyncDisabledEmailBody' setting located in the prereqs keyvault. Multiple email addresses can be specified separated by semicolon.
+To continue processing the job increase the threshold value or disable the threshold check by set it to 0 (zero).
+- DataType: int
+
+
 A PowerShell script [New-GmmSecurityGroupSyncJob.ps1](/Service/GroupMembershipManagement/Hosts/SecurityGroup/Scripts/New-GmmSecurityGroupSyncJob.ps1) is provided to help you create the synchronization jobs.
 
 The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGroup\Scripts folder.
