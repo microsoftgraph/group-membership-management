@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-<# 
+<#
 .SYNOPSIS
 This script creates a service principal
 
@@ -13,9 +13,9 @@ Abbreviation used to denote the overall solution (or application)
 Abbreviation for the environment
 
 .EXAMPLE
-Set-ServicePrincipal -ServicePrincipalName "<servicePrincipalName>" `
-                     -SolutionAbbreviation "<solutionAbbreviation>" `
-                     -EnvironmentAbbreviation "<environmentAbbreviation>"
+Set-ServicePrincipal -SolutionAbbreviation "<solutionAbbreviation>" `
+                     -EnvironmentAbbreviation "<environmentAbbreviation>" `
+                     -Clean $False
 #>
 
 function Set-Role {
@@ -28,7 +28,7 @@ function Set-Role {
         $ResourceGroupName,
         [Parameter (Mandatory=$true)]
         [string]
-        $ObjectId        
+        $ObjectId
     )
     if($objectId -ne $null)
     {
@@ -36,20 +36,20 @@ function Set-Role {
             -ObjectId $ObjectId `
             -ResourceGroupName $ResourceGroupName `
             -RoleDefinitionName $RoleDefinitionName)
-        
+
         if($roleAssignment)
         {
             Write-Host "$ResourceGroupName's $RoleDefinitionName Role Assignment already exists."
         }
         else
-        {         
+        {
             Write-Host "Assigning $RoleDefinitionName access to ($ResourceGroupName)..."
             New-AzRoleAssignment `
                 -ObjectId $ObjectId `
                 -ResourceGroupName $ResourceGroupName `
                 -RoleDefinitionName $RoleDefinitionName
             Write-Host "$RoleDefinitionName access assigned to ($ResourceGroupName)."
-        }        
+        }
     }
 }
 
@@ -59,17 +59,19 @@ function Set-ServicePrincipal {
         [Parameter(Mandatory=$True)]
         [string] $solutionAbbreviation,
 		[Parameter(Mandatory=$True)]
-		[string] $environmentAbbreviation
+		[string] $environmentAbbreviation,
+        [Parameter (Mandatory=$False)]
+        [bool] $Clean = $False
     )
-    
+
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
-    
+
     . ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
     Install-AzModuleIfNeeded | Out-Null
 
     . ($scriptsDirectory + '\Scripts\Add-AzAccountIfNeeded.ps1')
     Add-AzAccountIfNeeded
-        
+
     Write-Host "`nCurrent subscription:`n"
     $currentSubscription = (Get-AzContext).Subscription
     Write-Host "$($currentSubscription.Name) -  $($currentSubscription.Id)"
@@ -80,45 +82,50 @@ function Set-ServicePrincipal {
 
     $subscriptionId = Read-Host -Prompt "If you would like to use other subscription than '$($currentSubscription.Name)' `nprovide the subscription id, otherwise press enter to continue."
     if ($subscriptionId)
-    {        
+    {
         Set-AzContext -SubscriptionId $subscriptionId
         $currentSubscription = (Get-AzContext).Subscription
         Write-Host "Selected subscription: $($currentSubscription.Name) -  $($currentSubscription.Id)"
     }
-                        
+
     Write-Host "Please ensure you have ownership permissions on this subscription."
-    Write-Host "The service principals name is $servicePrincipalName"
 
     $scope = "/subscriptions/$($subscription.Id)"
 
     $servicePrincipalName = "$solutionAbbreviation-serviceconnection-$environmentAbbreviation";
 
+    Write-Host "The service principals name is $servicePrincipalName"
+
     #region Remove service principal if it exists
     $servicePrincipal = Get-AzADServicePrincipal -DisplayName $servicePrincipalName
-    if($null -ne $servicePrincipal)
+    if($Clean -and ($null -ne $servicePrincipal))
     {
         Write-Host "The service principal already exists.  Removing..."
         Remove-AzADServicePrincipal -ObjectId $servicePrincipal.Id -Force
         Remove-AzADApplication -ApplicationId $servicePrincipal.ApplicationId -Force
+        $servicePrincipal = $null
         Write-Host "The service principal has been removed."
     }
     #endregion
 
-    #region Create service principal
-    Write-Host "The service principal is being created..."
-    $servicePrincipal = New-AzADServicePrincipal -Role "Owner" -Scope $scope -DisplayName $servicePrincipalName -SkipAssignment
-    Write-Host "The service principal has been created."
-    #endregion
+    if($null -eq $servicePrincipal) {
+        #region Create service principal
+        Write-Host "The service principal is being created..."
+        $servicePrincipal = New-AzADServicePrincipal -Role "Owner" -Scope $scope -DisplayName $servicePrincipalName -SkipAssignment
+        Write-Host "The service principal has been created."
+        #endregion
 
-    #region Assing role to resource groups
-    Write-Host "Waiting for service principal to propagate..."
-    # basically, 
-    Start-Sleep -Seconds 30
-    Write-Host "Assigning service principal to resouce groups..."
+        #region Assign role to resource groups
+        Write-Host "Waiting for service principal to propagate..."
+        # basically,
+        Start-Sleep -Seconds 30
+    }
+
+    Write-Host "Assigning service principal to resource groups..."
     $resourceGroupTypes = "compute", "data", "prereqs"
     foreach ($resourceGroupType in $resourceGroupTypes)
     {
-        $resourceGroupName = "$solutionAbbreviation-$resourceGroupType-$environmentAbbreviation"        
-        Set-Role -RoleDefinitionName "Contributor" -ResourceGroupName $resourceGroupName -ObjectId $servicePrincipal.Id
+        $resourceGroupName = "$solutionAbbreviation-$resourceGroupType-$environmentAbbreviation"
+        Set-Role -RoleDefinitionName "CSEO DevOps Role" -ResourceGroupName $resourceGroupName -ObjectId $servicePrincipal.Id
     }
 }

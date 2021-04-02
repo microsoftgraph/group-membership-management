@@ -256,7 +256,7 @@ namespace Repositories.GraphGroups
 						queue.Enqueue(chunkToRetry.UpdateIdForRetry(threadNumber));
 					}
 				}
-				await _log.LogMessageAsync(new LogMessage { Message = $"{threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.", RunId = RunId });
+				await _log.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.", RunId = RunId });
 			}
 			catch (ServiceException ex)
 			{

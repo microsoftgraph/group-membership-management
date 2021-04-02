@@ -47,7 +47,7 @@ namespace Hosts.GraphUpdater
 
             var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), graphRequest);
 
-            IEnumerable<GroupMembershipMessage> completedGroupMembershipMessages = null;
+            List<GroupMembershipMessage> completedGroupMembershipMessages = null;
             bool isLastMessage = false;
 
             OrchestrationRuntimeStatus[] orchestratorRuntimeStatusCodesWorthRetrying = {
@@ -87,6 +87,7 @@ namespace Hosts.GraphUpdater
                 var completedLockTokens = completedGroupMembershipMessages.Select(x => x.LockToken);
                 await messageSession.CompleteAsync(completedLockTokens);
                 await messageSession.CloseAsync();
+                source.Cancel();
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(StarterFunction) + " function completed" });

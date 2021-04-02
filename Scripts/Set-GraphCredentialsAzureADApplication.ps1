@@ -6,7 +6,7 @@ Create an Azure AD application and service principal that can read and update th
 Be aware that running this in VS Code doesn't work for some reason, it works better if you run it in a regular Powershell session.
 You may have to open the created Azure AD app in your demo tenant and consent to the permissions!
 
-Basically, this script is designed to create an Azure AD app with the appropriate permissions in a given tenant 
+Basically, this script is designed to create an Azure AD app with the appropriate permissions in a given tenant
 (application permissions User.Read.All and GroupMember.Read.All) and write its credentials to a key vault in another tenant.
 This should be able to work when the AD app and the target key vault are in the same tenant. Just pass the same tenant ID to both
 parameters.
@@ -14,7 +14,7 @@ parameters.
 To find the tenant ID for a tenant, you can run Connect-AzureAD in Powershell, or open the Azure portal, click on "Azure Active Directory",
 and it should be there.
 
-You'll be promped to sign in twice. First as someone who can create the Azure AD app in the given tenant and assign it permissions, 
+You'll be promped to sign in twice. First as someone who can create the Azure AD app in the given tenant and assign it permissions,
 then as someone who can write to the prereqs key vault in the other. Make sure you set SubscriptionName to the name of the Azure subscription
 that contains the key vault.
 
@@ -65,8 +65,8 @@ function Set-GraphCredentialsAzureADApplication {
 		[Parameter(Mandatory=$True)]
 		[Guid] $TenantIdWithKeyVault,
 		[Parameter(Mandatory=$True)]
-		[string] $CertificateName,		
-		[Parameter(Mandatory=$False)]		
+		[string] $CertificateName,
+		[Parameter(Mandatory=$False)]
 		[boolean] $Clean = $False,
 		[Parameter(Mandatory=$False)]
 		[string] $ErrorActionPreference = $Stop
@@ -85,12 +85,12 @@ function Set-GraphCredentialsAzureADApplication {
 	{
 		Write-Host "Please sign in as an account that can make Azure AD Apps in your target tenant."
 		Add-AzAccount -TenantId $TenantIdToCreateAppIn
-	} 
-	
+	}
+
 	#region Delete Application / Service Principal if they already exist
     $graphAppDisplayName = "$SolutionAbbreviation-Graph-$EnvironmentAbbreviation"
 	$graphApp = (Get-AzADApplication -DisplayName $graphAppDisplayName)
-	
+
 	if ($null -ne $graphApp)
 	{
 		$graphApp = $graphApp[0];
@@ -100,7 +100,7 @@ function Set-GraphCredentialsAzureADApplication {
 	{
         Write-Verbose "Removing existing $graphAppDisplayName"
 		Update-AzADApplication	-ObjectId $graphApp.ObjectId `
-                                -AvailableToOtherTenants $false 
+                                -AvailableToOtherTenants $false
 
         Write-Verbose "Removing Application for $graphAppDisplayName..."
 		do
@@ -117,9 +117,9 @@ function Set-GraphCredentialsAzureADApplication {
         Write-Verbose "Removed existing $graphAppDisplayName"
 	}
     #endregion
-    
+
     # These are the function apps that need to interact with the graph.
-    $replyUrls = @("graphupdater", "securitygroup") | 
+    $replyUrls = @("graphupdater", "securitygroup") |
         ForEach-Object { "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$_.azurewebsites.net"};
     $replyUrls += "http://localhost";
 
@@ -128,10 +128,10 @@ function Set-GraphCredentialsAzureADApplication {
 	Install-AzureADModuleIfNeeded
 	Write-Host "Please sign in again as an account that can make Azure AD Apps in your target tenant."
 	Connect-AzureAD -TenantId $TenantIdToCreateAppIn
-    
-    # Basically, read the app permissions ("AppRoles" is what this API calls application permissions) Microsoft Graph has, 
+
+    # Basically, read the app permissions ("AppRoles" is what this API calls application permissions) Microsoft Graph has,
 	# then filter out the ones we want so we can give them to our AD app.
-	# If you assign them to the AppRoles on New-AzureADApplication, it goes somewhere else. The magic key is 
+	# If you assign them to the AppRoles on New-AzureADApplication, it goes somewhere else. The magic key is
 	# RequiredResourceAccess for some reason. The GUIDs are the same, though, they just need a little massaging.
 	# see: https://stackoverflow.com/questions/42164581/how-to-configure-a-new-azure-ad-application-through-powershell
 	$requiredResourceAccess = New-Object -TypeName "Microsoft.Open.AzureAD.Model.RequiredResourceAccess"
@@ -156,7 +156,7 @@ function Set-GraphCredentialsAzureADApplication {
 	else
 	{
 		Write-Verbose "Updating Azure AD app $graphAppDisplayName"
-		Update-AzureADApplication	-ObjectId $($graphApp.ObjectId) `
+		Set-AzureADApplication	-ObjectId $($graphApp.ObjectId) `
                                 -DisplayName $graphAppDisplayName `
                                 -ReplyUrls $replyUrls `
                                 -RequiredResourceAccess $requiredResourceAccess `
@@ -170,7 +170,7 @@ function Set-GraphCredentialsAzureADApplication {
 	$graphAppClientId = $graphApp.AppId;
 
 	# as well as the secret:
-	
+
 	do {
 		Write-Host "Please sign in with an account that can write to the prereqs key vault."
         Add-AzAccount -TenantId $TenantIdWithKeyVault -Subscription $SubscriptionName
@@ -188,7 +188,7 @@ function Set-GraphCredentialsAzureADApplication {
 
 	# Store Application (client) ID in KeyVault
     Write-Verbose "Application (client) ID is $graphAppClientId"
-	
+
     $graphClientIdKeyVaultSecretName = "graphAppClientId"
 	$graphClientIdSecret = ConvertTo-SecureString -AsPlainText -Force  $graphAppClientId
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `

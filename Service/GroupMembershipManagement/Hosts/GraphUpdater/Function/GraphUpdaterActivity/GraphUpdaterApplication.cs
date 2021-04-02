@@ -60,18 +60,15 @@ namespace Hosts.GraphUpdater
 
 			var syncJobsBeingProcessed = _syncJobRepo.GetSyncJobsAsync(new[] { (membership.SyncJobPartitionKey, membership.SyncJobRowKey) });
 
-			var isInitialSync = true;
-			var groupName = "";
-
 			// should only be one sync job in here, doesn't hurt to iterate over "all" of them
 			await foreach (var job in syncJobsBeingProcessed)
 			{
-				groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
+				var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
 
 				await _log.LogMessageAsync(new LogMessage { Message = $"syncJobsBeingProcessed is being processed as part of RunId: {job.RunId} ", RunId = membership.RunId });
 				await _log.LogMessageAsync(new LogMessage { Message = $"{job.TargetOfficeGroupId} job's status is {job.Status}.", RunId = membership.RunId });
 
-				isInitialSync = job.LastRunTime == DateTime.FromFileTimeUtc(0);
+				var isInitialSync = job.LastRunTime == DateTime.FromFileTimeUtc(0);
 				job.LastRunTime = DateTime.UtcNow;
 				job.RunId = membership.RunId;
 				if (changeTo.syncStatus == SyncStatus.Error)

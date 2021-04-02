@@ -22,7 +22,7 @@ namespace Services.Tests
 		{
 			var mockUpdater = new MockGraphUpdater();
 			var mockLogs = new MockLoggingRepository();
-			var sessionCollector = new SessionMessageCollector(mockUpdater);
+			var sessionCollector = new SessionMessageCollector(mockUpdater, mockLogs);
 
 			var mockSession = new MockMessageSession()
 			{
@@ -71,7 +71,7 @@ namespace Services.Tests
 			var mockGraph = new MockGraphGroupRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
 			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
-			var sessionCollector = new SessionMessageCollector(updater);
+			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
 			{
@@ -96,12 +96,14 @@ namespace Services.Tests
 				message.Body.SyncJobRowKey = syncJobKeys.Item2;
 			}
 
+			var expectedLogs = 0;
 			foreach (var message in incomingMessages.SkipLast(1))
 			{
 				var result = await sessionCollector.HandleNewMessageAsync(message, sessionId);
 
 				// sessionCollector doesn't do anything until it gets the last message.
-				Assert.AreEqual(0, mockLogs.MessagesLogged);
+				expectedLogs += 2;
+				Assert.AreEqual(expectedLogs, mockLogs.MessagesLogged);
 				Assert.IsFalse(mockSession.Closed);
 				Assert.AreEqual(0, mockSession.CompletedLockTokens.Count);
 				Assert.IsFalse(result.ShouldCompleteMessage);
@@ -110,10 +112,11 @@ namespace Services.Tests
 			var groupMembershipMessageResponse = await sessionCollector.HandleNewMessageAsync(incomingMessages.Last(), sessionId);
 
 			Assert.IsFalse(mockSession.Closed);
-			Assert.AreEqual(6, mockLogs.MessagesLogged);
+			Assert.AreEqual(expectedLogs + 8, mockLogs.MessagesLogged);
 			Assert.AreEqual("Error", syncJob.Status);
 			Assert.IsFalse(syncJob.Enabled);
 			Assert.AreEqual(0, mockGroups.GroupsToUsers.Count);
+			Assert.IsTrue(groupMembershipMessageResponse.ShouldCompleteMessage);
 		}
 
 		[TestMethod]
@@ -126,7 +129,7 @@ namespace Services.Tests
 			var mockGraph = new MockGraphGroupRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
 			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
-			var sessionCollector = new SessionMessageCollector(updater);
+			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
 			{
@@ -153,12 +156,14 @@ namespace Services.Tests
 				message.Body.SyncJobRowKey = syncJobKeys.Item2;
 			}
 
+			var expectedLogs = 0;
 			foreach (var message in incomingMessages.SkipLast(1))
 			{
 				var result = await sessionCollector.HandleNewMessageAsync(message, sessionId);
 
 				// sessionCollector doesn't do anything until it gets the last message.
-				Assert.AreEqual(0, mockLogs.MessagesLogged);
+				expectedLogs += 2;
+				Assert.AreEqual(expectedLogs, mockLogs.MessagesLogged);
 				Assert.IsFalse(mockSession.Closed);
 				Assert.AreEqual(0, mockSession.CompletedLockTokens.Count);
 				Assert.IsFalse(result.ShouldCompleteMessage);
@@ -167,7 +172,7 @@ namespace Services.Tests
 			var groupMembershipMessageResponse = await sessionCollector.HandleNewMessageAsync(incomingMessages.Last(), sessionId);
 
 			Assert.IsFalse(mockSession.Closed);
-			Assert.AreEqual(8, mockLogs.MessagesLogged);
+			Assert.AreEqual(expectedLogs + 10, mockLogs.MessagesLogged);
 			Assert.IsTrue(groupMembershipMessageResponse.ShouldCompleteMessage);
 			Assert.AreEqual("Idle", syncJob.Status);
 			Assert.IsTrue(syncJob.Enabled);
@@ -185,7 +190,7 @@ namespace Services.Tests
 			var mockGraph = new MockGraphGroupRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
 			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
-			var sessionCollector = new SessionMessageCollector(updater);
+			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
 			{
