@@ -84,7 +84,12 @@ namespace Hosts.GraphUpdater
             });
 
             if (result.RuntimeStatus == OrchestrationRuntimeStatus.Failed || result.RuntimeStatus == OrchestrationRuntimeStatus.Terminated)
+			{
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error: Status of instance {result.InstanceId} is {result.RuntimeStatus}. The error message is : {result.Output}" });
+
+                // stop renewing the message session
+                source.Cancel();
+			}
             else
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Instance processing completed for {result.InstanceId}" });
