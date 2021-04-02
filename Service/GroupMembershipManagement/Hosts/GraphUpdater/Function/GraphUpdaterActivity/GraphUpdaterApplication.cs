@@ -18,7 +18,9 @@ namespace Hosts.GraphUpdater
         private const string EmailSubject = "EmailSubject";
         private const string SyncCompletedEmailBody = "SyncCompletedEmailBody";
         private const string SyncDisabledEmailBody = "SyncDisabledEmailBody";
-        private const string SyncThresholdEmailBody = "SyncThresholdEmailBody";
+        private const string SyncThresholdBothEmailBody = "SyncThresholdBothEmailBody";
+        private const string SyncThresholdIncreaseEmailBody = "SyncThresholdIncreaseEmailBody";
+        private const string SyncThresholdDecreaseEmailBody = "SyncThresholdDecreaseEmailBody";
 
         private readonly IMembershipDifferenceCalculator<AzureADUser> _differenceCalculator;
         private readonly ISyncJobRepository _syncJobRepo;
@@ -100,6 +102,7 @@ namespace Hosts.GraphUpdater
             var isInitialSync = job.LastRunTime == DateTime.FromFileTimeUtc(0);
             var delta = await CalculateDeltaAsync(membership, fromto);
             var threshold = isInitialSync ? new ThresholdResult() : await CalculateThresholdAsync(job, delta.Delta, delta.TotalMembersCount, membership.RunId);
+            string groupName = (isInitialSync || threshold.IsThresholdExceeded) ? await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId) : string.Empty;
 
             if (isInitialSync || !threshold.IsThresholdExceeded)
             {
@@ -107,24 +110,53 @@ namespace Hosts.GraphUpdater
 
                 if (isInitialSync)
                 {
-                    var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
                     var additonalContent = new[] { groupName, job.TargetOfficeGroupId.ToString(), delta.Delta.ToAdd.Count.ToString(), delta.Delta.ToRemove.Count.ToString() };
                     await SendEmailAsync(job.Requestor, SyncCompletedEmailBody, additonalContent, _emailSenderAndRecipients.SyncCompletedCCAddresses);
                 }
             }
             else
             {
-                var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
-
                 await _log.LogMessageAsync(new LogMessage { Message = $"Threshold exceeded, no changes made to group {groupName} ({membership.Destination.ObjectId}). ", RunId = membership.RunId });
 
-                var additonalContent = new[]
-                { groupName, job.TargetOfficeGroupId.ToString(),
-                  job.ThresholdPercentageForAdditions.ToString(), threshold.IncreaseThresholdPercentage.ToString(),
-                  job.ThresholdPercentageForRemovals.ToString(),  threshold.DecreaseThresholdPercentage.ToString()
-                };
+                string contentTemplate;
+                string[] additionalContent;
+                if (threshold.IsAdditionsThresholdExceeded && threshold.IsRemovalsThresholdExceeded)
+                {
+                    contentTemplate = SyncThresholdBothEmailBody;
+                    additionalContent = new[]
+                    {
+                      groupName,
+                      job.TargetOfficeGroupId.ToString(),
+                      job.ThresholdPercentageForAdditions.ToString(),
+                      threshold.IncreaseThresholdPercentage.ToString("F2"),
+                      job.ThresholdPercentageForRemovals.ToString(),
+                      threshold.DecreaseThresholdPercentage.ToString("F2")
+                    };
+                }
+                else if (threshold.IsAdditionsThresholdExceeded)
+                {
+                    contentTemplate = SyncThresholdIncreaseEmailBody;
+                    additionalContent = new[]
+                    {
+                      groupName,
+                      job.TargetOfficeGroupId.ToString(),
+                      job.ThresholdPercentageForAdditions.ToString(),
+                      threshold.IncreaseThresholdPercentage.ToString("F2")
+                    };
+                }
+                else
+                {
+                    contentTemplate = SyncThresholdDecreaseEmailBody;
+                    additionalContent = new[]
+                    {
+                      groupName,
+                      job.TargetOfficeGroupId.ToString(),
+                      job.ThresholdPercentageForRemovals.ToString(),
+                      threshold.DecreaseThresholdPercentage.ToString("F2")
+                    };
+                }
 
-                await SendEmailAsync(_emailSenderAndRecipients.SyncDisabledCCAddresses, SyncThresholdEmailBody, additonalContent);
+                await SendEmailAsync(_emailSenderAndRecipients.SyncDisabledCCAddresses, contentTemplate, additionalContent);
             }
 
             return SyncStatus.Idle;
