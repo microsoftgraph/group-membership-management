@@ -69,6 +69,11 @@ namespace Hosts.GraphUpdater
 			.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(services => services.GetService<IOptions<LogAnalyticsSecret<LoggingRepository>>>().Value)
 			.AddSingleton<ILoggingRepository, LoggingRepository>()
 			.AddSingleton<SessionMessageCollector>()
+			.AddSingleton<IDryRunValue>(services =>
+			{
+				var creds = services.GetService<IOptions<DryRunValue>>();
+				return new DryRunValue(creds.Value.DryRunEnabled);
+			})
 			.AddSingleton<IGraphUpdater, GraphUpdaterApplication>();
 
 			var graphCredentials = builder.Services.BuildServiceProvider().GetService<IOptions<GraphCredentials>>().Value;
@@ -94,6 +99,10 @@ namespace Hosts.GraphUpdater
 				opts.SupportedUICultures = supportedCultures;
 			});
 			builder.Services.AddSingleton<ILocalizationRepository, LocalizationRepository>();
+			builder.Services.AddOptions<DryRunValue>().Configure<IConfiguration>((settings, configuration) =>
+			{
+				settings.DryRunEnabled = configuration.GetValue<bool>("dryRunEnabled");
+			});
 		}
 	}
 }

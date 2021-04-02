@@ -70,7 +70,8 @@ namespace Services.Tests
 			var mockMails = new MockMailRepository();
 			var mockGraph = new MockGraphGroupRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
+			var mockDryRun = new MockDryRun<IDryRunValue>();
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail, mockDryRun);
 			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
@@ -128,7 +129,8 @@ namespace Services.Tests
 			var mockMails = new MockMailRepository();
 			var mockGraph = new MockGraphGroupRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
+			var mockDryRun = new MockDryRun<IDryRunValue>();
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail, mockDryRun);
 			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
@@ -189,7 +191,8 @@ namespace Services.Tests
 			var mockMails = new MockMailRepository();
 			var mockGraph = new MockGraphGroupRepository();
 			var mockEmail = new MockEmail<IEmailSenderRecipient>();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail);
+			var mockDryRun = new MockDryRun<IDryRunValue>();
+			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockGroups, mockSyncJobs, mockLogs, mockMails, mockGraph, mockEmail, mockDryRun);
 			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
 
 			var mockSession = new MockMessageSession()
@@ -244,6 +247,11 @@ namespace Services.Tests
 			public string SyncCompletedCCAddresses => "";
 
 			public string SyncDisabledCCAddresses => "";
+		}
+
+		private class MockDryRun<T> : IDryRunValue
+		{
+			public bool DryRunEnabled => false;
 		}
 
 		public GroupMembershipMessage[] MakeMembershipMessages()

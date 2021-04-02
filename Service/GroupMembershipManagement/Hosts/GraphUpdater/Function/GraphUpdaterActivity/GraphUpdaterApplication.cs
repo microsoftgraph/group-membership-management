@@ -25,6 +25,7 @@ namespace Hosts.GraphUpdater
 		private readonly IMailRepository _mailRepository;
 		private readonly IGraphGroupRepository _graphGroupRepository;
 		private readonly IEmailSenderRecipient _emailSenderAndRecipients;
+		private readonly IDryRunValue _dryRunEnabled;
 
 		public GraphUpdaterApplication(
 			IMembershipDifferenceCalculator<AzureADUser> differenceCalculator,
@@ -33,7 +34,8 @@ namespace Hosts.GraphUpdater
 			ILoggingRepository logging,
 			IMailRepository mailRepository,
 			IGraphGroupRepository graphGroupRepository,
-			IEmailSenderRecipient emailSenderAndRecipients
+			IEmailSenderRecipient emailSenderAndRecipients,
+			IDryRunValue dryRunEnabled
 			)
 		{
 			_emailSenderAndRecipients = emailSenderAndRecipients;
@@ -43,6 +45,7 @@ namespace Hosts.GraphUpdater
 			_log = logging;
 			_mailRepository = mailRepository;
 			_graphGroupRepository = graphGroupRepository;
+			_dryRunEnabled = dryRunEnabled;
 		}
 
 		public async Task CalculateDifference(GroupMembership membership)
@@ -56,12 +59,8 @@ namespace Hosts.GraphUpdater
 				{ "targetOfficeGroupId", membership.Destination.ObjectId.ToString() }
 			};
 
-			// If the value for dry run enabled is null then we want the default value to be true
-			var dryRunEnabledConfigurationValue = ((!String.IsNullOrEmpty(Environment.GetEnvironmentVariable("dryRunEnabled", EnvironmentVariableTarget.Process))) ? 
-													Environment.GetEnvironmentVariable("dryRunEnabled", EnvironmentVariableTarget.Process) : 
-													true.ToString());
+			var isDryRunEnabled = _dryRunEnabled.DryRunEnabled;
 
-			var isDryRunEnabled = Convert.ToBoolean(dryRunEnabledConfigurationValue);
 			await _log.LogMessageAsync(new LogMessage { Message = $"The Dry Run Enabled configuration is currently set to {isDryRunEnabled}. We will not be syncing members if Dry Run Enabled configuration is set to True.", RunId = membership.RunId });
 
 			var changeTo = await SynchronizeGroups(membership, fromto, isDryRunEnabled);
@@ -77,7 +76,10 @@ namespace Hosts.GraphUpdater
 				await _log.LogMessageAsync(new LogMessage { Message = $"{job.TargetOfficeGroupId} job's status is {job.Status}.", RunId = membership.RunId });
 
 				var isInitialSync = job.LastRunTime == DateTime.FromFileTimeUtc(0);
-				job.LastRunTime = DateTime.UtcNow;
+
+				// should only update last run time if its not a dry run
+				job.LastRunTime = isDryRunEnabled ? job.LastRunTime: DateTime.UtcNow;
+
 				job.RunId = membership.RunId;
 				if (changeTo.syncStatus == SyncStatus.Error)
 				{
