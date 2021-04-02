@@ -322,7 +322,7 @@
               },
               {
                 "name": "dryRunEnabled",
-                "value": false,
+                "value": true,
                 "slotSetting": false
               }
             ]

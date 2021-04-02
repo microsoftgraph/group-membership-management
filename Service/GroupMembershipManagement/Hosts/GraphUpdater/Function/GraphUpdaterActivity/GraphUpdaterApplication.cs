@@ -56,10 +56,10 @@ namespace Hosts.GraphUpdater
 				{ "targetOfficeGroupId", membership.Destination.ObjectId.ToString() }
 			};
 
-			// If the value for dry run enabled is null then we want the default value to be false
+			// If the value for dry run enabled is null then we want the default value to be true
 			var dryRunEnabledConfigurationValue = ((!String.IsNullOrEmpty(Environment.GetEnvironmentVariable("dryRunEnabled", EnvironmentVariableTarget.Process))) ? 
 													Environment.GetEnvironmentVariable("dryRunEnabled", EnvironmentVariableTarget.Process) : 
-													false.ToString());
+													true.ToString());
 
 			var isDryRunEnabled = Convert.ToBoolean(dryRunEnabledConfigurationValue);
 			await _log.LogMessageAsync(new LogMessage { Message = $"The Dry Run Enabled configuration is currently set to {isDryRunEnabled}. We will not be syncing members if Dry Run Enabled configuration is set to True.", RunId = membership.RunId });
