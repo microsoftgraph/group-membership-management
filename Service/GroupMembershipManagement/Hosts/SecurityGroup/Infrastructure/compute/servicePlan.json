@@ -32,7 +32,9 @@
       "location": "[parameters('location')]",      
       "properties": {
         "name": "[parameters('name')]",
-        "computeMode": "Dynamic"
+        "computeMode": "Dynamic",
+        "maximumElasticWorkerCount": "[parameters('maximumElasticWorkerCount')]",
+        "targetWorkerCount": "[parameters('maximumElasticWorkerCount')]"
       },
       "sku": {
         "name": "[parameters('sku')]",
