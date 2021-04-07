@@ -76,7 +76,7 @@
     },
     "maximumElasticWorkerCount": {
       "type": "int",
-      "defaultValue": 20,
+      "defaultValue": 1,
       "metadata": {
         "description": "Maximum elastic worker count."
       }
