@@ -20,7 +20,8 @@ namespace Hosts.GraphUpdater
     public class StarterFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly int MAX_RETRY_ATTEMPTS = 8;
+        private readonly int MAX_RETRY_ATTEMPTS = 20;
+        private readonly int RETRY_ATTEMPTS_TIMESPAN = 30;
 
         public StarterFunction(ILoggingRepository loggingRepository)
         {
@@ -61,7 +62,7 @@ namespace Hosts.GraphUpdater
                 .HandleResult<DurableOrchestrationStatus>(status => orchestratorRuntimeStatusCodesWorthRetrying.Contains(status.RuntimeStatus))
                 .WaitAndRetryAsync(
                     MAX_RETRY_ATTEMPTS,
-                    retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
+                    retryAttempt => TimeSpan.FromSeconds(RETRY_ATTEMPTS_TIMESPAN)
                 );
 
             await retryPolicy.ExecuteAsync(async () =>
