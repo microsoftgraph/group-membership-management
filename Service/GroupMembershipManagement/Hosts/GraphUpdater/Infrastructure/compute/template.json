@@ -314,6 +314,11 @@
                 "name": "syncDisabledCCEmailAddresses",
                 "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('syncDisabledCCEmailAddresses'), '2019-09-01').secretUriWithVersion, ')')]",
                 "slotSetting": false
+              },
+              {
+                "name": "WEBSITE_MAX_DYNAMIC_APPLICATION_SCALE_OUT",
+                "value": "[parameters('maximumElasticWorkerCount')]",
+                "slotSetting": false
               }
             ]
           }
