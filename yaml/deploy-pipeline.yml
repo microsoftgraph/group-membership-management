@@ -83,6 +83,7 @@ stages:
           # This sets the "Enforce Scale Out Limit" in the function app configuration. This is apparently the only way to do it automatically. ARM templates don't support it.
           # https://docs.microsoft.com/en-us/azure/azure-functions/event-driven-scaling#limit-scale-out
           - task: AzureCLI@2
+            displayName: Limit paralellism for ${{ func.name }}
             inputs:
               azureSubscription: ${{ parameters.serviceConnection }}
               scriptType: 'ps'
