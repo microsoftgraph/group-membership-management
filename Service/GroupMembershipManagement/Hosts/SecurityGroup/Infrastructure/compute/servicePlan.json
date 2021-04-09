@@ -21,6 +21,13 @@
       "metadata": {
         "description": "Service plan location."
       }
+    },
+    "maximumElasticWorkerCount": {
+      "type": "int",
+      "metadata": {
+        "description": "Maximum elastic worker count."
+      },
+      "defaultValue": 1
     }
   },
   "variables": {},
