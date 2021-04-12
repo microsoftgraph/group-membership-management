@@ -62,6 +62,18 @@ namespace Entities
         [IgnoreLogging]
         public bool Enabled { get; set; }
 
+        /// <summary>
+        /// Threshold percentage for users being added
+        /// </summary>
+        [IgnoreLogging]
+        public int ThresholdPercentageForAdditions { get; set; }
+
+        /// <summary>
+        /// Threshold percentage for users being removed
+        /// </summary>
+        [IgnoreLogging]
+        public int ThresholdPercentageForRemovals { get; set; }
+
         public Dictionary<string, string> ToDictionary() =>
             DictionaryHelper.ToDictionary(this, new DictionaryHelper.Options
             {

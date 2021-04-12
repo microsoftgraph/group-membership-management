@@ -530,6 +530,21 @@ i.e. 2021-01-01T00:00:00.000Z
 Flag to enable or disable a synchronization job.
 - DataType: bool
 
+## ThresholdPercentageForAdditions
+Threshold percentage for users being added.
+If the threshold is exceeded GMM is not going to make any changes to the destination group and an email notification will be sent describing the issue. 
+The email notification will be sent to the recipients defined in the 'SyncDisabledEmailBody' setting located in the prereqs keyvault. Multiple email addresses can be specified separated by semicolon.
+To continue processing the job increase the threshold value or disable the threshold check by set it to 0 (zero).
+- DataType: int
+
+## ThresholdPercentageForRemovals
+Threshold percentage for users being removed.
+If the threshold is exceeded GMM is not going to make any changes to the destination group and an email notification will be sent describing the issue. 
+The email notification will be sent to the recipients defined in the 'SyncDisabledEmailBody' setting located in the prereqs keyvault. Multiple email addresses can be specified separated by semicolon.
+To continue processing the job increase the threshold value or disable the threshold check by set it to 0 (zero).
+- DataType: int
+
+
 A PowerShell script [New-GmmSecurityGroupSyncJob.ps1](/Service/GroupMembershipManagement/Hosts/SecurityGroup/Scripts/New-GmmSecurityGroupSyncJob.ps1) is provided to help you create the synchronization jobs.
 
 The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGroup\Scripts folder.
@@ -570,6 +585,11 @@ In order to add the application as an owner of a group follow the next steps:
 
 *Note: regarding steps 10 - 13:
 A newer version of this cmdlet is under development.  It will be available in an entirely different PowerShell module, [`Az.Resources`](https://www.powershellgallery.com/packages/Az.Resources).  The cmdlet will be renamed to `Add-AzADGroupOwner`.*
+
+### Dry Run Settings
+
+A dry run setting is present in GMM to provide users the ability to test new changes without affecting the group membership. This configuration is present in the GraphUpdater function app would need to be changed to false after the intial deployment.
+If you would like to have the default setting to be false, then please update the dryRunEnabled configuration to false in the parameters file for the GraphUpdater.
 
 # Setting AzureTableBackup function
 `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureTableBackup function can create backups for Azure Storage Tables and delete older backups automatically.

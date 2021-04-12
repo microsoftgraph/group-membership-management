@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
 using Repositories.MembershipDifference;
 using Repositories.SyncJobsRepository;
@@ -45,7 +46,16 @@ namespace Hosts.GraphUpdater
                 return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
             })
             .AddSingleton<SessionMessageCollector>()
-            .AddSingleton<IGraphUpdater, GraphUpdaterApplication>();
+            .AddSingleton<IGraphUpdater, GraphUpdaterApplication>()
+			.AddSingleton<IDryRunValue>(services =>
+			{
+				return new DryRunValue(services.GetService<IOptions<DryRunValue>>().Value.DryRunEnabled);
+			});
+
+			builder.Services.AddOptions<DryRunValue>().Configure<IConfiguration>((settings, configuration) =>
+			{
+				settings.DryRunEnabled = configuration.GetValue<bool>("dryRunEnabled");
+			});
         }
     }
 }
