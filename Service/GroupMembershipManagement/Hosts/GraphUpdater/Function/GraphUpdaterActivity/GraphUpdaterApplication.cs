@@ -28,6 +28,7 @@ namespace Hosts.GraphUpdater
         private readonly IMailRepository _mailRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
+        private readonly bool _isDryRunEnabled;
 
         public GraphUpdaterApplication(
             IMembershipDifferenceCalculator<AzureADUser> differenceCalculator,
@@ -35,7 +36,8 @@ namespace Hosts.GraphUpdater
             ILoggingRepository logging,
             IMailRepository mailRepository,
             IGraphGroupRepository graphGroupRepository,
-            IEmailSenderRecipient emailSenderAndRecipients
+            IEmailSenderRecipient emailSenderAndRecipients,
+            IDryRunValue dryRun
             )
         {
             _emailSenderAndRecipients = emailSenderAndRecipients;
@@ -44,6 +46,7 @@ namespace Hosts.GraphUpdater
             _log = logging;
             _mailRepository = mailRepository;
             _graphGroupRepository = graphGroupRepository;
+            _isDryRunEnabled = dryRun.DryRunEnabled;
         }
 
         public async Task CalculateDifference(GroupMembership membership)
@@ -55,9 +58,11 @@ namespace Hosts.GraphUpdater
                 { "rowKey", membership.SyncJobRowKey },
                 { "targetOfficeGroupId", membership.Destination.ObjectId.ToString() }
             };
+
             var fromto = $"from {PrettyPrintSources(membership.Sources)} to {membership.Destination}";
             var changeTo = SyncStatus.Idle;
 
+            await _log.LogMessageAsync(new LogMessage { Message = $"The Dry Run Enabled configuration is currently set to {_isDryRunEnabled}. We will not be syncing members if Dry Run Enabled configuration is set to True.", RunId = membership.RunId });
             await _log.LogMessageAsync(new LogMessage { Message = $"Processing sync job : Partition key {membership.SyncJobPartitionKey} , Row key {membership.SyncJobRowKey}", RunId = membership.RunId });
 
             var job = await _syncJobRepo.GetSyncJobAsync(membership.SyncJobPartitionKey, membership.SyncJobRowKey);
@@ -82,12 +87,16 @@ namespace Hosts.GraphUpdater
 
             await _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo}.", RunId = membership.RunId });
 
-            job.LastRunTime = DateTime.UtcNow;
+            // should only update last run time if its not a dry run
+            job.LastRunTime = _isDryRunEnabled ? job.LastRunTime : DateTime.UtcNow;
             job.RunId = membership.RunId;
             job.Enabled = changeTo != SyncStatus.Error;
             await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo);
 
-            await _log.LogMessageAsync(new LogMessage { Message = $"Syncing {fromto} done.", RunId = membership.RunId });
+            if (_isDryRunEnabled)
+                await _log.LogMessageAsync(new LogMessage { Message = $"Dry Run of a sync {fromto} is complete. Membership will not be updated.", RunId = membership.RunId });
+            else
+                await _log.LogMessageAsync(new LogMessage { Message = $"Syncing {fromto} done.", RunId = membership.RunId });
         }
 
         private async Task<SyncStatus> SynchronizeGroups(SyncJob job, GroupMembership membership, string fromto)
@@ -108,7 +117,7 @@ namespace Hosts.GraphUpdater
             {
                 await DoSynchronization(delta.Delta, membership, fromto);
 
-                if (isInitialSync)
+                if (isInitialSync && !_isDryRunEnabled)
                 {
                     var additonalContent = new[] { groupName, job.TargetOfficeGroupId.ToString(), delta.Delta.ToAdd.Count.ToString(), delta.Delta.ToRemove.Count.ToString() };
                     await SendEmailAsync(job.Requestor, SyncCompletedEmailBody, additonalContent, _emailSenderAndRecipients.SyncCompletedCCAddresses);
@@ -164,6 +173,12 @@ namespace Hosts.GraphUpdater
 
         private async Task DoSynchronization(MembershipDelta<AzureADUser> delta, GroupMembership membership, string fromto)
         {
+            if (_isDryRunEnabled)
+            {
+                await _log.LogMessageAsync(new LogMessage { Message = $"A Dry Run Synchronization {fromto} is now complete. {delta.ToAdd.Count} users would have been added. {delta.ToRemove.Count} users would have been removed. Marking job as idle.", RunId = membership.RunId });
+                return;
+            }
+
             var stopwatch = Stopwatch.StartNew();
             await _graphGroupRepository.AddUsersToGroup(delta.ToAdd, membership.Destination);
             await _graphGroupRepository.RemoveUsersFromGroup(delta.ToRemove, membership.Destination);
