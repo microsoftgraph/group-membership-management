@@ -74,6 +74,13 @@
         "description": "Function app kind."
       }
     },
+		"maximumElasticWorkerCount": {
+			"type": "int",
+			"defaultValue": 1,
+			"metadata": {
+				"description": "Maximum elastic worker count."
+			}
+		},
     "appInsightsName": {
       "type": "string",
       "defaultValue": "[concat(parameters('solutionAbbreviation'), '-data-', parameters('environmentAbbreviation'))]",
@@ -169,7 +176,10 @@
           },
           "location": {
             "value": "[parameters('location')]"
-          }
+					},
+					"maximumElasticWorkerCount": {
+						"value": "[parameters('maximumElasticWorkerCount')]"
+					}
         }
       }
     },

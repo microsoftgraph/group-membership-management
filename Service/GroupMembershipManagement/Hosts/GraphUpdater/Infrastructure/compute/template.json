@@ -76,7 +76,7 @@
     },
     "maximumElasticWorkerCount": {
       "type": "int",
-      "defaultValue": 20,
+      "defaultValue": 1,
       "metadata": {
         "description": "Maximum elastic worker count."
       }
@@ -320,6 +320,11 @@
               {
                 "name": "syncDisabledCCEmailAddresses",
                 "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('syncDisabledCCEmailAddresses'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "WEBSITE_MAX_DYNAMIC_APPLICATION_SCALE_OUT",
+                "value": "[parameters('maximumElasticWorkerCount')]",
                 "slotSetting": false
               },
               {

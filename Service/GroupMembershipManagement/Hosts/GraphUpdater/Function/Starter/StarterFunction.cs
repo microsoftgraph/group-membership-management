@@ -20,8 +20,8 @@ namespace Hosts.GraphUpdater
     public class StarterFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly int MAX_RETRY_ATTEMPTS = 20;
-        private readonly int RETRY_ATTEMPTS_TIMESPAN = 30;
+        private readonly int MAX_RETRY_ATTEMPTS = 10;
+        private readonly int FIRST_RETRY_DELAY_IN_SECONDS = 10;
 
         public StarterFunction(ILoggingRepository loggingRepository)
         {
@@ -58,11 +58,23 @@ namespace Hosts.GraphUpdater
             };
 
             DurableOrchestrationStatus result = null;
+
+            /*Understanding the Retry policy
+            We have a lot of sub-second sync execution so the first query would ensure we cater to those queries
+            We also have a lot of syncs that take less than 10 seconds. Having a exponetial backoff 1.25^1 would mean we would be waiting 90 seconds per sync instead of 10 seconds.
+            Hence the logic to ensure retryAttempt 1 is done after 10 seconds. Following this we go back to the exponetial backoff.
+             */
+
             var retryPolicy = Policy
                 .HandleResult<DurableOrchestrationStatus>(status => orchestratorRuntimeStatusCodesWorthRetrying.Contains(status.RuntimeStatus))
                 .WaitAndRetryAsync(
                     MAX_RETRY_ATTEMPTS,
-                    retryAttempt => TimeSpan.FromSeconds(RETRY_ATTEMPTS_TIMESPAN)
+                    retryAttempt => {
+                        if (retryAttempt == 1)
+                            return TimeSpan.FromSeconds(FIRST_RETRY_DELAY_IN_SECONDS);
+                        else
+                            return TimeSpan.FromMinutes(Math.Pow(1.25, retryAttempt - 1));
+                    }
                 );
 
             await retryPolicy.ExecuteAsync(async () =>
@@ -72,7 +84,12 @@ namespace Hosts.GraphUpdater
             });
 
             if (result.RuntimeStatus == OrchestrationRuntimeStatus.Failed || result.RuntimeStatus == OrchestrationRuntimeStatus.Terminated)
+			{
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error: Status of instance {result.InstanceId} is {result.RuntimeStatus}. The error message is : {result.Output}" });
+
+                // stop renewing the message session
+                source.Cancel();
+			}
             else
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Instance processing completed for {result.InstanceId}" });
