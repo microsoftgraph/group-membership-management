@@ -2,12 +2,14 @@
 // Licensed under the MIT license.
 using Entities;
 using Newtonsoft.Json;
+using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
@@ -22,6 +24,7 @@ namespace Repositories.Logging
         private readonly string _workSpaceId;
         private readonly string _sharedKey;
         private readonly string _location;
+        private readonly int MAX_RETRY_ATTEMPTS = 8;
 
         // you should only have one httpClient for the life of your program
         // see https://aspnetmonsters.com/2016/08/2016-08-27-httpclientwrong/?fbclid=IwAR2aNRweTjGdx5Foev4XvHj2Xldeg_UAb6xW3eLTFQDB7Xghv65LvrVa5wA
@@ -57,6 +60,23 @@ namespace Repositories.Logging
 
             var serializedMessage = JsonConvert.SerializeObject(properties);
 
+            HttpStatusCode[] httpStatusCodesWorthRetrying = {
+                HttpStatusCode.RequestTimeout, // 408
+                HttpStatusCode.TooManyRequests, // 429
+                HttpStatusCode.InternalServerError, // 500
+                HttpStatusCode.BadGateway, // 502
+                HttpStatusCode.ServiceUnavailable, // 503
+                HttpStatusCode.GatewayTimeout // 504
+            };
+
+            var retryPolicy = Policy
+                            .Handle<HttpRequestException>()
+                            .OrResult<HttpResponseMessage>(r => httpStatusCodesWorthRetrying.Contains(r.StatusCode))
+                            .WaitAndRetryAsync(
+                                MAX_RETRY_ATTEMPTS,
+                                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
+                            );
+
             var url = $"https://{_workSpaceId}.ods.opinsights.azure.com/api/logs?api-version=2016-04-01";
             var dateString = DateTime.UtcNow.ToString("r");
             var jsonBytes = Encoding.UTF8.GetBytes(serializedMessage);
@@ -70,8 +90,18 @@ namespace Repositories.Logging
             httpRequestMessage.Headers.Add("x-ms-date", dateString);
             httpRequestMessage.Content = new StringContent(serializedMessage, Encoding.UTF8);
             httpRequestMessage.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
-            var response = await _httpClient.SendAsync(httpRequestMessage);
-            response.EnsureSuccessStatusCode();
+
+            HttpResponseMessage response = null;
+            await retryPolicy.ExecuteAsync(async () =>
+            {
+                response = await _httpClient.SendAsync(httpRequestMessage);
+
+                return response;
+            });
+
+            if(httpStatusCodesWorthRetrying.Contains(response.StatusCode))
+                response.EnsureSuccessStatusCode();
+
         }
 
         private string BuildSignature(string message, string secret)
