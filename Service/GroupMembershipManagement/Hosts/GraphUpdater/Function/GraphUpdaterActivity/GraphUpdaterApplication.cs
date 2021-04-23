@@ -115,7 +115,9 @@ namespace Hosts.GraphUpdater
 
             if (isInitialSync || !threshold.IsThresholdExceeded)
             {
-                await DoSynchronization(delta.Delta, membership, fromto);
+                var response = await DoSynchronization(delta.Delta, membership, fromto);
+                if (response == SyncStatus.Error)
+                    return response;
 
                 if (isInitialSync && !_isDryRunEnabled)
                 {
@@ -171,20 +173,25 @@ namespace Hosts.GraphUpdater
             return SyncStatus.Idle;
         }
 
-        private async Task DoSynchronization(MembershipDelta<AzureADUser> delta, GroupMembership membership, string fromto)
+        private async Task<SyncStatus> DoSynchronization(MembershipDelta<AzureADUser> delta, GroupMembership membership, string fromto)
         {
             if (_isDryRunEnabled)
             {
                 await _log.LogMessageAsync(new LogMessage { Message = $"A Dry Run Synchronization {fromto} is now complete. {delta.ToAdd.Count} users would have been added. {delta.ToRemove.Count} users would have been removed. Marking job as idle.", RunId = membership.RunId });
-                return;
+                return SyncStatus.Idle;
             }
 
             var stopwatch = Stopwatch.StartNew();
-            await _graphGroupRepository.AddUsersToGroup(delta.ToAdd, membership.Destination);
-            await _graphGroupRepository.RemoveUsersFromGroup(delta.ToRemove, membership.Destination);
+
+            var graphResponse = await _graphGroupRepository.AddUsersToGroup(delta.ToAdd, membership.Destination);
+            if(graphResponse != ResponseCode.Error)
+                graphResponse = await _graphGroupRepository.RemoveUsersFromGroup(delta.ToRemove, membership.Destination);
+
             stopwatch.Stop();
 
             await _log.LogMessageAsync(new LogMessage { Message = $"Synchronization {fromto} complete in {stopwatch.Elapsed.TotalSeconds} seconds. {delta.ToAdd.Count / stopwatch.Elapsed.TotalSeconds} users added per second. {delta.ToRemove.Count / stopwatch.Elapsed.TotalSeconds} users removed per second. Marking job as idle.", RunId = membership.RunId });
+
+            return graphResponse == ResponseCode.Error ? SyncStatus.Error : SyncStatus.Idle;
         }
 
         private async Task<(MembershipDelta<AzureADUser> Delta, int TotalMembersCount)> CalculateDeltaAsync(GroupMembership membership, string fromto)

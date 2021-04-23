@@ -15,10 +15,10 @@ namespace Services.Tests.Mocks
 		public Dictionary<Guid, List<AzureADUser>> GroupsToUsers { get; set; } = new Dictionary<Guid, List<AzureADUser>>();
 		public Guid RunId { get; set; }
 
-		public Task AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+		public Task<ResponseCode> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
 		{
 			GroupsToUsers[targetGroup.ObjectId].AddRange(users);
-			return Task.CompletedTask;
+			return Task.FromResult(ResponseCode.Ok);
 		}
 
 		public Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid objectId)
@@ -46,10 +46,10 @@ namespace Services.Tests.Mocks
 			throw new NotImplementedException();
 		}
 
-		public Task RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+		public Task<ResponseCode> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
 		{
 			GroupsToUsers[targetGroup.ObjectId].RemoveAll(x => users.Contains(x));
-			return Task.CompletedTask;
+			return Task.FromResult(ResponseCode.Ok);
 		}
-	}
+    }
 }
