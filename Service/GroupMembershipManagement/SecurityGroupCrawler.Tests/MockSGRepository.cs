@@ -4,13 +4,11 @@ using Entities;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Repositories.SecurityGroupCrawler.Tests
 {
-	class MockSGRepository : IGraphGroupRepository
+    class MockSGRepository : IGraphGroupRepository
 	{
 		private readonly Dictionary<AzureADGroup, IEnumerable<IAzureADObject>> _groupsToChildren;
 		private readonly TimeSpan _delay;
@@ -22,7 +20,7 @@ namespace Repositories.SecurityGroupCrawler.Tests
 
 		public Guid RunId { get; set; }
 
-		public Task AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+		public Task<ResponseCode> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
 		{
 			throw new NotImplementedException();
 		}
@@ -54,7 +52,7 @@ namespace Repositories.SecurityGroupCrawler.Tests
 			throw new NotImplementedException();
 		}
 
-		public Task RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+		public Task<ResponseCode> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
 		{
 			throw new NotImplementedException();
 		}
