@@ -104,7 +104,7 @@ namespace Hosts.GraphUpdater
             if (membership.Errored)
             {
                 await _log.LogMessageAsync(new LogMessage { Message = $"When syncing {fromto}, calculator reported an error. Not syncing and marking as error.", RunId = membership.RunId });
-                await SendEmailAsync(job.Requestor, SyncDisabledEmailBody, new[] { PrettyPrintSources(membership.Sources) }, _emailSenderAndRecipients.SyncDisabledCCAddresses);
+                await SendEmailAsync(job.Requestor, SyncDisabledEmailBody, new[] { PrettyPrintSources(membership.Sources) }, job.RunId, _emailSenderAndRecipients.SyncDisabledCCAddresses);
                 return SyncStatus.Error;
             }
 
@@ -120,7 +120,7 @@ namespace Hosts.GraphUpdater
                 if (isInitialSync && !_isDryRunEnabled)
                 {
                     var additonalContent = new[] { groupName, job.TargetOfficeGroupId.ToString(), delta.Delta.ToAdd.Count.ToString(), delta.Delta.ToRemove.Count.ToString() };
-                    await SendEmailAsync(job.Requestor, SyncCompletedEmailBody, additonalContent, _emailSenderAndRecipients.SyncCompletedCCAddresses);
+                    await SendEmailAsync(job.Requestor, SyncCompletedEmailBody, additonalContent, job.RunId, _emailSenderAndRecipients.SyncCompletedCCAddresses);
                 }
             }
             else
@@ -165,7 +165,7 @@ namespace Hosts.GraphUpdater
                     };
                 }
 
-                await SendEmailAsync(_emailSenderAndRecipients.SyncDisabledCCAddresses, contentTemplate, additionalContent);
+                await SendEmailAsync(_emailSenderAndRecipients.SyncDisabledCCAddresses, contentTemplate, additionalContent, job.RunId);
             }
 
             return SyncStatus.Idle;
@@ -240,7 +240,7 @@ namespace Hosts.GraphUpdater
             };
         }
 
-        private async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContent, string ccEmailAddresses = null)
+        private async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContent, Guid? runId, string ccEmailAddresses = null)
         {
             var message = new EmailMessage
             {
@@ -253,7 +253,34 @@ namespace Hosts.GraphUpdater
                 AdditionalContentParams = additionalContent
             };
 
-            await _mailRepository.SendMailAsync(message);
+            try
+            {
+                await _mailRepository.SendMailAsync(message);
+            }
+            catch (Microsoft.Graph.ServiceException ex) when (ex.GetBaseException().GetType().Name == "MsalUiRequiredException")
+            {
+                await _log.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = "Email cannot be sent because Mail.Send permission has not been granted."
+                });
+            }
+            catch (Microsoft.Graph.ServiceException ex) when (ex.Message.Contains("MailboxNotEnabledForRESTAPI"))
+            {
+                await _log.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = "Email cannot be sent because required licenses are missing in the service account."
+                });
+            }
+            catch (Exception ex)
+            {
+                await _log.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = $"Email cannot be sent due to an unexpected exception.\n{ex}"
+                });
+            }
         }
 
         private string PrettyPrintSources(AzureADGroup[] sources)

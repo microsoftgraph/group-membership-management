@@ -53,6 +53,9 @@ namespace Services
             var startedTasks = new List<Task>();
             await foreach (var job in jobs)
             {
+                job.RunId = _graphGroupRepository.RunId = Guid.NewGuid();
+                _loggingRepository.SyncJobProperties = job.ToDictionary();
+
                 var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
 
                 if (job.LastRunTime == DateTime.FromFileTimeUtc(0))
@@ -67,10 +70,9 @@ namespace Services
                         CcEmailAddresses = string.Empty,
                         AdditionalContentParams = new[] { groupName, job.TargetOfficeGroupId.ToString() }
                     };
-                    await _mailRepository.SendMailAsync(message);
+
+                    await SendEmailAsync(message, job.RunId);
                 }
-                job.RunId = _graphGroupRepository.RunId = Guid.NewGuid();
-                _loggingRepository.SyncJobProperties = job.ToDictionary();
 
                 if (await CanWriteToGroup(job))
                 {
@@ -102,6 +104,53 @@ namespace Services
 
             runningJobs.ForEach(async job => await _serviceBusTopicsRepository.AddMessageAsync(job));
 
+            foreach (var failedJob in failedJobs)
+            {
+                var message = new EmailMessage
+                {
+                    Subject = EmailSubject,
+                    Content = SyncDisabledEmailBody,
+                    SenderAddress = _emailSenderAndRecipients.SenderAddress,
+                    SenderPassword = _emailSenderAndRecipients.SenderPassword,
+                    ToEmailAddresses = failedJob.Requestor,
+                    CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
+                    AdditionalContentParams = new[] { failedJob.TargetOfficeGroupId.ToString() }
+                };
+
+                await SendEmailAsync(message, failedJob.RunId);
+            }
+        }
+
+        private async Task SendEmailAsync(EmailMessage message, Guid? runId)
+        {
+            try
+            {
+                await _mailRepository.SendMailAsync(message);
+            }
+            catch (Microsoft.Graph.ServiceException ex) when (ex.GetBaseException().GetType().Name == "MsalUiRequiredException")
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = "Email cannot be sent because Mail.Send permission has not been granted."
+                });
+            }
+            catch (Microsoft.Graph.ServiceException ex) when (ex.Message.Contains("MailboxNotEnabledForRESTAPI"))
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = "Email cannot be sent because required licenses are missing in the service account."
+                });
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = $"Email cannot be sent due to an unexpected exception.\n{ex}"
+                });
+            }
         }
 
         private async Task<bool> CanWriteToGroup(SyncJob job)

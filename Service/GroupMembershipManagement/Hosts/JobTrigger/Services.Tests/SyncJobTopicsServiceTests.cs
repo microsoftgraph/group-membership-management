@@ -12,6 +12,9 @@ using Tests.Repositories;
 using Repositories.ServiceBusTopics.Tests;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
+using Moq;
+using Repositories.Contracts;
+using Microsoft.Identity.Client;
 
 namespace Services.Tests
 {
@@ -22,9 +25,9 @@ namespace Services.Tests
         private MockSyncJobRepository _syncJobRepository = null;
         private MockLoggingRepository _loggingRepository = null;
         private MockServiceBusTopicsRepository _serviceBusTopicsRepository = null;
-		private MockGraphGroupRepository _graphGroupRepository;
+        private MockGraphGroupRepository _graphGroupRepository;
         private MockMailRepository _mailRepository = null;
-       
+
         private const string Organization = "Organization";
         private const string SecurityGroup = "SecurityGroup";
 
@@ -93,10 +96,10 @@ namespace Services.Tests
             Assert.AreEqual(0, jobsToProcessCount);
 
             foreach (var job in _syncJobRepository.Jobs.Take(enabledJobs))
-			{
+            {
                 Assert.IsFalse(job.Enabled);
                 Assert.AreEqual("Error", job.Status);
-			}
+            }
         }
 
         [TestMethod]
@@ -117,10 +120,10 @@ namespace Services.Tests
             Assert.AreEqual(0, jobsToProcessCount);
 
             foreach (var job in _syncJobRepository.Jobs.Take(enabledJobs))
-			{
+            {
                 Assert.IsFalse(job.Enabled);
                 Assert.AreEqual("Error", job.Status);
-			}
+            }
         }
 
         [TestMethod]
@@ -193,6 +196,108 @@ namespace Services.Tests
             Assert.AreNotEqual(MessageIdOne, MessageIdTwo);
         }
 
+        [TestMethod]
+        public async Task VerifyJobsAreProcessedWithMissigMailSendPermission()
+        {
+            var missingMailSendPermissionException = new Microsoft.Graph.ServiceException(
+                new Microsoft.Graph.Error(),
+                new MsalUiRequiredException("error_code", "AADSTS65001: The user or administrator has not consented to use the application...")
+                );
+
+            var _mailRepository = new Mock<IMailRepository>();
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>())).ThrowsAsync(missingMailSendPermissionException);
+
+            _syncJobTopicsService = new SyncJobTopicsService(
+                _loggingRepository,
+                _syncJobRepository,
+                _serviceBusTopicsRepository,
+                _graphGroupRepository,
+                new MockKeyVaultSecret<ISyncJobTopicService>(),
+                _mailRepository.Object,
+                new MockEmail<IEmailSenderRecipient>());
+
+            var validStartDateJobs = 5;
+            var futureStartDateJobs = 3;
+
+            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(validStartDateJobs, Organization, enabled: true));
+            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(futureStartDateJobs, Organization, enabled: true, startDateBase: DateTime.UtcNow.AddDays(5)));
+
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
+
+            await _syncJobTopicsService.ProcessSyncJobsAsync();
+
+            var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
+
+            Assert.AreEqual(validStartDateJobs, jobsToProcessCount);
+        }
+
+        [TestMethod]
+        public async Task VerifyJobsAreProcessedWithMissigMailLicenses()
+        {
+            var missingMailLicensesException = new Microsoft.Graph.ServiceException(
+                    new Microsoft.Graph.Error { Message = "MailboxNotEnabledForRESTAPI" }
+                );
+
+            var _mailRepository = new Mock<IMailRepository>();
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>())).ThrowsAsync(missingMailLicensesException);
+
+            _syncJobTopicsService = new SyncJobTopicsService(
+                _loggingRepository,
+                _syncJobRepository,
+                _serviceBusTopicsRepository,
+                _graphGroupRepository,
+                new MockKeyVaultSecret<ISyncJobTopicService>(),
+                _mailRepository.Object,
+                new MockEmail<IEmailSenderRecipient>());
+
+            var validStartDateJobs = 5;
+            var futureStartDateJobs = 3;
+
+            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(validStartDateJobs, Organization, enabled: true));
+            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(futureStartDateJobs, Organization, enabled: true, startDateBase: DateTime.UtcNow.AddDays(5)));
+
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
+
+            await _syncJobTopicsService.ProcessSyncJobsAsync();
+
+            var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
+
+            Assert.AreEqual(validStartDateJobs, jobsToProcessCount);
+        }
+
+        [TestMethod]
+        public async Task VerifyJobsAreProcessedMailingExceptions()
+        {
+            var _mailRepository = new Mock<IMailRepository>();
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>())).ThrowsAsync(new Exception("Custom exception"));
+
+            _syncJobTopicsService = new SyncJobTopicsService(
+                _loggingRepository,
+                _syncJobRepository,
+                _serviceBusTopicsRepository,
+                _graphGroupRepository,
+                new MockKeyVaultSecret<ISyncJobTopicService>(),
+                _mailRepository.Object,
+                new MockEmail<IEmailSenderRecipient>());
+
+            var validStartDateJobs = 5;
+            var futureStartDateJobs = 3;
+
+            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(validStartDateJobs, Organization, enabled: true));
+            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(futureStartDateJobs, Organization, enabled: true, startDateBase: DateTime.UtcNow.AddDays(5)));
+
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
+
+            await _syncJobTopicsService.ProcessSyncJobsAsync();
+
+            var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
+
+            Assert.AreEqual(validStartDateJobs, jobsToProcessCount);
+        }
+
         private List<SyncJob> CreateSampleSyncJobs(int numberOfJobs, string syncType, bool enabled = true, int period = 1, DateTime? startDateBase = null, DateTime? lastRunTime = null)
         {
             var jobs = new List<SyncJob>();
@@ -232,8 +337,8 @@ namespace Services.Tests
         }
 
         private class MockKeyVaultSecret<T> : IKeyVaultSecret<T>
-		{
-			public string Secret => "";
-		}
-	}
+        {
+            public string Secret => "";
+        }
+    }
 }

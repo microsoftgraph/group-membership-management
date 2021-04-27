@@ -37,7 +37,7 @@ namespace Tests.Repositories
         [TestMethod]
         public async Task ValidateJobsFromSpecifiedSubscriptionAreProcessed()
         {
-            var organizationJobCount = 5;
+            var organizationJobCount = 105;
             var securityGroupJobCount = 3;
             var jobs = new Dictionary<string, List<SyncJob>>
             {
