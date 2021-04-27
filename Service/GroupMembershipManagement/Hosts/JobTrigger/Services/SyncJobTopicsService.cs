@@ -103,22 +103,6 @@ namespace Services
             await Task.WhenAll(startedTasks);
 
             runningJobs.ForEach(async job => await _serviceBusTopicsRepository.AddMessageAsync(job));
-
-            foreach (var failedJob in failedJobs)
-            {
-                var message = new EmailMessage
-                {
-                    Subject = EmailSubject,
-                    Content = SyncDisabledEmailBody,
-                    SenderAddress = _emailSenderAndRecipients.SenderAddress,
-                    SenderPassword = _emailSenderAndRecipients.SenderPassword,
-                    ToEmailAddresses = failedJob.Requestor,
-                    CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
-                    AdditionalContentParams = new[] { failedJob.TargetOfficeGroupId.ToString() }
-                };
-
-                await SendEmailAsync(message, failedJob.RunId);
-            }
         }
 
         private async Task SendEmailAsync(EmailMessage message, Guid? runId)
@@ -165,8 +149,7 @@ namespace Services
                 if (await strat.TestFunction(job.TargetOfficeGroupId) == false)
                 {
                     await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Marking sync job as failed because " + strat.ErrorMessage });
-					await _mailRepository.SendMailAsync(
-					new EmailMessage
+					await SendEmailAsync(new EmailMessage
 					{
 						Subject = EmailSubject,
 						Content = strat.EmailBody,
@@ -175,9 +158,8 @@ namespace Services
 						ToEmailAddresses = job.Requestor,
 						CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
 						AdditionalContentParams = new[] { job.TargetOfficeGroupId.ToString() }
-					}
-						);
-                    return false;
+					}, job.RunId);
+					return false;
                 }
 
                 await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Check passed: " + strat.StatusMessage });
