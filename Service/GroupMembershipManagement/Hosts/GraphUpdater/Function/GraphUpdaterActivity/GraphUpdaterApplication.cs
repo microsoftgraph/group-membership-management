@@ -209,7 +209,7 @@ namespace Hosts.GraphUpdater
             bool isRemovalsThresholdExceeded = false;
             totalMembersCount = totalMembersCount == 0 ? 1 : totalMembersCount;
 
-            if (job.ThresholdPercentageForAdditions > 0)
+            if (job.ThresholdPercentageForAdditions >= 0)
             {
                 percentageIncrease = (double)delta.ToAdd.Count / totalMembersCount * 100;
                 isAdditionsThresholdExceeded = percentageIncrease > job.ThresholdPercentageForAdditions;
@@ -220,7 +220,7 @@ namespace Hosts.GraphUpdater
                 }
             }
 
-            if (job.ThresholdPercentageForRemovals > 0)
+            if (job.ThresholdPercentageForRemovals >= 0)
             {
                 percentageDecrease = (double)delta.ToRemove.Count / totalMembersCount * 100;
                 isRemovalsThresholdExceeded = percentageDecrease > job.ThresholdPercentageForRemovals;

@@ -33,13 +33,13 @@ stages:
     repoToCheckout: ''
     checkoutPath: ''
     functionApps:
-    - function: 
+    - function:
        name: 'JobTrigger'
        coverageThreshold: 75
-    - function: 
+    - function:
        name: 'GraphUpdater'
-       coverageThreshold: 15
-    - function: 
+       coverageThreshold: 24
+    - function:
        name: 'SecurityGroup'
        coverageThreshold: 75
     - function:
@@ -74,7 +74,7 @@ stages:
     environmentAbbreviation: 'ua'
     tenantId: $(tenantId)
     keyVaultReaders: $(keyVaultReaders_nonprod)
-    location: $(location)    
+    location: $(location)
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-ua'
     dependsOn: BuildFunctions
     stageName: 'ua'
@@ -83,7 +83,7 @@ stages:
     - name: 'GraphUpdater'
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
-    condition: |                
+    condition: |
       and(
           succeeded('BuildFunctions'),
           eq(variables['Build.SourceBranch'], 'refs/heads/master'),
@@ -106,7 +106,7 @@ stages:
     - name: 'GraphUpdater'
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
-    condition: |                
+    condition: |
       and(
         succeeded('ua'),
         succeeded('BuildFunctions'),
