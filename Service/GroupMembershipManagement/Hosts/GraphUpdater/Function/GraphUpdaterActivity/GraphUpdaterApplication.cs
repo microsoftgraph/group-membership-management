@@ -17,7 +17,7 @@ namespace Hosts.GraphUpdater
     {
         private const string EmailSubject = "EmailSubject";
         private const string SyncCompletedEmailBody = "SyncCompletedEmailBody";
-        private const string SyncDisabledEmailBody = "SyncDisabledEmailBody";
+        private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
         private const string SyncThresholdBothEmailBody = "SyncThresholdBothEmailBody";
         private const string SyncThresholdIncreaseEmailBody = "SyncThresholdIncreaseEmailBody";
         private const string SyncThresholdDecreaseEmailBody = "SyncThresholdDecreaseEmailBody";
@@ -104,7 +104,7 @@ namespace Hosts.GraphUpdater
             if (membership.Errored)
             {
                 await _log.LogMessageAsync(new LogMessage { Message = $"When syncing {fromto}, calculator reported an error. Not syncing and marking as error.", RunId = membership.RunId });
-                await SendEmailAsync(job.Requestor, SyncDisabledEmailBody, new[] { PrettyPrintSources(membership.Sources) }, job.RunId, _emailSenderAndRecipients.SyncDisabledCCAddresses);
+                await SendEmailAsync(job.Requestor, SyncDisabledNoGroupEmailBody, new[] { PrettyPrintSources(membership.Sources) }, job.RunId, _emailSenderAndRecipients.SyncDisabledCCAddresses);
                 return SyncStatus.Error;
             }
 
