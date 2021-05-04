@@ -104,7 +104,8 @@ namespace Hosts.GraphUpdater
             if (membership.Errored)
             {
                 await _log.LogMessageAsync(new LogMessage { Message = $"When syncing {fromto}, calculator reported an error. Not syncing and marking as error.", RunId = membership.RunId });
-                await SendEmailAsync(job.Requestor, SyncDisabledEmailBody, new[] { PrettyPrintSources(membership.Sources) }, job.RunId, _emailSenderAndRecipients.SyncDisabledCCAddresses);
+                // changing the toEmail parameter from job.Requestor to the support alias in order to avoid false disable notification from spamming end users
+                await SendEmailAsync(_emailSenderAndRecipients.SyncDisabledCCAddresses, SyncDisabledEmailBody, new[] { PrettyPrintSources(membership.Sources) }, job.RunId, _emailSenderAndRecipients.SyncDisabledCCAddresses);
                 return SyncStatus.Error;
             }
 
