@@ -18,7 +18,7 @@ namespace Repositories.Contracts
 		Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId);
 		Task<bool> GroupExists(Guid objectId);
 		Task<List<AzureADUser>> GetUsersInGroupTransitively(Guid objectId);
-		Task AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup);
-		Task RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup);
+		Task<ResponseCode> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup);
+		Task<ResponseCode> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup);
 	}
 }

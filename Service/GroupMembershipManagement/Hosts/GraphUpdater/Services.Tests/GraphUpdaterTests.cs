@@ -141,6 +141,7 @@ namespace Services.Tests
 
 			var syncJob = new SyncJob(syncJobKeys.Item1, syncJobKeys.Item2)
 			{
+				LastRunTime = DateTime.FromFileTimeUtc(0),
 				Enabled = true,
 				Status = "InProgress",
 			};

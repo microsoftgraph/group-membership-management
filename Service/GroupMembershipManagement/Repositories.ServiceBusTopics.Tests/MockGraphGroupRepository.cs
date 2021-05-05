@@ -4,19 +4,18 @@ using Entities;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Repositories.ServiceBusTopics.Tests
 {
-	public class MockGraphGroupRepository : IGraphGroupRepository
+    public class MockGraphGroupRepository : IGraphGroupRepository
 	{
 		public Guid RunId { get; set; }
 
 		public HashSet<Guid> GroupsThatExist = new HashSet<Guid>();
 		public HashSet<Guid> GroupsGMMOwns = new HashSet<Guid>();
 
-		public Task AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+		public Task<ResponseCode> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
 		{
 			throw new NotImplementedException();
 		}
@@ -41,7 +40,7 @@ namespace Repositories.ServiceBusTopics.Tests
 			return Task.FromResult(GroupsThatExist.Contains(objectId));
 		}
 
-		public Task RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+		public Task<ResponseCode> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
 		{
 			throw new NotImplementedException();
 		}
