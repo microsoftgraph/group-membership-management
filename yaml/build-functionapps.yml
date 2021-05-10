@@ -33,6 +33,12 @@ stages:
           - checkout: ${{ parameters.repoToCheckout }}
             path: ${{ parameters.checkoutPath }}
 
+        - task: UseDotNet@2
+          inputs:
+            packageType: 'sdk'
+            useGlobalJson: true
+            workingDirectory: 'Service\GroupMembershipManagement'
+                
         - task: DotNetCoreCLI@2
           displayName: 'dotnet build ${{ app.function.name }} function'
           inputs:
