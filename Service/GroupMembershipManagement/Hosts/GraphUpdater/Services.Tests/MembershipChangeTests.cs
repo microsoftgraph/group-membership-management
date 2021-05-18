@@ -28,7 +28,6 @@ namespace Services.Tests
 
 			foreach (var chunk in split)
 			{
-				Assert.AreEqual(initial.Sources, chunk.Sources);
 				Assert.AreEqual(initial.Destination, chunk.Destination);
 				Assert.AreEqual(initial.SyncJobRowKey, chunk.SyncJobRowKey);
 				Assert.AreEqual(initial.SyncJobPartitionKey, chunk.SyncJobPartitionKey);
@@ -46,7 +45,6 @@ namespace Services.Tests
 
 			var rejoined = GroupMembership.Merge(split);
 
-			Assert.AreEqual(initial.Sources, rejoined.Sources);
 			Assert.AreEqual(initial.Destination, rejoined.Destination);
 			Assert.AreEqual(initial.SyncJobRowKey, rejoined.SyncJobRowKey);
 			Assert.AreEqual(initial.SyncJobPartitionKey, rejoined.SyncJobPartitionKey);
@@ -65,7 +63,6 @@ namespace Services.Tests
 
 			foreach (var chunk in split)
 			{
-				CollectionAssert.AreEqual(initial.Sources, chunk.Sources);
 				Assert.AreEqual(initial.Destination, chunk.Destination);
 				Assert.AreEqual(initial.SyncJobRowKey, chunk.SyncJobRowKey);
 				Assert.AreEqual(initial.SyncJobPartitionKey, chunk.SyncJobPartitionKey);
@@ -83,7 +80,6 @@ namespace Services.Tests
 
 			var rejoined = GroupMembership.Merge(split);
 
-			CollectionAssert.AreEqual(initial.Sources, rejoined.Sources);
 			Assert.AreEqual(initial.Destination, rejoined.Destination);
 			Assert.AreEqual(initial.SyncJobRowKey, rejoined.SyncJobRowKey);
 			Assert.AreEqual(initial.SyncJobPartitionKey, rejoined.SyncJobPartitionKey);
@@ -96,7 +92,6 @@ namespace Services.Tests
 		{
 			var initial = new GroupMembership()
 			{
-				Sources = MockGroupMembershipHelper.CreateMockGroups(),
 				Destination = new AzureADGroup { ObjectId = Guid.NewGuid() },
 				SyncJobPartitionKey = Guid.NewGuid().ToString(),
 				SyncJobRowKey = Guid.NewGuid().ToString(),
@@ -106,7 +101,6 @@ namespace Services.Tests
 
 			Assert.AreEqual(1, split.Length);
 			Assert.AreEqual(0, split.Single().SourceMembers.Count);
-			Assert.AreEqual(initial.Sources, split.Single().Sources);
 			Assert.AreEqual(initial.Destination, split.Single().Destination);
 			Assert.AreEqual(initial.SyncJobRowKey, split.Single().SyncJobRowKey);
 			Assert.AreEqual(initial.SyncJobPartitionKey, split.Single().SyncJobPartitionKey);
@@ -116,7 +110,6 @@ namespace Services.Tests
 			var rejoined = GroupMembership.Merge(split);
 
 			Assert.AreEqual(0, rejoined.SourceMembers.Count);
-			Assert.AreEqual(initial.Sources, rejoined.Sources);
 			Assert.AreEqual(initial.Destination, rejoined.Destination);
 			Assert.AreEqual(initial.SyncJobRowKey, rejoined.SyncJobRowKey);
 			Assert.AreEqual(initial.SyncJobPartitionKey, rejoined.SyncJobPartitionKey);

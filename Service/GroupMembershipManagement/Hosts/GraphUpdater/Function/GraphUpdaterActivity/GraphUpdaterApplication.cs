@@ -59,7 +59,7 @@ namespace Hosts.GraphUpdater
                 { "targetOfficeGroupId", membership.Destination.ObjectId.ToString() }
             };
 
-            var fromto = $"from {PrettyPrintSources(membership.Sources)} to {membership.Destination}";
+            var fromto = $"to {membership.Destination}";
             var changeTo = SyncStatus.Idle;
 
             await _log.LogMessageAsync(new LogMessage { Message = $"The Dry Run Enabled configuration is currently set to {_isDryRunEnabled}. We will not be syncing members if Dry Run Enabled configuration is set to True.", RunId = membership.RunId });
@@ -104,8 +104,6 @@ namespace Hosts.GraphUpdater
             if (membership.Errored)
             {
                 await _log.LogMessageAsync(new LogMessage { Message = $"When syncing {fromto}, calculator reported an error. Not syncing and marking as error.", RunId = membership.RunId });
-                // changing the toEmail parameter from job.Requestor to the support alias in order to avoid false disable notification from spamming end users
-                await SendEmailAsync(_emailSenderAndRecipients.SyncDisabledCCAddresses, SyncDisabledNoGroupEmailBody, new[] { PrettyPrintSources(membership.Sources) }, job.RunId, _emailSenderAndRecipients.SyncDisabledCCAddresses);
                 return SyncStatus.Error;
             }
 
@@ -289,13 +287,6 @@ namespace Hosts.GraphUpdater
                     Message = $"Email cannot be sent due to an unexpected exception.\n{ex}"
                 });
             }
-        }
-
-        private string PrettyPrintSources(AzureADGroup[] sources)
-        {
-            if (sources == null || sources.Length == 0)
-                return "a non-security group sync";
-            return string.Join(',', sources.AsEnumerable());
         }
     }
 

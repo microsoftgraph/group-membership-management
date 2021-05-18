@@ -48,7 +48,6 @@ namespace Services.Tests
                 IsLastMessage = true,
                 RunId = _rundId,
                 SourceMembers = _users,
-                Sources = _sources,
                 SyncJobPartitionKey = _partitionKey,
                 SyncJobRowKey = _rowKey
             };

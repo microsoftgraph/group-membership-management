@@ -11,7 +11,6 @@ namespace Entities.ServiceBus
 	[ExcludeFromCodeCoverage]
 	public class GroupMembership
 	{
-		public AzureADGroup[] Sources { get; set; }
 		public AzureADGroup Destination { get; set; }
 		public List<AzureADUser> SourceMembers { get; set; } = new List<AzureADUser>();
 		public Guid RunId { get; set; }
@@ -31,7 +30,7 @@ namespace Entities.ServiceBus
 		public GroupMembership[] Split(int perChunk = MembersPerChunk)
 		{
 			var toReturn = ChunksOfSize(SourceMembers, perChunk).
-				Select(x => new GroupMembership { Sources = Sources, Destination = Destination, SyncJobPartitionKey = SyncJobPartitionKey, SyncJobRowKey = SyncJobRowKey,
+				Select(x => new GroupMembership { Destination = Destination, SyncJobPartitionKey = SyncJobPartitionKey, SyncJobRowKey = SyncJobRowKey,
 					SourceMembers = x, RunId = RunId, Errored = Errored, IsLastMessage = false }).ToArray();
 			toReturn.Last().IsLastMessage = true;
 			return toReturn;

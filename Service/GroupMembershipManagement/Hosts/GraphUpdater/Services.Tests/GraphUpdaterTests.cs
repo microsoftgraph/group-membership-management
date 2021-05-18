@@ -57,7 +57,6 @@ namespace Services.Tests
 				Assert.AreEqual(currentBody.SyncJobPartitionKey, mergedMembership.SyncJobPartitionKey);
 				Assert.AreEqual(currentBody.RunId, mergedMembership.RunId);
 				Assert.AreEqual(currentBody.Destination, mergedMembership.Destination);
-				CollectionAssert.AreEqual(currentBody.Sources, mergedMembership.Sources);
 			}
 		}
 
@@ -214,7 +213,6 @@ namespace Services.Tests
 				Body = new Entities.ServiceBus.GroupMembership
 				{
 					Errored = true,
-					Sources = new[] { new AzureADGroup { ObjectId = Guid.NewGuid() } },
 					Destination = new AzureADGroup { ObjectId = Guid.NewGuid() },
 					IsLastMessage = true,
 					RunId = Guid.NewGuid(),

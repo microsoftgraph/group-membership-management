@@ -49,7 +49,6 @@ namespace Tests.FunctionApps
 			});
 
 			CollectionAssert.AreEqual(initialUsers, serviceBus.Sent.SourceMembers);
-			Assert.AreEqual(sourceGroup, serviceBus.Sent.Sources.Single().ObjectId);
 			Assert.AreEqual(destinationGroup, serviceBus.Sent.Destination.ObjectId);
 		}
 
@@ -96,7 +95,6 @@ namespace Tests.FunctionApps
 			});
 
 			CollectionAssert.AreEquivalent(mockGroups.Values.SelectMany(x => x).ToArray(), serviceBus.Sent.SourceMembers);
-			CollectionAssert.AreEqual(sourceGroups.Select(x => new AzureADGroup { ObjectId = x }).ToArray(), serviceBus.Sent.Sources);
 			Assert.AreEqual(destinationGroup, serviceBus.Sent.Destination.ObjectId);
 		}
 
@@ -310,7 +308,6 @@ namespace Tests.FunctionApps
 			});
 
 			CollectionAssert.AreEquivalent(mockGroups.Values.SelectMany(x => x).ToArray(), serviceBus.Sent.SourceMembers);
-			CollectionAssert.AreEqual(sourceGroups.Select(x => new AzureADGroup { ObjectId = x }).ToArray(), serviceBus.Sent.Sources);
 			Assert.AreEqual(destinationGroup, serviceBus.Sent.Destination.ObjectId);
 		}
 

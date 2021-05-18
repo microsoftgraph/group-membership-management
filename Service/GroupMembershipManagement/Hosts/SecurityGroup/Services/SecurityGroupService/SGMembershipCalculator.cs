@@ -101,7 +101,6 @@ namespace Hosts.SecurityGroup
 				{
 					SourceMembers = allusers ?? new List<AzureADUser>(),
 					Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
-					Sources = sourceGroups,
 					RunId = runId,
 					SyncJobRowKey = syncJob.RowKey,
 					SyncJobPartitionKey = syncJob.PartitionKey,

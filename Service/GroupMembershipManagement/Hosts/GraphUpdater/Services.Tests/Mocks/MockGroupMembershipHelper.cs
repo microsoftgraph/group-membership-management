@@ -21,7 +21,6 @@ namespace Services.Tests.Mocks
 		{
 			return new GroupMembership()
 			{
-				Sources = CreateMockGroups(),
 				Destination = new AzureADGroup { ObjectId = Guid.NewGuid() },
 				SyncJobPartitionKey = Guid.NewGuid().ToString(),
 				SyncJobRowKey = Guid.NewGuid().ToString(),
