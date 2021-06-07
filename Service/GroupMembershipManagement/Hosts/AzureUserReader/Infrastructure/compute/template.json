@@ -1,0 +1,411 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "containerBaseUrl": {
+      "type": "string"
+    },
+    "containerSasToken": {
+      "type": "string"
+    },
+    "solutionAbbreviation": {
+      "type": "string",
+      "defaultValue": "gmm",
+      "minLength": 2,
+      "maxLength": 3,
+      "metadata": {
+        "description": "Enter an abbreviation for the solution."
+      }
+    },
+    "resourceGroupClassification": {
+      "type": "string",
+      "defaultValue": "compute",
+      "allowedValues": [ "prereqs", "data", "compute" ],
+      "metadata": {
+        "description": "Classify the types of resources in this resource group."
+      }
+    },
+    "environmentAbbreviation": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 6,
+      "metadata": {
+        "description": "Enter an abbreviation for the environment."
+      }
+    },
+    "tenantId": {
+      "type": "string",
+      "metadata": {
+        "description": "Tenant id."
+      }
+    },
+    "servicePlanName": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-', parameters('resourceGroupClassification'), '-', parameters('environmentAbbreviation'))]",
+      "metadata": {
+        "description": "Service plan name."
+      }
+    },
+    "servicePlanSku": {
+      "type": "string",
+      "defaultValue": "Y1",
+      "metadata": {
+        "description": "Service plan sku"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource location."
+      }
+    },
+    "functionAppName": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-', parameters('resourceGroupClassification'), '-', parameters('environmentAbbreviation'))]",
+      "metadata": {
+        "description": "Enter function app name."
+      }
+    },
+    "functionAppKind": {
+      "type": "string",
+      "allowedValues": [ "functionapp", "linux", "container" ],
+      "defaultValue": "functionapp",
+      "metadata": {
+        "description": "Function app kind."
+      }
+    },
+    "maximumElasticWorkerCount": {
+      "type": "int",
+      "defaultValue": 1,
+      "metadata": {
+        "description": "Maximum elastic worker count."
+      }
+    },
+    "appInsightsName": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-data-', parameters('environmentAbbreviation'))]",
+      "metadata": {
+        "description": "Enter application insights name."
+      }
+    },
+    "appInsightsResourceGroup": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-data-', parameters('environmentAbbreviation'))]",
+      "metadata": {
+        "description": "Resource group where Application Insights is located."
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Enter storage account name."
+      }
+    },
+    "storageAccountResourceGroup": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-data-', parameters('environmentAbbreviation'))]",
+      "metadata": {
+        "description": "Resource group where storage account is located."
+      }
+    },
+    "prereqsKeyVaultName": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-prereqs-', parameters('environmentAbbreviation'))]",
+      "metadata": {
+        "description": "Name of the resource group where the 'prereqs' key vault is located."
+      }
+    },
+    "prereqsKeyVaultResourceGroup": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-prereqs-', parameters('environmentAbbreviation'))]",
+      "metadata": {
+        "description": "Name of the resource group where the 'prereqs' key vault is located."
+      }
+    },
+    "dataKeyVaultName": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-data-', parameters('environmentAbbreviation'))]",
+      "metadata": {
+        "description": "Name of the 'data' key vault."
+      }
+    },
+    "dataKeyVaultResourceGroup": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-data-', parameters('environmentAbbreviation'))]",
+      "metadata": {
+        "description": "Name of the resource group where the 'data' key vault is located."
+      }
+    },
+    "storageAccountSecretName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the keyvault secret containing the storage account connection string"
+      }
+    }   
+  },
+  "variables": {
+    "logAnalyticsCustomerId": "[resourceId(subscription().subscriptionId, parameters('dataKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('dataKeyVaultName'), 'logAnalyticsCustomerId')]",
+    "logAnalyticsPrimarySharedKey": "[resourceId(subscription().subscriptionId, parameters('dataKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('dataKeyVaultName'), 'logAnalyticsPrimarySharedKey')]",
+    "graphAppClientId": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppClientId')]",
+    "graphAppCertificateName": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppCertificateName')]",
+    "graphAppTenantId": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppTenantId')]",
+    "storageAccountConnectionString": "[resourceId(subscription().subscriptionId, parameters('dataKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('dataKeyVaultName'), parameters('storageAccountSecretName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2018-05-01",
+      "name": "servicePlanTemplate",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(uri(parameters('containerBaseUrl'), 'servicePlan.json'), parameters('containerSasToken'))]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "name": {
+            "value": "[parameters('servicePlanName')]"
+          },
+          "sku": {
+            "value": "[parameters('servicePlanSku')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "maximumElasticWorkerCount": {
+            "value": "[parameters('maximumElasticWorkerCount')]"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2018-05-01",
+      "name": "functionAppTemplate-AzureUserReader",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(uri(parameters('containerBaseUrl'), 'functionApp.json'), parameters('containerSasToken'))]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "name": {
+            "value": "[concat(parameters('functionAppName'),'-AzureUserReader')]"
+          },
+          "kind": {
+            "value": "[parameters('functionAppKind')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "servicePlanName": {
+            "value": "[parameters('servicePlanName')]"
+          },
+          "secretSettings": {
+            "value": [
+              {
+                "name": "SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT",
+                "value": "0",
+                "slotSetting": false
+              },
+              {
+                "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                "value": "[reference(resourceId(parameters('appInsightsResourceGroup'), 'microsoft.insights/components/', parameters('appInsightsName')), '2015-05-01').InstrumentationKey]",
+                "slotSetting": false
+              },
+              {
+                "name": "AzureWebJobsStorage",
+                "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('storageAccountName'), ';AccountKey=', listKeys(resourceId(parameters('storageAccountResourceGroup'), 'Microsoft.Storage/storageAccounts', parameters('storageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]",
+                "slotSetting": false
+              },
+              {
+                "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('storageAccountName'), ';AccountKey=', listKeys(resourceId(parameters('storageAccountResourceGroup'), 'Microsoft.Storage/storageAccounts', parameters('storageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]",
+                "slotSetting": false
+              },
+              {
+                "name": "WEBSITE_CONTENTSHARE",
+                "value": "[toLower('functionApp-AzureUserReader')]",
+                "slotSetting": false
+              },
+              {
+                "name": "FUNCTIONS_WORKER_RUNTIME",
+                "value": "dotnet",
+                "slotSetting": false
+              },
+              {
+                "name": "FUNCTIONS_EXTENSION_VERSION",
+                "value": "~3",
+                "slotSetting": false
+              },
+              {
+                "name": "storageAccountConnectionString",                
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('storageAccountConnectionString'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "graphCredentials:CertificateName",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('graphAppCertificateName'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "graphCredentials:ClientId",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('graphAppClientId'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "graphCredentials:TenantId",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('graphAppTenantId'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "graphCredentials:KeyVaultName",
+                "value": "[parameters('prereqsKeyVaultName')]",
+                "slotSetting": false
+              },
+              {
+                "name": "graphCredentials:KeyVaultTenantId",
+                "value": "[parameters('tenantId')]",
+                "slotSetting": false
+              },
+              {
+                "name": "logAnalyticsCustomerId",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('logAnalyticsCustomerId'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "logAnalyticsPrimarySharedKey",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('logAnalyticsPrimarySharedKey'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "WEBSITE_MAX_DYNAMIC_APPLICATION_SCALE_OUT",
+                "value": "[parameters('maximumElasticWorkerCount')]",
+                "slotSetting": false
+              },
+              {
+                "name": "maxRetryAfterAttempts",
+                "value": "4",
+                "slotSetting": false
+              },
+              {
+                "name": "maxExceptionHandlingAttempts",
+                "value": "2",
+                "slotSetting": false
+              }
+            ]
+          }
+        }
+      },
+      "dependsOn": [
+        "Microsoft.Resources/deployments/servicePlanTemplate"        
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "dataKeyVaultPoliciesTemplate",
+      "resourceGroup": "[parameters('dataKeyVaultResourceGroup')]",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(uri(parameters('containerBaseUrl'), 'keyVaultAccessPolicy.json'), parameters('containerSasToken'))]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "name": {
+            "value": "[parameters('dataKeyVaultName')]"
+          },
+          "policies": {
+            "value": [
+              {
+                "objectId": "[reference('functionAppTemplate-AzureUserReader').outputs.msi.value]",
+                "permissions": ["get", "list"],
+                "type": "secrets"
+              }
+            ]
+          },
+          "tenantId": {
+            "value": "[parameters('tenantId')]"
+          }
+        }
+      },
+      "dependsOn": [
+        "Microsoft.Resources/deployments/functionAppTemplate-AzureUserReader"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "PrereqsKeyVaultPoliciesTemplate",
+      "resourceGroup": "[parameters('prereqsKeyVaultResourceGroup')]",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(uri(parameters('containerBaseUrl'), 'keyVaultAccessPolicy.json'), parameters('containerSasToken'))]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "name": {
+            "value": "[parameters('prereqsKeyVaultName')]"
+          },
+          "policies": {
+            "value": [
+              {
+                "objectId": "[reference('functionAppTemplate-AzureUserReader').outputs.msi.value]",
+                "permissions": ["get"],
+                "type": "secrets"
+              }
+            ]
+          },
+          "tenantId": {
+            "value": "[parameters('tenantId')]"
+          }
+        }
+      },
+      "dependsOn": [
+        "Microsoft.Resources/deployments/functionAppTemplate-AzureUserReader"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2018-05-01",
+      "name": "secretsTemplate",
+      "resourceGroup": "[parameters('dataKeyVaultResourceGroup')]",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(uri(parameters('containerBaseUrl'), 'keyVaultSecrets.json'), parameters('containerSasToken'))]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "keyVaultName": {
+            "value": "[parameters('dataKeyVaultName')]"
+          },
+          "keyVaultParameters": {
+            "value": [
+              {
+                "name": "azureUserReaderUrl",
+                "value": "[reference('functionAppTemplate-AzureUserReader').outputs.hostName.value]"
+              },
+              {
+                "name": "azureUserReaderKey",
+                "value": "[reference('functionAppTemplate-AzureUserReader').outputs.adfKey.value]"
+              },
+              {
+                "name": "azureUserReaderFunctionName",
+                "value": "[concat(parameters('functionAppName'),'-AzureUserReader')]"
+              }
+            ]
+          }
+        }
+      },
+      "dependsOn": [
+        "Microsoft.Resources/deployments/functionAppTemplate-AzureUserReader",
+        "Microsoft.Resources/deployments/dataKeyVaultPoliciesTemplate"
+      ]
+    }
+  ],
+  "outputs": {
+  }
+}
