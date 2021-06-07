@@ -35,16 +35,19 @@ stages:
     functionApps:
     - function:
        name: 'JobTrigger'
-       coverageThreshold: 75
+       coverageThreshold: 93
     - function:
        name: 'GraphUpdater'
-       coverageThreshold: 24
+       coverageThreshold: 42
     - function:
        name: 'SecurityGroup'
-       coverageThreshold: 75
+       coverageThreshold: 86
     - function:
         name: 'AzureTableBackup'
-        coverageThreshold: 25
+        coverageThreshold: 72
+    - function:
+        name: 'AzureUserReader'
+        coverageThreshold: 34
 
 - template: yaml/deploy-pipeline.yml
   parameters:
@@ -61,6 +64,7 @@ stages:
     - name: 'GraphUpdater'
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
+    - name: 'AzureUserReader'
     condition: |
       and(
         succeeded('BuildFunctions'),
@@ -83,6 +87,7 @@ stages:
     - name: 'GraphUpdater'
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
+    - name: 'AzureUserReader'
     condition: |
       and(
           succeeded('BuildFunctions'),
@@ -106,6 +111,7 @@ stages:
     - name: 'GraphUpdater'
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
+    - name: 'AzureUserReader'
     condition: |
       and(
         succeeded('ua'),
