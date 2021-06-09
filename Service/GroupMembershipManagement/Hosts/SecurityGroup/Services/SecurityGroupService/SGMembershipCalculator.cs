@@ -5,6 +5,7 @@ using Entities.ServiceBus;
 using Polly;
 using Polly.Retry;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,12 +18,23 @@ namespace Hosts.SecurityGroup
 	{
 		private readonly IGraphGroupRepository _graphGroupRepository;
 		private readonly IMembershipServiceBusRepository _membershipServiceBus;
+		private readonly IMailRepository _mail;
+		private readonly IEmailSenderRecipient _emailSenderAndRecipients;
+		private readonly ISyncJobRepository _syncJob;
 		private readonly ILoggingRepository _log;
 
-		public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository, IMembershipServiceBusRepository membershipServiceBus, ILoggingRepository logging)
+		private const string EmailSubject = "EmailSubject";
+		private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
+
+
+		public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository, IMembershipServiceBusRepository membershipServiceBus, 
+			IMailRepository mail, IEmailSenderRecipient emailSenderAndRecipients, ISyncJobRepository syncJob, ILoggingRepository logging)
 		{
 			_graphGroupRepository = graphGroupRepository;
 			_membershipServiceBus = membershipServiceBus;
+			_mail = mail;
+			_emailSenderAndRecipients = emailSenderAndRecipients;
+			_syncJob = syncJob;
 			_log = logging;
 		}
 
@@ -70,7 +82,7 @@ namespace Hosts.SecurityGroup
 			List<AzureADUser> allusers = null;
 			try
 			{
-				allusers = await GetUsersForEachGroup(sourceGroups, runId);
+				allusers = await GetUsersForEachGroup(sourceGroups, syncJob.Requestor, runId);
 			}
 			catch (Exception ex)
 			{
@@ -94,18 +106,20 @@ namespace Hosts.SecurityGroup
 						Message =
 						$"Read {allusers.Count} users from source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
 					});
-				}
 
-				// the important thing is to make sure that this message gets sent so that the group gets marked as Error, even if an exception gets thrown.
-				await _membershipServiceBus.SendMembership(new GroupMembership
+					await _membershipServiceBus.SendMembership(new GroupMembership
+					{
+						SourceMembers = allusers ?? new List<AzureADUser>(),
+						Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
+						RunId = runId,
+						SyncJobRowKey = syncJob.RowKey,
+						SyncJobPartitionKey = syncJob.PartitionKey,
+					});
+				}
+				else
 				{
-					SourceMembers = allusers ?? new List<AzureADUser>(),
-					Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
-					RunId = runId,
-					SyncJobRowKey = syncJob.RowKey,
-					SyncJobPartitionKey = syncJob.PartitionKey,
-					Errored = allusers == null
-				});
+					await _syncJob.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Error);
+				}
 
 			}
 
@@ -139,7 +153,7 @@ namespace Hosts.SecurityGroup
 		}
 
 
-		private async Task<List<AzureADUser>> GetUsersForEachGroup(IEnumerable<AzureADGroup> groups, Guid runId)
+		private async Task<List<AzureADUser>> GetUsersForEachGroup(IEnumerable<AzureADGroup> groups, string jobRequestor, Guid runId)
 		{
 			if (!groups.Any()) { return null; }
 
@@ -165,16 +179,60 @@ namespace Hosts.SecurityGroup
 				else
 				{
 					if (groupExistsResult.Outcome == OutcomeType.Successful)
+					{
 						await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Group with ID {group.ObjectId} doesn't exist. Stopping sync and marking as error." });
+						await SendEmailAsync(new EmailMessage
+						{
+							Subject = EmailSubject,
+							Content = SyncDisabledNoGroupEmailBody,
+							SenderAddress = _emailSenderAndRecipients.SenderAddress,
+							SenderPassword = _emailSenderAndRecipients.SenderPassword,
+							ToEmailAddresses = jobRequestor,
+							CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
+							AdditionalContentParams = new[] { group.ObjectId.ToString() }
+						}, runId);
+					}
 					else if (groupExistsResult.FaultType == FaultType.ExceptionHandledByThisPolicy)
 						await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Exceeded {NumberOfGraphRetries} while trying to determine if a group exists. Stopping sync and marking as error." });
-					
+
 					if (groupExistsResult.FinalException != null) { throw groupExistsResult.FinalException; }
 					return null;
 				}
 			}
 
 			return toReturn;
+		}
+
+		private async Task SendEmailAsync(EmailMessage message, Guid? runId)
+		{
+			try
+			{
+				await _mail.SendMailAsync(message);
+			}
+			catch (Microsoft.Graph.ServiceException ex) when (ex.GetBaseException().GetType().Name == "MsalUiRequiredException")
+			{
+				await _log.LogMessageAsync(new LogMessage
+				{
+					RunId = runId,
+					Message = "Email cannot be sent because Mail.Send permission has not been granted."
+				});
+			}
+			catch (Microsoft.Graph.ServiceException ex) when (ex.Message.Contains("MailboxNotEnabledForRESTAPI"))
+			{
+				await _log.LogMessageAsync(new LogMessage
+				{
+					RunId = runId,
+					Message = "Email cannot be sent because required licenses are missing in the service account."
+				});
+			}
+			catch (Exception ex)
+			{
+				await _log.LogMessageAsync(new LogMessage
+				{
+					RunId = runId,
+					Message = $"Email cannot be sent due to an unexpected exception.\n{ex}"
+				});
+			}
 		}
 	}
 }

@@ -154,7 +154,10 @@
     "serviceBusMembershipQueue": "[resourceId(subscription().subscriptionId, parameters('dataKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('dataKeyVaultName'), 'serviceBusMembershipQueue')]",
     "graphAppClientId": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppClientId')]",
     "graphAppCertificateName": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppCertificateName')]",
-    "graphAppTenantId": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppTenantId')]"
+    "graphAppTenantId": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppTenantId')]",
+    "senderUsername": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'senderUsername')]",
+    "senderPassword": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'senderPassword')]",
+    "syncDisabledCCEmailAddresses": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'syncDisabledCCEmailAddresses')]"
   },
   "resources": [
     {
@@ -296,6 +299,31 @@
               {
                 "name": "logAnalyticsPrimarySharedKey",
                 "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('logAnalyticsPrimarySharedKey'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "jobsStorageAccountConnectionString",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('jobsStorageAccountConnectionString'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },              
+              {
+                "name": "jobsTableName",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('jobsTableName'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "senderAddress",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('senderUsername'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "senderPassword",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('senderPassword'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "syncDisabledCCEmailAddresses",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('syncDisabledCCEmailAddresses'), '2019-09-01').secretUriWithVersion, ')')]",
                 "slotSetting": false
               }
             ]

@@ -5,6 +5,8 @@ using Entities.ServiceBus;
 using Hosts.SecurityGroup;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
+using Repositories.Mocks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,17 +41,29 @@ namespace Tests.FunctionApps
 				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
 			};
 			var serviceBus = new MockMembershipServiceBusRepository();
+			var mail = new MockMailRepository();
+			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+			var syncJobs = new MockSyncJobRepository();
 
-			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
 
-			await calc.SendMembershipAsync(new SyncJob
+			var testJob = new SyncJob
 			{
+				RowKey = "row",
+				PartitionKey = "partition",
 				TargetOfficeGroupId = destinationGroup,
-				Query = sourceGroup.ToString()
-			});
+				Query = sourceGroup.ToString(),
+				Status = "InProgress"
+			};
+
+			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+
+			await calc.SendMembershipAsync(testJob);
 
 			CollectionAssert.AreEqual(initialUsers, serviceBus.Sent.SourceMembers);
 			Assert.AreEqual(destinationGroup, serviceBus.Sent.Destination.ObjectId);
+			Assert.AreEqual(0, mail.SentEmails.Count);
+			Assert.AreEqual("InProgress", testJob.Status);
 		}
 
 		[TestMethod]
@@ -85,17 +99,29 @@ namespace Tests.FunctionApps
 				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
 			};
 			var serviceBus = new MockMembershipServiceBusRepository();
+			var mail = new MockMailRepository();
+			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+			var syncJobs = new MockSyncJobRepository();
 
-			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
 
-			await calc.SendMembershipAsync(new SyncJob
+			var testJob = new SyncJob
 			{
+				RowKey = "row",
+				PartitionKey = "partition",
 				TargetOfficeGroupId = destinationGroup,
-				Query = string.Join(';', sourceGroups)
-			});
+				Query = string.Join(';', sourceGroups),
+				Status = "InProgress"
+			};
+
+			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+
+			await calc.SendMembershipAsync(testJob);
 
 			CollectionAssert.AreEquivalent(mockGroups.Values.SelectMany(x => x).ToArray(), serviceBus.Sent.SourceMembers);
 			Assert.AreEqual(destinationGroup, serviceBus.Sent.Destination.ObjectId);
+			Assert.AreEqual(0, mail.SentEmails.Count);
+			Assert.AreEqual("InProgress", testJob.Status);
 		}
 
 		[TestMethod]
@@ -130,17 +156,28 @@ namespace Tests.FunctionApps
 				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
 			};
 			var serviceBus = new MockMembershipServiceBusRepository();
+			var mail = new MockMailRepository();
+			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+			var syncJobs = new MockSyncJobRepository();
 
-			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
 
-			await Assert.ThrowsExceptionAsync<SocketException>(() => calc.SendMembershipAsync(new SyncJob
+			var testJob = new SyncJob
 			{
+				RowKey = "row",
+				PartitionKey = "partition",
 				TargetOfficeGroupId = destinationGroup,
-				Query = string.Join(';', sourceGroups)
-			}));
+				Query = string.Join(';', sourceGroups),
+				Status = "InProgress"
+			};
 
-			Assert.IsTrue(serviceBus.Sent.Errored);
-			Assert.AreEqual(0, serviceBus.Sent.SourceMembers.Count);
+			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+
+			await Assert.ThrowsExceptionAsync<SocketException>(() => calc.SendMembershipAsync(testJob));
+
+			Assert.IsNull(serviceBus.Sent);
+			Assert.AreEqual(0, mail.SentEmails.Count);
+			Assert.AreEqual("Error", testJob.Status);
 		}
 
 		[TestMethod]
@@ -175,17 +212,28 @@ namespace Tests.FunctionApps
 				ThrowNonSocketExceptionFromGroupExists = errorOnGroupExists
 			};
 			var serviceBus = new MockMembershipServiceBusRepository();
+			var mail = new MockMailRepository();
+			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+			var syncJobs = new MockSyncJobRepository();
 
-			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
 
-		 	await Assert.ThrowsExceptionAsync<MockException>(() => calc.SendMembershipAsync(new SyncJob
+			var testJob = new SyncJob
 			{
+				RowKey = "row",
+				PartitionKey = "partition",
 				TargetOfficeGroupId = destinationGroup,
-				Query = string.Join(';', sourceGroups)
-			}));
+				Query = string.Join(';', sourceGroups),
+				Status = "InProgress"
+			};
 
-			Assert.IsTrue(serviceBus.Sent.Errored);
-			Assert.AreEqual(0, serviceBus.Sent.SourceMembers.Count);
+			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+
+		 	await Assert.ThrowsExceptionAsync<MockException>(() => calc.SendMembershipAsync(testJob));
+
+			Assert.IsNull(serviceBus.Sent);
+			Assert.AreEqual(0, mail.SentEmails.Count);
+			Assert.AreEqual("Error", testJob.Status);
 		}
 
 		[TestMethod]
@@ -221,18 +269,30 @@ namespace Tests.FunctionApps
 				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
 			};
 			var serviceBus = new MockMembershipServiceBusRepository();
+			var mail = new MockMailRepository();
+			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+			var syncJobs = new MockSyncJobRepository();
 
-			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
 
 			Guid nonexistentGroupId = Guid.NewGuid();
-			await calc.SendMembershipAsync(new SyncJob
+			var testJob = new SyncJob
 			{
+				RowKey = "row",
+				PartitionKey = "partition",
 				TargetOfficeGroupId = destinationGroup,
-				Query = string.Join(';', sourceGroups) + $";{nonexistentGroupId}"
-			});
+				Query = string.Join(';', sourceGroups) + $";{nonexistentGroupId}",
+				Status = "InProgress"
+			};
 
-			Assert.IsTrue(serviceBus.Sent.Errored);
-			Assert.AreEqual(0, serviceBus.Sent.SourceMembers.Count);
+			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+
+			await calc.SendMembershipAsync(testJob);
+
+			Assert.IsNull(serviceBus.Sent);
+			Assert.AreEqual(1, mail.SentEmails.Count);
+			Assert.AreEqual(nonexistentGroupId.ToString(), mail.SentEmails.Single().AdditionalContentParams.Single());
+			Assert.AreEqual("Error", testJob.Status);
 		}
 
 		[TestMethod]
@@ -252,17 +312,29 @@ namespace Tests.FunctionApps
 				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
 			};
 			var serviceBus = new MockMembershipServiceBusRepository();
+			var mail = new MockMailRepository();
+			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+			var syncJobs = new MockSyncJobRepository();
 
-			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
 
-			await calc.SendMembershipAsync(new SyncJob
+			var testJob = new SyncJob
 			{
+				RowKey = "row",
+				PartitionKey = "partition",
 				TargetOfficeGroupId = destinationGroup,
-				Query = string.Join(';', sourceGroups) + $";{Guid.NewGuid()}"
-			});
+				Query = string.Join(';', sourceGroups) + $";{Guid.NewGuid()}",
+				Status = "InProgress"
+			};
 
-			Assert.IsTrue(serviceBus.Sent.Errored);
-			Assert.AreEqual(0, serviceBus.Sent.SourceMembers.Count);
+			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+
+			await calc.SendMembershipAsync(testJob);
+
+			Assert.IsNull(serviceBus.Sent);
+			Assert.AreEqual(1, mail.SentEmails.Count);
+			Assert.AreEqual(sourceGroups[0].ToString(), mail.SentEmails.Single().AdditionalContentParams.Single());
+			Assert.AreEqual("Error", testJob.Status);
 		}
 
 		[TestMethod]
@@ -298,27 +370,27 @@ namespace Tests.FunctionApps
 				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
 			};
 			var serviceBus = new MockMembershipServiceBusRepository();
+			var mail = new MockMailRepository();
+			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+			var syncJobs = new MockSyncJobRepository();
 
-			var calc = new SGMembershipCalculator(graphRepo, serviceBus, new MockLogger());
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
 
-			await calc.SendMembershipAsync(new SyncJob
+			var testJob = new SyncJob
 			{
+				RowKey = "row",
+				PartitionKey = "partition",
 				TargetOfficeGroupId = destinationGroup,
-				Query = string.Join(';', sourceGroups) + ";nasdfasfd;;;"
-			});
+				Query = string.Join(';', sourceGroups) + ";nasdfasfd;;;",
+				Status = "InProgress"
+			};
+
+			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+
+			await calc.SendMembershipAsync(testJob);
 
 			CollectionAssert.AreEquivalent(mockGroups.Values.SelectMany(x => x).ToArray(), serviceBus.Sent.SourceMembers);
 			Assert.AreEqual(destinationGroup, serviceBus.Sent.Destination.ObjectId);
-		}
-
-		private class MockLogger : ILoggingRepository
-		{
-			public Dictionary<string, string> SyncJobProperties { get; set; }
-
-			public Task LogMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
-			{
-				return Task.CompletedTask;
-			}
 		}
 	}
 }

@@ -28,23 +28,12 @@ namespace Hosts.GraphUpdater
         {
             base.Configure(builder);
 
-            builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
-                settings.TableName = configuration.GetValue<string>("jobsTableName");
-            });
-
             builder.Services.AddSingleton<IMembershipDifferenceCalculator<AzureADUser>, MembershipDifferenceCalculator<AzureADUser>>()
             .AddSingleton<IGraphServiceClient>((services) =>
             {
                 return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
             })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
-            .AddSingleton<ISyncJobRepository>(services =>
-            {
-                var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
-                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
-            })
             .AddSingleton<SessionMessageCollector>()
             .AddSingleton<IGraphUpdater, GraphUpdaterApplication>()
 			.AddSingleton<IDryRunValue>(services =>

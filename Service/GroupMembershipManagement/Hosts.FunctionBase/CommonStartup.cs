@@ -14,6 +14,7 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.Localization;
 using Repositories.Logging;
 using Repositories.Mail;
+using Repositories.SyncJobsRepository;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -65,6 +66,18 @@ namespace Hosts.FunctionBase
                 new MailRepository(new GraphServiceClient(
                                                     FunctionAppDI.CreateMailAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value)),
                                                     services.GetService<ILocalizationRepository>()));
+
+            builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
+                settings.TableName = configuration.GetValue<string>("jobsTableName");
+            });
+
+            builder.Services.AddSingleton<ISyncJobRepository>(services =>
+            {
+                var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
+                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
+            });
         }
 
         public string GetValueOrThrow(string key, [CallerFilePath] string callerFile = "", [CallerLineNumber] int callerLine = 0)
