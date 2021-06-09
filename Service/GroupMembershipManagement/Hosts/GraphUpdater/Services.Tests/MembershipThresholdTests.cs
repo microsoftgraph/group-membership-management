@@ -44,7 +44,6 @@ namespace Services.Tests
             _membership = new GroupMembership
             {
                 Destination = new AzureADGroup { ObjectId = _targetGroupId },
-                Errored = false,
                 IsLastMessage = true,
                 RunId = _rundId,
                 SourceMembers = _users,
@@ -131,39 +130,6 @@ namespace Services.Tests
             Assert.AreEqual(SyncStatus.Error.ToString(), _job.Status);
             Assert.IsFalse(graphGroupsRepository.GroupsToUsers.ContainsKey(_targetGroupId));
             Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains($"destination group {_membership.Destination} doesn't exist")));
-        }
-
-        [TestMethod]
-        public async Task ErroredInitialGroupSync()
-        {
-            var calculator = new MembershipDifferenceCalculator<AzureADUser>();
-            var senderRecipients = new EmailSenderRecipient();
-            var graphGroupsRepository = new MockGraphGroupRepository();
-            var syncjobRepository = new MockSyncJobRepository();
-            var loggingRepository = new MockLoggingRepository();
-            var mailRepository = new MockMailRepository();
-            var dryRun = new DryRunValue();
-
-            var graphUpdater = new GraphUpdaterApplication(
-                                    calculator,
-                                    syncjobRepository,
-                                    loggingRepository,
-                                    mailRepository,
-                                    graphGroupsRepository,
-                                    senderRecipients,
-                                    dryRun);
-
-
-            syncjobRepository.ExistingSyncJobs.Add((_partitionKey, _rowKey), _job);
-            graphGroupsRepository.GroupsToUsers.Add(_sources[0].ObjectId, _users);
-            graphGroupsRepository.GroupsToUsers.Add(_targetGroupId, new List<AzureADUser>());
-
-            _membership.Errored = true;
-
-            await graphUpdater.CalculateDifference(_membership);
-
-            Assert.AreEqual(SyncStatus.Error.ToString(), _job.Status);
-            Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("calculator reported an error. Not syncing and marking as error")));
         }
 
         [TestMethod]

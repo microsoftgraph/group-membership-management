@@ -101,12 +101,6 @@ namespace Hosts.GraphUpdater
 
         private async Task<SyncStatus> SynchronizeGroups(SyncJob job, GroupMembership membership, string fromto)
         {
-            if (membership.Errored)
-            {
-                await _log.LogMessageAsync(new LogMessage { Message = $"When syncing {fromto}, calculator reported an error. Not syncing and marking as error.", RunId = membership.RunId });
-                return SyncStatus.Error;
-            }
-
             var isInitialSync = job.LastRunTime == DateTime.FromFileTimeUtc(0);
             var delta = await CalculateDeltaAsync(membership, fromto);
             var threshold = isInitialSync ? new ThresholdResult() : await CalculateThresholdAsync(job, delta.Delta, delta.TotalMembersCount, membership.RunId);

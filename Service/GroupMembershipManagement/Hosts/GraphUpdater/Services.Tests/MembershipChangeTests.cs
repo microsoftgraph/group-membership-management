@@ -31,7 +31,6 @@ namespace Services.Tests
 				Assert.AreEqual(initial.Destination, chunk.Destination);
 				Assert.AreEqual(initial.SyncJobRowKey, chunk.SyncJobRowKey);
 				Assert.AreEqual(initial.SyncJobPartitionKey, chunk.SyncJobPartitionKey);
-				Assert.IsFalse(chunk.Errored);
 			}
 
 			foreach (var nonlastChunk in split.Take(split.Length - 1))
@@ -49,7 +48,6 @@ namespace Services.Tests
 			Assert.AreEqual(initial.SyncJobRowKey, rejoined.SyncJobRowKey);
 			Assert.AreEqual(initial.SyncJobPartitionKey, rejoined.SyncJobPartitionKey);
 			CollectionAssert.AreEqual(initial.SourceMembers, rejoined.SourceMembers);
-			Assert.IsFalse(rejoined.Errored);
 		}
 
 		[TestMethod]
@@ -66,7 +64,6 @@ namespace Services.Tests
 				Assert.AreEqual(initial.Destination, chunk.Destination);
 				Assert.AreEqual(initial.SyncJobRowKey, chunk.SyncJobRowKey);
 				Assert.AreEqual(initial.SyncJobPartitionKey, chunk.SyncJobPartitionKey);
-				Assert.IsFalse(chunk.Errored);
 			}
 
 			foreach (var nonlastChunk in split.Take(split.Length - 1))
@@ -84,7 +81,6 @@ namespace Services.Tests
 			Assert.AreEqual(initial.SyncJobRowKey, rejoined.SyncJobRowKey);
 			Assert.AreEqual(initial.SyncJobPartitionKey, rejoined.SyncJobPartitionKey);
 			CollectionAssert.AreEqual(initial.SourceMembers, rejoined.SourceMembers);
-			Assert.IsFalse(rejoined.Errored);
 		}
 
 		[TestMethod]
@@ -105,7 +101,6 @@ namespace Services.Tests
 			Assert.AreEqual(initial.SyncJobRowKey, split.Single().SyncJobRowKey);
 			Assert.AreEqual(initial.SyncJobPartitionKey, split.Single().SyncJobPartitionKey);
 			Assert.IsTrue(split.Single().IsLastMessage);
-			Assert.IsFalse(split.Single().Errored);
 
 			var rejoined = GroupMembership.Merge(split);
 
@@ -114,7 +109,6 @@ namespace Services.Tests
 			Assert.AreEqual(initial.SyncJobRowKey, rejoined.SyncJobRowKey);
 			Assert.AreEqual(initial.SyncJobPartitionKey, rejoined.SyncJobPartitionKey);
 			CollectionAssert.AreEqual(initial.SourceMembers, rejoined.SourceMembers);
-			Assert.IsFalse(rejoined.Errored);
 		}
 
 		// DynamicData example from https://www.meziantou.net/mstest-v2-data-tests.htm

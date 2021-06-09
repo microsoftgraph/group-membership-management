@@ -180,60 +180,6 @@ namespace Services.Tests
 			Assert.AreEqual(MockGroupMembershipHelper.UserCount, mockGroups.GroupsToUsers.Values.Single().Count);
 		}
 
-		[TestMethod]
-		public async Task HandlesErroredJobsAsync()
-		{
-			var mockGroups = new MockGraphGroupRepository();
-			var mockSyncJobs = new MockSyncJobRepository();
-			var mockLogs = new MockLoggingRepository();
-			var mockMails = new MockMailRepository();
-			var mockEmail = new MockEmail<IEmailSenderRecipient>();
-			var mockDryRun = new MockDryRun<IDryRunValue>();
-			var updater = new GraphUpdaterApplication(new MembershipDifferenceCalculator<AzureADUser>(), mockSyncJobs, mockLogs, mockMails, mockGroups, mockEmail, mockDryRun);
-			var sessionCollector = new SessionMessageCollector(updater, mockLogs);
-
-			var mockSession = new MockMessageSession()
-			{
-				SessionId = "someId"
-			};
-			var sessionId = "someId";
-
-			var syncJobKeys = (Guid.NewGuid().ToString(), Guid.NewGuid().ToString());
-
-			var syncJob = new SyncJob(syncJobKeys.Item1, syncJobKeys.Item2)
-			{
-				Enabled = true,
-				Status = "InProgress",
-			};
-			mockSyncJobs.ExistingSyncJobs.Add(syncJobKeys, syncJob);
-
-			var incomingMessage = new GroupMembershipMessage
-			{
-				LockToken = "hi",
-				Body = new Entities.ServiceBus.GroupMembership
-				{
-					Errored = true,
-					Destination = new AzureADGroup { ObjectId = Guid.NewGuid() },
-					IsLastMessage = true,
-					RunId = Guid.NewGuid(),
-					SourceMembers = new List<AzureADUser>(),
-					SyncJobPartitionKey = syncJobKeys.Item1.ToString(),
-					SyncJobRowKey = syncJobKeys.Item2.ToString()
-				}
-			};
-
-			mockGroups.GroupsToUsers.Add(incomingMessage.Body.Destination.ObjectId, new List<AzureADUser>() { new AzureADUser { ObjectId = Guid.NewGuid() } });
-
-			var groupMembershipMessageResponse = await sessionCollector.HandleNewMessageAsync(incomingMessage, sessionId);
-
-			Assert.IsFalse(mockSession.Closed);
-			Assert.AreEqual("Error", syncJob.Status);
-			Assert.IsTrue(groupMembershipMessageResponse.ShouldCompleteMessage);
-			Assert.IsFalse(syncJob.Enabled);
-			Assert.AreEqual(1, mockGroups.GroupsToUsers.Count);
-			Assert.AreEqual(1, mockGroups.GroupsToUsers.Values.Single().Count);
-		}
-
 		private class MockEmail<T> : IEmailSenderRecipient
 		{
 			public string SenderAddress => "";
