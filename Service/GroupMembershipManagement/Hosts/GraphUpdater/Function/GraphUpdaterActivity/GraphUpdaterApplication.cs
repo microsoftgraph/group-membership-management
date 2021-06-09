@@ -17,7 +17,6 @@ namespace Hosts.GraphUpdater
     {
         private const string EmailSubject = "EmailSubject";
         private const string SyncCompletedEmailBody = "SyncCompletedEmailBody";
-        private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
         private const string SyncThresholdBothEmailBody = "SyncThresholdBothEmailBody";
         private const string SyncThresholdIncreaseEmailBody = "SyncThresholdIncreaseEmailBody";
         private const string SyncThresholdDecreaseEmailBody = "SyncThresholdDecreaseEmailBody";
