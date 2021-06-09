@@ -24,7 +24,7 @@ namespace Repositories.Logging
         private readonly string _workSpaceId;
         private readonly string _sharedKey;
         private readonly string _location;
-        private readonly int MAX_RETRY_ATTEMPTS = 8;
+        private const int MAX_RETRY_ATTEMPTS = 8;
 
         // you should only have one httpClient for the life of your program
         // see https://aspnetmonsters.com/2016/08/2016-08-27-httpclientwrong/?fbclid=IwAR2aNRweTjGdx5Foev4XvHj2Xldeg_UAb6xW3eLTFQDB7Xghv65LvrVa5wA
