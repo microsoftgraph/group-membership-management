@@ -15,6 +15,7 @@ using Services.Contracts;
 using Moq;
 using Repositories.Contracts;
 using Microsoft.Identity.Client;
+using MockSyncJobRepository = Repositories.SyncJobs.Tests.MockSyncJobRepository;
 
 namespace Services.Tests
 {
