@@ -188,6 +188,56 @@
         "Premium"
       ],
       "defaultValue": "pergb2018"
+    },
+    "appConfigurationName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 24,
+      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-', 'appConfiguration' , '-',parameters('environmentAbbreviation'))]",
+      "metadata": {
+        "description": "Enter app configuration name."
+      }
+    },
+    "appConfigurationSku": {
+      "type": "string",
+      "allowedValues": [
+        "Standard",
+        "Free"
+      ],
+      "defaultValue": "Standard",
+      "metadata": {
+        "description": "Enter app configuration sku."
+      }
+    },
+    "keyValueNames": {
+      "type": "array",
+      "defaultValue": [ "dryRun", "dryRun$False" ],
+      "metadata": {
+        "description": "Specifies the names of the key-value resources. The name is a combination of key and label with $ as delimiter. The label is optional."
+      }
+    },
+    "keyValueValues": {
+      "type": "array",
+      "defaultValue": [ "Key-value without label", "Key-value with label" ],
+      "metadata": {
+        "description": "Specifies the values of the key-value resources. It's optional"
+      }
+    },
+    "contentType": {
+      "type": "string",
+      "defaultValue": "application/vnd.microsoft.appconfig.keyvaultref+json;charset=utf-8",
+      "metadata": {
+        "description": "Specifies the content type of the key-value resources. For feature flag, the value should be application/vnd.microsoft.appconfig.ff+json;charset=utf-8. For Key Value reference, the value should be application/vnd.microsoft.appconfig.keyvaultref+json;charset=utf-8. Otherwise, it's optional."
+      }
+    },
+    "appConfigurationTags": {
+      "type": "object",
+      "defaultValue": {
+        "tag1": "tag-dry-run"
+      },
+      "metadata": {
+        "description": "Adds tags for the key-value resources. It's optional"
+      }
     }
   },
   "variables": {
@@ -422,6 +472,41 @@
           },
           "location": {
             "value": "[parameters('location')]"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2018-05-01",
+      "name": "appConfigurationTemplate",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(uri(parameters('containerBaseUrl'), 'appConfiguration.json'), parameters('containerSasToken'))]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "configStoreName": {
+            "value": "[parameters('appConfigurationName')]"
+          },
+          "appConfigurationSku": {
+            "value": "[parameters('appConfigurationSku')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "keyValueNames": {
+            "value": "[parameters('keyValueNames')]"
+          },
+          "keyValueValues": {
+            "value": "[parameters('keyValueValues')]"
+          },
+          "contentType": {
+            "value": "[parameters('contentType')]"
+          },
+          "tags": {
+            "value": "[parameters('appConfigurationTags')]"
           }
         }
       }
