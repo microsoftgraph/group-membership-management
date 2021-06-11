@@ -4,11 +4,13 @@ using Entities;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace Repositories.Mocks
 {
+	[ExcludeFromCodeCoverage]
     public class MockSyncJobRepository : ISyncJobRepository
 	{
 		public Dictionary<(string, string), SyncJob> ExistingSyncJobs = new Dictionary<(string, string), SyncJob>();

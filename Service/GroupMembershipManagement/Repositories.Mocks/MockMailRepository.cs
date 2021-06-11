@@ -4,6 +4,7 @@ using Entities;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
 namespace Repositories.Mocks
@@ -17,6 +18,8 @@ namespace Repositories.Mocks
 			return Task.CompletedTask;
 		}
 	}
+
+	[ExcludeFromCodeCoverage]
 	public class MockEmail<T> : IEmailSenderRecipient
 	{
 		public string SenderAddress => "";
