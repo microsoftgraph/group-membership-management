@@ -3,11 +3,13 @@
 using Entities;
 using Repositories.Contracts;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace Repositories.Mocks
 {
+	[ExcludeFromCodeCoverage]
     public class MockLoggingRepository : ILoggingRepository
     {
         public List<LogMessage> MessagesLogged { get; set; } = new List<LogMessage>();
