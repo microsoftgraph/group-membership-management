@@ -180,16 +180,6 @@ namespace Services.Tests
 			Assert.AreEqual(MockGroupMembershipHelper.UserCount, mockGroups.GroupsToUsers.Values.Single().Count);
 		}
 
-		private class MockEmail<T> : IEmailSenderRecipient
-		{
-			public string SenderAddress => "";
-
-			public string SenderPassword => "";
-
-			public string SyncCompletedCCAddresses => "";
-
-			public string SyncDisabledCCAddresses => "";
-		}
 
 		private class MockDryRun<T> : IDryRunValue
 		{
