@@ -4,12 +4,14 @@ using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Tests.FunctionApps.Mocks
 {
+	[ExcludeFromCodeCoverage]
 	class MockMessageSession : IMessageSession
 	{
 		public List<string> CompletedLockTokens { get; private set; } = new List<string>();
