@@ -132,6 +132,10 @@ This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@s
     <value>The sync has been disabled because GMM is not an owner of the group with object Id: {0}.
 This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
   </data>
+  <data name="SyncDisabledNoValidGroupIds" xml:space="preserve">
+    <value>The sync has been disabled because the object ID(s) {0} aren't valid GUIDs and cannot refer to valid groups.
+This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
+  </data>
   <data name="SyncStartedEmailBody" xml:space="preserve">
     <value>The group {0} with Id: {1} has started its initial sync.
 This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>

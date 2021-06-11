@@ -25,6 +25,7 @@ namespace Hosts.SecurityGroup
 
 		private const string EmailSubject = "EmailSubject";
 		private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
+		private const string SyncDisabledNoValidGroupIds = "SyncDisabledNoValidGroupIds";
 
 
 		public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository, IMembershipServiceBusRepository membershipServiceBus, 
@@ -69,20 +70,34 @@ namespace Hosts.SecurityGroup
 				$"Reading source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
 			});
 
-			if (sourceGroups.Length == 0)
-			{
-				await _log.LogMessageAsync(new LogMessage
-				{
-					RunId = runId,
-					Message =
-					$"None of the source groups in {syncJob.Query} were valid guids."
-				});
-			}
 
 			List<AzureADUser> allusers = null;
 			try
 			{
-				allusers = await GetUsersForEachGroup(sourceGroups, syncJob.Requestor, runId);
+				if (sourceGroups.Length == 0)
+				{
+					await _log.LogMessageAsync(new LogMessage
+					{
+						RunId = runId,
+						Message =
+						$"None of the source groups in {syncJob.Query} were valid guids. Marking job as errored."
+					});
+
+					await SendEmailAsync(new EmailMessage
+					{
+						Subject = EmailSubject,
+						Content = SyncDisabledNoValidGroupIds,
+						SenderAddress = _emailSenderAndRecipients.SenderAddress,
+						SenderPassword = _emailSenderAndRecipients.SenderPassword,
+						ToEmailAddresses = syncJob.Requestor,
+						CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
+						AdditionalContentParams = new[] { syncJob.Query }
+					}, runId);
+				}
+				else
+				{
+					allusers = await GetUsersForEachGroup(sourceGroups, syncJob.Requestor, runId);
+				}
 			}
 			catch (Exception ex)
 			{

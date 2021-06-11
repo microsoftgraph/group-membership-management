@@ -300,6 +300,64 @@ namespace Tests.FunctionApps
 		[DataRow(3, 0)]
 		[DataRow(0, 3)]
 		[DataRow(3, 3)]
+		public async Task ProperlyErrorsOnAllNonGuidGroups(int getGroupExceptions, int getMembersExceptions)
+		{
+			const int userCount = 2500213;
+			var sourceGroups = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray();
+			Guid destinationGroup = Guid.NewGuid();
+
+			var mockGroups = new Dictionary<Guid, List<AzureADUser>>();
+			for (int i = 0; i < userCount; i++)
+			{
+				var currentGroup = sourceGroups[i % sourceGroups.Length];
+				var userToAdd = new AzureADUser { ObjectId = Guid.NewGuid() };
+				if (mockGroups.TryGetValue(currentGroup, out var users))
+				{
+					users.Add(userToAdd);
+				}
+				else
+				{
+					mockGroups.Add(currentGroup, new List<AzureADUser> { userToAdd });
+				}
+			}
+
+			var graphRepo = new MockGraphGroupRepository()
+			{
+				GroupsToUsers = mockGroups,
+				ThrowSocketExceptionsFromGroupExistsBeforeSuccess = getGroupExceptions,
+				ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
+			};
+			var serviceBus = new MockMembershipServiceBusRepository();
+			var mail = new MockMailRepository();
+			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+			var syncJobs = new MockSyncJobRepository();
+
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
+
+			var testJob = new SyncJob
+			{
+				RowKey = "row",
+				PartitionKey = "partition",
+				TargetOfficeGroupId = destinationGroup,
+				Query = "asfdasdf;asfdoiu;oasfdjlsadhfa;;;",
+				Status = "InProgress"
+			};
+
+			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+
+			await calc.SendMembershipAsync(testJob);
+
+			Assert.IsNull(serviceBus.Sent);
+			Assert.AreEqual(1, mail.SentEmails.Count);
+			Assert.AreEqual(testJob.Query, mail.SentEmails.Single().AdditionalContentParams.Single());
+			Assert.AreEqual("Error", testJob.Status);
+		}
+
+		[TestMethod]
+		[DataRow(0, 0)]
+		[DataRow(3, 0)]
+		[DataRow(0, 3)]
+		[DataRow(3, 3)]
 		public async Task ProperlyErrorsOnAllNonexistentGroups(int getGroupExceptions, int getMembersExceptions)
 		{
 			Guid[] sourceGroups = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray();
