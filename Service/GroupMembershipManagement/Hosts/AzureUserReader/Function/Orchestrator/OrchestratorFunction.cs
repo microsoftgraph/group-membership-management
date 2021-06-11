@@ -1,11 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using AzureUserReader.Activity;
-using AzureUserReader.PersonnelNumberReader;
-using AzureUserReader.Requests;
-using AzureUserReader.UploadUsers;
-using AzureUserReader.UserReader;
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -15,7 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace AzureUserReader.Orchestrator
+namespace Hosts.AzureUserReader
 {
     public class OrchestratorFunction
     {

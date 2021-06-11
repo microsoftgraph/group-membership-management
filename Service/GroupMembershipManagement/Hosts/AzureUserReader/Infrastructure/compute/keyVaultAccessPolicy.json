@@ -34,7 +34,7 @@
             "input": {
               "tenantId": "[parameters('tenantId')]",
               "objectId": "[parameters('policies')[copyIndex('accessPolicies')].objectId]",
-              "permissions": {                
+              "permissions": {
                 "secrets": "[parameters('policies')[copyIndex('accessPolicies')].permissions]"
               }
             }

@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using AzureUserReader.Orchestrator;
-using AzureUserReader.Requests;
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -14,7 +12,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace AzureUserReader.Starter
+namespace Hosts.AzureUserReader
 {
     public class StarterFunction
     {

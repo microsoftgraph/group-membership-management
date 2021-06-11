@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using AzureUserReader.UploadUsers;
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -12,7 +11,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace AzureUserReader.Activity
+namespace Hosts.AzureUserReader
 {
     public class UploadUsersFunction
     {

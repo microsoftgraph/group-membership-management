@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using AzureUserReader.Requests;
-using AzureUserReader.Starter;
+using Hosts.AzureUserReader;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;

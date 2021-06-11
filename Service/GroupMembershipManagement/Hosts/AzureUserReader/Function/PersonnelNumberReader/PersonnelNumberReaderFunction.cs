@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using AzureUserReader.Requests;
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -11,7 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace AzureUserReader.PersonnelNumberReader
+namespace Hosts.AzureUserReader
 {
     public class PersonnelNumberReaderFunction
     {

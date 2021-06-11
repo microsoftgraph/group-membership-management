@@ -141,7 +141,7 @@
       "metadata": {
         "description": "Name of the keyvault secret containing the storage account connection string"
       }
-    }   
+    }
   },
   "variables": {
     "logAnalyticsCustomerId": "[resourceId(subscription().subscriptionId, parameters('dataKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('dataKeyVaultName'), 'logAnalyticsCustomerId')]",
@@ -239,7 +239,7 @@
                 "slotSetting": false
               },
               {
-                "name": "storageAccountConnectionString",                
+                "name": "storageAccountConnectionString",
                 "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('storageAccountConnectionString'), '2019-09-01').secretUriWithVersion, ')')]",
                 "slotSetting": false
               },
@@ -298,7 +298,7 @@
         }
       },
       "dependsOn": [
-        "Microsoft.Resources/deployments/servicePlanTemplate"        
+        "Microsoft.Resources/deployments/servicePlanTemplate"
       ]
     },
     {

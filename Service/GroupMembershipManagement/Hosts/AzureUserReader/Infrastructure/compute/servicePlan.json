@@ -36,7 +36,7 @@
       "name": "[parameters('name')]",
       "type": "Microsoft.Web/serverfarms",
       "apiVersion": "2018-02-01",
-      "location": "[parameters('location')]",      
+      "location": "[parameters('location')]",
       "properties": {
         "name": "[parameters('name')]",
         "computeMode": "Dynamic",

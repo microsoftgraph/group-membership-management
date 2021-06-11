@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-namespace AzureUserReader.Requests
+namespace Hosts.AzureUserReader
 {
     public class AzureUserReaderRequest
     {

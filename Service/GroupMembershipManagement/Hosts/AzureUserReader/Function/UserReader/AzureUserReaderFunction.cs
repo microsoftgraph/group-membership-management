@@ -9,7 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace AzureUserReader.UserReader
+namespace Hosts.AzureUserReader
 {
     public class AzureUserReaderFunction
     {

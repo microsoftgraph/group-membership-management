@@ -14,9 +14,9 @@ using Repositories.GraphAzureADUsers;
 using Services;
 using Services.Contracts;
 
-[assembly: FunctionsStartup(typeof(AzureUserReader.Startup))]
+[assembly: FunctionsStartup(typeof(Hosts.AzureUserReader.Startup))]
 
-namespace AzureUserReader
+namespace Hosts.AzureUserReader
 {
     public class Startup : CommonStartup
     {
