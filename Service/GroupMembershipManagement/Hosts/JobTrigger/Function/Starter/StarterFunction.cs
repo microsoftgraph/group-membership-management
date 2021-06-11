@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
-using JobTrigger.Orchestrator;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
@@ -10,7 +9,7 @@ using Services.Contracts;
 using System;
 using System.Threading.Tasks;
 
-namespace JobTrigger.Starter
+namespace Hosts.JobTrigger
 {
     public class StarterFunction
     {

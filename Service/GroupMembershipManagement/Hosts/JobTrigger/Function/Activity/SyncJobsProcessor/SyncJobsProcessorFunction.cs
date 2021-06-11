@@ -9,7 +9,7 @@ using Services.Contracts;
 using System;
 using System.Threading.Tasks;
 
-namespace JobTrigger.Activity.SyncJobsProcessor
+namespace Hosts.JobTrigger
 {
     public class SyncJobsProcessorFunction
     {
