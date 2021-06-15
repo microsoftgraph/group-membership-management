@@ -551,10 +551,14 @@ The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGrou
 
     1. . ./New-GmmSecurityGroupSyncJob.ps1
     2. New-GmmSecurityGroupSyncJob	-SubscriptionName "<SubscriptionName>" `
+                            -SolutionAbbreviation "<SolutionAbbreviation>" `
 							-EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
 							-Requestor "<RequestorEmailAddress>" `
 							-TargetOfficeGroupId "<DestinationGroupObjectId>" `
 							-Query "<source group object id(s) (separated by ';')>" `
+							-Period <in hours, integer only> `
+							-ThresholdPercentageForAdditions <integer only> `
+							-ThresholdPercentageForRemovals <integer only> `
 							-Enabled $True `
 							-Verbose
 
