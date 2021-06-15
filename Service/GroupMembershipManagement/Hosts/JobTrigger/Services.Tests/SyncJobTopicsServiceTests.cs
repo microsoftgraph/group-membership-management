@@ -54,7 +54,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            await _syncJobTopicsService.ProcessSyncJobsAsync();
+            await _syncJobTopicsService.ProcessSyncJobsAsync(_syncJobRepository.Jobs);
 
             Assert.AreEqual(organizationJobCount, _serviceBusTopicsRepository.Subscriptions[Organization].Count);
             Assert.AreEqual(securityGroupJobCount, _serviceBusTopicsRepository.Subscriptions[SecurityGroup].Count);
@@ -72,7 +72,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            await _syncJobTopicsService.ProcessSyncJobsAsync();
+            await _syncJobTopicsService.ProcessSyncJobsAsync(_syncJobRepository.Jobs);
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -89,7 +89,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(enabledJobs, Organization, enabled: true));
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(disabledJobs, Organization, enabled: false));
 
-            await _syncJobTopicsService.ProcessSyncJobsAsync();
+            await _syncJobTopicsService.ProcessSyncJobsAsync(_syncJobRepository.Jobs);
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -113,7 +113,7 @@ namespace Services.Tests
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
 
-            await _syncJobTopicsService.ProcessSyncJobsAsync();
+            await _syncJobTopicsService.ProcessSyncJobsAsync(_syncJobRepository.Jobs);
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -138,7 +138,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            await _syncJobTopicsService.ProcessSyncJobsAsync();
+            await _syncJobTopicsService.ProcessSyncJobsAsync(_syncJobRepository.Jobs);
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -157,7 +157,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            await _syncJobTopicsService.ProcessSyncJobsAsync();
+            await _syncJobTopicsService.ProcessSyncJobsAsync(_syncJobRepository.Jobs);
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -176,7 +176,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            await _syncJobTopicsService.ProcessSyncJobsAsync();
+            await _syncJobTopicsService.ProcessSyncJobsAsync(_syncJobRepository.Jobs);
 
             foreach (var job in _syncJobRepository.Jobs)
             {
@@ -185,7 +185,7 @@ namespace Services.Tests
                 job.Status = SyncStatus.Idle.ToString();
             }
 
-            await _syncJobTopicsService.ProcessSyncJobsAsync();
+            await _syncJobTopicsService.ProcessSyncJobsAsync(_syncJobRepository.Jobs);
 
             foreach (var job in _syncJobRepository.Jobs)
             {
@@ -225,7 +225,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            await _syncJobTopicsService.ProcessSyncJobsAsync();
+            await _syncJobTopicsService.ProcessSyncJobsAsync(_syncJobRepository.Jobs);
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -260,7 +260,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            await _syncJobTopicsService.ProcessSyncJobsAsync();
+            await _syncJobTopicsService.ProcessSyncJobsAsync(_syncJobRepository.Jobs);
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -291,7 +291,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            await _syncJobTopicsService.ProcessSyncJobsAsync();
+            await _syncJobTopicsService.ProcessSyncJobsAsync(_syncJobRepository.Jobs);
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
