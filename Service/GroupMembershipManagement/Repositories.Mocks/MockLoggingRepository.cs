@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 
 namespace Repositories.Mocks
 {
-	[ExcludeFromCodeCoverage]
     public class MockLoggingRepository : ILoggingRepository
     {
         public List<LogMessage> MessagesLogged { get; set; } = new List<LogMessage>();

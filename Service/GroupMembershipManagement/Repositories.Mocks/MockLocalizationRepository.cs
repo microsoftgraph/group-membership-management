@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 
 namespace Repositories.Mocks
 {
-	[ExcludeFromCodeCoverage]
     public class MockLocalizationRepository : ILocalizationRepository
     {
         public string TranslateSetting(string settingName, params string[] additionalParams)

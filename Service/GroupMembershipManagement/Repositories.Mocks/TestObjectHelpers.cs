@@ -9,7 +9,6 @@ using System.Text;
 
 namespace Repositories.Mocks
 {
-	[ExcludeFromCodeCoverage]
 	public class TestObjectHelpers
 	{
 		public static Random Rand { get; private set; } = new Random();

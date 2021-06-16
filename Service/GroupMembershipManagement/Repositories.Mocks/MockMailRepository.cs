@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 
 namespace Repositories.Mocks
 {
-	[ExcludeFromCodeCoverage]
 	public class MockMailRepository : IMailRepository
 	{
 		public List<EmailMessage> SentEmails { get; set; } = new List<EmailMessage>();
@@ -20,7 +19,6 @@ namespace Repositories.Mocks
 		}
 	}
 
-	[ExcludeFromCodeCoverage]
 	public class MockEmail<T> : IEmailSenderRecipient
 	{
 		public string SenderAddress => "";

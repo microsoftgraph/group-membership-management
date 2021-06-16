@@ -5,7 +5,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Repositories.Mocks
 {
-	[ExcludeFromCodeCoverage]
     public class MockTopic
     {
         public string Name { get; set; }

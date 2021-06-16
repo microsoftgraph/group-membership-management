@@ -6,7 +6,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Repositories.Mocks
 {
-	[ExcludeFromCodeCoverage]
     public class MockSubscription
     {
         public string Name { get; set; }
