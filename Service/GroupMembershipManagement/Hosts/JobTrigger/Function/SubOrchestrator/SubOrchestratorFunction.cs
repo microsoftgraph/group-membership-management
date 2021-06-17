@@ -31,13 +31,13 @@ namespace JobTrigger.SubOrchestrator
             _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = syncJob.RunId });
             var groupName = await context.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), syncJob);
             await context.CallActivityAsync(nameof(EmailSenderFunction), groupName);
-            var canWriteToGroup = await context.CallActivityAsync<bool>(nameof(GroupVerifierFunction), syncJob);            
-            await context.CallActivityAsync(nameof(JopStatusUpdaterFunction), new JopStatusUpdaterRequest { CanWriteToGroup = canWriteToGroup, SyncJob = syncJob });
+            var canWriteToGroup = await context.CallActivityAsync<bool>(nameof(GroupVerifierFunction), syncJob);
+            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { CanWriteToGroup = canWriteToGroup, SyncJob = syncJob });
             if (canWriteToGroup)
             {
                 await context.CallActivityAsync(nameof(TopicMessageSenderFunction), syncJob);
             }
             _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = syncJob.RunId });
-        }     
-    }  
+        }
+    }
 }

@@ -42,12 +42,12 @@ namespace Hosts.JobTrigger
                 {
                     syncJob.RunId = _graphGroupRepository.RunId = context.NewGuid();
                     _loggingRepository.SyncJobProperties = syncJob.ToDictionary();
-                    Task processTask = context.CallSubOrchestratorAsync(nameof(SubOrchestratorFunction), syncJob);
+                    var processTask = context.CallSubOrchestratorAsync(nameof(SubOrchestratorFunction), syncJob);
                     processingTasks.Add(processTask);
                 }
-                await Task.WhenAll(processingTasks);               
+                await Task.WhenAll(processingTasks);
             }
             _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed" });
         }
-    }  
+    }
 }

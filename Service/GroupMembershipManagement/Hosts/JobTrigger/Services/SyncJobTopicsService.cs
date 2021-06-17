@@ -57,8 +57,7 @@ namespace Services
 
         public async Task<string> GetGroupNameAsync(Guid groupId)
         {
-            var groupName = await _graphGroupRepository.GetGroupNameAsync(groupId);
-            return groupName;
+            return await _graphGroupRepository.GetGroupNameAsync(groupId);
         }
 
         public async Task SendEmailAsync(SyncJob job, string groupName)
@@ -110,7 +109,7 @@ namespace Services
         public async Task SendMessageAsync(SyncJob job)
         {
             await _serviceBusTopicsRepository.AddMessageAsync(job);
-        }        
+        }
 
         private async Task SendEmailAsync(EmailMessage message, Guid? runId)
         {

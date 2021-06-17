@@ -27,7 +27,7 @@ namespace Services.Tests
         private MockServiceBusTopicsRepository _serviceBusTopicsRepository = null;
         private MockGraphGroupRepository _graphGroupRepository;
         private MockMailRepository _mailRepository = null;
-        
+
         private const string Organization = "Organization";
         private const string SecurityGroup = "SecurityGroup";
 
@@ -67,7 +67,7 @@ namespace Services.Tests
         {
             var enabledJobs = 5;
             var disabledJobs = 3;
-            
+
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(enabledJobs, Organization, enabled: true));
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(disabledJobs, Organization, enabled: false));
 
@@ -75,7 +75,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
             var jobs = await _syncJobTopicsService.GetSyncJobsAsync();
-             
+
             Assert.AreEqual(enabledJobs, jobs.Count);
         }
 
@@ -95,7 +95,7 @@ namespace Services.Tests
             {
                 var response = await _syncJobTopicsService.CanWriteToGroup(job);
                 Assert.AreEqual(false, response);
-            }            
+            }
         }
 
         [TestMethod]
@@ -129,7 +129,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
             var jobs = await _syncJobTopicsService.GetSyncJobsAsync();
-            
+
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
@@ -148,7 +148,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
             var jobs = await _syncJobTopicsService.GetSyncJobsAsync();
-            
+
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
             Assert.AreEqual(jobsWithValidPeriods, jobs.Count);
@@ -158,9 +158,9 @@ namespace Services.Tests
         public async Task VerifyJobStatusIsUpdatedToInProgress()
         {
             var jobs = 2;
-            
+
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(jobs, Organization, enabled: true));
-           
+
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
@@ -178,7 +178,7 @@ namespace Services.Tests
             var jobs = 2;
 
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(jobs, Organization, enabled: true));
-           
+
             foreach (var job in _syncJobRepository.Jobs)
             {
                 var canWriteToGroup = await _syncJobTopicsService.CanWriteToGroup(job);
@@ -193,7 +193,7 @@ namespace Services.Tests
         {
             var MessageIdOne = "";
             var MessageIdTwo = "";
-            
+
             var securityGroupJobCount = 1;
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(securityGroupJobCount, SecurityGroup));
 
@@ -244,7 +244,7 @@ namespace Services.Tests
 
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
-            
+
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(validStartDateJobs, Organization, enabled: true));
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(futureStartDateJobs, Organization, enabled: true, startDateBase: DateTime.UtcNow.AddDays(5)));
 
@@ -281,7 +281,7 @@ namespace Services.Tests
 
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
-            
+
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(validStartDateJobs, Organization, enabled: true));
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(futureStartDateJobs, Organization, enabled: true, startDateBase: DateTime.UtcNow.AddDays(5)));
 
@@ -313,13 +313,13 @@ namespace Services.Tests
 
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
-            
+
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(validStartDateJobs, Organization, enabled: true));
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(futureStartDateJobs, Organization, enabled: true, startDateBase: DateTime.UtcNow.AddDays(5)));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
-           
+
             foreach (var job in _syncJobRepository.Jobs)
             {
                 await _syncJobTopicsService.SendEmailAsync(job, "GroupName");

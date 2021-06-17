@@ -29,11 +29,8 @@ namespace Hosts.JobTrigger
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function started", RunId = syncJob.RunId });
                 var groupName = await _syncJobTopicService.GetGroupNameAsync(syncJob.TargetOfficeGroupId);
-                group = new SyncJobGroup
-                {
-                    SyncJob = syncJob,
-                    Name = groupName
-                };
+                group.SyncJob = syncJob;
+                group.Name = groupName;
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function completed", RunId = syncJob.RunId });
             }
             return group;

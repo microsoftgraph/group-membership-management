@@ -4,7 +4,7 @@ using Entities;
 
 namespace Hosts.JobTrigger
 {
-    public class JopStatusUpdaterRequest
+    public class JobStatusUpdaterRequest
     {
         public bool CanWriteToGroup { get; set; }
         public SyncJob SyncJob { get; set; }

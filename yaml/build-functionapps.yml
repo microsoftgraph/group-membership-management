@@ -21,15 +21,15 @@ stages:
       - job: Build_${{ app.function.name }}
         strategy:
           maxParallel: 2
-          matrix: 
+          matrix:
             debug:
               BuildConfiguration: debug
             release:
               BuildConfiguration: release
 
         steps:
-          
-        - ${{ if ne(parameters.repoToCheckout, '') }}: 
+
+        - ${{ if ne(parameters.repoToCheckout, '') }}:
           - checkout: ${{ parameters.repoToCheckout }}
             path: ${{ parameters.checkoutPath }}
 
@@ -38,7 +38,7 @@ stages:
             packageType: 'sdk'
             useGlobalJson: true
             workingDirectory: 'Service\GroupMembershipManagement'
-                
+
         - task: DotNetCoreCLI@2
           displayName: 'dotnet build ${{ app.function.name }} function'
           inputs:
@@ -51,7 +51,11 @@ stages:
           inputs:
             command: test
             projects: 'Service/GroupMembershipManagement/Hosts/${{ app.function.name }}/Services.Tests'
-            arguments: '--configuration $(BuildConfiguration) /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\${{ app.function.name }}\ /p:Exclude="[Repositories.*]*"'
+            arguments: '--configuration $(BuildConfiguration)
+                        /p:CollectCoverage=true
+                        /p:CoverletOutputFormat=cobertura
+                        /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\${{ app.function.name }}\
+                        /p:Exclude=[Repositories.*]*%2c[Entities]*'
           condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
         - task: PublishCodeCoverageResults@1
@@ -61,7 +65,7 @@ stages:
             summaryFileLocation: $(Build.SourcesDirectory)/TestResults/Coverage/${{ app.function.name }}/coverage.cobertura.xml
             reportDirectory: $(Build.SourcesDirectory)/TestResults/Coverage/${{ app.function.name }}/Reports
             failIfCoverageEmpty: false
-          condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))      
+          condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
         - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@8
           displayName: 'Check build quality'
@@ -72,7 +76,7 @@ stages:
             coverageThreshold: ${{ app.function.coverageThreshold }}
             coverageVariance: 0
             allowCoverageVariance: false
-          condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))    
+          condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
         - task: DotNetCoreCLI@2
           displayName: 'dotnet publish ${{ app.function.name }} function'
