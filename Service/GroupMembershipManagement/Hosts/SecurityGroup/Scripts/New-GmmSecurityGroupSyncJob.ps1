@@ -34,10 +34,10 @@ Sets the sync job to enabled if $True and disabled if $False
 This value depends on the type of sync job.  See example below for details.
 
 .PARAMETER ThresholdPercentageForAdditions
-Threshold percentage for users being added. Default value is 100 unless specified in the request.
+This value determines threshold percentage for users being added.  Default value is 100 unless specified in the sync request. See example below for details.
 
 .PARAMETER ThresholdPercentageForRemovals
-Threshold percentage for users being removed. Default value is 20 unless specified in the request.
+This value determines threshold percentage for users being removed.  Default value is 10 unless specified in the sync request. See example below for details.
 
 .EXAMPLE
 Add-AzAccount
@@ -52,6 +52,8 @@ New-GmmSecurityGroupSyncJob	-SubscriptionName "<subscription name>" `
 							-ThresholdPercentageForAdditions <integer only> `
 							-ThresholdPercentageForRemovals <integer only> `
 							-Enabled $False `
+							-ThresholdPercentageForAdditions <100> `
+							-ThresholdPercentageForRemovals <10> `
 							-Verbose
 #>
 function New-GmmSecurityGroupSyncJob {
@@ -74,9 +76,9 @@ function New-GmmSecurityGroupSyncJob {
 		[Parameter(Mandatory=$False)]
 		[int] $Period = 6,
 		[Parameter(Mandatory=$True)]
-		[int] $ThresholdPercentageForAdditions,
+		[int] $ThresholdPercentageForAdditions = 100,
 		[Parameter(Mandatory=$True)]
-		[int] $ThresholdPercentageForRemovals,
+		[int] $ThresholdPercentageForRemovals = 10,
 		[Parameter(Mandatory=$True)]
 		[boolean] $Enabled,
 		[Parameter(Mandatory=$False)]

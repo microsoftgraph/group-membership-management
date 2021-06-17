@@ -17,14 +17,14 @@
     },
     "keyValueNames": {
       "type": "array",
-      "defaultValue": [ "myKey", "myKey$myLabel" ],
+      "defaultValue": [ "Settings:dryRun", "dryRun$False" ],
       "metadata": {
         "description": "Specifies the names of the key-value resources. The name is a combination of key and label with $ as delimiter. The label is optional."
       }
     },
     "keyValueValues": {
       "type": "array",
-      "defaultValue": [ "Key-value without label", "Key-value with label" ],
+      "defaultValue": [ "Settings:dryRun", "dryRun$False" ],
       "metadata": {
         "description": "Specifies the values of the key-value resources. It's optional"
       }
@@ -39,8 +39,7 @@
     "tags": {
       "type": "object",
       "defaultValue": {
-        "tag1": "tag-value-1",
-        "tag2": "tag-value-2"
+        "tag1": "global setting tag"
       },
       "metadata": {
         "description": "Adds tags for the key-value resources. It's optional"
