@@ -35,7 +35,7 @@ stages:
     functionApps:
     - function:
        name: 'JobTrigger'
-       coverageThreshold: 75
+       coverageThreshold: 93
     - function:
        name: 'GraphUpdater'
        coverageThreshold: 41
@@ -64,6 +64,7 @@ stages:
     - name: 'GraphUpdater'
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
+    - name: 'AzureUserReader'
     condition: |
       and(
         succeeded('BuildFunctions'),
@@ -86,6 +87,7 @@ stages:
     - name: 'GraphUpdater'
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
+    - name: 'AzureUserReader'
     condition: |
       and(
           succeeded('BuildFunctions'),
@@ -109,6 +111,7 @@ stages:
     - name: 'GraphUpdater'
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
+    - name: 'AzureUserReader'
     condition: |
       and(
         succeeded('ua'),

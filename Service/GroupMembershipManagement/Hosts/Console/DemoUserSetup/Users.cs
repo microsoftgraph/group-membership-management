@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Diagnostics;
+using System.IO;
 
 namespace DemoUserSetup
 {
@@ -16,12 +17,13 @@ namespace DemoUserSetup
     {
         private static readonly AzureADUser[] _testUsers = new AzureADUser[AppSettings.LoadAppSettings().UserCount];
         private readonly GraphServiceClient _graphServiceClient = null;
-
+        private Dictionary<string, string> _userIds = new Dictionary<string, string>();
         public Users(GraphServiceClient graphServiceClient)
         {
             _graphServiceClient = graphServiceClient;
         }
-        public async Task addUsers()
+
+        public async Task AddUsers()
         {
             await DeleteOldObjects("microsoft.graph.user");
             var users = await _graphServiceClient.Users.Request().Filter("startswith(MailNickname, 'testuser')").GetAsync();
@@ -55,6 +57,16 @@ namespace DemoUserSetup
 			{
 				Console.WriteLine(ex);
 			}
+
+
+            var sw = new StreamWriter("memberids.csv", false);
+            sw.WriteLine("PersonnelNumber,AzureObjectId");
+            foreach (var user in _userIds)
+            {
+                sw.WriteLine($"{user.Key},{user.Value}");
+            }
+            sw.Flush();
+            sw.Close();
 		}
 
 		private int _permanentlyDeleted = 0;
@@ -108,7 +120,11 @@ namespace DemoUserSetup
                 OnPremisesImmutableId = csvUser.ImmutableId
             };
 
-            _testUsers[number] = ToEntity(await _graphServiceClient.Users.Request().AddAsync(user));
+            var graphUser = await _graphServiceClient.Users.Request().AddAsync(user);
+            _testUsers[number] = ToEntity(graphUser);
+
+            if (!_userIds.ContainsKey(csvUser.ImmutableId))
+                _userIds.Add(csvUser.ImmutableId, graphUser.Id);
         }
 
         private static AzureADUser ToEntity(User user)

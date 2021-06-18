@@ -28,7 +28,7 @@ namespace DemoUserSetup
 			var authProvider = new InteractiveAuthenticationProvider(publicClientApp);
             var _graphServiceClient = new GraphServiceClient(authProvider);
             var users = new Users(_graphServiceClient);
-            await users.addUsers();
+            await users.AddUsers();
         }
     }
 }

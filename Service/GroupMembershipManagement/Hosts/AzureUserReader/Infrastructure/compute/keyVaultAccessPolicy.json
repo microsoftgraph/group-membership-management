@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the key vault"
+      }
+    },
+    "policies": {
+      "type": "array",
+      "metadata": {
+        "description": "Array of object ids and permissions.",
+        "sample": "\\[{'objectId': '<guid>', 'permissions': ['list', 'get', 'set']}]\\]"
+      }
+    },
+    "tenantId": {
+      "type": "string"
+    }
+  },
+  "variables": {
+  },
+  "resources": [
+    {
+      "type": "Microsoft.KeyVault/vaults/accessPolicies",
+      "name": "[concat(parameters('name'), '/add')]",
+      "apiVersion": "2016-10-01",
+      "properties": {
+        "copy": [
+          {
+            "name": "accessPolicies",
+            "count": "[length(parameters('policies'))]",
+            "input": {
+              "tenantId": "[parameters('tenantId')]",
+              "objectId": "[parameters('policies')[copyIndex('accessPolicies')].objectId]",
+              "permissions": {
+                "secrets": "[parameters('policies')[copyIndex('accessPolicies')].permissions]"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "outputs": {
+  }
+}

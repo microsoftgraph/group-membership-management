@@ -85,23 +85,36 @@ namespace Repositories.Logging
             var signature = BuildSignature(message, _sharedKey);
             var scheme = "SharedKey";
             var parameter = $"{_workSpaceId}:{signature}";
-            var httpRequestMessage = new HttpRequestMessage(HttpMethod.Post, url);
-            httpRequestMessage.Headers.Authorization = new AuthenticationHeaderValue(scheme, parameter);
-            httpRequestMessage.Headers.Add("x-ms-date", dateString);
-            httpRequestMessage.Content = new StringContent(serializedMessage, Encoding.UTF8);
-            httpRequestMessage.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
 
             HttpResponseMessage response = null;
             await retryPolicy.ExecuteAsync(async () =>
             {
-                response = await _httpClient.SendAsync(httpRequestMessage);
-
+                response = await _httpClient.SendAsync(
+                                    CreateRequest(HttpMethod.Post, url, scheme, parameter, dateString, serializedMessage, contentType));
                 return response;
             });
 
             if(httpStatusCodesWorthRetrying.Contains(response.StatusCode))
                 response.EnsureSuccessStatusCode();
 
+        }
+
+        private HttpRequestMessage CreateRequest(
+            HttpMethod method,
+            string url,
+            string authScheme,
+            string authParameter,
+            string dateString,
+            string serializedMessage,
+            string contentType)
+        {
+            var httpRequestMessage = new HttpRequestMessage(method, url);
+            httpRequestMessage.Headers.Authorization = new AuthenticationHeaderValue(authScheme, authParameter);
+            httpRequestMessage.Headers.Add("x-ms-date", dateString);
+            httpRequestMessage.Content = new StringContent(serializedMessage, Encoding.UTF8);
+            httpRequestMessage.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+
+            return httpRequestMessage;
         }
 
         private string BuildSignature(string message, string secret)

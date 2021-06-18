@@ -33,6 +33,12 @@ Sets the sync job to enabled if $True and disabled if $False
 .PARAMETER Query
 This value depends on the type of sync job.  See example below for details.
 
+.PARAMETER ThresholdPercentageForAdditions
+Threshold percentage for users being added. Default value is 100 unless specified in the request.
+
+.PARAMETER ThresholdPercentageForRemovals
+Threshold percentage for users being removed. Default value is 20 unless specified in the request.
+
 .EXAMPLE
 Add-AzAccount
 
@@ -43,6 +49,8 @@ New-GmmSecurityGroupSyncJob	-SubscriptionName "<subscription name>" `
 							-TargetOfficeGroupId "<destination group object id>" `
 							-Query "<source group object id(s) (separated by ';')>" `
 							-Period <in hours, integer only> `
+							-ThresholdPercentageForAdditions <integer only> `
+							-ThresholdPercentageForRemovals <integer only> `
 							-Enabled $False `
 							-Verbose
 #>
@@ -65,6 +73,10 @@ function New-GmmSecurityGroupSyncJob {
 		[DateTime] $StartDate,
 		[Parameter(Mandatory=$False)]
 		[int] $Period = 6,
+		[Parameter(Mandatory=$True)]
+		[int] $ThresholdPercentageForAdditions,
+		[Parameter(Mandatory=$True)]
+		[int] $ThresholdPercentageForRemovals,
 		[Parameter(Mandatory=$True)]
 		[boolean] $Enabled,
 		[Parameter(Mandatory=$False)]
@@ -103,7 +115,9 @@ function New-GmmSecurityGroupSyncJob {
 			"Period"=$Period;  # in hours, integers only
 			"Query"=$Query;
 			"StartDate"=$StartDate;
-			"Enabled"=$Enabled
+			"Enabled"=$Enabled;
+			"ThresholdPercentageForAdditions"=$ThresholdPercentageForAdditions;
+			"ThresholdPercentageForRemovals"=$ThresholdPercentageForRemovals
 		}
 
 	Add-AzTableRow `
