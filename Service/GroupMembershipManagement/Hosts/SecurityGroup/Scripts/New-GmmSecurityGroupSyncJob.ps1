@@ -127,15 +127,3 @@ function New-GmmSecurityGroupSyncJob {
 
 	"New-GmmSecurityGroupSyncJob completed."
 }
-
-Add-AzAccount
-
-New-GmmSecurityGroupSyncJob	-SubscriptionName "MSFT-STSolution-02" `
-							-SolutionAbbreviation "gmm" `
-							-EnvironmentAbbreviation "gl" `
-							-Requestor "glovelace@microsoft.com" `
-							-TargetOfficeGroupId "00000000-f75f-45b7-9e39-50554aba1c7c" `
-							-Query "e90eabe5-6532-474b-b428-2f18a8d0a7f2;ada21a30-95d6-4b2c-bc5e-722753192d78" `
-							-Period 6 `
-							-Enabled $True `
-							-Verbose
