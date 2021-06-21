@@ -8,9 +8,8 @@ using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
-using Hosts.JobTrigger;
 
-namespace JobTrigger.SubOrchestrator
+namespace Hosts.JobTrigger
 {
     public class SubOrchestratorFunction
     {
