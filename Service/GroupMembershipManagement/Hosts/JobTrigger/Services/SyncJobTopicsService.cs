@@ -66,19 +66,18 @@ namespace Services
             {
                 var message = new EmailMessage
                 {
-                    var message = new EmailMessage
-                    {
-                        Subject = EmailSubject,
-                        Content = SyncStartedEmailBody,
-                        SenderAddress = _emailSenderAndRecipients.SenderAddress,
-                        SenderPassword = _emailSenderAndRecipients.SenderPassword,
-                        ToEmailAddresses = job.Requestor,
-                        CcEmailAddresses = string.Empty,
-                        AdditionalContentParams = new[] { groupName, job.TargetOfficeGroupId.ToString() }
-                    };
+                    Subject = EmailSubject,
+                    Content = SyncStartedEmailBody,
+                    SenderAddress = _emailSenderAndRecipients.SenderAddress,
+                    SenderPassword = _emailSenderAndRecipients.SenderPassword,
+                    ToEmailAddresses = job.Requestor,
+                    CcEmailAddresses = string.Empty,
+                    AdditionalContentParams = new[] { groupName, job.TargetOfficeGroupId.ToString() }
+                };
 
-                    await _mailRepository.SendMailAsync(message, job.RunId);
-                }
+                await _mailRepository.SendMailAsync(message, job.RunId);
+            }
+        }
 
         public async Task UpdateSyncJobStatusAsync(bool canWriteToGroup, SyncJob job)
         {
@@ -111,7 +110,8 @@ namespace Services
         {
             await _serviceBusTopicsRepository.AddMessageAsync(job);
         }
-        private async Task<bool> CanWriteToGroup(SyncJob job)
+
+        public async Task<bool> CanWriteToGroup(SyncJob job)
         {
             foreach (var strat in new JobVerificationStrategy[] {
                 new JobVerificationStrategy { TestFunction = _graphGroupRepository.GroupExists, StatusMessage = $"Destination group {job.TargetOfficeGroupId} exists.", ErrorMessage = $"destination group {job.TargetOfficeGroupId} doesn't exist.", EmailBody = SyncDisabledNoGroupEmailBody },
