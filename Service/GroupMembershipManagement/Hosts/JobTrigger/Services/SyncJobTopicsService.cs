@@ -44,21 +44,27 @@ namespace Services
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
         }
 
-        public async Task ProcessSyncJobsAsync()
+        public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
+            var allJobs = new List<SyncJob>();
             var jobs = _syncJobRepository.GetSyncJobsAsync(SyncStatus.Idle);
-
-            var runningJobs = new List<SyncJob>();
-            var failedJobs = new List<SyncJob>();
-            var startedTasks = new List<Task>();
             await foreach (var job in jobs)
             {
-                job.RunId = _graphGroupRepository.RunId = Guid.NewGuid();
-                _loggingRepository.SyncJobProperties = job.ToDictionary();
+                allJobs.Add(job);
+            }
+            return allJobs;
+        }
 
-                var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
+        public async Task<string> GetGroupNameAsync(Guid groupId)
+        {
+            return await _graphGroupRepository.GetGroupNameAsync(groupId);
+        }
 
-                if (job.LastRunTime == DateTime.FromFileTimeUtc(0))
+        public async Task SendEmailAsync(SyncJob job, string groupName)
+        {
+            if (job != null && job.LastRunTime == DateTime.FromFileTimeUtc(0))
+            {
+                var message = new EmailMessage
                 {
                     var message = new EmailMessage
                     {
@@ -74,35 +80,36 @@ namespace Services
                     await _mailRepository.SendMailAsync(message, job.RunId);
                 }
 
-                if (await CanWriteToGroup(job))
+        public async Task UpdateSyncJobStatusAsync(bool canWriteToGroup, SyncJob job)
+        {
+            if (canWriteToGroup)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        RunId = job.RunId,
-                        Message = $"Starting job."
-                    });
-                    runningJobs.Add(job);
-                }
-                else
-                {
-                    job.Enabled = false;
-                    failedJobs.Add(job);
-                }
+                    RunId = job.RunId,
+                    Message = $"Starting job."
+                });
 
-                // Don't leak this to the start and stop logs.
-                // The logging repository has this SyncJobInfo property that gets appended to all the logs,
-                // to make it easier to log information like the run ID and so on without having to pass all that around.
-                // However, the same logging repository gets reused for the life of the program, which means that, without this line,
-                // it'll append that information to the logs that say "JobTrigger function started" and "JobTrigger function completed".
-
-                _loggingRepository.SyncJobProperties = null;
+                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.InProgress);
+            }
+            else
+            {
+                job.Enabled = false;
+                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.Error);
             }
 
-            startedTasks.Add(_syncJobRepository.UpdateSyncJobStatusAsync(runningJobs, SyncStatus.InProgress));
-            startedTasks.Add(_syncJobRepository.UpdateSyncJobStatusAsync(failedJobs, SyncStatus.Error));
-            await Task.WhenAll(startedTasks);
+            // Don't leak this to the start and stop logs.
+            // The logging repository has this SyncJobInfo property that gets appended to all the logs,
+            // to make it easier to log information like the run ID and so on without having to pass all that around.
+            // However, the same logging repository gets reused for the life of the program, which means that, without this line,
+            // it'll append that information to the logs that say "JobTrigger function started" and "JobTrigger function completed".
 
-            runningJobs.ForEach(async job => await _serviceBusTopicsRepository.AddMessageAsync(job));
+            _loggingRepository.SyncJobProperties = null;
+        }
+
+        public async Task SendMessageAsync(SyncJob job)
+        {
+            await _serviceBusTopicsRepository.AddMessageAsync(job);
         }
         private async Task<bool> CanWriteToGroup(SyncJob job)
         {

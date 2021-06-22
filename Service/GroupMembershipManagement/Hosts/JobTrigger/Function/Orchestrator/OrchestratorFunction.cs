@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.JobTrigger
@@ -15,10 +16,14 @@ namespace Hosts.JobTrigger
     {
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly ISyncJobTopicService _syncJobTopicService = null;
-        public OrchestratorFunction(ILoggingRepository loggingRepository, ISyncJobTopicService syncJobService)
+        private readonly IGraphGroupRepository _graphGroupRepository = null;
+        public OrchestratorFunction(ILoggingRepository loggingRepository,
+                                    ISyncJobTopicService syncJobService,
+                                    IGraphGroupRepository graphGroupRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _syncJobTopicService = syncJobService ?? throw new ArgumentNullException(nameof(syncJobService)); ;
+            _syncJobTopicService = syncJobService ?? throw new ArgumentNullException(nameof(syncJobService));
+            _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
@@ -27,7 +32,20 @@ namespace Hosts.JobTrigger
             ILogger log)
         {
             _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started" });
-            await context.CallActivityAsync(nameof(SyncJobsProcessorFunction), null);
+            var syncJobs = await context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), null);
+            if (syncJobs != null && syncJobs.Count > 0)
+            {
+                // Run multiple sync job processing flows in parallel
+                var processingTasks = new List<Task>();
+                foreach (var syncJob in syncJobs)
+                {
+                    syncJob.RunId = _graphGroupRepository.RunId = context.NewGuid();
+                    _loggingRepository.SyncJobProperties = syncJob.ToDictionary();
+                    var processTask = context.CallSubOrchestratorAsync(nameof(SubOrchestratorFunction), syncJob);
+                    processingTasks.Add(processTask);
+                }
+                await Task.WhenAll(processingTasks);
+            }
             _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed" });
         }
     }
