@@ -12,11 +12,9 @@ namespace Hosts.SecurityGroup
     public class OrchestratorFunction
     {
         private readonly ILoggingRepository _loggingRepository;
-        private readonly SGMembershipCalculator _calculator;
-        public OrchestratorFunction(ILoggingRepository loggingRepository, SGMembershipCalculator calculator)
+                public OrchestratorFunction(ILoggingRepository loggingRepository)
         {
             _loggingRepository = loggingRepository;
-            _calculator = calculator;
         }
 
         [FunctionName(nameof(OrchestratorFunction))]

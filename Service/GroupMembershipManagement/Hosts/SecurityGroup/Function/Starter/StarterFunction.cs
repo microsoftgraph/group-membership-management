@@ -15,12 +15,10 @@ namespace Hosts.SecurityGroup
     public class StarterFunction
     {
         private readonly ILoggingRepository _loggingRepository;
-        private readonly SGMembershipCalculator _calculator;
 
-        public StarterFunction(ILoggingRepository loggingRepository, SGMembershipCalculator calculator)
+        public StarterFunction(ILoggingRepository loggingRepository)
         {
             _loggingRepository = loggingRepository;
-            _calculator = calculator;
         }
 
         [FunctionName(nameof(StarterFunction))]
