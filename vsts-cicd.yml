@@ -35,19 +35,19 @@ stages:
     functionApps:
     - function:
        name: 'JobTrigger'
-       coverageThreshold: 98
+       coverageThreshold: 97
     - function:
        name: 'GraphUpdater'
-       coverageThreshold: 41
+       coverageThreshold: 45
     - function:
        name: 'SecurityGroup'
-       coverageThreshold: 80
+       coverageThreshold: 99
     - function:
         name: 'AzureTableBackup'
         coverageThreshold: 72
     - function:
         name: 'AzureUserReader'
-        coverageThreshold: 33
+        coverageThreshold: 36
 
 - template: yaml/deploy-pipeline.yml
   parameters:
