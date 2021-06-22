@@ -17,14 +17,16 @@ namespace Repositories.Mail
     {
         private readonly ILocalizationRepository _localizationRepository;
         private readonly IGraphServiceClient _graphClient;
+		private readonly ILoggingRepository _loggingRepository;
 
-        public MailRepository(IGraphServiceClient graphClient, ILocalizationRepository localizationRepository)
+		public MailRepository(IGraphServiceClient graphClient, ILocalizationRepository localizationRepository, ILoggingRepository loggingRepository)
         {
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
+            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        public async Task SendMailAsync(EmailMessage emailMessage)
+        public async Task SendMailAsync(EmailMessage emailMessage, Guid? runId)
         {     
             if (emailMessage is null)
             {
@@ -51,18 +53,45 @@ namespace Repositories.Mail
             foreach (char c in emailMessage?.SenderPassword)
                 securePassword.AppendChar(c);
 
-            await _graphClient.Me
-                    .SendMail(message, SaveToSentItems: true)
-                    .Request().WithUsernamePassword(emailMessage?.SenderAddress, securePassword)
-                    .PostAsync();
+			try
+			{
+				await _graphClient.Me
+						.SendMail(message, SaveToSentItems: true)
+						.Request().WithUsernamePassword(emailMessage?.SenderAddress, securePassword)
+						.PostAsync();
+			}
+			catch (ServiceException ex) when (ex.GetBaseException().GetType().Name == "MsalUiRequiredException")
+			{
+				await _loggingRepository.LogMessageAsync(new LogMessage
+				{
+					RunId = runId,
+					Message = "Email cannot be sent because Mail.Send permission has not been granted."
+				});
+			}
+			catch (ServiceException ex) when (ex.Message.Contains("MailboxNotEnabledForRESTAPI"))
+			{
+				await _loggingRepository.LogMessageAsync(new LogMessage
+				{
+					RunId = runId,
+					Message = "Email cannot be sent because required licenses are missing in the service account."
+				});
+			}
+			catch (Exception ex)
+			{
+				await _loggingRepository.LogMessageAsync(new LogMessage
+				{
+					RunId = runId,
+					Message = $"Email cannot be sent due to an unexpected exception.\n{ex}"
+				});
+			}
 
-        }
+		}
 
-        public IEnumerable<Recipient> GetEmailAddresses(string emailAddresses)
-        {
-            return emailAddresses.Split(',').Select(address => address.Trim()).ToList()
-                                     .Select(address => new Recipient() { EmailAddress = new EmailAddress { Address = address } })
-                                     .ToList();
-        }
-    }
+		public IEnumerable<Recipient> GetEmailAddresses(string emailAddresses)
+		{
+			return emailAddresses.Split(',').Select(address => address.Trim()).ToList()
+									 .Select(address => new Recipient() { EmailAddress = new EmailAddress { Address = address } })
+									 .ToList();
+		}
+	}
 }

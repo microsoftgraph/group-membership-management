@@ -65,7 +65,8 @@ namespace Hosts.FunctionBase
             builder.Services.AddSingleton<IMailRepository>(services =>
                 new MailRepository(new GraphServiceClient(
                                                     FunctionAppDI.CreateMailAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value)),
-                                                    services.GetService<ILocalizationRepository>()));
+                                                    services.GetService<ILocalizationRepository>(),
+                                                    services.GetService<ILoggingRepository>()));
 
             builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {

@@ -198,15 +198,10 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task VerifyJobsAreProcessedWithMissigMailSendPermission()
+        public async Task VerifyJobsAreProcessedWithMissingMailSendPermission()
         {
-            var missingMailSendPermissionException = new Microsoft.Graph.ServiceException(
-                new Microsoft.Graph.Error(),
-                new MsalUiRequiredException("error_code", "AADSTS65001: The user or administrator has not consented to use the application...")
-                );
-
             var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>())).ThrowsAsync(missingMailSendPermissionException);
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
 
             _syncJobTopicsService = new SyncJobTopicsService(
                 _loggingRepository,
@@ -234,14 +229,10 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task VerifyJobsAreProcessedWithMissigMailLicenses()
+        public async Task VerifyJobsAreProcessedWithMissingMailLicenses()
         {
-            var missingMailLicensesException = new Microsoft.Graph.ServiceException(
-                    new Microsoft.Graph.Error { Message = "MailboxNotEnabledForRESTAPI" }
-                );
-
             var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>())).ThrowsAsync(missingMailLicensesException);
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
 
             _syncJobTopicsService = new SyncJobTopicsService(
                 _loggingRepository,
@@ -272,7 +263,7 @@ namespace Services.Tests
         public async Task VerifyJobsAreProcessedMailingExceptions()
         {
             var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>())).ThrowsAsync(new Exception("Custom exception"));
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
 
             _syncJobTopicsService = new SyncJobTopicsService(
                 _loggingRepository,

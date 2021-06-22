@@ -252,36 +252,9 @@ namespace Hosts.GraphUpdater
                 AdditionalContentParams = additionalContent
             };
 
-            try
-            {
-                await _mailRepository.SendMailAsync(message);
-            }
-            catch (Microsoft.Graph.ServiceException ex) when (ex.GetBaseException().GetType().Name == "MsalUiRequiredException")
-            {
-                await _log.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = "Email cannot be sent because Mail.Send permission has not been granted."
-                });
-            }
-            catch (Microsoft.Graph.ServiceException ex) when (ex.Message.Contains("MailboxNotEnabledForRESTAPI"))
-            {
-                await _log.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = "Email cannot be sent because required licenses are missing in the service account."
-                });
-            }
-            catch (Exception ex)
-            {
-                await _log.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Email cannot be sent due to an unexpected exception.\n{ex}"
-                });
-            }
-        }
-    }
+			await _mailRepository.SendMailAsync(message, runId);
+		}
+	}
 
     public interface IGraphUpdater
     {

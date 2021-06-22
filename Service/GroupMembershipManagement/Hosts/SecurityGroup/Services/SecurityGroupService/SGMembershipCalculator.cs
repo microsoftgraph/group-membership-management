@@ -83,7 +83,7 @@ namespace Hosts.SecurityGroup
 						$"None of the source groups in {syncJob.Query} were valid guids. Marking job as errored."
 					});
 
-					await SendEmailAsync(new EmailMessage
+					await _mail.SendMailAsync(new EmailMessage
 					{
 						Subject = EmailSubject,
 						Content = SyncDisabledNoValidGroupIds,
@@ -196,7 +196,7 @@ namespace Hosts.SecurityGroup
 					if (groupExistsResult.Outcome == OutcomeType.Successful)
 					{
 						await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Group with ID {group.ObjectId} doesn't exist. Stopping sync and marking as error." });
-						await SendEmailAsync(new EmailMessage
+						await _mail.SendMailAsync(new EmailMessage
 						{
 							Subject = EmailSubject,
 							Content = SyncDisabledNoGroupEmailBody,
@@ -216,38 +216,6 @@ namespace Hosts.SecurityGroup
 			}
 
 			return toReturn;
-		}
-
-		private async Task SendEmailAsync(EmailMessage message, Guid? runId)
-		{
-			try
-			{
-				await _mail.SendMailAsync(message);
-			}
-			catch (Microsoft.Graph.ServiceException ex) when (ex.GetBaseException().GetType().Name == "MsalUiRequiredException")
-			{
-				await _log.LogMessageAsync(new LogMessage
-				{
-					RunId = runId,
-					Message = "Email cannot be sent because Mail.Send permission has not been granted."
-				});
-			}
-			catch (Microsoft.Graph.ServiceException ex) when (ex.Message.Contains("MailboxNotEnabledForRESTAPI"))
-			{
-				await _log.LogMessageAsync(new LogMessage
-				{
-					RunId = runId,
-					Message = "Email cannot be sent because required licenses are missing in the service account."
-				});
-			}
-			catch (Exception ex)
-			{
-				await _log.LogMessageAsync(new LogMessage
-				{
-					RunId = runId,
-					Message = $"Email cannot be sent due to an unexpected exception.\n{ex}"
-				});
-			}
 		}
 	}
 }

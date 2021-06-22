@@ -71,7 +71,7 @@ namespace Services
                         AdditionalContentParams = new[] { groupName, job.TargetOfficeGroupId.ToString() }
                     };
 
-                    await SendEmailAsync(message, job.RunId);
+                    await _mailRepository.SendMailAsync(message, job.RunId);
                 }
 
                 if (await CanWriteToGroup(job))
@@ -104,39 +104,6 @@ namespace Services
 
             runningJobs.ForEach(async job => await _serviceBusTopicsRepository.AddMessageAsync(job));
         }
-
-        private async Task SendEmailAsync(EmailMessage message, Guid? runId)
-        {
-            try
-            {
-                await _mailRepository.SendMailAsync(message);
-            }
-            catch (Microsoft.Graph.ServiceException ex) when (ex.GetBaseException().GetType().Name == "MsalUiRequiredException")
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = "Email cannot be sent because Mail.Send permission has not been granted."
-                });
-            }
-            catch (Microsoft.Graph.ServiceException ex) when (ex.Message.Contains("MailboxNotEnabledForRESTAPI"))
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = "Email cannot be sent because required licenses are missing in the service account."
-                });
-            }
-            catch (Exception ex)
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Email cannot be sent due to an unexpected exception.\n{ex}"
-                });
-            }
-        }
-
         private async Task<bool> CanWriteToGroup(SyncJob job)
         {
             foreach (var strat in new JobVerificationStrategy[] {
@@ -149,7 +116,7 @@ namespace Services
                 if (await strat.TestFunction(job.TargetOfficeGroupId) == false)
                 {
                     await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Marking sync job as failed because " + strat.ErrorMessage });
-					await SendEmailAsync(new EmailMessage
+					await _mailRepository.SendMailAsync(new EmailMessage
 					{
 						Subject = EmailSubject,
 						Content = strat.EmailBody,
