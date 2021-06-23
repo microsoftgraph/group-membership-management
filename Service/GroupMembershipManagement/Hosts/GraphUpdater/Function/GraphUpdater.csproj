@@ -8,6 +8,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" Version="2.4.1" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" Version="4.2.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="4.4.0" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="3.1.12" />
     <PackageReference Include="Microsoft.Extensions.Localization" Version="3.1.9" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="3.0.11" />

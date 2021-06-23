@@ -15,6 +15,9 @@ using Common.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Repositories.GraphGroups;
 using Microsoft.Graph;
+using System;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Azure.Identity;
 
 [assembly: FunctionsStartup(typeof(Hosts.JobTrigger.Startup))]
 
@@ -28,10 +31,30 @@ namespace Hosts.JobTrigger
         {
             base.Configure(builder);
 
+            //var configBuilder = new ConfigurationBuilder();
+            //configBuilder.AddAzureAppConfiguration(GetValueOrThrow("appConfigConnectionString"));
+            //builder.Services.AddAzureAppConfiguration();
+
+            //var configurationRoot = configBuilder.Build();
+            //Console.WriteLine(configurationRoot["Settings:dryRun"] ?? "Hello world!");
+
+            var configBuilder = new ConfigurationBuilder();
+            configBuilder.AddAzureAppConfiguration(options =>
+            {
+                options.Connect(new System.Uri("https://gmm-appconfiguration-st.azconfig.io"), new DefaultAzureCredential()); //ManagedIdentityCredential
+            });
+            //builder.Services.AddAzureAppConfiguration(options =>
+            //{
+            //    options.Connect(new System.Uri("https://gmm-appconfiguration-st.azconfig.io"), new ManagedIdentityCredential());
+            //});
+            var configurationRoot = configBuilder.Build();
+            Console.WriteLine(configurationRoot["Settings:dryRun"] ?? "Hello world!");
+
             builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
                 settings.TableName = configuration.GetValue<string>("jobsTableName");
+                settings.GlobalDryRun = configurationRoot["Settings:dryRun"];
             });
 
             builder.Services.AddSingleton<IKeyVaultSecret<IJobTriggerService>>(services => new KeyVaultSecret<IJobTriggerService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
@@ -44,11 +67,12 @@ namespace Hosts.JobTrigger
             builder.Services.AddSingleton<ISyncJobRepository>(services =>
              {
                  var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
-                 return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
+                 return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>(), creds.Value.GlobalDryRun);
              });
 
             builder.Services.AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(GetValueOrThrow("serviceBusConnectionString"), GetValueOrThrow("serviceBusSyncJobTopic")));
-            builder.Services.AddSingleton<IJobTriggerService, JobTriggerService>();
+            builder.Services.AddSingleton<ISyncJobTopicService, SyncJobTopicsService>();
+
         }
     }
 }

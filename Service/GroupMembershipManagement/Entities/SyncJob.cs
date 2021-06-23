@@ -74,6 +74,18 @@ namespace Entities
         [IgnoreLogging]
         public int ThresholdPercentageForRemovals { get; set; }
 
+        /// <summary>
+        /// Threshold percentage for users being removed
+        /// </summary>
+        [IgnoreLogging]
+        public bool DryRun { get; set; }
+
+        /// <summary>
+        /// Threshold percentage for users being removed
+        /// </summary>
+        [IgnoreLogging]
+        public DateTime DryRunTimeStamp { get; set; }
+
         public Dictionary<string, string> ToDictionary() =>
             DictionaryHelper.ToDictionary(this, new DictionaryHelper.Options
             {

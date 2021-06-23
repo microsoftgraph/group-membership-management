@@ -8,10 +8,13 @@ namespace DIConcreteTypes
     {
         public string ConnectionString { get; set; }
         public string TableName { get; set; }
-        public SyncJobRepoCredentials(string connectionString, string tableName)
+        public string GlobalDryRun { get; set; }
+
+        public SyncJobRepoCredentials(string connectionString, string tableName, string globalDryRun)
         {
             this.ConnectionString = connectionString;
             this.TableName = tableName;
+            this.GlobalDryRun = globalDryRun;
         }
         public SyncJobRepoCredentials()
         {
