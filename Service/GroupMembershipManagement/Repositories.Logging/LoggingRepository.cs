@@ -31,6 +31,7 @@ namespace Repositories.Logging
         private static readonly HttpClient _httpClient = MakeClient();
 
         public Dictionary<string, string> SyncJobProperties { get; set; }
+        public bool DryRun { get; set; } = false;
 
         public LoggingRepository(ILogAnalyticsSecret<LoggingRepository> logAnalytics)
         {
@@ -51,12 +52,14 @@ namespace Repositories.Logging
         {
             var properties = CreatePropertiesDictionary(logMessage);
             properties.Add("location", _location);
+            properties.Add("DryRun", DryRun.ToString());
 
             if (!string.IsNullOrWhiteSpace(caller))
                 properties.Add("event", caller);
 
             if (!string.IsNullOrWhiteSpace(file))
                 properties.Add("operation", Path.GetFileNameWithoutExtension(file));
+
 
             var serializedMessage = JsonConvert.SerializeObject(properties);
 
