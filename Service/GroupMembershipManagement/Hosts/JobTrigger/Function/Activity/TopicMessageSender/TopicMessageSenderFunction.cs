@@ -14,11 +14,11 @@ namespace Hosts.JobTrigger
     public class TopicMessageSenderFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly ISyncJobTopicService _syncJobTopicService = null;
-        public TopicMessageSenderFunction(ILoggingRepository loggingRepository, ISyncJobTopicService syncJobService)
+        private readonly IJobTriggerService _jobTriggerService = null;
+        public TopicMessageSenderFunction(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _syncJobTopicService = syncJobService ?? throw new ArgumentNullException(nameof(syncJobService)); ;
+            _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService)); ;
         }
 
         [FunctionName(nameof(TopicMessageSenderFunction))]
@@ -27,7 +27,7 @@ namespace Hosts.JobTrigger
             if (syncJob != null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TopicMessageSenderFunction)} function started", RunId = syncJob.RunId });
-                await _syncJobTopicService.SendMessageAsync(syncJob);
+                await _jobTriggerService.SendMessageAsync(syncJob);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TopicMessageSenderFunction)} function completed", RunId = syncJob.RunId });
             }
         }

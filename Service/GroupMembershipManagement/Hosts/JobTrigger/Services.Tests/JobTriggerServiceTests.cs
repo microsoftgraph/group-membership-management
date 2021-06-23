@@ -20,9 +20,9 @@ using MockSyncJobRepository = Repositories.SyncJobs.Tests.MockSyncJobRepository;
 namespace Services.Tests
 {
     [TestClass]
-    public class SyncJobTopicsServiceTests
+    public class JobTriggerServiceTests
     {
-        private SyncJobTopicsService _syncJobTopicsService = null;
+        private JobTriggerService _jobTriggerService = null;
         private MockSyncJobRepository _syncJobRepository = null;
         private MockLoggingRepository _loggingRepository = null;
         private MockServiceBusTopicsRepository _serviceBusTopicsRepository = null;
@@ -40,7 +40,7 @@ namespace Services.Tests
             _serviceBusTopicsRepository = new MockServiceBusTopicsRepository();
             _graphGroupRepository = new MockGraphGroupRepository();
             _mailRepository = new MockMailRepository();
-            _syncJobTopicsService = new SyncJobTopicsService(_loggingRepository, _syncJobRepository, _serviceBusTopicsRepository, _graphGroupRepository, new MockKeyVaultSecret<ISyncJobTopicService>(), _mailRepository, new MockEmail<IEmailSenderRecipient>());
+            _jobTriggerService = new JobTriggerService(_loggingRepository, _syncJobRepository, _serviceBusTopicsRepository, _graphGroupRepository, new MockKeyVaultSecret<IJobTriggerService>(), _mailRepository, new MockEmail<IEmailSenderRecipient>());
         }
 
         [TestMethod]
@@ -57,7 +57,7 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs)
             {
-                await _syncJobTopicsService.SendMessageAsync(job);
+                await _jobTriggerService.SendMessageAsync(job);
             }
             Assert.AreEqual(organizationJobCount, _serviceBusTopicsRepository.Subscriptions[Organization].Count);
             Assert.AreEqual(securityGroupJobCount, _serviceBusTopicsRepository.Subscriptions[SecurityGroup].Count);
@@ -75,7 +75,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _syncJobTopicsService.GetSyncJobsAsync();
+            var jobs = await _jobTriggerService.GetSyncJobsAsync();
 
             Assert.AreEqual(enabledJobs, jobs.Count);
         }
@@ -94,7 +94,7 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs.Take(enabledJobs))
             {
-                var response = await _syncJobTopicsService.CanWriteToGroup(job);
+                var response = await _jobTriggerService.CanWriteToGroup(job);
                 Assert.AreEqual(false, response);
             }
         }
@@ -112,7 +112,7 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs.Take(enabledJobs))
             {
-                var response = await _syncJobTopicsService.CanWriteToGroup(job);
+                var response = await _jobTriggerService.CanWriteToGroup(job);
                 Assert.AreEqual(false, response);
             }
         }
@@ -129,7 +129,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _syncJobTopicsService.GetSyncJobsAsync();
+            var jobs = await _jobTriggerService.GetSyncJobsAsync();
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -148,7 +148,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _syncJobTopicsService.GetSyncJobsAsync();
+            var jobs = await _jobTriggerService.GetSyncJobsAsync();
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -167,8 +167,8 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs)
             {
-                var canWriteToGroup = await _syncJobTopicsService.CanWriteToGroup(job);
-                await _syncJobTopicsService.UpdateSyncJobStatusAsync(canWriteToGroup, job);
+                var canWriteToGroup = await _jobTriggerService.CanWriteToGroup(job);
+                await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup, job);
                 Assert.AreEqual(job.Status, "InProgress");
             }
         }
@@ -182,8 +182,8 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs)
             {
-                var canWriteToGroup = await _syncJobTopicsService.CanWriteToGroup(job);
-                await _syncJobTopicsService.UpdateSyncJobStatusAsync(canWriteToGroup, job);
+                var canWriteToGroup = await _jobTriggerService.CanWriteToGroup(job);
+                await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup, job);
                 Assert.AreEqual(job.Status, "Error");
             }
         }
@@ -201,7 +201,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            await _syncJobTopicsService.SendMessageAsync(_syncJobRepository.Jobs[0]);
+            await _jobTriggerService.SendMessageAsync(_syncJobRepository.Jobs[0]);
 
             foreach (var job in _syncJobRepository.Jobs)
             {
@@ -211,7 +211,7 @@ namespace Services.Tests
                 job.Status = SyncStatus.Idle.ToString();
             }
 
-            await _syncJobTopicsService.SendMessageAsync(_syncJobRepository.Jobs[0]);
+            await _jobTriggerService.SendMessageAsync(_syncJobRepository.Jobs[0]);
 
             foreach (var job in _syncJobRepository.Jobs)
             {
@@ -229,12 +229,12 @@ namespace Services.Tests
             var _mailRepository = new Mock<IMailRepository>();
             _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
 
-            _syncJobTopicsService = new SyncJobTopicsService(
+            _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
                 _serviceBusTopicsRepository,
                 _graphGroupRepository,
-                new MockKeyVaultSecret<ISyncJobTopicService>(),
+                new MockKeyVaultSecret<IJobTriggerService>(),
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>());
 
@@ -250,9 +250,9 @@ namespace Services.Tests
             foreach (var job in _syncJobRepository.Jobs)
             {
                 var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
-                await _syncJobTopicsService.SendEmailAsync(job, groupName);
+                await _jobTriggerService.SendEmailAsync(job, groupName);
             }
-            var jobs = await _syncJobTopicsService.GetSyncJobsAsync();
+            var jobs = await _jobTriggerService.GetSyncJobsAsync();
             Assert.AreEqual(validStartDateJobs, jobs.Count);
         }
 
@@ -262,12 +262,12 @@ namespace Services.Tests
             var _mailRepository = new Mock<IMailRepository>();
             _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
 
-            _syncJobTopicsService = new SyncJobTopicsService(
+            _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
                 _serviceBusTopicsRepository,
                 _graphGroupRepository,
-                new MockKeyVaultSecret<ISyncJobTopicService>(),
+                new MockKeyVaultSecret<IJobTriggerService>(),
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>());
 
@@ -282,9 +282,9 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs)
             {
-                await _syncJobTopicsService.SendEmailAsync(job, "GroupName");
+                await _jobTriggerService.SendEmailAsync(job, "GroupName");
             }
-            var jobs = await _syncJobTopicsService.GetSyncJobsAsync();
+            var jobs = await _jobTriggerService.GetSyncJobsAsync();
             Assert.AreEqual(validStartDateJobs, jobs.Count);
         }
 
@@ -294,12 +294,12 @@ namespace Services.Tests
             var _mailRepository = new Mock<IMailRepository>();
             _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
 
-            _syncJobTopicsService = new SyncJobTopicsService(
+            _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
                 _serviceBusTopicsRepository,
                 _graphGroupRepository,
-                new MockKeyVaultSecret<ISyncJobTopicService>(),
+                new MockKeyVaultSecret<IJobTriggerService>(),
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>());
 
@@ -314,9 +314,9 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs)
             {
-                await _syncJobTopicsService.SendEmailAsync(job, "GroupName");
+                await _jobTriggerService.SendEmailAsync(job, "GroupName");
             }
-            var jobs = await _syncJobTopicsService.GetSyncJobsAsync();
+            var jobs = await _jobTriggerService.GetSyncJobsAsync();
             Assert.AreEqual(validStartDateJobs, jobs.Count);
         }
 

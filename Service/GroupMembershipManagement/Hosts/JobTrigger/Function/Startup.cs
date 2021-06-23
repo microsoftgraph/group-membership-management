@@ -34,7 +34,7 @@ namespace Hosts.JobTrigger
                 settings.TableName = configuration.GetValue<string>("jobsTableName");
             });
 
-            builder.Services.AddSingleton<IKeyVaultSecret<ISyncJobTopicService>>(services => new KeyVaultSecret<ISyncJobTopicService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
+            builder.Services.AddSingleton<IKeyVaultSecret<IJobTriggerService>>(services => new KeyVaultSecret<IJobTriggerService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
            .AddSingleton<IGraphServiceClient>((services) =>
            {
                return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
@@ -48,7 +48,7 @@ namespace Hosts.JobTrigger
              });
 
             builder.Services.AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(GetValueOrThrow("serviceBusConnectionString"), GetValueOrThrow("serviceBusSyncJobTopic")));
-            builder.Services.AddSingleton<ISyncJobTopicService, SyncJobTopicsService>();
+            builder.Services.AddSingleton<IJobTriggerService, JobTriggerService>();
         }
     }
 }

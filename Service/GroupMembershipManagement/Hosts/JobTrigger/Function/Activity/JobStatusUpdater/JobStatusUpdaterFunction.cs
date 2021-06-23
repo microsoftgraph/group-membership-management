@@ -14,11 +14,11 @@ namespace Hosts.JobTrigger
     public class JobStatusUpdaterFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly ISyncJobTopicService _syncJobTopicService = null;
-        public JobStatusUpdaterFunction(ILoggingRepository loggingRepository, ISyncJobTopicService syncJobService)
+        private readonly IJobTriggerService _jobTriggerService = null;
+        public JobStatusUpdaterFunction(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _syncJobTopicService = syncJobService ?? throw new ArgumentNullException(nameof(syncJobService)); ;
+            _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService)); ;
         }
 
         [FunctionName(nameof(JobStatusUpdaterFunction))]
@@ -27,7 +27,7 @@ namespace Hosts.JobTrigger
             if (request.SyncJob != null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId });
-                await _syncJobTopicService.UpdateSyncJobStatusAsync(request.CanWriteToGroup, request.SyncJob);
+                await _jobTriggerService.UpdateSyncJobStatusAsync(request.CanWriteToGroup, request.SyncJob);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId });
 
             }

@@ -14,11 +14,11 @@ namespace Hosts.JobTrigger
     public class EmailSenderFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly ISyncJobTopicService _syncJobTopicService = null;
-        public EmailSenderFunction(ILoggingRepository loggingRepository, ISyncJobTopicService syncJobService)
+        private readonly IJobTriggerService _jobTriggerService = null;
+        public EmailSenderFunction(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _syncJobTopicService = syncJobService ?? throw new ArgumentNullException(nameof(syncJobService)); ;
+            _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService)); ;
         }
 
         [FunctionName(nameof(EmailSenderFunction))]
@@ -27,7 +27,7 @@ namespace Hosts.JobTrigger
             if (group != null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = group.SyncJob.RunId });
-                await _syncJobTopicService.SendEmailAsync(group.SyncJob, group.Name);
+                await _jobTriggerService.SendEmailAsync(group.SyncJob, group.Name);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = group.SyncJob.RunId });
             }
         }

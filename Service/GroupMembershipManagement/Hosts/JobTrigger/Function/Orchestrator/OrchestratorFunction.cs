@@ -14,15 +14,12 @@ namespace Hosts.JobTrigger
 {
     public class OrchestratorFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly ISyncJobTopicService _syncJobTopicService = null;
+        private readonly ILoggingRepository _loggingRepository = null;        
         private readonly IGraphGroupRepository _graphGroupRepository = null;
-        public OrchestratorFunction(ILoggingRepository loggingRepository,
-                                    ISyncJobTopicService syncJobService,
+        public OrchestratorFunction(ILoggingRepository loggingRepository,                                    
                                     IGraphGroupRepository graphGroupRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _syncJobTopicService = syncJobService ?? throw new ArgumentNullException(nameof(syncJobService));
+            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));            
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 

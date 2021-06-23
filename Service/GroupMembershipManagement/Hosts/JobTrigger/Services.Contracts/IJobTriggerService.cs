@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Services.Contracts
 {
-    public interface ISyncJobTopicService
+    public interface IJobTriggerService
     {
         Task<List<SyncJob>> GetSyncJobsAsync();
         Task<string> GetGroupNameAsync(Guid groupId);

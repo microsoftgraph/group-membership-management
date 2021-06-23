@@ -14,11 +14,9 @@ namespace Hosts.JobTrigger
     public class StarterFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly ISyncJobTopicService _syncJobTopicService = null;
-        public StarterFunction(ILoggingRepository loggingRepository, ISyncJobTopicService syncJobService)
+        public StarterFunction(ILoggingRepository loggingRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _syncJobTopicService = syncJobService ?? throw new ArgumentNullException(nameof(syncJobService)); ;
+            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));            
         }
 
         [FunctionName(nameof(StarterFunction))]

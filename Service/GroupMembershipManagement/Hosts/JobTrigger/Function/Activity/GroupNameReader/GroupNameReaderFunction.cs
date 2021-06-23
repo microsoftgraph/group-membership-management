@@ -14,11 +14,11 @@ namespace Hosts.JobTrigger
     public class GroupNameReaderFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly ISyncJobTopicService _syncJobTopicService = null;
-        public GroupNameReaderFunction(ILoggingRepository loggingRepository, ISyncJobTopicService syncJobService)
+        private readonly IJobTriggerService _jobTriggerService = null;
+        public GroupNameReaderFunction(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _syncJobTopicService = syncJobService ?? throw new ArgumentNullException(nameof(syncJobService)); ;
+            _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService)); ;
         }
 
         [FunctionName(nameof(GroupNameReaderFunction))]
@@ -28,7 +28,7 @@ namespace Hosts.JobTrigger
             if (syncJob != null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function started", RunId = syncJob.RunId });
-                var groupName = await _syncJobTopicService.GetGroupNameAsync(syncJob.TargetOfficeGroupId);
+                var groupName = await _jobTriggerService.GetGroupNameAsync(syncJob.TargetOfficeGroupId);
                 group.SyncJob = syncJob;
                 group.Name = groupName;
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function completed", RunId = syncJob.RunId });

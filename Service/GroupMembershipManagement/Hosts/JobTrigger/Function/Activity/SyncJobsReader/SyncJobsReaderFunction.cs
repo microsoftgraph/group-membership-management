@@ -15,17 +15,17 @@ namespace Hosts.JobTrigger
     public class SyncJobsReaderFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly ISyncJobTopicService _syncJobTopicService = null;
-        public SyncJobsReaderFunction(ILoggingRepository loggingRepository, ISyncJobTopicService syncJobService)
+        private readonly IJobTriggerService _jobTriggerService = null;
+        public SyncJobsReaderFunction(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _syncJobTopicService = syncJobService ?? throw new ArgumentNullException(nameof(syncJobService)); ;
+            _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService)); ;
         }
 
         [FunctionName(nameof(SyncJobsReaderFunction))]
         public async Task<List<SyncJob>> GetSyncJobs([ActivityTrigger] ILogger log)        {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SyncJobsReaderFunction)} function started" });
-            var jobs = await _syncJobTopicService.GetSyncJobsAsync();
+            var jobs = await _jobTriggerService.GetSyncJobsAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SyncJobsReaderFunction)} function completed" });
             return jobs;
         }

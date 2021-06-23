@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Services
 {
-    public class SyncJobTopicsService : ISyncJobTopicService
+    public class JobTriggerService : IJobTriggerService
     {
         private const string EmailSubject = "EmailSubject";
         private const string SyncStartedEmailBody = "SyncStartedEmailBody";
@@ -25,12 +25,12 @@ namespace Services
         private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
 
-        public SyncJobTopicsService(
+        public JobTriggerService(
             ILoggingRepository loggingRepository,
             ISyncJobRepository syncJobRepository,
             IServiceBusTopicsRepository serviceBusTopicsRepository,
             IGraphGroupRepository graphGroupRepository,
-            IKeyVaultSecret<ISyncJobTopicService> gmmAppId,
+            IKeyVaultSecret<IJobTriggerService> gmmAppId,
             IMailRepository mailRepository,
             IEmailSenderRecipient emailSenderAndRecipients
             )
