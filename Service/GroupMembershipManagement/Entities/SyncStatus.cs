@@ -10,3 +10,4 @@ namespace Entities
         Error = 3
     }
 }
+

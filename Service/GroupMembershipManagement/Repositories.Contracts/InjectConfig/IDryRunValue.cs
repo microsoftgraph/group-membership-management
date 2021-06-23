@@ -5,7 +5,7 @@ namespace Repositories.Contracts.InjectConfig
 {
     public interface IDryRunValue
     {
-        bool DryRunEnabled { get; }
+        string DryRunEnabled { get; }
 
     }
 }
