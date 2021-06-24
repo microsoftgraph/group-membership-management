@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using Azure.Identity;
 
 namespace Hosts.FunctionBase
 {
@@ -67,17 +68,26 @@ namespace Hosts.FunctionBase
                                                     FunctionAppDI.CreateMailAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value)),
                                                     services.GetService<ILocalizationRepository>(),
                                                     services.GetService<ILoggingRepository>()));
+            
+            var configBuilder = new ConfigurationBuilder();
+            configBuilder.AddAzureAppConfiguration(options =>
+            {
+                options.Connect(new System.Uri("https://gmm-appconfiguration-st.azconfig.io"), new DefaultAzureCredential()); //ManagedIdentityCredential
+            });
+            
+            var configurationRoot = configBuilder.Build();
 
             builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
                 settings.TableName = configuration.GetValue<string>("jobsTableName");
+                settings.GlobalDryRun = configurationRoot["Settings:dryRun"];
             });
 
             builder.Services.AddSingleton<ISyncJobRepository>(services =>
             {
                 var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
-                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
+                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>(), creds.Value.GlobalDryRun);
             });
         }
 
