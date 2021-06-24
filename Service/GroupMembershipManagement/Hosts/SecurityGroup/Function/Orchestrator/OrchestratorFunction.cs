@@ -12,7 +12,7 @@ namespace Hosts.SecurityGroup
     public class OrchestratorFunction
     {
         private readonly ILoggingRepository _loggingRepository;
-                public OrchestratorFunction(ILoggingRepository loggingRepository)
+        public OrchestratorFunction(ILoggingRepository loggingRepository)
         {
             _loggingRepository = loggingRepository;
         }

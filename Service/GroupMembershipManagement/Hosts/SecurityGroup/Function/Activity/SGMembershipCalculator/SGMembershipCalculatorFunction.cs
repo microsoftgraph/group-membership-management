@@ -26,6 +26,6 @@ namespace Hosts.SecurityGroup
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SGMembershipCalculatorFunction)} function started", RunId = syncJob.RunId });
 			await _calculator.SendMembershipAsync(syncJob);
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SGMembershipCalculatorFunction)} function completed", RunId = syncJob.RunId });
-					}
+		}
     }
 }
