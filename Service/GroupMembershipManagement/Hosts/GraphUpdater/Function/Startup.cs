@@ -56,7 +56,7 @@ namespace Hosts.GraphUpdater
             .AddSingleton<ISyncJobRepository>(services =>
             {
                 var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
-                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
+                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>(), creds.Value.GlobalDryRun);
             })
             .AddSingleton<SessionMessageCollector>()
             .AddSingleton<IGraphUpdater, GraphUpdaterApplication>()
