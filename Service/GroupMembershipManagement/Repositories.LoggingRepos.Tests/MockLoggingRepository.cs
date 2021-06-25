@@ -20,8 +20,9 @@ namespace Repositories.LoggingRepos.Tests
         public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
         public HttpStatusCode FinalStatusCode { get; set; } = HttpStatusCode.OK;
         public bool PollyPolicySucceeds { get; set; } = false;
+		public bool DryRun { get; set; }
 
-        public async Task LogMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
+		public async Task LogMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
         {
             HttpResponseMessage response = null;
 
