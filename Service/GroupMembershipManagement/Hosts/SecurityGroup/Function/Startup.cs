@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Identity;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
@@ -9,9 +10,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
 using Repositories.ServiceBusQueue;
-using Repositories.SyncJobsRepository;
+using System;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
 [assembly: FunctionsStartup(typeof(Hosts.SecurityGroup.Startup))]
@@ -25,6 +27,14 @@ namespace Hosts.SecurityGroup
         public override void Configure(IFunctionsHostBuilder builder)
         {
             base.Configure(builder);
+
+            var configBuilder = new ConfigurationBuilder();
+            configBuilder.AddAzureAppConfiguration(options =>
+            {
+                options.Connect(new System.Uri("https://gmm-appconfiguration-st.azconfig.io"), new DefaultAzureCredential()); //ManagedIdentityCredential
+            });
+            var configurationRoot = configBuilder.Build();
+            Console.WriteLine(configurationRoot["Settings:dryRun"] ?? "Hello world!");
 
             builder.Services.AddOptions<ServiceBusConfiguration>().Configure<IConfiguration>((settings, configuration) =>
             {
@@ -53,7 +63,16 @@ namespace Hosts.SecurityGroup
                 return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
             })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
-            .AddSingleton<SGMembershipCalculator>();
+            .AddSingleton<SGMembershipCalculator>()
+            .AddSingleton<IDryRunValue>(services =>
+             {
+                 return new DryRunValue(services.GetService<IOptions<DryRunValue>>().Value.DryRunEnabled);
+             });
+
+            builder.Services.AddOptions<DryRunValue>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.DryRunEnabled = bool.Parse(configurationRoot["Settings:dryRun"]);
+            });
         }
 
         private class ServiceBusConfiguration

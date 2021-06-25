@@ -17,6 +17,8 @@ namespace Entities.ServiceBus
 		public string SyncJobRowKey { get; set; }
 		public string SyncJobPartitionKey { get; set; }
 
+		public bool SyncDryRun { get; set; }
+
 		/// <summary>
 		/// Don't worry about setting this yourself, this is for Split and the serializer to set.
 		/// </summary>
@@ -30,7 +32,7 @@ namespace Entities.ServiceBus
 		{
 			var toReturn = ChunksOfSize(SourceMembers, perChunk).
 				Select(x => new GroupMembership { Destination = Destination, SyncJobPartitionKey = SyncJobPartitionKey, SyncJobRowKey = SyncJobRowKey,
-					SourceMembers = x, RunId = RunId, IsLastMessage = false }).ToArray();
+					SourceMembers = x, RunId = RunId, SyncDryRun = SyncDryRun, IsLastMessage = false }).ToArray();
 			toReturn.Last().IsLastMessage = true;
 			return toReturn;
 		}
