@@ -15,8 +15,9 @@ namespace Repositories.Mocks
         public int MessagesLoggedCount => MessagesLogged.Count;
 
         public Dictionary<string, string> SyncJobProperties { get; set; }
+		public bool DryRun { get; set; }
 
-        public Task LogMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
+		public Task LogMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
         {
             MessagesLogged.Add(logMessage);
             return Task.CompletedTask;
