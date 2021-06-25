@@ -80,7 +80,7 @@ namespace Services.Tests
             var loggingRepository = new MockLoggingRepository();
             var mailRepository = new MockMailRepository();
             var dryRun = new DryRunValue();
-            dryRun.DryRunEnabled = "Off";
+            dryRun.DryRunEnabled = false;
 
             var graphUpdater = new GraphUpdaterApplication(
                                      calculator,

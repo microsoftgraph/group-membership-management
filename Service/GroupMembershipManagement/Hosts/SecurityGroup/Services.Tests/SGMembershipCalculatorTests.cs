@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using DIConcreteTypes;
 using Entities;
 using Entities.ServiceBus;
 using Hosts.SecurityGroup;
@@ -47,8 +48,9 @@ namespace Tests.FunctionApps
 			var mail = new MockMailRepository();
 			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
 			var syncJobs = new MockSyncJobRepository();
+			var dryRun = new DryRunValue() { DryRunEnabled = false };
 
-			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
 			var testJob = new SyncJob
 			{
@@ -108,8 +110,9 @@ namespace Tests.FunctionApps
 			var mail = new MockMailRepository();
 			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
 			var syncJobs = new MockSyncJobRepository();
+			var dryRun = new DryRunValue() { DryRunEnabled = false };
 
-			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
 			var testJob = new SyncJob
 			{
@@ -230,8 +233,9 @@ namespace Tests.FunctionApps
 			var mail = new MockMailRepository();
 			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
 			var syncJobs = new MockSyncJobRepository();
+			var dryRun = new DryRunValue() { DryRunEnabled = false };
 
-			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
 			var testJob = new SyncJob
 			{
@@ -287,8 +291,9 @@ namespace Tests.FunctionApps
 			var mail = new MockMailRepository();
 			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
 			var syncJobs = new MockSyncJobRepository();
+			var dryRun = new DryRunValue() { DryRunEnabled = false };
 
-			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
 			var testJob = new SyncJob
 			{
@@ -343,8 +348,9 @@ namespace Tests.FunctionApps
 			var mail = new MockMailRepository();
 			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
 			var syncJobs = new MockSyncJobRepository();
+			var dryRun = new DryRunValue() { DryRunEnabled = false };
 
-			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
 			Guid nonexistentGroupId = Guid.NewGuid();
 			var testJob = new SyncJob
@@ -402,8 +408,9 @@ namespace Tests.FunctionApps
 			var mail = new MockMailRepository();
 			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
 			var syncJobs = new MockSyncJobRepository();
+			var dryRun = new DryRunValue() { DryRunEnabled = false };
 
-			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
 			var testJob = new SyncJob
 			{
@@ -443,8 +450,9 @@ namespace Tests.FunctionApps
 			var mail = new MockMailRepository();
 			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
 			var syncJobs = new MockSyncJobRepository();
+			var dryRun = new DryRunValue() { DryRunEnabled = false };
 
-			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
 			var testJob = new SyncJob
 			{
@@ -502,8 +510,9 @@ namespace Tests.FunctionApps
 			var mail = new MockMailRepository();
 			var mailAddresses = new MockEmail<IEmailSenderRecipient>();
 			var syncJobs = new MockSyncJobRepository();
+			var dryRun = new DryRunValue() { DryRunEnabled = false };
 
-			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
+			var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
 			var testJob = new SyncJob
 			{

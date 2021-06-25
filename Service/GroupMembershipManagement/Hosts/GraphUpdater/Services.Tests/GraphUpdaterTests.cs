@@ -183,7 +183,7 @@ namespace Services.Tests
 
 		private class MockDryRun<T> : IDryRunValue
 		{
-			public string DryRunEnabled => "Off";
+			public bool DryRunEnabled => false;
 		}
 
 		public GroupMembershipMessage[] MakeMembershipMessages()
