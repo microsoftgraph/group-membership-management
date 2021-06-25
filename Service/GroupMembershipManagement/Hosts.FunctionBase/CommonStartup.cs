@@ -81,13 +81,12 @@ namespace Hosts.FunctionBase
             {
                 settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
                 settings.TableName = configuration.GetValue<string>("jobsTableName");
-                settings.GlobalDryRun = configurationRoot["Settings:dryRun"];
             });
 
             builder.Services.AddSingleton<ISyncJobRepository>(services =>
             {
                 var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
-                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>(), creds.Value.GlobalDryRun);
+                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
             });
         }
 

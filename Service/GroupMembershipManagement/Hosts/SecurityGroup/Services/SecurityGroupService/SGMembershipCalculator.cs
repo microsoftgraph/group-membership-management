@@ -141,7 +141,7 @@ namespace Hosts.SecurityGroup
 						RunId = runId,
 						SyncJobRowKey = syncJob.RowKey,
 						SyncJobPartitionKey = syncJob.PartitionKey,
-						SyncDryRun = (_isSecurityGroupDryRunEnabled ? true:false),
+						SyncDryRun = _isSecurityGroupDryRunEnabled ? true:false,
 					});
 				}
 				else

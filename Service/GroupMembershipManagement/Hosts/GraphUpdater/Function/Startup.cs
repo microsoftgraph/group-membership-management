@@ -44,7 +44,7 @@ namespace Hosts.GraphUpdater
             {
                 settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
                 settings.TableName = configuration.GetValue<string>("jobsTableName");
-                settings.GlobalDryRun = configurationRoot["Settings:dryRun"];
+                settings.GraphUpdaterDryRun = bool.TryParse(configurationRoot["Settings:dryRun"], out bool value);
             });
 
             builder.Services.AddSingleton<IMembershipDifferenceCalculator<AzureADUser>, MembershipDifferenceCalculator<AzureADUser>>()
@@ -56,7 +56,7 @@ namespace Hosts.GraphUpdater
             .AddSingleton<ISyncJobRepository>(services =>
             {
                 var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
-                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>(), creds.Value.GlobalDryRun);
+                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
             })
             .AddSingleton<SessionMessageCollector>()
             .AddSingleton<IGraphUpdater, GraphUpdaterApplication>()
@@ -67,7 +67,7 @@ namespace Hosts.GraphUpdater
 
 			builder.Services.AddOptions<DryRunValue>().Configure<IConfiguration>((settings, configuration) =>
 			{
-                settings.DryRunEnabled = configurationRoot["Settings:dryRun"];
+                settings.DryRunEnabled = bool.TryParse(configurationRoot["Settings:dryRun"], out bool value);
             });
         }
     }

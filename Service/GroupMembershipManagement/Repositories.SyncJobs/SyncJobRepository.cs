@@ -17,16 +17,14 @@ namespace Repositories.SyncJobsRepository
         private readonly CloudTableClient _tableClient = null;
         private readonly string _syncJobsTableName = null;
         private readonly ILoggingRepository _log;
-        private readonly string _globalDryRun = null;
 
-        public SyncJobRepository(string connectionString, string syncJobTableName, ILoggingRepository logger, string globalDryRun)
+        public SyncJobRepository(string connectionString, string syncJobTableName, ILoggingRepository logger)
         {
             _syncJobsTableName = syncJobTableName;
             _log = logger;
             _cloudStorageAccount = CreateStorageAccountFromConnectionString(connectionString);
             _tableClient = _cloudStorageAccount.CreateCloudTableClient(new TableClientConfiguration());
             _tableClient.GetTableReference(syncJobTableName).CreateIfNotExists();
-            _globalDryRun = globalDryRun;
         }
 
         public async Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey)
@@ -55,23 +53,6 @@ namespace Repositories.SyncJobsRepository
             if (!includeDisabled)
             {
                 linqQuery = linqQuery.Where(x => x.Enabled);
-            }
-
-            await _log.LogMessageAsync(new LogMessage { Message = $"DryRun Global value is: {_globalDryRun}" });
-
-            if (_globalDryRun == GlobalDryRun.AllSecurityGroupsJobs.ToString())
-            {
-                linqQuery = linqQuery.Where(x => x.Type == "SecurityGroup" && x.DryRun == true);
-            }
-
-            if (_globalDryRun == GlobalDryRun.AllOneCatalogJobs.ToString())
-            {
-                linqQuery = linqQuery.Where(x => x.Type == "OneCatalog" && x.DryRun == true);
-            }
-
-            if (_globalDryRun == GlobalDryRun.IndividualJobsWithDryRunEnabled.ToString())
-            {
-                linqQuery = linqQuery.Where(x => x.DryRun == true);
             }
 
             TableContinuationToken continuationToken = null;
@@ -149,10 +130,7 @@ namespace Repositories.SyncJobsRepository
 
         private IEnumerable<SyncJob> ApplyFilters(IEnumerable<SyncJob> jobs)
         {
-            if (_globalDryRun != GlobalDryRun.Off.ToString())
-                return jobs.Where(x => (DateTime.UtcNow - x.DryRunTimeStamp) > TimeSpan.FromHours(x.Period));
-            else
-                return jobs.Where(x => (DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period));
+            return jobs.Where(x => (DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period));
         }
 
         private CloudStorageAccount CreateStorageAccountFromConnectionString(string storageConnectionString)

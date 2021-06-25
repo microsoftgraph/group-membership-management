@@ -43,10 +43,6 @@ namespace Hosts.JobTrigger
             {
                 options.Connect(new System.Uri("https://gmm-appconfiguration-st.azconfig.io"), new DefaultAzureCredential()); //ManagedIdentityCredential
             });
-            //builder.Services.AddAzureAppConfiguration(options =>
-            //{
-            //    options.Connect(new System.Uri("https://gmm-appconfiguration-st.azconfig.io"), new ManagedIdentityCredential());
-            //});
             var configurationRoot = configBuilder.Build();
             Console.WriteLine(configurationRoot["Settings:dryRun"] ?? "Hello world!");
 
@@ -54,20 +50,19 @@ namespace Hosts.JobTrigger
             {
                 settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
                 settings.TableName = configuration.GetValue<string>("jobsTableName");
-                settings.GlobalDryRun = configurationRoot["Settings:dryRun"];
             });
 
-            builder.Services.AddSingleton<IKeyVaultSecret<IJobTriggerService>>(services => new KeyVaultSecret<IJobTriggerService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
-           .AddSingleton<IGraphServiceClient>((services) =>
-           {
-               return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
-           })
+            builder.Services.AddSingleton<IKeyVaultSecret<ISyncJobTopicService>>(services => new KeyVaultSecret<ISyncJobTopicService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
+            .AddSingleton<IGraphServiceClient>((services) =>
+            {
+                return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
+            })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>();
 
             builder.Services.AddSingleton<ISyncJobRepository>(services =>
              {
                  var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
-                 return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>(), creds.Value.GlobalDryRun);
+                 return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
              });
 
             builder.Services.AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(GetValueOrThrow("serviceBusConnectionString"), GetValueOrThrow("serviceBusSyncJobTopic")));
