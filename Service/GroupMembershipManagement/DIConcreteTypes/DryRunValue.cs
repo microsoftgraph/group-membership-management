@@ -6,9 +6,9 @@ namespace DIConcreteTypes
 {
     public class DryRunValue : IDryRunValue
     {
-        public string DryRunEnabled { get; set; }
+        public bool DryRunEnabled { get; set; }
 
-        public DryRunValue(string dryRunEnabled)
+        public DryRunValue(bool dryRunEnabled)
         {
             this.DryRunEnabled = dryRunEnabled;
         }
