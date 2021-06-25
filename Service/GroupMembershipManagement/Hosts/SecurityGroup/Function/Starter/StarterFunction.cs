@@ -14,11 +14,11 @@ namespace Hosts.SecurityGroup
 {
     public class StarterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILoggingRepository _log;
 
         public StarterFunction(ILoggingRepository loggingRepository)
         {
-            _loggingRepository = loggingRepository;
+            _log = loggingRepository;
         }
 
         [FunctionName(nameof(StarterFunction))]
@@ -27,10 +27,10 @@ namespace Hosts.SecurityGroup
                               ILogger log)
         {
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));
-            _loggingRepository.SyncJobProperties = syncJob.ToDictionary();
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = syncJob.RunId });
+            _log.SyncJobProperties = syncJob.ToDictionary();
+            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = syncJob.RunId });
             await starter.StartNewAsync(nameof(OrchestratorFunction), syncJob);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = syncJob.RunId });
+            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = syncJob.RunId });
         }
     }
 }

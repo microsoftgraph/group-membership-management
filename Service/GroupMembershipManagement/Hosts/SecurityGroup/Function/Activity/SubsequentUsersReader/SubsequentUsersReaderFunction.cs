@@ -1,0 +1,34 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+using Entities;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Extensions.Logging;
+using Microsoft.Graph;
+using Repositories.Contracts;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+namespace Hosts.SecurityGroup
+{
+    public class SubsequentUsersReaderFunction
+    {
+		private readonly ILoggingRepository _log;
+		private readonly SGMembershipCalculator _calculator;
+
+		public SubsequentUsersReaderFunction(ILoggingRepository loggingRepository, SGMembershipCalculator calculator)
+		{
+			_log = loggingRepository;
+			_calculator = calculator;
+		}
+
+		[FunctionName(nameof(SubsequentUsersReaderFunction))]
+		public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetUsers([ActivityTrigger] SubsequentUsersReaderRequest request, ILogger log)
+		{
+			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentUsersReaderFunction)} function started", RunId = request.RunId });
+			var response = await _calculator.GetNextUsersPageAsync(request.NextPageUrl, request.GroupMembersPage);
+			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentUsersReaderFunction)} function completed", RunId = request.RunId });
+			return response;
+		}
+	}
+}

@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Entities;
 using Entities.ServiceBus;
+using Microsoft.Graph;
 using Polly;
 using Polly.Retry;
 using Repositories.Contracts;
@@ -18,35 +19,39 @@ namespace Hosts.SecurityGroup
 	{
 		private readonly IGraphGroupRepository _graphGroupRepository;
 		private readonly IMembershipServiceBusRepository _membershipServiceBus;
+		private readonly ILoggingRepository _log;
 		private readonly IMailRepository _mail;
 		private readonly IEmailSenderRecipient _emailSenderAndRecipients;
 		private readonly ISyncJobRepository _syncJob;
-		private readonly ILoggingRepository _log;
 
-		private const string EmailSubject = "EmailSubject";
-		private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
-		private const string SyncDisabledNoValidGroupIds = "SyncDisabledNoValidGroupIds";
-
-
-		public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository, IMembershipServiceBusRepository membershipServiceBus, 
-			IMailRepository mail, IEmailSenderRecipient emailSenderAndRecipients, ISyncJobRepository syncJob, ILoggingRepository logging)
+		public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository,
+									  IMembershipServiceBusRepository membershipServiceBus,
+									  IMailRepository mail,
+									  IEmailSenderRecipient emailSenderAndRecipients,
+									  ISyncJobRepository syncJob,
+									  ILoggingRepository logging)
 		{
 			_graphGroupRepository = graphGroupRepository;
 			_membershipServiceBus = membershipServiceBus;
-			_mail = mail;
-			_emailSenderAndRecipients = emailSenderAndRecipients;
-			_syncJob = syncJob;
 			_log = logging;
+			_mail = mail;
+			_syncJob = syncJob;
+			_emailSenderAndRecipients = emailSenderAndRecipients;
 		}
 
 		private const int NumberOfGraphRetries = 5;
 		private AsyncRetryPolicy _graphRetryPolicy;
-		public async Task SendMembershipAsync(SyncJob syncJob)
-		{
-			_log.SyncJobProperties = syncJob.ToDictionary();
-			var runId = syncJob.RunId.GetValueOrDefault(Guid.NewGuid());
-			_graphGroupRepository.RunId = runId;
+		private const string EmailSubject = "EmailSubject";
 
+		public AzureADGroup[] ReadSourceGroups(SyncJob syncJob)
+		{
+			return syncJob.Query.Split(';').Select(x => Guid.TryParse(x, out var parsed) ? parsed : Guid.Empty)
+										   .Where(x => x != Guid.Empty)
+										   .Select(x => new AzureADGroup { ObjectId = x }).ToArray();
+		}
+
+		public async Task<PolicyResult<bool>> GroupExistsAsync(Guid objectId, Guid runId)
+		{
 			// make this fresh every time because the lambda has to capture the run ID
 			_graphRetryPolicy = Policy.Handle<SocketException>().WaitAndRetryAsync(NumberOfGraphRetries, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
 				   onRetry: async (ex, count) =>
@@ -58,164 +63,57 @@ namespace Hosts.SecurityGroup
 					   });
 				   });
 
+			return await _graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(objectId));
+		}
 
-			var sourceGroups = syncJob.Query.Split(';').Select(x => Guid.TryParse(x, out var parsed) ? parsed : Guid.Empty)
-				.Where(x => x != Guid.Empty)
-				.Select(x => new AzureADGroup { ObjectId = x }).ToArray();
+		public async Task<(List<AzureADUser> users,
+						   Dictionary<string, int> nonUserGraphObjects,
+						   string nextPageUrl,
+						   IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetFirstUsersPageAsync(Guid objectId, Guid runId)
+		{
+			await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {objectId}." });
+			var result = await _graphGroupRepository.GetFirstUsersPageAsync(objectId);
+			return result;
+		}
 
-			await _log.LogMessageAsync(new LogMessage
+		public async Task<(List<AzureADUser> users,
+						   Dictionary<string, int> nonUserGraphObjects,
+						   string nextPageUrl,
+						   IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetNextUsersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)
+		{
+			var result = await _graphGroupRepository.GetNextUsersPageAsync(nextPageUrl, usersFromGroup);
+			return result;
+		}
+
+		public async Task SendMembershipAsync(SyncJob syncJob, Guid runId, List<AzureADUser> allusers)
+		{
+			await _membershipServiceBus.SendMembership(new GroupMembership
 			{
+				SourceMembers = allusers ?? new List<AzureADUser>(),
+				Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
 				RunId = runId,
-				Message =
-				$"Reading source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
-			});
-
-
-			List<AzureADUser> allusers = null;
-			try
-			{
-				if (sourceGroups.Length == 0)
-				{
-					await _log.LogMessageAsync(new LogMessage
-					{
-						RunId = runId,
-						Message =
-						$"None of the source groups in {syncJob.Query} were valid guids. Marking job as errored."
-					});
-
-					await _mail.SendMailAsync(new EmailMessage
-					{
-						Subject = EmailSubject,
-						Content = SyncDisabledNoValidGroupIds,
-						SenderAddress = _emailSenderAndRecipients.SenderAddress,
-						SenderPassword = _emailSenderAndRecipients.SenderPassword,
-						ToEmailAddresses = syncJob.Requestor,
-						CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
-						AdditionalContentParams = new[] { syncJob.Query }
-					}, runId);
-				}
-				else
-				{
-					allusers = await GetUsersForEachGroup(sourceGroups, syncJob.Requestor, runId);
-				}
-			}
-			catch (Exception ex)
-			{
-				await _log.LogMessageAsync(new LogMessage
-				{
-					Message = "Caught unexpected exception, marking sync job as errored. Exception:\n" + ex,
-					RunId = runId
-				});
-				allusers = null;
-
-				// make sure this gets thrown to where App Insights will handle it
-				throw;
-			}
-			finally
-			{
-				if (allusers != null)
-				{
-					await _log.LogMessageAsync(new LogMessage
-					{
-						RunId = runId,
-						Message =
-						$"Read {allusers.Count} users from source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
-					});
-
-					await _membershipServiceBus.SendMembership(new GroupMembership
-					{
-						SourceMembers = allusers ?? new List<AzureADUser>(),
-						Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
-						RunId = runId,
-						SyncJobRowKey = syncJob.RowKey,
-						SyncJobPartitionKey = syncJob.PartitionKey,
-					});
-				}
-				else
-				{
-					await _syncJob.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Error);
-				}
-
-			}
-
-			await _log.LogMessageAsync(new LogMessage
-			{
-				RunId = runId,
-				Message = allusers != null ?
-				$"Successfully sent {allusers.Count} users from source groups {syncJob.Query} to GraphUpdater to be put into the destination group {syncJob.TargetOfficeGroupId}." :
-				$"Sync job errored out trying to read from source groups {syncJob.Query}."
+				SyncJobRowKey = syncJob.RowKey,
+				SyncJobPartitionKey = syncJob.PartitionKey
 			});
 		}
 
-		private async Task<List<AzureADUser>> GetUsersInGroupWithRetryAsync(AzureADGroup group, Guid runId)
+		public async Task SendEmailAsync(SyncJob job, Guid runId, string content, string[] additionalContentParams)
 		{
-			var result = await _graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GetUsersInGroupTransitively(group.ObjectId));
-
-			if (result.Outcome == OutcomeType.Failure)
+			await _mail.SendMailAsync(new EmailMessage
 			{
-				await _log.LogMessageAsync(new LogMessage
-				{
-					Message = $"GetUsersInGroupTransitively() failed after {NumberOfGraphRetries} attempts. Marking job as errored.",
-					RunId = runId
-				});
-
-				// throw captured exception so it bubbles up to app insights
-				if (result.FinalException != null) { throw result.FinalException; }
-				return null;
-			}
-
-			return result.Result;
+				Subject = EmailSubject,
+				Content = content,
+				SenderAddress = _emailSenderAndRecipients.SenderAddress,
+				SenderPassword = _emailSenderAndRecipients.SenderPassword,
+				ToEmailAddresses = job.Requestor,
+				CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
+				AdditionalContentParams = additionalContentParams
+			}, runId);
 		}
 
-
-		private async Task<List<AzureADUser>> GetUsersForEachGroup(IEnumerable<AzureADGroup> groups, string jobRequestor, Guid runId)
+		public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status)
 		{
-			if (!groups.Any()) { return null; }
-
-			var toReturn = new List<AzureADUser>();
-
-			foreach (var group in groups)
-			{
-				var groupExistsResult = await _graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(group.ObjectId));
-				if (groupExistsResult.Outcome == OutcomeType.Successful && groupExistsResult.Result)
-				{
-					await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {group.ObjectId}." });
-					var users = await GetUsersInGroupWithRetryAsync(group, runId);
-					if (users == null) { return null; }
-					var newUsers = users.Except(toReturn).ToArray();
-					await _log.LogMessageAsync(new LogMessage
-					{
-						RunId = runId,
-						Message = $"Got {users.Count} users from the group with ID {group.ObjectId}. " +
-						$"The group contains {users.Count - newUsers.Length} users who have already been read from earlier groups."
-					});
-					toReturn.AddRange(newUsers);
-				}
-				else
-				{
-					if (groupExistsResult.Outcome == OutcomeType.Successful)
-					{
-						await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Group with ID {group.ObjectId} doesn't exist. Stopping sync and marking as error." });
-						await _mail.SendMailAsync(new EmailMessage
-						{
-							Subject = EmailSubject,
-							Content = SyncDisabledNoGroupEmailBody,
-							SenderAddress = _emailSenderAndRecipients.SenderAddress,
-							SenderPassword = _emailSenderAndRecipients.SenderPassword,
-							ToEmailAddresses = jobRequestor,
-							CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
-							AdditionalContentParams = new[] { group.ObjectId.ToString() }
-						}, runId);
-					}
-					else if (groupExistsResult.FaultType == FaultType.ExceptionHandledByThisPolicy)
-						await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Exceeded {NumberOfGraphRetries} while trying to determine if a group exists. Stopping sync and marking as error." });
-
-					if (groupExistsResult.FinalException != null) { throw groupExistsResult.FinalException; }
-					return null;
-				}
-			}
-
-			return toReturn;
+			await _syncJob.UpdateSyncJobStatusAsync(new[] { job }, status);
 		}
 	}
 }

@@ -29,6 +29,7 @@ namespace Repositories.GraphGroups
         }
 
         private const int MaxRetries = 10;
+        private const int MaxResultCount = 999;
 
         public async Task<bool> GroupExists(Guid objectId)
         {
@@ -140,6 +141,68 @@ namespace Repositories.GraphGroups
 
                 throw;
             }
+        }
+
+        /// <summary>
+        /// get group members page by id.
+        /// </summary>
+        /// <param name="groupId">group id.</param>
+        /// <returns>group members page.</returns>
+        public async Task<IGroupTransitiveMembersCollectionWithReferencesPage> GetGroupMembersPageByIdAsync(string groupId)
+        {
+            return await _graphServiceClient
+                                    .Groups[groupId]
+                                    .TransitiveMembers
+                                    .Request()
+                                    .Top(MaxResultCount)
+                                    .WithMaxRetry(MaxRetries)
+                                    .GetAsync();
+        }
+
+        /// <summary>
+        /// get group members page by next page url.
+        /// </summary>
+        /// <param name="groupMembersRef">group members page reference.</param>
+        /// <param name="nextPageUrl">group members next page data link url.</param>
+        /// <returns>group members page.</returns>
+        public async Task<IGroupTransitiveMembersCollectionWithReferencesPage> GetGroupMembersNextPageAsnyc(
+            IGroupTransitiveMembersCollectionWithReferencesPage groupMembersRef,
+            string nextPageUrl)
+        {
+            groupMembersRef.InitializeNextPageRequest(_graphServiceClient, nextPageUrl);
+            return await groupMembersRef
+                .NextPageRequest
+                .GetAsync();
+        }
+
+        public async Task<(List<AzureADUser> users,
+                           Dictionary<string, int> nonUserGraphObjects,
+                           string nextPageUrl,
+                           IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetFirstUsersPageAsync(Guid objectId)
+        {
+            var users = new List<AzureADUser>();
+            var nonUserGraphObjects = new Dictionary<string, int>();
+
+            var usersFromGroup = await GetGroupMembersPageByIdAsync(objectId.ToString());
+            usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
+            var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
+            users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
+            return (users, nonUserGraphObjects, nextPageUrl, usersFromGroup);
+        }
+
+        public async Task<(List<AzureADUser> users,
+                           Dictionary<string, int> nonUserGraphObjects,
+                           string nextPageUrl,
+                           IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetNextUsersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)
+        {
+            var users = new List<AzureADUser>();
+            var nonUserGraphObjects = new Dictionary<string, int>();
+
+            usersFromGroup = await GetGroupMembersNextPageAsnyc(usersFromGroup, nextPageUrl);
+            usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink2);
+            nextPageUrl = (nextLink2 == null) ? string.Empty : nextLink2.ToString();
+            users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
+            return (users, nonUserGraphObjects, nextPageUrl, usersFromGroup);
         }
 
         public async Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid objectId)
