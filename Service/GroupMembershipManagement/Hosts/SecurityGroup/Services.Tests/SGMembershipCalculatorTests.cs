@@ -3,7 +3,9 @@
 using Entities;
 using Entities.ServiceBus;
 using Hosts.SecurityGroup;
+using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.Mocks;
@@ -29,6 +31,7 @@ namespace Tests.FunctionApps
 		public async Task ProperlyGetsAndSendsMembership(int getGroupExceptions, int getMembersExceptions)
 		{
 			const int userCount = 2500213;
+			var allUsers = new List<AzureADUser> { };
 			Guid sourceGroup = Guid.NewGuid();
 			Guid destinationGroup = Guid.NewGuid();
 			var initialUsers = Enumerable.Range(0, userCount).Select(
@@ -58,12 +61,14 @@ namespace Tests.FunctionApps
 
 			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
 
-			await calc.SendMembershipAsync(testJob);
-
-			CollectionAssert.AreEqual(initialUsers, serviceBus.Sent.SourceMembers);
-			Assert.AreEqual(destinationGroup, serviceBus.Sent.Destination.ObjectId);
-			Assert.AreEqual(0, mail.SentEmails.Count);
-			Assert.AreEqual("InProgress", testJob.Status);
+			var groups = calc.ReadSourceGroups(testJob);
+			await calc.SendMembershipAsync(testJob, Guid.NewGuid(), allUsers);
+			foreach (var group in groups)
+			{
+				var groupExistsResult = await calc.GroupExistsAsync(group.ObjectId, Guid.NewGuid());
+				Assert.AreEqual(OutcomeType.Successful, groupExistsResult.Outcome);
+				Assert.AreEqual(true, groupExistsResult.Result);
+			}
 		}
 
 		[TestMethod]
@@ -76,6 +81,7 @@ namespace Tests.FunctionApps
 			const int userCount = 2500213;
 			Guid[] sourceGroups = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray();
 			Guid destinationGroup = Guid.NewGuid();
+			var allUsers = new List<AzureADUser> {};
 
 			var mockGroups = new Dictionary<Guid, List<AzureADUser>>();
 			for (int i = 0; i < userCount; i++)
@@ -116,12 +122,77 @@ namespace Tests.FunctionApps
 
 			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
 
-			await calc.SendMembershipAsync(testJob);
+			var groups = calc.ReadSourceGroups(testJob);
+			await calc.SendMembershipAsync(testJob, Guid.NewGuid(), allUsers);
 
-			CollectionAssert.AreEquivalent(mockGroups.Values.SelectMany(x => x).ToArray(), serviceBus.Sent.SourceMembers);
-			Assert.AreEqual(destinationGroup, serviceBus.Sent.Destination.ObjectId);
-			Assert.AreEqual(0, mail.SentEmails.Count);
-			Assert.AreEqual("InProgress", testJob.Status);
+			foreach (var group in groups)
+			{
+				var groupExistsResult = await calc.GroupExistsAsync(group.ObjectId, Guid.NewGuid());
+				Assert.AreEqual(OutcomeType.Successful, groupExistsResult.Outcome);
+				Assert.AreEqual(true, groupExistsResult.Result);
+			}
+		}
+
+		[TestMethod]
+		[DataRow(0, 0)]
+		[DataRow(3, 0)]
+		[DataRow(0, 3)]
+		[DataRow(3, 3)]
+		public async Task ProperlyGetsMembersFromPages(int getGroupExceptions, int getMembersExceptions)
+		{
+            const int userCount = 2500213;
+            Guid[] sourceGroups = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray();
+			Guid destinationGroup = Guid.NewGuid();
+			var mockGroups = new Dictionary<Guid, List<AzureADUser>>();
+            for (int i = 0; i < userCount; i++)
+            {
+                var currentGroup = sourceGroups[i % sourceGroups.Length];
+                var userToAdd = new AzureADUser { ObjectId = Guid.NewGuid() };
+                if (mockGroups.TryGetValue(currentGroup, out var users))
+                {
+                    users.Add(userToAdd);
+                }
+                else
+                {
+                    mockGroups.Add(currentGroup, new List<AzureADUser> { userToAdd });
+                }
+            }
+
+            var graphRepo = new MockGraphGroupRepository()
+            {
+                GroupsToUsers = mockGroups,
+                ThrowSocketExceptionsFromGroupExistsBeforeSuccess = getGroupExceptions,
+                ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
+            };
+
+            var serviceBus = new MockMembershipServiceBusRepository();
+            var mail = new MockMailRepository();
+            var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+            var syncJobs = new MockSyncJobRepository();
+
+            var calc = new SGMembershipCalculator(graphRepo, serviceBus, mail, mailAddresses, syncJobs, new MockLoggingRepository());
+
+            var testJob = new SyncJob
+            {
+                RowKey = "row",
+                PartitionKey = "partition",
+                TargetOfficeGroupId = destinationGroup,
+                Query = string.Join(';', sourceGroups),
+                Status = "InProgress"
+            };
+
+            syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+            var groups = calc.ReadSourceGroups(testJob);
+			foreach (var group in groups)
+			{
+				var groupExistsResult = await calc.GroupExistsAsync(group.ObjectId, Guid.NewGuid());
+				var response = await calc.GetFirstUsersPageAsync(group.ObjectId, Guid.NewGuid());
+				Assert.IsNotNull(response.nextPageUrl);
+				response = await calc.GetNextUsersPageAsync("nextPageLink", response.usersFromGroup);
+				Assert.AreEqual("", response.nextPageUrl);
+				Assert.AreEqual(OutcomeType.Successful, groupExistsResult.Outcome);
+				Assert.AreEqual(true, groupExistsResult.Result);
+			}
 		}
 
 		[TestMethod]
@@ -172,12 +243,13 @@ namespace Tests.FunctionApps
 			};
 
 			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
-
-			await Assert.ThrowsExceptionAsync<SocketException>(() => calc.SendMembershipAsync(testJob));
+			var groups = calc.ReadSourceGroups(testJob);
+			foreach (var group in groups)
+			{
+				await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Content", null);
+			}
 
 			Assert.IsNull(serviceBus.Sent);
-			Assert.AreEqual(0, mail.SentEmails.Count);
-			Assert.AreEqual("Error", testJob.Status);
 		}
 
 		[TestMethod]
@@ -226,14 +298,13 @@ namespace Tests.FunctionApps
 				Query = string.Join(';', sourceGroups),
 				Status = "InProgress"
 			};
-
 			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
-
-		 	await Assert.ThrowsExceptionAsync<MockException>(() => calc.SendMembershipAsync(testJob));
-
+			var groups = calc.ReadSourceGroups(testJob);
+			foreach (var group in groups)
+			{
+				await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Content", null);
+			}
 			Assert.IsNull(serviceBus.Sent);
-			Assert.AreEqual(0, mail.SentEmails.Count);
-			Assert.AreEqual("Error", testJob.Status);
 		}
 
 		[TestMethod]
@@ -287,12 +358,12 @@ namespace Tests.FunctionApps
 
 			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
 
-			await calc.SendMembershipAsync(testJob);
-
+			var groups = calc.ReadSourceGroups(testJob);
+			foreach (var group in groups)
+			{
+				await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Content", null);
+			}
 			Assert.IsNull(serviceBus.Sent);
-			Assert.AreEqual(1, mail.SentEmails.Count);
-			Assert.AreEqual(nonexistentGroupId.ToString(), mail.SentEmails.Single().AdditionalContentParams.Single());
-			Assert.AreEqual("Error", testJob.Status);
 		}
 
 		[TestMethod]
@@ -345,13 +416,13 @@ namespace Tests.FunctionApps
 
 			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
 
-			await calc.SendMembershipAsync(testJob);
-
-			Assert.IsNull(serviceBus.Sent);
-			Assert.AreEqual(1, mail.SentEmails.Count);
-			Assert.AreEqual(testJob.Query, mail.SentEmails.Single().AdditionalContentParams.Single());
-			Assert.AreEqual("Error", testJob.Status);
-		}
+            var groups = calc.ReadSourceGroups(testJob);
+            foreach (var group in groups)
+            {
+                var groupExistsResult = await calc.GroupExistsAsync(group.ObjectId, Guid.NewGuid());
+                Assert.AreEqual(false, groupExistsResult.Result);
+            }
+        }
 
 		[TestMethod]
 		[DataRow(0, 0)]
@@ -362,7 +433,6 @@ namespace Tests.FunctionApps
 		{
 			Guid[] sourceGroups = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToArray();
 			Guid destinationGroup = Guid.NewGuid();
-
 			var graphRepo = new MockGraphGroupRepository()
 			{
 				GroupsToUsers = new Dictionary<Guid, List<AzureADUser>>(),
@@ -387,12 +457,13 @@ namespace Tests.FunctionApps
 
 			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
 
-			await calc.SendMembershipAsync(testJob);
-
+			var groups = calc.ReadSourceGroups(testJob);
+			foreach (var group in groups)
+			{
+				var groupExistsResult = await calc.GroupExistsAsync(group.ObjectId, Guid.NewGuid());
+				Assert.AreEqual(false, groupExistsResult.Result);
+			}
 			Assert.IsNull(serviceBus.Sent);
-			Assert.AreEqual(1, mail.SentEmails.Count);
-			Assert.AreEqual(sourceGroups[0].ToString(), mail.SentEmails.Single().AdditionalContentParams.Single());
-			Assert.AreEqual("Error", testJob.Status);
 		}
 
 		[TestMethod]
@@ -444,11 +515,12 @@ namespace Tests.FunctionApps
 			};
 
 			syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
-
-			await calc.SendMembershipAsync(testJob);
-
-			CollectionAssert.AreEquivalent(mockGroups.Values.SelectMany(x => x).ToArray(), serviceBus.Sent.SourceMembers);
-			Assert.AreEqual(destinationGroup, serviceBus.Sent.Destination.ObjectId);
+			var groups = calc.ReadSourceGroups(testJob);
+			foreach (var group in groups)
+			{
+				await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Content", null);
+			}
+			Assert.IsNull(serviceBus.Sent);
 		}
 	}
 }

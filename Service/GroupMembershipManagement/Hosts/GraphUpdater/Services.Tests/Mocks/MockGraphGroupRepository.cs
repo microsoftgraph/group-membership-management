@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Graph;
 
 namespace Services.Tests.Mocks
 {
@@ -50,6 +51,25 @@ namespace Services.Tests.Mocks
 		{
 			GroupsToUsers[targetGroup.ObjectId].RemoveAll(x => users.Contains(x));
 			return Task.FromResult(ResponseCode.Ok);
+		}
+		public Task<IGroupTransitiveMembersCollectionWithReferencesPage> GetGroupMembersPageByIdAsync(string groupId)
+		{
+			throw new NotImplementedException();
+		}
+
+		public Task<IGroupTransitiveMembersCollectionWithReferencesPage> GetGroupMembersNextPageAsnyc(IGroupTransitiveMembersCollectionWithReferencesPage groupMembersRef, string nextPageUrl)
+		{
+			throw new NotImplementedException();
+		}
+
+		public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetFirstUsersPageAsync(Guid objectId)
+		{
+			throw new NotImplementedException();
+		}
+
+		public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetNextUsersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)
+		{
+			throw new NotImplementedException();
 		}
     }
 }

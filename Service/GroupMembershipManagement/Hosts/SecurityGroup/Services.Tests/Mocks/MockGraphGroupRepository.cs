@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
+using Microsoft.Graph;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
@@ -14,11 +15,14 @@ namespace Tests.FunctionApps.Mocks
 	class MockGraphGroupRepository : IGraphGroupRepository
 	{
 		public Dictionary<Guid, List<AzureADUser>> GroupsToUsers { get; set; }
+		public Dictionary<string, int> nonUserGraphObjects { get; set; }
+		public IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup { get; set; }
 		public int ThrowSocketExceptionsFromGroupExistsBeforeSuccess { get; set; } = 0;
 		public bool ThrowNonSocketExceptionFromGroupExists { get; set; } = false;
 		public int ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess { get; set; } = 0;
 		public bool ThrowNonSocketExceptionFromGetUsersInGroup { get; set; } = false;
 		public Guid RunId { get; set; }
+		IGroupTransitiveMembersCollectionWithReferencesPage UsersFromPage { get; set; }
 
 		public Task<ResponseCode> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
 		{
@@ -66,7 +70,33 @@ namespace Tests.FunctionApps.Mocks
 		{
 			throw new NotImplementedException();
 		}
+
+		public Task<IGroupTransitiveMembersCollectionWithReferencesPage> GetGroupMembersPageByIdAsync(string groupId)
+		{
+			throw new NotImplementedException();
+		}
+
+		public Task<IGroupTransitiveMembersCollectionWithReferencesPage> GetGroupMembersNextPageAsnyc(IGroupTransitiveMembersCollectionWithReferencesPage groupMembersRef, string nextPageUrl)
+		{
+			throw new NotImplementedException();
+		}
+
+		public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetFirstUsersPageAsync(Guid objectId)
+		{
+            var users = new List<AzureADUser>();
+            var nonUserGraphObjects = new Dictionary<string, int>();
+            return Task.FromResult((users, nonUserGraphObjects, "", (IGroupTransitiveMembersCollectionWithReferencesPage)null));
+
+		}
+
+		public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetNextUsersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)
+		{
+            var users = new List<AzureADUser>();
+            var nonUserGraphObjects = new Dictionary<string, int>();
+            return Task.FromResult((users, nonUserGraphObjects, "", (IGroupTransitiveMembersCollectionWithReferencesPage)null));
+		}
 	}
 
 	public class MockException : Exception { }
+
 }
