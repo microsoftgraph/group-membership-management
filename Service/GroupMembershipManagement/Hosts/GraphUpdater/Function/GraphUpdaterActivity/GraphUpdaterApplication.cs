@@ -45,7 +45,7 @@ namespace Hosts.GraphUpdater
             _log = logging;
             _mailRepository = mailRepository;
             _graphGroupRepository = graphGroupRepository;
-            _isDryRunEnabled = dryRun.DryRunEnabled;
+            _isDryRunEnabled = logging.DryRun = dryRun.DryRunEnabled;
         }
 
         public async Task CalculateDifference(GroupMembership membership)
