@@ -3,7 +3,7 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "differenceServiceBusNamespace": "",
-    "graphCredentials:CertificateName" : "",
+    "graphCredentials:CertificateName": "",
     "graphCredentials:ClientId": "",
     "graphCredentials:KeyVaultName": "",
     "graphCredentials:KeyVaultTenantId": "",
@@ -12,6 +12,11 @@
     "logAnalyticsPrimarySharedKey": "",
     "membershipQueueName": "",
     "serviceBusSyncJobTopic": "",
-    "serviceBusTopicConnection": ""   
+    "serviceBusTopicConnection": "",
+    "jobsStorageAccountConnectionString": "",
+    "jobsTableName": "",
+    "senderAddress": "",
+    "senderPassword": "",
+    "syncDisabledCCEmailAddresses": ""
   }
 }
