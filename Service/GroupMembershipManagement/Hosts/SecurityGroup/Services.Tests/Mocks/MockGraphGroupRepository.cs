@@ -5,13 +5,13 @@ using Microsoft.Graph;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Tests.FunctionApps.Mocks
 {
+	[ExcludeFromCodeCoverage]
 	class MockGraphGroupRepository : IGraphGroupRepository
 	{
 		public Dictionary<Guid, List<AzureADUser>> GroupsToUsers { get; set; }

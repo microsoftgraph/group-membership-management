@@ -71,7 +71,7 @@ namespace Hosts.SecurityGroup
 
             builder.Services.AddOptions<DryRunValue>().Configure<IConfiguration>((settings, configuration) =>
             {
-                settings.DryRunEnabled = bool.Parse(configurationRoot["Settings:dryRun"]);
+                settings.DryRunEnabled = bool.Parse(configurationRoot["SecurityGroup:IsSecurityGroupDryRunEnabled"]);
             });
         }
 

@@ -32,8 +32,7 @@ namespace Hosts.SecurityGroup
 
 
 		public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository, IMembershipServiceBusRepository membershipServiceBus, 
-			IMailRepository mail, IEmailSenderRecipient emailSenderAndRecipients, ISyncJobRepository syncJob, ILoggingRepository logging,
-			IDryRunValue dryRun)
+			IMailRepository mail, IEmailSenderRecipient emailSenderAndRecipients, ISyncJobRepository syncJob, ILoggingRepository logging, IDryRunValue dryRun)
 		{
 			_graphGroupRepository = graphGroupRepository;
 			_membershipServiceBus = membershipServiceBus;
@@ -141,7 +140,7 @@ namespace Hosts.SecurityGroup
 						RunId = runId,
 						SyncJobRowKey = syncJob.RowKey,
 						SyncJobPartitionKey = syncJob.PartitionKey,
-						SyncDryRun = _isSecurityGroupDryRunEnabled ? true:false,
+						MembershipObtainerDryRunEnabled = _isSecurityGroupDryRunEnabled ? true:false,
 					});
 				}
 				else

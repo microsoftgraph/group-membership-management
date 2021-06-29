@@ -130,7 +130,9 @@ namespace Repositories.SyncJobsRepository
 
         private IEnumerable<SyncJob> ApplyFilters(IEnumerable<SyncJob> jobs)
         {
-            return jobs.Where(x => (DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period));
+            var allNonDryRunSyncJobs = jobs.Where(x => (((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == false));
+            var allDryRunSyncJobs = jobs.Where(x => (((DateTime.UtcNow - x.DryRunTimeStamp) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == true));
+            return allNonDryRunSyncJobs.Concat(allDryRunSyncJobs);
         }
 
         private CloudStorageAccount CreateStorageAccountFromConnectionString(string storageConnectionString)

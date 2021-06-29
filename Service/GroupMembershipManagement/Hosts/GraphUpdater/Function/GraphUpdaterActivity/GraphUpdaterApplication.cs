@@ -88,7 +88,7 @@ namespace Hosts.GraphUpdater
             await _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo}.", RunId = membership.RunId });
 
             // should only update last run time if its not a dry run
-            if (_isGraphUpdaterDryRunEnabled || membership.SyncDryRun || job.DryRun)
+            if (job.IsDryRunEnabled  || membership.MembershipObtainerDryRunEnabled || _isGraphUpdaterDryRunEnabled)
             {
                 job.DryRunTimeStamp = DateTime.UtcNow;
                 job.LastRunTime = job.LastRunTime;
@@ -103,7 +103,7 @@ namespace Hosts.GraphUpdater
             job.Enabled = changeTo != SyncStatus.Error;
             await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo);
 
-            if (_isGraphUpdaterDryRunEnabled || membership.SyncDryRun || job.DryRun)
+            if (job.IsDryRunEnabled || membership.MembershipObtainerDryRunEnabled || _isGraphUpdaterDryRunEnabled)
                 await _log.LogMessageAsync(new LogMessage { Message = $"Dry Run of a sync {fromto} is complete. Membership will not be updated.", RunId = membership.RunId });
             else
                 await _log.LogMessageAsync(new LogMessage { Message = $"Syncing {fromto} done.", RunId = membership.RunId });
@@ -122,7 +122,7 @@ namespace Hosts.GraphUpdater
                 if (response == SyncStatus.Error)
                     return response;
 
-                if (isInitialSync && !(_isGraphUpdaterDryRunEnabled || membership.SyncDryRun || job.DryRun))
+                if (isInitialSync && !(job.IsDryRunEnabled || membership.MembershipObtainerDryRunEnabled || _isGraphUpdaterDryRunEnabled))
                 {
                     var additonalContent = new[] { groupName, job.TargetOfficeGroupId.ToString(), delta.Delta.ToAdd.Count.ToString(), delta.Delta.ToRemove.Count.ToString() };
                     await SendEmailAsync(job.Requestor, SyncCompletedEmailBody, additonalContent, job.RunId, _emailSenderAndRecipients.SyncCompletedCCAddresses);
@@ -178,7 +178,7 @@ namespace Hosts.GraphUpdater
 
         private async Task<SyncStatus> DoSynchronization(MembershipDelta<AzureADUser> delta, GroupMembership membership, string fromto, SyncJob job)
         {
-            if (_isGraphUpdaterDryRunEnabled || membership.SyncDryRun || job.DryRun) //here check condition if the sync should be run in dry run or normal mode
+            if (job.IsDryRunEnabled || membership.MembershipObtainerDryRunEnabled || _isGraphUpdaterDryRunEnabled) //here check condition if the sync should be run in dry run or normal mode
             {
                 await _log.LogMessageAsync(new LogMessage { Message = $"A Dry Run Synchronization {fromto} is now complete. {delta.ToAdd.Count} users would have been added. {delta.ToRemove.Count} users would have been removed. Marking job as idle.", RunId = membership.RunId });
                 return SyncStatus.Idle;
