@@ -45,12 +45,13 @@ namespace Hosts.GraphUpdater
             _log = logging;
             _mailRepository = mailRepository;
             _graphGroupRepository = graphGroupRepository;
-            _isDryRunEnabled = logging.DryRun = dryRun.DryRunEnabled;
+            _isDryRunEnabled = _log.DryRun = dryRun.DryRunEnabled;
         }
 
         public async Task CalculateDifference(GroupMembership membership)
         {
             _graphGroupRepository.RunId = membership.RunId;
+            _log.DryRun = _isDryRunEnabled;
             _log.SyncJobProperties = new Dictionary<string, string>
             {
                 { "partitionKey", membership.SyncJobPartitionKey },
