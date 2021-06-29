@@ -14,8 +14,6 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
 using Repositories.MembershipDifference;
 using Repositories.SyncJobsRepository;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using System;
 using Azure.Identity;
 
@@ -35,16 +33,15 @@ namespace Hosts.GraphUpdater
             var configBuilder = new ConfigurationBuilder();
             configBuilder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(new System.Uri("https://gmm-appconfiguration-st.azconfig.io"), new DefaultAzureCredential()); //ManagedIdentityCredential
+                options.Connect(new Uri(GetValueOrThrow("appConfigurationEndpoint")), new DefaultAzureCredential());
             });
             var configurationRoot = configBuilder.Build();
-            Console.WriteLine(configurationRoot["Settings:dryRun"] ?? "Hello world!");
 
             builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
                 settings.TableName = configuration.GetValue<string>("jobsTableName");
-                settings.GraphUpdaterDryRun = bool.TryParse(configurationRoot["Settings:dryRun"], out bool value);
+                settings.GraphUpdaterDryRun = bool.TryParse(configurationRoot["GraphUpdater:IsGraphUpdaterDryRunEnabled"], out bool value);
             });
 
             builder.Services.AddSingleton<IMembershipDifferenceCalculator<AzureADUser>, MembershipDifferenceCalculator<AzureADUser>>()
@@ -67,7 +64,7 @@ namespace Hosts.GraphUpdater
 
 			builder.Services.AddOptions<DryRunValue>().Configure<IConfiguration>((settings, configuration) =>
 			{
-                settings.DryRunEnabled = bool.TryParse(configurationRoot["Settings:dryRun"], out bool value);
+                settings.DryRunEnabled = bool.TryParse(configurationRoot["GraphUpdater:IsGraphUpdaterDryRunEnabled"], out bool value);
             });
         }
     }

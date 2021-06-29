@@ -41,10 +41,9 @@ namespace Hosts.JobTrigger
             var configBuilder = new ConfigurationBuilder();
             configBuilder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(new System.Uri("https://gmm-appconfiguration-st.azconfig.io"), new DefaultAzureCredential()); //ManagedIdentityCredential
+                options.Connect(new Uri(GetValueOrThrow("appConfigurationEndpoint")), new DefaultAzureCredential());
             });
             var configurationRoot = configBuilder.Build();
-            Console.WriteLine(configurationRoot["Settings:dryRun"] ?? "Hello world!");
 
             builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {

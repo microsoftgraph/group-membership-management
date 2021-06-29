@@ -78,7 +78,7 @@ namespace Entities
         /// Threshold percentage for users being removed
         /// </summary>
         [IgnoreLogging]
-        public bool DryRun { get; set; }
+        public bool IsDryRunEnabled { get; set; }
 
         /// <summary>
         /// Threshold percentage for users being removed

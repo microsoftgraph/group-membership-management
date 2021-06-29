@@ -21,7 +21,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\DIConcreteTypes\DIConcreteTypes.csproj" />
     <ProjectReference Include="..\..\..\Entities\Entities.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Mocks\Repositories.Mocks.csproj" />
     <ProjectReference Include="..\Services\SecurityGroupService\SecurityGroupService.csproj" />
