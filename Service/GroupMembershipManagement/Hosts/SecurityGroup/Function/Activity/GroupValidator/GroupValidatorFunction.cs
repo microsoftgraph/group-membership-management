@@ -24,7 +24,7 @@ namespace Hosts.SecurityGroup
 		}
 
 		[FunctionName(nameof(GroupValidatorFunction))]
-		public async Task<bool> ValidateGroup([ActivityTrigger] GroupValidatorRequest request, ILogger log)
+		public async Task<bool> ValidateGroupAsync([ActivityTrigger] GroupValidatorRequest request, ILogger log)
 		{
 			bool isExistingGroup = false;
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function started", RunId = request.RunId });

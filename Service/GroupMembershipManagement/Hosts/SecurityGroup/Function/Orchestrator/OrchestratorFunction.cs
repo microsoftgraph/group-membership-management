@@ -41,13 +41,8 @@ namespace Hosts.SecurityGroup
             {
                 if (sourceGroups.Length == 0)
                 {
-                    _ = _log.LogMessageAsync(new LogMessage
-                    {
-                        RunId = runId,
-                        Message =
-                        $"None of the source groups in {syncJob.Query} were valid guids. Marking job as errored."
-                    });
-                    _ = _calculator.SendEmailAsync(syncJob, runId, SyncDisabledNoValidGroupIds, new[] { syncJob.Query });
+                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"None of the source groups in {syncJob.Query} were valid guids. Marking job as errored." });
+                    await context.CallActivityAsync<AzureADGroup[]>(nameof(EmailSenderFunction), new EmailSenderRequest { SyncJob = syncJob, RunId = runId });
                 }
                 else
                 {
@@ -66,8 +61,7 @@ namespace Hosts.SecurityGroup
 
                     distinctUsers = users.GroupBy(user => user.ObjectId).Select(userGrp => userGrp.First()).ToList();
 
-                    _ = _log.LogMessageAsync(new LogMessage
-                    {
+                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage {
                         RunId = runId,
                         Message =
                             $"Found {users.Count - distinctUsers.Count} duplicate user(s). Read {distinctUsers.Count} users from source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
@@ -76,11 +70,7 @@ namespace Hosts.SecurityGroup
             }
             catch (Exception ex)
             {
-                _ = _log.LogMessageAsync(new LogMessage
-                {
-                    Message = "Caught unexpected exception, marking sync job as errored. Exception:\n" + ex,
-                    RunId = runId
-                });
+                _ = _log.LogMessageAsync(new LogMessage { Message = "Caught unexpected exception, marking sync job as errored. Exception:\n" + ex, RunId = runId });
                 distinctUsers = null;
 
                 // make sure this gets thrown to where App Insights will handle it
@@ -98,13 +88,7 @@ namespace Hosts.SecurityGroup
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
                 }
             }
-            _ = _log.LogMessageAsync(new LogMessage
-            {
-                RunId = runId,
-                Message = distinctUsers != null ?
-                $"Successfully sent {distinctUsers.Count} users from source groups {syncJob.Query} to GraphUpdater to be put into the destination group {syncJob.TargetOfficeGroupId}." :
-                $"Sync job errored out trying to read from source groups {syncJob.Query}."
-            });
+
             if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed", RunId = runId });
         }
     }

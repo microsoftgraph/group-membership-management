@@ -21,12 +21,18 @@ namespace Hosts.SecurityGroup
 		}
 
 		[FunctionName(nameof(UsersSenderFunction))]
-		public async Task SendUsers([ActivityTrigger] UsersSenderRequest request, ILogger log)
+		public async Task SendUsersAsync([ActivityTrigger] UsersSenderRequest request, ILogger log)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function started", RunId = request.RunId });
 			if (request.Users != null)
 			{
 				await _calculator.SendMembershipAsync(request.SyncJob, request.RunId, request.Users);
+
+				await _log.LogMessageAsync(new LogMessage
+				{
+					RunId = request.RunId,
+					Message = $"Successfully sent {request.Users.Count} users from source groups {request.SyncJob.Query} to GraphUpdater to be put into the destination group {request.SyncJob.TargetOfficeGroupId}."
+				});
 			}
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function completed", RunId = request.RunId });
 		}

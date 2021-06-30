@@ -23,7 +23,7 @@ namespace Hosts.SecurityGroup
 		}
 
 		[FunctionName(nameof(SubsequentUsersReaderFunction))]
-		public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetUsers([ActivityTrigger] SubsequentUsersReaderRequest request, ILogger log)
+		public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetUsersAsync([ActivityTrigger] SubsequentUsersReaderRequest request, ILogger log)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentUsersReaderFunction)} function started", RunId = request.RunId });
 			var response = await _calculator.GetNextUsersPageAsync(request.NextPageUrl, request.GroupMembersPage);

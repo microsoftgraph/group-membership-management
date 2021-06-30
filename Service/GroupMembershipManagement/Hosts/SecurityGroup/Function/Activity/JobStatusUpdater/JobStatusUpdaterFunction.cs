@@ -21,12 +21,17 @@ namespace Hosts.SecurityGroup
         }
 
         [FunctionName(nameof(JobStatusUpdaterFunction))]
-        public async Task UpdateJobStatus([ActivityTrigger] JobStatusUpdaterRequest request, ILogger log)
+        public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request, ILogger log)
         {
             if (request.SyncJob != null)
             {
                 await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId });
                 await _calculator.UpdateSyncJobStatusAsync(request.SyncJob, request.Status);
+                await _log.LogMessageAsync(new LogMessage
+                {
+                    RunId = request.SyncJob.RunId,
+                    Message = $"Sync job errored out trying to read from source groups {request.SyncJob.Query}."
+                });
                 await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId });
 
             }

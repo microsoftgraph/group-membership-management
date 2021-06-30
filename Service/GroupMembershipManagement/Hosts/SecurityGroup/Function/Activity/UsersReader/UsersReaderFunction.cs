@@ -23,7 +23,7 @@ namespace Hosts.SecurityGroup
 		}
 
 		[FunctionName(nameof(UsersReaderFunction))]
-		public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetUsers([ActivityTrigger] UsersReaderRequest request, ILogger log)
+		public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetUsersAsync([ActivityTrigger] UsersReaderRequest request, ILogger log)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersReaderFunction)} function started", RunId = request.RunId });
 			var  response = await _calculator.GetFirstUsersPageAsync(request.ObjectId, request.RunId);

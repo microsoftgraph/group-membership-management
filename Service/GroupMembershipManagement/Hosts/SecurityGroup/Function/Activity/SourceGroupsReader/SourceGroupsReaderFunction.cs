@@ -21,7 +21,7 @@ namespace Hosts.SecurityGroup
 		}
 
 		[FunctionName(nameof(SourceGroupsReaderFunction))]
-		public async Task<AzureADGroup[]> GetSourceGroups([ActivityTrigger] SourceGroupsReaderRequest request, ILogger log)
+		public async Task<AzureADGroup[]> GetSourceGroupsAsync([ActivityTrigger] SourceGroupsReaderRequest request, ILogger log)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SourceGroupsReaderFunction)} function started", RunId = request.RunId });
 			await _log.LogMessageAsync(new LogMessage
