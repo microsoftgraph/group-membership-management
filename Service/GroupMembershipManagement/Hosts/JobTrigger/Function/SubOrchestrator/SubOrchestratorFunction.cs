@@ -13,10 +13,10 @@ namespace Hosts.JobTrigger
 {
     public class SubOrchestratorFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;        
+        private readonly ILoggingRepository _loggingRepository = null;
         public SubOrchestratorFunction(ILoggingRepository loggingRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));            
+            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         [FunctionName(nameof(SubOrchestratorFunction))]

@@ -16,7 +16,7 @@ namespace Hosts.JobTrigger
         private readonly ILoggingRepository _loggingRepository = null;
         public StarterFunction(ILoggingRepository loggingRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));            
+            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         [FunctionName(nameof(StarterFunction))]
