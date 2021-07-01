@@ -53,11 +53,11 @@ namespace Hosts.SecurityGroup
                         var processTask = context.CallSubOrchestratorAsync<List<AzureADUser>>(nameof(SubOrchestratorFunction), new SecurityGroupRequest { SyncJob = syncJob, SourceGroup = sourceGroup, RunId = runId });
                         processingTasks.Add(processTask);
                     }
-                    await Task.WhenAll(processingTasks);
+                    var tasks = await Task.WhenAll(processingTasks);
 
                     var users = new List<AzureADUser>();
-                    foreach (var task in processingTasks)
-                        users.AddRange(await task);
+                    foreach (var task in tasks)
+                        users.AddRange(task);
 
                     distinctUsers = users.GroupBy(user => user.ObjectId).Select(userGrp => userGrp.First()).ToList();
 
