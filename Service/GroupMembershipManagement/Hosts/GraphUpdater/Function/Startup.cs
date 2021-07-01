@@ -41,7 +41,9 @@ namespace Hosts.GraphUpdater
             {
                 settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
                 settings.TableName = configuration.GetValue<string>("jobsTableName");
-                settings.GraphUpdaterDryRun = bool.TryParse(configurationRoot["GraphUpdater:IsGraphUpdaterDryRunEnabled"], out bool value);
+                var checkParse = bool.TryParse(configurationRoot["GraphUpdater:IsGraphUpdaterDryRunEnabled"], out bool value);
+                if (checkParse)
+                    settings.GraphUpdaterDryRun = value;
             });
 
             builder.Services.AddSingleton<IMembershipDifferenceCalculator<AzureADUser>, MembershipDifferenceCalculator<AzureADUser>>()
@@ -64,7 +66,9 @@ namespace Hosts.GraphUpdater
 
 			builder.Services.AddOptions<DryRunValue>().Configure<IConfiguration>((settings, configuration) =>
 			{
-                settings.DryRunEnabled = bool.TryParse(configurationRoot["GraphUpdater:IsGraphUpdaterDryRunEnabled"], out bool value);
+                var checkParse = bool.TryParse(configurationRoot["GraphUpdater:IsGraphUpdaterDryRunEnabled"], out bool value);
+                if (checkParse)
+                    settings.DryRunEnabled = value;
             });
         }
     }

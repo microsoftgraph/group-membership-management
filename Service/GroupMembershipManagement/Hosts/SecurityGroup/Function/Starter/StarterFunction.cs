@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using System;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,11 +18,13 @@ namespace Hosts.SecurityGroup
     {
         private readonly ILoggingRepository _loggingRepository;
         private readonly ISyncJobRepository _syncJob;
+        private readonly bool _isSecurityGroupDryRunEnabled;
 
-        public StarterFunction(ILoggingRepository loggingRepository, ISyncJobRepository syncJob)
+        public StarterFunction(ILoggingRepository loggingRepository, ISyncJobRepository syncJob, IDryRunValue dryRun)
         {
             _loggingRepository = loggingRepository;
             _syncJob = syncJob;
+            _isSecurityGroupDryRunEnabled = dryRun.DryRunEnabled;
         }
 
         [FunctionName(nameof(StarterFunction))]
@@ -32,9 +35,10 @@ namespace Hosts.SecurityGroup
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));
             _loggingRepository.SyncJobProperties = syncJob.ToDictionary();
 
-            if ((DateTime.UtcNow - syncJob.DryRunTimeStamp) < TimeSpan.FromHours(syncJob.Period))
+            if ((DateTime.UtcNow - syncJob.DryRunTimeStamp) < TimeSpan.FromHours(syncJob.Period) && _isSecurityGroupDryRunEnabled == true)
             {
                 await _syncJob.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Idle);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Setting the status of the sync back to Idle as the sync has run within the previous DryRunTimeStamp period", RunId = syncJob.RunId });
                 return;
             }
 

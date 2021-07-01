@@ -142,6 +142,13 @@
       "metadata": {
         "description": "Ensure the graph updater doesn't update group membership."
       }
+    },
+    "appConfigurationEndpoint": {
+      "type": "string",
+      "defaultValue": "[concat('https://',parameters('solutionAbbreviation'), '-appconfiguration-', parameters('environmentAbbreviation'), '.azconfig.io')]",
+      "metadata": {
+        "description": "Provides the endpoint for the app configuration resource."
+      }
     }
   },
   "variables": {
@@ -330,6 +337,11 @@
               {
                 "name": "dryRunEnabled",
                 "value": "[parameters('dryRunEnabled')]",
+                "slotSetting": false
+              },
+              {
+                "name": "appConfigurationEndpoint",
+                "value": "[parameters('appConfigurationEndpoint')]",
                 "slotSetting": false
               }
             ]
