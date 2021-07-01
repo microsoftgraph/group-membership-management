@@ -16,7 +16,6 @@ using Microsoft.Extensions.Options;
 using Repositories.GraphGroups;
 using Microsoft.Graph;
 using System;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Azure.Identity;
 
 [assembly: FunctionsStartup(typeof(Hosts.JobTrigger.Startup))]
@@ -31,42 +30,27 @@ namespace Hosts.JobTrigger
         {
             base.Configure(builder);
 
-            //var configBuilder = new ConfigurationBuilder();
-            //configBuilder.AddAzureAppConfiguration(GetValueOrThrow("appConfigConnectionString"));
-            //builder.Services.AddAzureAppConfiguration();
-
-            //var configurationRoot = configBuilder.Build();
-            //Console.WriteLine(configurationRoot["Settings:dryRun"] ?? "Hello world!");
-
-            var configBuilder = new ConfigurationBuilder();
-            configBuilder.AddAzureAppConfiguration(options =>
-            {
-                options.Connect(new Uri(GetValueOrThrow("appConfigurationEndpoint")), new DefaultAzureCredential());
-            });
-            var configurationRoot = configBuilder.Build();
-
             builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
                 settings.TableName = configuration.GetValue<string>("jobsTableName");
             });
 
-            builder.Services.AddSingleton<IKeyVaultSecret<ISyncJobTopicService>>(services => new KeyVaultSecret<ISyncJobTopicService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
-            .AddSingleton<IGraphServiceClient>((services) =>
-            {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
-            })
+            builder.Services.AddSingleton<IKeyVaultSecret<IJobTriggerService>>(services => new KeyVaultSecret<IJobTriggerService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
+           .AddSingleton<IGraphServiceClient>((services) =>
+           {
+               return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
+           })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>();
 
             builder.Services.AddSingleton<ISyncJobRepository>(services =>
-             {
-                 var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
-                 return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
-             });
+            {
+                var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
+                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
+            });
 
             builder.Services.AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(GetValueOrThrow("serviceBusConnectionString"), GetValueOrThrow("serviceBusSyncJobTopic")));
-            builder.Services.AddSingleton<ISyncJobTopicService, SyncJobTopicsService>();
-
+            builder.Services.AddSingleton<IJobTriggerService, JobTriggerService>();
         }
     }
 }

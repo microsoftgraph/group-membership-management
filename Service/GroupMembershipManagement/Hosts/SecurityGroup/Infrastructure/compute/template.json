@@ -20,7 +20,7 @@
     "resourceGroupClassification": {
       "type": "string",
       "defaultValue": "compute",
-      "allowedValues": ["prereqs", "data", "compute"],
+      "allowedValues": [ "prereqs", "data", "compute" ],
       "metadata": {
         "description": "Classify the types of resources in this resource group."
       }
@@ -68,19 +68,19 @@
     },
     "functionAppKind": {
       "type": "string",
-      "allowedValues": ["functionapp", "linux", "container"],
+      "allowedValues": [ "functionapp", "linux", "container" ],
       "defaultValue": "functionapp",
       "metadata": {
         "description": "Function app kind."
       }
     },
-		"maximumElasticWorkerCount": {
-			"type": "int",
-			"defaultValue": 1,
-			"metadata": {
-				"description": "Maximum elastic worker count."
-			}
-		},
+    "maximumElasticWorkerCount": {
+      "type": "int",
+      "defaultValue": 1,
+      "metadata": {
+        "description": "Maximum elastic worker count."
+      }
+    },
     "appInsightsName": {
       "type": "string",
       "defaultValue": "[concat(parameters('solutionAbbreviation'), '-data-', parameters('environmentAbbreviation'))]",
@@ -141,6 +141,13 @@
       "defaultValue": "[concat(parameters('solutionAbbreviation'), '-data-', parameters('environmentAbbreviation'))]",
       "metadata": {
         "description": "Enter service bus namespace name."
+      }
+    },
+    "appConfigurationEndpoint": {
+      "type": "string",
+      "defaultValue": "[concat('https://',parameters('solutionAbbreviation'), '-appconfiguration-', parameters('environmentAbbreviation'), '.azconfig.io')]",
+      "metadata": {
+        "description": "Provides the endpoint for the app configuration resource."
       }
     }
   },
@@ -305,7 +312,7 @@
                 "name": "jobsStorageAccountConnectionString",
                 "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('jobsStorageAccountConnectionString'), '2019-09-01').secretUriWithVersion, ')')]",
                 "slotSetting": false
-              },              
+              },
               {
                 "name": "jobsTableName",
                 "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('jobsTableName'), '2019-09-01').secretUriWithVersion, ')')]",
@@ -324,6 +331,11 @@
               {
                 "name": "syncDisabledCCEmailAddresses",
                 "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('syncDisabledCCEmailAddresses'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "appConfigurationEndpoint",
+                "value": "[parameters('appConfigurationEndpoint')]",
                 "slotSetting": false
               }
             ]

@@ -42,7 +42,7 @@ namespace Repositories.SyncJobsRepository
         {
             var syncJobs = new List<SyncJob>();
             var table = _tableClient.GetTableReference(_syncJobsTableName);
-
+            
             var linqQuery = table.CreateQuery<SyncJob>().Where(x => x.StartDate <= DateTime.UtcNow);
 
             if (status != SyncStatus.All)
@@ -130,8 +130,8 @@ namespace Repositories.SyncJobsRepository
 
         private IEnumerable<SyncJob> ApplyFilters(IEnumerable<SyncJob> jobs)
         {
-            var allNonDryRunSyncJobs = jobs.Where(x => (((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == false));
-            var allDryRunSyncJobs = jobs.Where(x => (((DateTime.UtcNow - x.DryRunTimeStamp) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == true));
+            var allNonDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == false);
+            var allDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.DryRunTimeStamp) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == true);
             return allNonDryRunSyncJobs.Concat(allDryRunSyncJobs);
         }
 
