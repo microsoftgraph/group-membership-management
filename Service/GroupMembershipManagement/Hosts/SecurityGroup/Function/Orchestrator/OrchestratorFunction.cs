@@ -42,7 +42,7 @@ namespace Hosts.SecurityGroup
                 if (sourceGroups.Length == 0)
                 {
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"None of the source groups in {syncJob.Query} were valid guids. Marking job as errored." });
-                    await context.CallActivityAsync<AzureADGroup[]>(nameof(EmailSenderFunction), new EmailSenderRequest { SyncJob = syncJob, RunId = runId });
+                    await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest { SyncJob = syncJob, RunId = runId });
                 }
                 else
                 {
