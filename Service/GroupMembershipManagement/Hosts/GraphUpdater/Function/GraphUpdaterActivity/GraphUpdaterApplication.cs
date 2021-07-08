@@ -62,7 +62,7 @@ namespace Hosts.GraphUpdater
             var fromto = $"to {membership.Destination}";
             var changeTo = SyncStatus.Idle;
 
-            await _log.LogMessageAsync(new LogMessage { Message = $"The Dry Run Enabled configuration is currently set to {_isGraphUpdaterDryRunEnabled}. We will not be syncing members if Graph updater Dry Run Enabled configuration is set to True.", RunId = membership.RunId });
+            await _log.LogMessageAsync(new LogMessage { Message = $"The Dry Run Enabled configuration for graph updater is currently set to {_isGraphUpdaterDryRunEnabled}. We will not be syncing members if Graph updater Dry Run Enabled configuration is set to True.", RunId = membership.RunId });
             await _log.LogMessageAsync(new LogMessage { Message = $"Processing sync job : Partition key {membership.SyncJobPartitionKey} , Row key {membership.SyncJobRowKey}", RunId = membership.RunId });
 
             var job = await _syncJobRepo.GetSyncJobAsync(membership.SyncJobPartitionKey, membership.SyncJobRowKey);
