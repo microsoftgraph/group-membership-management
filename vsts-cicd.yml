@@ -47,7 +47,7 @@ stages:
         coverageThreshold: 96
     - function:
         name: 'AzureUserReader'
-        coverageThreshold: 35
+        coverageThreshold: 34
 
 - template: yaml/deploy-pipeline.yml
   parameters:

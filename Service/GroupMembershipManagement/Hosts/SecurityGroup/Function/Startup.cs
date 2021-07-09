@@ -24,28 +24,17 @@ namespace Hosts.SecurityGroup
     public class Startup : CommonStartup
     {
         protected override string FunctionName => nameof(SecurityGroup);
+        protected override string DryRunSettingName => "SecurityGroup:IsSecurityGroupDryRunEnabled";
+        
 
         public override void Configure(IFunctionsHostBuilder builder)
         {
             base.Configure(builder);
 
-            var configBuilder = new ConfigurationBuilder();
-            configBuilder.AddAzureAppConfiguration(options =>
-            {
-                options.Connect(new Uri(GetValueOrThrow("appConfigurationEndpoint")), new DefaultAzureCredential()); //ManagedIdentityCredential
-            });
-            var configurationRoot = configBuilder.Build();
-
             builder.Services.AddOptions<ServiceBusConfiguration>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.Namespace = configuration.GetValue<string>("differenceServiceBusNamespace");
                 settings.QueueName = configuration.GetValue<string>("membershipQueueName");
-            });
-
-            builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
-                settings.TableName = configuration.GetValue<string>("jobsTableName");
             });
 
             builder.Services.AddSingleton<IGraphServiceClient>((services) =>
@@ -68,11 +57,6 @@ namespace Hosts.SecurityGroup
              {
                  return new DryRunValue(services.GetService<IOptions<DryRunValue>>().Value.DryRunEnabled);
              });
-
-            builder.Services.AddOptions<DryRunValue>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.DryRunEnabled = bool.Parse(configurationRoot["SecurityGroup:IsSecurityGroupDryRunEnabled"]);
-            });
         }
 
         private class ServiceBusConfiguration

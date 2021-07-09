@@ -42,7 +42,6 @@ namespace Repositories.SyncJobsRepository
         {
             var syncJobs = new List<SyncJob>();
             var table = _tableClient.GetTableReference(_syncJobsTableName);
-            
             var linqQuery = table.CreateQuery<SyncJob>().Where(x => x.StartDate <= DateTime.UtcNow);
 
             if (status != SyncStatus.All)
