@@ -16,13 +16,13 @@ namespace Hosts.SecurityGroup
 {
     public class StarterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILoggingRepository _log;
         private readonly ISyncJobRepository _syncJob;
         private readonly bool _isSecurityGroupDryRunEnabled;
 
         public StarterFunction(ILoggingRepository loggingRepository, ISyncJobRepository syncJob, IDryRunValue dryRun)
         {
-            _loggingRepository = loggingRepository;
+            _log = loggingRepository;
             _syncJob = syncJob;
             _isSecurityGroupDryRunEnabled = dryRun.DryRunEnabled;
         }
@@ -33,16 +33,16 @@ namespace Hosts.SecurityGroup
                               ILogger log)
         {
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));
-            _loggingRepository.SyncJobProperties = syncJob.ToDictionary();
+            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = syncJob.RunId });
+            _log.SyncJobProperties = syncJob.ToDictionary();
 
             if ((DateTime.UtcNow - syncJob.DryRunTimeStamp) < TimeSpan.FromHours(syncJob.Period) && _isSecurityGroupDryRunEnabled == true)
             {
                 await _syncJob.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Idle);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Setting the status of the sync back to Idle as the sync has run within the previous DryRunTimeStamp period", RunId = syncJob.RunId });
+                await _log.LogMessageAsync(new LogMessage { Message = $"Setting the status of the sync back to Idle as the sync has run within the previous DryRunTimeStamp period", RunId = syncJob.RunId });
                 return;
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = syncJob.RunId });
             await starter.StartNewAsync(nameof(OrchestratorFunction), syncJob);
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = syncJob.RunId });
         }
