@@ -592,8 +592,33 @@ A newer version of this cmdlet is under development.  It will be available in an
 
 ### Dry Run Settings
 
-A dry run setting is present in GMM to provide users the ability to test new changes without affecting the group membership. This configuration is present in the GraphUpdater function app would need to be changed to false after the intial deployment.
-If you would like to have the default setting to be false, then please update the dryRunEnabled configuration to false in the parameters file for the GraphUpdater.
+Dry run settings are present in GMM to provide users the ability to test new changes without affecting the group membership. This configuration is present in the application configuration table.
+If you would like to have the default setting to be false, then please update the settings in the app configuration to false for the GraphUpdater and SecurityGroup.
+
+There are 3 Dry Run flags in GMM. If any of these Dry run flags are set, the sync will be completed but destination membership will not be affected. 
+1. IsDryRunEnabled: This is a property that is set on an individual sync. Setting this to true will run this sync in dry run.
+2. IsSecurityGroupDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all Security Group syncs in dry run.
+3. IsGraphUpdaterDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all syncs in dry run.
+
+In order for the Function Apps `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-<SecurityGroup&GraphUpdater> to read the dry run values assigned above, we need to grant them access to the AppConfiguration.
+
+    FunctionAppName: <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-<SecurityGroup>
+
+    1. . ./Set-AppConfigurationManagedIdentityRoles.ps1
+    2. Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `
+                                    -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
+                                    -FunctionAppName "<function app name>" `
+                                    -AppConfigName "<SolutionAbbreviation>-appConfiguration-<EnvironmentAbbreviation>" `
+                                    -Verbose
+
+        FunctionAppName: <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-<GraphUpdater>
+
+    1. . ./Set-AppConfigurationManagedIdentityRoles.ps1
+    2. Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `
+                                    -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
+                                    -FunctionAppName "<function app name>" `
+                                    -AppConfigName "<SolutionAbbreviation>-appConfiguration-<EnvironmentAbbreviation>" `
+                                    -Verbose
 
 # Setting AzureTableBackup function
 `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureTableBackup function can create backups for Azure Storage Tables and delete older backups automatically.
