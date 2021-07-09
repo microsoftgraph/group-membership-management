@@ -20,6 +20,7 @@ namespace Hosts.AzureTableBackup
     public class Startup : CommonStartup
     {
         protected override string FunctionName => nameof(AzureTableBackup);
+        protected override string DryRunSettingName => string.Empty;
 
         public override void Configure(IFunctionsHostBuilder builder)
         {

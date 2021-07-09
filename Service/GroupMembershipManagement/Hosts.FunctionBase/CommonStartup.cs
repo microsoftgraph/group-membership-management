@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Identity;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Microsoft.AspNetCore.Builder;
@@ -25,6 +26,7 @@ namespace Hosts.FunctionBase
     public abstract class CommonStartup : FunctionsStartup
     {
         protected abstract string FunctionName { get; }
+        protected abstract string DryRunSettingName { get; }
 
         public override void Configure(IFunctionsHostBuilder builder)
         {
@@ -41,6 +43,26 @@ namespace Hosts.FunctionBase
                 opts.SupportedCultures = supportedCultures;
                 opts.SupportedUICultures = supportedCultures;
             });
+
+            var configBuilder = new ConfigurationBuilder();
+            configBuilder.AddAzureAppConfiguration(options =>
+            {
+                options.Connect(new Uri(GetValueOrThrow("appConfigurationEndpoint")), new DefaultAzureCredential());
+            });
+            var configurationRoot = configBuilder.Build();
+
+            builder.Services.AddOptions<DryRunValue>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                try
+                {
+                    var checkParse = bool.TryParse(configurationRoot[DryRunSettingName], out bool value);
+                    if (checkParse)
+                        settings.DryRunEnabled = value;
+                }
+                catch (Exception) { }
+
+            });
+
             builder.Services.AddSingleton<ILocalizationRepository, LocalizationRepository>();
 
             builder.Services.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(new LogAnalyticsSecret<LoggingRepository>(GetValueOrThrow("logAnalyticsCustomerId"), GetValueOrThrow("logAnalyticsPrimarySharedKey"), FunctionName));

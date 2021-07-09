@@ -10,13 +10,10 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.ServiceBusTopics;
 using Repositories.SyncJobsRepository;
 using Services.Contracts;
-using Microsoft.Extensions.Configuration;
 using Common.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Repositories.GraphGroups;
 using Microsoft.Graph;
-using System;
-using Azure.Identity;
 
 [assembly: FunctionsStartup(typeof(Hosts.JobTrigger.Startup))]
 
@@ -25,16 +22,11 @@ namespace Hosts.JobTrigger
     public class Startup : CommonStartup
     {
         protected override string FunctionName => nameof(JobTrigger);
+        protected override string DryRunSettingName => string.Empty;
 
         public override void Configure(IFunctionsHostBuilder builder)
         {
             base.Configure(builder);
-
-            builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
-                settings.TableName = configuration.GetValue<string>("jobsTableName");
-            });
 
             builder.Services.AddSingleton<IKeyVaultSecret<IJobTriggerService>>(services => new KeyVaultSecret<IJobTriggerService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
            .AddSingleton<IGraphServiceClient>((services) =>

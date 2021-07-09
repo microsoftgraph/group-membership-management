@@ -21,6 +21,7 @@ namespace Hosts.AzureUserReader
     public class Startup : CommonStartup
     {
         protected override string FunctionName => nameof(AzureUserReader);
+        protected override string DryRunSettingName => string.Empty;
 
         public override void Configure(IFunctionsHostBuilder builder)
         {
