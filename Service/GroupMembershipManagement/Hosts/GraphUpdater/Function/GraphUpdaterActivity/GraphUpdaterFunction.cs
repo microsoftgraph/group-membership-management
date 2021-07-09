@@ -25,7 +25,6 @@ namespace Hosts.GraphUpdater
 		public async Task<GroupMembershipMessageResponse> Run([ActivityTrigger] GraphUpdaterFunctionRequest request)
 		{
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(GraphUpdaterFunction) + " function started" });
-			var greq = request.Message;
 			var body = new GroupMembershipMessage
 			{
 				Body = JsonConvert.DeserializeObject<GroupMembership>(request.Message),

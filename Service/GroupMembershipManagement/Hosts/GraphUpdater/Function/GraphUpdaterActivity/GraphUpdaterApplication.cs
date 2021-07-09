@@ -89,15 +89,9 @@ namespace Hosts.GraphUpdater
 
             // should only update last run time if its not a dry run
             if (job.IsDryRunEnabled  || membership.MembershipObtainerDryRunEnabled || _isGraphUpdaterDryRunEnabled)
-            {
                 job.DryRunTimeStamp = DateTime.UtcNow;
-                job.LastRunTime = job.LastRunTime;
-            }
             else
-            {
                 job.LastRunTime = DateTime.UtcNow;
-                job.DryRunTimeStamp = job.DryRunTimeStamp;
-            }
 
             job.RunId = membership.RunId;
             job.Enabled = changeTo != SyncStatus.Error;

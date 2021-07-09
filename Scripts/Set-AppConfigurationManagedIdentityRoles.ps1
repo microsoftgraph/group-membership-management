@@ -3,7 +3,7 @@
 Adds the app service's managed service identity as a reader on the app configuration.
 
 .DESCRIPTION
-Adds the app service's managed service identity as a reader on each service bus queue so we don't need connection strings as much. 
+Adds the app service's managed service identity as a reader on the app configuration so we don't need connection strings as much. 
 This should be run by an owner on the subscription after the app configuration and app service have been set up.
 This should only have to be run once.
 
@@ -22,16 +22,14 @@ App config name.
 .PARAMETER ErrorActionPreference
 Parameter description
 
-QueueName and TopicName are optionals but one must be provided.
-
 .EXAMPLE
-Set-ServiceBusManagedIdentityRoles  -SolutionAbbreviation "gmm" `
+Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "gmm" `
                                     -EnvironmentAbbreviation "<env>" `
                                     -FunctionAppName "<function app name>" `
                                     -AppConfigName "<app configuration name>" `
                                     -Verbose
 #>
-function Set-ServiceBusManagedIdentityRoles 
+function Set-AppConfigurationManagedIdentityRoles 
 {
 	[CmdletBinding()]
 	param(
@@ -52,8 +50,8 @@ function Set-ServiceBusManagedIdentityRoles
 	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
 	$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $FunctionAppName;
     
-	# Grant the app service access to the queue
-	if (![string]::IsNullOrEmpty($QueueName)) 
+	# Grant the app service access to the app configuration
+	if (![string]::IsNullOrEmpty($AppConfigName)) 
 	{
 		$appConfigObject = Get-AzAppConfigurationStore -ResourceGroupName $resourceGroupName -Name $AppConfigName;
 
@@ -68,7 +66,7 @@ function Set-ServiceBusManagedIdentityRoles
 		}
 	}
 
-	if ([string]::IsNullOrEmpty($AppConfigName) -And [string]::IsNullOrEmpty($TopicName)) 
+	if ([string]::IsNullOrEmpty($AppConfigName)) 
 	{
 		Write-Host "No app configuration was provided."
 	}
