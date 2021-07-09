@@ -23,23 +23,23 @@ namespace Hosts.SecurityGroup
 		private readonly IMailRepository _mail;
 		private readonly IEmailSenderRecipient _emailSenderAndRecipients;
 		private readonly ISyncJobRepository _syncJob;
-		private readonly ILoggingRepository _log;
 		private readonly bool _isSecurityGroupDryRunEnabled;
 
-		private const string EmailSubject = "EmailSubject";
-		private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
-		private const string SyncDisabledNoValidGroupIds = "SyncDisabledNoValidGroupIds";
-
-
-		public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository, IMembershipServiceBusRepository membershipServiceBus, 
-			IMailRepository mail, IEmailSenderRecipient emailSenderAndRecipients, ISyncJobRepository syncJob, ILoggingRepository logging, IDryRunValue dryRun)
+		public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository,
+									  IMembershipServiceBusRepository membershipServiceBus,
+									  IMailRepository mail,
+									  IEmailSenderRecipient emailSenderAndRecipients,
+									  ISyncJobRepository syncJob,
+									  ILoggingRepository logging,
+									  IDryRunValue dryRun
+									  )
 		{
 			_graphGroupRepository = graphGroupRepository;
 			_membershipServiceBus = membershipServiceBus;
 			_log = logging;
 			_mail = mail;
 			_syncJob = syncJob;
-			_log = logging;
+			_emailSenderAndRecipients = emailSenderAndRecipients;
 			_isSecurityGroupDryRunEnabled = dryRun.DryRunEnabled;
 		}
 
@@ -70,83 +70,15 @@ namespace Hosts.SecurityGroup
 			return await _graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(objectId));
 		}
 
-			var sourceGroups = syncJob.Query.Split(';').Select(x => Guid.TryParse(x, out var parsed) ? parsed : Guid.Empty)
-				.Where(x => x != Guid.Empty)
-				.Select(x => new AzureADGroup { ObjectId = x }).ToArray();
-
-			await _log.LogMessageAsync(new LogMessage
-			{
-				RunId = runId,
-				Message =
-				$"Reading source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
-			});
-
-
-			List<AzureADUser> allusers = null;
-			try
-			{
-				if (sourceGroups.Length == 0)
-				{
-					await _log.LogMessageAsync(new LogMessage
-					{
-						RunId = runId,
-						Message =
-						$"None of the source groups in {syncJob.Query} were valid guids. Marking job as errored."
-					});
-
-					await _mail.SendMailAsync(new EmailMessage
-					{
-						Subject = EmailSubject,
-						Content = SyncDisabledNoValidGroupIds,
-						SenderAddress = _emailSenderAndRecipients.SenderAddress,
-						SenderPassword = _emailSenderAndRecipients.SenderPassword,
-						ToEmailAddresses = syncJob.Requestor,
-						CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
-						AdditionalContentParams = new[] { syncJob.Query }
-					}, runId);
-				}
-				else
-				{
-					allusers = await GetUsersForEachGroup(sourceGroups, syncJob.Requestor, runId);
-				}
-			}
-			catch (Exception ex)
-			{
-				await _log.LogMessageAsync(new LogMessage
-				{
-					Message = "Caught unexpected exception, marking sync job as errored. Exception:\n" + ex,
-					RunId = runId
-				});
-				allusers = null;
-
-				// make sure this gets thrown to where App Insights will handle it
-				throw;
-			}
-			finally
-			{
-				if (allusers != null)
-				{
-					await _log.LogMessageAsync(new LogMessage
-					{
-						RunId = runId,
-						Message =
-						$"Read {allusers.Count} users from source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
-					});
-
-					await _membershipServiceBus.SendMembership(new GroupMembership
-					{
-						SourceMembers = allusers ?? new List<AzureADUser>(),
-						Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
-						RunId = runId,
-						SyncJobRowKey = syncJob.RowKey,
-						SyncJobPartitionKey = syncJob.PartitionKey,
-						MembershipObtainerDryRunEnabled = _isSecurityGroupDryRunEnabled ? true:false,
-					});
-				}
-				else
-				{
-					await _syncJob.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Error);
-				}
+		public async Task<(List<AzureADUser> users,
+						   Dictionary<string, int> nonUserGraphObjects,
+						   string nextPageUrl,
+						   IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetFirstUsersPageAsync(Guid objectId, Guid runId)
+		{
+			await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {objectId}." });
+			var result = await _graphGroupRepository.GetFirstUsersPageAsync(objectId);
+			return result;
+		}
 
 		public async Task<(List<AzureADUser> users,
 						   Dictionary<string, int> nonUserGraphObjects,
@@ -165,7 +97,8 @@ namespace Hosts.SecurityGroup
 				Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
 				RunId = runId,
 				SyncJobRowKey = syncJob.RowKey,
-				SyncJobPartitionKey = syncJob.PartitionKey
+				SyncJobPartitionKey = syncJob.PartitionKey,
+				MembershipObtainerDryRunEnabled = _isSecurityGroupDryRunEnabled ? true : false
 			});
 		}
 
