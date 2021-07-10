@@ -438,6 +438,7 @@ namespace Repositories.Integration.Tests
 		private class MockLogger : ILoggingRepository
 		{
             public Dictionary<string, string> SyncJobProperties { get; set; }
+			public bool DryRun { get; set; }
 
 			public Task LogMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
 			{
