@@ -193,7 +193,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 24,
-      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-', 'appConfiguration' , '-',parameters('environmentAbbreviation'))]",
+      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-', 'appConfig' , '-',parameters('environmentAbbreviation'))]",
       "metadata": {
         "description": "Enter app configuration name."
       }
@@ -211,21 +211,24 @@
     },
     "keyValueNames": {
       "type": "array",
-      "defaultValue": [ "Settings:dryRun", "dryRun$False" ],
+      "defaultValue": [
+        "SecurityGroup:IsSecurityGroupDryRunEnabled",
+        "GraphUpdater:IsGraphUpdaterDryRunEnabled"
+      ],
       "metadata": {
         "description": "Specifies the names of the key-value resources. The name is a combination of key and label with $ as delimiter. The label is optional."
       }
     },
     "keyValueValues": {
       "type": "array",
-      "defaultValue": [ "Settings:dryRun", "dryRun$False" ],
+      "defaultValue": [ "false", "false" ],
       "metadata": {
         "description": "Specifies the values of the key-value resources. It's optional"
       }
     },
     "contentType": {
       "type": "string",
-      "defaultValue": "application/vnd.microsoft.appconfig.keyvaultref+json;charset=utf-8",
+      "defaultValue": "boolean",
       "metadata": {
         "description": "Specifies the content type of the key-value resources. For feature flag, the value should be application/vnd.microsoft.appconfig.ff+json;charset=utf-8. For Key Value reference, the value should be application/vnd.microsoft.appconfig.keyvaultref+json;charset=utf-8. Otherwise, it's optional."
       }
@@ -507,9 +510,11 @@
           },
           "tags": {
             "value": "[parameters('appConfigurationTags')]"
+          },
+          "identity": {
+            "type": "SystemAssigned"
           }
         }
-      }
     },
     {
       "type": "Microsoft.Resources/deployments",
