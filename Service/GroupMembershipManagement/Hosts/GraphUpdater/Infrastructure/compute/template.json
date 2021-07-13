@@ -145,7 +145,7 @@
     },
     "appConfigurationEndpoint": {
       "type": "string",
-      "defaultValue": "[concat('https://',parameters('solutionAbbreviation'), '-appconfiguration-', parameters('environmentAbbreviation'), '.azconfig.io')]",
+      "defaultValue": "[concat('https://',parameters('solutionAbbreviation'), '-appconfig-', parameters('environmentAbbreviation'), '.azconfig.io')]",
       "metadata": {
         "description": "Provides the endpoint for the app configuration resource."
       }

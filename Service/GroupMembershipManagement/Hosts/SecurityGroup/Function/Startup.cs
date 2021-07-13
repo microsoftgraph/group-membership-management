@@ -46,11 +46,6 @@ namespace Hosts.SecurityGroup
                 var config = services.GetService<IOptions<ServiceBusConfiguration>>().Value;
                 return new MembershipServiceBusRepository(serviceBusNamespacePrefix: config.Namespace, queueName: config.QueueName);
             })
-            .AddSingleton<ISyncJobRepository>(services =>
-            {
-                var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
-                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
-            })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
             .AddSingleton<SGMembershipCalculator>()
             .AddSingleton<IDryRunValue>(services =>

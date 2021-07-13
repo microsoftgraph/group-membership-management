@@ -141,6 +141,13 @@
       "metadata": {
         "description": "Name of the keyvault secret containing the storage account connection string"
       }
+    },
+    "appConfigurationEndpoint": {
+      "type": "string",
+      "defaultValue": "[concat('https://',parameters('solutionAbbreviation'), '-appconfig-', parameters('environmentAbbreviation'), '.azconfig.io')]",
+      "metadata": {
+        "description": "Provides the endpoint for the app configuration resource."
+      }
     }
   },
   "variables": {
@@ -291,6 +298,11 @@
               {
                 "name": "maxExceptionHandlingAttempts",
                 "value": "2",
+                "slotSetting": false
+              },
+              {
+                "name": "appConfigurationEndpoint",
+                "value": "[parameters('appConfigurationEndpoint')]",
                 "slotSetting": false
               }
             ]

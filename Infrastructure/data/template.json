@@ -511,9 +511,6 @@
           "tags": {
             "value": "[parameters('appConfigurationTags')]"
           }
-        },
-        "identity": {
-          "type": "SystemAssigned"
         }
       }
     },

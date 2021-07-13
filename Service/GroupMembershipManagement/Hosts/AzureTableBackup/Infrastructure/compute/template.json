@@ -20,7 +20,7 @@
 		"resourceGroupClassification": {
 			"type": "string",
 			"defaultValue": "compute",
-			"allowedValues": ["prereqs", "data", "compute"],
+			"allowedValues": [ "prereqs", "data", "compute" ],
 			"metadata": {
 				"description": "Classify the types of resources in this resource group."
 			}
@@ -68,7 +68,7 @@
 		},
 		"functionAppKind": {
 			"type": "string",
-			"allowedValues": ["functionapp", "linux", "container"],
+			"allowedValues": [ "functionapp", "linux", "container" ],
 			"defaultValue": "functionapp",
 			"metadata": {
 				"description": "Function app kind."
@@ -120,6 +120,13 @@
 			"defaultValue": "[concat(parameters('solutionAbbreviation'), '-data-', parameters('environmentAbbreviation'))]",
 			"metadata": {
 				"description": "Name of the resource group where the 'data' key vault is located."
+			}
+		},
+		"appConfigurationEndpoint": {
+			"type": "string",
+			"defaultValue": "[concat('https://',parameters('solutionAbbreviation'), '-appconfig-', parameters('environmentAbbreviation'), '.azconfig.io')]",
+			"metadata": {
+				"description": "Provides the endpoint for the app configuration resource."
 			}
 		}
 	},
@@ -233,6 +240,11 @@
 							{
 								"name": "tablesToBackup",
 								"value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('tablesToBackup'), '2019-09-01').secretUriWithVersion, ')')]",
+								"slotSetting": false
+							},
+							{
+								"name": "appConfigurationEndpoint",
+								"value": "[parameters('appConfigurationEndpoint')]",
 								"slotSetting": false
 							}
 						]

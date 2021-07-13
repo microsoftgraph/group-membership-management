@@ -51,7 +51,7 @@ namespace Hosts.GraphUpdater
         public async Task CalculateDifference(GroupMembership membership)
         {
             _graphGroupRepository.RunId = membership.RunId;
-            _log.DryRun = _isDryRunEnabled;
+            _log.DryRun = _isGraphUpdaterDryRunEnabled;
             _log.SyncJobProperties = new Dictionary<string, string>
             {
                 { "partitionKey", membership.SyncJobPartitionKey },
@@ -62,15 +62,17 @@ namespace Hosts.GraphUpdater
             var fromto = $"to {membership.Destination}";
             var changeTo = SyncStatus.Idle;
 
-            await _log.LogMessageAsync(new LogMessage { Message = $"The Dry Run Enabled configuration for graph updater is currently set to {_isGraphUpdaterDryRunEnabled}. We will not be syncing members if Graph updater Dry Run Enabled configuration is set to True.", RunId = membership.RunId });
-            await _log.LogMessageAsync(new LogMessage { Message = $"Processing sync job : Partition key {membership.SyncJobPartitionKey} , Row key {membership.SyncJobRowKey}", RunId = membership.RunId });
-
             var job = await _syncJobRepo.GetSyncJobAsync(membership.SyncJobPartitionKey, membership.SyncJobRowKey);
             if (job == null)
             {
                 await _log.LogMessageAsync(new LogMessage { Message = $"Sync job : Partition key {membership.SyncJobPartitionKey}, Row key {membership.SyncJobRowKey} was not found!", RunId = membership.RunId });
                 return;
             }
+
+            var isSyncADryRun = job.IsDryRunEnabled || membership.MembershipObtainerDryRunEnabled || _isGraphUpdaterDryRunEnabled;
+            _log.DryRun = isSyncADryRun;
+            await _log.LogMessageAsync(new LogMessage { Message = $"The Dry Run Enabled configuration is currently set to {isSyncADryRun}. We will not be syncing members if any of the 3 Dry Run Enabled configurations are set to True.", RunId = membership.RunId });
+            await _log.LogMessageAsync(new LogMessage { Message = $"Processing sync job : Partition key {membership.SyncJobPartitionKey} , Row key {membership.SyncJobRowKey}", RunId = membership.RunId });
 
             await _log.LogMessageAsync(new LogMessage { Message = $"{job.TargetOfficeGroupId} job's status is {job.Status}.", RunId = membership.RunId });
 
@@ -88,7 +90,7 @@ namespace Hosts.GraphUpdater
             await _log.LogMessageAsync(new LogMessage { Message = $"Set job status to {changeTo}.", RunId = membership.RunId });
 
             // should only update last run time if its not a dry run
-            if (job.IsDryRunEnabled  || membership.MembershipObtainerDryRunEnabled || _isGraphUpdaterDryRunEnabled)
+            if (isSyncADryRun)
                 job.DryRunTimeStamp = DateTime.UtcNow;
             else
                 job.LastRunTime = DateTime.UtcNow;
@@ -97,7 +99,7 @@ namespace Hosts.GraphUpdater
             job.Enabled = changeTo != SyncStatus.Error;
             await _syncJobRepo.UpdateSyncJobStatusAsync(new[] { job }, changeTo);
 
-            if (job.IsDryRunEnabled || membership.MembershipObtainerDryRunEnabled || _isGraphUpdaterDryRunEnabled)
+            if (isSyncADryRun)
                 await _log.LogMessageAsync(new LogMessage { Message = $"Dry Run of a sync {fromto} is complete. Membership will not be updated.", RunId = membership.RunId });
             else
                 await _log.LogMessageAsync(new LogMessage { Message = $"Syncing {fromto} done.", RunId = membership.RunId });

@@ -8,7 +8,6 @@ namespace Tests.FunctionApps.Mocks
 {
     public class MockDryRunValue : IDryRunValue
     {
-        [ExcludeFromCodeCoverage]
         public bool DryRunEnabled { get; set; }
 
         public MockDryRunValue(bool dryRunEnabled)
