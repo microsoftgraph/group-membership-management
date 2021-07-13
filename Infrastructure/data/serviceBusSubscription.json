@@ -27,7 +27,7 @@
       "type": "Microsoft.ServiceBus/namespaces/topics/subscriptions",
       "properties": {
         "maxDeliveryCount": 5,
-        "lockDuration": "PT1M"
+        "lockDuration": "PT5M"
       },
       "resources": [
         {
