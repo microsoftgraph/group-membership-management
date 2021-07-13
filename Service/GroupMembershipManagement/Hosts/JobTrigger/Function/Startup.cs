@@ -35,12 +35,6 @@ namespace Hosts.JobTrigger
            })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>();
 
-            builder.Services.AddSingleton<ISyncJobRepository>(services =>
-            {
-                var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
-                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
-            });
-
             builder.Services.AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(GetValueOrThrow("serviceBusConnectionString"), GetValueOrThrow("serviceBusSyncJobTopic")));
             builder.Services.AddSingleton<IJobTriggerService, JobTriggerService>();
         }

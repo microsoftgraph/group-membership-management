@@ -285,13 +285,6 @@ Uploading the certificate:
 
 -   ### Sign in to [Azure DevOps](https://azure.microsoft.com/en-us/services/devops/)
 
--   ### Install Build Quality Checks
-
-    The pipeline provided with GMM uses Build Quality Checks to add quality gates to the build process.
-
-    You can install Build Quality Checks from [here](https://marketplace.visualstudio.com/items?itemName=mspremier.BuildQualityChecks).
-    At the time of writing this document the latest version was 8, make sure to update mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@`<version>` to the latest one in [build-services.yml](/build-services.yml) and [build-functionapps.yml](/yaml/build-functionapps.yml).
-
 -   ### Create a project
 
     -   You can use an existing project in your organization.

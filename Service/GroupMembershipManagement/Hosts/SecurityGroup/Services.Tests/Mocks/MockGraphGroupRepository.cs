@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 
 namespace Tests.FunctionApps.Mocks
 {
-	[ExcludeFromCodeCoverage]
 	class MockGraphGroupRepository : IGraphGroupRepository
 	{
 		public Dictionary<Guid, List<AzureADUser>> GroupsToUsers { get; set; }

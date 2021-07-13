@@ -40,10 +40,9 @@ namespace Hosts.SecurityGroup
             {
                 await _syncJob.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Idle);
                 await _log.LogMessageAsync(new LogMessage { Message = $"Setting the status of the sync back to Idle as the sync has run within the previous DryRunTimeStamp period", RunId = syncJob.RunId });
-                return;
             }
-
-            await starter.StartNewAsync(nameof(OrchestratorFunction), syncJob);
+            else
+                await starter.StartNewAsync(nameof(OrchestratorFunction), syncJob);
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = syncJob.RunId });
         }
     }

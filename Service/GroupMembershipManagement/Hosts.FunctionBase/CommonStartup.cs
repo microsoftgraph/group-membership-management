@@ -28,6 +28,14 @@ namespace Hosts.FunctionBase
         protected abstract string FunctionName { get; }
         protected abstract string DryRunSettingName { get; }
 
+        public override void ConfigureAppConfiguration(IFunctionsConfigurationBuilder builder)
+        {
+            builder.ConfigurationBuilder.AddAzureAppConfiguration(options =>
+            {
+                options.Connect(new Uri(GetValueOrThrow("appConfigurationEndpoint")), new DefaultAzureCredential());
+            });
+        }
+
         public override void Configure(IFunctionsHostBuilder builder)
         {
             builder.Services.AddLocalization(opts => { opts.ResourcesPath = "Resources"; });
@@ -44,22 +52,14 @@ namespace Hosts.FunctionBase
                 opts.SupportedUICultures = supportedCultures;
             });
 
-            var configBuilder = new ConfigurationBuilder();
-            configBuilder.AddAzureAppConfiguration(options =>
-            {
-                options.Connect(new Uri(GetValueOrThrow("appConfigurationEndpoint")), new DefaultAzureCredential());
-            });
-            var configurationRoot = configBuilder.Build();
-
             builder.Services.AddOptions<DryRunValue>().Configure<IConfiguration>((settings, configuration) =>
             {
-                try
+                if (!string.IsNullOrEmpty(DryRunSettingName))
                 {
-                    var checkParse = bool.TryParse(configurationRoot[DryRunSettingName], out bool value);
+                    var checkParse = bool.TryParse(configuration[DryRunSettingName], out bool value);
                     if (checkParse)
                         settings.DryRunEnabled = value;
                 }
-                catch (Exception) { }
 
             });
 

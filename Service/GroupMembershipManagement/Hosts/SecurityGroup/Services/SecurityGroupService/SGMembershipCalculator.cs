@@ -98,7 +98,7 @@ namespace Hosts.SecurityGroup
 				RunId = runId,
 				SyncJobRowKey = syncJob.RowKey,
 				SyncJobPartitionKey = syncJob.PartitionKey,
-				MembershipObtainerDryRunEnabled = _isSecurityGroupDryRunEnabled ? true : false
+				MembershipObtainerDryRunEnabled = _isSecurityGroupDryRunEnabled
 			});
 		}
 
