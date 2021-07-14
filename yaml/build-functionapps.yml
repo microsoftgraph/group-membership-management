@@ -54,6 +54,9 @@ stages:
             arguments: '--configuration $(BuildConfiguration)
                         /p:CollectCoverage=true
                         /p:CoverletOutputFormat=cobertura
+                        /p:threshold=${{ app.function.coverageThreshold }}
+                        /p:thresholdType=line 
+                        /p:thresholdStat=total
                         /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\${{ app.function.name }}\
                         /p:Exclude=[Repositories.*]*%2c[Entities]*%2c[*.Tests]*%2c[*.Mocks]'
           condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
@@ -65,17 +68,6 @@ stages:
             summaryFileLocation: $(Build.SourcesDirectory)/TestResults/Coverage/${{ app.function.name }}/coverage.cobertura.xml
             reportDirectory: $(Build.SourcesDirectory)/TestResults/Coverage/${{ app.function.name }}/Reports
             failIfCoverageEmpty: false
-          condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
-
-        - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@8
-          displayName: 'Check build quality'
-          inputs:
-            checkCoverage: true
-            coverageFailOption: fixed
-            coverageType: lines
-            coverageThreshold: ${{ app.function.coverageThreshold }}
-            coverageVariance: 0
-            allowCoverageVariance: false
           condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
         - task: DotNetCoreCLI@2
