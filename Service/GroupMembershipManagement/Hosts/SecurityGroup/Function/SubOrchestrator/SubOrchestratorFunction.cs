@@ -43,7 +43,13 @@ namespace Hosts.SecurityGroup
                 {
                     response = await context.CallActivityAsync<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)>(nameof(SubsequentUsersReaderFunction), new SubsequentUsersReaderRequest { RunId = request.RunId, NextPageUrl = response.nextPageUrl, GroupMembersPage = response.usersFromGroup });
                     allUsers.AddRange(response.users);
-                    response.nonUserGraphObjects.ToList().ForEach(x => allNonUserGraphObjects.Add(x.Key, x.Value));
+                    response.nonUserGraphObjects.ToList().ForEach(x =>
+                    {
+                        if (allNonUserGraphObjects.ContainsKey(x.Key))
+                            allNonUserGraphObjects[x.Key] += x.Value;
+                        else
+                            allNonUserGraphObjects[x.Key] = x.Value;
+                    });
                 }
                 var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, allNonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
                 _ = _log.LogMessageAsync(new LogMessage
