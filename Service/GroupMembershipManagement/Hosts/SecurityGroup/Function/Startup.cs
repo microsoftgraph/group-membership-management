@@ -47,11 +47,7 @@ namespace Hosts.SecurityGroup
                 return new MembershipServiceBusRepository(serviceBusNamespacePrefix: config.Namespace, queueName: config.QueueName);
             })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
-            .AddSingleton<SGMembershipCalculator>()
-            .AddSingleton<IDryRunValue>(services =>
-             {
-                 return new DryRunValue(services.GetService<IOptions<DryRunValue>>().Value.DryRunEnabled);
-             });
+            .AddSingleton<SGMembershipCalculator>();
         }
 
         private class ServiceBusConfiguration
