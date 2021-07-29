@@ -63,6 +63,11 @@ namespace Hosts.FunctionBase
 
             });
 
+            builder.Services.AddSingleton<IDryRunValue>(services =>
+            {
+                return new DryRunValue(services.GetService<IOptions<DryRunValue>>().Value.DryRunEnabled);
+            });
+
             builder.Services.AddSingleton<ILocalizationRepository, LocalizationRepository>();
 
             builder.Services.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(new LogAnalyticsSecret<LoggingRepository>(GetValueOrThrow("logAnalyticsCustomerId"), GetValueOrThrow("logAnalyticsPrimarySharedKey"), FunctionName));
