@@ -40,7 +40,7 @@ namespace Services.Tests
 
             var backupSettings = new List<IAzureTableBackup>()
             {
-                new Services.Entities.AzureTableBackup("tableOne", "sourceConnection", "destinationConnection", 7)
+                new Services.Entities.AzureTableBackup("tableOne", "sourceConnection", "destinationConnection", "Table", 7)
             };
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
@@ -74,7 +74,7 @@ namespace Services.Tests
 
             var backupSettings = new List<IAzureTableBackup>()
             {
-                new Services.Entities.AzureTableBackup("tableOne", "sourceConnection", "destinationConnection", 7)
+                new Services.Entities.AzureTableBackup("tableOne", "sourceConnection", "destinationConnection", "Table", 7)
             };
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();

@@ -7,6 +7,7 @@ namespace Repositories.Contracts.InjectConfig
         string SourceTableName { get; }
         string SourceConnectionString { get; }
         string DestinationConnectionString { get; }
+        string BackUpTo { get; }
         int DeleteAfterDays { get; }
     }
 }
