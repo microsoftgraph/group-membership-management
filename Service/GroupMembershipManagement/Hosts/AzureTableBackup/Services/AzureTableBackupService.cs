@@ -43,15 +43,18 @@ namespace Services
                 if (entities == null)
                     continue;
 
-                await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Backing up {entities.Count} entites from table: {table.SourceTableName}" });
-                var backupResult = await _azureTableBackupRepository.BackupEntitiesAsync(table, entities);
+                if (table.BackUpTo.Equals("table", StringComparison.OrdinalIgnoreCase))
+				{
+					await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Backing up {entities.Count} entites from table: {table.SourceTableName}" });
+					var backupResult = await _azureTableBackupRepository.BackupEntitiesAsync(table, entities);
 
-                await CompareBackupResults(table, backupResult);
+					await CompareBackupResults(table, backupResult);
 
-                await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Deleting old backups for table: {table.SourceTableName}" });
-                var deletedTables = await DeleteOldBackupTablesAsync(table);
-                await DeleteOldBackupTrackersAsync(table, deletedTables);
-            }
+					await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Deleting old backups for table: {table.SourceTableName}" });
+					var deletedTables = await DeleteOldBackupTablesAsync(table);
+					await DeleteOldBackupTrackersAsync(table, deletedTables);
+				}
+			}
         }
 
         private async Task<List<string>> DeleteOldBackupTablesAsync(IAzureTableBackup backupSettings)
