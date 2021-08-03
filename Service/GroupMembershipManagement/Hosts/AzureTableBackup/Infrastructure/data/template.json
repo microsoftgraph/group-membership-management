@@ -43,7 +43,7 @@
         "description": "Whether to back up to table or blob storage."
       },
       "allowedValues": ["table", "blob"],
-      "defaultValue": "table"
+      "defaultValue": "blob"
     }
   },
   "variables": {

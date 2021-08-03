@@ -8,12 +8,10 @@ using System.Threading.Tasks;
 
 namespace Repositories.Contracts
 {
-    public interface IAzureTableBackupRepository
+    public interface IAzureTableBackupRepository : IAzureStorageBackupRepository
     {
         Task<List<BackupTable>> GetBackupTablesAsync(IAzureTableBackup backupSettings);
         Task<List<DynamicTableEntity>> GetEntitiesAsync(IAzureTableBackup backupSettings);
-        Task<BackupResult> BackupEntitiesAsync(IAzureTableBackup backupSettings, List<DynamicTableEntity> entities);
-        Task DeleteBackupTableAsync(IAzureTableBackup backupSettings, string tableName);
         Task AddBackupResultTrackerAsync(IAzureTableBackup backupSettings, BackupResult backupResult);
         Task DeleteBackupTrackersAsync(IAzureTableBackup backupSettings, List<(string PartitionKey, string RowKey)> keys);
         Task<BackupResult> GetLastestBackupResultTrackerAsync(IAzureTableBackup backupSettings);

@@ -16,15 +16,18 @@ namespace Services
         private readonly List<IAzureTableBackup> _tablesToBackup = null;
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly IAzureTableBackupRepository _azureTableBackupRepository = null;
+		private readonly IAzureStorageBackupRepository _azureBlobBackupRepository = null;
 
-        public AzureTableBackupService(
+		public AzureTableBackupService(
             List<IAzureTableBackup> tablesToBackup,
             ILoggingRepository loggingRepository,
-            IAzureTableBackupRepository azureTableBackupRepository)
-        {
-            _tablesToBackup = tablesToBackup;
+            IAzureTableBackupRepository azureTableBackupRepository,
+			IAzureStorageBackupRepository azureBlobBackupRepository)
+		{
+			_tablesToBackup = tablesToBackup;
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _azureTableBackupRepository = azureTableBackupRepository ?? throw new ArgumentNullException(nameof(azureTableBackupRepository));
+            _azureBlobBackupRepository = azureBlobBackupRepository ?? throw new ArgumentNullException(nameof(azureBlobBackupRepository));
         }
 
         public async Task BackupTablesAsync()
@@ -54,6 +57,10 @@ namespace Services
 					var deletedTables = await DeleteOldBackupTablesAsync(table);
 					await DeleteOldBackupTrackersAsync(table, deletedTables);
 				}
+                else if (table.BackUpTo.Equals("blob", StringComparison.OrdinalIgnoreCase))
+				{
+					var backupResult = await _azureBlobBackupRepository.BackupEntitiesAsync(table, entities);
+				}
 			}
         }
 
@@ -67,7 +74,7 @@ namespace Services
             {
                 if (table.CreatedDate < cutOffDate)
                 {
-                    await _azureTableBackupRepository.DeleteBackupTableAsync(backupSettings, table.TableName);
+                    await _azureTableBackupRepository.DeleteBackupAsync(backupSettings, table.TableName);
                     deletedTables.Add(table.TableName);
                 }
             }
