@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Linq;
 using Repositories.AzureTableBackupRepository;
+using Repositories.AzureBlobBackupRepository;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 
@@ -27,6 +28,7 @@ namespace Hosts.AzureTableBackup
             base.Configure(builder);
 
             builder.Services.AddScoped<IAzureTableBackupRepository, AzureTableBackupRepository>();
+            builder.Services.AddScoped<IAzureStorageBackupRepository, AzureBlobBackupRepository>();
             builder.Services.AddScoped<IAzureTableBackupService>(services =>
              {
                  var tablesToBackupSetting = GetValueOrDefault("tablesToBackup");
@@ -34,7 +36,7 @@ namespace Hosts.AzureTableBackup
                                         ? new List<Services.Entities.AzureTableBackup>()
                                         : JsonConvert.DeserializeObject<List<Services.Entities.AzureTableBackup>>(tablesToBackupSetting);
 
-                 return new AzureTableBackupService(tablesToBackup.ToList<IAzureTableBackup>(), services.GetService<ILoggingRepository>(), services.GetService<IAzureTableBackupRepository>());
+                 return new AzureTableBackupService(tablesToBackup.ToList<IAzureTableBackup>(), services.GetService<ILoggingRepository>(), services.GetService<IAzureTableBackupRepository>(), services.GetService<IAzureStorageBackupRepository>());
              });
         }
     }

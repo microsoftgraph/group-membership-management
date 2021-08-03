@@ -180,7 +180,7 @@ namespace Repositories.AzureTableBackupRepository
             return new BackupResult(tableName, backupCount);
         }
 
-        public async Task DeleteBackupTableAsync(IAzureTableBackup backupSettings, string tableName)
+        public async Task DeleteBackupAsync(IAzureTableBackup backupSettings, string tableName)
         {
             await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Deleting backup table: {tableName}" });
 
