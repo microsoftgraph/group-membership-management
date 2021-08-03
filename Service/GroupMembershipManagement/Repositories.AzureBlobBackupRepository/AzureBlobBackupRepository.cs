@@ -27,8 +27,11 @@ namespace Repositories.AzureBlobBackupRepository
 		public async Task<BackupResult> BackupEntitiesAsync(IAzureTableBackup backupSettings, List<DynamicTableEntity> entities)
 		{
 			BlobServiceClient blobServiceClient = new BlobServiceClient(backupSettings.DestinationConnectionString);
+			var containerName = $"{BACKUP_PREFIX}{backupSettings.SourceTableName}";
 			var blobName = $"{BACKUP_PREFIX}{backupSettings.SourceTableName}{DateTime.UtcNow.ToString(BACKUP_DATE_FORMAT)}";
-			BlobContainerClient blobClient = await blobServiceClient.CreateBlobContainerAsync(blobName);
+
+			var blobClient = blobServiceClient.GetBlobContainerClient(containerName);
+			await blobClient.CreateIfNotExistsAsync();
 
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Backing {entities.Count} entries up to the blob named {blobName}." });
 			var result = await blobClient.UploadBlobAsync(blobName, new BinaryData(SerializeEntities(entities)));
