@@ -120,7 +120,7 @@
             "value": [
               {
                 "name": "tablesToBackup",
-                "value": "[concat('[ { \"SourceTableName\":\"', reference('getSecretsTemplate').outputs.jobsTableNameSecret.value, '\"', ', \"SourceConnectionString\":\"', reference('getSecretsTemplate').outputs.jobsTableConnectionStringSecret.value, '\"', ', \"DestinationConnectionString\":\"', reference('getSecretsTemplate').outputs.jobsTableConnectionStringSecret.value, '\"', '\"BackUpTo\":\"', parameters('backUpTo'), '\", \"DeleteAfterDays\":7 }]')]"
+                "value": "[concat('[ { \"SourceTableName\":\"', reference('getSecretsTemplate').outputs.jobsTableNameSecret.value, '\"', ', \"SourceConnectionString\":\"', reference('getSecretsTemplate').outputs.jobsTableConnectionStringSecret.value, '\"', ', \"DestinationConnectionString\":\"', reference('getSecretsTemplate').outputs.jobsTableConnectionStringSecret.value, '\"', ',\"BackUpTo\":\"', parameters('backUpTo'), '\", \"DeleteAfterDays\":7 }]')]"
               }
             ]
           }
