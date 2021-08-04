@@ -47,30 +47,26 @@ namespace Services
                 if (entities == null)
                     continue;
 
-                IAzureStorageBackupRepository backupTo = DetermineBackupTo(table.BackUpTo);
-                if (backupTo == null)
+                // basically, the table storage gets used regardless, to read the source table
+                // and to maintain the tracking table. this determines whether the backup data
+                // is stored in table or blob storage.
+                IAzureStorageBackupRepository backUpTo = DetermineBackupTo(table.BackUpTo);
+                if (backUpTo == null)
 				{
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"BackUpTo must be 'table' or 'blob'. Was {table.BackUpTo}. Not backing up {table.SourceTableName}.");
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"BackUpTo must be 'table' or 'blob'. Was {table.BackUpTo}. Not backing up {table.SourceTableName}." });
                     continue;
 				}
 
-                if (table.BackUpTo.Equals("table", StringComparison.OrdinalIgnoreCase))
-				{
-					await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Backing up {entities.Count} entites from table: {table.SourceTableName}" });
-					var backupResult = await _azureTableBackupRepository.BackupEntitiesAsync(table, entities);
+				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Backing up {entities.Count} entites from table {table.SourceTableName} to {table.BackUpTo} storage." });
+				var backupResult = await backUpTo.BackupEntitiesAsync(table, entities);
 
-					await CompareBackupResults(table, backupResult);
+				await CompareBackupResults(table, backupResult);
 
-					await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleting old backups for table: {table.SourceTableName}" });
-					var deletedTables = await DeleteOldBackupTablesAsync(table);
-					await DeleteOldBackupTrackersAsync(table, deletedTables);
-				}
-                else if (table.BackUpTo.Equals("blob", StringComparison.OrdinalIgnoreCase))
-				{
-					var backupResult = await _azureBlobBackupRepository.BackupEntitiesAsync(table, entities);
-				}
+				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleting old backups for table: {table.SourceTableName}" });
+				var deletedTables = await DeleteOldBackupsAsync(table);
+				await DeleteOldBackupTrackersAsync(table, deletedTables);
 			}
-        }
+		}
 
         private IAzureStorageBackupRepository DetermineBackupTo(string backUpTo)
 		{
@@ -86,7 +82,7 @@ namespace Services
 
 		}
 
-        private async Task<List<string>> DeleteOldBackupTablesAsync(IAzureTableBackup backupSettings)
+        private async Task<List<string>> DeleteOldBackupsAsync(IAzureTableBackup backupSettings)
         {
             var backupTables = await _azureTableBackupRepository.GetBackupTablesAsync(backupSettings);
             var cutOffDate = DateTime.UtcNow.AddDays(-backupSettings.DeleteAfterDays);
