@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Entities;
 using Entities.AzureTableBackup;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -40,20 +41,27 @@ namespace Services
 
             foreach (var table in _tablesToBackup)
             {
-                await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Starting backup for table: {table.SourceTableName}" });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Starting backup for table: {table.SourceTableName}" });
                 var entities = await _azureTableBackupRepository.GetEntitiesAsync(table);
 
                 if (entities == null)
                     continue;
 
+                IAzureStorageBackupRepository backupTo = DetermineBackupTo(table.BackUpTo);
+                if (backupTo == null)
+				{
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"BackUpTo must be 'table' or 'blob'. Was {table.BackUpTo}. Not backing up {table.SourceTableName}.");
+                    continue;
+				}
+
                 if (table.BackUpTo.Equals("table", StringComparison.OrdinalIgnoreCase))
 				{
-					await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Backing up {entities.Count} entites from table: {table.SourceTableName}" });
+					await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Backing up {entities.Count} entites from table: {table.SourceTableName}" });
 					var backupResult = await _azureTableBackupRepository.BackupEntitiesAsync(table, entities);
 
 					await CompareBackupResults(table, backupResult);
 
-					await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Deleting old backups for table: {table.SourceTableName}" });
+					await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleting old backups for table: {table.SourceTableName}" });
 					var deletedTables = await DeleteOldBackupTablesAsync(table);
 					await DeleteOldBackupTrackersAsync(table, deletedTables);
 				}
@@ -63,6 +71,20 @@ namespace Services
 				}
 			}
         }
+
+        private IAzureStorageBackupRepository DetermineBackupTo(string backUpTo)
+		{
+            switch(backUpTo.ToLowerInvariant())
+			{
+                case "table":
+                    return _azureTableBackupRepository;
+                case "blob":
+                    return _azureBlobBackupRepository;
+                default:
+                    return null;
+			}
+
+		}
 
         private async Task<List<string>> DeleteOldBackupTablesAsync(IAzureTableBackup backupSettings)
         {
@@ -95,8 +117,8 @@ namespace Services
             var delta = currentBackup.RowCount - previousBackupTracker.RowCount;
             var message = delta == 0 ? " same number of" : ((delta > 0) ? " more" : " less");
             await _loggingRepository.LogMessageAsync(
-                new Entities.LogMessage
-                {
+                new LogMessage
+				{
                     Message = $"Current backup for {backupSettings.SourceTableName} has {delta}{message} rows than previous backup",
                     DynamicProperties =
                     {
