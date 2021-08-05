@@ -25,6 +25,8 @@
     <ProjectReference Include="..\..\..\Repositories.Mail\Repositories.Mail.csproj" />
     <ProjectReference Include="..\Repositories\Repositories.MembershipDifference\Repositories.MembershipDifference.csproj" />
     <ProjectReference Include="..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj" />
+    <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
+    <ProjectReference Include="..\Services\Services.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">
