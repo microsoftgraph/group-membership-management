@@ -1,15 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using System.Diagnostics.CodeAnalysis;
+using System;
 
 namespace Entities
 {
-    [ExcludeFromCodeCoverage]
     public class GraphUpdaterFunctionRequest
     {
+        public Guid RunId { get; set; }
         public string Message { get; set; }
         public string MessageSessionId { get; set; }
         public string MessageLockToken { get; set; }
-
     }
 }
