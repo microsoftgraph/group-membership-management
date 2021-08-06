@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Hosts\GraphUpdater\Services.Contracts\Services.Contracts.csproj" />
     <ProjectReference Include="..\Repositories.Contracts\Repositories.Contracts.csproj" />
   </ItemGroup>
 
