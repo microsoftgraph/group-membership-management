@@ -44,7 +44,7 @@ stages:
        coverageThreshold: 95
     - function:
         name: 'AzureTableBackup'
-        coverageThreshold: 93
+        coverageThreshold: 98
     - function:
         name: 'AzureUserReader'
         coverageThreshold: 45
