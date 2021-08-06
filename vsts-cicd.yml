@@ -38,16 +38,16 @@ stages:
        coverageThreshold: 97
     - function:
        name: 'GraphUpdater'
-       coverageThreshold: 47
+       coverageThreshold: 76
     - function:
        name: 'SecurityGroup'
        coverageThreshold: 95
     - function:
         name: 'AzureTableBackup'
-        coverageThreshold: 96
+        coverageThreshold: 98
     - function:
         name: 'AzureUserReader'
-        coverageThreshold: 37
+        coverageThreshold: 45
 
 - template: yaml/deploy-pipeline.yml
   parameters:

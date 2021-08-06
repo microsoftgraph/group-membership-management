@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace Services.Tests
 {
     [TestClass]
-    public class SessionMessageCollectorTests
+    public class MessageCollectorTests
     {
         [TestMethod]
         public async Task AccumulatesMessages()
