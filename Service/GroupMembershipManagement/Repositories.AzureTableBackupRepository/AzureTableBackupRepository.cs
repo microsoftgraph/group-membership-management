@@ -26,20 +26,21 @@ namespace Repositories.AzureTableBackupRepository
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        public async Task<List<BackupTable>> GetBackupTablesAsync(IAzureTableBackup backupSettings)
+        public async Task<List<BackupEntity>> GetBackupsAsync(IAzureTableBackup backupSettings)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Getting backup tables for table {backupSettings.SourceTableName}" });
 
             var storageAccount = CloudStorageAccount.Parse(backupSettings.DestinationConnectionString);
             var tableClient = storageAccount.CreateCloudTableClient();
             var tables = tableClient.ListTables(prefix: BACKUP_PREFIX + backupSettings.SourceTableName).ToList();
-            var backupCloudTables = new List<BackupTable>();
+            var backupCloudTables = new List<BackupEntity>();
 
             foreach (var table in tables)
             {
-                var backupTable = new BackupTable
+                var backupTable = new BackupEntity
                 {
-                    TableName = table.Name,
+                    Name = table.Name,
+                    StorageType = "table",
                     CreatedDate = DateTime.SpecifyKind(
                                             DateTime.ParseExact(table.Name.Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
                                                 BACKUP_DATE_FORMAT,
@@ -177,7 +178,7 @@ namespace Repositories.AzureTableBackupRepository
                 }
                 });
 
-            return new BackupResult(tableName, backupCount);
+            return new BackupResult(tableName, "table", backupCount);
         }
 
         public async Task DeleteBackupAsync(IAzureTableBackup backupSettings, string tableName)

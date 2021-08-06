@@ -50,7 +50,7 @@ namespace Services
                 // basically, the table storage gets used regardless, to read the source table
                 // and to maintain the tracking table. this determines whether the backup data
                 // is stored in table or blob storage.
-                IAzureStorageBackupRepository backUpTo = DetermineBackupTo(table.BackUpTo);
+                IAzureStorageBackupRepository backUpTo = DetermineBackupStorage(table.BackUpTo);
                 if (backUpTo == null)
 				{
                     await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"BackUpTo must be 'table' or 'blob'. Was {table.BackUpTo}. Not backing up {table.SourceTableName}." });
@@ -68,7 +68,7 @@ namespace Services
 			}
 		}
 
-        private IAzureStorageBackupRepository DetermineBackupTo(string backUpTo)
+        private IAzureStorageBackupRepository DetermineBackupStorage(string backUpTo)
 		{
             switch(backUpTo.ToLowerInvariant())
 			{
@@ -84,20 +84,21 @@ namespace Services
 
         private async Task<List<string>> DeleteOldBackupsAsync(IAzureTableBackup backupSettings)
         {
-            var backupTables = await _azureTableBackupRepository.GetBackupTablesAsync(backupSettings);
+            var backupStorage = DetermineBackupStorage(backupSettings.BackUpTo);
+            var backupEntities = await backupStorage.GetBackupsAsync(backupSettings);
             var cutOffDate = DateTime.UtcNow.AddDays(-backupSettings.DeleteAfterDays);
-            var deletedTables = new List<string>();
+            var deletedEntities = new List<string>();
 
-            foreach (var table in backupTables)
+            foreach (var entity in backupEntities)
             {
-                if (table.CreatedDate < cutOffDate)
+                if (entity.CreatedDate < cutOffDate)
                 {
-                    await _azureTableBackupRepository.DeleteBackupAsync(backupSettings, table.TableName);
-                    deletedTables.Add(table.TableName);
+                    await backupStorage.DeleteBackupAsync(backupSettings, entity.Name);
+                    deletedEntities.Add(entity.Name);
                 }
             }
 
-            return deletedTables;
+            return deletedEntities;
         }
 
         private async Task CompareBackupResults(IAzureTableBackup backupSettings, BackupResult currentBackup)

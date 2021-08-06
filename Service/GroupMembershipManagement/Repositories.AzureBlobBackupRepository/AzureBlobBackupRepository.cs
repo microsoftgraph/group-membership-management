@@ -8,6 +8,7 @@ using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -33,7 +34,7 @@ namespace Repositories.AzureBlobBackupRepository
 				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Nothing to back up for {backupSettings.SourceTableName}. Skipping." });
 			}
 			BlobServiceClient blobServiceClient = new BlobServiceClient(backupSettings.DestinationConnectionString);
-			var containerName = $"{BACKUP_PREFIX}{backupSettings.SourceTableName}".ToLowerInvariant();
+			string containerName = GetContainerName(backupSettings);
 			var blobName = $"{BACKUP_PREFIX}{backupSettings.SourceTableName}{DateTime.UtcNow.ToString(BACKUP_DATE_FORMAT)}.csv";
 
 			var blobClient = blobServiceClient.GetBlobContainerClient(containerName);
@@ -44,7 +45,12 @@ namespace Repositories.AzureBlobBackupRepository
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Successfully backed up {entities.Count} entries to the blob named {blobName} successful." });
 			// make sure it worked?
 
-			return new BackupResult(blobName, entities.Count);
+			return new BackupResult(blobName, "blob", entities.Count);
+		}
+
+		private static string GetContainerName(IAzureTableBackup backupSettings)
+		{
+			return $"{BACKUP_PREFIX}{backupSettings.SourceTableName}".ToLowerInvariant();
 		}
 
 		private string SerializeEntities(List<DynamicTableEntity> entities)
@@ -80,6 +86,23 @@ namespace Repositories.AzureBlobBackupRepository
 			BlobServiceClient blobServiceClient = new BlobServiceClient(backupSettings.DestinationConnectionString);
 			var response = await blobServiceClient.DeleteBlobContainerAsync(backupName);
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Got status code {response.Status} when deleting blob {backupName}." });
+		}
+
+		public async Task<List<BackupEntity>> GetBackupsAsync(IAzureTableBackup backupSettings)
+		{
+			BlobServiceClient blobServiceClient = new BlobServiceClient(backupSettings.DestinationConnectionString);
+			var containerClient = blobServiceClient.GetBlobContainerClient(GetContainerName(backupSettings));
+			var blobs = containerClient.GetBlobsAsync();
+			var toReturn = new List<BackupEntity>();
+			await foreach (var blob in blobs)
+			{
+				var parsedDateTimeOffset = DateTimeOffset.ParseExact(blob.Name.Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
+					BACKUP_DATE_FORMAT, 
+					null,
+					DateTimeStyles.AssumeUniversal);
+				toReturn.Add(new BackupEntity { Name = blob.Name, StorageType = "blob", CreatedDate = blob.Properties.CreatedOn.GetValueOrDefault(parsedDateTimeOffset).UtcDateTime });
+			}
+			return toReturn;
 		}
 	}
 }
