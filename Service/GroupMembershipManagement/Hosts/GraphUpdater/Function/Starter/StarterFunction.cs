@@ -10,41 +10,45 @@ using Entities;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Polly;
 using Repositories.Contracts;
+using Services.Contracts;
 
 namespace Hosts.GraphUpdater
 {
     public class StarterFunction
     {
+        private const int MAX_RETRY_ATTEMPTS = 20;
+        private const int FIRST_RETRY_DELAY_IN_SECONDS = 10;
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly int MAX_RETRY_ATTEMPTS = 10;
-        private readonly int FIRST_RETRY_DELAY_IN_SECONDS = 10;
+        private readonly IServiceBusMessageService _messageService = null;
 
-        public StarterFunction(ILoggingRepository loggingRepository)
+
+        public StarterFunction(ILoggingRepository loggingRepository, IServiceBusMessageService messageService)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _messageService = messageService ?? throw new ArgumentNullException(nameof(messageService));
         }
 
         [FunctionName(nameof(StarterFunction))]
-        public async Task Run(
+        public async Task RunAsync(
         [ServiceBusTrigger("%membershipQueueName%", Connection = "differenceQueueConnection", IsSessionsEnabled = true)] Message message,
-        [DurableClient] IDurableOrchestrationClient starter, ILogger logMessage, IMessageSession messageSession)
+        [DurableClient] IDurableOrchestrationClient starter, IMessageSession messageSession)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(StarterFunction) + " function started" });
 
+            var messageDetails = _messageService.GetMessageProperties(message);
             var graphRequest = new GraphUpdaterFunctionRequest()
             {
-                Message = Encoding.UTF8.GetString(message.Body),
-                MessageSessionId = message.SessionId,
-                MessageLockToken = message.SystemProperties.LockToken
+                Message = Encoding.UTF8.GetString(messageDetails.Body),
+                MessageSessionId = messageDetails.SessionId,
+                MessageLockToken = messageDetails.LockToken
             };
 
             var source = new CancellationTokenSource();
             var cancellationToken = source.Token;
-            var renew = RenewMessages(messageSession, message.SystemProperties.LockToken, cancellationToken);
+            var renew = RenewMessages(messageSession, cancellationToken);
 
             var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), graphRequest);
 
@@ -69,7 +73,8 @@ namespace Hosts.GraphUpdater
                 .HandleResult<DurableOrchestrationStatus>(status => orchestratorRuntimeStatusCodesWorthRetrying.Contains(status.RuntimeStatus))
                 .WaitAndRetryAsync(
                     MAX_RETRY_ATTEMPTS,
-                    retryAttempt => {
+                    retryAttempt =>
+                    {
                         if (retryAttempt == 1)
                             return TimeSpan.FromSeconds(FIRST_RETRY_DELAY_IN_SECONDS);
                         else
@@ -84,12 +89,12 @@ namespace Hosts.GraphUpdater
             });
 
             if (result.RuntimeStatus == OrchestrationRuntimeStatus.Failed || result.RuntimeStatus == OrchestrationRuntimeStatus.Terminated)
-			{
+            {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error: Status of instance {result.InstanceId} is {result.RuntimeStatus}. The error message is : {result.Output}" });
 
                 // stop renewing the message session
                 source.Cancel();
-			}
+            }
             else
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Instance processing completed for {result.InstanceId}" });
@@ -98,7 +103,7 @@ namespace Hosts.GraphUpdater
                 isLastMessage = orchestratorResponseOutput.ShouldCompleteMessage;
             }
 
-            renew = RenewMessages(messageSession, message.SystemProperties.LockToken, cancellationToken);
+            renew = RenewMessages(messageSession, cancellationToken);
 
             if (isLastMessage)
             {
@@ -109,19 +114,16 @@ namespace Hosts.GraphUpdater
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(StarterFunction) + " function completed" });
-
         }
 
         private static readonly TimeSpan _waitBetweenRenew = TimeSpan.FromSeconds(30);
-        private async Task RenewMessages(IMessageSession messageSession, string lockToken, CancellationToken cancellationToken)
+        private async Task RenewMessages(IMessageSession messageSession, CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
                 await messageSession.RenewSessionLockAsync();
-                await messageSession.RenewLockAsync(lockToken);
                 await Task.Delay(_waitBetweenRenew);
             }
         }
     }
-
 }

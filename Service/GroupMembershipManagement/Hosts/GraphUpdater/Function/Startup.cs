@@ -16,6 +16,8 @@ using Repositories.MembershipDifference;
 using Repositories.SyncJobsRepository;
 using System;
 using Azure.Identity;
+using Services;
+using Services.Contracts;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
 [assembly: FunctionsStartup(typeof(Hosts.GraphUpdater.Startup))]
@@ -37,8 +39,11 @@ namespace Hosts.GraphUpdater
                 return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
             })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
-            .AddSingleton<SessionMessageCollector>()
-            .AddSingleton<IGraphUpdater, GraphUpdaterApplication>();
+            .AddSingleton<MessageCollector>()
+            .AddSingleton<IDeltaCalculatorService, DeltaCalculatorService>()
+            .AddSingleton<IGraphUpdaterService, GraphUpdaterService>()
+            .AddSingleton<IGroupUpdaterService, GroupUpdaterService>()
+            .AddSingleton<IServiceBusMessageService, ServiceBusMessageService>();
         }
     }
 }
