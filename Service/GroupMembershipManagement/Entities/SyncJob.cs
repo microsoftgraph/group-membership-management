@@ -80,11 +80,25 @@ namespace Entities
         [IgnoreLogging]
         public bool IsDryRunEnabled { get; set; }
 
+        private DateTime _dryRunTimeStamp;
         /// <summary>
         /// Threshold percentage for users being removed
         /// </summary>
         [IgnoreLogging]
-        public DateTime DryRunTimeStamp { get; set; }
+        public DateTime DryRunTimeStamp
+        {
+            get 
+            { 
+                return _dryRunTimeStamp;  
+            }
+            set
+            {
+                if (DateTime.FromFileTimeUtc(0) > value)
+                    _dryRunTimeStamp = DateTime.FromFileTimeUtc(0);
+                else
+                    _dryRunTimeStamp = value;
+            }
+        }
 
         public Dictionary<string, string> ToDictionary() =>
             DictionaryHelper.ToDictionary(this, new DictionaryHelper.Options
