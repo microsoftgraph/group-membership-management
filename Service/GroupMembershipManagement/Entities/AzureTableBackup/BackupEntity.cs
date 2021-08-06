@@ -4,9 +4,10 @@ using System;
 
 namespace Entities.AzureTableBackup
 {
-    public class BackupTable
+    public class BackupEntity
     {
-        public string TableName { get; set; }
+        public string Name { get; set; }
+        public string StorageType { get; set; }
         public DateTime CreatedDate { get; set; }
     }
 }

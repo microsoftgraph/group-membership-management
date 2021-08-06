@@ -12,5 +12,6 @@ namespace Repositories.Contracts
 	{
         Task<BackupResult> BackupEntitiesAsync(IAzureTableBackup backupSettings, List<DynamicTableEntity> entities);
         Task DeleteBackupAsync(IAzureTableBackup backupSettings, string backupName);
+        Task<List<BackupEntity>> GetBackupsAsync(IAzureTableBackup backupSettings);
 	}
 }
