@@ -91,6 +91,9 @@ namespace Repositories.AzureBlobBackupRepository
 				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"The blob container {containerName} did not exist when trying to delete blob {backupName}." });
 				return;
 			}
+			// This only gives us a "true" or a "false". I assume a "false" means the blob didn't exist.
+			// I think the only way this could try to delete a blob that doesn't exist is if there's some kind of weird race condition
+			// that leads to a blob getting deleted twice, and that's fine, too.
 			var response = await blobClient.DeleteBlobIfExistsAsync(backupName);
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Got {response.Value} when deleting blob {backupName}." });
 		}
