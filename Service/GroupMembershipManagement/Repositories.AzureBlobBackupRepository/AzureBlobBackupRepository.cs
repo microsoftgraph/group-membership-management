@@ -19,8 +19,8 @@ namespace Repositories.AzureBlobBackupRepository
 	{
 		private readonly ILoggingRepository _loggingRepository;
 
-        private const string BACKUP_PREFIX = "Backup";
-        private const string BACKUP_DATE_FORMAT = "yyyyMMddHHmmss";
+		private const string BACKUP_PREFIX = "Backup";
+		private const string BACKUP_DATE_FORMAT = "yyyyMMddHHmmss";
 
 		public AzureBlobBackupRepository(ILoggingRepository loggingRepository)
 		{
@@ -84,8 +84,15 @@ namespace Repositories.AzureBlobBackupRepository
 		public async Task DeleteBackupAsync(IAzureTableBackup backupSettings, string backupName)
 		{
 			BlobServiceClient blobServiceClient = new BlobServiceClient(backupSettings.DestinationConnectionString);
-			var response = await blobServiceClient.DeleteBlobContainerAsync(backupName);
-			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Got status code {response.Status} when deleting blob {backupName}." });
+			var containerName = GetContainerName(backupSettings);
+			var blobClient = blobServiceClient.GetBlobContainerClient(containerName);
+			if(!await blobClient.ExistsAsync())
+			{
+				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"The blob container {containerName} did not exist when trying to delete blob {backupName}." });
+				return;
+			}
+			var response = await blobClient.DeleteBlobIfExistsAsync(backupName);
+			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Got {response.Value} when deleting blob {backupName}." });
 		}
 
 		public async Task<List<BackupEntity>> GetBackupsAsync(IAzureTableBackup backupSettings)
@@ -96,7 +103,7 @@ namespace Repositories.AzureBlobBackupRepository
 			var toReturn = new List<BackupEntity>();
 			await foreach (var blob in blobs)
 			{
-				var parsedDateTimeOffset = DateTimeOffset.ParseExact(blob.Name.Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
+				var parsedDateTimeOffset = DateTimeOffset.ParseExact(blob.Name.Replace(".csv", string.Empty).Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
 					BACKUP_DATE_FORMAT, 
 					null,
 					DateTimeStyles.AssumeUniversal);
