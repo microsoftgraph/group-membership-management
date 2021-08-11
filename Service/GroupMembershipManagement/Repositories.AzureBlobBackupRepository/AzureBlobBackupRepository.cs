@@ -43,7 +43,6 @@ namespace Repositories.AzureBlobBackupRepository
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Backing {entities.Count} entries up to the blob named {blobName}." });
 			var result = await blobClient.UploadBlobAsync(blobName, new BinaryData(SerializeEntities(entities)));
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Successfully backed up {entities.Count} entries to the blob named {blobName} successful." });
-			// make sure it worked?
 
 			return new BackupResult(blobName, "blob", entities.Count);
 		}
