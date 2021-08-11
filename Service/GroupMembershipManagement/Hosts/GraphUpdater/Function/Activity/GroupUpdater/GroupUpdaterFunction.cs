@@ -13,16 +13,13 @@ namespace Hosts.GraphUpdater
     public class GroupUpdaterFunction
     {
         private readonly ILoggingRepository _loggingRepository;
-        private readonly IGraphUpdaterService _graphUpdaterService;
         private readonly IGroupUpdaterService _groupUpdaterService;
 
         public GroupUpdaterFunction(
             ILoggingRepository loggingRepository,
-            IGraphUpdaterService graphUpdaterService,
             IGroupUpdaterService groupUpdaterService)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
             _groupUpdaterService = groupUpdaterService ?? throw new ArgumentNullException(nameof(groupUpdaterService));
         }
 
