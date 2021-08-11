@@ -32,8 +32,8 @@ namespace Services
             ISyncJobRepository syncJobRepository,
             ILoggingRepository loggingRepository,
             IEmailSenderRecipient emailSenderAndRecipients,
-            IDryRunValue dryRun,
-            IGraphUpdaterService graphUpdaterService
+            IGraphUpdaterService graphUpdaterService,
+            IDryRunValue dryRun
             )
         {
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
