@@ -37,12 +37,28 @@ namespace Repositories.AzureBlobBackupRepository
 			string containerName = GetContainerName(backupSettings);
 			var blobName = $"{BACKUP_PREFIX}{backupSettings.SourceTableName}{DateTime.UtcNow.ToString(BACKUP_DATE_FORMAT)}.csv";
 
+            await _loggingRepository.LogMessageAsync(
+                new LogMessage
+                {
+                    Message = $"Backing up data to blob: {blobName} started",
+                    DynamicProperties = {
+						{ "status", "Started" },
+						{ "rowCount", entities.Count.ToString() } }
+                });
+
 			var blobClient = blobServiceClient.GetBlobContainerClient(containerName);
 			await blobClient.CreateIfNotExistsAsync();
 
-			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Backing {entities.Count} entries up to the blob named {blobName}." });
 			var result = await blobClient.UploadBlobAsync(blobName, new BinaryData(SerializeEntities(entities)));
-			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Successfully backed up {entities.Count} entries to the blob named {blobName} successful." });
+
+            await _loggingRepository.LogMessageAsync(
+                new LogMessage
+                {
+                    Message = $"Backing up data to blob: {blobName} completed",
+                    DynamicProperties = {
+						{ "status", "Completed" },
+						{ "rowCount", entities.Count.ToString() } }
+                });
 
 			return new BackupResult(blobName, "blob", entities.Count);
 		}
