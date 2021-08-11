@@ -35,7 +35,7 @@ namespace Services
         {
             if (!_tablesToBackup.Any())
             {
-                await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"No backup settings have been found." });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"No backup settings have been found." });
                 return;
             }
 
