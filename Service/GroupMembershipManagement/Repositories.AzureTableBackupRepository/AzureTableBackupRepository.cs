@@ -245,6 +245,9 @@ namespace Repositories.AzureTableBackupRepository
 
             var backupResult = results.OrderByDescending(x => x.Timestamp).FirstOrDefault();
 
+            // if this is null (because the record predates table and blob backup) assume table
+            backupResult.BackedUpTo = backupResult.BackedUpTo ?? "table";
+
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Found latest backup tracker ([{backupResult.Timestamp.UtcDateTime}] - {backupResult.RowKey}) for {backupSettings.SourceTableName}" });
 
             return backupResult;
