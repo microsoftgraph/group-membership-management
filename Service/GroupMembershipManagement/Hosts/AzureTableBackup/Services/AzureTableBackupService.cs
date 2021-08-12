@@ -84,6 +84,9 @@ namespace Services
 
 		private async Task<List<string>> DeleteOldBackupsAsync(IAzureTableBackup backupSettings)
 		{
+			// note that only backups of the current storage type will be deleted
+			// if you switch from table to blob, this won't delete the table backups
+			// unless you delete them manually or switch back to table storage.
 			var backupStorage = DetermineBackupStorage(backupSettings.BackUpTo);
 			var backupEntities = await backupStorage.GetBackupsAsync(backupSettings);
 			var cutOffDate = DateTime.UtcNow.AddDays(-backupSettings.DeleteAfterDays);
