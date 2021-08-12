@@ -37,6 +37,7 @@ namespace Hosts.GraphUpdater
         [DurableClient] IDurableOrchestrationClient starter, IMessageSession messageSession)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(StarterFunction) + " function started" });
+            await _loggingRepository.LogPIIMessageAsync(new LogMessage { Message = nameof(StarterFunction) + " function started" });
 
             var messageDetails = _messageService.GetMessageProperties(message);
             var graphRequest = new GraphUpdaterFunctionRequest()
