@@ -1,21 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Common.DependencyInjection;
-using DIConcreteTypes;
 using Entities;
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
 using Repositories.MembershipDifference;
-using Repositories.SyncJobsRepository;
-using System;
-using Azure.Identity;
 using Services;
 using Services.Contracts;
 
@@ -42,7 +36,6 @@ namespace Hosts.GraphUpdater
             .AddSingleton<MessageCollector>()
             .AddSingleton<IDeltaCalculatorService, DeltaCalculatorService>()
             .AddSingleton<IGraphUpdaterService, GraphUpdaterService>()
-            .AddSingleton<IGroupUpdaterService, GroupUpdaterService>()
             .AddSingleton<IServiceBusMessageService, ServiceBusMessageService>();
         }
     }

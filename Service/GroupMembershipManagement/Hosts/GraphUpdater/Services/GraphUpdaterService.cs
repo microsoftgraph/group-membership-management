@@ -8,6 +8,8 @@ using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Entities;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
@@ -126,6 +128,48 @@ namespace Services
         public async Task<string> GetGroupNameAsync(Guid groupId)
         {
             return await _graphGroupRepository.GetGroupNameAsync(groupId);
+        }
+
+        public async Task<GraphUpdaterStatus> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId)
+        {
+            if (_isGraphUpdaterDryRunEnabled)
+            {
+                return GraphUpdaterStatus.Ok;
+            }
+
+            var stopwatch = Stopwatch.StartNew();
+            var graphResponse = await _graphGroupRepository.AddUsersToGroup(members, new AzureADGroup { ObjectId = targetGroupId });
+            stopwatch.Stop();
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Adding {members.Count} users to group {targetGroupId} complete in {stopwatch.Elapsed.TotalSeconds} seconds. " +
+                $"{members.Count / stopwatch.Elapsed.TotalSeconds} users added per second. ",
+                RunId = runId
+            });
+
+            return graphResponse == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
+        }
+
+        public async Task<GraphUpdaterStatus> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId)
+        {
+            if (_isGraphUpdaterDryRunEnabled)
+            {
+                return GraphUpdaterStatus.Ok;
+            }
+
+            var stopwatch = Stopwatch.StartNew();
+            var graphResponse = await _graphGroupRepository.RemoveUsersFromGroup(members, new AzureADGroup { ObjectId = targetGroupId });
+            stopwatch.Stop();
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Removing {members.Count} users from group {targetGroupId} complete in {stopwatch.Elapsed.TotalSeconds} seconds. " +
+                $"{members.Count / stopwatch.Elapsed.TotalSeconds} users removed per second.",
+                RunId = runId
+            });
+
+            return graphResponse == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
         }
     }
 }

@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 using DIConcreteTypes;
 using Entities;
-using Hosts.GraphUpdater;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Repositories.Mocks;
 using Services.Entities;
@@ -15,15 +14,18 @@ using System.Threading.Tasks;
 namespace Services.Tests
 {
     [TestClass]
-    public class GroupUpdaterServiceTests
+    public class GraphUpdaterServiceUpdateGroupsTests
     {
         [TestMethod]
         public async Task AddUsersToGroupInDryRunMode()
         {
             var mockLogs = new MockLoggingRepository();
             var mockGraphGroup = new MockGraphGroupRepository();
+            var mockMail = new MockMailRepository();
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com");
+            var mockSynJobs = new MockSyncJobRepository();
             var dryRun = new DryRunValue(true);
-            var groupUpdaterService = new GroupUpdaterService(mockLogs, mockGraphGroup, dryRun);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, mockGraphGroup, mockMail, mailSenders, mockSynJobs, dryRun);
 
             var runId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
@@ -35,7 +37,7 @@ namespace Services.Tests
                 newUsers.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
             }
 
-            var status = await groupUpdaterService.AddUsersToGroupAsync(newUsers, groupId, runId);
+            var status = await graphUpdaterService.AddUsersToGroupAsync(newUsers, groupId, runId);
 
             Assert.AreEqual(GraphUpdaterStatus.Ok, status);
             Assert.AreEqual(0, mockGraphGroup.GroupsToUsers[groupId].Count);
@@ -46,8 +48,11 @@ namespace Services.Tests
         {
             var mockLogs = new MockLoggingRepository();
             var mockGraphGroup = new MockGraphGroupRepository();
+            var mockMail = new MockMailRepository();
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com");
+            var mockSynJobs = new MockSyncJobRepository();
             var dryRun = new DryRunValue(false);
-            var groupUpdaterService = new GroupUpdaterService(mockLogs, mockGraphGroup, dryRun);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, mockGraphGroup, mockMail, mailSenders, mockSynJobs, dryRun);
 
             var runId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
@@ -59,7 +64,7 @@ namespace Services.Tests
                 newUsers.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
             }
 
-            var status = await groupUpdaterService.AddUsersToGroupAsync(newUsers, groupId, runId);
+            var status = await graphUpdaterService.AddUsersToGroupAsync(newUsers, groupId, runId);
 
             Assert.AreEqual(GraphUpdaterStatus.Ok, status);
             Assert.AreEqual(newUsers.Count, mockGraphGroup.GroupsToUsers[groupId].Count);
@@ -70,8 +75,11 @@ namespace Services.Tests
         {
             var mockLogs = new MockLoggingRepository();
             var mockGraphGroup = new MockGraphGroupRepository();
+            var mockMail = new MockMailRepository();
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com");
+            var mockSynJobs = new MockSyncJobRepository();
             var dryRun = new DryRunValue(true);
-            var groupUpdaterService = new GroupUpdaterService(mockLogs, mockGraphGroup, dryRun);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, mockGraphGroup, mockMail, mailSenders, mockSynJobs, dryRun);
 
             var runId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
@@ -83,7 +91,7 @@ namespace Services.Tests
 
             mockGraphGroup.GroupsToUsers.Add(groupId, newUsers);
 
-            var status = await groupUpdaterService.RemoveUsersFromGroupAsync(newUsers.Take(5).ToList(), groupId, runId);
+            var status = await graphUpdaterService.RemoveUsersFromGroupAsync(newUsers.Take(5).ToList(), groupId, runId);
 
             Assert.AreEqual(GraphUpdaterStatus.Ok, status);
             Assert.AreEqual(newUsers.Count, mockGraphGroup.GroupsToUsers[groupId].Count);
@@ -94,8 +102,11 @@ namespace Services.Tests
         {
             var mockLogs = new MockLoggingRepository();
             var mockGraphGroup = new MockGraphGroupRepository();
+            var mockMail = new MockMailRepository();
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com");
+            var mockSynJobs = new MockSyncJobRepository();
             var dryRun = new DryRunValue(false);
-            var groupUpdaterService = new GroupUpdaterService(mockLogs, mockGraphGroup, dryRun);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, mockGraphGroup, mockMail, mailSenders, mockSynJobs, dryRun);
 
             var runId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
@@ -108,7 +119,7 @@ namespace Services.Tests
             mockGraphGroup.GroupsToUsers.Add(groupId, new List<AzureADUser>(newUsers));
 
             var usersToRemove = newUsers.Take(5).ToList();
-            var status = await groupUpdaterService.RemoveUsersFromGroupAsync(usersToRemove, groupId, runId);
+            var status = await graphUpdaterService.RemoveUsersFromGroupAsync(usersToRemove, groupId, runId);
 
             Assert.AreEqual(GraphUpdaterStatus.Ok, status);
             Assert.AreEqual(newUsers.Count - usersToRemove.Count, mockGraphGroup.GroupsToUsers[groupId].Count);

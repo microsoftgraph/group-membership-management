@@ -5,6 +5,7 @@ using Microsoft.Graph;
 using Polly;
 using Repositories.Contracts;
 using Services.Contracts;
+using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -66,6 +67,16 @@ namespace Repositories.Mocks
         }
 
         public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<GraphUpdaterStatus> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<GraphUpdaterStatus> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId)
         {
             throw new NotImplementedException();
         }

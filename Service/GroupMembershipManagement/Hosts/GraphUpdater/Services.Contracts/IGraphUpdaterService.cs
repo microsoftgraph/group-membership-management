@@ -5,6 +5,7 @@ using Microsoft.Graph;
 using Polly;
 using Services.Entities;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Services.Contracts
@@ -18,5 +19,7 @@ namespace Services.Contracts
 		public Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey);
 		public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId);
 		public Task<string> GetGroupNameAsync(Guid groupId);
+		Task<GraphUpdaterStatus> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId);
+		Task<GraphUpdaterStatus> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId);
 	}
 }
