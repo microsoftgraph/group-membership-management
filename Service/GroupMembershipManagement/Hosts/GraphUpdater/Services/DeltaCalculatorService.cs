@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 using Entities;
 using Entities.ServiceBus;
-using Hosts.GraphUpdater;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;

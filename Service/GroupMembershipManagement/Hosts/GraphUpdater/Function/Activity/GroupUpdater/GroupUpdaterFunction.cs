@@ -13,14 +13,14 @@ namespace Hosts.GraphUpdater
     public class GroupUpdaterFunction
     {
         private readonly ILoggingRepository _loggingRepository;
-        private readonly IGroupUpdaterService _groupUpdaterService;
+        private readonly IGraphUpdaterService _graphUpdaterService;
 
         public GroupUpdaterFunction(
             ILoggingRepository loggingRepository,
-            IGroupUpdaterService groupUpdaterService)
+            IGraphUpdaterService graphUpdaterService)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _groupUpdaterService = groupUpdaterService ?? throw new ArgumentNullException(nameof(groupUpdaterService));
+            _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
         }
 
         [FunctionName(nameof(GroupUpdaterFunction))]
@@ -29,9 +29,9 @@ namespace Hosts.GraphUpdater
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function started", RunId = request.RunId });
 
             if (request.Type == RequestType.Add)
-                await _groupUpdaterService.AddUsersToGroupAsync(request.Members, request.DestinationGroupId, request.RunId);
+                await _graphUpdaterService.AddUsersToGroupAsync(request.Members, request.DestinationGroupId, request.RunId);
             else
-                await _groupUpdaterService.RemoveUsersFromGroupAsync(request.Members, request.DestinationGroupId, request.RunId);
+                await _graphUpdaterService.RemoveUsersFromGroupAsync(request.Members, request.DestinationGroupId, request.RunId);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function completed", RunId = request.RunId });
         }
