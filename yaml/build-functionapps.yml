@@ -59,7 +59,6 @@ stages:
                         /p:thresholdStat=total
                         /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\${{ app.function.name }}\
                         /p:Exclude=[Repositories.*]*%2c[Entities]*%2c[*.Entities]*%2c[*.Tests]*%2c[*.Mocks]*%2c[Common.DependencyInjection]*%2c[Hosts.FunctionBase]*'
->>>>>>> 73a05da (Exclude specific entity projects, too.)
           condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
         - task: PublishCodeCoverageResults@1
