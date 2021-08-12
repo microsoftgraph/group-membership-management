@@ -53,8 +53,8 @@ namespace Services.Tests
                                             mockSyncJobRepo,
                                             mockLoggingRepo,
                                             mailSenders,
-                                            dryRun,
-                                            mockGraphUpdaterService);
+                                            mockGraphUpdaterService,
+                                            dryRun);
 
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
@@ -130,8 +130,8 @@ namespace Services.Tests
                                             mockSyncJobRepo,
                                             mockLoggingRepo,
                                             mailSenders,
-                                            dryRun,
-                                            mockGraphUpdaterService);
+                                            mockGraphUpdaterService,
+                                            dryRun);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -208,8 +208,8 @@ namespace Services.Tests
                                             mockSyncJobRepo,
                                             mockLoggingRepo,
                                             mailSenders,
-                                            dryRun,
-                                            mockGraphUpdaterService);
+                                            mockGraphUpdaterService,
+                                            dryRun);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -279,8 +279,8 @@ namespace Services.Tests
                                             mockSyncJobRepo,
                                             mockLoggingRepo,
                                             mailSenders,
-                                            dryRun,
-                                            mockGraphUpdaterService);
+                                            mockGraphUpdaterService,
+                                            dryRun);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -354,8 +354,8 @@ namespace Services.Tests
                                             mockSyncJobRepo,
                                             mockLoggingRepo,
                                             mailSenders,
-                                            dryRun,
-                                            mockGraphUpdaterService);
+                                            mockGraphUpdaterService,
+                                            dryRun);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
