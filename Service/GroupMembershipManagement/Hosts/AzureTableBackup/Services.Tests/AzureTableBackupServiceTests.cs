@@ -67,7 +67,7 @@ namespace Services.Tests
             azureBlobBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[1]))
                                         .ReturnsAsync(new List<BackupEntity>());
             azureBlobBackupRepository.Setup(x => x.BackupEntitiesAsync(backupSettings[1], entities))
-                                        .ReturnsAsync(new BackupResult { BackupTableName = "backupTableName", BackedUpTo = "blob", RowCount = entities.Count });
+                                        .ReturnsAsync(new BackupResult("backupTableName", "blob", entities.Count));
 
             var azureTableBackupService = new AzureTableBackupService(backupSettings, loggerMock.Object, azureTableBackupRepository.Object, azureBlobBackupRepository.Object);
             await azureTableBackupService.BackupTablesAsync();
