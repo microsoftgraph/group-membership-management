@@ -87,8 +87,8 @@ namespace Services.Tests
                                      syncjobRepository,
                                      loggingRepository,
                                      senderRecipients,
-                                     dryRun,
-                                     graphUpdaterService);
+                                     graphUpdaterService,
+                                     dryRun);
 
 
             var targetGroupUsers = new List<AzureADUser>();
@@ -124,8 +124,8 @@ namespace Services.Tests
                                     syncjobRepository,
                                     loggingRepository,
                                     senderRecipients,
-                                    dryRun,
-                                    graphUpdaterService);
+                                    graphUpdaterService,
+                                    dryRun);
 
 
             syncjobRepository.ExistingSyncJobs.Add((_partitionKey, _rowKey), _job);
@@ -155,8 +155,8 @@ namespace Services.Tests
                                     syncjobRepository,
                                     loggingRepository,
                                     senderRecipients,
-                                    dryRun,
-                                    graphUpdaterService);
+                                    graphUpdaterService,
+                                    dryRun);
 
             var targetGroupUsers = new List<AzureADUser>();
 
@@ -198,8 +198,8 @@ namespace Services.Tests
                                     syncjobRepository,
                                     loggingRepository,
                                     senderRecipients,
-                                    dryRun,
-                                    graphUpdaterService);
+                                    graphUpdaterService,
+                                    dryRun);
 
             var users = _membership.SourceMembers;
             _membership.SourceMembers = users.Take(2).ToList();
@@ -243,8 +243,8 @@ namespace Services.Tests
                                     syncjobRepository,
                                     loggingRepository,
                                     senderRecipients,
-                                    dryRun,
-                                    graphUpdaterService);
+                                    graphUpdaterService,
+                                    dryRun);
 
             var users = _membership.SourceMembers;
             _membership.SourceMembers = users.Take(2).ToList();
@@ -288,8 +288,8 @@ namespace Services.Tests
                                     syncjobRepository,
                                     loggingRepository,
                                     senderRecipients,
-                                    dryRun,
-                                    graphUpdaterService);
+                                    graphUpdaterService,
+                                    dryRun);
 
             var targetGroupUsers = new List<AzureADUser>();
 
