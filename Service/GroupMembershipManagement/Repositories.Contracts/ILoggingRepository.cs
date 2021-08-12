@@ -12,5 +12,6 @@ namespace Repositories.Contracts
         public Dictionary<string, string> SyncJobProperties { get; set; }
         public bool DryRun { get; set; }
         Task LogMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "");
+        Task LogPIIMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "");
     }
 }

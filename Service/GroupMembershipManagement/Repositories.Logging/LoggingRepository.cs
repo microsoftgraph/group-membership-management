@@ -28,7 +28,8 @@ namespace Repositories.Logging
 
         // you should only have one httpClient for the life of your program
         // see https://aspnetmonsters.com/2016/08/2016-08-27-httpclientwrong/?fbclid=IwAR2aNRweTjGdx5Foev4XvHj2Xldeg_UAb6xW3eLTFQDB7Xghv65LvrVa5wA
-        private static readonly HttpClient _httpClient = MakeClient();
+        private static readonly HttpClient _httpClient = MakeClient("ApplicationLog");
+        private static readonly HttpClient _httpPIIClient = MakeClient("PIIApplicationLog");
 
         public Dictionary<string, string> SyncJobProperties { get; set; }
         public bool DryRun { get; set; } = false;
@@ -41,10 +42,10 @@ namespace Repositories.Logging
             _location = logAnalytics.Location ?? throw new ArgumentNullException(nameof(logAnalytics.Location));
         }
 
-        private static HttpClient MakeClient()
+        private static HttpClient MakeClient(string logType)
         {
             var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Log-Type", "ApplicationLog");
+            client.DefaultRequestHeaders.Add("Log-Type", logType);
             return client;
         }
 
@@ -98,6 +99,60 @@ namespace Repositories.Logging
             });
 
             if(httpStatusCodesWorthRetrying.Contains(response.StatusCode))
+                response.EnsureSuccessStatusCode();
+
+        }
+
+        public async Task LogPIIMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
+        {
+            var properties = CreatePropertiesDictionary(logMessage);
+            properties.Add("location", _location);
+            properties.Add("DryRun", DryRun.ToString());
+
+            if (!string.IsNullOrWhiteSpace(caller))
+                properties.Add("event", caller);
+
+            if (!string.IsNullOrWhiteSpace(file))
+                properties.Add("operation", Path.GetFileNameWithoutExtension(file));
+
+
+            var serializedMessage = JsonConvert.SerializeObject(properties);
+
+            HttpStatusCode[] httpStatusCodesWorthRetrying = {
+                HttpStatusCode.RequestTimeout, // 408
+                HttpStatusCode.TooManyRequests, // 429
+                HttpStatusCode.InternalServerError, // 500
+                HttpStatusCode.BadGateway, // 502
+                HttpStatusCode.ServiceUnavailable, // 503
+                HttpStatusCode.GatewayTimeout // 504
+            };
+
+            var retryPolicy = Policy
+                            .Handle<HttpRequestException>()
+                            .OrResult<HttpResponseMessage>(r => httpStatusCodesWorthRetrying.Contains(r.StatusCode))
+                            .WaitAndRetryAsync(
+                                MAX_RETRY_ATTEMPTS,
+                                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
+                            );
+
+            var url = $"https://{_workSpaceId}.ods.opinsights.azure.com/api/logs?api-version=2016-04-01";
+            var dateString = DateTime.UtcNow.ToString("r");
+            var jsonBytes = Encoding.UTF8.GetBytes(serializedMessage);
+            var contentType = "application/json";
+            var message = $"POST\n{jsonBytes.Length}\n{contentType}\nx-ms-date:{dateString}\n/api/logs";
+            var signature = BuildSignature(message, _sharedKey);
+            var scheme = "SharedKey";
+            var parameter = $"{_workSpaceId}:{signature}";
+
+            HttpResponseMessage response = null;
+            await retryPolicy.ExecuteAsync(async () =>
+            {
+                response = await _httpPIIClient.SendAsync(
+                                    CreateRequest(HttpMethod.Post, url, scheme, parameter, dateString, serializedMessage, contentType));
+                return response;
+            });
+
+            if (httpStatusCodesWorthRetrying.Contains(response.StatusCode))
                 response.EnsureSuccessStatusCode();
 
         }
