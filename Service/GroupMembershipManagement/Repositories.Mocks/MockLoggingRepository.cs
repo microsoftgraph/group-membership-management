@@ -22,5 +22,11 @@ namespace Repositories.Mocks
             MessagesLogged.Add(logMessage);
             return Task.CompletedTask;
         }
+
+        public Task LogPIIMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
+        {
+            MessagesLogged.Add(logMessage);
+            return Task.CompletedTask;
+        }
     }
 }
