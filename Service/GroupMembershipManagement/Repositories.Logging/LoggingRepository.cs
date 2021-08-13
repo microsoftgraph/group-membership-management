@@ -51,59 +51,15 @@ namespace Repositories.Logging
 
         public async Task LogMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
         {
-            var properties = CreatePropertiesDictionary(logMessage);
-            properties.Add("location", _location);
-            properties.Add("DryRun", DryRun.ToString());
-
-            if (!string.IsNullOrWhiteSpace(caller))
-                properties.Add("event", caller);
-
-            if (!string.IsNullOrWhiteSpace(file))
-                properties.Add("operation", Path.GetFileNameWithoutExtension(file));
-
-
-            var serializedMessage = JsonConvert.SerializeObject(properties);
-
-            HttpStatusCode[] httpStatusCodesWorthRetrying = {
-                HttpStatusCode.RequestTimeout, // 408
-                HttpStatusCode.TooManyRequests, // 429
-                HttpStatusCode.InternalServerError, // 500
-                HttpStatusCode.BadGateway, // 502
-                HttpStatusCode.ServiceUnavailable, // 503
-                HttpStatusCode.GatewayTimeout // 504
-            };
-
-            var retryPolicy = Policy
-                            .Handle<HttpRequestException>()
-                            .OrResult<HttpResponseMessage>(r => httpStatusCodesWorthRetrying.Contains(r.StatusCode))
-                            .WaitAndRetryAsync(
-                                MAX_RETRY_ATTEMPTS,
-                                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
-                            );
-
-            var url = $"https://{_workSpaceId}.ods.opinsights.azure.com/api/logs?api-version=2016-04-01";
-            var dateString = DateTime.UtcNow.ToString("r");
-            var jsonBytes = Encoding.UTF8.GetBytes(serializedMessage);
-            var contentType = "application/json";
-            var message = $"POST\n{jsonBytes.Length}\n{contentType}\nx-ms-date:{dateString}\n/api/logs";
-            var signature = BuildSignature(message, _sharedKey);
-            var scheme = "SharedKey";
-            var parameter = $"{_workSpaceId}:{signature}";
-
-            HttpResponseMessage response = null;
-            await retryPolicy.ExecuteAsync(async () =>
-            {
-                response = await _httpClient.SendAsync(
-                                    CreateRequest(HttpMethod.Post, url, scheme, parameter, dateString, serializedMessage, contentType));
-                return response;
-            });
-
-            if(httpStatusCodesWorthRetrying.Contains(response.StatusCode))
-                response.EnsureSuccessStatusCode();
-
+            await CommonLogMessageAsync(logMessage, _httpClient, caller, file);
         }
 
         public async Task LogPIIMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
+        {
+           await CommonLogMessageAsync(logMessage, _httpPIIClient, caller, file);
+        }
+
+        private async Task CommonLogMessageAsync(LogMessage logMessage, HttpClient httpClient, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
         {
             var properties = CreatePropertiesDictionary(logMessage);
             properties.Add("location", _location);
@@ -147,7 +103,7 @@ namespace Repositories.Logging
             HttpResponseMessage response = null;
             await retryPolicy.ExecuteAsync(async () =>
             {
-                response = await _httpPIIClient.SendAsync(
+                response = await httpClient.SendAsync(
                                     CreateRequest(HttpMethod.Post, url, scheme, parameter, dateString, serializedMessage, contentType));
                 return response;
             });
