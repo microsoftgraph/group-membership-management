@@ -241,6 +241,47 @@
       "metadata": {
         "description": "Adds tags for the key-value resources. It's optional"
       }
+    },
+    "actionGroupName": {
+      "type": "string",
+      "defaultValue": "PIILogAlerts",
+      "metadata": {
+        "description": "Unique name within the resource group for the Action group."
+      }
+    },
+    "actionGroupShortName": {
+      "type": "string",
+      "defaultValue": "PIILogs",
+      "metadata": {
+        "description": "Short name up to 12 characters for the Action group."
+      }
+    },
+    "sourceId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Resource ID of the Log Analytics workspace."
+      }
+    },
+    "actionGroupId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The ID of the action group that is triggered when the alert is activated."
+      }
+    },
+    "emailReceivers": {
+      "type": "array",
+      "defaultValue": [
+        {
+          "name": "Example name",
+          "emailAddress": "example@microsoft.com",
+          "useCommonAlertSchema": true
+        }
+      ],
+      "metadata": {
+        "description": "This email address is used to reach out in the event that a user identifier is logged in order to help resolve an unexpected issue that occurred during a sync. This will only occur when the identifier is absolutely required to resolve the issue. The recipients of these emails should be super responsive to these notifications and clear out the log as soon as possible."
+      }
     }
   },
   "variables": {
@@ -512,6 +553,56 @@
             "value": "[parameters('appConfigurationTags')]"
           }
         }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2018-05-01",
+      "name": "actionGroupTemplate",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(uri(parameters('containerBaseUrl'), 'actionGroup.json'), parameters('containerSasToken'))]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "actionGroupName": {
+            "value": "[parameters('actionGroupName')]"
+          },
+          "actionGroupShortName": {
+            "value": "[parameters('actionGroupShortName')]"
+          },
+          "emailReceivers": {
+            "value": "[parameters('emailReceivers')]"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2018-05-01",
+      "name": "logAlertRuleTemplate",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(uri(parameters('containerBaseUrl'), 'logAlertRule.json'), parameters('containerSasToken'))]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "sourceId": {
+            "value": "[reference('logAnalyticsTemplate').outputs.resourceId.value]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "actionGroupId": {
+            "value": "[reference('actionGroupTemplate').outputs.actionGroupId.value]"
+          }
+        },
+        "dependsOn": [
+          "Microsoft.Resources/deployments/actionGroupTemplate",
+          "Microsoft.Resources/deployments/logAnalyticsTemplate"
+        ]
       }
     },
     {

@@ -53,6 +53,10 @@
     "primarySharedKey": {
       "type": "string",
       "value": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('name')), '2015-11-01-preview').primarySharedKey]"
+    },
+    "resourceId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('name'))]"
     }
   }
 }
