@@ -12,5 +12,6 @@ namespace Hosts.GraphUpdater
         public Guid DestinationGroupId { get; set; }
         public RequestType Type { get; set; }
         public ICollection<AzureADUser> Members { get; set; }
+        public bool IsInitialSync { get; set; }
     }
 }
