@@ -122,10 +122,10 @@ namespace Hosts.GraphUpdater
                     if (!deltaResponse.IsDryRunSync)
                     {
                         await context.CallSubOrchestratorAsync<GraphUpdaterStatus>(nameof(GroupUpdaterSubOrchestratorFunction),
-                                        CreateGroupUpdaterRequest(groupMembership.Destination.ObjectId, deltaResponse.MembersToAdd, RequestType.Add, groupMembership.RunId));
+                                        CreateGroupUpdaterRequest(groupMembership.Destination.ObjectId, deltaResponse.MembersToAdd, RequestType.Add, groupMembership.RunId, deltaResponse.IsInitialSync));
 
                         await context.CallSubOrchestratorAsync<GraphUpdaterStatus>(nameof(GroupUpdaterSubOrchestratorFunction),
-                                        CreateGroupUpdaterRequest(groupMembership.Destination.ObjectId, deltaResponse.MembersToRemove, RequestType.Remove, groupMembership.RunId));
+                                        CreateGroupUpdaterRequest(groupMembership.Destination.ObjectId, deltaResponse.MembersToRemove, RequestType.Remove, groupMembership.RunId, deltaResponse.IsInitialSync));
 
                         if (deltaResponse.IsInitialSync)
                         {
@@ -183,14 +183,15 @@ namespace Hosts.GraphUpdater
             };
         }
 
-        private GroupUpdaterRequest CreateGroupUpdaterRequest(Guid targetGroupId, ICollection<AzureADUser> members, RequestType type, Guid runId)
+        private GroupUpdaterRequest CreateGroupUpdaterRequest(Guid targetGroupId, ICollection<AzureADUser> members, RequestType type, Guid runId, bool isInitialSync)
         {
             return new GroupUpdaterRequest
             {
                 RunId = runId,
                 DestinationGroupId = targetGroupId,
                 Members = members,
-                Type = type
+                Type = type,
+                IsInitialSync = isInitialSync
             };
         }
 

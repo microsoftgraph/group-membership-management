@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
+using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
 using Polly;
 using Repositories.Contracts;
@@ -20,14 +21,27 @@ namespace Services
         private const int NumberOfGraphRetries = 5;
         private const string EmailSubject = "EmailSubject";
         private readonly ILoggingRepository _loggingRepository;
+        private readonly TelemetryClient _telemetryClient;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly ISyncJobRepository _syncJobRepository;
         private readonly bool _isGraphUpdaterDryRunEnabled;
+        enum Metric
+        {
+            SyncComplete,
+            SyncJobTimeElapsedSeconds,
+            MembersAdded,
+            MembersRemoved,
+            MembersAddedFromOnboarding,
+            MembersRemovedFromOnboarding,
+            GraphAddRatePerSecond,
+            GraphRemoveRatePerSecond
+        };
 
         public GraphUpdaterService(
                 ILoggingRepository loggingRepository,
+                TelemetryClient telemetryClient,
                 IGraphGroupRepository graphGroupRepository,
                 IMailRepository mailRepository,
                 IEmailSenderRecipient emailSenderAndRecipients,
@@ -35,6 +49,7 @@ namespace Services
                 IDryRunValue dryRun)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
@@ -101,6 +116,18 @@ namespace Services
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set job status to {status}.", RunId = runId });
 
+            var timeElapsedForJob = (DateTime.Now - job.Timestamp).TotalSeconds;
+            _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
+
+            var syncCompleteEvent = new Dictionary<string, string>
+            {
+                { "SyncJobType", job.Type },
+                { "Result", status == SyncStatus.Idle ? "Success": "Failure" },
+                { "DryRunEnabled", job.IsDryRunEnabled.ToString() }
+            };
+
+            _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteEvent);
+
             var isDryRunSync = job.IsDryRunEnabled || _isGraphUpdaterDryRunEnabled || isDryRun;
 
             if (isDryRunSync)
@@ -130,7 +157,7 @@ namespace Services
             return await _graphGroupRepository.GetGroupNameAsync(groupId);
         }
 
-        public async Task<GraphUpdaterStatus> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId)
+        public async Task<GraphUpdaterStatus> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
         {
             if (_isGraphUpdaterDryRunEnabled)
             {
@@ -140,6 +167,11 @@ namespace Services
             var stopwatch = Stopwatch.StartNew();
             var graphResponse = await _graphGroupRepository.AddUsersToGroup(members, new AzureADGroup { ObjectId = targetGroupId });
             stopwatch.Stop();
+
+            if (isInitialSync)
+                _telemetryClient.TrackMetric(nameof(Metric.MembersAddedFromOnboarding), members.Count);
+            else
+                _telemetryClient.TrackMetric(nameof(Metric.MembersAdded), members.Count);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
@@ -151,7 +183,7 @@ namespace Services
             return graphResponse == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
         }
 
-        public async Task<GraphUpdaterStatus> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId)
+        public async Task<GraphUpdaterStatus> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
         {
             if (_isGraphUpdaterDryRunEnabled)
             {
@@ -161,6 +193,11 @@ namespace Services
             var stopwatch = Stopwatch.StartNew();
             var graphResponse = await _graphGroupRepository.RemoveUsersFromGroup(members, new AzureADGroup { ObjectId = targetGroupId });
             stopwatch.Stop();
+
+            if (isInitialSync)
+                _telemetryClient.TrackMetric(nameof(Metric.MembersRemovedFromOnboarding), members.Count);
+            else
+                _telemetryClient.TrackMetric(nameof(Metric.MembersRemoved), members.Count);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
