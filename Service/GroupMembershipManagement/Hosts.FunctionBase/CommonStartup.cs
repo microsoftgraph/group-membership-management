@@ -6,6 +6,8 @@ using DIConcreteTypes;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -105,6 +107,14 @@ namespace Hosts.FunctionBase
             {
                 var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
                 return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
+            });
+
+            builder.Services.AddSingleton<TelemetryClient>(sp =>
+            {
+                var telemetryConfiguration = new TelemetryConfiguration();
+                telemetryConfiguration.InstrumentationKey = Environment.GetEnvironmentVariable("APPINSIGHTS_INSTRUMENTATIONKEY");
+                telemetryConfiguration.TelemetryInitializers.Add(new OperationCorrelationTelemetryInitializer());
+                return new TelemetryClient(telemetryConfiguration);
             });
         }
 
