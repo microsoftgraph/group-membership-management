@@ -334,7 +334,10 @@ namespace Repositories.GraphGroups
                     var chunkToRetry = toSend.First(x => x.Id == idToRetry.Id);
                     if (chunkToRetry.ShouldRetry)
                     {
+                        var originalId = chunkToRetry.Id;
                         queue.Enqueue(chunkToRetry.UpdateIdForRetry(threadNumber));
+
+                        await _log.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId} as {chunkToRetry.Id}", RunId = RunId });
                     }
                 }
                 await _log.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.", RunId = RunId });
@@ -356,7 +359,12 @@ namespace Repositories.GraphGroups
                 foreach (var chunk in toSend)
                 {
                     if (chunk.ShouldRetry)
+                    {
+                        var originalId = chunk.Id;
                         queue.Enqueue(chunk.UpdateIdForRetry(threadNumber));
+
+                        await _log.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId} as {chunk.Id}", RunId = RunId });
+                    }
                 }
             }
 
@@ -367,6 +375,8 @@ namespace Repositories.GraphGroups
         {
             try
             {
+                await _log.LogMessageAsync(new LogMessage { Message = $"Sending requests {string.Join(",", tosend.BatchRequestSteps.Keys)}.", RunId = RunId });
+
                 var response = await _graphServiceClient.Batch.Request().WithMaxRetry(MaxRetries).PostAsync(tosend);
                 return GetStepIdsToRetry(await response.GetResponsesAsync());
             }
@@ -400,13 +410,19 @@ namespace Repositories.GraphGroups
             {
                 //Ensure that the response messages get disposed of.
                 using var response = kvp.Value;
-
                 var status = response.StatusCode;
+                var content = await response.Content.ReadAsStringAsync();
 
-                string badRequestBody = string.Empty;
+                await _log.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Response - RequestId:{kvp.Key} - StatusCode:{status} - Content:{content}",
+                    RunId = RunId
+                });
+
+
                 // Note that the ones with empty bodies mean "this response is okay and we don't have to do anything about it."
-                if (status == HttpStatusCode.BadRequest && IsOkayError(badRequestBody = await response.Content.ReadAsStringAsync())) { }
-                else if (status == HttpStatusCode.NotFound && (await response.Content.ReadAsStringAsync()).Contains("does not exist or one of its queried reference-property objects are not present."))
+                if (status == HttpStatusCode.BadRequest && IsOkayError(content)) { }
+                else if (status == HttpStatusCode.NotFound && (content).Contains("does not exist or one of its queried reference-property objects are not present."))
                 {
                     // basically, the graph sometimes won't be able to find the group for some reason, and we have to retry then
                     // but sometimes that error doesn't go away, because the thing's already been removed, so cap the number of retries.
@@ -430,8 +446,7 @@ namespace Repositories.GraphGroups
                 else if (_shouldRetry.Contains(status)) { yield return (kvp.Key, ResponseCode.Ok); }
                 else
                 {
-                    badRequestBody = await response.Content.ReadAsStringAsync();
-                    await _log.LogMessageAsync(new LogMessage { Message = $"Got an unexpected error from Graph, stopping all processing for current job: {status} {response.ReasonPhrase} {badRequestBody}.", RunId = RunId });
+                    await _log.LogMessageAsync(new LogMessage { Message = $"Got an unexpected error from Graph, stopping all processing for current job: {status} {response.ReasonPhrase} {content}.", RunId = RunId });
                     yield return (kvp.Key, ResponseCode.Error);
                 }
             }
