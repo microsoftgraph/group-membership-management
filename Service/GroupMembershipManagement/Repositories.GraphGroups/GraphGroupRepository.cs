@@ -273,10 +273,9 @@ namespace Repositories.GraphGroups
         {
             if (!users.Any()) { return ResponseCode.Ok; }
 
-            int batchRequestId = 0;
             var queuedBatches = new ConcurrentQueue<ChunkOfUsers>(
                     ChunksOfSize(users, requestMax) // Chop up the users into chunks of how many per graph request (20 for add, 1 for remove)
-                    .Select(x => new ChunkOfUsers { ToSend = x, Id = $"{batchRequestId++}-" }));
+                    .Select(x => new ChunkOfUsers { ToSend = x, Id = $"{Guid.NewGuid().ToString().Replace("-", string.Empty)}-" }));
 
             var responses = await Task.WhenAll(Enumerable.Range(0, ConcurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize)));
 
