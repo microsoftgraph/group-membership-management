@@ -103,7 +103,7 @@ namespace Entities
         public Dictionary<string, string> ToDictionary() =>
             DictionaryHelper.ToDictionary(this, new DictionaryHelper.Options
             {
-                UseCamelCase = true,
+                UseCamelCase = false,
                 PropertiesToIgnore = new List<string> { "Timestamp", "ETag" }
             });
     }
