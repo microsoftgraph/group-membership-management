@@ -132,7 +132,16 @@ namespace Hosts.GraphUpdater
                             var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
                                                             new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
                             var additonalContent = new[] { groupName, groupMembership.Destination.ObjectId.ToString(), deltaResponse.MembersToAdd.Count.ToString(), deltaResponse.MembersToRemove.Count.ToString() };
-                            await _graphUpdaterService.SendEmailAsync(deltaResponse.Requestor, SyncCompletedEmailBody, additonalContent, groupMembership.RunId, _emailSenderAndRecipients.SyncCompletedCCAddresses);
+
+                            await context.CallActivityAsync(nameof(EmailSenderFunction),
+                                            new EmailSenderRequest
+                                            {
+                                                ToEmail = deltaResponse.Requestor,
+                                                CcEmail = _emailSenderAndRecipients.SyncCompletedCCAddresses,
+                                                ContentTemplate = SyncCompletedEmailBody,
+                                                AdditionalContentParams = additonalContent,
+                                                RunId = groupMembership.RunId
+                                            });
                         }
                     }
 
