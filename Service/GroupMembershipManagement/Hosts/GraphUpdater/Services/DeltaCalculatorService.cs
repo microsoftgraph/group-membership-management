@@ -45,9 +45,7 @@ namespace Services
 
         public async Task<DeltaResponse> CalculateDifferenceAsync(GroupMembership membership, List<AzureADUser> membersFromDestinationGroup)
         {
-            SetupLoggingRepository(membership);
-
-            var deltaResponse = new DeltaResponse
+           var deltaResponse = new DeltaResponse
             {
                 IsDryRunSync = _isGraphUpdaterDryRunEnabled
             };
@@ -56,6 +54,9 @@ namespace Services
             var changeTo = SyncStatus.Idle;
 
             var job = await _syncJobRepository.GetSyncJobAsync(membership.SyncJobPartitionKey, membership.SyncJobRowKey);
+
+            SetupLoggingRepository(membership, job);
+            
             if (job == null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sync job : Partition key {membership.SyncJobPartitionKey}, Row key {membership.SyncJobRowKey} was not found!", RunId = membership.RunId });
@@ -240,15 +241,20 @@ namespace Services
             await _graphUpdaterService.SendEmailAsync(_emailSenderAndRecipients.SyncDisabledCCAddresses, contentTemplate, additionalContent, runId);
         }
 
-        private void SetupLoggingRepository(GroupMembership membership)
+        private void SetupLoggingRepository(GroupMembership membership, SyncJob job)
         {
             _loggingRepository.DryRun = _isGraphUpdaterDryRunEnabled;
-            _loggingRepository.SyncJobProperties = new Dictionary<string, string>
+            if (job == null)
             {
-                { "partitionKey", membership.SyncJobPartitionKey },
-                { "rowKey", membership.SyncJobRowKey },
-                { "targetOfficeGroupId", membership.Destination.ObjectId.ToString() }
-            };
+                _loggingRepository.SyncJobProperties = new Dictionary<string, string>
+                {
+                    { nameof(SyncJob.PartitionKey), membership.SyncJobPartitionKey },
+                    { nameof(SyncJob.RowKey), membership.SyncJobRowKey },
+                    { nameof(SyncJob.TargetOfficeGroupId), membership.Destination.ObjectId.ToString() }
+                };
+            }
+            else
+                _loggingRepository.SyncJobProperties = job.ToDictionary();
         }
     }
 }
