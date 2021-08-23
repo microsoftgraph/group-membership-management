@@ -28,7 +28,7 @@ jobs:
     - name: Use .NET Core
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 3.1.409
+        dotnet-version: 3.1.410
     
     - name: dotnet build
       run: |
