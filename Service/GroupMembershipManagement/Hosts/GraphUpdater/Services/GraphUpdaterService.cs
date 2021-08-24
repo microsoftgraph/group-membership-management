@@ -29,8 +29,6 @@ namespace Services
         private readonly bool _isGraphUpdaterDryRunEnabled;
         enum Metric
         {
-            SyncComplete,
-            SyncJobTimeElapsedSeconds,
             MembersAdded,
             MembersRemoved,
             MembersAddedFromOnboarding,
@@ -116,18 +114,6 @@ namespace Services
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set job status to {status}.", RunId = runId });
 
-            var timeElapsedForJob = (DateTime.Now - job.Timestamp).TotalSeconds;
-            _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
-
-            var syncCompleteEvent = new Dictionary<string, string>
-            {
-                { "SyncJobType", job.Type },
-                { "Result", status == SyncStatus.Idle ? "Success": "Failure" },
-                { "DryRunEnabled", job.IsDryRunEnabled.ToString() }
-            };
-
-            _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteEvent);
-
             var isDryRunSync = job.IsDryRunEnabled || _isGraphUpdaterDryRunEnabled || isDryRun;
 
             if (isDryRunSync)
@@ -179,6 +165,7 @@ namespace Services
                 $"{members.Count / stopwatch.Elapsed.TotalSeconds} users added per second. ",
                 RunId = runId
             });
+            _telemetryClient.TrackMetric(nameof(Metric.GraphAddRatePerSecond), members.Count / stopwatch.Elapsed.TotalSeconds);
 
             return graphResponse == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
         }
@@ -205,6 +192,7 @@ namespace Services
                 $"{members.Count / stopwatch.Elapsed.TotalSeconds} users removed per second.",
                 RunId = runId
             });
+            _telemetryClient.TrackMetric(nameof(Metric.GraphRemoveRatePerSecond), members.Count / stopwatch.Elapsed.TotalSeconds);
 
             return graphResponse == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
         }

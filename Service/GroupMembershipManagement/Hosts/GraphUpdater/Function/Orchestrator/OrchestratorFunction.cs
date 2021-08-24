@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Entities;
 using Entities.ServiceBus;
+using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Newtonsoft.Json;
@@ -20,17 +21,25 @@ namespace Hosts.GraphUpdater
     {
         private const string SyncCompletedEmailBody = "SyncCompletedEmailBody";
         private readonly ILoggingRepository _loggingRepository = null;
+        private readonly TelemetryClient _telemetryClient;
         private readonly IGraphUpdaterService _graphUpdaterService = null;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
         private readonly bool _isDryRunEnabled;
+        enum Metric
+        {
+            SyncComplete,
+            SyncJobTimeElapsedSeconds
+        }
 
         public OrchestratorFunction(
             ILoggingRepository loggingRepository,
+            TelemetryClient telemetryClient,
             IGraphUpdaterService graphUpdaterService,
             IDryRunValue dryRun,
             IEmailSenderRecipient emailSenderAndRecipients)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
             _isDryRunEnabled = _loggingRepository.DryRun = dryRun != null ? dryRun.DryRunEnabled : throw new ArgumentNullException(nameof(dryRun));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients)); ;
@@ -127,7 +136,7 @@ namespace Hosts.GraphUpdater
                         await context.CallSubOrchestratorAsync<GraphUpdaterStatus>(nameof(GroupUpdaterSubOrchestratorFunction),
                                         CreateGroupUpdaterRequest(groupMembership.Destination.ObjectId, deltaResponse.MembersToRemove, RequestType.Remove, groupMembership.RunId, deltaResponse.IsInitialSync));
 
-                        if (deltaResponse.IsInitialSync)
+                        if (deltaResponse.IsInitialSync) 
                         {
                             var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
                                                             new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
@@ -154,6 +163,22 @@ namespace Hosts.GraphUpdater
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
                                                                         SyncStatus.Idle, groupMembership.MembershipObtainerDryRunEnabled, groupMembership.RunId));
 
+
+                    var timeElapsedForJob = (DateTime.UtcNow - deltaResponse.Timestamp).TotalSeconds;
+                    _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
+
+                    var syncCompleteEvent = new Dictionary<string, string>
+                    {
+                        { nameof(SyncJob.TargetOfficeGroupId), groupMembership.Destination.ObjectId.ToString() },
+                        { nameof(SyncJob.Type), deltaResponse.SyncJobType },
+                        { "Result", deltaResponse.SyncStatus == SyncStatus.Idle ? "Success": "Failure" },
+                        { nameof(SyncJob.IsDryRunEnabled), deltaResponse.IsDryRunSync.ToString() },
+                        { nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob.ToString() },
+                        { nameof(DeltaResponse.MembersToAdd), deltaResponse.MembersToAdd.Count.ToString() },
+                        { nameof(DeltaResponse.MembersToRemove), deltaResponse.MembersToRemove.Count.ToString() }
+                    };
+                    
+                    _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteEvent);
                 }
 
                 _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(OrchestratorFunction) + " function completed" })

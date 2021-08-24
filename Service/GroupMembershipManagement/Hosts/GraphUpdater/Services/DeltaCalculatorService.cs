@@ -94,6 +94,8 @@ namespace Services
                     deltaResponse.MembersToRemove = delta.Delta.ToRemove;
                     deltaResponse.SyncStatus = SyncStatus.Idle;
                     deltaResponse.IsDryRunSync = isDryRunSync;
+                    deltaResponse.SyncJobType = job.Type;
+                    deltaResponse.Timestamp = job.Timestamp;
                     return deltaResponse;
                 }
 
@@ -102,8 +104,10 @@ namespace Services
                 deltaResponse.GraphUpdaterStatus = GraphUpdaterStatus.Ok;
                 deltaResponse.SyncStatus = SyncStatus.Idle;
                 deltaResponse.IsInitialSync = isInitialSync;
-                deltaResponse.Requestor = job.Requestor;
                 deltaResponse.IsDryRunSync = isDryRunSync;
+                deltaResponse.Requestor = job.Requestor;
+                deltaResponse.SyncJobType = job.Type;
+                deltaResponse.Timestamp = job.Timestamp;
             }
 
             if (changeTo == SyncStatus.Error)
@@ -112,7 +116,7 @@ namespace Services
                 {
                     GraphUpdaterStatus = GraphUpdaterStatus.Error,
                     SyncStatus = SyncStatus.Error,
-                    IsDryRunSync = isDryRunSync
+                    IsDryRunSync = isDryRunSync,
             };
             }
 
