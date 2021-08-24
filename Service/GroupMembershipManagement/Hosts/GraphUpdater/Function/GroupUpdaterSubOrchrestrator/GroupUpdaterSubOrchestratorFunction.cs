@@ -45,7 +45,8 @@ namespace Hosts.GraphUpdater
                                                RunId = request.RunId,
                                                DestinationGroupId = request.DestinationGroupId,
                                                Members = batch,
-                                               Type = request.Type
+                                               Type = request.Type,
+                                               IsInitialSync = request.IsInitialSync
                                            });
 
                 if (!context.IsReplaying)
