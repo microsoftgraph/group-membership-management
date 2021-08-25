@@ -16,7 +16,7 @@ namespace Repositories.AzureTableBackupRepository
 {
     public class AzureTableBackupRepository : IAzureTableBackupRepository
     {
-        private const string BACKUP_PREFIX = "zzBackup";
+        private const string BACKUP_PREFIX = "_Backup";
         private const string BACKUP_TABLE_NAME_SUFFIX = "BackupTracker";
         private const string BACKUP_DATE_FORMAT = "yyyyMMddHHmmss";
         private readonly ILoggingRepository _loggingRepository = null;
