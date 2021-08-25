@@ -4,6 +4,8 @@ using DIConcreteTypes;
 using Entities;
 using Entities.ServiceBus;
 using Hosts.GraphUpdater;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -29,6 +31,7 @@ namespace Services.Tests
         public async Task RunOrchestratorValidSyncTest()
         {
             MockLoggingRepository mockLoggingRepo;
+            TelemetryClient mockTelemetryClient;
             MockMailRepository mockMailRepo;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
@@ -39,6 +42,7 @@ namespace Services.Tests
             MembershipDifferenceCalculator<AzureADUser> calculator;
 
             mockLoggingRepo = new MockLoggingRepository();
+            mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
@@ -91,7 +95,7 @@ namespace Services.Tests
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockGraphUpdaterService, dryRun, mailSenders);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(response.ShouldCompleteMessage);
@@ -106,6 +110,7 @@ namespace Services.Tests
         public async Task RunOrchestratorInitialSyncTest()
         {
             MockLoggingRepository mockLoggingRepo;
+            TelemetryClient mockTelemetryClient;
             MockMailRepository mockMailRepo;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
@@ -116,6 +121,7 @@ namespace Services.Tests
             MembershipDifferenceCalculator<AzureADUser> calculator;
 
             mockLoggingRepo = new MockLoggingRepository();
+            mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
@@ -169,7 +175,7 @@ namespace Services.Tests
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockGraphUpdaterService, dryRun, mailSenders);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(response.ShouldCompleteMessage);
@@ -184,6 +190,7 @@ namespace Services.Tests
         public async Task RunOrchestratorExceptionTest()
         {
             MockLoggingRepository mockLoggingRepo;
+            TelemetryClient mockTelemetryClient;
             MockMailRepository mockMailRepo;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
@@ -194,6 +201,7 @@ namespace Services.Tests
             MembershipDifferenceCalculator<AzureADUser> calculator;
 
             mockLoggingRepo = new MockLoggingRepository();
+            mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
@@ -243,7 +251,7 @@ namespace Services.Tests
                         updateJobRequest = request as JobStatusUpdaterRequest;
                     });
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockGraphUpdaterService, dryRun, mailSenders);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders);
             await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
 
             Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
@@ -255,6 +263,7 @@ namespace Services.Tests
         public async Task RunOrchestratorMissingGroupTest()
         {
             MockLoggingRepository mockLoggingRepo;
+            TelemetryClient mockTelemetryClient;
             MockMailRepository mockMailRepo;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
@@ -265,6 +274,7 @@ namespace Services.Tests
             MembershipDifferenceCalculator<AzureADUser> calculator;
 
             mockLoggingRepo = new MockLoggingRepository();
+            mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
@@ -316,7 +326,7 @@ namespace Services.Tests
                         updateJobRequest = request as JobStatusUpdaterRequest;
                     });
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockGraphUpdaterService, dryRun, mailSenders);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.AreEqual(SyncStatus.Error, updateJobRequest.Status);
@@ -330,6 +340,7 @@ namespace Services.Tests
         public async Task RunOrchestratorThresholdExceededTest()
         {
             MockLoggingRepository mockLoggingRepo;
+            TelemetryClient mockTelemetryClient;
             MockMailRepository mockMailRepo;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
@@ -340,6 +351,7 @@ namespace Services.Tests
             MembershipDifferenceCalculator<AzureADUser> calculator;
 
             mockLoggingRepo = new MockLoggingRepository();
+            mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
@@ -398,7 +410,7 @@ namespace Services.Tests
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockGraphUpdaterService, dryRun, mailSenders);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"is lesser than threshold value {syncJob.ThresholdPercentageForRemovals}")));
