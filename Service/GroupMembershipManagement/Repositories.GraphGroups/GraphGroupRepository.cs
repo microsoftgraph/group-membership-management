@@ -376,7 +376,7 @@ namespace Repositories.GraphGroups
             {
                 await _log.LogMessageAsync(new LogMessage { Message = $"Sending requests {string.Join(",", tosend.BatchRequestSteps.Keys)}.", RunId = RunId });
 
-                var response = await _graphServiceClient.Batch.Request().WithMaxRetry(MaxRetries).PostAsync(tosend);
+                var response = await _graphServiceClient.Batch.Request().PostAsync(tosend);
                 return GetStepIdsToRetry(await response.GetResponsesAsync());
             }
             catch (ServiceException ex)
