@@ -136,13 +136,6 @@
         "description": "Name of the resource group where the 'data' key vault is located."
       }
     },
-    "dryRunEnabled": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Ensure the graph updater doesn't update group membership."
-      }
-    },
     "appConfigurationEndpoint": {
       "type": "string",
       "defaultValue": "[concat('https://',parameters('solutionAbbreviation'), '-appconfig-', parameters('environmentAbbreviation'), '.azconfig.io')]",
@@ -332,11 +325,6 @@
               {
                 "name": "WEBSITE_MAX_DYNAMIC_APPLICATION_SCALE_OUT",
                 "value": "[parameters('maximumElasticWorkerCount')]",
-                "slotSetting": false
-              },
-              {
-                "name": "dryRunEnabled",
-                "value": "[parameters('dryRunEnabled')]",
                 "slotSetting": false
               },
               {
