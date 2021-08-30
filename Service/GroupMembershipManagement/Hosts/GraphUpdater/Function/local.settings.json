@@ -6,7 +6,6 @@
     "logAnalyticsCustomerId": "",
     "logAnalyticsPrimarySharedKey": "",
     "differenceQueueConnection": "",
-    "dryRunEnabled": false,
     "keyVaultName": "",
     "jobsStorageAccountConnectionString": "",
     "jobsTableName": "",
