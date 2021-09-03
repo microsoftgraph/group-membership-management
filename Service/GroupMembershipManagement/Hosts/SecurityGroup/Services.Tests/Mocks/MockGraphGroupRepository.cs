@@ -23,7 +23,7 @@ namespace Tests.FunctionApps.Mocks
 		public Guid RunId { get; set; }
 		IGroupTransitiveMembersCollectionWithReferencesPage UsersFromPage { get; set; }
 
-		public Task<ResponseCode> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+		public Task<(ResponseCode ResponseCode, int SuccessCount)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
 		{
 			throw new NotImplementedException();
 		}
@@ -65,7 +65,7 @@ namespace Tests.FunctionApps.Mocks
 			throw new NotImplementedException();
 		}
 
-		public Task<ResponseCode> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+		public Task<(ResponseCode ResponseCode, int SuccessCount)> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
 		{
 			throw new NotImplementedException();
 		}
