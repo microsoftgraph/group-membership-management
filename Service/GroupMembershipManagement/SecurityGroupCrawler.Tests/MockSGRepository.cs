@@ -21,7 +21,7 @@ namespace Repositories.SecurityGroupCrawler.Tests
 
 		public Guid RunId { get; set; }
 
-		public Task<ResponseCode> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+		public Task<(ResponseCode ResponseCode, int SuccessCount)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
 		{
 			throw new NotImplementedException();
 		}
@@ -53,7 +53,7 @@ namespace Repositories.SecurityGroupCrawler.Tests
 			throw new NotImplementedException();
 		}
 
-		public Task<ResponseCode> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+		public Task<(ResponseCode ResponseCode, int SuccessCount)> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
 		{
 			throw new NotImplementedException();
 		}
