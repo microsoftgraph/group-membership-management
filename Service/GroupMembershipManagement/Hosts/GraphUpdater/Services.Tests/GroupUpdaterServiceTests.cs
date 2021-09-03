@@ -43,7 +43,7 @@ namespace Services.Tests
 
             var status = await graphUpdaterService.AddUsersToGroupAsync(newUsers, groupId, runId, isInitialSync);
 
-            Assert.AreEqual(GraphUpdaterStatus.Ok, status);
+            Assert.AreEqual(GraphUpdaterStatus.Ok, status.Status);
             Assert.AreEqual(0, mockGraphGroup.GroupsToUsers[groupId].Count);
         }
 
@@ -65,14 +65,16 @@ namespace Services.Tests
             bool isInitialSync = false;
 
             var newUsers = new List<AzureADUser>();
-            for (int i = 0; i < 10; i++)
+            var userCount = 10;
+
+            for (int i = 0; i < userCount; i++)
             {
                 newUsers.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
             }
 
             var status = await graphUpdaterService.AddUsersToGroupAsync(newUsers, groupId, runId, isInitialSync);
 
-            Assert.AreEqual(GraphUpdaterStatus.Ok, status);
+            Assert.AreEqual(GraphUpdaterStatus.Ok, status.Status);
             Assert.AreEqual(newUsers.Count, mockGraphGroup.GroupsToUsers[groupId].Count);
         }
 
@@ -93,7 +95,9 @@ namespace Services.Tests
             bool isInitialSync = false;
 
             var newUsers = new List<AzureADUser>();
-            for (int i = 0; i < 10; i++)
+            var userCount = 10;
+
+            for (int i = 0; i < userCount; i++)
             {
                 newUsers.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
             }
@@ -102,7 +106,7 @@ namespace Services.Tests
 
             var status = await graphUpdaterService.RemoveUsersFromGroupAsync(newUsers.Take(5).ToList(), groupId, runId, isInitialSync);
 
-            Assert.AreEqual(GraphUpdaterStatus.Ok, status);
+            Assert.AreEqual(GraphUpdaterStatus.Ok, status.Status);
             Assert.AreEqual(newUsers.Count, mockGraphGroup.GroupsToUsers[groupId].Count);
         }
 
@@ -133,7 +137,7 @@ namespace Services.Tests
             var usersToRemove = newUsers.Take(5).ToList();
             var status = await graphUpdaterService.RemoveUsersFromGroupAsync(usersToRemove, groupId, runId, isInitialSync);
 
-            Assert.AreEqual(GraphUpdaterStatus.Ok, status);
+            Assert.AreEqual(GraphUpdaterStatus.Ok, status.Status);
             Assert.AreEqual(newUsers.Count - usersToRemove.Count, mockGraphGroup.GroupsToUsers[groupId].Count);
         }
     }
