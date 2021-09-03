@@ -136,7 +136,7 @@ namespace Hosts.GraphUpdater
                         await context.CallSubOrchestratorAsync<GraphUpdaterStatus>(nameof(GroupUpdaterSubOrchestratorFunction),
                                         CreateGroupUpdaterRequest(groupMembership.Destination.ObjectId, deltaResponse.MembersToRemove, RequestType.Remove, groupMembership.RunId, deltaResponse.IsInitialSync));
 
-                        if (deltaResponse.IsInitialSync) 
+                        if (deltaResponse.IsInitialSync)
                         {
                             var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
                                                             new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
@@ -164,7 +164,7 @@ namespace Hosts.GraphUpdater
                                                                         SyncStatus.Idle, groupMembership.MembershipObtainerDryRunEnabled, groupMembership.RunId));
 
 
-                    var timeElapsedForJob = (DateTime.UtcNow - deltaResponse.Timestamp).TotalSeconds;
+                    var timeElapsedForJob = (context.CurrentUtcDateTime - deltaResponse.Timestamp).TotalSeconds;
                     _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
 
                     var syncCompleteEvent = new Dictionary<string, string>
@@ -177,7 +177,7 @@ namespace Hosts.GraphUpdater
                         { nameof(DeltaResponse.MembersToAdd), deltaResponse.MembersToAdd.Count.ToString() },
                         { nameof(DeltaResponse.MembersToRemove), deltaResponse.MembersToRemove.Count.ToString() }
                     };
-                    
+
                     _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteEvent);
                 }
 
