@@ -11,7 +11,9 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Group = Microsoft.Graph.Group;
 
 namespace Repositories.GraphGroups
 {
@@ -257,6 +259,7 @@ namespace Repositories.GraphGroups
         {
             public List<AzureADUser> ToSend { get; set; }
             public string Id { get; set; }
+            public RetryReason RetryReason { get; set; }
 
             private const int MaxBatchRetries = 5;
 
@@ -269,13 +272,21 @@ namespace Repositories.GraphGroups
             }
         }
 
+        private enum RetryReason
+        {
+            None = 0,
+            UserNotFound = 1
+        }
+
+        private string GetNewChunkId() => $"{Guid.NewGuid().ToString().Replace("-", string.Empty)}-";
+
         private async Task<ResponseCode> BatchAndSend(IEnumerable<AzureADUser> users, MakeBulkRequest makeRequest, int requestMax, int batchSize)
         {
             if (!users.Any()) { return ResponseCode.Ok; }
 
             var queuedBatches = new ConcurrentQueue<ChunkOfUsers>(
                     ChunksOfSize(users, requestMax) // Chop up the users into chunks of how many per graph request (20 for add, 1 for remove)
-                    .Select(x => new ChunkOfUsers { ToSend = x, Id = $"{Guid.NewGuid().ToString().Replace("-", string.Empty)}-" }));
+                    .Select(x => new ChunkOfUsers { ToSend = x, Id = GetNewChunkId() }));
 
             var responses = await Task.WhenAll(Enumerable.Range(0, ConcurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize)));
 
@@ -330,12 +341,32 @@ namespace Repositories.GraphGroups
                     }
 
                     requeued++;
-                    var chunkToRetry = toSend.First(x => x.Id == idToRetry.Id);
+                    var chunkToRetry = toSend.First(x => x.Id == idToRetry.RequestId);
+
                     if (chunkToRetry.ShouldRetry)
                     {
+                        if (chunkToRetry.RetryReason != RetryReason.UserNotFound && !string.IsNullOrWhiteSpace(idToRetry.AzureObjectId))
+                        {
+                            var notFoundUser = chunkToRetry.ToSend.FirstOrDefault(x => x.ObjectId.ToString().Equals(idToRetry.AzureObjectId, StringComparison.InvariantCultureIgnoreCase));
+                            if (notFoundUser != null)
+                            {
+                                chunkToRetry.ToSend.Remove(notFoundUser);
+
+                                var notFoundChunk = new ChunkOfUsers
+                                {
+                                    Id = GetNewChunkId(),
+                                    ToSend = new List<AzureADUser> { notFoundUser },
+                                    RetryReason = RetryReason.UserNotFound
+                                };
+
+                                requeued++;
+                                queue.Enqueue(notFoundChunk.UpdateIdForRetry(threadNumber));
+                                await _log.LogMessageAsync(new LogMessage { Message = $"Queued {notFoundChunk.Id} from {chunkToRetry.Id}", RunId = RunId });
+                            }
+                        }
+
                         var originalId = chunkToRetry.Id;
                         queue.Enqueue(chunkToRetry.UpdateIdForRetry(threadNumber));
-
                         await _log.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId} as {chunkToRetry.Id}", RunId = RunId });
                     }
                 }
@@ -370,7 +401,7 @@ namespace Repositories.GraphGroups
             return hasUnrecoverableErrors ? ResponseCode.Error : ResponseCode.Ok;
         }
 
-        private async Task<IAsyncEnumerable<(string Id, ResponseCode ResponseCode)>> SendBatch(BatchRequestContent tosend)
+        private async Task<IAsyncEnumerable<RetryResponse>> SendBatch(BatchRequestContent tosend)
         {
             try
             {
@@ -402,7 +433,9 @@ namespace Repositories.GraphGroups
                 "One or more added object references already exist for the following modified properties: 'members'."
             };
 
-        private async IAsyncEnumerable<(string Id, ResponseCode ResponseCode)> GetStepIdsToRetry(Dictionary<string, HttpResponseMessage> responses)
+        private static readonly Regex _userNotFound = new Regex(@"Resource '(?<id>[({]?[a-fA-F0-9]{8}[-]?([a-fA-F0-9]{4}[-]?){3}[a-fA-F0-9]{12}[})]?)' does not exist", RegexOptions.IgnoreCase);
+
+        private async IAsyncEnumerable<RetryResponse> GetStepIdsToRetry(Dictionary<string, HttpResponseMessage> responses)
         {
             bool beenThrottled = false;
             foreach (var kvp in responses)
@@ -423,12 +456,21 @@ namespace Repositories.GraphGroups
                 if (status == HttpStatusCode.BadRequest && IsOkayError(content)) { }
                 else if (status == HttpStatusCode.NotFound && (content).Contains("does not exist or one of its queried reference-property objects are not present."))
                 {
-                    // basically, the graph sometimes won't be able to find the group for some reason, and we have to retry then
-                    // but sometimes that error doesn't go away, because the thing's already been removed, so cap the number of retries.
-                    // I think the more accurate rule is something like "retry when adding to the group, ignore when removing from the group",
-                    // but since this function, by design, doesn't know which kind of thing it's doing, this is a reasonable compromise.
-                    // every batch is capped by number of retries, so we just have to retry here.
-                    yield return (kvp.Key, ResponseCode.Ok);
+                    var match = _userNotFound.Match(content);
+                    var userId = default(string);
+
+                    if (match.Success)
+                    {
+                        userId = match.Groups["id"].Value;
+                    }
+
+                    yield return new RetryResponse
+                    {
+                        RequestId = kvp.Key,
+                        ResponseCode = ResponseCode.Ok,
+                        AzureObjectId = userId
+                    };
+
                 }
                 else if (_isOkay.Contains(status)) { }
                 else if (status == HttpStatusCode.TooManyRequests)
@@ -440,13 +482,29 @@ namespace Repositories.GraphGroups
                         await HandleThrottling(response.Headers.RetryAfter);
                         beenThrottled = true;
                     }
-                    yield return (kvp.Key, ResponseCode.Ok);
+
+                    yield return new RetryResponse
+                    {
+                        RequestId = kvp.Key,
+                        ResponseCode = ResponseCode.Ok
+                    };
                 }
-                else if (_shouldRetry.Contains(status)) { yield return (kvp.Key, ResponseCode.Ok); }
+                else if (_shouldRetry.Contains(status))
+                {
+                    yield return new RetryResponse
+                    {
+                        RequestId = kvp.Key,
+                        ResponseCode = ResponseCode.Ok
+                    };
+                }
                 else
                 {
                     await _log.LogMessageAsync(new LogMessage { Message = $"Got an unexpected error from Graph, stopping all processing for current job: {status} {response.ReasonPhrase} {content}.", RunId = RunId });
-                    yield return (kvp.Key, ResponseCode.Error);
+                    yield return new RetryResponse
+                    {
+                        RequestId = kvp.Key,
+                        ResponseCode = ResponseCode.Error
+                    };
                 }
             }
         }
@@ -546,5 +604,12 @@ namespace Repositories.GraphGroups
                 }
             }
         }
+    }
+
+    internal class RetryResponse
+    {
+        public string RequestId { get; set; }
+        public ResponseCode ResponseCode { get; set; }
+        public string AzureObjectId { get; set; }
     }
 }
