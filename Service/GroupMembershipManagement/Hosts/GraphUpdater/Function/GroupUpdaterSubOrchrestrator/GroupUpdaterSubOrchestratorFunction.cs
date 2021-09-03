@@ -26,6 +26,7 @@ namespace Hosts.GraphUpdater
             var skip = 0;
             var batchSize = 100;
             var request = context.GetInput<GroupUpdaterRequest>();
+            var totalSuccessCount = 0;
 
             if (request == null)
             {
@@ -39,7 +40,7 @@ namespace Hosts.GraphUpdater
 
             while (batch.Count > 0)
             {
-                await context.CallActivityAsync(nameof(GroupUpdaterFunction),
+                totalSuccessCount += await context.CallActivityAsync<int>(nameof(GroupUpdaterFunction),
                                            new GroupUpdaterRequest
                                            {
                                                RunId = request.RunId,
@@ -52,7 +53,7 @@ namespace Hosts.GraphUpdater
                 if (!context.IsReplaying)
                     _ = _loggingRepository.LogMessageAsync(new LogMessage
                     {
-                        Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {skip}/{request.Members.Count} users so far.",
+                        Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount}/{request.Members.Count} users so far.",
                         RunId = request.RunId
                     });
 
@@ -62,7 +63,7 @@ namespace Hosts.GraphUpdater
 
             _ = _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {request.Members.Count} users.",
+                Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount} users.",
                 RunId = request.RunId
             });
 

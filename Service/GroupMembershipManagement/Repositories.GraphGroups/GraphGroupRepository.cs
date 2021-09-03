@@ -240,7 +240,7 @@ namespace Repositories.GraphGroups
 
         const int GraphBatchLimit = 20;
         const int ConcurrentRequests = 10;
-        public Task<ResponseCode> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+        public Task<(ResponseCode ResponseCode, int SuccessCount)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
             //You can, in theory, send batches of 20 requests of 20 group adds each
             // but Graph starts saying "Service Unavailable" for a bunch of them if you do that, so only send so many at once
@@ -248,7 +248,7 @@ namespace Repositories.GraphGroups
             return BatchAndSend(users, b => MakeBulkAddRequest(b, targetGroup.ObjectId), GraphBatchLimit, 5);
         }
 
-        public Task<ResponseCode> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+        public Task<(ResponseCode ResponseCode, int SuccessCount)> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
             // This, however, is the most we can send per delete batch, and it works pretty well.
             return BatchAndSend(users, b => MakeBulkRemoveRequest(b, targetGroup.ObjectId), 1, GraphBatchLimit);
@@ -280,9 +280,9 @@ namespace Repositories.GraphGroups
 
         private string GetNewChunkId() => $"{Guid.NewGuid().ToString().Replace("-", string.Empty)}-";
 
-        private async Task<ResponseCode> BatchAndSend(IEnumerable<AzureADUser> users, MakeBulkRequest makeRequest, int requestMax, int batchSize)
+        private async Task<(ResponseCode ResponseCode, int SuccessCount)> BatchAndSend(IEnumerable<AzureADUser> users, MakeBulkRequest makeRequest, int requestMax, int batchSize)
         {
-            if (!users.Any()) { return ResponseCode.Ok; }
+            if (!users.Any()) { return (ResponseCode.Ok, 0); }
 
             var queuedBatches = new ConcurrentQueue<ChunkOfUsers>(
                     ChunksOfSize(users, requestMax) // Chop up the users into chunks of how many per graph request (20 for add, 1 for remove)
@@ -290,11 +290,14 @@ namespace Repositories.GraphGroups
 
             var responses = await Task.WhenAll(Enumerable.Range(0, ConcurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize)));
 
-            return responses.Any(x => x == ResponseCode.Error) ? ResponseCode.Error : ResponseCode.Ok;
+            var status = responses.Any(x => x.ResponseCode == ResponseCode.Error) ? ResponseCode.Error : ResponseCode.Ok;
+            return (status, responses.Sum(x => x.SuccessCount));
         }
 
-        private async Task<ResponseCode> ProcessQueue(ConcurrentQueue<ChunkOfUsers> queue, MakeBulkRequest makeRequest, int threadNumber, int batchSize)
+        private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessQueue(ConcurrentQueue<ChunkOfUsers> queue, MakeBulkRequest makeRequest, int threadNumber, int batchSize)
         {
+            var successCount = 0;
+
             do
             {
                 var toSend = new List<ChunkOfUsers>();
@@ -306,7 +309,9 @@ namespace Repositories.GraphGroups
                         var response = await ProcessBatch(queue, toSend, makeRequest, threadNumber);
                         toSend.Clear();
 
-                        if (response == ResponseCode.Error)
+                        successCount += response.SuccessCount;
+
+                        if (response.ResponseCode == ResponseCode.Error)
                             return response;
                     }
                 }
@@ -315,37 +320,43 @@ namespace Repositories.GraphGroups
                 {
                     var response = await ProcessBatch(queue, toSend, makeRequest, threadNumber);
 
-                    if (response == ResponseCode.Error)
+                    successCount += response.SuccessCount;
+
+                    if (response.ResponseCode == ResponseCode.Error)
                         return response;
                 }
 
             } while (!queue.IsEmpty); // basically, that last ProcessBatch may have put more stuff in the queue
 
-            return ResponseCode.Ok;
+            return (ResponseCode.Ok, successCount);
         }
 
-        private async Task<ResponseCode> ProcessBatch(ConcurrentQueue<ChunkOfUsers> queue, List<ChunkOfUsers> toSend, MakeBulkRequest makeRequest, int threadNumber)
+        private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessBatch(ConcurrentQueue<ChunkOfUsers> queue, List<ChunkOfUsers> toSend, MakeBulkRequest makeRequest, int threadNumber)
         {
             await _log.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: Sending a batch of {toSend.Count} requests.", RunId = RunId });
             int requeued = 0;
             bool hasUnrecoverableErrors = false;
+            var successfulRequests = toSend.SelectMany(x => x.ToSend).ToList().Count;
 
             try
             {
                 await foreach (var idToRetry in await SendBatch(new BatchRequestContent(toSend.Select(x => new BatchRequestStep(x.Id, makeRequest(x.ToSend))).ToArray())))
                 {
+                    var chunkToRetry = toSend.First(x => x.Id == idToRetry.RequestId);
+
+                    successfulRequests -= chunkToRetry.ToSend.Count;
+
                     if (idToRetry.ResponseCode == ResponseCode.Error)
                     {
                         hasUnrecoverableErrors = true;
                         break;
                     }
 
-                    requeued++;
-                    var chunkToRetry = toSend.First(x => x.Id == idToRetry.RequestId);
-
                     if (chunkToRetry.ShouldRetry)
                     {
-                        if (chunkToRetry.RetryReason != RetryReason.UserNotFound && !string.IsNullOrWhiteSpace(idToRetry.AzureObjectId))
+                        if (chunkToRetry.ToSend.Count > 1
+                            //&& chunkToRetry.RetryReason != RetryReason.UserNotFound
+                            && !string.IsNullOrWhiteSpace(idToRetry.AzureObjectId))
                         {
                             var notFoundUser = chunkToRetry.ToSend.FirstOrDefault(x => x.ObjectId.ToString().Equals(idToRetry.AzureObjectId, StringComparison.InvariantCultureIgnoreCase));
                             if (notFoundUser != null)
@@ -365,6 +376,7 @@ namespace Repositories.GraphGroups
                             }
                         }
 
+                        requeued++;
                         var originalId = chunkToRetry.Id;
                         queue.Enqueue(chunkToRetry.UpdateIdForRetry(threadNumber));
                         await _log.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId} as {chunkToRetry.Id}", RunId = RunId });
@@ -398,7 +410,8 @@ namespace Repositories.GraphGroups
                 }
             }
 
-            return hasUnrecoverableErrors ? ResponseCode.Error : ResponseCode.Ok;
+            var status = hasUnrecoverableErrors ? ResponseCode.Error : ResponseCode.Ok;
+            return (status, successfulRequests);
         }
 
         private async Task<IAsyncEnumerable<RetryResponse>> SendBatch(BatchRequestContent tosend)
