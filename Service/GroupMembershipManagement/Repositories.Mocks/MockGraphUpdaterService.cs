@@ -71,12 +71,12 @@ namespace Repositories.Mocks
             throw new NotImplementedException();
         }
 
-        public Task<GraphUpdaterStatus> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isinitialSync)
+        public Task<(GraphUpdaterStatus Status, int SuccessCount)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isinitialSync)
         {
             throw new NotImplementedException();
         }
 
-        public Task<GraphUpdaterStatus> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isinitialSync)
+        public Task<(GraphUpdaterStatus Status, int SuccessCount)> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isinitialSync)
         {
             throw new NotImplementedException();
         }

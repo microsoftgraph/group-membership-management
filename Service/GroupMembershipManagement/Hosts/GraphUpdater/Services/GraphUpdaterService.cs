@@ -143,11 +143,11 @@ namespace Services
             return await _graphGroupRepository.GetGroupNameAsync(groupId);
         }
 
-        public async Task<GraphUpdaterStatus> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
+        public async Task<(GraphUpdaterStatus Status, int SuccessCount)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
         {
             if (_isGraphUpdaterDryRunEnabled)
             {
-                return GraphUpdaterStatus.Ok;
+                return (GraphUpdaterStatus.Ok, 0);
             }
 
             var stopwatch = Stopwatch.StartNew();
@@ -167,14 +167,15 @@ namespace Services
             });
             _telemetryClient.TrackMetric(nameof(Metric.GraphAddRatePerSecond), members.Count / stopwatch.Elapsed.TotalSeconds);
 
-            return graphResponse == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
+            var status = graphResponse.ResponseCode == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
+            return (status, graphResponse.SuccessCount);
         }
 
-        public async Task<GraphUpdaterStatus> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
+        public async Task<(GraphUpdaterStatus Status, int SuccessCount)> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
         {
             if (_isGraphUpdaterDryRunEnabled)
             {
-                return GraphUpdaterStatus.Ok;
+                return (GraphUpdaterStatus.Ok, 0);
             }
 
             var stopwatch = Stopwatch.StartNew();
@@ -194,7 +195,8 @@ namespace Services
             });
             _telemetryClient.TrackMetric(nameof(Metric.GraphRemoveRatePerSecond), members.Count / stopwatch.Elapsed.TotalSeconds);
 
-            return graphResponse == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
+            var status = graphResponse.ResponseCode == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
+            return (status, graphResponse.SuccessCount);
         }
     }
 }

@@ -24,16 +24,26 @@ namespace Hosts.GraphUpdater
         }
 
         [FunctionName(nameof(GroupUpdaterFunction))]
-        public async Task UpdateGroupAsync([ActivityTrigger] GroupUpdaterRequest request)
+        public async Task<int> UpdateGroupAsync([ActivityTrigger] GroupUpdaterRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function started", RunId = request.RunId });
 
+            var successCount = 0;
+
             if (request.Type == RequestType.Add)
-                await _graphUpdaterService.AddUsersToGroupAsync(request.Members, request.DestinationGroupId, request.RunId, request.IsInitialSync);
+            {
+                var response = await _graphUpdaterService.AddUsersToGroupAsync(request.Members, request.DestinationGroupId, request.RunId, request.IsInitialSync);
+                successCount = response.SuccessCount;
+            }
             else
-                await _graphUpdaterService.RemoveUsersFromGroupAsync(request.Members, request.DestinationGroupId, request.RunId, request.IsInitialSync);
+            {
+                var response = await _graphUpdaterService.RemoveUsersFromGroupAsync(request.Members, request.DestinationGroupId, request.RunId, request.IsInitialSync);
+                successCount = response.SuccessCount;
+            }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function completed", RunId = request.RunId });
+
+            return successCount;
         }
     }
 }
