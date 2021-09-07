@@ -259,7 +259,6 @@ namespace Repositories.GraphGroups
         {
             public List<AzureADUser> ToSend { get; set; }
             public string Id { get; set; }
-            public RetryReason RetryReason { get; set; }
 
             private const int MaxBatchRetries = 5;
 
@@ -355,7 +354,6 @@ namespace Repositories.GraphGroups
                     if (chunkToRetry.ShouldRetry)
                     {
                         if (chunkToRetry.ToSend.Count > 1
-                            //&& chunkToRetry.RetryReason != RetryReason.UserNotFound
                             && !string.IsNullOrWhiteSpace(idToRetry.AzureObjectId))
                         {
                             var notFoundUser = chunkToRetry.ToSend.FirstOrDefault(x => x.ObjectId.ToString().Equals(idToRetry.AzureObjectId, StringComparison.InvariantCultureIgnoreCase));
@@ -366,8 +364,7 @@ namespace Repositories.GraphGroups
                                 var notFoundChunk = new ChunkOfUsers
                                 {
                                     Id = GetNewChunkId(),
-                                    ToSend = new List<AzureADUser> { notFoundUser },
-                                    RetryReason = RetryReason.UserNotFound
+                                    ToSend = new List<AzureADUser> { notFoundUser }
                                 };
 
                                 requeued++;
