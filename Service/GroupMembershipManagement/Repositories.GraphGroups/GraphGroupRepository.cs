@@ -271,12 +271,6 @@ namespace Repositories.GraphGroups
             }
         }
 
-        private enum RetryReason
-        {
-            None = 0,
-            UserNotFound = 1
-        }
-
         private string GetNewChunkId() => $"{Guid.NewGuid().ToString().Replace("-", string.Empty)}-";
 
         private async Task<(ResponseCode ResponseCode, int SuccessCount)> BatchAndSend(IEnumerable<AzureADUser> users, MakeBulkRequest makeRequest, int requestMax, int batchSize)
