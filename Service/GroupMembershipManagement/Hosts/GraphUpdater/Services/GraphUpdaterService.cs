@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using Metric = Services.Entities.Metric;
 
 namespace Services
 {
@@ -27,15 +28,6 @@ namespace Services
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly ISyncJobRepository _syncJobRepository;
         private readonly bool _isGraphUpdaterDryRunEnabled;
-        enum Metric
-        {
-            MembersAdded,
-            MembersRemoved,
-            MembersAddedFromOnboarding,
-            MembersRemovedFromOnboarding,
-            GraphAddRatePerSecond,
-            GraphRemoveRatePerSecond
-        };
 
         public GraphUpdaterService(
                 ILoggingRepository loggingRepository,

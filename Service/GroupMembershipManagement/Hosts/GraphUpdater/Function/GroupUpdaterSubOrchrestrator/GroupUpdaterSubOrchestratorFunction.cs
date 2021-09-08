@@ -8,16 +8,19 @@ using System.Threading.Tasks;
 using System.Linq;
 using System.Collections.Generic;
 using System;
+using Microsoft.ApplicationInsights;
 
 namespace Hosts.GraphUpdater
 {
     public class GroupUpdaterSubOrchestratorFunction
     {
         private readonly ILoggingRepository _loggingRepository;
+        private readonly TelemetryClient _telemetryClient;
 
-        public GroupUpdaterSubOrchestratorFunction(ILoggingRepository loggingRepository)
+        public GroupUpdaterSubOrchestratorFunction(ILoggingRepository loggingRepository, TelemetryClient telemetryClient)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         [FunctionName(nameof(GroupUpdaterSubOrchestratorFunction))]
@@ -60,6 +63,8 @@ namespace Hosts.GraphUpdater
                 skip += batchSize;
                 batch = request.Members.Skip(skip).Take(batchSize).ToList();
             }
+
+            _telemetryClient.TrackMetric(nameof(Services.Entities.Metric.MembersNotFound), request.Members.Count - totalSuccessCount);
 
             _ = _loggingRepository.LogMessageAsync(new LogMessage
             {
