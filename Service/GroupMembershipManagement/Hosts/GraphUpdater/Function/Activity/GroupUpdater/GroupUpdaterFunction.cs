@@ -32,13 +32,13 @@ namespace Hosts.GraphUpdater
 
             if (request.Type == RequestType.Add)
             {
-                var response = await _graphUpdaterService.AddUsersToGroupAsync(request.Members, request.DestinationGroupId, request.RunId, request.IsInitialSync);
-                successCount = response.SuccessCount;
+                var addUsersToGraphResponse = await _graphUpdaterService.AddUsersToGroupAsync(request.Members, request.DestinationGroupId, request.RunId, request.IsInitialSync);
+                successCount = addUsersToGraphResponse.SuccessCount;
             }
             else
             {
-                var response = await _graphUpdaterService.RemoveUsersFromGroupAsync(request.Members, request.DestinationGroupId, request.RunId, request.IsInitialSync);
-                successCount = response.SuccessCount;
+                var removeUsersFromGraphResponse = await _graphUpdaterService.RemoveUsersFromGroupAsync(request.Members, request.DestinationGroupId, request.RunId, request.IsInitialSync);
+                successCount = removeUsersFromGraphResponse.SuccessCount;
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function completed", RunId = request.RunId });
