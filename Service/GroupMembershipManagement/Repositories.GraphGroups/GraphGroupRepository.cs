@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
+using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
@@ -20,13 +21,15 @@ namespace Repositories.GraphGroups
     public class GraphGroupRepository : IGraphGroupRepository
     {
         private readonly IGraphServiceClient _graphServiceClient;
-        private readonly ILoggingRepository _log;
+		private readonly TelemetryClient _telemetryClient;
+		private readonly ILoggingRepository _log;
 
         public Guid RunId { get; set; }
 
-        public GraphGroupRepository(IGraphServiceClient graphServiceClient, ILoggingRepository logger)
+        public GraphGroupRepository(IGraphServiceClient graphServiceClient, TelemetryClient telemetryClient, ILoggingRepository logger)
         {
             _graphServiceClient = graphServiceClient;
+            _telemetryClient = telemetryClient;
             _log = logger;
         }
 
@@ -442,12 +445,22 @@ namespace Repositories.GraphGroups
         private async IAsyncEnumerable<RetryResponse> GetStepIdsToRetry(Dictionary<string, HttpResponseMessage> responses)
         {
             bool beenThrottled = false;
+
+            var resourceUnitsUsed = _telemetryClient.GetMetric("ResourceUnitsUsed");
+            var throttleLimitPercentage = _telemetryClient.GetMetric("ThrottleLimitPercentage");
+
             foreach (var kvp in responses)
             {
                 //Ensure that the response messages get disposed of.
                 using var response = kvp.Value;
                 var status = response.StatusCode;
                 var content = await response.Content.ReadAsStringAsync();
+
+                if (response.Headers.TryGetValues("x-ms-resource-unit", out var resourceValues))
+                    resourceUnitsUsed.TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
+
+                if (response.Headers.TryGetValues("x-ms-throttle-limit-percentage", out var throttleValues))
+                    throttleLimitPercentage.TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
 
                 await _log.LogMessageAsync(new LogMessage
                 {
@@ -512,6 +525,20 @@ namespace Repositories.GraphGroups
                 }
             }
         }
+
+        delegate bool TryParseFunction<T>(string str, out T parsed);
+        private static T ParseFirst<T>(IEnumerable<string> toParse, TryParseFunction<T> tryParse)
+		{
+            foreach (var str in toParse)
+			{
+                if (tryParse(str, out var parsed))
+				{
+                    return parsed;
+				}
+			}
+
+            return default;
+		}
 
         private static bool IsOkayError(string error)
         {
