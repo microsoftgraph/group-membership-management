@@ -41,7 +41,8 @@ namespace Repositories.GraphGroups
             try
             {
                 var group = await _graphServiceClient.Groups[objectId.ToString()].Request().WithMaxRetry(MaxRetries).GetAsync();
-                return group != null;
+				TrackMetrics(group.AdditionalData);
+				return group != null;
             }
             catch (ServiceException ex)
             {
@@ -64,8 +65,9 @@ namespace Repositories.GraphGroups
 
             // get the service principal ID by its app ID
             var servicePrincipal = (await _graphServiceClient.ServicePrincipals.Request().WithMaxRetry(MaxRetries).Filter($"appId eq '{appId}'").GetAsync()).Single();
+			TrackMetrics(servicePrincipal.AdditionalData);
 
-            await _log.LogMessageAsync(new LogMessage
+			await _log.LogMessageAsync(new LogMessage
             {
                 RunId = RunId,
                 Message = $"Checking if app ID {appId} (service principal with object ID {servicePrincipal.Id}) owns the group {groupObjectId}."
@@ -96,6 +98,7 @@ namespace Repositories.GraphGroups
             try
             {
                 var group = await _graphServiceClient.Groups[objectId.ToString()].Request().WithMaxRetry(MaxRetries).GetAsync();
+				TrackMetrics(group.AdditionalData);
                 return group != null ? group.DisplayName : string.Empty;
             }
             catch (ServiceException ex)
@@ -124,12 +127,14 @@ namespace Repositories.GraphGroups
                             .WithMaxRetry(MaxRetries)
                             .Select("id")
                             .GetAsync();
+				TrackMetrics(members.AdditionalData);
 
-                var toReturn = new List<AzureADUser>(ToUsers(members.CurrentPage, nonUserGraphObjects));
+				var toReturn = new List<AzureADUser>(ToUsers(members.CurrentPage, nonUserGraphObjects));
                 while (members.NextPageRequest != null)
                 {
                     members = await members.NextPageRequest.WithMaxRetry(MaxRetries).GetAsync();
-                    toReturn.AddRange(ToUsers(members.CurrentPage, nonUserGraphObjects));
+					TrackMetrics(members.AdditionalData);
+					toReturn.AddRange(ToUsers(members.CurrentPage, nonUserGraphObjects));
                 }
 
                 var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, nonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
@@ -189,6 +194,7 @@ namespace Repositories.GraphGroups
             var nonUserGraphObjects = new Dictionary<string, int>();
 
             var usersFromGroup = await GetGroupMembersPageByIdAsync(objectId.ToString());
+            TrackMetrics(usersFromGroup.AdditionalData);
             usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
@@ -204,6 +210,7 @@ namespace Repositories.GraphGroups
             var nonUserGraphObjects = new Dictionary<string, int>();
 
             usersFromGroup = await GetGroupMembersNextPageAsnyc(usersFromGroup, nextPageUrl);
+            TrackMetrics(usersFromGroup.AdditionalData);
             usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink2);
             nextPageUrl = (nextLink2 == null) ? string.Empty : nextLink2.ToString();
             users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
@@ -220,6 +227,8 @@ namespace Repositories.GraphGroups
                 .WithMaxRetry(MaxRetries)
                 .Select("id")
                 .GetAsync();
+
+                TrackMetrics(members.AdditionalData);
 
                 var toReturn = new List<IAzureADObject>(ToEntities(members.CurrentPage));
                 while (members.NextPageRequest != null)
@@ -241,7 +250,20 @@ namespace Repositories.GraphGroups
             }
         }
 
-        const int GraphBatchLimit = 20;
+		void TrackMetrics(IDictionary<string, object> additionalData)
+		{
+			// see https://github.com/microsoftgraph/msgraph-sdk-dotnet/blob/dev/docs/headers.md#reading-response-headers
+			var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(additionalData["responseHeaders"].ToString());
+
+            var throttleLimitPercentage = _telemetryClient.GetMetric("ThrottleLimitPercentage");
+			if (responseHeaders.TryGetValue("x-ms-resource-unit", out var resourceValues))
+				_telemetryClient.GetMetric("ResourceUnitsUsed").TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
+
+			if (responseHeaders.TryGetValue("x-ms-throttle-limit-percentage", out var throttleValues))
+				_telemetryClient.GetMetric("ThrottleLimitPercentage").TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
+		}
+
+		const int GraphBatchLimit = 20;
         const int ConcurrentRequests = 10;
         public Task<(ResponseCode ResponseCode, int SuccessCount)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
