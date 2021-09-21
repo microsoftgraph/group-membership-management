@@ -38,11 +38,11 @@ namespace Repositories.SyncJobsRepository
             return null;
         }
 
-        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false)
+        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false, bool applyFilters = true)
         {
             var syncJobs = new List<SyncJob>();
             var table = _tableClient.GetTableReference(_syncJobsTableName);
-            var linqQuery = table.CreateQuery<SyncJob>().Where(x => x.StartDate <= DateTime.UtcNow);
+            var linqQuery = (IQueryable<SyncJob>) table.CreateQuery<SyncJob>();
 
             if (status != SyncStatus.All)
             {
@@ -63,7 +63,9 @@ namespace Repositories.SyncJobsRepository
                 if (segmentResult.Results.Count == 0)
                     await _log.LogMessageAsync(new LogMessage { Message = $"Warning: Number of enabled jobs in your sync jobs table is: {segmentResult.Results.Count}. Please confirm this is the case.", RunId = Guid.Empty });
 
-                foreach (var job in ApplyFilters(segmentResult.Results))
+                var results = applyFilters ? ApplyFilters(segmentResult.Results) : segmentResult.Results;
+
+                foreach (var job in results)
                 {
                     yield return job;
                 }
@@ -90,6 +92,11 @@ namespace Repositories.SyncJobsRepository
         /// <returns></returns>
         public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status)
         {
+            await UpdateSyncJobsAsync(jobs, status: status);
+        }
+
+        public async Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null)
+        {
             var batchSize = 100;
             var currentSize = 0;
             var table = _tableClient.GetTableReference(_syncJobsTableName);
@@ -104,7 +111,11 @@ namespace Repositories.SyncJobsRepository
 
                 foreach (var job in group.AsEnumerable())
                 {
-                    job.Status = status.ToString();
+                    if (status != null)
+                    {
+                        job.Status = status.ToString();
+                    }
+
                     job.ETag = "*";
 
 					await _log.LogMessageAsync(new LogMessage { Message = string.Join('\n', job.GetType().GetProperties().Select(jobProperty => $"{jobProperty.Name} : {jobProperty.GetValue(job, null)}")), RunId = job.RunId });
@@ -129,8 +140,9 @@ namespace Repositories.SyncJobsRepository
 
         private IEnumerable<SyncJob> ApplyFilters(IEnumerable<SyncJob> jobs)
         {
-            var allNonDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == false);
-            var allDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.DryRunTimeStamp) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == true);
+            var jobsWithPastStartDate = jobs.Where(x => x.StartDate <= DateTime.UtcNow);
+            var allNonDryRunSyncJobs = jobsWithPastStartDate.Where(x => ((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == false);
+            var allDryRunSyncJobs = jobsWithPastStartDate.Where(x => ((DateTime.UtcNow - x.DryRunTimeStamp) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == true);
             return allNonDryRunSyncJobs.Concat(allDryRunSyncJobs);
         }
 

@@ -1,0 +1,9 @@
+{
+  "jobsTableConnectionString": "",
+  "jobsTableName": "",
+  "defaultRuntime": "",
+  "JobSchedulerConfig": "{ 'ResetJobs': false, 'DistributeJobs': true, 'IncludeFutureJobs': false }",
+  "startTimeDelayMinutes": "",
+  "delayBetweenSyncsSeconds": "",
+  "APPINSIGHTS_INSTRUMENTATIONKEY": ""
+}
