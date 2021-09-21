@@ -19,7 +19,7 @@ namespace Repositories.SyncJobs.Tests
             return await Task.FromResult(job);
         }
 
-        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false)
+        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false, bool applyFilters = true)
         {
             var jobs = Jobs.Where(x => x.StartDate <= DateTime.UtcNow);
 
@@ -33,7 +33,10 @@ namespace Repositories.SyncJobs.Tests
                 jobs = jobs.Where(x => x.Enabled);
             }
 
-            jobs = jobs.Where(x => DateTime.UtcNow - x.LastRunTime > TimeSpan.FromHours(x.Period));
+            if (applyFilters)
+            {
+                jobs = jobs.Where(x => DateTime.UtcNow - x.LastRunTime > TimeSpan.FromHours(x.Period));
+            }
 
             foreach (var job in await Task.FromResult(jobs))
             {
@@ -58,6 +61,11 @@ namespace Repositories.SyncJobs.Tests
                 dbJob.Status = status.ToString();
             }
 
+            await Task.CompletedTask;
+        }
+
+        public async Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null)
+        {
             await Task.CompletedTask;
         }
     }
