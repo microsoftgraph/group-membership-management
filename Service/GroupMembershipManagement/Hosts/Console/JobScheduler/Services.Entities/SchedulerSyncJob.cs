@@ -1,9 +1,10 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 using Entities;
 using System;
 using System.Diagnostics.CodeAnalysis;
 namespace Services.Entities
 {
-    [ExcludeFromCodeCoverage]
     public class SchedulerSyncJob : SyncJob, IComparable<SchedulerSyncJob>
     {
         public SchedulerSyncJob() { }

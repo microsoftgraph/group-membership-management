@@ -8,6 +8,6 @@ namespace Services.Contracts
 {
     public interface IRuntimeRetrievalService
     {
-        public Task<Dictionary<Guid, double>> GetRuntimes(List<Guid> groupIds);
+        public Task<Dictionary<Guid, double>> GetRuntimesInSeconds(List<Guid> groupIds);
     }
 }

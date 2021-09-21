@@ -4,11 +4,10 @@ using Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Repositories.Mocks;
 using Services.Entities;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Threading.Tasks;
 using MockSyncJobRepository = Repositories.SyncJobs.Tests.MockSyncJobRepository;
 
@@ -24,16 +23,22 @@ namespace Services.Tests
         private JobSchedulingService _jobSchedulingService = null;
         private MockSyncJobRepository _mockSyncJobRepository = null;
         private DefaultRuntimeRetrievalService _defaultRuntimeRetrievalService = null;
-        private TelemetryClient _mockTelemetryClient = null;
+        private MockLoggingRepository _mockLoggingRepository = null;
 
         [TestInitialize]
         public void InitializeTest()
         {
             _mockSyncJobRepository = new MockSyncJobRepository();
             _defaultRuntimeRetrievalService = new DefaultRuntimeRetrievalService(DEFAULT_RUNTIME_SECONDS);
-            _mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            _mockLoggingRepository = new MockLoggingRepository();
 
-            _jobSchedulingService = new JobSchedulingService(_mockSyncJobRepository, _defaultRuntimeRetrievalService, _mockTelemetryClient, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
+            _jobSchedulingService = new JobSchedulingService(
+                START_TIME_DELAY_MINUTES,
+                BUFFER_SECONDS,
+                _mockSyncJobRepository,
+                _defaultRuntimeRetrievalService,
+                _mockLoggingRepository
+            );
         }
 
         [TestMethod]
@@ -42,7 +47,7 @@ namespace Services.Tests
             List<SchedulerSyncJob> jobs = CreateSampleSyncJobs(10, 1);
             DateTime newStartTime = DateTime.UtcNow;
 
-            List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.ResetJobStartTimes(jobs, newStartTime, false);
+            List<SchedulerSyncJob> updatedJobs = _jobSchedulingService.ResetJobStartTimes(jobs, newStartTime, false);
 
             Assert.AreEqual(jobs.Count, updatedJobs.Count);
 
@@ -58,7 +63,7 @@ namespace Services.Tests
             DateTime newStartTime = DateTime.UtcNow.Date;
             List<SchedulerSyncJob> jobs = CreateSampleSyncJobs(10, 1, newStartTime.AddDays(4));
 
-            List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.ResetJobStartTimes(jobs, newStartTime, false);
+            List<SchedulerSyncJob> updatedJobs = _jobSchedulingService.ResetJobStartTimes(jobs, newStartTime, false);
 
             Assert.AreEqual(jobs.Count, updatedJobs.Count);
 
@@ -86,7 +91,7 @@ namespace Services.Tests
         {
             List<SchedulerSyncJob> jobs = new List<SchedulerSyncJob>();
 
-            List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimes(jobs);
+            List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs);
 
             Assert.AreEqual(updatedJobs.Count, 0);
         }
@@ -96,7 +101,7 @@ namespace Services.Tests
         {
             DateTime dateTimeNow = DateTime.UtcNow;
             List<SchedulerSyncJob> jobs = CreateSampleSyncJobs(1, 1);
-            List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimes(jobs);
+            List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs);
 
             Assert.AreEqual(updatedJobs.Count, 1);
             Assert.IsTrue(updatedJobs[0].StartDate > dateTimeNow);
@@ -108,7 +113,7 @@ namespace Services.Tests
             DateTime dateTimeNow = DateTime.UtcNow;
             List<SchedulerSyncJob> jobs = CreateSampleSyncJobs(10, 1, dateTimeNow.Date.AddDays(-20), dateTimeNow.Date);
 
-            List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimes(jobs);
+            List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs);
 
             jobs.Sort();
             updatedJobs.Sort();
@@ -130,12 +135,18 @@ namespace Services.Tests
             int defaultTenMinuteRuntime = 600;
             var longerDefaultRuntimeService = new DefaultRuntimeRetrievalService(defaultTenMinuteRuntime);
 
-            JobSchedulingService jobSchedulingService = new JobSchedulingService(_mockSyncJobRepository, longerDefaultRuntimeService, _mockTelemetryClient, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
+            JobSchedulingService jobSchedulingService = new JobSchedulingService(
+                START_TIME_DELAY_MINUTES, 
+                BUFFER_SECONDS,
+                _mockSyncJobRepository,
+                longerDefaultRuntimeService,
+                _mockLoggingRepository
+            );
 
             DateTime dateTimeNow = DateTime.UtcNow.Date;
             List<SchedulerSyncJob> jobs = CreateSampleSyncJobs(10, 1, dateTimeNow.Date.AddDays(-20), dateTimeNow.Date);
 
-            List<SchedulerSyncJob> updatedJobs = await jobSchedulingService.DistributeJobStartTimes(jobs);
+            List<SchedulerSyncJob> updatedJobs = await jobSchedulingService.DistributeJobStartTimesAsync(jobs);
 
             jobs.Sort();
             updatedJobs.Sort();
@@ -170,7 +181,7 @@ namespace Services.Tests
             List<SchedulerSyncJob> jobs = CreateSampleSyncJobs(3, 1, dateTimeNow.Date.AddDays(-20), dateTimeNow.Date);
             jobs.AddRange(CreateSampleSyncJobs(3, 24, dateTimeNow.Date.AddDays(-20), dateTimeNow.Date));
 
-            List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimes(jobs);
+            List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs);
 
             jobs.Sort(new PeriodComparer());
             updatedJobs.Sort(new PeriodComparer());
