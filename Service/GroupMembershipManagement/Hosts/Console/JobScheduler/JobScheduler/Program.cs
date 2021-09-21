@@ -1,4 +1,5 @@
-using Entities;
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 using System.Collections.Generic;
 using System;
 using System.Threading.Tasks;
@@ -8,6 +9,9 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Repositories.SyncJobsRepository;
 using Services.Entities;
 using Newtonsoft.Json;
+using Repositories.Logging;
+using Repositories.Contracts.InjectConfig;
+using DIConcreteTypes;
 
 namespace JobScheduler
 {
@@ -21,26 +25,28 @@ namespace JobScheduler
             var appSettings = AppSettings.LoadAppSettings();
 
             // Injections
-            var _syncJobRepository = new SyncJobRepository(appSettings.JobsTableConnectionString, appSettings.JobsTableName, new MockLoggingRepository());
+            var logAnalyticsSecret = new LogAnalyticsSecret<LoggingRepository>(appSettings.LogAnalyticsCustomerId, appSettings.LogAnalyticsPrimarySharedKey, "JobScheduler");
+            var _loggingRepository = new LoggingRepository(logAnalyticsSecret);
+            var _syncJobRepository = new SyncJobRepository(appSettings.JobsTableConnectionString, appSettings.JobsTableName, _loggingRepository);
 
-            int defaultRuntime = appSettings.DefaultRuntime;
+            var defaultRuntime = appSettings.DefaultRuntime;
             var _runtimeRetrievalService = new DefaultRuntimeRetrievalService(defaultRuntime);
 
             var telemetryConfiguration = new TelemetryConfiguration();
-            telemetryConfiguration.InstrumentationKey = appSettings.APPINSIGHTS_INSTRUMENTATIONKEY;
+            telemetryConfiguration.InstrumentationKey = appSettings.AppInsightsInstrumentationKey;
             telemetryConfiguration.TelemetryInitializers.Add(new OperationCorrelationTelemetryInitializer());
 
             _telemetryClient = new TelemetryClient(telemetryConfiguration);
 
-            var startTimeDelayMinutes = appSettings.startTimeDelayMinutes;
-            var delayBetweenSyncsSeconds = appSettings.delayBetweenSyncsSeconds;
+            var startTimeDelayMinutes = appSettings.StartTimeDelayMinutes;
+            var delayBetweenSyncsSeconds = appSettings.DelayBetweenSyncsSeconds;
 
             _jobSchedulingService = new JobSchedulingService(
+                startTimeDelayMinutes,
+                delayBetweenSyncsSeconds,
                 _syncJobRepository,
                 _runtimeRetrievalService,
-                _telemetryClient,
-                startTimeDelayMinutes,
-                delayBetweenSyncsSeconds
+                _loggingRepository
             );
 
             var jobSchedulerConfig = JsonConvert.DeserializeObject<JobSchedulerConfiguration>(appSettings.JobSchedulerConfig);
@@ -51,20 +57,20 @@ namespace JobScheduler
             bool distributeJobs = jobSchedulerConfig.DistributeJobs;
 
             Console.Write("Getting jobs...");
-            List<SchedulerSyncJob> jobs = await _jobSchedulingService.GetAllSyncJobs(updateFutureJobsToo);
+            List<SchedulerSyncJob> jobs = await _jobSchedulingService.GetAllSyncJobsAsync(updateFutureJobsToo);
             Console.WriteLine(" jobs retrieved!");
 
             if (resetJobs)
             {
                 Console.Write("Resetting jobs...");
-                jobs = await _jobSchedulingService.ResetJobStartTimes(jobs, DateTime.UtcNow.AddDays(-1), updateFutureJobsToo);
-                await _jobSchedulingService.UpdateSyncJobs(jobs);
+                jobs = _jobSchedulingService.ResetJobStartTimes(jobs, DateTime.UtcNow.AddDays(-1), updateFutureJobsToo);
+                await _jobSchedulingService.UpdateSyncJobsAsync(jobs);
                 Console.WriteLine(" jobs reset!");
             }
             if (distributeJobs)
             {
-                List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimes(jobs);
-                await _jobSchedulingService.UpdateSyncJobs(updatedJobs);
+                List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs);
+                await _jobSchedulingService.UpdateSyncJobsAsync(updatedJobs);
             }
 
             Console.WriteLine("Done");
