@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -14,7 +16,7 @@ namespace Services
             DEFAULT_RUNTIME_SECONDS = defaultRuntimeSeconds;
         }
 
-        public Task<Dictionary<Guid, double>> GetRuntimes(List<Guid> groupIds)
+        public Task<Dictionary<Guid, double>> GetRuntimesInSeconds(List<Guid> groupIds)
         {
             Dictionary<Guid, double> runtimes = new Dictionary<Guid, double>();
             foreach(Guid groupId in groupIds)
