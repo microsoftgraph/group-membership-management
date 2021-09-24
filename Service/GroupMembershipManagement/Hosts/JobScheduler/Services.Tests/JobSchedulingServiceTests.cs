@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
-using Microsoft.ApplicationInsights;
-using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Repositories.Mocks;
 using Services.Entities;
@@ -42,7 +40,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task ResetAllStartTimes()
+        public void ResetAllStartTimes()
         {
             List<SchedulerSyncJob> jobs = CreateSampleSyncJobs(10, 1);
             DateTime newStartTime = DateTime.UtcNow;
@@ -58,7 +56,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task ResetOlderStartTimes()
+        public void ResetOlderStartTimes()
         {
             DateTime newStartTime = DateTime.UtcNow.Date;
             List<SchedulerSyncJob> jobs = CreateSampleSyncJobs(10, 1, newStartTime.AddDays(4));
