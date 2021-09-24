@@ -8,8 +8,8 @@
 	  <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
-    <ProjectReference Include="..\..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj" />
     <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
     <ProjectReference Include="..\Services.Entities\Services.Entities.csproj" />
   </ItemGroup>

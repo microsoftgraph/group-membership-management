@@ -4,13 +4,11 @@ using System.Collections.Generic;
 using System;
 using System.Threading.Tasks;
 using Services;
-using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Repositories.SyncJobsRepository;
 using Services.Entities;
 using Newtonsoft.Json;
 using Repositories.Logging;
-using Repositories.Contracts.InjectConfig;
 using DIConcreteTypes;
 
 namespace JobScheduler
@@ -18,7 +16,6 @@ namespace JobScheduler
     internal static class Program
     {
         private static JobSchedulingService _jobSchedulingService;
-        private static TelemetryClient _telemetryClient;
 
         private static async Task Main(string[] args)
         {
@@ -35,8 +32,6 @@ namespace JobScheduler
             var telemetryConfiguration = new TelemetryConfiguration();
             telemetryConfiguration.InstrumentationKey = appSettings.AppInsightsInstrumentationKey;
             telemetryConfiguration.TelemetryInitializers.Add(new OperationCorrelationTelemetryInitializer());
-
-            _telemetryClient = new TelemetryClient(telemetryConfiguration);
 
             var startTimeDelayMinutes = appSettings.StartTimeDelayMinutes;
             var delayBetweenSyncsSeconds = appSettings.DelayBetweenSyncsSeconds;
