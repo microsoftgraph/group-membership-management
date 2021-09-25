@@ -76,6 +76,7 @@ namespace Repositories.GraphGroups
             try
             {
                 var groupOwners = await _graphServiceClient.Groups[groupObjectId.ToString()].Owners.Request().WithMaxRetry(MaxRetries).Filter($"id eq '{servicePrincipal.Id}'").GetAsync();
+                TrackMetrics(groupOwners.AdditionalData);
                 return groupOwners.Any();
             }
             catch (ServiceException ex)
@@ -252,10 +253,14 @@ namespace Repositories.GraphGroups
 
 		void TrackMetrics(IDictionary<string, object> additionalData)
 		{
-			// see https://github.com/microsoftgraph/msgraph-sdk-dotnet/blob/dev/docs/headers.md#reading-response-headers
-			var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(additionalData["responseHeaders"].ToString());
+            // some replies just don't have the response headers
+            // i suspect those either aren't throttled the same way or it's a different kind of call
+            if (!additionalData.TryGetValue("responseHeaders", out var headers))
+                return;
 
-            var throttleLimitPercentage = _telemetryClient.GetMetric("ThrottleLimitPercentage");
+			// see https://github.com/microsoftgraph/msgraph-sdk-dotnet/blob/dev/docs/headers.md#reading-response-headers
+			var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
+
 			if (responseHeaders.TryGetValue("x-ms-resource-unit", out var resourceValues))
 				_telemetryClient.GetMetric("ResourceUnitsUsed").TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
 
