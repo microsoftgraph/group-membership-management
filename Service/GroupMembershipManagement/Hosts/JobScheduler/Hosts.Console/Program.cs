@@ -46,7 +46,7 @@ namespace JobScheduler
 
             var jobSchedulerConfig = JsonConvert.DeserializeObject<JobSchedulerConfiguration>(appSettings.JobSchedulerConfig);
 
-            // Function running
+            // Calling the JobSchedulerService
             bool updateFutureJobsToo = jobSchedulerConfig.IncludeFutureJobs;
             bool resetJobs = jobSchedulerConfig.ResetJobs;
             bool distributeJobs = jobSchedulerConfig.DistributeJobs;
@@ -55,20 +55,9 @@ namespace JobScheduler
             List<SchedulerSyncJob> jobs = await _jobSchedulingService.GetAllSyncJobsAsync(updateFutureJobsToo);
             Console.WriteLine(" jobs retrieved!");
 
-            if (resetJobs)
-            {
-                Console.Write("Resetting jobs...");
-                jobs = _jobSchedulingService.ResetJobStartTimes(jobs, DateTime.UtcNow.AddDays(-1), updateFutureJobsToo);
-                await _jobSchedulingService.UpdateSyncJobsAsync(jobs);
-                Console.WriteLine(" jobs reset!");
-            }
-            if (distributeJobs)
-            {
-                List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs);
-                await _jobSchedulingService.UpdateSyncJobsAsync(updatedJobs);
-            }
-
-            Console.WriteLine("Done");
+            Console.Write("Scheduling jobs...");
+            await _jobSchedulingService.ScheduleJobs(jobs, resetJobs, distributeJobs, updateFutureJobsToo);
+            Console.WriteLine("jobs scheduled!");
         }
     }
 }

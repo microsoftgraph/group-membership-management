@@ -42,7 +42,7 @@ namespace Repositories.SyncJobsRepository
         {
             var syncJobs = new List<SyncJob>();
             var table = _tableClient.GetTableReference(_syncJobsTableName);
-            var linqQuery = (IQueryable<SyncJob>) table.CreateQuery<SyncJob>();
+            var linqQuery = table.CreateQuery<SyncJob>().AsQueryable();
 
             if (status != SyncStatus.All)
             {
