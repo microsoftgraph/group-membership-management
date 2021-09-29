@@ -230,7 +230,7 @@
         },
         {
           "key": "GraphUpdater:LastMessageWaitTimeout",
-          "value": "5",
+          "value": "10",
           "contentType": "integer",
           "tag": {
             "tag1": "GraphUpdater"
