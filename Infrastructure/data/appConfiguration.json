@@ -39,7 +39,7 @@
       "identity": { "type": "SystemAssigned" },
       "properties": {},
       "sku": {
-        "name": "standard"
+        "name": "[parameters('appConfigurationSku')]"
       }
     },
     {
