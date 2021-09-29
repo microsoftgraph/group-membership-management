@@ -209,38 +209,34 @@
         "description": "Enter app configuration sku."
       }
     },
-    "keyValueNames": {
+    "appConfigurationKeyData": {
       "type": "array",
       "defaultValue": [
-        "SecurityGroup:IsSecurityGroupDryRunEnabled",
-        "GraphUpdater:IsGraphUpdaterDryRunEnabled"
-      ],
-      "metadata": {
-        "description": "Specifies the names of the key-value resources. The name is a combination of key and label with $ as delimiter. The label is optional."
-      }
-    },
-    "keyValueValues": {
-      "type": "array",
-      "defaultValue": [ "false", "false" ],
-      "metadata": {
-        "description": "Specifies the values of the key-value resources. It's optional"
-      }
-    },
-    "contentType": {
-      "type": "string",
-      "defaultValue": "boolean",
-      "metadata": {
-        "description": "Specifies the content type of the key-value resources. For feature flag, the value should be application/vnd.microsoft.appconfig.ff+json;charset=utf-8. For Key Value reference, the value should be application/vnd.microsoft.appconfig.keyvaultref+json;charset=utf-8. Otherwise, it's optional."
-      }
-    },
-    "appConfigurationTags": {
-      "type": "object",
-      "defaultValue": {
-        "tag1": "tag-dry-run"
-      },
-      "metadata": {
-        "description": "Adds tags for the key-value resources. It's optional"
-      }
+        {
+          "key": "SecurityGroup:IsSecurityGroupDryRunEnabled",
+          "value": "false",
+          "contentType": "boolean",
+          "tag": {
+            "tag1": "tag-dry-run"
+          }
+        },
+        {
+          "key": "GraphUpdater:IsGraphUpdaterDryRunEnabled",
+          "value": "false",
+          "contentType": "boolean",
+          "tag": {
+            "tag1": "tag-dry-run"
+          }
+        },
+        {
+          "key": "GraphUpdater:LastMessageWaitTimeout",
+          "value": "5",
+          "contentType": "integer",
+          "tag": {
+            "tag1": "GraphUpdater"
+          }
+        }
+      ]
     },
     "actionGroupName": {
       "type": "string",
@@ -540,17 +536,8 @@
           "location": {
             "value": "[parameters('location')]"
           },
-          "keyValueNames": {
-            "value": "[parameters('keyValueNames')]"
-          },
-          "keyValueValues": {
-            "value": "[parameters('keyValueValues')]"
-          },
-          "contentType": {
-            "value": "[parameters('contentType')]"
-          },
-          "tags": {
-            "value": "[parameters('appConfigurationTags')]"
+          "appConfigurationKeyData": {
+            "value": "[parameters('appConfigurationKeyData')]"
           }
         }
       }
