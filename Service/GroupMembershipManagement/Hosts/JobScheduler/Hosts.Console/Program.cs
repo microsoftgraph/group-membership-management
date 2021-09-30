@@ -1,7 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using System.Collections.Generic;
-using System;
 using System.Threading.Tasks;
 using Services;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -10,24 +8,23 @@ using Services.Entities;
 using Newtonsoft.Json;
 using Repositories.Logging;
 using DIConcreteTypes;
+using Services.Contracts;
 
 namespace JobScheduler
 {
     internal static class Program
     {
-        private static JobSchedulingService _jobSchedulingService;
-
         private static async Task Main(string[] args)
         {
             var appSettings = AppSettings.LoadAppSettings();
 
             // Injections
             var logAnalyticsSecret = new LogAnalyticsSecret<LoggingRepository>(appSettings.LogAnalyticsCustomerId, appSettings.LogAnalyticsPrimarySharedKey, "JobScheduler");
-            var _loggingRepository = new LoggingRepository(logAnalyticsSecret);
-            var _syncJobRepository = new SyncJobRepository(appSettings.JobsTableConnectionString, appSettings.JobsTableName, _loggingRepository);
+            var loggingRepository = new LoggingRepository(logAnalyticsSecret);
+            var syncJobRepository = new SyncJobRepository(appSettings.JobsTableConnectionString, appSettings.JobsTableName, loggingRepository);
 
             var defaultRuntime = appSettings.DefaultRuntime;
-            var _runtimeRetrievalService = new DefaultRuntimeRetrievalService(defaultRuntime);
+            var runtimeRetrievalService = new DefaultRuntimeRetrievalService(defaultRuntime);
 
             var telemetryConfiguration = new TelemetryConfiguration();
             telemetryConfiguration.InstrumentationKey = appSettings.AppInsightsInstrumentationKey;
@@ -36,28 +33,24 @@ namespace JobScheduler
             var startTimeDelayMinutes = appSettings.StartTimeDelayMinutes;
             var delayBetweenSyncsSeconds = appSettings.DelayBetweenSyncsSeconds;
 
-            _jobSchedulingService = new JobSchedulingService(
+            IJobSchedulingService jobSchedulingService = new JobSchedulingService(
                 startTimeDelayMinutes,
                 delayBetweenSyncsSeconds,
-                _syncJobRepository,
-                _runtimeRetrievalService,
-                _loggingRepository
+                syncJobRepository,
+                runtimeRetrievalService,
+                loggingRepository
             );
 
-            var jobSchedulerConfig = JsonConvert.DeserializeObject<JobSchedulerConfiguration>(appSettings.JobSchedulerConfig);
+            IApplicationService applicationService = new ApplicationService(jobSchedulingService);
 
-            // Calling the JobSchedulerService
-            bool updateFutureJobsToo = jobSchedulerConfig.IncludeFutureJobs;
+            // Get JobSchedulerConfiguration values
+            var jobSchedulerConfig = JsonConvert.DeserializeObject<JobSchedulerConfiguration>(appSettings.JobSchedulerConfig);
             bool resetJobs = jobSchedulerConfig.ResetJobs;
             bool distributeJobs = jobSchedulerConfig.DistributeJobs;
+            bool includeFutureJobs = jobSchedulerConfig.IncludeFutureJobs;
 
-            Console.Write("Getting jobs...");
-            List<SchedulerSyncJob> jobs = await _jobSchedulingService.GetAllSyncJobsAsync(updateFutureJobsToo);
-            Console.WriteLine(" jobs retrieved!");
-
-            Console.Write("Scheduling jobs...");
-            await _jobSchedulingService.ScheduleJobs(jobs, resetJobs, distributeJobs, updateFutureJobsToo);
-            Console.WriteLine("jobs scheduled!");
+            // Call the JobSchedulerService
+            await applicationService.RunAsync(resetJobs, distributeJobs, includeFutureJobs, appSettings.DaysToAddForReset);
         }
     }
 }
