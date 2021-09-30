@@ -26,6 +26,12 @@ namespace Hosts.GraphUpdater
 
         public async Task<GroupMembershipMessageResponse> HandleNewMessageAsync(GroupMembershipMessage body, string messageSessionId)
         {
+            if (body.IsCancelationMessage)
+            {
+                _receivedMessages.TryRemove(messageSessionId, out _);
+                return new GroupMembershipMessageResponse();
+            }
+
             _loggingRepository.SyncJobProperties = new Dictionary<string, string>()
             { { "LockToken", body.LockToken }, { "RowKey", body.Body.SyncJobRowKey }, { "PartitionKey", body.Body.SyncJobPartitionKey }, { "TargetOfficeGroupId", body.Body.Destination.ObjectId.ToString() } };
 

@@ -8,5 +8,6 @@ namespace Hosts.GraphUpdater
 	{
 		public GroupMembership Body { get; set; }
 		public string LockToken { get; set; }
-	}
+        public bool IsCancelationMessage { get; set; }
+    }
 }

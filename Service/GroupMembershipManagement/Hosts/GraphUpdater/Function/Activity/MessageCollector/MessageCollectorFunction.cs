@@ -29,7 +29,8 @@ namespace Hosts.GraphUpdater
 			var body = new GroupMembershipMessage
 			{
 				Body = JsonConvert.DeserializeObject<GroupMembership>(request.Message),
-				LockToken = request.MessageLockToken
+				LockToken = request.MessageLockToken,
+				IsCancelationMessage = request.IsCancelationRequest
 			};
 
 			var handleNewMessageResult = await _messageCollector.HandleNewMessageAsync(body, request.MessageSessionId);
