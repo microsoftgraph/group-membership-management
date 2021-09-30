@@ -50,6 +50,7 @@ namespace Services
         public async Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {groupId}." });
+            _graphGroupRepository.RunId = runId;
             var result = await _graphGroupRepository.GetFirstUsersPageAsync(groupId);
             return new UsersPageResponse
             {
@@ -60,8 +61,9 @@ namespace Services
             };
         }
 
-        public async Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)
+        public async Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup, Guid runId)
         {
+            _graphGroupRepository.RunId = runId;
             var result = await _graphGroupRepository.GetNextUsersPageAsync(nextPageUrl, usersFromGroup);
             return new UsersPageResponse
             {

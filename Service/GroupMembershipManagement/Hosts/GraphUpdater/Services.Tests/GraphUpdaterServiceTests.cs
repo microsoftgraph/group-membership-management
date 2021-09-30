@@ -71,7 +71,7 @@ namespace Services.Tests
             var runId = Guid.NewGuid();
             var nextPageUrl = samplePageResponse.nextPageUrl;
 
-            var response = await graphUpdaterService.GetNextMembersPageAsync(nextPageUrl, samplePageResponse.usersFromGroup);
+            var response = await graphUpdaterService.GetNextMembersPageAsync(nextPageUrl, samplePageResponse.usersFromGroup, runId);
             Assert.IsNotNull(response.NextPageUrl);
             Assert.AreEqual(userCount, response.Members.Count);
         }

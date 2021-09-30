@@ -26,7 +26,7 @@ namespace Hosts.GraphUpdater
 		public async Task<UsersPageResponse> GetUsersAsync([ActivityTrigger] SubsequentUsersReaderRequest request)
 		{
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentUsersReaderFunction)} function started", RunId = request.RunId });
-			var response = await _usersReaderService.GetNextMembersPageAsync(request.NextPageUrl, request.GroupMembersPage);
+			var response = await _usersReaderService.GetNextMembersPageAsync(request.NextPageUrl, request.GroupMembersPage, request.RunId);
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentUsersReaderFunction)} function completed", RunId = request.RunId });
 			return response;
 		}
