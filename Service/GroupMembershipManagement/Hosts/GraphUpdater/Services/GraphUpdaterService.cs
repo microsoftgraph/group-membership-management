@@ -149,9 +149,9 @@ namespace Services
             stopwatch.Stop();
 
             if (isInitialSync)
-                _telemetryClient.TrackMetric(nameof(Metric.MembersAddedFromOnboarding), members.Count);
+                _telemetryClient.GetMetric(nameof(Metric.MembersAddedFromOnboarding)).TrackValue(members.Count);
             else
-                _telemetryClient.TrackMetric(nameof(Metric.MembersAdded), members.Count);
+                _telemetryClient.GetMetric(nameof(Metric.MembersAdded)).TrackValue(members.Count);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
@@ -177,9 +177,9 @@ namespace Services
             stopwatch.Stop();
 
             if (isInitialSync)
-                _telemetryClient.TrackMetric(nameof(Metric.MembersRemovedFromOnboarding), members.Count);
+                _telemetryClient.GetMetric(nameof(Metric.MembersRemovedFromOnboarding)).TrackValue(members.Count);
             else
-                _telemetryClient.TrackMetric(nameof(Metric.MembersRemoved), members.Count);
+                _telemetryClient.GetMetric(nameof(Metric.MembersRemoved)).TrackValue(members.Count);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
@@ -187,7 +187,7 @@ namespace Services
                 $"{members.Count / stopwatch.Elapsed.TotalSeconds} users removed per second.",
                 RunId = runId
             });
-            _telemetryClient.TrackMetric(nameof(Metric.GraphRemoveRatePerSecond), members.Count / stopwatch.Elapsed.TotalSeconds);
+            _telemetryClient.GetMetric(nameof(Metric.GraphRemoveRatePerSecond)).TrackValue(members.Count / stopwatch.Elapsed.TotalSeconds);
 
             var status = graphResponse.ResponseCode == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
             return (status, graphResponse.SuccessCount);
