@@ -7,5 +7,6 @@ namespace Services.Entities
         public byte[] Body { get; set; }
         public string SessionId { get; set; }
         public string LockToken { get; set; }
+        public string MessageId { get; set; }
     }
 }

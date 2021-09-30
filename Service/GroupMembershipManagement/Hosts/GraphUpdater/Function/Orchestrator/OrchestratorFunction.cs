@@ -63,7 +63,20 @@ namespace Hosts.GraphUpdater
                 graphRequest = context.GetInput<GraphUpdaterFunctionRequest>();
                 groupMembership = JsonConvert.DeserializeObject<GroupMembership>(graphRequest.Message);
                 graphRequest.RunId = groupMembership.RunId;
+
                 messageResponse = await context.CallActivityAsync<GroupMembershipMessageResponse>(nameof(MessageCollectorFunction), graphRequest);
+
+                if (graphRequest.IsCancelationRequest)
+                {
+                    _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Canceling session {graphRequest.MessageSessionId}" })
+                                       .ConfigureAwait(false);
+
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                        CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
+                                                                        SyncStatus.Error, groupMembership.MembershipObtainerDryRunEnabled, groupMembership.RunId));
+
+                    return messageResponse;
+                }
 
                 if (messageResponse.ShouldCompleteMessage)
                 {

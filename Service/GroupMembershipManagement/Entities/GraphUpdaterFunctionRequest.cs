@@ -10,5 +10,6 @@ namespace Entities
         public string Message { get; set; }
         public string MessageSessionId { get; set; }
         public string MessageLockToken { get; set; }
+        public bool IsCancelationRequest { get; set; }
     }
 }

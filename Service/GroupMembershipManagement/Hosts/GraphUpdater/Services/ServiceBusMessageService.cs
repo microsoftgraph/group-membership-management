@@ -14,7 +14,8 @@ namespace Services
             {
                 Body = message.Body,
                 LockToken = message.SystemProperties.LockToken,
-                SessionId = message.SessionId
+                SessionId = message.SessionId,
+                MessageId = message.MessageId
             };
         }
     }
