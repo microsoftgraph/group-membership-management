@@ -60,21 +60,6 @@ namespace Services
             await _syncJobRepository.UpdateSyncJobsAsync(updatedSyncJobs);
         }
 
-        public async Task ScheduleJobs(List<SchedulerSyncJob> jobs, bool resetJobs, bool distributeJobs, bool updateFutureJobsToo)
-        {
-            if (resetJobs)
-            {
-                jobs = ResetJobStartTimes(jobs, DateTime.UtcNow.AddDays(-1), updateFutureJobsToo);
-                await UpdateSyncJobsAsync(jobs);
-            }
-
-            if (distributeJobs)
-            {
-                List<SchedulerSyncJob> updatedJobs = await DistributeJobStartTimesAsync(jobs);
-                await UpdateSyncJobsAsync(updatedJobs);
-            }
-        }
-
         public List<SchedulerSyncJob> ResetJobStartTimes(List<SchedulerSyncJob> schedulerSyncJobs, DateTime newStartTime, bool includeFutureStartDates = false)
         {
             List<SchedulerSyncJob> updatedSyncJobs = schedulerSyncJobs.Select(job => {

@@ -13,6 +13,7 @@ namespace JobScheduler
         public string AppInsightsInstrumentationKey { get; set; }
         public int DefaultRuntime { get; set; }
         public string JobSchedulerConfig { get; set; }
+        public int DaysToAddForReset { get; set; }
         public int StartTimeDelayMinutes { get; set; }
         public int DelayBetweenSyncsSeconds { get; set; }
 

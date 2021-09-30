@@ -5,6 +5,7 @@
   "jobsTableName": "",
   "defaultRuntime": "",
   "JobSchedulerConfig": "{ 'ResetJobs': false, 'DistributeJobs': true, 'IncludeFutureJobs': false }",
+  "daysToAddForReset":  "",
   "startTimeDelayMinutes": "",
   "delayBetweenSyncsSeconds": "",
   "APPINSIGHTS_INSTRUMENTATIONKEY": ""
