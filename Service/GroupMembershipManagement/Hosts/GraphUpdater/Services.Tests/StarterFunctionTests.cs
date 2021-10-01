@@ -1,11 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
+using Entities.ServiceBus;
 using Hosts.GraphUpdater;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Mocks;
 using Services.Contracts;
@@ -26,6 +29,7 @@ namespace Services.Tests
         private Mock<IDurableOrchestrationClient> _durableClientMock;
         private Mock<IMessageSession> _messageSessionMock;
         private Mock<IServiceBusMessageService> _messageService;
+        private Mock<IConfiguration> _configuration;
 
         [TestInitialize]
         public void SetupTest()
@@ -35,6 +39,7 @@ namespace Services.Tests
             _loggerMock = new MockLoggingRepository();
             _messageSessionMock = new Mock<IMessageSession>();
             _messageService = new Mock<IServiceBusMessageService>();
+            _configuration = new Mock<IConfiguration>();
         }
 
         [TestMethod]
@@ -44,7 +49,8 @@ namespace Services.Tests
             {
                 Body = Encoding.UTF8.GetBytes(GetMessageBody()),
                 LockToken = Guid.NewGuid().ToString(),
-                SessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
+                SessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35",
+                MessageId = Guid.NewGuid().ToString()
             };
 
             var output = new GroupMembershipMessageResponse
@@ -72,7 +78,7 @@ namespace Services.Tests
 
             _messageService.Setup(x => x.GetMessageProperties(It.IsAny<Message>())).Returns(messageDetails);
 
-            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object);
+            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object);
             await starterFunction.RunAsync(new Message(), _durableClientMock.Object, _messageSessionMock.Object);
 
             _messageSessionMock.Verify(mock => mock.CompleteAsync(It.IsAny<IEnumerable<string>>()), Times.Once());
@@ -89,7 +95,8 @@ namespace Services.Tests
             {
                 Body = Encoding.UTF8.GetBytes(GetMessageBody()),
                 LockToken = Guid.NewGuid().ToString(),
-                SessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
+                SessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35",
+                MessageId = Guid.NewGuid().ToString()
             };
 
             var output = new GroupMembershipMessageResponse
@@ -125,7 +132,7 @@ namespace Services.Tests
 
             _messageService.Setup(x => x.GetMessageProperties(It.IsAny<Message>())).Returns(messageDetails);
 
-            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object);
+            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object);
             await starterFunction.RunAsync(new Message(), _durableClientMock.Object, _messageSessionMock.Object);
 
             _messageSessionMock.Verify(mock => mock.CompleteAsync(It.IsAny<IEnumerable<string>>()), Times.Never());
@@ -133,6 +140,72 @@ namespace Services.Tests
 
             Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message.Contains("Error: Status of instance")));
             Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message.Contains("function complete")));
+        }
+
+        [TestMethod]
+        [Timeout(180000)]
+        public async Task ProcessSessionWithNoLastMessageTest()
+        {
+            var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(GetMessageBody());
+            groupMembership.IsLastMessage = false;
+
+            var messageDetails = new MessageInformation
+            {
+                Body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(groupMembership)),
+                LockToken = Guid.NewGuid().ToString(),
+                SessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
+            };
+
+            var output = new GroupMembershipMessageResponse
+            {
+                CompletedGroupMembershipMessages = new List<GroupMembershipMessage>
+                {
+                    new GroupMembershipMessage { LockToken = messageDetails.LockToken }
+                },
+                ShouldCompleteMessage = false
+            };
+
+            var status = new DurableOrchestrationStatus
+            {
+                RuntimeStatus = OrchestrationRuntimeStatus.Completed,
+                Output = JToken.FromObject(output)
+            };
+
+            _messageService.Setup(x => x.GetMessageProperties(It.IsAny<Message>()))
+                            .Returns(() =>
+                            {
+                                messageDetails.MessageId = Guid.NewGuid().ToString();
+                                return messageDetails;
+                            });
+
+
+            _messageSessionMock.SetupGet(x => x.SessionId).Returns(messageDetails.SessionId);
+            _configuration.SetupGet(x => x["GraphUpdater:LastMessageWaitTimeout"]).Returns("1");
+
+            var cancelationRequestCount = 0;
+
+            _durableClientMock
+                 .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
+                 .Callback<string, object>((name, request) =>
+                 {
+                     var graphUpdaterRequest = request as GraphUpdaterFunctionRequest;
+                     if (graphUpdaterRequest != null && graphUpdaterRequest.IsCancelationRequest)
+                         cancelationRequestCount++;
+                 })
+                 .ReturnsAsync(_instanceId);
+
+            _durableClientMock
+                .Setup(x => x.GetStatusAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
+                .ReturnsAsync(status);
+
+            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object);
+            await starterFunction.RunAsync(new Message(), _durableClientMock.Object, _messageSessionMock.Object);
+            await starterFunction.RunAsync(new Message(), _durableClientMock.Object, _messageSessionMock.Object);
+
+            await Task.Delay(TimeSpan.FromSeconds(90));
+
+            _durableClientMock.Verify(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()), Times.Exactly(3));
+            Assert.AreEqual(1, cancelationRequestCount);
         }
 
         private string GetMessageBody()
