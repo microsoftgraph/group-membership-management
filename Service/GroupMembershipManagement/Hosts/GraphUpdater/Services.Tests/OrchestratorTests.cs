@@ -18,6 +18,7 @@ using Services.Tests.Mocks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Services.Tests
@@ -337,6 +338,74 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task RunOrchestratorCancelationRequest()
+        {
+            MockLoggingRepository mockLoggingRepo;
+            TelemetryClient mockTelemetryClient;
+            MockMailRepository mockMailRepo;
+            MockGraphUpdaterService mockGraphUpdaterService;
+            DryRunValue dryRun;
+            DeltaCalculatorService deltaCalculatorService;
+            EmailSenderRecipient mailSenders;
+            MockSyncJobRepository mockSyncJobRepo;
+            MockGraphGroupRepository mockGroupRepo;
+            MembershipDifferenceCalculator<AzureADUser> calculator;
+
+            mockLoggingRepo = new MockLoggingRepository();
+            mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            mockMailRepo = new MockMailRepository();
+            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
+            dryRun = new DryRunValue(false);
+            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
+                                            "recipient@domain.com", "recipient@domain.com");
+
+            calculator = new MembershipDifferenceCalculator<AzureADUser>();
+            mockGroupRepo = new MockGraphGroupRepository();
+            mockSyncJobRepo = new MockSyncJobRepository();
+            deltaCalculatorService = new DeltaCalculatorService(
+                                            calculator,
+                                            mockSyncJobRepo,
+                                            mockLoggingRepo,
+                                            mailSenders,
+                                            mockGraphUpdaterService,
+                                            dryRun);
+
+            var graphUpdaterRequest = new GraphUpdaterFunctionRequest
+            {
+                Message = GetMessageBody(),
+                MessageLockToken = Guid.NewGuid().ToString(),
+                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35",
+                RunId = Guid.NewGuid(),
+                IsCancelationRequest = true
+            };
+
+            var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(graphUpdaterRequest.Message);
+            groupMembership.IsLastMessage = false;
+
+            var context = new Mock<IDurableOrchestrationContext>();
+            var jobUpdateRequest = default(JobStatusUpdaterRequest);
+
+            context.Setup(x => x.GetInput<GraphUpdaterFunctionRequest>()).Returns(graphUpdaterRequest);
+            context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
+                    .ReturnsAsync(new GroupMembershipMessageResponse());
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()))
+                    .Callback<string, object>((name, request) =>
+                    {
+                        jobUpdateRequest = request as JobStatusUpdaterRequest;
+                    });
+
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders);
+            var response = await orchestrator.RunOrchestratorAsync(context.Object);
+
+            Assert.IsFalse(response.ShouldCompleteMessage);
+            Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"Canceling session")));
+            Assert.IsNotNull(jobUpdateRequest);
+            Assert.AreEqual(SyncStatus.Error, jobUpdateRequest.Status);
+
+            context.Verify(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()), Times.Once());
+        }
+
+        [TestMethod]
         public async Task RunOrchestratorThresholdExceededTest()
         {
             MockLoggingRepository mockLoggingRepo;
@@ -535,3 +604,4 @@ namespace Services.Tests
         }
     }
 }
+
