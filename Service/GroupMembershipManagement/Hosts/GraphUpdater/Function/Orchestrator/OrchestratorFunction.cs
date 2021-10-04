@@ -28,7 +28,8 @@ namespace Hosts.GraphUpdater
         enum Metric
         {
             SyncComplete,
-            SyncJobTimeElapsedSeconds
+            SyncJobTimeElapsedSeconds,
+            ProjectedMemberCount
         }
 
         public OrchestratorFunction(
@@ -175,7 +176,8 @@ namespace Hosts.GraphUpdater
                         { nameof(SyncJob.IsDryRunEnabled), deltaResponse.IsDryRunSync.ToString() },
                         { nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob.ToString() },
                         { nameof(DeltaResponse.MembersToAdd), deltaResponse.MembersToAdd.Count.ToString() },
-                        { nameof(DeltaResponse.MembersToRemove), deltaResponse.MembersToRemove.Count.ToString() }
+                        { nameof(DeltaResponse.MembersToRemove), deltaResponse.MembersToRemove.Count.ToString() },
+                        { nameof(Metric.ProjectedMemberCount), fullMembership.SourceMembers.Count.ToString() }
                     };
 
                     _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteEvent);
