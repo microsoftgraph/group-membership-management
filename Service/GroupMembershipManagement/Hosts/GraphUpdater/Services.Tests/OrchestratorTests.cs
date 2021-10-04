@@ -79,11 +79,15 @@ namespace Services.Tests
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
-                Requestor = "user@domail.com"
+                Requestor = "user@domail.com",
+                RunId = Guid.NewGuid()
             };
 
             var context = new Mock<IDurableOrchestrationContext>();
             context.Setup(x => x.GetInput<GraphUpdaterFunctionRequest>()).Returns(graphUpdaterRequest);
+            context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
+                    .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
                     .Returns(async () => await GetGroupMembershipMessageResponseAsync(graphUpdaterRequest, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
@@ -105,6 +109,10 @@ namespace Services.Tests
             Assert.AreEqual(graphUpdaterRequest.MessageLockToken, response.CompletedGroupMembershipMessages.Single().LockToken);
 
             context.Verify(x => x.CallSubOrchestratorAsync<GraphUpdaterStatus>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()), Times.Exactly(2));
+            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RowKey"], syncJob.RowKey);
         }
 
         [TestMethod]
@@ -157,11 +165,15 @@ namespace Services.Tests
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.FromFileTimeUtc(0),
-                Requestor = "user@domail.com"
+                Requestor = "user@domail.com",
+                RunId = Guid.NewGuid()
             };
 
             var context = new Mock<IDurableOrchestrationContext>();
             context.Setup(x => x.GetInput<GraphUpdaterFunctionRequest>()).Returns(graphUpdaterRequest);
+            context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
+                    .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
                     .Returns(async () => await GetGroupMembershipMessageResponseAsync(graphUpdaterRequest, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
@@ -183,6 +195,10 @@ namespace Services.Tests
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"{nameof(DeltaCalculatorFunction)} function completed")));
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
             Assert.AreEqual(graphUpdaterRequest.MessageLockToken, response.CompletedGroupMembershipMessages.Single().LockToken);
+            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RowKey"], syncJob.RowKey);
 
             context.Verify(x => x.CallSubOrchestratorAsync<GraphUpdaterStatus>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()), Times.Exactly(2));
         }
@@ -237,11 +253,15 @@ namespace Services.Tests
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.FromFileTimeUtc(0),
-                Requestor = "user@domail.com"
+                Requestor = "user@domail.com",
+                RunId = Guid.NewGuid()
             };
 
             var context = new Mock<IDurableOrchestrationContext>();
             context.Setup(x => x.GetInput<GraphUpdaterFunctionRequest>()).Returns(graphUpdaterRequest);
+            context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
+                    .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
                     .Throws(new Exception("Something went wrong!"));
 
@@ -258,6 +278,10 @@ namespace Services.Tests
             Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Caught unexpected exception, marking sync job as errored.")));
             Assert.AreEqual(SyncStatus.Error, updateJobRequest.Status);
+            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RowKey"], syncJob.RowKey);
         }
 
         [TestMethod]
@@ -310,11 +334,15 @@ namespace Services.Tests
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
-                Requestor = "user@domail.com"
+                Requestor = "user@domail.com",
+                RunId = Guid.NewGuid()
             };
 
             var context = new Mock<IDurableOrchestrationContext>();
             context.Setup(x => x.GetInput<GraphUpdaterFunctionRequest>()).Returns(graphUpdaterRequest);
+            context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
+                    .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
                     .Returns(async () => await GetGroupMembershipMessageResponseAsync(graphUpdaterRequest, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
@@ -335,6 +363,10 @@ namespace Services.Tests
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"Group with ID {groupMembership.Destination.ObjectId} doesn't exist.")));
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function did not complete"));
             Assert.AreEqual(graphUpdaterRequest.MessageLockToken, response.CompletedGroupMembershipMessages.Single().LockToken);
+            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RowKey"], syncJob.RowKey);
         }
 
         [TestMethod]
@@ -382,10 +414,25 @@ namespace Services.Tests
             var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(graphUpdaterRequest.Message);
             groupMembership.IsLastMessage = false;
 
+            var syncJob = new SyncJob
+            {
+                PartitionKey = groupMembership.SyncJobPartitionKey,
+                RowKey = groupMembership.SyncJobRowKey,
+                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
+                ThresholdPercentageForAdditions = -1,
+                ThresholdPercentageForRemovals = -1,
+                LastRunTime = DateTime.UtcNow.AddDays(-1),
+                Requestor = "user@domail.com",
+                RunId = Guid.NewGuid()
+            };
+
             var context = new Mock<IDurableOrchestrationContext>();
             var jobUpdateRequest = default(JobStatusUpdaterRequest);
 
             context.Setup(x => x.GetInput<GraphUpdaterFunctionRequest>()).Returns(graphUpdaterRequest);
+            context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
+                    .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
                     .ReturnsAsync(new GroupMembershipMessageResponse());
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()))
@@ -401,6 +448,10 @@ namespace Services.Tests
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"Canceling session")));
             Assert.IsNotNull(jobUpdateRequest);
             Assert.AreEqual(SyncStatus.Error, jobUpdateRequest.Status);
+            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RowKey"], syncJob.RowKey);
 
             context.Verify(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()), Times.Once());
         }
@@ -455,11 +506,15 @@ namespace Services.Tests
                 ThresholdPercentageForAdditions = 80,
                 ThresholdPercentageForRemovals = 20,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
-                Requestor = "user@domail.com"
+                Requestor = "user@domail.com",
+                RunId = Guid.NewGuid()
             };
 
             var context = new Mock<IDurableOrchestrationContext>();
             context.Setup(x => x.GetInput<GraphUpdaterFunctionRequest>()).Returns(graphUpdaterRequest);
+            context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
+                    .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
                     .Returns(async () => await GetGroupMembershipMessageResponseAsync(graphUpdaterRequest, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
@@ -490,6 +545,10 @@ namespace Services.Tests
             Assert.AreEqual(SyncStatus.Idle, updateJobRequest.Status);
             Assert.IsTrue(response.ShouldCompleteMessage);
             Assert.AreEqual(graphUpdaterRequest.MessageLockToken, response.CompletedGroupMembershipMessages.Single().LockToken);
+            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
+            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RowKey"], syncJob.RowKey);
         }
 
         private async Task<GroupMembershipMessageResponse> GetGroupMembershipMessageResponseAsync(GraphUpdaterFunctionRequest request, MockLoggingRepository mockLoggingRepo)
@@ -601,6 +660,12 @@ namespace Services.Tests
             "}";
 
             return json;
+        }
+
+        private async Task LogMessageAsync(LoggerRequest loggerRequest, MockLoggingRepository mockLoggingRepository)
+        {
+            var loggerFunction = new LoggerFunction(mockLoggingRepository);
+            await loggerFunction.LogMessageAsync(loggerRequest);
         }
     }
 }

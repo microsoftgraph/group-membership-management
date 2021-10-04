@@ -20,7 +20,6 @@ namespace Hosts.GraphUpdater
     public class OrchestratorFunction
     {
         private const string SyncCompletedEmailBody = "SyncCompletedEmailBody";
-        private readonly ILoggingRepository _loggingRepository = null;
         private readonly TelemetryClient _telemetryClient;
         private readonly IGraphUpdaterService _graphUpdaterService = null;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
@@ -39,10 +38,9 @@ namespace Hosts.GraphUpdater
             IDryRunValue dryRun,
             IEmailSenderRecipient emailSenderAndRecipients)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
-            _isDryRunEnabled = _loggingRepository.DryRun = dryRun != null ? dryRun.DryRunEnabled : throw new ArgumentNullException(nameof(dryRun));
+            _isDryRunEnabled = loggingRepository.DryRun = dryRun != null ? dryRun.DryRunEnabled : throw new ArgumentNullException(nameof(dryRun));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients)); ;
         }
 
@@ -52,24 +50,30 @@ namespace Hosts.GraphUpdater
             GroupMembership groupMembership = null;
             GraphUpdaterFunctionRequest graphRequest = null;
             GroupMembershipMessageResponse messageResponse = null;
+            SyncJob syncJob = null;
+
+            graphRequest = context.GetInput<GraphUpdaterFunctionRequest>();
+            groupMembership = JsonConvert.DeserializeObject<GroupMembership>(graphRequest.Message);
+            graphRequest.RunId = groupMembership.RunId;
 
             try
             {
-                // Not allowed to await things that aren't another azure function
-                if (!context.IsReplaying)
-                    _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(OrchestratorFunction) + " function started" })
-                                            .ConfigureAwait(false);
+                syncJob = await context.CallActivityAsync<SyncJob>(nameof(JobReaderFunction),
+                                                       new JobReaderRequest
+                                                       {
+                                                           JobPartitionKey = groupMembership.SyncJobPartitionKey,
+                                                           JobRowKey = groupMembership.SyncJobRowKey,
+                                                           RunId = groupMembership.RunId
+                                                       });
 
-                graphRequest = context.GetInput<GraphUpdaterFunctionRequest>();
-                groupMembership = JsonConvert.DeserializeObject<GroupMembership>(graphRequest.Message);
-                graphRequest.RunId = groupMembership.RunId;
+                if (!context.IsReplaying)
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob });
 
                 messageResponse = await context.CallActivityAsync<GroupMembershipMessageResponse>(nameof(MessageCollectorFunction), graphRequest);
 
                 if (graphRequest.IsCancelationRequest)
                 {
-                    _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Canceling session {graphRequest.MessageSessionId}" })
-                                       .ConfigureAwait(false);
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Canceling session {graphRequest.MessageSessionId}", SyncJob = syncJob });
 
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
@@ -95,8 +99,7 @@ namespace Hosts.GraphUpdater
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
                                                                         SyncStatus.Error, groupMembership.MembershipObtainerDryRunEnabled, groupMembership.RunId));
 
-                        _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(OrchestratorFunction) + " function did not complete" })
-                                        .ConfigureAwait(false);
+                        await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function did not complete", SyncJob = syncJob });
 
                         return messageResponse;
                     }
@@ -136,8 +139,7 @@ namespace Hosts.GraphUpdater
 
                     if (deltaResponse.GraphUpdaterStatus != GraphUpdaterStatus.Ok)
                     {
-                        _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(OrchestratorFunction) + " function did not complete" })
-                                        .ConfigureAwait(false);
+                        await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function did not complete", SyncJob = syncJob });
 
                         return messageResponse;
                     }
@@ -170,13 +172,13 @@ namespace Hosts.GraphUpdater
 
                     if (!context.IsReplaying)
                     {
-                        LogSyncUsersData(groupMembership.Destination.ObjectId, deltaResponse.MembersToAdd.Count, deltaResponse.MembersToRemove.Count, groupMembership.RunId);
+                        var message = GetUsersDataMessage(groupMembership.Destination.ObjectId, deltaResponse.MembersToAdd.Count, deltaResponse.MembersToRemove.Count);
+                        await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = message });
                     }
 
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
                                                                         SyncStatus.Idle, groupMembership.MembershipObtainerDryRunEnabled, groupMembership.RunId));
-
 
                     var timeElapsedForJob = (context.CurrentUtcDateTime - deltaResponse.Timestamp).TotalSeconds;
                     _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
@@ -196,18 +198,13 @@ namespace Hosts.GraphUpdater
                     _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteEvent);
                 }
 
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(OrchestratorFunction) + " function completed" })
-                                        .ConfigureAwait(false);
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob });
 
                 return messageResponse;
             }
             catch (Exception ex)
             {
-                _ = _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = "Caught unexpected exception, marking sync job as errored. Exception:\n" + ex,
-                    RunId = groupMembership?.RunId
-                });
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Caught unexpected exception, marking sync job as errored. Exception:\n{ex}", SyncJob = syncJob });
 
                 if (groupMembership != null && !string.IsNullOrWhiteSpace(groupMembership.SyncJobPartitionKey) && !string.IsNullOrWhiteSpace(groupMembership.SyncJobRowKey))
                 {
@@ -244,7 +241,7 @@ namespace Hosts.GraphUpdater
             };
         }
 
-        private void LogSyncUsersData(Guid targetGroupId, int membersToAdd, int membersToRemove, Guid runId)
+        private string GetUsersDataMessage(Guid targetGroupId, int membersToAdd, int membersToRemove)
         {
             string message;
             if (_isDryRunEnabled)
@@ -256,11 +253,7 @@ namespace Hosts.GraphUpdater
                           $"{membersToAdd} users have been added. " +
                           $"{membersToRemove} users have been removed.";
 
-            _ = _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = message,
-                RunId = runId
-            }).ConfigureAwait(false); ;
+            return message;
         }
     }
 }
