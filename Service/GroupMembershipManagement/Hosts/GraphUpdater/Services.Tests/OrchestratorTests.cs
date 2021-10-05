@@ -578,10 +578,21 @@ namespace Services.Tests
 
         private async Task<List<AzureADUser>> GetDestinationMembersAsync(GroupMembership groupMembership, MockLoggingRepository mockLoggingRepo)
         {
+            var syncJob = new SyncJob
+            {
+                PartitionKey = groupMembership.SyncJobPartitionKey,
+                RowKey = groupMembership.SyncJobRowKey,
+                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
+                ThresholdPercentageForAdditions = 80,
+                ThresholdPercentageForRemovals = 20,
+                LastRunTime = DateTime.UtcNow.AddDays(-1),
+                Requestor = "user@domail.com",
+                RunId = Guid.NewGuid()
+            };
+
             var request = new UsersReaderRequest
             {
-                RunId = groupMembership.RunId,
-                GroupId = groupMembership.Destination.ObjectId
+              SyncJob = syncJob
             };
 
             var context = new Mock<IDurableOrchestrationContext>();
@@ -591,7 +602,7 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync<UsersPageResponse>(It.IsAny<string>(), It.IsAny<SubsequentUsersReaderRequest>()))
                     .ReturnsAsync(GetUsersPageResponse(false));
 
-            var usersReaderFunction = new UsersReaderSubOrchestratorFunction(mockLoggingRepo);
+            var usersReaderFunction = new UsersReaderSubOrchestratorFunction();
             var users = await usersReaderFunction.RunSubOrchestratorAsync(context.Object);
             return users;
         }

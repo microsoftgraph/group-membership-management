@@ -26,22 +26,26 @@ namespace Hosts.GraphUpdater
         [FunctionName(nameof(GroupUpdaterFunction))]
         public async Task<int> UpdateGroupAsync([ActivityTrigger] GroupUpdaterRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function started", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function started", RunId = request.SyncJob.RunId });
 
             var successCount = 0;
 
             if (request.Type == RequestType.Add)
             {
-                var addUsersToGraphResponse = await _graphUpdaterService.AddUsersToGroupAsync(request.Members, request.DestinationGroupId, request.RunId, request.IsInitialSync);
+                var addUsersToGraphResponse = await _graphUpdaterService.AddUsersToGroupAsync(
+                    request.Members, request.SyncJob.TargetOfficeGroupId, request.SyncJob.RunId.GetValueOrDefault(), request.IsInitialSync);
+
                 successCount = addUsersToGraphResponse.SuccessCount;
             }
             else
             {
-                var removeUsersFromGraphResponse = await _graphUpdaterService.RemoveUsersFromGroupAsync(request.Members, request.DestinationGroupId, request.RunId, request.IsInitialSync);
+                var removeUsersFromGraphResponse = await _graphUpdaterService.RemoveUsersFromGroupAsync(
+                    request.Members, request.SyncJob.TargetOfficeGroupId, request.SyncJob.RunId.GetValueOrDefault(), request.IsInitialSync);
+
                 successCount = removeUsersFromGraphResponse.SuccessCount;
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function completed", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function completed", RunId = request.SyncJob.RunId });
 
             return successCount;
         }
