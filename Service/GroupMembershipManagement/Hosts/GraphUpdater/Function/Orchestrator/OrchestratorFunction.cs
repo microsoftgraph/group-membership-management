@@ -66,8 +66,7 @@ namespace Hosts.GraphUpdater
                                                            RunId = groupMembership.RunId
                                                        });
 
-                if (!context.IsReplaying)
-                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob });
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob });
 
                 messageResponse = await context.CallActivityAsync<GroupMembershipMessageResponse>(nameof(MessageCollectorFunction), graphRequest);
 
@@ -166,11 +165,8 @@ namespace Hosts.GraphUpdater
                         }
                     }
 
-                    if (!context.IsReplaying)
-                    {
-                        var message = GetUsersDataMessage(groupMembership.Destination.ObjectId, deltaResponse.MembersToAdd.Count, deltaResponse.MembersToRemove.Count);
-                        await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = message });
-                    }
+                    var message = GetUsersDataMessage(groupMembership.Destination.ObjectId, deltaResponse.MembersToAdd.Count, deltaResponse.MembersToRemove.Count);
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = message });
 
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,

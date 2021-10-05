@@ -157,7 +157,8 @@ namespace Hosts.GraphUpdater
                                                 RunId = groupMembership.RunId,
                                                 LockTokens = lockTokens,
                                                 JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                                                JobRowKey = groupMembership.SyncJobRowKey
+                                                JobRowKey = groupMembership.SyncJobRowKey,
+                                                ReceivedLastMessage = groupMembership.IsLastMessage
                                             },
                                             sessionTracker
                                            );
@@ -172,7 +173,8 @@ namespace Hosts.GraphUpdater
                                             RunId = groupMembership.RunId,
                                             LockTokens = new List<string> { messageDetails.LockToken },
                                             JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                                            JobRowKey = groupMembership.SyncJobRowKey
+                                            JobRowKey = groupMembership.SyncJobRowKey,
+                                            ReceivedLastMessage = groupMembership.IsLastMessage
                                         });
             }
         }
@@ -181,6 +183,11 @@ namespace Hosts.GraphUpdater
         {
             if (_sessionsTracker.TryGetValue(messageSession.SessionId, out var sessionTracker))
             {
+                if (sessionTracker.ReceivedLastMessage)
+                {
+                    return SessionTrackerAction.Continue;
+                }
+
                 if (messageId != sessionTracker.LatestMessageId)
                 {
                     return SessionTrackerAction.Stop;

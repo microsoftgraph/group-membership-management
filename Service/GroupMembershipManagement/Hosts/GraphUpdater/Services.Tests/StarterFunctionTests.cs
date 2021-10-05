@@ -208,6 +208,109 @@ namespace Services.Tests
             Assert.AreEqual(1, cancelationRequestCount);
         }
 
+        [TestMethod]
+        [Timeout(180000)]
+        public async Task ProcessSessionWithLastMessageTest()
+        {
+            var messageCount = 5;
+            var messages = new List<MessageInformation>();
+            var messageResponses = new List<GroupMembershipMessageResponse>();
+            var orchestrationStatuses = new List<DurableOrchestrationStatus>();
+
+            for (int i = 0; i < messageCount; i++)
+            {
+                // Generate sample messages
+                var isLastMessage = messageCount - 1 == i;
+                var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(GetMessageBody());
+
+                groupMembership.IsLastMessage = isLastMessage;
+
+                var messageDetails = new MessageInformation
+                {
+                    Body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(groupMembership)),
+                    LockToken = Guid.NewGuid().ToString(),
+                    SessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
+                };
+
+                messages.Add(messageDetails);
+
+                // Generate sample membership message responses
+                var output = new GroupMembershipMessageResponse
+                {
+                    CompletedGroupMembershipMessages = new List<GroupMembershipMessage>
+                    {
+                        new GroupMembershipMessage { LockToken = messageDetails.LockToken }
+                    },
+                    ShouldCompleteMessage = isLastMessage
+                };
+
+                messageResponses.Add(output);
+
+                // Generate sample orchestration statuses
+                orchestrationStatuses.Add
+                (
+                    new DurableOrchestrationStatus
+                    {
+                        RuntimeStatus = OrchestrationRuntimeStatus.Completed,
+                        Output = JToken.FromObject(output)
+                    }
+                );
+            }
+
+            var messageIndex = 0;
+            _messageService.Setup(x => x.GetMessageProperties(It.IsAny<Message>()))
+                            .Returns(() =>
+                            {
+                                messages[messageIndex].MessageId = Guid.NewGuid().ToString();
+                                var message = messages[messageIndex];
+                                messageIndex++;
+                                return message;
+                            });
+
+            var messageSessionIndex = 0;
+            _messageSessionMock.SetupGet(x => x.SessionId).Returns(() =>
+            {
+                var sessionId = messages[messageSessionIndex].SessionId;
+                messageSessionIndex++;
+                return sessionId;
+            });
+
+            _configuration.SetupGet(x => x["GraphUpdater:LastMessageWaitTimeout"]).Returns("1");
+
+            var cancelationRequestCount = 0;
+
+            _durableClientMock
+                 .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
+                 .Callback<string, object>((name, request) =>
+                 {
+                     var graphUpdaterRequest = request as GraphUpdaterFunctionRequest;
+                     if (graphUpdaterRequest != null && graphUpdaterRequest.IsCancelationRequest)
+                         cancelationRequestCount++;
+                 })
+                 .ReturnsAsync(_instanceId);
+
+            var statusIndex = 0;
+            _durableClientMock
+                .Setup(x => x.GetStatusAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
+                .ReturnsAsync(() =>
+                {
+                    var status = orchestrationStatuses[statusIndex];
+                    statusIndex++;
+                    return status;
+                });
+
+            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object);
+            for(int i = 0; i < messageCount; i++)
+            {
+                await starterFunction.RunAsync(new Message(), _durableClientMock.Object, _messageSessionMock.Object);
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(90));
+
+            _durableClientMock.Verify(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()), Times.Exactly(messageCount));
+            Assert.AreEqual(0, cancelationRequestCount);
+        }
+
         private string GetMessageBody()
         {
             var json =
