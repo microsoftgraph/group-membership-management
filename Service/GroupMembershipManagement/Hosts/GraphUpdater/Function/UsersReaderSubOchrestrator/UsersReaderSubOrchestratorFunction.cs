@@ -27,9 +27,9 @@ namespace Hosts.GraphUpdater
 
             if (request != null)
             {
-                if (!context.IsReplaying)
-                    await context.CallActivityAsync(nameof(LoggerFunction),
-                                                    new LoggerRequest { Message = $"{nameof(UsersReaderSubOrchestratorFunction)} function started", SyncJob = request.SyncJob });
+
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                                                new LoggerRequest { Message = $"{nameof(UsersReaderSubOrchestratorFunction)} function started", SyncJob = request.SyncJob });
 
                 var response = await context.CallActivityAsync<UsersPageResponse>(nameof(UsersReaderFunction), request);
                 allUsers.AddRange(response.Members);
@@ -54,9 +54,8 @@ namespace Hosts.GraphUpdater
                             allNonUserGraphObjects[x.Key] = x.Value;
                     });
 
-                    if (!context.IsReplaying)
-                        await context.CallActivityAsync(nameof(LoggerFunction),
-                                                    new LoggerRequest { Message = $"Read {allUsers.Count} users from group {request.SyncJob.TargetOfficeGroupId} so far", SyncJob = request.SyncJob });
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                                                new LoggerRequest { Message = $"Read {allUsers.Count} users from group {request.SyncJob.TargetOfficeGroupId} so far", SyncJob = request.SyncJob });
                 }
 
                 var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, allNonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
@@ -64,7 +63,7 @@ namespace Hosts.GraphUpdater
                 await context.CallActivityAsync(nameof(LoggerFunction),
                                                 new LoggerRequest
                                                 {
-                                                    Message =   $"From group {request.SyncJob.TargetOfficeGroupId}, read {allUsers.Count} users " +
+                                                    Message = $"From group {request.SyncJob.TargetOfficeGroupId}, read {allUsers.Count} users " +
                                                                 $"and the following other directory objects:\n{nonUserGraphObjectsSummary}\n",
                                                     SyncJob = request.SyncJob
                                                 });

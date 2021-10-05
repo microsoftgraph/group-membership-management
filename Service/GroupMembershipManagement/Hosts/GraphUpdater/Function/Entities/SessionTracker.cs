@@ -13,5 +13,6 @@ namespace Hosts.GraphUpdater
         public List<string> LockTokens { get; set; }
         public string JobPartitionKey { get; set; }
         public string JobRowKey { get; set; }
+        public bool ReceivedLastMessage { get; set; }
     }
 }

@@ -34,9 +34,8 @@ namespace Hosts.GraphUpdater
                 return;
             }
 
-            if (!context.IsReplaying)
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                                                    new LoggerRequest { Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function started", SyncJob = request.SyncJob });
+            await context.CallActivityAsync(nameof(LoggerFunction),
+                                                new LoggerRequest { Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function started", SyncJob = request.SyncJob });
 
             var batch = request.Members?.Skip(skip).Take(batchSize).ToList() ?? new List<AzureADUser>();
 
@@ -51,13 +50,12 @@ namespace Hosts.GraphUpdater
                                                IsInitialSync = request.IsInitialSync
                                            });
 
-                if (!context.IsReplaying)
-                    await context.CallActivityAsync(nameof(LoggerFunction),
-                                                    new LoggerRequest
-                                                    {
-                                                        Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount}/{request.Members.Count} users so far.",
-                                                        SyncJob = request.SyncJob
-                                                    });
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                                                new LoggerRequest
+                                                {
+                                                    Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount}/{request.Members.Count} users so far.",
+                                                    SyncJob = request.SyncJob
+                                                });
 
 
                 skip += batchSize;
