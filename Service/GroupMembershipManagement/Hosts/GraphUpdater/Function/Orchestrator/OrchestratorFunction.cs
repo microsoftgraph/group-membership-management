@@ -105,11 +105,7 @@ namespace Hosts.GraphUpdater
                     }
 
                     var destinationGroupMembers = await context.CallSubOrchestratorAsync<List<AzureADUser>>(nameof(UsersReaderSubOrchestratorFunction),
-                                                    new UsersReaderRequest
-                                                    {
-                                                        RunId = groupMembership.RunId,
-                                                        GroupId = groupMembership.Destination.ObjectId
-                                                    });
+                                                                                                            new UsersReaderRequest { SyncJob = syncJob });
 
                     var fullMembership = new GroupMembership
                     {
@@ -147,10 +143,10 @@ namespace Hosts.GraphUpdater
                     if (!deltaResponse.IsDryRunSync)
                     {
                         await context.CallSubOrchestratorAsync<GraphUpdaterStatus>(nameof(GroupUpdaterSubOrchestratorFunction),
-                                        CreateGroupUpdaterRequest(groupMembership.Destination.ObjectId, deltaResponse.MembersToAdd, RequestType.Add, groupMembership.RunId, deltaResponse.IsInitialSync));
+                                        CreateGroupUpdaterRequest(syncJob, deltaResponse.MembersToAdd, RequestType.Add, deltaResponse.IsInitialSync));
 
                         await context.CallSubOrchestratorAsync<GraphUpdaterStatus>(nameof(GroupUpdaterSubOrchestratorFunction),
-                                        CreateGroupUpdaterRequest(groupMembership.Destination.ObjectId, deltaResponse.MembersToRemove, RequestType.Remove, groupMembership.RunId, deltaResponse.IsInitialSync));
+                                        CreateGroupUpdaterRequest(syncJob, deltaResponse.MembersToRemove, RequestType.Remove, deltaResponse.IsInitialSync));
 
                         if (deltaResponse.IsInitialSync)
                         {
@@ -229,12 +225,11 @@ namespace Hosts.GraphUpdater
             };
         }
 
-        private GroupUpdaterRequest CreateGroupUpdaterRequest(Guid targetGroupId, ICollection<AzureADUser> members, RequestType type, Guid runId, bool isInitialSync)
+        private GroupUpdaterRequest CreateGroupUpdaterRequest(SyncJob syncJob, ICollection<AzureADUser> members, RequestType type, bool isInitialSync)
         {
             return new GroupUpdaterRequest
             {
-                RunId = runId,
-                DestinationGroupId = targetGroupId,
+                SyncJob = syncJob,
                 Members = members,
                 Type = type,
                 IsInitialSync = isInitialSync

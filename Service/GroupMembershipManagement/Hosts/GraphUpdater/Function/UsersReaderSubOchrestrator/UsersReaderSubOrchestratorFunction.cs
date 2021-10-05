@@ -14,11 +14,8 @@ namespace Hosts.GraphUpdater
 {
     public class UsersReaderSubOrchestratorFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
-
-        public UsersReaderSubOrchestratorFunction(ILoggingRepository loggingRepository)
+        public UsersReaderSubOrchestratorFunction()
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         [FunctionName(nameof(UsersReaderSubOrchestratorFunction))]
@@ -31,7 +28,8 @@ namespace Hosts.GraphUpdater
             if (request != null)
             {
                 if (!context.IsReplaying)
-                    _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersReaderSubOrchestratorFunction)} function started", RunId = request.RunId });
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                                                    new LoggerRequest { Message = $"{nameof(UsersReaderSubOrchestratorFunction)} function started", SyncJob = request.SyncJob });
 
                 var response = await context.CallActivityAsync<UsersPageResponse>(nameof(UsersReaderFunction), request);
                 allUsers.AddRange(response.Members);
@@ -40,7 +38,12 @@ namespace Hosts.GraphUpdater
                 while (!string.IsNullOrEmpty(response.NextPageUrl))
                 {
                     response = await context.CallActivityAsync<UsersPageResponse>(nameof(SubsequentUsersReaderFunction),
-                                                new SubsequentUsersReaderRequest { RunId = request.RunId, NextPageUrl = response.NextPageUrl, GroupMembersPage = response.MembersPage });
+                                                new SubsequentUsersReaderRequest
+                                                {
+                                                    RunId = request.SyncJob.RunId.GetValueOrDefault(),
+                                                    NextPageUrl = response.NextPageUrl,
+                                                    GroupMembersPage = response.MembersPage
+                                                });
 
                     allUsers.AddRange(response.Members);
                     response.NonUserGraphObjects.ToList().ForEach(x =>
@@ -52,24 +55,25 @@ namespace Hosts.GraphUpdater
                     });
 
                     if (!context.IsReplaying)
-                        _ = _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            RunId = request.RunId,
-                            Message = $"Read {allUsers.Count} users from group {request.GroupId} so far"
-                        });
+                        await context.CallActivityAsync(nameof(LoggerFunction),
+                                                    new LoggerRequest { Message = $"Read {allUsers.Count} users from group {request.SyncJob.TargetOfficeGroupId} so far", SyncJob = request.SyncJob });
                 }
 
                 var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, allNonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
 
-                _ = _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = request.RunId,
-                    Message = $"From group {request.GroupId}, read {allUsers.Count} users " +
-                                $"and the following other directory objects:\n{nonUserGraphObjectsSummary}\n"
-                });
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                                                new LoggerRequest
+                                                {
+                                                    Message =   $"From group {request.SyncJob.TargetOfficeGroupId}, read {allUsers.Count} users " +
+                                                                $"and the following other directory objects:\n{nonUserGraphObjectsSummary}\n",
+                                                    SyncJob = request.SyncJob
+                                                });
+
             }
 
-            _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersReaderSubOrchestratorFunction)} function completed", RunId = request.RunId });
+            await context.CallActivityAsync(nameof(LoggerFunction),
+                                                    new LoggerRequest { Message = $"{nameof(UsersReaderSubOrchestratorFunction)} function completed", SyncJob = request.SyncJob });
+
             return allUsers;
         }
     }

@@ -14,12 +14,10 @@ namespace Hosts.GraphUpdater
 {
     public class GroupUpdaterSubOrchestratorFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
         private readonly TelemetryClient _telemetryClient;
 
-        public GroupUpdaterSubOrchestratorFunction(ILoggingRepository loggingRepository, TelemetryClient telemetryClient)
+        public GroupUpdaterSubOrchestratorFunction(TelemetryClient telemetryClient)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
@@ -37,7 +35,8 @@ namespace Hosts.GraphUpdater
             }
 
             if (!context.IsReplaying)
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function started", RunId = request.RunId });
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                                                    new LoggerRequest { Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function started", SyncJob = request.SyncJob });
 
             var batch = request.Members?.Skip(skip).Take(batchSize).ToList() ?? new List<AzureADUser>();
 
@@ -46,19 +45,20 @@ namespace Hosts.GraphUpdater
                 totalSuccessCount += await context.CallActivityAsync<int>(nameof(GroupUpdaterFunction),
                                            new GroupUpdaterRequest
                                            {
-                                               RunId = request.RunId,
-                                               DestinationGroupId = request.DestinationGroupId,
+                                               SyncJob = request.SyncJob,
                                                Members = batch,
                                                Type = request.Type,
                                                IsInitialSync = request.IsInitialSync
                                            });
 
                 if (!context.IsReplaying)
-                    _ = _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount}/{request.Members.Count} users so far.",
-                        RunId = request.RunId
-                    });
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                                                    new LoggerRequest
+                                                    {
+                                                        Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount}/{request.Members.Count} users so far.",
+                                                        SyncJob = request.SyncJob
+                                                    });
+
 
                 skip += batchSize;
                 batch = request.Members.Skip(skip).Take(batchSize).ToList();
@@ -66,17 +66,19 @@ namespace Hosts.GraphUpdater
 
             _telemetryClient.TrackMetric(nameof(Services.Entities.Metric.MembersNotFound), request.Members.Count - totalSuccessCount);
 
-            _ = _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount} users.",
-                RunId = request.RunId
-            });
+            await context.CallActivityAsync(nameof(LoggerFunction),
+                                                     new LoggerRequest
+                                                     {
+                                                         Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount} users.",
+                                                         SyncJob = request.SyncJob
+                                                     });
 
-            _ = _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function completed",
-                RunId = request.RunId
-            });
+            await context.CallActivityAsync(nameof(LoggerFunction),
+                                                      new LoggerRequest
+                                                      {
+                                                          Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function completed",
+                                                          SyncJob = request.SyncJob
+                                                      });
         }
     }
 }
