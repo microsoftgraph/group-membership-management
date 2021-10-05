@@ -114,7 +114,9 @@ namespace Hosts.FunctionBase
                 var telemetryConfiguration = new TelemetryConfiguration();
                 telemetryConfiguration.InstrumentationKey = Environment.GetEnvironmentVariable("APPINSIGHTS_INSTRUMENTATIONKEY");
                 telemetryConfiguration.TelemetryInitializers.Add(new OperationCorrelationTelemetryInitializer());
-                return new TelemetryClient(telemetryConfiguration);
+                var tc = new TelemetryClient(telemetryConfiguration);
+                tc.Context.Operation.Name = FunctionName;
+                return tc;
             });
         }
 
