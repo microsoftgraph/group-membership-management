@@ -483,19 +483,15 @@ namespace Repositories.GraphGroups
                 var status = response.StatusCode;
                 var content = await response.Content.ReadAsStringAsync();
 
-                int unitsUsed = -1;
                 if (response.Headers.TryGetValues("x-ms-resource-unit", out var resourceValues))
-				{
-                    unitsUsed = ParseFirst<int>(resourceValues, int.TryParse);
-                    resourceUnitsUsed.TrackValue(unitsUsed);
-				}
+                    resourceUnitsUsed.TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
 
                 if (response.Headers.TryGetValues("x-ms-throttle-limit-percentage", out var throttleValues))
                     throttleLimitPercentage.TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
 
                 await _log.LogMessageAsync(new LogMessage
                 {
-                    Message = $"Response - RequestId:{kvp.Key} - StatusCode:{status} - Content:{content} - ResourceUnitsUsed:{unitsUsed}",
+                    Message = $"Response - RequestId:{kvp.Key} - StatusCode:{status} - Content:{content}",
                     RunId = RunId
                 });
 
