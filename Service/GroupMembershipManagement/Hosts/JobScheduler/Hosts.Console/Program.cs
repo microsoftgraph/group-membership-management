@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using Repositories.Logging;
 using DIConcreteTypes;
 using Services.Contracts;
+using Repositories.Contracts.InjectConfig;
 
 namespace JobScheduler
 {
@@ -21,36 +22,35 @@ namespace JobScheduler
             // Injections
             var logAnalyticsSecret = new LogAnalyticsSecret<LoggingRepository>(appSettings.LogAnalyticsCustomerId, appSettings.LogAnalyticsPrimarySharedKey, "JobScheduler");
             var loggingRepository = new LoggingRepository(logAnalyticsSecret);
-            var syncJobRepository = new SyncJobRepository(appSettings.JobsTableConnectionString, appSettings.JobsTableName, loggingRepository);
+            var syncJobRepository = new SyncJobRepository(appSettings.JobsStorageAccountConnectionString, appSettings.JobsTableName, loggingRepository);
 
-            var defaultRuntime = appSettings.DefaultRuntime;
-            var runtimeRetrievalService = new DefaultRuntimeRetrievalService(defaultRuntime);
 
             var telemetryConfiguration = new TelemetryConfiguration();
-            telemetryConfiguration.InstrumentationKey = appSettings.AppInsightsInstrumentationKey;
+            telemetryConfiguration.InstrumentationKey = appSettings.APPINSIGHTS_INSTRUMENTATIONKEY;
             telemetryConfiguration.TelemetryInitializers.Add(new OperationCorrelationTelemetryInitializer());
 
-            var startTimeDelayMinutes = appSettings.StartTimeDelayMinutes;
-            var delayBetweenSyncsSeconds = appSettings.DelayBetweenSyncsSeconds;
+            IJobSchedulerConfig jobSchedulerConfig = new JobSchedulerConfig(
+                appSettings.ResetJobs,
+                appSettings.DaysToAddForReset,
+                appSettings.DistributeJobs,
+                appSettings.IncludeFutureJobs,
+                appSettings.StartTimeDelayMinutes,
+                appSettings.DelayBetweenSyncsSeconds,
+                appSettings.DefaultRuntime);
+
+            var runtimeRetrievalService = new DefaultRuntimeRetrievalService(jobSchedulerConfig.DefaultRuntimeSeconds);
 
             IJobSchedulingService jobSchedulingService = new JobSchedulingService(
-                startTimeDelayMinutes,
-                delayBetweenSyncsSeconds,
+                jobSchedulerConfig,
                 syncJobRepository,
                 runtimeRetrievalService,
                 loggingRepository
             );
 
-            IApplicationService applicationService = new ApplicationService(jobSchedulingService);
+            IApplicationService applicationService = new ApplicationService(jobSchedulingService, jobSchedulerConfig);
 
-            // Get JobSchedulerConfiguration values
-            var jobSchedulerConfig = JsonConvert.DeserializeObject<JobSchedulerConfiguration>(appSettings.JobSchedulerConfig);
-            bool resetJobs = jobSchedulerConfig.ResetJobs;
-            bool distributeJobs = jobSchedulerConfig.DistributeJobs;
-            bool includeFutureJobs = jobSchedulerConfig.IncludeFutureJobs;
-
-            // Call the JobSchedulerService
-            await applicationService.RunAsync(resetJobs, distributeJobs, includeFutureJobs, appSettings.DaysToAddForReset);
+            // Call the JobScheduler ApplicationService
+            await applicationService.RunAsync();
         }
     }
 }

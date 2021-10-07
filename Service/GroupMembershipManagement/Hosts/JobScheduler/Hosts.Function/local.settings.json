@@ -1,0 +1,18 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+    "logAnalyticsCustomerId": "",
+    "logAnalyticsPrimarySharedKey": "",
+    "jobsStorageAccountConnectionString": "",
+    "jobsTableName": "",
+    "jobSchedulerSchedule": "",
+    "defaultRuntime": "",
+    "JobSchedulerConfig": "{ 'ResetJobs': false, 'DaysToAddForReset': 0, 'DistributeJobs': true, 'IncludeFutureJobs': false }",
+    "startTimeDelayMinutes": "",
+    "delayBetweenSyncsSeconds": "",
+    "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
+    "APPINSIGHTS_INSTRUMENTATIONKEY": ""
+  }
+}

@@ -10,6 +10,7 @@ using System;
 using System.Linq;
 using Services.Entities;
 using Newtonsoft.Json;
+using Repositories.Contracts.InjectConfig;
 
 namespace Services
 {
@@ -25,14 +26,13 @@ namespace Services
         private readonly ILoggingRepository _loggingRepository;
 
         public JobSchedulingService(
-            int startTimeDelayMinutes,
-            int delayBetweenSyncsSeconds,
+            IJobSchedulerConfig jobSchedulerConfig,
             ISyncJobRepository syncJobRepository,
             IRuntimeRetrievalService runtimeRetrievalService,
             ILoggingRepository loggingRepository)
         {
-            START_TIME_DELAY_MINUTES = startTimeDelayMinutes;
-            BUFFER_SECONDS = delayBetweenSyncsSeconds;
+            START_TIME_DELAY_MINUTES = jobSchedulerConfig.StartTimeDelayMinutes;
+            BUFFER_SECONDS = jobSchedulerConfig.DelayBetweenSyncsSeconds;
             _syncJobRepository = syncJobRepository;
             _runtimeRetrievalService = runtimeRetrievalService;
             _loggingRepository = loggingRepository;

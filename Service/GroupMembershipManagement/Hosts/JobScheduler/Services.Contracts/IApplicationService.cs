@@ -9,6 +9,6 @@ namespace Services.Contracts
 {
     public interface IApplicationService
     {
-        public Task RunAsync(bool resetJobs, bool distributeJobs, bool updateFutureJobsToo, int daysToAddForReset = 0);
+        public Task RunAsync();
     }
 }

@@ -1,11 +1,13 @@
 {
   "logAnalyticsCustomerId": "",
   "logAnalyticsPrimarySharedKey": "",
-  "jobsTableConnectionString": "",
+  "jobsStorageAccountConnectionString": "",
   "jobsTableName": "",
+  "resetJobs": "",
+  "daysToAddForReset": "",
+  "distributeJobs": "",
+  "includeFutureJobs": "",
   "defaultRuntime": "",
-  "JobSchedulerConfig": "{ 'ResetJobs': false, 'DistributeJobs': true, 'IncludeFutureJobs': false }",
-  "daysToAddForReset":  "",
   "startTimeDelayMinutes": "",
   "delayBetweenSyncsSeconds": "",
   "APPINSIGHTS_INSTRUMENTATIONKEY": ""

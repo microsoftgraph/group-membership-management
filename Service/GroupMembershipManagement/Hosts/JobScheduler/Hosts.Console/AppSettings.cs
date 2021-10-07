@@ -8,14 +8,16 @@ namespace JobScheduler
     {
         public string LogAnalyticsCustomerId { get; set; }
         public string LogAnalyticsPrimarySharedKey { get; set; }
-        public string JobsTableConnectionString { get; set; }
+        public string JobsStorageAccountConnectionString { get; set; }
         public string JobsTableName { get; set; }
-        public string AppInsightsInstrumentationKey { get; set; }
-        public int DefaultRuntime { get; set; }
-        public string JobSchedulerConfig { get; set; }
+        public bool ResetJobs { get; set; }
         public int DaysToAddForReset { get; set; }
+        public bool DistributeJobs { get; set; }
+        public bool IncludeFutureJobs { get; set; }
+        public int DefaultRuntime { get; set; }
         public int StartTimeDelayMinutes { get; set; }
         public int DelayBetweenSyncsSeconds { get; set; }
+        public string APPINSIGHTS_INSTRUMENTATIONKEY { get; set; }
 
         public static AppSettings LoadAppSettings()
         {
