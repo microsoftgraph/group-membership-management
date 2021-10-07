@@ -28,8 +28,8 @@ stages:
 
 - template: yaml/build-functionapps.yml
   parameters:
-    dependsOn: BuildCommon
-    condition: succeeded('BuildCommon')
+    dependsOn: Build_Common
+    condition: succeeded('Build_Common')
     repoToCheckout: ''
     checkoutPath: ''
     functionApps:
@@ -57,8 +57,8 @@ stages:
     keyVaultReaders: $(keyVaultReaders_nonprod)
     location: $(location)
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
-    dependsOn: BuildFunctions
-    stageName: 'int'
+    dependsOn: Build_Functions
+    stageName: 'NonProd_int'
     functionApps:
     - name: 'JobTrigger'
     - name: 'GraphUpdater'
@@ -67,7 +67,7 @@ stages:
     - name: 'AzureUserReader'
     condition: |
       and(
-        succeeded('BuildFunctions'),
+        succeeded('Build_Functions'),
         eq(variables['Build.SourceBranch'], 'refs/heads/develop'),
         in(variables['Build.Reason'], 'IndividualCI', 'Manual')
       )
@@ -80,8 +80,8 @@ stages:
     keyVaultReaders: $(keyVaultReaders_nonprod)
     location: $(location)
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-ua'
-    dependsOn: BuildFunctions
-    stageName: 'ua'
+    dependsOn: Build_Functions
+    stageName: 'NonProd_ua'
     functionApps:
     - name: 'JobTrigger'
     - name: 'GraphUpdater'
@@ -90,7 +90,7 @@ stages:
     - name: 'AzureUserReader'
     condition: |
       and(
-          succeeded('BuildFunctions'),
+          succeeded('Build_Functions'),
           eq(variables['Build.SourceBranch'], 'refs/heads/master'),
           in(variables['Build.Reason'], 'IndividualCI', 'Manual')
       )
@@ -104,8 +104,8 @@ stages:
     keyVaultReaders: $(keyVaultReaders_prod)
     location: $(location)
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-prodv2'
-    dependsOn: ua
-    stageName: 'production'
+    dependsOn: NonProd_ua
+    stageName: 'Prod_production'
     functionApps:
     - name: 'JobTrigger'
     - name: 'GraphUpdater'
@@ -114,8 +114,8 @@ stages:
     - name: 'AzureUserReader'
     condition: |
       and(
-        succeeded('ua'),
-        succeeded('BuildFunctions'),
+        succeeded('NonProd_ua'),
+        succeeded('Build_Functions'),
         eq(variables['Build.SourceBranch'], 'refs/heads/master'),
         in(variables['Build.Reason'], 'IndividualCI', 'Manual')
       )

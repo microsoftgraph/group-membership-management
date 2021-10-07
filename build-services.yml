@@ -4,22 +4,22 @@ parameters:
 - name: checkoutPath
   type: string
 
-stages:    
+stages:
 
-- stage: BuildCommon
+- stage: Build_Common
   jobs:
-  - job: GMMBuildAndRelease
+  - job: Build_Common
     strategy:
       maxParallel: 2
-      matrix: 
+      matrix:
         debug:
           BuildConfiguration: debug
         release:
           BuildConfiguration: release
 
     steps:
-    
-    - ${{ if ne(parameters.repoToCheckout, '') }}: 
+
+    - ${{ if ne(parameters.repoToCheckout, '') }}:
       - checkout: ${{ parameters.repoToCheckout }}
         path: ${{ parameters.checkoutPath }}
 
@@ -85,5 +85,5 @@ stages:
     - task: PublishBuildArtifacts@1
       displayName: 'publish artifact'
       inputs:
-        PathtoPublish: '$(build.artifactstagingdirectory)'        
+        PathtoPublish: '$(build.artifactstagingdirectory)'
         ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'

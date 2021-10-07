@@ -28,8 +28,8 @@ stages:
 
 - template: yaml/build-functionapps.yml
   parameters:
-    dependsOn: BuildCommon
-    condition: succeeded('BuildCommon')
+    dependsOn: Build_Common
+    condition: succeeded('Build_Common')
     repoToCheckout: ''
     checkoutPath: ''
     functionApps:

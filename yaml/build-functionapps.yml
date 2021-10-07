@@ -12,7 +12,7 @@ parameters:
 
 stages:
 
-- stage: BuildFunctions
+- stage: Build_Functions
   dependsOn: ${{ parameters.dependsOn }}
   condition: ${{ parameters.condition }}
 
@@ -55,7 +55,7 @@ stages:
                         /p:CollectCoverage=true
                         /p:CoverletOutputFormat=cobertura
                         /p:threshold=${{ app.function.coverageThreshold }}
-                        /p:thresholdType=line 
+                        /p:thresholdType=line
                         /p:thresholdStat=total
                         /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\${{ app.function.name }}\
                         /p:Exclude=[Repositories.*]*%2c[Entities]*%2c[*.Entities]*%2c[*.Tests]*%2c[*.Mocks]*%2c[Common.DependencyInjection]*%2c[Hosts.FunctionBase]*'
