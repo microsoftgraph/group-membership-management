@@ -74,7 +74,7 @@ If you would like to add additional environments, follow these steps:
             environmentAbbreviation: 'int'
             location: 'westus2'
             serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
-            dependsOn: BuildFunctions
+            dependsOn: Build_Functions
             stageName: 'int'
             functionApps:
             - name: 'JobTrigger'
@@ -82,7 +82,7 @@ If you would like to add additional environments, follow these steps:
             - name: 'SecurityGroup'
             condition: |
             and(
-                succeeded('BuildFunctions'),
+                succeeded('Build_Functions'),
                 eq(variables['Build.SourceBranch'], 'refs/heads/develop'),
                 in(variables['Build.Reason'], 'IndividualCI', 'Manual')
             )
@@ -116,7 +116,7 @@ If you would like to remove environments, follow these steps:
             environmentAbbreviation: 'int'
             location: 'westus2'
             serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
-            dependsOn: BuildFunctions
+            dependsOn: Build_Functions
             stageName: 'int'
             functionApps:
             - name: 'JobTrigger'
@@ -124,7 +124,7 @@ If you would like to remove environments, follow these steps:
             - name: 'SecurityGroup'
             condition: |
             and(
-                succeeded('BuildFunctions'),
+                succeeded('Build_Functions'),
                 eq(variables['Build.SourceBranch'], 'refs/heads/develop'),
                 in(variables['Build.Reason'], 'IndividualCI', 'Manual')
             )

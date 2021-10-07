@@ -10,7 +10,7 @@ env:
   VERSION_MINOR: 0
 
 jobs:
-  GMMBuildAndRelease:
+  Build_CommonInternal:
     strategy:
       matrix:
         BuildConfiguration:
@@ -21,15 +21,15 @@ jobs:
     runs-on: windows-2019
 
     steps:
-    
+
     - name: Checkout Action
       uses: actions/checkout@v1
-    
+
     - name: Use .NET Core
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 3.1.410
-    
+
     - name: dotnet build
       run: |
         cd Service\GroupMembershipManagement
@@ -71,11 +71,11 @@ jobs:
     - name: copy arm templates
       run: Copy 'Infrastructure/' '${{ github.workspace }}/Infrastructure'
       shell: powershell
-      
+
     - name: copy release management scripts
       run: Copy 'Scripts/' '${{ github.workspace }}/Scripts'
       shell: powershell
-      
+
     - name: publish artifact
       uses: actions/upload-artifact@v2
       with:
