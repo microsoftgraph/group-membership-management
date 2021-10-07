@@ -75,7 +75,7 @@ If you would like to add additional environments, follow these steps:
             location: 'westus2'
             serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
             dependsOn: Build_Functions
-            stageName: 'int'
+            stageName: 'NonProd_int'
             functionApps:
             - name: 'JobTrigger'
             - name: 'GraphUpdater'
@@ -117,7 +117,7 @@ If you would like to remove environments, follow these steps:
             location: 'westus2'
             serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
             dependsOn: Build_Functions
-            stageName: 'int'
+            stageName: 'NonProd_int'
             functionApps:
             - name: 'JobTrigger'
             - name: 'GraphUpdater'
