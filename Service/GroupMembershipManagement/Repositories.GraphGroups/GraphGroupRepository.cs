@@ -36,6 +36,11 @@ namespace Repositories.GraphGroups
         private const int MaxRetries = 10;
         private const int MaxResultCount = 999;
 
+		private const string ResourceUnitsUsedMetric = "ResourceUnitsUsed";
+		private const string ThrottleLimitPercentageMetric = "ThrottleLimitPercentage";
+		private const string ResourceUnitHeader = "x-ms-resource-unit";
+		private const string ThrottlePercentageHeader = "x-ms-throttle-limit-percentage";
+
         public async Task<bool> GroupExists(Guid objectId)
         {
             try
@@ -261,11 +266,11 @@ namespace Repositories.GraphGroups
 			// see https://github.com/microsoftgraph/msgraph-sdk-dotnet/blob/dev/docs/headers.md#reading-response-headers
 			var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
 
-			if (responseHeaders.TryGetValue("x-ms-resource-unit", out var resourceValues))
-				_telemetryClient.GetMetric("ResourceUnitsUsed").TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
+			if (responseHeaders.TryGetValue(ResourceUnitHeader, out var resourceValues))
+				_telemetryClient.GetMetric(ResourceUnitsUsedMetric).TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
 
-			if (responseHeaders.TryGetValue("x-ms-throttle-limit-percentage", out var throttleValues))
-				_telemetryClient.GetMetric("ThrottleLimitPercentage").TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
+			if (responseHeaders.TryGetValue(ThrottlePercentageHeader, out var throttleValues))
+				_telemetryClient.GetMetric(ThrottleLimitPercentageMetric).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
 		}
 
 		const int GraphBatchLimit = 20;
@@ -473,8 +478,8 @@ namespace Repositories.GraphGroups
         {
             bool beenThrottled = false;
 
-            var resourceUnitsUsed = _telemetryClient.GetMetric("ResourceUnitsUsed");
-            var throttleLimitPercentage = _telemetryClient.GetMetric("ThrottleLimitPercentage");
+            var resourceUnitsUsed = _telemetryClient.GetMetric(ResourceUnitsUsedMetric);
+            var throttleLimitPercentage = _telemetryClient.GetMetric(ThrottleLimitPercentageMetric);
 
             foreach (var kvp in responses)
             {
@@ -483,10 +488,10 @@ namespace Repositories.GraphGroups
                 var status = response.StatusCode;
                 var content = await response.Content.ReadAsStringAsync();
 
-                if (response.Headers.TryGetValues("x-ms-resource-unit", out var resourceValues))
+                if (response.Headers.TryGetValues(ResourceUnitHeader, out var resourceValues))
                     resourceUnitsUsed.TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
 
-                if (response.Headers.TryGetValues("x-ms-throttle-limit-percentage", out var throttleValues))
+                if (response.Headers.TryGetValues(ThrottlePercentageHeader, out var throttleValues))
                     throttleLimitPercentage.TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
 
                 await _log.LogMessageAsync(new LogMessage
