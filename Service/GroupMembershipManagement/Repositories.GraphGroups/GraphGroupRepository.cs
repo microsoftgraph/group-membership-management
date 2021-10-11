@@ -15,6 +15,7 @@ using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Group = Microsoft.Graph.Group;
+using Metric = Services.Entities.Metric;
 
 namespace Repositories.GraphGroups
 {
@@ -36,8 +37,6 @@ namespace Repositories.GraphGroups
         private const int MaxRetries = 10;
         private const int MaxResultCount = 999;
 
-		private const string ResourceUnitsUsedMetric = "ResourceUnitsUsed";
-		private const string ThrottleLimitPercentageMetric = "ThrottleLimitPercentage";
 		private const string ResourceUnitHeader = "x-ms-resource-unit";
 		private const string ThrottlePercentageHeader = "x-ms-throttle-limit-percentage";
 
@@ -267,10 +266,10 @@ namespace Repositories.GraphGroups
 			var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
 
 			if (responseHeaders.TryGetValue(ResourceUnitHeader, out var resourceValues))
-				_telemetryClient.GetMetric(ResourceUnitsUsedMetric).TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
+				_telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
 
 			if (responseHeaders.TryGetValue(ThrottlePercentageHeader, out var throttleValues))
-				_telemetryClient.GetMetric(ThrottleLimitPercentageMetric).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
+				_telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage)).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
 		}
 
 		const int GraphBatchLimit = 20;
@@ -478,8 +477,8 @@ namespace Repositories.GraphGroups
         {
             bool beenThrottled = false;
 
-            var resourceUnitsUsed = _telemetryClient.GetMetric(ResourceUnitsUsedMetric);
-            var throttleLimitPercentage = _telemetryClient.GetMetric(ThrottleLimitPercentageMetric);
+            var resourceUnitsUsed = _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed));
+            var throttleLimitPercentage = _telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage));
 
             foreach (var kvp in responses)
             {
