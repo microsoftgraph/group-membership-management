@@ -151,6 +151,14 @@ param appConfigurationKeyData array = [
       tag1: 'GraphUpdater'
     }
   }
+  {
+    key: 'JobScheduler:JobSchedulerConfiguration'
+    value: '{ "ResetJobs": false, "DaysToAddForReset": 0, "DistributeJobs": true, "IncludeFutureJobs": false, "StartTimeDelayMinutes": 5, "DelayBetweenSyncsSeconds": 5, "DefaultRuntimeSeconds": 60 }'
+    contentType: 'string'
+    tag: {
+      tag1: 'JobScheduler'
+    }
+  }
 ]
 
 @description('Unique name within the resource group for the Action group.')
