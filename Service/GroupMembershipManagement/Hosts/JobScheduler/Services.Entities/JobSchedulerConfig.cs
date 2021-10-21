@@ -5,7 +5,7 @@ using Repositories.Contracts.InjectConfig;
 
 namespace Services.Contracts
 {
-    public class JobSchedulerConfig: IJobSchedulerConfig
+    public class JobSchedulerConfig : IJobSchedulerConfig
     {
         public bool ResetJobs { get; }
         public int DaysToAddForReset { get; }

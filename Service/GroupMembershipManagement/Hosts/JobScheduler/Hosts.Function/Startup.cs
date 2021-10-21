@@ -8,6 +8,9 @@ using Hosts.JobScheduler;
 using Services;
 using Services.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Newtonsoft.Json;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 
@@ -17,30 +20,41 @@ namespace Hosts.JobScheduler
     {
         protected override string FunctionName => nameof(JobScheduler);
         protected override string DryRunSettingName => string.Empty;
+        protected string JobSchedulerConfigSettingName => "JobScheduler:JobSchedulerConfiguration";
 
         public override void Configure(IFunctionsHostBuilder builder)
         {
             base.Configure(builder);
 
+            builder.Services.AddOptions<JobSchedulerConfigString>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                if (!string.IsNullOrEmpty(JobSchedulerConfigSettingName))
+                {
+                    settings.Value = configuration[JobSchedulerConfigSettingName];
+                }
+
+            });
+
+            builder.Services.AddScoped<IJobSchedulerConfig>(services =>
+            {
+                var jsonString = services.GetService<IOptions<JobSchedulerConfigString>>().Value.Value;
+                var jobSchedulerConfig = JsonConvert.DeserializeObject<JobSchedulerConfig>(jsonString);
+                return jobSchedulerConfig;
+            });
+
             builder.Services.AddScoped<IRuntimeRetrievalService>(services =>
             {
-                return new DefaultRuntimeRetrievalService(0); // TODO
+                return new DefaultRuntimeRetrievalService(services.GetService<IJobSchedulerConfig>().DefaultRuntimeSeconds); // TODO
             });
 
             builder.Services.AddScoped<IJobSchedulingService>(services =>
             {
                 return new JobSchedulingService(
-                        0, // TODO
-                        0, // TODO
+                        services.GetService<IJobSchedulerConfig>(),
                         services.GetService<ISyncJobRepository>(),
                         services.GetService<IRuntimeRetrievalService>(),
                         services.GetService<ILoggingRepository>()
                     );
-            });
-
-            builder.Services.AddScoped<IJobSchedulerConfig>(services =>
-            {
-                return new JobSchedulerConfig(false, 0, false, false); // TODO
             });
 
             builder.Services.AddScoped<IJobSchedulerApplicationService>(services =>
