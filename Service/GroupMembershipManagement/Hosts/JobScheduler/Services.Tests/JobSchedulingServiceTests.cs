@@ -3,6 +3,7 @@
 using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Repositories.Mocks;
+using Services.Contracts;
 using Services.Entities;
 using System;
 using System.Collections.Generic;
@@ -19,6 +20,7 @@ namespace Services.Tests
         public int BUFFER_SECONDS = 10;
 
         private JobSchedulingService _jobSchedulingService = null;
+        private JobSchedulerConfig _jobSchedulerConfig = null;
         private MockSyncJobRepository _mockSyncJobRepository = null;
         private DefaultRuntimeRetrievalService _defaultRuntimeRetrievalService = null;
         private MockLoggingRepository _mockLoggingRepository = null;
@@ -30,9 +32,9 @@ namespace Services.Tests
             _defaultRuntimeRetrievalService = new DefaultRuntimeRetrievalService(DEFAULT_RUNTIME_SECONDS);
             _mockLoggingRepository = new MockLoggingRepository();
 
+            _jobSchedulerConfig = new JobSchedulerConfig(true, 0, true, false, START_TIME_DELAY_MINUTES, BUFFER_SECONDS, DEFAULT_RUNTIME_SECONDS); ;
             _jobSchedulingService = new JobSchedulingService(
-                START_TIME_DELAY_MINUTES,
-                BUFFER_SECONDS,
+                _jobSchedulerConfig,
                 _mockSyncJobRepository,
                 _defaultRuntimeRetrievalService,
                 _mockLoggingRepository
@@ -132,10 +134,10 @@ namespace Services.Tests
         {
             int defaultTenMinuteRuntime = 600;
             var longerDefaultRuntimeService = new DefaultRuntimeRetrievalService(defaultTenMinuteRuntime);
-
+            
+            JobSchedulerConfig jobSchedulerConfig = new JobSchedulerConfig(true, 0, true, false, START_TIME_DELAY_MINUTES, BUFFER_SECONDS, DEFAULT_RUNTIME_SECONDS); ;
             JobSchedulingService jobSchedulingService = new JobSchedulingService(
-                START_TIME_DELAY_MINUTES, 
-                BUFFER_SECONDS,
+                jobSchedulerConfig,
                 _mockSyncJobRepository,
                 longerDefaultRuntimeService,
                 _mockLoggingRepository
