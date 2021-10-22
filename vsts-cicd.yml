@@ -48,6 +48,9 @@ stages:
     - function:
         name: 'AzureUserReader'
         coverageThreshold: 45
+    - function:
+        name: 'JobScheduler'
+        coverageThreshold: 65
 
 - template: yaml/deploy-pipeline.yml
   parameters:
@@ -65,6 +68,7 @@ stages:
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
     - name: 'AzureUserReader'
+    - name: 'JobScheduler'
     condition: |
       and(
         succeeded('Build_Functions'),
@@ -88,6 +92,7 @@ stages:
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
     - name: 'AzureUserReader'
+    - name: 'JobScheduler'
     condition: |
       and(
           succeeded('Build_Functions'),
@@ -112,6 +117,7 @@ stages:
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
     - name: 'AzureUserReader'
+    - name: 'JobScheduler'
     condition: |
       and(
         succeeded('NonProd_ua'),
