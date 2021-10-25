@@ -37,7 +37,7 @@
         "description": "Enter storage account name."
       }
     },
-    "backUpTo": {
+    "backupType": {
       "type": "string",
       "metadata": {
         "description": "Whether to back up to table or blob storage."
@@ -120,7 +120,7 @@
             "value": [
               {
                 "name": "tablesToBackup",
-                "value": "[concat('[ { \"SourceTableName\":\"', reference('getSecretsTemplate').outputs.jobsTableNameSecret.value, '\"', ', \"SourceConnectionString\":\"', reference('getSecretsTemplate').outputs.jobsTableConnectionStringSecret.value, '\"', ', \"DestinationConnectionString\":\"', reference('getSecretsTemplate').outputs.jobsTableConnectionStringSecret.value, '\"', ',\"BackUpTo\":\"', parameters('backUpTo'), '\", \"DeleteAfterDays\":7 }]')]"
+                "value": "[concat('[ { \"SourceTableName\":\"', reference('getSecretsTemplate').outputs.jobsTableNameSecret.value, '\"', ', \"SourceConnectionString\":\"', reference('getSecretsTemplate').outputs.jobsTableConnectionStringSecret.value, '\"', ', \"DestinationConnectionString\":\"', reference('getSecretsTemplate').outputs.jobsTableConnectionStringSecret.value, '\", \"BackupType\":\"', parameters('backupType'), '\", \"CleanupOnly\":false, \"DeleteAfterDays\":7 }]')]"
               }
             ]
           }
