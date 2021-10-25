@@ -12,12 +12,23 @@ namespace Common.DependencyInjection
 {
     public static class FunctionAppDI
     {
-        public static IAuthenticationProvider CreateAuthProvider(GraphCredentials creds)
+        public static IAuthenticationProvider CreateAuthProviderFromCertificate(GraphCredentials creds)
         {
             var confidentialClientApplication = ConfidentialClientApplicationBuilder
             .Create(creds.ClientId)
             .WithTenantId(creds.TenantId)
             .WithCertificate(GetCertificate(creds.CertificateName, creds.KeyVaultName, creds.KeyVaultTenantId))
+            .Build();
+
+            return new ClientCredentialProvider(confidentialClientApplication);
+        }
+
+        public static IAuthenticationProvider CreateAuthProviderFromSecret(GraphCredentials creds)
+        {
+            var confidentialClientApplication = ConfidentialClientApplicationBuilder
+            .Create(creds.ClientId)
+            .WithTenantId(creds.TenantId)
+            .WithClientSecret(creds.ClientSecret)
             .Build();
 
             return new ClientCredentialProvider(confidentialClientApplication);

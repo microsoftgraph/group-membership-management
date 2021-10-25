@@ -3,7 +3,7 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "differenceServiceBusNamespace": "",
-    "graphCredentials:CertificateName": "",
+    "graphCredentials:ClientSecret": "",
     "graphCredentials:ClientId": "",
     "graphCredentials:KeyVaultName": "",
     "graphCredentials:KeyVaultTenantId": "",

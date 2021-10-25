@@ -30,7 +30,7 @@ namespace Hosts.GraphUpdater
             builder.Services.AddSingleton<IMembershipDifferenceCalculator<AzureADUser>, MembershipDifferenceCalculator<AzureADUser>>()
             .AddSingleton<IGraphServiceClient>((services) =>
             {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
+                return new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value));
             })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
             .AddSingleton<MessageCollector>()

@@ -33,9 +33,6 @@ Azure tenant id where the application is going to be created.
 .PARAMETER TenantIdWithKeyVault
 Azure tenant id where the prereqs keyvault was created.
 
-.PARAMETER CertificateName
-Certificate name
-
 .PARAMETER Clean
 When re-running the script, this flag is used to indicate if we need to recreate the application or use the existing one.
 
@@ -46,7 +43,6 @@ Set-GraphCredentialsAzureADApplication	-SubscriptionName "GMM-Preprod" `
 									-EnvironmentAbbreviation "<env>" `
 									-TenantIdToCreateAppIn "19589c67-5cfd-4863-a0b6-2fb6726ab368" `
 									-TenantIdWithKeyVault "8b7e3ea9-d3b0-410e-b4b1-77e1280842cc" `
-									-CertificateName "CertificateName"
 									-Clean $false `
 									-Verbose
 #>
@@ -64,8 +60,6 @@ function Set-GraphCredentialsAzureADApplication {
 		[Guid] $TenantIdToCreateAppIn,
 		[Parameter(Mandatory=$True)]
 		[Guid] $TenantIdWithKeyVault,
-		[Parameter(Mandatory=$True)]
-		[string] $CertificateName,
 		[Parameter(Mandatory=$False)]
 		[boolean] $Clean = $False,
 		[Parameter(Mandatory=$False)]
@@ -167,9 +161,14 @@ function Set-GraphCredentialsAzureADApplication {
 
 	# These need to go into the key vault
 	$graphAppTenantId = $TenantIdToCreateAppIn;
-	$graphAppClientId = $graphApp.AppId;
+	$graphAppClientId = $graphApp.ApplicationId;
 
-	# as well as the secret:
+	# Create new secret
+	Add-Type -AssemblyName System.Web
+	$passString = [System.Web.Security.Membership]::GeneratePassword(24,5)
+  	$graphAppSecureSecret = ConvertTo-SecureString $passString -AsPlainText -Force
+	$endDate = [System.DateTime]::Now.AddYears(1)
+	New-AzADAppCredential -ObjectId $graphApp.ObjectId -Password $graphAppSecureSecret -startDate $(get-date) -EndDate $endDate
 
 	do {
 		Write-Host "Please sign in with an account that can write to the prereqs key vault."
@@ -190,19 +189,18 @@ function Set-GraphCredentialsAzureADApplication {
     Write-Verbose "Application (client) ID is $graphAppClientId"
 
     $graphClientIdKeyVaultSecretName = "graphAppClientId"
-	$graphClientIdSecret = ConvertTo-SecureString -AsPlainText -Force  $graphAppClientId
+	$graphClientIdSecret = ConvertTo-SecureString -AsPlainText -Force $graphAppClientId
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $graphClientIdKeyVaultSecretName `
 						 -SecretValue $graphClientIdSecret
 	Write-Verbose "$graphClientIdKeyVaultSecretName added to vault for $graphAppDisplayName."
 
-	# Store certificate name in KeyVault
-	$graphAppCertificateName = "graphAppCertificateName"
-	$graphAppCertificateSecret = ConvertTo-SecureString -AsPlainText -Force  $CertificateName
+	# Store Application secret in KeyVault
+	$graphAppClientSecret = "graphAppClientSecret"
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-						 -Name $graphAppCertificateName `
-						 -SecretValue $graphAppCertificateSecret
-	Write-Verbose "$graphAppCertificateName added to vault for $graphAppDisplayName."
+							-Name $graphAppClientSecret `
+							-SecretValue $graphAppSecureSecret
+	Write-Verbose "$graphAppClientSecret added to vault for $graphAppDisplayName."
 
 	# Store tenantID in KeyVault
 	$graphTenantSecretName = "graphAppTenantId"

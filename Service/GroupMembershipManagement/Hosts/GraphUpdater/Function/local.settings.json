@@ -10,7 +10,7 @@
     "jobsStorageAccountConnectionString": "",
     "jobsTableName": "",
     "syncJobTableName": "",
-    "graphCredentials:CertificateName": "gmm-Graph-<env>",
+    "graphCredentials:ClientSecret": "",
     "graphCredentials:ClientId": "",
     "graphCredentials:KeyVaultName": "gmm-prereqs-<env>",
     "graphCredentials:KeyVaultTenantId": "",
