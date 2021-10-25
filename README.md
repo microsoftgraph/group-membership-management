@@ -222,18 +222,11 @@ If you get an error stating "script is not digitally signed" when running any of
 
 ## Populate prereqs keyvault
 
-### Creating the certificate
-We need to create a certificate that is going to be used for authentication, we are going to use the prereqs keyvault to create and store the certificate. Take note of the certificate name since we need to provide it in the next step.
-See [Quickstart: Set and retrieve a certificate from Azure Key Vault using the Azure portal](https://docs.microsoft.com/en-us/azure/key-vault/certificates/quick-create-portal) documentation.
-
-You can also use an existing certificate and upload it to the prereqs keyvault, you will need to provide a friendly certificate name that we will need in the next step.
-
 ### Create `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` Azure Application
 
-Once the certificate is created, we need to run this PowerShell script in order to create a new application that is going to enable GMM to access Microsoft Graph API, it will also save these settings in the prereqs keyvault.
+Run this PowerShell script in order to create a new application that is going to enable GMM to access Microsoft Graph API, it will also save these settings in the prereqs keyvault.
 
 -   graphAppClientId
--   graphAppCertificateName
 -   graphAppTenantId
 
 From your PowerShell command prompt navigate to the Scripts folder then type these commands:
@@ -244,7 +237,6 @@ From your PowerShell command prompt navigate to the Scripts folder then type the
                                                 -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
                                                 -TenantIdToCreateAppIn "<TenantId>" `
                                                 -TenantIdWithKeyVault "<TenantId>" `
-                                                -CertificateName "<CertificateName>" `
                                                 -Verbose
 
     Follow the instructions on the screen.
@@ -257,29 +249,6 @@ Once your application is created we need to grant the requested permissions to u
 4. On your application screen click on 'API permissions' blade on the left menu.
 5. Click on the 'Grant admin consent for `<YourOrganizationName>`' button.
 6. You might need to refresh the page to see the permissions status updated.
-
-### Upload the certificate to your `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application.
-
-We need to upload the certificate to the <solutionAbbreviation>-Graph-<environmentAbbreviation> application, in order to do that we need to export it from the prerqs keyvault.
-
-Exporting the certificate:
-
-1. In the Azure Portal navigate to your prereqs keyvault, it will be named following this convention <solutionAbbreviation>-prereqs-<environmentAbbreviation>.
-2. Locate and click on the Certificates blade on the left menu.
-3. Click on your certificate from the list.
-4. Click on the latest version.
-5. On the top menu click on 'Download in CER format' button to download the certificate.
-
-If you need more details on how to export the certificate please see [Quickstart: Set and retrieve a certificate from Azure Key Vault using the Azure portal](https://docs.microsoft.com/en-us/azure/key-vault/certificates/quick-create-portal) documentation.
-
-Uploading the certificate:
-
-1. In the Azure Portal navigate to your 'Azure Active Directory'. If you don't see it on your screen you can use the top search bar to locate it.
-2. Navigate to 'App registrations' blade on the left menu.
-3. Click on 'All applications" to locate and open your `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application.
-4. On your application screen click on 'Certificates and secrets' blade on the left menu.
-5. Click on the 'Upload certificate' button.
-6. Locate and add your certificate.
 
 ## Configure Azure Devops
 

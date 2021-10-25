@@ -160,7 +160,7 @@
     "serviceBusSyncJobTopic": "[resourceId(subscription().subscriptionId, parameters('dataKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('dataKeyVaultName'), 'serviceBusSyncJobTopic')]",
     "serviceBusMembershipQueue": "[resourceId(subscription().subscriptionId, parameters('dataKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('dataKeyVaultName'), 'serviceBusMembershipQueue')]",
     "graphAppClientId": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppClientId')]",
-    "graphAppCertificateName": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppCertificateName')]",
+    "graphAppClientSecret": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppClientSecret')]",
     "graphAppTenantId": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'graphAppTenantId')]",
     "senderUsername": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'senderUsername')]",
     "senderPassword": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'senderPassword')]",
@@ -274,8 +274,8 @@
                 "slotSetting": false
               },
               {
-                "name": "graphCredentials:CertificateName",
-                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('graphAppCertificateName'), '2019-09-01').secretUriWithVersion, ')')]",
+                "name": "graphCredentials:ClientSecret",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('graphAppClientSecret'), '2019-09-01').secretUriWithVersion, ')')]",
                 "slotSetting": false
               },
               {

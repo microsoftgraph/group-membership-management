@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\..\Repositories.ServiceBusSubscriptions.Tests\Repositories.ServiceBusSubscriptions.Tests.csproj" />
     <ProjectReference Include="..\..\..\Repositories.ServiceBusTopics.Tests\Repositories.ServiceBusTopics.Tests.csproj" />
     <ProjectReference Include="..\..\..\Repositories.SyncJobs.Tests\Repositories.SyncJobs.Tests.csproj" />
+    <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
     <ProjectReference Include="..\Services\Services.csproj" />
   </ItemGroup>
 

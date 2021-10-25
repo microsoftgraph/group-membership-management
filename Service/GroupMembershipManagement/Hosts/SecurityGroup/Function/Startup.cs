@@ -25,7 +25,6 @@ namespace Hosts.SecurityGroup
     {
         protected override string FunctionName => nameof(SecurityGroup);
         protected override string DryRunSettingName => "SecurityGroup:IsSecurityGroupDryRunEnabled";
-        
 
         public override void Configure(IFunctionsHostBuilder builder)
         {
@@ -39,7 +38,7 @@ namespace Hosts.SecurityGroup
 
             builder.Services.AddSingleton<IGraphServiceClient>((services) =>
             {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value));
+                return new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value));
             })
             .AddSingleton<IMembershipServiceBusRepository, MembershipServiceBusRepository>((services) =>
             {

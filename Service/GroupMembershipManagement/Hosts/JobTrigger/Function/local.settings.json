@@ -14,7 +14,7 @@
     "senderAddress": "",
     "senderPassword": "",
     "graphCredentials:ClientId": "",
-    "graphCredentials:CertificateName": "gmm-Graph-<env>",
+    "graphCredentials:ClientSecret": "",
     "graphCredentials:KeyVaultName": "gmm-prereqs-<env>",
     "graphCredentials:KeyVaultTenantId": "<demo-tenant-id>",
     "graphCredentials:TenantId": "<demo-tenant-id>"
