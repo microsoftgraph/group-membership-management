@@ -6,6 +6,6 @@ namespace Services.Contracts
 {
     public interface IAzureTableBackupService
     {
-        Task BackupTablesAsync();
+        Task RunBackupServiceAsync();
     }
 }

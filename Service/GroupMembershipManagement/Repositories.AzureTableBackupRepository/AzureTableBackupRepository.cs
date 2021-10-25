@@ -32,24 +32,54 @@ namespace Repositories.AzureTableBackupRepository
 
             var storageAccount = CloudStorageAccount.Parse(backupSettings.DestinationConnectionString);
             var tableClient = storageAccount.CreateCloudTableClient();
-            var tables = tableClient.ListTables(prefix: BACKUP_PREFIX + backupSettings.SourceTableName).ToList();
+
+            List<CloudTable> tables;
             var backupCloudTables = new List<BackupEntity>();
 
-            foreach (var table in tables)
+            if (backupSettings.SourceTableName == "*")
             {
-                var backupTable = new BackupEntity
-                {
-                    Name = table.Name,
-                    StorageType = "table",
-                    CreatedDate = DateTime.SpecifyKind(
-                                            DateTime.ParseExact(table.Name.Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
-                                                BACKUP_DATE_FORMAT,
-                                                CultureInfo.InvariantCulture,
-                                                DateTimeStyles.AssumeUniversal), 
-                                        DateTimeKind.Utc)
-                };
+                tables = tableClient.ListTables().ToList();
 
-                backupCloudTables.Add(backupTable);
+                foreach (var table in tables)
+                {
+                    var query = new TableQuery<TableEntity>();
+                    var entities = table.ExecuteQuery(query).OrderByDescending(o => o.Timestamp).ToList();
+
+                    var latestTimestamp = DateTime.MinValue;
+                    if (entities.Count > 0)
+                    {
+                        latestTimestamp = entities[0].Timestamp.UtcDateTime;
+                    }
+                    var backupTable = new BackupEntity
+                    {
+                        Name = table.Name,
+                        StorageType = "table",
+                        CreatedDate = latestTimestamp
+                    };
+
+                    backupCloudTables.Add(backupTable);
+                }
+            }
+            else
+            {
+                tables = tableClient.ListTables(prefix: BACKUP_PREFIX + backupSettings.SourceTableName).ToList();
+
+                foreach (var table in tables)
+                {
+                    var backupTable = new BackupEntity
+                    {
+                        Name = table.Name,
+                        StorageType = "table",
+                        CreatedDate = DateTime.SpecifyKind(
+                                                DateTime.ParseExact(table.Name.Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
+                                                    BACKUP_DATE_FORMAT,
+                                                    CultureInfo.InvariantCulture,
+                                                    DateTimeStyles.AssumeUniversal),
+                                            DateTimeKind.Utc)
+                    };
+
+                    backupCloudTables.Add(backupTable);
+                }
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Found {tables.Count} backup tables for table {backupSettings.SourceTableName}" });

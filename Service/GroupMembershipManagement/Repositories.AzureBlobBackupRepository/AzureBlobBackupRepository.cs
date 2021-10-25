@@ -121,11 +121,16 @@ namespace Repositories.AzureBlobBackupRepository
 			var toReturn = new List<BackupEntity>();
 			await foreach (var blob in blobs)
 			{
-				var parsedDateTimeOffset = DateTimeOffset.ParseExact(blob.Name.Replace(".csv", string.Empty).Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
-					BACKUP_DATE_FORMAT, 
-					null,
-					DateTimeStyles.AssumeUniversal);
-				toReturn.Add(new BackupEntity { Name = blob.Name, StorageType = "blob", CreatedDate = blob.Properties.CreatedOn.GetValueOrDefault(parsedDateTimeOffset).UtcDateTime });
+				// If "*" then default blob date to current date if not found so no deletions occur, otherwise default to filename suffix
+				var dateTimeOffset = new DateTimeOffset(DateTime.UtcNow);
+				if (backupSettings.SourceTableName != "*") { 
+					var parsedDateTimeOffset = DateTimeOffset.ParseExact(blob.Name.Replace(".csv", string.Empty).Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
+						BACKUP_DATE_FORMAT,
+						null,
+						DateTimeStyles.AssumeUniversal);
+					dateTimeOffset = parsedDateTimeOffset;
+				}
+				toReturn.Add(new BackupEntity { Name = blob.Name, StorageType = "blob", CreatedDate = blob.Properties.CreatedOn.GetValueOrDefault(dateTimeOffset).UtcDateTime });
 			}
 			return toReturn;
 		}
