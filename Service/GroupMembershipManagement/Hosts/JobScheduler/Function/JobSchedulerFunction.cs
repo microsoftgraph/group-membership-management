@@ -22,7 +22,7 @@ namespace Hosts.JobScheduler
         }
 
         [FunctionName("JobScheduler")]
-        public async Task Run([TimerTrigger("%jobSchedulerSchedule%")] TimerInfo myTimer) // TODO Check TimerTrigger
+        public async Task Run([TimerTrigger("%jobSchedulerSchedule%")] TimerInfo myTimer)
         {
             _loggingRepository.SyncJobProperties = new Dictionary<string, string> { { "runId", Guid.NewGuid().ToString() } };
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"JobScheduler function started at: {DateTime.UtcNow}" });

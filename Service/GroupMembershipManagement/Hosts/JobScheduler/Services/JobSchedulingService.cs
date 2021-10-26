@@ -40,6 +40,9 @@ namespace Services
 
         public async Task<List<SchedulerSyncJob>> GetAllSyncJobsAsync(bool includeFutureStartDates = false)
         {
+            var message = "Getting enabled sync jobs" + (includeFutureStartDates ? " including those with future StartDate values" : "");
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = message });
+
             var schedulerSyncJobs = new List<SchedulerSyncJob>();
             var jobs = _syncJobRepository.GetSyncJobsAsync(SyncStatus.All, false, false);
             await foreach (var job in jobs)
@@ -52,6 +55,7 @@ namespace Services
                 }
             }
 
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Found {schedulerSyncJobs.Count} jobs to update" });
             return schedulerSyncJobs;
         }
 
@@ -97,18 +101,20 @@ namespace Services
             {
                 var jobsForPeriod = periodToJobs[period];
 
-                List<SchedulerSyncJob> updatedJobsForPeriod = DistributeJobStartTimesForPeriod(jobsForPeriod, period, runtimeMap);
+                List<SchedulerSyncJob> updatedJobsForPeriod = await DistributeJobStartTimesForPeriod(jobsForPeriod, period, runtimeMap);
                 updatedJobs.AddRange(updatedJobsForPeriod);
             }
 
             return updatedJobs;
         }
 
-        private List<SchedulerSyncJob> DistributeJobStartTimesForPeriod(
+        private async Task<List<SchedulerSyncJob>> DistributeJobStartTimesForPeriod(
             List<SchedulerSyncJob> schedulerSyncJobs, 
             int periodInHours,
             Dictionary<Guid, double> runtimeMap)
         {
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Calculating distribution for jobs with period {periodInHours}" });
+
             HashSet<Guid> groupIdsForPeriod = new HashSet<Guid>(schedulerSyncJobs.ConvertAll(job => job.TargetOfficeGroupId));
             runtimeMap = new Dictionary<Guid, double>(runtimeMap.Where(entry => groupIdsForPeriod.Contains(entry.Key)));
 
@@ -118,7 +124,8 @@ namespace Services
             double totalTimeInSeconds = runtimeMap.Values.Sum();
 
             int concurrencyNumber = (int) Math.Ceiling(totalTimeInSeconds / (periodInHours * MINUTES_IN_HOUR * SECONDS_IN_MINUTE));
-            Console.WriteLine(@"Number of threads: " + concurrencyNumber);
+
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Calculated {concurrencyNumber} thread count for jobs with period {periodInHours}" });
 
             List<DateTime> jobThreads = new List<DateTime>(concurrencyNumber);
             DateTime startTime = DateTime.UtcNow.AddMinutes(START_TIME_DELAY_MINUTES);

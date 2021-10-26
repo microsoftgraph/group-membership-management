@@ -44,7 +44,7 @@ namespace Hosts.JobScheduler
 
             builder.Services.AddScoped<IRuntimeRetrievalService>(services =>
             {
-                return new DefaultRuntimeRetrievalService(services.GetService<IJobSchedulerConfig>().DefaultRuntimeSeconds); // TODO
+                return new DefaultRuntimeRetrievalService(services.GetService<IJobSchedulerConfig>().DefaultRuntimeSeconds);
             });
 
             builder.Services.AddScoped<IJobSchedulingService>(services =>
@@ -59,7 +59,7 @@ namespace Hosts.JobScheduler
 
             builder.Services.AddScoped<IApplicationService>(services =>
             {
-                return new ApplicationService(services.GetService<IJobSchedulingService>(), services.GetService<IJobSchedulerConfig>());
+                return new ApplicationService(services.GetService<IJobSchedulingService>(), services.GetService<IJobSchedulerConfig>(), services.GetService<ILoggingRepository>());
             });
         }
     }
