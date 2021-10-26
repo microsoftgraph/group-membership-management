@@ -57,7 +57,7 @@ namespace Hosts.JobScheduler
                     );
             });
 
-            builder.Services.AddScoped<IJobSchedulerApplicationService>(services =>
+            builder.Services.AddScoped<IApplicationService>(services =>
             {
                 return new ApplicationService(services.GetService<IJobSchedulingService>(), services.GetService<IJobSchedulerConfig>());
             });
