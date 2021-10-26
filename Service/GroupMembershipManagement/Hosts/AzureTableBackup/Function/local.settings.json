@@ -6,6 +6,7 @@
     "backupTriggerSchedule": "0 0 0 * * *",
     "logAnalyticsCustomerId": "<customer-id>",
     "logAnalyticsPrimarySharedKey": "<primary-shared-key>",
-    "tablesToBackup": "[ { 'SourceTableName':'<table-name>', 'SourceConnectionString':'<connection-string>', 'DestinationConnectionString':'<connection-string>', 'BackUpTo': 'table', 'DeleteAfterDays': 7 } ]"
+    "tablesToBackup": "[ { 'SourceTableName':'<table-name>', 'SourceConnectionString':'<connection-string>', 'DestinationConnectionString':'<connection-string>', 'BackUpTo': 'table', 'DeleteAfterDays': 7 } ]",
+    "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io"
   }
 }

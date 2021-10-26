@@ -47,7 +47,7 @@ namespace JobScheduler
                 loggingRepository
             );
 
-            IApplicationService applicationService = new ApplicationService(jobSchedulingService, jobSchedulerConfig);
+            IApplicationService applicationService = new ApplicationService(jobSchedulingService, jobSchedulerConfig, loggingRepository);
 
             // Call the JobScheduler ApplicationService
             await applicationService.RunAsync();
