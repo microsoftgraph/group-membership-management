@@ -228,6 +228,7 @@ Run this PowerShell script in order to create a new application that is going to
 
 -   graphAppClientId
 -   graphAppTenantId
+-   graphAppClientSecret
 
 From your PowerShell command prompt navigate to the Scripts folder then type these commands:
 
@@ -611,3 +612,6 @@ To troubleshoot any issues that might occur we can use Log Analytics and Applica
 
 1. Find Logs in the Log analytics workspace following the instructions [here](/Documentation/FindLogEntriesInLogAnalyticsForASync.md).
 2. Find failures and exceptions with Application Insights [here](/Documentation/TroubleshootWithApplicationInsights.md).
+
+# Breaking changes
+See [Breaking changes](breaking_changes.md)
