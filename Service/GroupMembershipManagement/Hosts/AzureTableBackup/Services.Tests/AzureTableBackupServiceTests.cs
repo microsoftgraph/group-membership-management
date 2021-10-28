@@ -32,7 +32,7 @@ namespace Services.Tests
             azureTableBackupRepository.Verify(x => x.GetEntitiesAsync(It.IsAny<IAzureTableBackup>()), Times.Never());
             azureTableBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureTableBackup>(), It.IsAny<List<DynamicTableEntity>>()), Times.Never());
             azureBlobBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureTableBackup>(), It.IsAny<List<DynamicTableEntity>>()), Times.Never());
-            azureBlobBackupRepository.Verify(x => x.DeleteBackupAsync(It.IsAny<IAzureTableBackup>(), It.IsAny<string>()), Times.Never());
+            azureBlobBackupRepository.Verify(x => x.DeleteBackupsAsync(It.IsAny<IAzureTableBackup>(), It.IsAny<List<BackupEntity>>()), Times.Never());
         }
 
         [TestMethod]
@@ -54,28 +54,34 @@ namespace Services.Tests
             {
                 entities.Add(new DynamicTableEntity());
             }
+            var backups = new List<BackupEntity>() { };
 
             azureTableBackupRepository.Setup(x => x.GetEntitiesAsync(It.IsAny<IAzureTableBackup>()))
                                         .ReturnsAsync(entities);
             azureTableBackupRepository.Setup(x => x.BackupEntitiesAsync(backupSettings[0], entities))
                                         .ReturnsAsync(new BackupResult { BackupTableName = "backupTableName", BackedUpTo = "table", RowCount = entities.Count });
             azureTableBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[0]))
-                                        .ReturnsAsync(new List<BackupEntity>());
+                                        .ReturnsAsync(backups);
+            azureTableBackupRepository.Setup(x => x.DeleteBackupsAsync(backupSettings[0], backups))
+                                        .ReturnsAsync(new List<string>());
             azureTableBackupRepository.Setup(x => x.GetLastestBackupResultTrackerAsync(It.IsAny<IAzureTableBackup>()))
                                         .ReturnsAsync((BackupResult)null);
 
             azureBlobBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[1]))
-                                        .ReturnsAsync(new List<BackupEntity>());
+                                        .ReturnsAsync(backups);
             azureBlobBackupRepository.Setup(x => x.BackupEntitiesAsync(backupSettings[1], entities))
                                         .ReturnsAsync(new BackupResult("backupTableName", "blob", entities.Count));
+            azureBlobBackupRepository.Setup(x => x.DeleteBackupsAsync(backupSettings[1], backups))
+                                        .ReturnsAsync(new List<string>());
 
             var azureTableBackupService = new AzureTableBackupService(backupSettings, loggerMock.Object, azureTableBackupRepository.Object, azureBlobBackupRepository.Object);
             await azureTableBackupService.RunBackupServiceAsync();
 
             azureTableBackupRepository.Verify(x => x.GetEntitiesAsync(It.IsAny<IAzureTableBackup>()), Times.Exactly(2));
             azureTableBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureTableBackup>(), It.IsAny<List<DynamicTableEntity>>()), Times.Once());
+            azureTableBackupRepository.Verify(x => x.GetBackupsAsync(It.IsAny<IAzureTableBackup>()), Times.Once());
+            azureBlobBackupRepository.Verify(x => x.GetBackupsAsync(It.IsAny<IAzureTableBackup>()), Times.Once());
             azureBlobBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureTableBackup>(), It.IsAny<List<DynamicTableEntity>>()), Times.Once());
-            azureBlobBackupRepository.Verify(x => x.DeleteBackupAsync(It.IsAny<IAzureTableBackup>(), It.IsAny<string>()), Times.Never());
         }
 
         [TestMethod]
@@ -97,28 +103,34 @@ namespace Services.Tests
             {
                 entities.Add(new DynamicTableEntity());
             }
+            var backups = new List<BackupEntity> { new BackupEntity("backupTableName", "blob") };
 
             azureTableBackupRepository.Setup(x => x.GetEntitiesAsync(It.IsAny<IAzureTableBackup>()))
                                         .ReturnsAsync(entities);
             azureTableBackupRepository.Setup(x => x.BackupEntitiesAsync(backupSettings[0], entities))
                                         .ReturnsAsync(new BackupResult { BackupTableName = "backupTableName", BackedUpTo = "table", RowCount = entities.Count });
             azureTableBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[0]))
-                                        .ReturnsAsync(new List<BackupEntity> { new BackupEntity { Name = "backupTableName", StorageType = "table", CreatedDate = DateTime.UtcNow.AddDays(-7) } });
+                                        .ReturnsAsync(backups);
+            azureTableBackupRepository.Setup(x => x.DeleteBackupsAsync(backupSettings[0], backups))
+                                        .ReturnsAsync(new List<string>());
             azureTableBackupRepository.Setup(x => x.GetLastestBackupResultTrackerAsync(It.IsAny<IAzureTableBackup>()))
                                         .ReturnsAsync(new BackupResult { BackupTableName = "backupTableName", BackedUpTo = "table", RowCount = 1 });
 
             azureBlobBackupRepository.Setup(x => x.BackupEntitiesAsync(backupSettings[1], entities))
                                         .ReturnsAsync(new BackupResult { BackupTableName = "backupTableName", BackedUpTo = "blob", RowCount = entities.Count });
             azureBlobBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[1]))
-                                        .ReturnsAsync(new List<BackupEntity> { new BackupEntity { Name = "backupTableName", StorageType = "blob", CreatedDate = DateTime.UtcNow.AddDays(-7) } });
+                                        .ReturnsAsync(backups);
+            azureBlobBackupRepository.Setup(x => x.DeleteBackupsAsync(backupSettings[1], backups))
+                                        .ReturnsAsync(new List<string>());
 
             var azureTableBackupService = new AzureTableBackupService(backupSettings, loggerMock.Object, azureTableBackupRepository.Object, azureBlobBackupRepository.Object);
             await azureTableBackupService.RunBackupServiceAsync();
 
             azureTableBackupRepository.Verify(x => x.GetEntitiesAsync(It.IsAny<IAzureTableBackup>()), Times.Exactly(2));
             azureTableBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureTableBackup>(), It.IsAny<List<DynamicTableEntity>>()), Times.Once());
+            azureTableBackupRepository.Verify(x => x.DeleteBackupsAsync(It.IsAny<IAzureTableBackup>(), It.IsAny<List<BackupEntity>>()), Times.Once());
             azureBlobBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureTableBackup>(), It.IsAny<List<DynamicTableEntity>>()), Times.Once());
-            azureBlobBackupRepository.Verify(x => x.DeleteBackupAsync(It.IsAny<IAzureTableBackup>(), It.IsAny<string>()), Times.Once());
+            azureBlobBackupRepository.Verify(x => x.DeleteBackupsAsync(It.IsAny<IAzureTableBackup>(), It.IsAny<List<BackupEntity>>()), Times.Once());
         }
 
         [TestMethod]
@@ -140,19 +152,24 @@ namespace Services.Tests
             {
                 entities.Add(new DynamicTableEntity());
             }
+            var backups = new List<BackupEntity> { new BackupEntity("backupTableName", "blob") };
 
             azureTableBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[0]))
-                                        .ReturnsAsync(new List<BackupEntity> { new BackupEntity { Name = "backupTableName", StorageType = "table", CreatedDate = DateTime.UtcNow.AddDays(-7) } });
+                                        .ReturnsAsync(backups);
             azureTableBackupRepository.Setup(x => x.GetLastestBackupResultTrackerAsync(It.IsAny<IAzureTableBackup>()))
                                         .ReturnsAsync(new BackupResult { BackupTableName = "backupTableName", BackedUpTo = "table", RowCount = 1 });
             azureTableBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[1]))
-                                        .ReturnsAsync(new List<BackupEntity> { new BackupEntity { Name = "backupTableName", StorageType = "table", CreatedDate = DateTime.UtcNow.AddDays(-30) } });
+                                        .ReturnsAsync(backups);
+            azureTableBackupRepository.Setup(x => x.DeleteBackupsAsync(backupSettings[0], backups))
+                                        .ReturnsAsync(new List<string>());
+            azureTableBackupRepository.Setup(x => x.DeleteBackupsAsync(backupSettings[1], backups))
+                                        .ReturnsAsync(new List<string>());
 
             var azureTableBackupService = new AzureTableBackupService(backupSettings, loggerMock.Object, azureTableBackupRepository.Object, azureBlobBackupRepository.Object);
             await azureTableBackupService.RunBackupServiceAsync();
 
             azureTableBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureTableBackup>(), It.IsAny<List<DynamicTableEntity>>()), Times.Exactly(0));
-            azureTableBackupRepository.Verify(x => x.DeleteBackupAsync(It.IsAny<IAzureTableBackup>(), It.IsAny<string>()), Times.Exactly(2));
+            azureTableBackupRepository.Verify(x => x.DeleteBackupsAsync(It.IsAny<IAzureTableBackup>(), It.IsAny<List<BackupEntity>>()), Times.Exactly(2));
         }
     }
 }

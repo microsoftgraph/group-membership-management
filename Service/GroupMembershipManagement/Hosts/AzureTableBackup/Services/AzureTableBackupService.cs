@@ -101,17 +101,7 @@ namespace Services
 			// unless you delete them manually or switch back to table storage.
 			var backupStorage = DetermineBackupStorage(backupSettings.BackupType);
 			var backupEntities = await backupStorage.GetBackupsAsync(backupSettings);
-			var cutOffDate = DateTime.UtcNow.AddDays(-backupSettings.DeleteAfterDays);
-			var deletedEntities = new List<string>();
-
-			foreach (var entity in backupEntities)
-			{
-				if (entity.CreatedDate < cutOffDate)
-				{
-					await backupStorage.DeleteBackupAsync(backupSettings, entity.Name);
-					deletedEntities.Add(entity.Name);
-				}
-			}
+			var deletedEntities = await backupStorage.DeleteBackupsAsync(backupSettings, backupEntities);
 
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleted {deletedEntities.Count} old backups for table: {backupSettings.SourceTableName}" });
 			return deletedEntities;

@@ -11,7 +11,7 @@ namespace Repositories.Contracts
 	public interface IAzureStorageBackupRepository
 	{
         Task<BackupResult> BackupEntitiesAsync(IAzureTableBackup backupSettings, List<DynamicTableEntity> entities);
-        Task DeleteBackupAsync(IAzureTableBackup backupSettings, string backupName);
-        Task<List<BackupEntity>> GetBackupsAsync(IAzureTableBackup backupSettings);
+        Task<List<BackupEntity>> GetBackupsAsync(IAzureTableBackup backupSettings); 
+		Task<List<string>> DeleteBackupsAsync(IAzureTableBackup backupSettings, List<BackupEntity> tables);
 	}
 }
