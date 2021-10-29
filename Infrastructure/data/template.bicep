@@ -374,6 +374,14 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
   ]
 }
 
+module dashboardTemplate 'dashboard.bicep' = {
+  name: 'dashboardTemplate'
+  params: {
+    location: location
+    name: '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
+  }
+}
+
 output storageAccountName string = storageAccountName
 output serviceBusName string = serviceBusName
 output serviceBusTopicName string = serviceBusTopicName
