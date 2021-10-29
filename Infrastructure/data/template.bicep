@@ -155,6 +155,14 @@ param appConfigurationKeyData array = [
     }
   }
   {
+    key: 'GraphUpdater:MaximumNumberOfThresholdRecipients'
+    value: '10'
+    contentType: 'integer'
+    tag: {
+      tag1: 'GraphUpdater'
+    }
+  }
+  {
     key: 'JobScheduler:JobSchedulerConfiguration'
     value: '{ "ResetJobs": false, "DaysToAddForReset": 0, "DistributeJobs": true, "IncludeFutureJobs": false, "StartTimeDelayMinutes": 5, "DelayBetweenSyncsSeconds": 5, "DefaultRuntimeSeconds": 60 }'
     contentType: 'string'
