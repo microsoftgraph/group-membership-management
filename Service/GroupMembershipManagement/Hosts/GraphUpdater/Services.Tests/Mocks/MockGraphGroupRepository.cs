@@ -5,14 +5,12 @@ using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Graph;
-using System.Collections;
 
 namespace Services.Tests.Mocks
 {
-	class MockGraphGroupRepository : IGraphGroupRepository
+    class MockGraphGroupRepository : IGraphGroupRepository
 	{
 		public Dictionary<Guid, List<AzureADUser>> GroupsToUsers { get; set; } = new Dictionary<Guid, List<AzureADUser>>();
 		public Guid RunId { get; set; }
@@ -72,5 +70,15 @@ namespace Services.Tests.Mocks
 		{
 			throw new NotImplementedException();
 		}
+
+        public Task<bool> IsEmailOwnerOfGroupAsync(string email, Guid groupObjectId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

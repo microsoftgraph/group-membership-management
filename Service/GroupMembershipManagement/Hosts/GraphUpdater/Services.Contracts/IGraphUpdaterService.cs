@@ -19,7 +19,9 @@ namespace Services.Contracts
 		public Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey);
 		public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId);
 		public Task<string> GetGroupNameAsync(Guid groupId);
-		Task<(GraphUpdaterStatus Status, int SuccessCount)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync);
-		Task<(GraphUpdaterStatus Status, int SuccessCount)> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync);
+		public Task<(GraphUpdaterStatus Status, int SuccessCount)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync);
+		public Task<(GraphUpdaterStatus Status, int SuccessCount)> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync);
+		public Task<bool> IsEmailOwnerOfGroupAsync(string email, Guid groupObjectId);
+		public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0);
 	}
 }

@@ -192,5 +192,15 @@ namespace Services
             var status = graphResponse.ResponseCode == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
             return (status, graphResponse.SuccessCount);
         }
+
+        public async Task<bool> IsEmailOwnerOfGroupAsync(string email, Guid groupObjectId)
+        {
+            return await _graphGroupRepository.IsEmailOwnerOfGroupAsync(email, groupObjectId);
+        }
+
+        public async Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+        {
+            return await _graphGroupRepository.GetGroupOwnersAsync(groupObjectId, top);
+        }
     }
 }
