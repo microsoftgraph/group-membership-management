@@ -9,6 +9,7 @@ using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Services
@@ -25,6 +26,7 @@ namespace Services
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IGraphUpdaterService _graphUpdaterService;
         private readonly bool _isGraphUpdaterDryRunEnabled;
+        private readonly int _maximumNumberOfThresholdRecipients = 0;
 
         public DeltaCalculatorService(
             IMembershipDifferenceCalculator<AzureADUser> differenceCalculator,
@@ -45,7 +47,7 @@ namespace Services
 
         public async Task<DeltaResponse> CalculateDifferenceAsync(GroupMembership membership, List<AzureADUser> membersFromDestinationGroup)
         {
-           var deltaResponse = new DeltaResponse
+            var deltaResponse = new DeltaResponse
             {
                 IsDryRunSync = _isGraphUpdaterDryRunEnabled
             };
@@ -56,7 +58,7 @@ namespace Services
             var job = await _syncJobRepository.GetSyncJobAsync(membership.SyncJobPartitionKey, membership.SyncJobRowKey);
 
             SetupLoggingRepository(membership, job);
-            
+
             if (job == null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sync job : Partition key {membership.SyncJobPartitionKey}, Row key {membership.SyncJobRowKey} was not found!", RunId = membership.RunId });
@@ -86,29 +88,24 @@ namespace Services
                 var isInitialSync = job.LastRunTime == DateTime.FromFileTimeUtc(0);
                 var threshold = isInitialSync ? new ThresholdResult() : await CalculateThresholdAsync(job, delta.Delta, delta.TotalMembersCount, membership.RunId);
 
-                if (threshold.IsThresholdExceeded)
-                {
-                    await SendThresholdNotificationAsync(threshold, job, membership.RunId);
-
-                    deltaResponse.GraphUpdaterStatus = GraphUpdaterStatus.ThresholdExceeded;
-                    deltaResponse.MembersToAdd = delta.Delta.ToAdd;
-                    deltaResponse.MembersToRemove = delta.Delta.ToRemove;
-                    deltaResponse.SyncStatus = SyncStatus.Idle;
-                    deltaResponse.IsDryRunSync = isDryRunSync;
-                    deltaResponse.SyncJobType = job.Type;
-                    deltaResponse.Timestamp = job.Timestamp;
-                    return deltaResponse;
-                }
-
                 deltaResponse.MembersToAdd = delta.Delta.ToAdd;
                 deltaResponse.MembersToRemove = delta.Delta.ToRemove;
-                deltaResponse.GraphUpdaterStatus = GraphUpdaterStatus.Ok;
                 deltaResponse.SyncStatus = SyncStatus.Idle;
                 deltaResponse.IsInitialSync = isInitialSync;
                 deltaResponse.IsDryRunSync = isDryRunSync;
                 deltaResponse.Requestor = job.Requestor;
                 deltaResponse.SyncJobType = job.Type;
                 deltaResponse.Timestamp = job.Timestamp;
+                deltaResponse.GraphUpdaterStatus = GraphUpdaterStatus.Ok;
+
+                if (threshold.IsThresholdExceeded)
+                {
+                    deltaResponse.GraphUpdaterStatus = GraphUpdaterStatus.ThresholdExceeded;
+
+                    await SendThresholdNotificationAsync(threshold, job, membership.RunId);
+
+                    return deltaResponse;
+                }
             }
 
             if (changeTo == SyncStatus.Error)
@@ -118,7 +115,7 @@ namespace Services
                     GraphUpdaterStatus = GraphUpdaterStatus.Error,
                     SyncStatus = SyncStatus.Error,
                     IsDryRunSync = isDryRunSync,
-            };
+                };
             }
 
             return deltaResponse;
@@ -238,7 +235,42 @@ namespace Services
                     };
             }
 
-            await _graphUpdaterService.SendEmailAsync(_emailSenderAndRecipients.SyncDisabledCCAddresses, contentTemplate, additionalContent, runId);
+            var recipients = _emailSenderAndRecipients.SyncDisabledCCAddresses;
+
+            if (!string.IsNullOrWhiteSpace(job.Requestor))
+            {
+                var recipientList = await GetThresholdRecipientsAsync(job.Requestor, job.TargetOfficeGroupId);
+                if (recipientList.Count > 0)
+                    recipients = string.Join(",", recipientList);
+            }
+
+            await _graphUpdaterService.SendEmailAsync(recipients, contentTemplate, additionalContent, runId);
+        }
+
+        private async Task<List<string>> GetThresholdRecipientsAsync(string requestors, Guid targetOfficeGroupId)
+        {
+            var recipients = new List<string>();
+            var emails = requestors.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var email in emails)
+            {
+                if (await _graphUpdaterService.IsEmailOwnerOfGroupAsync(email, targetOfficeGroupId))
+                {
+                    recipients.Add(email);
+                }
+            }
+
+            if (recipients.Count > 0)
+                return recipients;
+
+            var top = _maximumNumberOfThresholdRecipients > 0 ? _maximumNumberOfThresholdRecipients + 1 : 0;
+            var owners = await _graphUpdaterService.GetGroupOwnersAsync(targetOfficeGroupId, top);
+            if (owners.Count <= _maximumNumberOfThresholdRecipients || _maximumNumberOfThresholdRecipients == 0)
+            {
+                recipients.AddRange(owners.Select(x => x.Mail));
+            }
+
+            return recipients;
         }
 
         private void SetupLoggingRepository(GroupMembership membership, SyncJob job)
