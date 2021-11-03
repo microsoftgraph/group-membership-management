@@ -90,11 +90,11 @@ namespace Services
             return await graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(groupId));
         }
 
-        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null)
+        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null)
         {
             await _mailRepository.SendMailAsync(new EmailMessage
             {
-                Subject = EmailSubject,
+                Subject = emailSubject ?? EmailSubject,
                 Content = contentTemplate,
                 SenderAddress = _emailSenderAndRecipients.SenderAddress,
                 SenderPassword = _emailSenderAndRecipients.SenderPassword,

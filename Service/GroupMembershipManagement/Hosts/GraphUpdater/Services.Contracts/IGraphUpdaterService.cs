@@ -15,7 +15,7 @@ namespace Services.Contracts
 		public Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId);
 		public Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage membersPage, Guid runId);
 		public Task<PolicyResult<bool>> GroupExistsAsync(Guid groupId, Guid runId);
-		public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null);
+		public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null);
 		public Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey);
 		public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId);
 		public Task<string> GetGroupNameAsync(Guid groupId);

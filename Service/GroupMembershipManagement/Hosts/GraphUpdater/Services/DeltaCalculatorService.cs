@@ -19,6 +19,7 @@ namespace Services
         private const string SyncThresholdBothEmailBody = "SyncThresholdBothEmailBody";
         private const string SyncThresholdIncreaseEmailBody = "SyncThresholdIncreaseEmailBody";
         private const string SyncThresholdDecreaseEmailBody = "SyncThresholdDecreaseEmailBody";
+        private const string SyncThresholdEmailSubject = "SyncThresholdEmailSubject";
 
         private readonly IMembershipDifferenceCalculator<AzureADUser> _differenceCalculator;
         private readonly ISyncJobRepository _syncJobRepository;
@@ -246,7 +247,7 @@ namespace Services
                     recipients = string.Join(",", recipientList);
             }
 
-            await _graphUpdaterService.SendEmailAsync(recipients, contentTemplate, additionalContent, runId);
+            await _graphUpdaterService.SendEmailAsync(recipients, contentTemplate, additionalContent, runId, emailSubject: SyncThresholdEmailSubject);
         }
 
         private async Task<List<string>> GetThresholdRecipientsAsync(string requestors, Guid targetOfficeGroupId)
