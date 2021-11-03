@@ -18,7 +18,6 @@ using Services.Tests.Mocks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Services.Tests
@@ -26,8 +25,6 @@ namespace Services.Tests
     [TestClass]
     public class OrchestratorTests
     {
-
-
         [TestMethod]
         public async Task RunOrchestratorValidSyncTest()
         {
@@ -41,12 +38,14 @@ namespace Services.Tests
             MockSyncJobRepository mockSyncJobRepo;
             MockGraphGroupRepository mockGroupRepo;
             MembershipDifferenceCalculator<AzureADUser> calculator;
+            ThresholdConfig thresholdConfig;
 
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
+            thresholdConfig = new ThresholdConfig(5);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
                                             "recipient@domain.com", "recipient@domain.com");
 
@@ -59,7 +58,8 @@ namespace Services.Tests
                                             mockLoggingRepo,
                                             mailSenders,
                                             mockGraphUpdaterService,
-                                            dryRun);
+                                            dryRun,
+                                            thresholdConfig);
 
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
@@ -128,12 +128,14 @@ namespace Services.Tests
             MockSyncJobRepository mockSyncJobRepo;
             MockGraphGroupRepository mockGroupRepo;
             MembershipDifferenceCalculator<AzureADUser> calculator;
+            ThresholdConfig thresholdConfig;
 
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
+            thresholdConfig = new ThresholdConfig(5);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
                                             "recipient@domain.com", "recipient@domain.com");
 
@@ -146,7 +148,8 @@ namespace Services.Tests
                                             mockLoggingRepo,
                                             mailSenders,
                                             mockGraphUpdaterService,
-                                            dryRun);
+                                            dryRun,
+                                            thresholdConfig);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -216,12 +219,14 @@ namespace Services.Tests
             MockSyncJobRepository mockSyncJobRepo;
             MockGraphGroupRepository mockGroupRepo;
             MembershipDifferenceCalculator<AzureADUser> calculator;
+            ThresholdConfig thresholdConfig;
 
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
+            thresholdConfig = new ThresholdConfig(5);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
                                             "recipient@domain.com", "recipient@domain.com");
 
@@ -234,7 +239,8 @@ namespace Services.Tests
                                             mockLoggingRepo,
                                             mailSenders,
                                             mockGraphUpdaterService,
-                                            dryRun);
+                                            dryRun,
+                                            thresholdConfig);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -297,12 +303,14 @@ namespace Services.Tests
             MockSyncJobRepository mockSyncJobRepo;
             MockGraphGroupRepository mockGroupRepo;
             MembershipDifferenceCalculator<AzureADUser> calculator;
+            ThresholdConfig thresholdConfig;
 
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
+            thresholdConfig = new ThresholdConfig(5);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
                                             "recipient@domain.com", "recipient@domain.com");
 
@@ -315,7 +323,8 @@ namespace Services.Tests
                                             mockLoggingRepo,
                                             mailSenders,
                                             mockGraphUpdaterService,
-                                            dryRun);
+                                            dryRun, 
+                                            thresholdConfig);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -382,12 +391,14 @@ namespace Services.Tests
             MockSyncJobRepository mockSyncJobRepo;
             MockGraphGroupRepository mockGroupRepo;
             MembershipDifferenceCalculator<AzureADUser> calculator;
+            ThresholdConfig thresholdConfig;
 
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
+            thresholdConfig = new ThresholdConfig(5);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
                                             "recipient@domain.com", "recipient@domain.com");
 
@@ -400,7 +411,8 @@ namespace Services.Tests
                                             mockLoggingRepo,
                                             mailSenders,
                                             mockGraphUpdaterService,
-                                            dryRun);
+                                            dryRun,
+                                            thresholdConfig);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -469,12 +481,14 @@ namespace Services.Tests
             MockSyncJobRepository mockSyncJobRepo;
             MockGraphGroupRepository mockGroupRepo;
             MembershipDifferenceCalculator<AzureADUser> calculator;
+            ThresholdConfig thresholdConfig;
 
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
+            thresholdConfig = new ThresholdConfig(5);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
                                             "recipient@domain.com", "recipient@domain.com");
 
@@ -487,7 +501,8 @@ namespace Services.Tests
                                             mockLoggingRepo,
                                             mailSenders,
                                             mockGraphUpdaterService,
-                                            dryRun);
+                                            dryRun,
+                                            thresholdConfig);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {

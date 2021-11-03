@@ -1,13 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Common.DependencyInjection;
+using DIConcreteTypes;
 using Entities;
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
 using Repositories.MembershipDifference;
 using Services;
@@ -26,6 +29,17 @@ namespace Hosts.GraphUpdater
         public override void Configure(IFunctionsHostBuilder builder)
         {
             base.Configure(builder);
+
+            builder.Services.AddOptions<ThresholdConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                var isParsed = int.TryParse(configuration["GraphUpdater:MaximumNumberOfThresholdRecipients"], out var maximumNumberOfThresholdRecipients);
+                settings.MaximumNumberOfThresholdRecipients = isParsed ? maximumNumberOfThresholdRecipients : 10;
+            });
+
+            builder.Services.AddSingleton<IThresholdConfig>(services =>
+            {
+                return new ThresholdConfig(services.GetService<IOptions<ThresholdConfig>>().Value.MaximumNumberOfThresholdRecipients);
+            });
 
             builder.Services.AddSingleton<IMembershipDifferenceCalculator<AzureADUser>, MembershipDifferenceCalculator<AzureADUser>>()
             .AddSingleton<IGraphServiceClient>((services) =>

@@ -34,7 +34,8 @@ namespace Services
             ILoggingRepository loggingRepository,
             IEmailSenderRecipient emailSenderAndRecipients,
             IGraphUpdaterService graphUpdaterService,
-            IDryRunValue dryRun
+            IDryRunValue dryRun,
+            IThresholdConfig thresholdConfig
             )
         {
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
@@ -43,6 +44,7 @@ namespace Services
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _isGraphUpdaterDryRunEnabled = _loggingRepository.DryRun = dryRun != null ? dryRun.DryRunEnabled : throw new ArgumentNullException(nameof(dryRun));
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
+            _maximumNumberOfThresholdRecipients = thresholdConfig.MaximumNumberOfThresholdRecipients;
         }
 
         public async Task<DeltaResponse> CalculateDifferenceAsync(GroupMembership membership, List<AzureADUser> membersFromDestinationGroup)
@@ -250,7 +252,7 @@ namespace Services
         private async Task<List<string>> GetThresholdRecipientsAsync(string requestors, Guid targetOfficeGroupId)
         {
             var recipients = new List<string>();
-            var emails = requestors.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            var emails = requestors.Split(',', StringSplitOptions.RemoveEmptyEntries).Distinct().ToList();
 
             foreach (var email in emails)
             {

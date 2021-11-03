@@ -8,6 +8,7 @@ using Services.Contracts;
 using Services.Entities;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Repositories.Mocks
@@ -36,7 +37,7 @@ namespace Repositories.Mocks
         }
 
         public Task<Services.Entities.UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage membersPage, Guid runId)
-		{
+        {
             throw new NotImplementedException();
         }
 
@@ -83,12 +84,16 @@ namespace Repositories.Mocks
 
         public Task<bool> IsEmailOwnerOfGroupAsync(string email, Guid groupObjectId)
         {
-            throw new NotImplementedException();
+            var owners = Groups[groupObjectId].Owners;
+            var isOwner = owners != null && owners.OfType<User>().Where(x => x.Mail.Equals(email, StringComparison.InvariantCultureIgnoreCase)).Any();
+            return Task.FromResult(isOwner);
         }
 
         public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
         {
-            throw new NotImplementedException();
+            var allOwners = Groups[groupObjectId].Owners;
+            var userOwners = allOwners == null ? new List<User>() : allOwners.OfType<User>().ToList();
+            return Task.FromResult(userOwners);
         }
     }
 }
