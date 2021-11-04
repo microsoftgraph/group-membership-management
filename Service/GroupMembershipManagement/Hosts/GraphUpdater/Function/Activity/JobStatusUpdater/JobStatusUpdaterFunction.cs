@@ -29,6 +29,7 @@ namespace Hosts.GraphUpdater
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.RunId });
 
             var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobPartitionKey, request.JobRowKey);
+            syncJob.ThresholdViolations = request.ThresholdViolations;
 
             if (syncJob != null)
             {

@@ -69,7 +69,19 @@ namespace Repositories.Mocks
 
         public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)
         {
-            throw new NotImplementedException();
+            job.RunId = runId;
+            job.Status = status.ToString();
+            job.Enabled = status != SyncStatus.Error;
+            var isDryRunSync = job.IsDryRunEnabled || isDryRun;
+
+            if (isDryRunSync)
+                job.DryRunTimeStamp = DateTime.UtcNow;
+            else
+                job.LastRunTime = DateTime.UtcNow;
+
+            Jobs[(job.PartitionKey, job.RowKey)] = job;
+
+            return Task.CompletedTask;
         }
 
         public Task<(GraphUpdaterStatus Status, int SuccessCount)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isinitialSync)
