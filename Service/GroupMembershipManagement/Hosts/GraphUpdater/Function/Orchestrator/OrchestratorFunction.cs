@@ -41,7 +41,7 @@ namespace Hosts.GraphUpdater
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
             _isDryRunEnabled = loggingRepository.DryRun = dryRun != null ? dryRun.DryRunEnabled : throw new ArgumentNullException(nameof(dryRun));
-            _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients)); ;
+            _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
@@ -76,7 +76,7 @@ namespace Hosts.GraphUpdater
 
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
-                                                                        SyncStatus.Error, groupMembership.MembershipObtainerDryRunEnabled, groupMembership.RunId));
+                                                                        SyncStatus.Error, groupMembership.MembershipObtainerDryRunEnabled, syncJob.ThresholdViolations, groupMembership.RunId));
 
                     return messageResponse;
                 }
@@ -96,7 +96,7 @@ namespace Hosts.GraphUpdater
                     {
                         await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
-                                                                        SyncStatus.Error, groupMembership.MembershipObtainerDryRunEnabled, groupMembership.RunId));
+                                                                        SyncStatus.Error, groupMembership.MembershipObtainerDryRunEnabled, syncJob.ThresholdViolations, groupMembership.RunId));
 
                         await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function did not complete", SyncJob = syncJob });
 
@@ -127,9 +127,15 @@ namespace Hosts.GraphUpdater
                     if (deltaResponse.GraphUpdaterStatus == GraphUpdaterStatus.Error ||
                         deltaResponse.GraphUpdaterStatus == GraphUpdaterStatus.ThresholdExceeded)
                     {
-                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                        CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
-                                                                        deltaResponse.SyncStatus, groupMembership.MembershipObtainerDryRunEnabled, groupMembership.RunId));
+                        var updateRequest = CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
+                                                                        deltaResponse.SyncStatus, groupMembership.MembershipObtainerDryRunEnabled, syncJob.ThresholdViolations, groupMembership.RunId);
+
+                        if (deltaResponse.GraphUpdaterStatus == GraphUpdaterStatus.ThresholdExceeded)
+                        {
+                            updateRequest.ThresholdViolations++;
+                        }
+
+                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), updateRequest);
                     }
 
                     if (deltaResponse.GraphUpdaterStatus != GraphUpdaterStatus.Ok)
@@ -170,7 +176,7 @@ namespace Hosts.GraphUpdater
 
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
-                                                                        SyncStatus.Idle, groupMembership.MembershipObtainerDryRunEnabled, groupMembership.RunId));
+                                                                        SyncStatus.Idle, groupMembership.MembershipObtainerDryRunEnabled, 0, groupMembership.RunId));
 
                     var timeElapsedForJob = (context.CurrentUtcDateTime - deltaResponse.Timestamp).TotalSeconds;
                     _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
@@ -202,14 +208,14 @@ namespace Hosts.GraphUpdater
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                     CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
-                                                                    SyncStatus.Error, groupMembership.MembershipObtainerDryRunEnabled, groupMembership.RunId));
+                                                                    SyncStatus.Error, groupMembership.MembershipObtainerDryRunEnabled, syncJob.ThresholdViolations, groupMembership.RunId));
                 }
 
                 throw;
             }
         }
 
-        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(string partitionKey, string rowKey, SyncStatus syncStatus, bool isDryRun, Guid runId)
+        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(string partitionKey, string rowKey, SyncStatus syncStatus, bool isDryRun, int thresholdViolations, Guid runId)
         {
             return new JobStatusUpdaterRequest
             {
@@ -217,7 +223,8 @@ namespace Hosts.GraphUpdater
                 JobPartitionKey = partitionKey,
                 JobRowKey = rowKey,
                 Status = syncStatus,
-                IsDryRun = isDryRun
+                IsDryRun = isDryRun,
+                ThresholdViolations = thresholdViolations
             };
         }
 
