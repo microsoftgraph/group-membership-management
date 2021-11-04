@@ -20,14 +20,16 @@ namespace Services
         private const string SyncThresholdIncreaseEmailBody = "SyncThresholdIncreaseEmailBody";
         private const string SyncThresholdDecreaseEmailBody = "SyncThresholdDecreaseEmailBody";
         private const string SyncThresholdEmailSubject = "SyncThresholdEmailSubject";
+        private const string SyncThresholdDisablingJobEmailSubject = "SyncThresholdDisablingJobEmailSubject";
+        private const string SyncJobDisabledEmailBody = "SyncJobDisabledEmailBody";
 
         private readonly IMembershipDifferenceCalculator<AzureADUser> _differenceCalculator;
         private readonly ISyncJobRepository _syncJobRepository;
         private readonly ILoggingRepository _loggingRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IGraphUpdaterService _graphUpdaterService;
+        private readonly IThresholdConfig _thresholdConfig;
         private readonly bool _isGraphUpdaterDryRunEnabled;
-        private readonly int _maximumNumberOfThresholdRecipients = 0;
 
         public DeltaCalculatorService(
             IMembershipDifferenceCalculator<AzureADUser> differenceCalculator,
@@ -45,7 +47,7 @@ namespace Services
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _isGraphUpdaterDryRunEnabled = _loggingRepository.DryRun = dryRun != null ? dryRun.DryRunEnabled : throw new ArgumentNullException(nameof(dryRun));
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
-            _maximumNumberOfThresholdRecipients = thresholdConfig.MaximumNumberOfThresholdRecipients;
+            _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
         }
 
         public async Task<DeltaResponse> CalculateDifferenceAsync(GroupMembership membership, List<AzureADUser> membersFromDestinationGroup)
@@ -196,12 +198,25 @@ namespace Services
 
         private async Task SendThresholdNotificationAsync(ThresholdResult threshold, SyncJob job, Guid runId)
         {
-            string groupName = await _graphUpdaterService.GetGroupNameAsync(job.TargetOfficeGroupId);
+            var currentThresholdViolations = job.ThresholdViolations + 1;
+            var followUpLimit = _thresholdConfig.NumberOfThresholdViolationsToNotify + _thresholdConfig.NumberOfThresholdViolationsFollowUps;
+            var sendNotification = currentThresholdViolations >= _thresholdConfig.NumberOfThresholdViolationsToNotify && currentThresholdViolations <= followUpLimit;
+            var sendDisableJobNotification = currentThresholdViolations == _thresholdConfig.NumberOfThresholdViolationsToDisableJob;
+
+            if (!sendNotification && !sendDisableJobNotification)
+            {
+                return;
+            }
+
+            var groupName = await _graphUpdaterService.GetGroupNameAsync(job.TargetOfficeGroupId);
+            var emailSubject = SyncThresholdEmailSubject;
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Threshold exceeded, no changes made to group {groupName} ({job.TargetOfficeGroupId}). ", RunId = runId });
 
             string contentTemplate;
             string[] additionalContent;
+            string[] additionalSubjectContent = new[] { groupName };
+
             if (threshold.IsAdditionsThresholdExceeded && threshold.IsRemovalsThresholdExceeded)
             {
                 contentTemplate = SyncThresholdBothEmailBody;
@@ -213,7 +228,7 @@ namespace Services
                       threshold.IncreaseThresholdPercentage.ToString("F2"),
                       job.ThresholdPercentageForRemovals.ToString(),
                       threshold.DecreaseThresholdPercentage.ToString("F2")
-                    };
+                };
             }
             else if (threshold.IsAdditionsThresholdExceeded)
             {
@@ -235,7 +250,7 @@ namespace Services
                       job.TargetOfficeGroupId.ToString(),
                       job.ThresholdPercentageForRemovals.ToString(),
                       threshold.DecreaseThresholdPercentage.ToString("F2")
-                    };
+                };
             }
 
             var recipients = _emailSenderAndRecipients.SyncDisabledCCAddresses;
@@ -247,7 +262,20 @@ namespace Services
                     recipients = string.Join(",", recipientList);
             }
 
-            await _graphUpdaterService.SendEmailAsync(recipients, contentTemplate, additionalContent, runId, emailSubject: SyncThresholdEmailSubject);
+            if (sendDisableJobNotification)
+            {
+                emailSubject = SyncThresholdDisablingJobEmailSubject;
+                contentTemplate = SyncJobDisabledEmailBody;
+                additionalContent = new[] { groupName, job.TargetOfficeGroupId.ToString() };
+            }
+
+            await _graphUpdaterService.SendEmailAsync(
+                    recipients,
+                    contentTemplate,
+                    additionalContent,
+                    runId,
+                    emailSubject: emailSubject,
+                    additionalSubjectParams: additionalSubjectContent);
         }
 
         private async Task<List<string>> GetThresholdRecipientsAsync(string requestors, Guid targetOfficeGroupId)
@@ -263,12 +291,12 @@ namespace Services
                 }
             }
 
-            if (recipients.Count > 0)
-                return recipients;
+            if (recipients.Count > 0) return recipients;
 
-            var top = _maximumNumberOfThresholdRecipients > 0 ? _maximumNumberOfThresholdRecipients + 1 : 0;
+            var top = _thresholdConfig.MaximumNumberOfThresholdRecipients > 0 ? _thresholdConfig.MaximumNumberOfThresholdRecipients + 1 : 0;
             var owners = await _graphUpdaterService.GetGroupOwnersAsync(targetOfficeGroupId, top);
-            if (owners.Count <= _maximumNumberOfThresholdRecipients || _maximumNumberOfThresholdRecipients == 0)
+
+            if (owners.Count <= _thresholdConfig.MaximumNumberOfThresholdRecipients || _thresholdConfig.MaximumNumberOfThresholdRecipients == 0)
             {
                 recipients.AddRange(owners.Select(x => x.Mail));
             }

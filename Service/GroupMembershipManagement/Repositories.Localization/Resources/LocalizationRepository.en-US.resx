@@ -136,6 +136,13 @@ This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@s
     <value>The sync has been disabled because the object ID(s) {0} aren't valid GUIDs and cannot refer to valid groups.
 This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
   </data>
+  <data name="SyncJobDisabledEmailBody" xml:space="preserve">
+    <value>The synchronization job for group {0} with Id: {1} has been disabled. If you would like to have it re-enabled please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt;.
+
+To learn more about GMM visit https://microsoft.sharepoint.com/sites/Office365/SitePages/Group-Membership-Management.aspx.
+
+This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
+  </data>
   <data name="SyncStartedEmailBody" xml:space="preserve">
     <value>The group {0} with Id: {1} has started its initial sync.
 This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
@@ -163,8 +170,11 @@ To learn more about GMM visit https://microsoft.sharepoint.com/sites/Office365/S
 
 This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
   </data>
+  <data name="SyncThresholdDisablingJobEmailSubject" xml:space="preserve">
+    <value>[THRESHOLD_EXCEEDED] GMM: Synchronization job for group {0} has been disabled.</value>
+  </data>
   <data name="SyncThresholdEmailSubject" xml:space="preserve">
-    <value>[THRESHOLD_EXCEEDED] Group Membership Management (GMM)</value>
+    <value>[THRESHOLD_EXCEEDED] GMM: Action required for group {0}.</value>
   </data>
   <data name="SyncThresholdIncreaseEmailBody" xml:space="preserve">
     <value>The group {0} with Id: {1} has exceeded the specified increase threshold.

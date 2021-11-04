@@ -54,14 +54,15 @@ namespace Repositories.Mocks
             return await Task.FromResult(result);
         }
 
-        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null)
+        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)
         {
             var message = new EmailMessage
             {
                 AdditionalContentParams = additionalContentParams,
                 CcEmailAddresses = ccEmail,
                 Content = contentTemplate,
-                ToEmailAddresses = toEmail
+                ToEmailAddresses = toEmail,
+                AdditionalSubjectParams = additionalSubjectParams
             };
 
             await _mailRepository.SendMailAsync(message, runId);

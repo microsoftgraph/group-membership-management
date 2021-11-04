@@ -45,7 +45,7 @@ namespace Services.Tests
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
-            thresholdConfig = new ThresholdConfig(5);
+            thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
                                             "recipient@domain.com", "recipient@domain.com");
 
@@ -100,7 +100,7 @@ namespace Services.Tests
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(response.ShouldCompleteMessage);
@@ -135,7 +135,7 @@ namespace Services.Tests
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
-            thresholdConfig = new ThresholdConfig(5);
+            thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
                                             "recipient@domain.com", "recipient@domain.com");
 
@@ -191,7 +191,7 @@ namespace Services.Tests
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(response.ShouldCompleteMessage);
@@ -226,7 +226,7 @@ namespace Services.Tests
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
-            thresholdConfig = new ThresholdConfig(5);
+            thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
                                             "recipient@domain.com", "recipient@domain.com");
 
@@ -278,7 +278,7 @@ namespace Services.Tests
                         updateJobRequest = request as JobStatusUpdaterRequest;
                     });
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
             await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
 
             Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
@@ -310,7 +310,7 @@ namespace Services.Tests
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
-            thresholdConfig = new ThresholdConfig(5);
+            thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
                                             "recipient@domain.com", "recipient@domain.com");
 
@@ -364,7 +364,7 @@ namespace Services.Tests
                         updateJobRequest = request as JobStatusUpdaterRequest;
                     });
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.AreEqual(SyncStatus.Error, updateJobRequest.Status);
@@ -398,7 +398,7 @@ namespace Services.Tests
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
-            thresholdConfig = new ThresholdConfig(5);
+            thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
                                             "recipient@domain.com", "recipient@domain.com");
 
@@ -453,7 +453,7 @@ namespace Services.Tests
                         jobUpdateRequest = request as JobStatusUpdaterRequest;
                     });
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsFalse(response.ShouldCompleteMessage);
@@ -488,7 +488,7 @@ namespace Services.Tests
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
-            thresholdConfig = new ThresholdConfig(5);
+            thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
                                             "recipient@domain.com", "recipient@domain.com");
 
@@ -522,7 +522,8 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = 20,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
-                RunId = Guid.NewGuid()
+                RunId = Guid.NewGuid(),
+                ThresholdViolations = 2
             };
 
             var context = new Mock<IDurableOrchestrationContext>();
@@ -549,7 +550,7 @@ namespace Services.Tests
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"is lesser than threshold value {syncJob.ThresholdPercentageForRemovals}")));
@@ -586,7 +587,7 @@ namespace Services.Tests
             mockMailRepo = new MockMailRepository();
             mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
             dryRun = new DryRunValue(false);
-            thresholdConfig = new ThresholdConfig(5);
+            thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
                                             "recipient@domain.com", "recipient@domain.com");
 
@@ -663,7 +664,7 @@ namespace Services.Tests
             var thresholdViolationCountLimit = 3;
             for (var thresholdViolationCount = 1; thresholdViolationCount <= thresholdViolationCountLimit; thresholdViolationCount++)
             {
-                var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders);
+                var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
                 response = await orchestrator.RunOrchestratorAsync(context.Object);
             }
 

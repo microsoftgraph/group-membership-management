@@ -23,6 +23,7 @@ namespace Services.Tests
         const string SyncThresholdIncreaseEmailBody = "SyncThresholdIncreaseEmailBody";
         const string SyncThresholdDecreaseEmailBody = "SyncThresholdDecreaseEmailBody";
         const string SyncThresholdBothEmailBody = "SyncThresholdBothEmailBody";
+        const string SyncJobDisabledEmailBody = "SyncJobDisabledEmailBody";
 
         Guid _rundId;
         Guid _targetGroupId;
@@ -82,7 +83,7 @@ namespace Services.Tests
             var mailRepository = new MockMailRepository();
             var graphUpdaterService = new MockGraphUpdaterService(mailRepository);
             var dryRun = new DryRunValue();
-            var thresholdConfig = new ThresholdConfig(5);
+            var thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             dryRun.DryRunEnabled = false;
 
             var deltaCalculator = new DeltaCalculatorService(
@@ -121,7 +122,7 @@ namespace Services.Tests
             var loggingRepository = new MockLoggingRepository();
             var mailRepository = new MockMailRepository();
             var dryRun = new DryRunValue();
-            var thresholdConfig = new ThresholdConfig(5);
+            var thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             var graphUpdaterService = new MockGraphUpdaterService(mailRepository);
 
             var deltaCalculator = new DeltaCalculatorService(
@@ -154,7 +155,7 @@ namespace Services.Tests
             var loggingRepository = new MockLoggingRepository();
             var mailRepository = new MockMailRepository();
             var dryRun = new DryRunValue();
-            var thresholdConfig = new ThresholdConfig(5);
+            var thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             var graphUpdaterService = new MockGraphUpdaterService(mailRepository);
 
             var deltaCalculator = new DeltaCalculatorService(
@@ -169,6 +170,7 @@ namespace Services.Tests
             var targetGroupUsers = new List<AzureADUser>();
 
             _job.LastRunTime = DateTime.UtcNow.AddDays(-1);
+            _job.ThresholdViolations = 2;
 
             syncjobRepository.ExistingSyncJobs.Add((_partitionKey, _rowKey), _job);
             graphUpdaterService.GroupsToUsers.Add(_sources[0].ObjectId, _users);
@@ -199,7 +201,7 @@ namespace Services.Tests
             var loggingRepository = new MockLoggingRepository();
             var mailRepository = new MockMailRepository();
             var dryRun = new DryRunValue();
-            var thresholdConfig = new ThresholdConfig(5);
+            var thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             var graphUpdaterService = new MockGraphUpdaterService(mailRepository);
 
             var deltaCalculator = new DeltaCalculatorService(
@@ -214,6 +216,7 @@ namespace Services.Tests
             var users = _membership.SourceMembers;
             _membership.SourceMembers = users.Take(2).ToList();
             _job.LastRunTime = DateTime.UtcNow.AddDays(-1);
+            _job.ThresholdViolations = 2;
 
             var targetGroupUsers = users.Take(6).ToList();
 
@@ -246,7 +249,7 @@ namespace Services.Tests
             var loggingRepository = new MockLoggingRepository();
             var mailRepository = new MockMailRepository();
             var dryRun = new DryRunValue();
-            var thresholdConfig = new ThresholdConfig(5);
+            var thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             var graphUpdaterService = new MockGraphUpdaterService(mailRepository);
 
             var deltaCalculator = new DeltaCalculatorService(
@@ -261,6 +264,7 @@ namespace Services.Tests
             var users = _membership.SourceMembers;
             _membership.SourceMembers = users.Take(2).ToList();
             _job.LastRunTime = DateTime.UtcNow.AddDays(-1);
+            _job.ThresholdViolations = 2;
 
             var targetGroupUsers = users.Skip(2).Take(2).ToList();
 
@@ -293,7 +297,7 @@ namespace Services.Tests
             var loggingRepository = new MockLoggingRepository();
             var mailRepository = new MockMailRepository();
             var dryRun = new DryRunValue();
-            var thresholdConfig = new ThresholdConfig(5);
+            var thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             var graphUpdaterService = new MockGraphUpdaterService(mailRepository);
 
             var deltaCalculator = new DeltaCalculatorService(
@@ -317,7 +321,13 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task SendNotificationToRequestor()
+        [DataRow(0)]
+        [DataRow(1)]
+        [DataRow(6)]
+        [DataRow(7)]
+        [DataRow(8)]
+        [DataRow(10)]
+        public async Task DoNotSendNotificationToRequestor(int currentThresoldViolations)
         {
             var calculator = new MembershipDifferenceCalculator<AzureADUser>();
             var senderRecipients = new EmailSenderRecipient
@@ -329,7 +339,7 @@ namespace Services.Tests
             var loggingRepository = new MockLoggingRepository();
             var mailRepository = new MockMailRepository();
             var dryRun = new DryRunValue();
-            var thresholdConfig = new ThresholdConfig(5);
+            var thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             var graphUpdaterService = new MockGraphUpdaterService(mailRepository);
 
             var deltaCalculator = new DeltaCalculatorService(
@@ -354,6 +364,69 @@ namespace Services.Tests
             owners.ForEach(ownersPage.Add);
 
             _job.LastRunTime = DateTime.UtcNow.AddDays(-1);
+            _job.ThresholdViolations = currentThresoldViolations;
+
+            syncjobRepository.ExistingSyncJobs.Add((_partitionKey, _rowKey), _job);
+            graphUpdaterService.GroupsToUsers.Add(_sources[0].ObjectId, _users);
+            graphUpdaterService.GroupsToUsers.Add(_targetGroupId, targetGroupUsers);
+            graphUpdaterService.Groups.Add(_sources[0].ObjectId, new Group { Id = _sources[0].ObjectId.ToString(), DisplayName = "Source Group" });
+            graphUpdaterService.Groups.Add(_targetGroupId, new Group { Id = _targetGroupId.ToString(), DisplayName = "Target Group", Owners = ownersPage });
+
+            var response = await deltaCalculator.CalculateDifferenceAsync(_membership, targetGroupUsers);
+
+            var emailMessage = mailRepository.SentEmails.Count();
+
+            Assert.AreEqual(SyncStatus.Idle, response.SyncStatus);
+            Assert.AreEqual(GraphUpdaterStatus.ThresholdExceeded, response.GraphUpdaterStatus);
+            Assert.AreEqual(targetGroupUsers.Count, graphUpdaterService.GroupsToUsers[_targetGroupId].Count);
+            Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is greater than threshold value")));
+            Assert.AreEqual(0, mailRepository.SentEmails.Count);
+        }
+
+        [TestMethod]
+        [DataRow(2)]
+        [DataRow(3)]
+        [DataRow(4)]
+        [DataRow(5)]
+        [DataRow(9)]
+        public async Task SendNotificationToRequestor(int currentThresoldViolations)
+        {
+            var calculator = new MembershipDifferenceCalculator<AzureADUser>();
+            var senderRecipients = new EmailSenderRecipient
+            {
+                SyncDisabledCCAddresses = "support@email.com"
+            };
+
+            var syncjobRepository = new MockSyncJobRepository();
+            var loggingRepository = new MockLoggingRepository();
+            var mailRepository = new MockMailRepository();
+            var dryRun = new DryRunValue();
+            var thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
+            var graphUpdaterService = new MockGraphUpdaterService(mailRepository);
+
+            var deltaCalculator = new DeltaCalculatorService(
+                                    calculator,
+                                    syncjobRepository,
+                                    loggingRepository,
+                                    senderRecipients,
+                                    graphUpdaterService,
+                                    dryRun,
+                                    thresholdConfig);
+
+            var targetGroupUsers = new List<AzureADUser>();
+            var ownersPage = new GroupOwnersPage();
+            var owners = new List<User>();
+
+            foreach (var email in _job.Requestor.Split(",", StringSplitOptions.RemoveEmptyEntries))
+            {
+                owners.Add(new User { Mail = email });
+            }
+
+            owners.AddRange(GenerateGraphUsers(3));
+            owners.ForEach(ownersPage.Add);
+
+            _job.LastRunTime = DateTime.UtcNow.AddDays(-1);
+            _job.ThresholdViolations = currentThresoldViolations;
 
             syncjobRepository.ExistingSyncJobs.Add((_partitionKey, _rowKey), _job);
             graphUpdaterService.GroupsToUsers.Add(_sources[0].ObjectId, _users);
@@ -369,9 +442,19 @@ namespace Services.Tests
             Assert.AreEqual(GraphUpdaterStatus.ThresholdExceeded, response.GraphUpdaterStatus);
             Assert.AreEqual(targetGroupUsers.Count, graphUpdaterService.GroupsToUsers[_targetGroupId].Count);
             Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is greater than threshold value")));
-            Assert.AreEqual(SyncThresholdIncreaseEmailBody, emailMessage.Content);
+
+            if (currentThresoldViolations != 9)
+            {
+                Assert.AreEqual(SyncThresholdIncreaseEmailBody, emailMessage.Content);
+                Assert.AreEqual(4, emailMessage.AdditionalContentParams.Length);
+            }
+            else
+            {
+                Assert.AreEqual(SyncJobDisabledEmailBody, emailMessage.Content);
+                Assert.AreEqual(2, emailMessage.AdditionalContentParams.Length);
+            }
+
             Assert.AreEqual(_targetGroupId.ToString(), emailMessage.AdditionalContentParams[1]);
-            Assert.AreEqual(4, emailMessage.AdditionalContentParams.Length);
             Assert.AreEqual(_job.Requestor, emailMessage.ToEmailAddresses);
         }
 
@@ -388,7 +471,7 @@ namespace Services.Tests
             var loggingRepository = new MockLoggingRepository();
             var mailRepository = new MockMailRepository();
             var dryRun = new DryRunValue();
-            var thresholdConfig = new ThresholdConfig(5);
+            var thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             var graphUpdaterService = new MockGraphUpdaterService(mailRepository);
 
             var deltaCalculator = new DeltaCalculatorService(
@@ -406,6 +489,7 @@ namespace Services.Tests
             owners.ForEach(ownersPage.Add);
 
             _job.LastRunTime = DateTime.UtcNow.AddDays(-1);
+            _job.ThresholdViolations = 2;
 
             syncjobRepository.ExistingSyncJobs.Add((_partitionKey, _rowKey), _job);
             graphUpdaterService.GroupsToUsers.Add(_sources[0].ObjectId, _users);
@@ -444,7 +528,7 @@ namespace Services.Tests
             var loggingRepository = new MockLoggingRepository();
             var mailRepository = new MockMailRepository();
             var dryRun = new DryRunValue();
-            var thresholdConfig = new ThresholdConfig(5);
+            var thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             var graphUpdaterService = new MockGraphUpdaterService(mailRepository);
 
             var deltaCalculator = new DeltaCalculatorService(
@@ -462,6 +546,7 @@ namespace Services.Tests
             owners.ForEach(ownersPage.Add);
 
             _job.LastRunTime = DateTime.UtcNow.AddDays(-1);
+            _job.ThresholdViolations = 2;
 
             syncjobRepository.ExistingSyncJobs.Add((_partitionKey, _rowKey), _job);
             graphUpdaterService.GroupsToUsers.Add(_sources[0].ObjectId, _users);

@@ -82,5 +82,10 @@ namespace Repositories.SecurityGroupCrawler.Tests
         {
             throw new NotImplementedException();
         }
+
+        public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

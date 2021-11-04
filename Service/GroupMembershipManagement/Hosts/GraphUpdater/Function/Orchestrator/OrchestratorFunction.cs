@@ -23,6 +23,7 @@ namespace Hosts.GraphUpdater
         private readonly TelemetryClient _telemetryClient;
         private readonly IGraphUpdaterService _graphUpdaterService = null;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
+        private readonly IThresholdConfig _thresholdConfig = null;
         private readonly bool _isDryRunEnabled;
         enum Metric
         {
@@ -36,12 +37,14 @@ namespace Hosts.GraphUpdater
             TelemetryClient telemetryClient,
             IGraphUpdaterService graphUpdaterService,
             IDryRunValue dryRun,
-            IEmailSenderRecipient emailSenderAndRecipients)
+            IEmailSenderRecipient emailSenderAndRecipients,
+            IThresholdConfig thresholdConfig)
         {
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
             _isDryRunEnabled = loggingRepository.DryRun = dryRun != null ? dryRun.DryRunEnabled : throw new ArgumentNullException(nameof(dryRun));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
+            _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
@@ -133,6 +136,9 @@ namespace Hosts.GraphUpdater
                         if (deltaResponse.GraphUpdaterStatus == GraphUpdaterStatus.ThresholdExceeded)
                         {
                             updateRequest.ThresholdViolations++;
+
+                            if (updateRequest.ThresholdViolations >= _thresholdConfig.NumberOfThresholdViolationsToDisableJob)
+                                updateRequest.Status = SyncStatus.Disabled;
                         }
 
                         await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), updateRequest);

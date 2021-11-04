@@ -14,5 +14,6 @@ namespace Entities
         public string ToEmailAddresses { get; set; }
         public string CcEmailAddresses { get; set; }
         public string[] AdditionalContentParams { get; set; }
+        public string[] AdditionalSubjectParams { get; set; }
     }
 }
