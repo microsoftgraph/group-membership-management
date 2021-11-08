@@ -298,7 +298,7 @@ namespace Services
 
             if (owners.Count <= _thresholdConfig.MaximumNumberOfThresholdRecipients || _thresholdConfig.MaximumNumberOfThresholdRecipients == 0)
             {
-                recipients.AddRange(owners.Select(x => x.Mail));
+                recipients.AddRange(owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
             }
 
             return recipients;

@@ -84,13 +84,33 @@ namespace Repositories.GraphGroups
         {
             if (await GroupExists(groupObjectId) == false) { return false; }
 
+            User user = null;
+
+            try
+            {
+                user = await _graphServiceClient.Users[email].Request().GetAsync();
+            }
+            catch (ServiceException ex)
+            {
+                if (ex.StatusCode == HttpStatusCode.NotFound)
+                    return false;
+
+                await _log.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = RunId
+                });
+
+                throw;
+            }
+
             await _log.LogMessageAsync(new LogMessage
             {
                 RunId = RunId,
                 Message = $"Checking if email owns the group {groupObjectId}."
             });
 
-            return await IsGroupOwnerAsync($"mail eq '{email}'", groupObjectId);
+            return await IsGroupOwnerAsync($"id eq '{user.Id}'", groupObjectId);
         }
 
         public async Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
@@ -106,7 +126,7 @@ namespace Repositories.GraphGroups
             try
             {
                 var request = _graphServiceClient.Groups[groupObjectId.ToString()].Owners
-                                        .Request().WithMaxRetry(MaxRetries).Select("mail");
+                                        .Request().WithMaxRetry(MaxRetries);
 
                 if (top > 0) request = request.Top(top);
 
