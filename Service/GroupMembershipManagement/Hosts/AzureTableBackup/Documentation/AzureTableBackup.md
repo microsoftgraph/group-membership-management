@@ -27,7 +27,9 @@ to indicate the desire to clean all tables in the storage account
 * BackupType: The type of backup desired from the following two options:
     * "blob"    | backup / cleanup blob storage
     * "table"   | backup / cleanup table storage
-* CleanupOnly: True if this is just to clean old tables for maintenance, but false if you want a full backup
+* CleanupOnly: Whether or not you only want to clean up
+    * The default value is false, which means that a full backup and cleanup will be performed on the indicated tables
+    * Set this to true if you only want to clean old tables for maintenance
 * DeleteAfterDays: The number of days a table exists before it should be deleted
 
 ## Running the function
