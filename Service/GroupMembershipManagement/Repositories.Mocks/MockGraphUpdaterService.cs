@@ -95,7 +95,7 @@ namespace Repositories.Mocks
             throw new NotImplementedException();
         }
 
-        public Task<bool> IsEmailOwnerOfGroupAsync(string email, Guid groupObjectId)
+        public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
         {
             var owners = Groups[groupObjectId].Owners;
             var isOwner = owners != null && owners.OfType<User>().Where(x => x.Mail.Equals(email, StringComparison.InvariantCultureIgnoreCase)).Any();

@@ -72,7 +72,7 @@ namespace Services
                     SenderPassword = _emailSenderAndRecipients.SenderPassword,
                     ToEmailAddresses = job.Requestor,
                     CcEmailAddresses = string.Empty,
-                    AdditionalContentParams = new[] { groupName, job.TargetOfficeGroupId.ToString() }
+                    AdditionalContentParams = new[] { groupName, job.TargetOfficeGroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses }
                 };
 
                 await _mailRepository.SendMailAsync(message, job.RunId);
@@ -131,7 +131,7 @@ namespace Services
 						SenderPassword = _emailSenderAndRecipients.SenderPassword,
 						ToEmailAddresses = job.Requestor,
 						CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
-						AdditionalContentParams = new[] { job.TargetOfficeGroupId.ToString() }
+						AdditionalContentParams = new[] { job.TargetOfficeGroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses }
 					}, job.RunId);
 					return false;
                 }

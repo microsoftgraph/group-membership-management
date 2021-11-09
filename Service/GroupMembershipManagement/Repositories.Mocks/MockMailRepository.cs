@@ -29,5 +29,7 @@ namespace Repositories.Mocks
 		public string SyncCompletedCCAddresses => "";
 
 		public string SyncDisabledCCAddresses => "";
-	}
+
+        public string SupportEmailAddresses => "";
+    }
 }

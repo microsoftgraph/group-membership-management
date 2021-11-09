@@ -29,6 +29,7 @@ namespace Services
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IGraphUpdaterService _graphUpdaterService;
         private readonly IThresholdConfig _thresholdConfig;
+        private readonly IGMMResources _gmmResources;
         private readonly bool _isGraphUpdaterDryRunEnabled;
 
         public DeltaCalculatorService(
@@ -38,7 +39,8 @@ namespace Services
             IEmailSenderRecipient emailSenderAndRecipients,
             IGraphUpdaterService graphUpdaterService,
             IDryRunValue dryRun,
-            IThresholdConfig thresholdConfig
+            IThresholdConfig thresholdConfig,
+            IGMMResources gmmResources
             )
         {
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
@@ -48,6 +50,7 @@ namespace Services
             _isGraphUpdaterDryRunEnabled = _loggingRepository.DryRun = dryRun != null ? dryRun.DryRunEnabled : throw new ArgumentNullException(nameof(dryRun));
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
             _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
+            _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
         }
 
         public async Task<DeltaResponse> CalculateDifferenceAsync(GroupMembership membership, List<AzureADUser> membersFromDestinationGroup)
@@ -227,7 +230,9 @@ namespace Services
                       job.ThresholdPercentageForAdditions.ToString(),
                       threshold.IncreaseThresholdPercentage.ToString("F2"),
                       job.ThresholdPercentageForRemovals.ToString(),
-                      threshold.DecreaseThresholdPercentage.ToString("F2")
+                      threshold.DecreaseThresholdPercentage.ToString("F2"),
+                      _gmmResources.LearnMoreAboutGMMUrl,
+                      _emailSenderAndRecipients.SupportEmailAddresses
                 };
             }
             else if (threshold.IsAdditionsThresholdExceeded)
@@ -238,7 +243,9 @@ namespace Services
                       groupName,
                       job.TargetOfficeGroupId.ToString(),
                       job.ThresholdPercentageForAdditions.ToString(),
-                      threshold.IncreaseThresholdPercentage.ToString("F2")
+                      threshold.IncreaseThresholdPercentage.ToString("F2"),
+                      _gmmResources.LearnMoreAboutGMMUrl,
+                      _emailSenderAndRecipients.SupportEmailAddresses
                     };
             }
             else
@@ -249,11 +256,13 @@ namespace Services
                       groupName,
                       job.TargetOfficeGroupId.ToString(),
                       job.ThresholdPercentageForRemovals.ToString(),
-                      threshold.DecreaseThresholdPercentage.ToString("F2")
+                      threshold.DecreaseThresholdPercentage.ToString("F2"),
+                      _gmmResources.LearnMoreAboutGMMUrl,
+                      _emailSenderAndRecipients.SupportEmailAddresses
                 };
             }
 
-            var recipients = _emailSenderAndRecipients.SyncDisabledCCAddresses;
+            var recipients = _emailSenderAndRecipients.SupportEmailAddresses ?? _emailSenderAndRecipients.SyncDisabledCCAddresses;
 
             if (!string.IsNullOrWhiteSpace(job.Requestor))
             {
@@ -266,7 +275,13 @@ namespace Services
             {
                 emailSubject = SyncThresholdDisablingJobEmailSubject;
                 contentTemplate = SyncJobDisabledEmailBody;
-                additionalContent = new[] { groupName, job.TargetOfficeGroupId.ToString() };
+                additionalContent = new[]
+                {
+                    groupName,
+                    job.TargetOfficeGroupId.ToString(),
+                    _gmmResources.LearnMoreAboutGMMUrl,
+                    _emailSenderAndRecipients.SupportEmailAddresses
+                };
             }
 
             await _graphUpdaterService.SendEmailAsync(
@@ -285,7 +300,7 @@ namespace Services
 
             foreach (var email in emails)
             {
-                if (await _graphUpdaterService.IsEmailOwnerOfGroupAsync(email, targetOfficeGroupId))
+                if (await _graphUpdaterService.IsEmailRecipientOwnerOfGroupAsync(email, targetOfficeGroupId))
                 {
                     recipients.Add(email);
                 }

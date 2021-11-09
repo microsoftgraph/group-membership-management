@@ -158,7 +158,8 @@
     "senderUsername": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'senderUsername')]",
     "senderPassword": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'senderPassword')]",
     "syncCompletedCCEmailAddresses": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'syncCompletedCCEmailAddresses')]",
-    "syncDisabledCCEmailAddresses": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'syncDisabledCCEmailAddresses')]"
+    "syncDisabledCCEmailAddresses": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'syncDisabledCCEmailAddresses')]",
+    "supportEmailAddresses": "[resourceId(subscription().subscriptionId, parameters('prereqsKeyVaultResourceGroup'), 'Microsoft.KeyVault/vaults/secrets', parameters('prereqsKeyVaultName'), 'supportEmailAddresses')]"
   },
   "resources": [
     {
@@ -320,6 +321,11 @@
               {
                 "name": "syncDisabledCCEmailAddresses",
                 "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('syncDisabledCCEmailAddresses'), '2019-09-01').secretUriWithVersion, ')')]",
+                "slotSetting": false
+              },
+              {
+                "name": "supportEmailAddresses",
+                "value": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('supportEmailAddresses'), '2019-09-01').secretUriWithVersion, ')')]",
                 "slotSetting": false
               },
               {

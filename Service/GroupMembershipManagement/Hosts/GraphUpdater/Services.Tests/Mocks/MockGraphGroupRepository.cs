@@ -71,7 +71,7 @@ namespace Services.Tests.Mocks
 			throw new NotImplementedException();
 		}
 
-        public Task<bool> IsEmailOwnerOfGroupAsync(string email, Guid groupObjectId)
+        public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
         {
             throw new NotImplementedException();
         }

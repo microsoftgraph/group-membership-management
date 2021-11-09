@@ -194,6 +194,14 @@ param appConfigurationKeyData array = [
       tag1: 'JobScheduler'
     }
   }
+  {
+    key: 'GMM:LearnMoreUrl'
+    value: 'http://learn-more-about-gmm-url.com'
+    contentType: 'string'
+    tag: {
+      tag1: 'GMM'
+    }
+  }
 ]
 
 @description('Unique name within the resource group for the Action group.')

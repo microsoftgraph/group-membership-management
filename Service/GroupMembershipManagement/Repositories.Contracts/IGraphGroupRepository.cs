@@ -16,7 +16,7 @@ namespace Repositories.Contracts
 		Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid objectId);
 		Task<string> GetGroupNameAsync(Guid objectId);
 		Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId);
-		Task<bool> IsEmailOwnerOfGroupAsync(string email, Guid groupObjectId);
+		Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId);
 		Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0);
 		Task<bool> GroupExists(Guid objectId);
 		Task<List<AzureADUser>> GetUsersInGroupTransitively(Guid objectId);

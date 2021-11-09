@@ -93,7 +93,7 @@ namespace Tests.FunctionApps.Mocks
             return Task.FromResult((users, nonUserGraphObjects, "", (IGroupTransitiveMembersCollectionWithReferencesPage)null));
 		}
 
-        public Task<bool> IsEmailOwnerOfGroupAsync(string email, Guid groupObjectId)
+        public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
         {
             throw new NotImplementedException();
         }

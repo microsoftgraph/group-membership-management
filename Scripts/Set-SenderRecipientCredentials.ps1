@@ -24,6 +24,9 @@ Comma separated list of email addresseses of secondary recipients to an email wh
 .PARAMETER SyncDisabledCCEmailAddresses
 Comma separated list of email addresseses of secondary recipients to an email when the sync is disabled, eg: abc@tenant.com, def@tenant.com
 
+.PARAMETER SupportEmailAddresses
+Comma separated list of email addresseses of secondary recipients providing technical support, eg: abc@tenant.com, def@tenant.com
+
 .EXAMPLE
 Set-SenderRecipientCredentials	-SubscriptionName "<subscription name>" `
 								-SolutionAbbreviation "gmm" `
@@ -32,6 +35,7 @@ Set-SenderRecipientCredentials	-SubscriptionName "<subscription name>" `
 								-SenderPassword "<sender password>" `
 								-SyncCompletedCCEmailAddresses "<cc email addresses when sync is completed>" `
 								-SyncDisabledCCEmailAddresses "<cc email addresses when sync is disabled>" `
+								-SupportEmailAddresses "<cc email addresses when sync is disabled>" `
 								-Verbose
 #>
 function Set-SenderRecipientCredentials {
@@ -52,12 +56,14 @@ function Set-SenderRecipientCredentials {
 		[Parameter(Mandatory=$False)]
 		[string] $SyncDisabledCCEmailAddresses,
 		[Parameter(Mandatory=$False)]
+		[string] $SupportEmailAddresses,
+		[Parameter(Mandatory=$False)]
 		[string] $ErrorActionPreference = $Stop
 	)
 	Write-Verbose "Set-SenderRecipientCredentials starting..."
 
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
-		
+
 	. ($scriptsDirectory + '\Scripts\Add-AzAccountIfNeeded.ps1')
 	Add-AzAccountIfNeeded
 
@@ -66,7 +72,7 @@ function Set-SenderRecipientCredentials {
 
 	. ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
 	Install-AzModuleIfNeeded
-	
+
 	$keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
     $keyVault = Get-AzKeyVault -VaultName $keyVaultName
 
@@ -77,7 +83,7 @@ function Set-SenderRecipientCredentials {
 
 	#region Store Sender Username in KeyVault
     Write-Verbose "Sender Username is $SenderUserName"
-	
+
     $senderUsernameKeyVaultSecretName = "senderUsername"
 	$senderUsernameSecret = ConvertTo-SecureString -AsPlainText -Force  $SenderUserName
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
@@ -118,6 +124,21 @@ function Set-SenderRecipientCredentials {
 						 -Name $syncDisabledCCKeyVaultSecretName `
 						 -SecretValue $syncDisabledCCSecret
 	Write-Verbose "$syncDisabledCCKeyVaultSecretName added to vault..."
+
+	#endregion
+
+	if(!($SupportEmailAddresses))
+    {
+        $SupportEmailAddresses = "admin@$tenantName.onmicrosoft.com"
+    }
+
+	#region Store SupportEmailAddresses secret in KeyVault
+	$supportEmailAddressesSecretName = "supportEmailAddresses"
+	$supportEmailCCSecret = ConvertTo-SecureString -AsPlainText -Force  $SupportEmailAddresses
+	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
+						 -Name $supportEmailAddressesSecretName `
+						 -SecretValue $supportEmailCCSecret
+	Write-Verbose "$supportEmailAddressesSecretName added to vault..."
 
 	#endregion
 	Write-Verbose "Set-SenderRecipientCredentials completed."

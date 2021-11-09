@@ -194,9 +194,9 @@ namespace Services
             return (status, graphResponse.SuccessCount);
         }
 
-        public async Task<bool> IsEmailOwnerOfGroupAsync(string email, Guid groupObjectId)
+        public async Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
         {
-            return await _graphGroupRepository.IsEmailOwnerOfGroupAsync(email, groupObjectId);
+            return await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(email, groupObjectId);
         }
 
         public async Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)

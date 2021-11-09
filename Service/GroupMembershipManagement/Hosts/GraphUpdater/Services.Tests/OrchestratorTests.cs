@@ -25,6 +25,11 @@ namespace Services.Tests
     [TestClass]
     public class OrchestratorTests
     {
+        GMMResources _gmmResources = new GMMResources
+        {
+            LearnMoreAboutGMMUrl = "http://learn-more-url"
+        };
+
         [TestMethod]
         public async Task RunOrchestratorValidSyncTest()
         {
@@ -47,7 +52,7 @@ namespace Services.Tests
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com");
+                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
 
             calculator = new MembershipDifferenceCalculator<AzureADUser>();
             mockGroupRepo = new MockGraphGroupRepository();
@@ -59,7 +64,8 @@ namespace Services.Tests
                                             mailSenders,
                                             mockGraphUpdaterService,
                                             dryRun,
-                                            thresholdConfig);
+                                            thresholdConfig,
+                                            _gmmResources);
 
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
@@ -91,7 +97,7 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
                     .Returns(async () => await GetGroupMembershipMessageResponseAsync(graphUpdaterRequest, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
-                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService));
+                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
             context.Setup(x => x.CallSubOrchestratorAsync<List<AzureADUser>>(It.IsAny<string>(), It.IsAny<UsersReaderRequest>()))
                     .ReturnsAsync(destinationMembers);
             context.Setup(x => x.CallActivityAsync<DeltaResponse>(It.IsAny<string>(), It.IsAny<DeltaCalculatorRequest>()))
@@ -137,7 +143,7 @@ namespace Services.Tests
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com");
+                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
 
             calculator = new MembershipDifferenceCalculator<AzureADUser>();
             mockGroupRepo = new MockGraphGroupRepository();
@@ -149,7 +155,8 @@ namespace Services.Tests
                                             mailSenders,
                                             mockGraphUpdaterService,
                                             dryRun,
-                                            thresholdConfig);
+                                            thresholdConfig,
+                                            _gmmResources);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -180,7 +187,7 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
                     .Returns(async () => await GetGroupMembershipMessageResponseAsync(graphUpdaterRequest, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
-                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService));
+                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
             context.Setup(x => x.CallSubOrchestratorAsync<List<AzureADUser>>(It.IsAny<string>(), It.IsAny<UsersReaderRequest>()))
                     .ReturnsAsync(destinationMembers);
             context.Setup(x => x.CallActivityAsync<DeltaResponse>(It.IsAny<string>(), It.IsAny<DeltaCalculatorRequest>()))
@@ -228,7 +235,7 @@ namespace Services.Tests
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com");
+                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
 
             calculator = new MembershipDifferenceCalculator<AzureADUser>();
             mockGroupRepo = new MockGraphGroupRepository();
@@ -240,7 +247,8 @@ namespace Services.Tests
                                             mailSenders,
                                             mockGraphUpdaterService,
                                             dryRun,
-                                            thresholdConfig);
+                                            thresholdConfig,
+                                            _gmmResources);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -312,7 +320,7 @@ namespace Services.Tests
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com");
+                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
 
             calculator = new MembershipDifferenceCalculator<AzureADUser>();
             mockGroupRepo = new MockGraphGroupRepository();
@@ -324,7 +332,8 @@ namespace Services.Tests
                                             mailSenders,
                                             mockGraphUpdaterService,
                                             dryRun,
-                                            thresholdConfig);
+                                            thresholdConfig,
+                                            _gmmResources);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -355,7 +364,7 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
                     .Returns(async () => await GetGroupMembershipMessageResponseAsync(graphUpdaterRequest, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
-                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService));
+                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
 
             JobStatusUpdaterRequest updateJobRequest = null;
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()))
@@ -400,7 +409,7 @@ namespace Services.Tests
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com");
+                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
 
             calculator = new MembershipDifferenceCalculator<AzureADUser>();
             mockGroupRepo = new MockGraphGroupRepository();
@@ -412,7 +421,8 @@ namespace Services.Tests
                                             mailSenders,
                                             mockGraphUpdaterService,
                                             dryRun,
-                                            thresholdConfig);
+                                            thresholdConfig,
+                                            _gmmResources);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -490,7 +500,7 @@ namespace Services.Tests
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com");
+                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
 
             calculator = new MembershipDifferenceCalculator<AzureADUser>();
             mockGroupRepo = new MockGraphGroupRepository();
@@ -502,7 +512,8 @@ namespace Services.Tests
                                             mailSenders,
                                             mockGraphUpdaterService,
                                             dryRun,
-                                            thresholdConfig);
+                                            thresholdConfig,
+                                            _gmmResources);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -534,7 +545,7 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
                     .Returns(async () => await GetGroupMembershipMessageResponseAsync(graphUpdaterRequest, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
-                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService));
+                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
             context.Setup(x => x.CallSubOrchestratorAsync<List<AzureADUser>>(It.IsAny<string>(), It.IsAny<UsersReaderRequest>()))
                     .ReturnsAsync(destinationMembers);
             context.Setup(x => x.CallActivityAsync<DeltaResponse>(It.IsAny<string>(), It.IsAny<DeltaCalculatorRequest>()))
@@ -589,7 +600,7 @@ namespace Services.Tests
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com");
+                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
 
             calculator = new MembershipDifferenceCalculator<AzureADUser>();
             mockGroupRepo = new MockGraphGroupRepository();
@@ -601,7 +612,8 @@ namespace Services.Tests
                                             mailSenders,
                                             mockGraphUpdaterService,
                                             dryRun,
-                                            thresholdConfig);
+                                            thresholdConfig,
+                                            _gmmResources);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -646,7 +658,7 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
                     .Returns(async () => await GetGroupMembershipMessageResponseAsync(graphUpdaterRequest, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
-                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService));
+                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
             context.Setup(x => x.CallSubOrchestratorAsync<List<AzureADUser>>(It.IsAny<string>(), It.IsAny<UsersReaderRequest>()))
                     .ReturnsAsync(destinationMembers);
             context.Setup(x => x.CallActivityAsync<DeltaResponse>(It.IsAny<string>(), It.IsAny<DeltaCalculatorRequest>()))
@@ -708,7 +720,8 @@ namespace Services.Tests
         private async Task<bool> CheckIfGroupExistsAsync(
                 GroupMembership groupMembership,
                 MockLoggingRepository mockLoggingRepo,
-                MockGraphUpdaterService mockGraphUpdaterService)
+                MockGraphUpdaterService mockGraphUpdaterService,
+                EmailSenderRecipient mailSenders)
         {
             var request = new GroupValidatorRequest
             {
@@ -717,7 +730,7 @@ namespace Services.Tests
                 JobPartitionKey = groupMembership.SyncJobPartitionKey,
                 JobRowKey = groupMembership.SyncJobRowKey
             };
-            var groupValidatorFunction = new GroupValidatorFunction(mockLoggingRepo, mockGraphUpdaterService);
+            var groupValidatorFunction = new GroupValidatorFunction(mockLoggingRepo, mockGraphUpdaterService, mailSenders);
 
             return await groupValidatorFunction.ValidateGroupAsync(request);
         }

@@ -75,6 +75,17 @@ namespace Hosts.FunctionBase
             builder.Services.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(new LogAnalyticsSecret<LoggingRepository>(GetValueOrThrow("logAnalyticsCustomerId"), GetValueOrThrow("logAnalyticsPrimarySharedKey"), FunctionName));
             builder.Services.AddSingleton<ILoggingRepository, LoggingRepository>();
 
+            builder.Services.AddOptions<GMMResources>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.LearnMoreAboutGMMUrl = configuration.GetValue<string>("GMM:LearnMoreUrl");
+            });
+
+            builder.Services.AddSingleton<IGMMResources>(services =>
+            {
+                var creds = services.GetService<IOptions<GMMResources>>();
+                return new GMMResources(creds.Value.LearnMoreAboutGMMUrl);
+            });
+
             builder.Services.AddOptions<GraphCredentials>().Configure<IConfiguration>((settings, configuration) => configuration.GetSection("graphCredentials").Bind(settings));
 
             builder.Services.AddOptions<EmailSenderRecipient>().Configure<IConfiguration>((settings, configuration) =>
@@ -83,12 +94,18 @@ namespace Hosts.FunctionBase
                 settings.SenderPassword = configuration.GetValue<string>("senderPassword");
                 settings.SyncDisabledCCAddresses = configuration.GetValue<string>("syncDisabledCCEmailAddresses");
                 settings.SyncCompletedCCAddresses = configuration.GetValue<string>("syncCompletedCCEmailAddresses");
+                settings.SupportEmailAddresses = configuration.GetValue<string>("supportEmailAddresses");
             });
 
             builder.Services.AddSingleton<IEmailSenderRecipient>(services =>
             {
                 var creds = services.GetService<IOptions<EmailSenderRecipient>>();
-                return new EmailSenderRecipient(creds.Value.SenderAddress, creds.Value.SenderPassword, creds.Value.SyncCompletedCCAddresses, creds.Value.SyncDisabledCCAddresses);
+                return new EmailSenderRecipient(
+                    creds.Value.SenderAddress,
+                    creds.Value.SenderPassword,
+                    creds.Value.SyncCompletedCCAddresses,
+                    creds.Value.SyncDisabledCCAddresses,
+                    creds.Value.SupportEmailAddresses);
             });
 
             builder.Services.AddSingleton<IMailRepository>(services =>

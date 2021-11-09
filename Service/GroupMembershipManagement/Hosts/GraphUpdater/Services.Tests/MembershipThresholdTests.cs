@@ -33,6 +33,10 @@ namespace Services.Tests
         List<AzureADUser> _users;
         SyncJob _job;
         GroupMembership _membership;
+        GMMResources _gmmResources = new GMMResources
+        {
+            LearnMoreAboutGMMUrl = "http://learn-more-url"
+        };
 
         [TestInitialize]
         public void SetupData()
@@ -84,6 +88,7 @@ namespace Services.Tests
             var graphUpdaterService = new MockGraphUpdaterService(mailRepository);
             var dryRun = new DryRunValue();
             var thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
+           
             dryRun.DryRunEnabled = false;
 
             var deltaCalculator = new DeltaCalculatorService(
@@ -93,7 +98,8 @@ namespace Services.Tests
                                      senderRecipients,
                                      graphUpdaterService,
                                      dryRun,
-                                     thresholdConfig);
+                                     thresholdConfig,
+                                     _gmmResources);
 
 
             var targetGroupUsers = new List<AzureADUser>();
@@ -132,7 +138,8 @@ namespace Services.Tests
                                     senderRecipients,
                                     graphUpdaterService,
                                     dryRun,
-                                    thresholdConfig);
+                                    thresholdConfig,
+                                    _gmmResources);
 
 
             syncjobRepository.ExistingSyncJobs.Add((_partitionKey, _rowKey), _job);
@@ -165,7 +172,8 @@ namespace Services.Tests
                                     senderRecipients,
                                     graphUpdaterService,
                                     dryRun,
-                                    thresholdConfig);
+                                    thresholdConfig,
+                                    _gmmResources);
 
             var targetGroupUsers = new List<AzureADUser>();
 
@@ -188,7 +196,7 @@ namespace Services.Tests
             Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is greater than threshold value")));
             Assert.AreEqual(SyncThresholdIncreaseEmailBody, emailMessage.Content);
             Assert.AreEqual(_targetGroupId.ToString(), emailMessage.AdditionalContentParams[1]);
-            Assert.AreEqual(4, emailMessage.AdditionalContentParams.Length);
+            Assert.AreEqual(6, emailMessage.AdditionalContentParams.Length);
         }
 
         [TestMethod]
@@ -211,7 +219,8 @@ namespace Services.Tests
                                     senderRecipients,
                                     graphUpdaterService,
                                     dryRun,
-                                    thresholdConfig);
+                                    thresholdConfig,
+                                    _gmmResources);
 
             var users = _membership.SourceMembers;
             _membership.SourceMembers = users.Take(2).ToList();
@@ -236,7 +245,7 @@ namespace Services.Tests
             Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is lesser than threshold value")));
             Assert.AreEqual(SyncThresholdDecreaseEmailBody, emailMessage.Content);
             Assert.AreEqual(_targetGroupId.ToString(), emailMessage.AdditionalContentParams[1]);
-            Assert.AreEqual(4, emailMessage.AdditionalContentParams.Length);
+            Assert.AreEqual(6, emailMessage.AdditionalContentParams.Length);
         }
 
         [TestMethod]
@@ -259,7 +268,8 @@ namespace Services.Tests
                                     senderRecipients,
                                     graphUpdaterService,
                                     dryRun,
-                                    thresholdConfig);
+                                    thresholdConfig,
+                                    _gmmResources);
 
             var users = _membership.SourceMembers;
             _membership.SourceMembers = users.Take(2).ToList();
@@ -284,7 +294,7 @@ namespace Services.Tests
             Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is lesser than threshold value")));
             Assert.AreEqual(SyncThresholdBothEmailBody, emailMessage.Content);
             Assert.AreEqual(_targetGroupId.ToString(), emailMessage.AdditionalContentParams[1]);
-            Assert.AreEqual(6, emailMessage.AdditionalContentParams.Length);
+            Assert.AreEqual(8, emailMessage.AdditionalContentParams.Length);
         }
 
         [TestMethod]
@@ -307,7 +317,8 @@ namespace Services.Tests
                                     senderRecipients,
                                     graphUpdaterService,
                                     dryRun,
-                                    thresholdConfig);
+                                    thresholdConfig,
+                                    _gmmResources);
 
             var targetGroupUsers = new List<AzureADUser>();
 
@@ -349,7 +360,8 @@ namespace Services.Tests
                                     senderRecipients,
                                     graphUpdaterService,
                                     dryRun,
-                                    thresholdConfig);
+                                    thresholdConfig,
+                                    _gmmResources);
 
             var targetGroupUsers = new List<AzureADUser>();
             var ownersPage = new GroupOwnersPage();
@@ -411,7 +423,8 @@ namespace Services.Tests
                                     senderRecipients,
                                     graphUpdaterService,
                                     dryRun,
-                                    thresholdConfig);
+                                    thresholdConfig,
+                                    _gmmResources);
 
             var targetGroupUsers = new List<AzureADUser>();
             var ownersPage = new GroupOwnersPage();
@@ -446,12 +459,12 @@ namespace Services.Tests
             if (currentThresoldViolations != 9)
             {
                 Assert.AreEqual(SyncThresholdIncreaseEmailBody, emailMessage.Content);
-                Assert.AreEqual(4, emailMessage.AdditionalContentParams.Length);
+                Assert.AreEqual(6, emailMessage.AdditionalContentParams.Length);
             }
             else
             {
                 Assert.AreEqual(SyncJobDisabledEmailBody, emailMessage.Content);
-                Assert.AreEqual(2, emailMessage.AdditionalContentParams.Length);
+                Assert.AreEqual(4, emailMessage.AdditionalContentParams.Length);
             }
 
             Assert.AreEqual(_targetGroupId.ToString(), emailMessage.AdditionalContentParams[1]);
@@ -481,7 +494,8 @@ namespace Services.Tests
                                     senderRecipients,
                                     graphUpdaterService,
                                     dryRun,
-                                    thresholdConfig);
+                                    thresholdConfig,
+                                    _gmmResources);
 
             var targetGroupUsers = new List<AzureADUser>();
             var ownersPage = new GroupOwnersPage();
@@ -507,7 +521,7 @@ namespace Services.Tests
             Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is greater than threshold value")));
             Assert.AreEqual(SyncThresholdIncreaseEmailBody, emailMessage.Content);
             Assert.AreEqual(_targetGroupId.ToString(), emailMessage.AdditionalContentParams[1]);
-            Assert.AreEqual(4, emailMessage.AdditionalContentParams.Length);
+            Assert.AreEqual(6, emailMessage.AdditionalContentParams.Length);
 
             foreach (var owner in owners)
             {
@@ -521,7 +535,7 @@ namespace Services.Tests
             var calculator = new MembershipDifferenceCalculator<AzureADUser>();
             var senderRecipients = new EmailSenderRecipient
             {
-                SyncDisabledCCAddresses = "support@email.com"
+                SupportEmailAddresses = "support@email.com"
             };
 
             var syncjobRepository = new MockSyncJobRepository();
@@ -538,7 +552,8 @@ namespace Services.Tests
                                     senderRecipients,
                                     graphUpdaterService,
                                     dryRun,
-                                    thresholdConfig);
+                                    thresholdConfig,
+                                    _gmmResources);
 
             var targetGroupUsers = new List<AzureADUser>();
             var ownersPage = new GroupOwnersPage();
@@ -564,8 +579,8 @@ namespace Services.Tests
             Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is greater than threshold value")));
             Assert.AreEqual(SyncThresholdIncreaseEmailBody, emailMessage.Content);
             Assert.AreEqual(_targetGroupId.ToString(), emailMessage.AdditionalContentParams[1]);
-            Assert.AreEqual(4, emailMessage.AdditionalContentParams.Length);
-            Assert.AreEqual(senderRecipients.SyncDisabledCCAddresses, emailMessage.ToEmailAddresses);
+            Assert.AreEqual(6, emailMessage.AdditionalContentParams.Length);
+            Assert.AreEqual(senderRecipients.SupportEmailAddresses, emailMessage.ToEmailAddresses);
         }
 
         private List<AzureADUser> MakeUsers(int size, int startIdx)

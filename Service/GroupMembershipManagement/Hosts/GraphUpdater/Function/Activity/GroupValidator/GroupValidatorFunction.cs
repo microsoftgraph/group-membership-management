@@ -3,9 +3,9 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
 using Polly;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -18,11 +18,13 @@ namespace Hosts.GraphUpdater
         private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
         private readonly ILoggingRepository _loggingRepository;
         private readonly IGraphUpdaterService _graphUpdaterService;
+        private readonly IEmailSenderRecipient _emailSenderAndRecipients;
 
-        public GroupValidatorFunction(ILoggingRepository loggingRepository, IGraphUpdaterService graphUpdaterService)
+        public GroupValidatorFunction(ILoggingRepository loggingRepository, IGraphUpdaterService graphUpdaterService, IEmailSenderRecipient emailSenderAndRecipients)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
+            _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
         }
 
         [FunctionName(nameof(GroupValidatorFunction))]
@@ -46,7 +48,11 @@ namespace Hosts.GraphUpdater
 
                     var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobPartitionKey, request.JobRowKey);
                     if (syncJob != null)
-                        await _graphUpdaterService.SendEmailAsync(syncJob.Requestor, SyncDisabledNoGroupEmailBody, new[] { request.GroupId.ToString() }, request.RunId);
+                        await _graphUpdaterService.SendEmailAsync(
+                            syncJob.Requestor,
+                            SyncDisabledNoGroupEmailBody,
+                            new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses },
+                            request.RunId);
                 }
                 else if (groupExistsResult.FaultType == FaultType.ExceptionHandledByThisPolicy)
                     await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Exceeded {NumberOfGraphRetries} while trying to determine if a group exists." });

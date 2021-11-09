@@ -21,7 +21,7 @@ namespace Services.Contracts
 		public Task<string> GetGroupNameAsync(Guid groupId);
 		public Task<(GraphUpdaterStatus Status, int SuccessCount)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync);
 		public Task<(GraphUpdaterStatus Status, int SuccessCount)> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync);
-		public Task<bool> IsEmailOwnerOfGroupAsync(string email, Guid groupObjectId);
+		public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId);
 		public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0);
 	}
 }

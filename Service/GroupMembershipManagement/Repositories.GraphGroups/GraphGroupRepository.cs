@@ -80,7 +80,7 @@ namespace Repositories.GraphGroups
             return await IsGroupOwnerAsync($"id eq '{servicePrincipal.Id}'", groupObjectId);
         }
 
-        public async Task<bool> IsEmailOwnerOfGroupAsync(string email, Guid groupObjectId)
+        public async Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
         {
             if (await GroupExists(groupObjectId) == false) { return false; }
 
