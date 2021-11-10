@@ -138,7 +138,7 @@ namespace Hosts.GraphUpdater
                             updateRequest.ThresholdViolations++;
 
                             if (updateRequest.ThresholdViolations >= _thresholdConfig.NumberOfThresholdViolationsToDisableJob)
-                                updateRequest.Status = SyncStatus.Disabled;
+                                updateRequest.Status = SyncStatus.ThresholdExceeded;
                         }
 
                         await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), updateRequest);

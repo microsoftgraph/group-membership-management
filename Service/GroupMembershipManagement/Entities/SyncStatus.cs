@@ -8,6 +8,6 @@ namespace Entities
         InProgress = 1,
         Idle = 2,
         Error = 3,
-        Disabled = 4
+        ThresholdExceeded = 4
     }
 }
