@@ -134,7 +134,7 @@ This is an auto-generated email. Please reach out to {1} if you have further que
 This is an auto-generated email. Please reach out to {1} if you have further questions about GMM.</value>
   </data>
   <data name="SyncDisabledNoValidGroupIds" xml:space="preserve">
-    <value>The sync has been disabled because the object ID(s) {0} aren't valid GUIDs and cannot refer to valid groups.
+    <value>The sync has been disabled because the object ID(s) {0} are not valid GUIDs and do not refer to valid groups.
 
 This is an auto-generated email. Please reach out to {1} if you have further questions about GMM.</value>
   </data>
