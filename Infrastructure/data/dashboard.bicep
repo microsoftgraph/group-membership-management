@@ -1,6 +1,8 @@
 @description('Name of the dashboard')
 param name string
 param location string
+param subscriptionId string
+param jobsStorageAccountName string
 
 resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
   name: name
@@ -79,7 +81,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'Scope'
                   value: {
                     resourceIds: [
-                      '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/microsoft.insights/components/gmm-data-prodv2'
+                      '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/microsoft.insights/components/${name}'
                     ]
                   }
                   isOptional: true
@@ -128,7 +130,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartSubTitle'
-                  value: 'gmm-data-prodv2'
+                  value: '${name}'
                   isOptional: true
                 }
                 {
@@ -212,7 +214,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'Scope'
                   value: {
                     resourceIds: [
-                      '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/microsoft.insights/components/gmm-data-prodv2'
+                      '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/microsoft.insights/components/${name}'
                     ]
                   }
                   isOptional: true
@@ -261,7 +263,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartSubTitle'
-                  value: 'gmm-data-prodv2'
+                  value: '${name}'
                   isOptional: true
                 }
                 {
@@ -345,7 +347,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'Scope'
                   value: {
                     resourceIds: [
-                      '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/microsoft.insights/components/gmm-data-prodv2'
+                      '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/microsoft.insights/components/${name}'
                     ]
                   }
                   isOptional: true
@@ -394,7 +396,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartSubTitle'
-                  value: 'gmm-data-prodv2'
+                  value: '${name}'
                   isOptional: true
                 }
                 {
@@ -467,7 +469,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
             metadata: {
               inputs: []
               type: 'Extension/Microsoft_Azure_Storage/PartType/StorageExplorerPart'
-              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.Storage/storageAccounts/jobsprodv2met43jvvz2yba/storageexplorer'
+              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.Storage/storageAccounts/${jobsStorageAccountName}/storageexplorer'
             }
           }
           '6': {
@@ -492,7 +494,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   value: {
                     resources: [
                       {
-                        resourceId: '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourcegroups/gmm-data-prodv2/providers/microsoft.operationalinsights/workspaces/gmm-data-prodv2'
+                        resourceId: '/subscriptions/${subscriptionId}/resourcegroups/${name}/providers/microsoft.operationalinsights/workspaces/${name}'
                       }
                     ]
                   }
@@ -532,7 +534,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
               ]
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/AnalyticsPart'
-              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.OperationalInsights/workspaces/gmm-data-prodv2/logs'
+              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.OperationalInsights/workspaces/${name}/logs'
             }
           }
           '7': {
@@ -556,7 +558,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'Scope'
                   value: {
                     resourceIds: [
-                      '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/microsoft.insights/components/gmm-data-prodv2'
+                      '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/microsoft.insights/components/${name}'
                     ]
                   }
                   isOptional: true
@@ -605,7 +607,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartSubTitle'
-                  value: 'gmm-data-prodv2'
+                  value: '${name}'
                   isOptional: true
                 }
                 {
@@ -680,7 +682,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'Scope'
                   value: {
                     resourceIds: [
-                      '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourcegroups/gmm-data-prodv2/providers/microsoft.operationalinsights/workspaces/gmm-data-prodv2'
+                      '/subscriptions/${subscriptionId}/resourcegroups/${name}/providers/microsoft.operationalinsights/workspaces/${name}'
                     ]
                   }
                   isOptional: true
@@ -729,7 +731,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartSubTitle'
-                  value: 'gmm-data-prodv2'
+                  value: '${name}'
                   isOptional: true
                 }
                 {
@@ -804,7 +806,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               inputs: [
                 {
                   name: 'ResourceId'
-                  value: '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.Insights/components/gmm-data-prodv2'
+                  value: '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.Insights/components/${name}'
                 }
               ]
               type: 'Extension/AppInsightsExtension/PartType/CuratedBladeFailuresPinnedPart'
@@ -813,7 +815,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 idInputName: 'ResourceId'
                 type: 'ApplicationInsights'
               }
-              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.Insights/components/gmm-data-prodv2/failures'
+              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.Insights/components/${name}/failures'
             }
           }
           '10': {
@@ -837,7 +839,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'Scope'
                   value: {
                     resourceIds: [
-                      '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourcegroups/gmm-data-prodv2/providers/microsoft.operationalinsights/workspaces/gmm-data-prodv2'
+                      '/subscriptions/${subscriptionId}/resourcegroups/${name}/providers/microsoft.operationalinsights/workspaces/${name}'
                     ]
                   }
                   isOptional: true
@@ -909,7 +911,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartSubTitle'
-                  value: 'gmm-data-prodv2'
+                  value: '${name}'
                   isOptional: true
                 }
                 {
@@ -977,7 +979,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                       metrics: [
                         {
                           resourceMetadata: {
-                            id: '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.Insights/components/gmm-data-prodv2'
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.Insights/components/${name}'
                           }
                           name: 'customMetrics/MembersAdded'
                           aggregationType: 1
@@ -988,7 +990,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                         }
                         {
                           resourceMetadata: {
-                            id: '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.Insights/components/gmm-data-prodv2'
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.Insights/components/${name}'
                           }
                           name: 'customMetrics/MembersRemoved'
                           aggregationType: 1
@@ -1038,7 +1040,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                       metrics: [
                         {
                           resourceMetadata: {
-                            id: '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.Insights/components/gmm-data-prodv2'
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.Insights/components/${name}'
                           }
                           name: 'customMetrics/MembersAdded'
                           aggregationType: 1
@@ -1049,7 +1051,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                         }
                         {
                           resourceMetadata: {
-                            id: '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.Insights/components/gmm-data-prodv2'
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.Insights/components/${name}'
                           }
                           name: 'customMetrics/MembersRemoved'
                           aggregationType: 1
@@ -1106,7 +1108,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                       metrics: [
                         {
                           resourceMetadata: {
-                            id: '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.Insights/components/gmm-data-prodv2'
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.Insights/components/${name}'
                           }
                           name: 'customMetrics/MembersAddedFromOnboarding'
                           aggregationType: 1
@@ -1117,7 +1119,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                         }
                         {
                           resourceMetadata: {
-                            id: '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.Insights/components/gmm-data-prodv2'
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.Insights/components/${name}'
                           }
                           name: 'customMetrics/MembersRemovedFromOnboarding'
                           aggregationType: 1
@@ -1167,7 +1169,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                       metrics: [
                         {
                           resourceMetadata: {
-                            id: '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.Insights/components/gmm-data-prodv2'
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.Insights/components/${name}'
                           }
                           name: 'customMetrics/MembersAddedFromOnboarding'
                           aggregationType: 1
@@ -1178,7 +1180,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                         }
                         {
                           resourceMetadata: {
-                            id: '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.Insights/components/gmm-data-prodv2'
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.Insights/components/${name}'
                           }
                           name: 'customMetrics/MembersRemovedFromOnboarding'
                           aggregationType: 1
@@ -1236,7 +1238,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'Scope'
                   value: {
                     resourceIds: [
-                      '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.Insights/components/gmm-data-prodv2'
+                      '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.Insights/components/${name}'
                     ]
                   }
                   isOptional: true
@@ -1286,7 +1288,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartSubTitle'
-                  value: 'gmm-data-prodv2'
+                  value: '${name}'
                   isOptional: true
                 }
                 {
@@ -1355,7 +1357,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'Scope'
                   value: {
                     resourceIds: [
-                      '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.Insights/components/gmm-data-prodv2'
+                      '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.Insights/components/${name}'
                     ]
                   }
                   isOptional: true
@@ -1405,7 +1407,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartSubTitle'
-                  value: 'gmm-data-prodv2'
+                  value: '${name}'
                   isOptional: true
                 }
                 {
@@ -1497,7 +1499,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'Scope'
                   value: {
                     resourceIds: [
-                      '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourcegroups/gmm-data-prodv2/providers/microsoft.operationalinsights/workspaces/gmm-data-prodv2'
+                      '/subscriptions/${subscriptionId}/resourcegroups/${name}/providers/microsoft.operationalinsights/workspaces/${name}'
                     ]
                   }
                   isOptional: true
@@ -1550,7 +1552,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartSubTitle'
-                  value: 'gmm-data-prodv2'
+                  value: '${name}'
                   isOptional: true
                 }
                 {
@@ -1602,7 +1604,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'Scope'
                   value: {
                     resourceIds: [
-                      '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourcegroups/gmm-data-prodv2/providers/microsoft.operationalinsights/workspaces/gmm-data-prodv2'
+                      '/subscriptions/${subscriptionId}/resourcegroups/${name}/providers/microsoft.operationalinsights/workspaces/${name}'
                     ]
                   }
                   isOptional: true
@@ -1655,7 +1657,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartSubTitle'
-                  value: 'gmm-data-prodv2'
+                  value: '${name}'
                   isOptional: true
                 }
                 {
@@ -1708,7 +1710,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'Scope'
                   value: {
                     resourceIds: [
-                      '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourcegroups/gmm-data-prodv2/providers/microsoft.operationalinsights/workspaces/gmm-data-prodv2'
+                      '/subscriptions/${subscriptionId}/resourcegroups/${name}/providers/microsoft.operationalinsights/workspaces/${name}'
                     ]
                   }
                   isOptional: true
@@ -1757,7 +1759,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartSubTitle'
-                  value: 'gmm-data-prodv2'
+                  value: '${name}'
                   isOptional: true
                 }
                 {
@@ -1807,7 +1809,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'Scope'
                   value: {
                     resourceIds: [
-                      '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.Insights/components/gmm-data-prodv2'
+                      '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.Insights/components/${name}'
                     ]
                   }
                   isOptional: true
@@ -1857,7 +1859,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartSubTitle'
-                  value: 'gmm-data-prodv2'
+                  value: '${name}'
                   isOptional: true
                 }
                 {
@@ -1925,7 +1927,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'Scope'
                   value: {
                     resourceIds: [
-                      '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.Insights/components/gmm-data-prodv2'
+                      '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.Insights/components/${name}'
                     ]
                   }
                   isOptional: true
@@ -1975,7 +1977,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartSubTitle'
-                  value: 'gmm-data-prodv2'
+                  value: '${name}'
                   isOptional: true
                 }
                 {
@@ -2045,26 +2047,26 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                       metrics: [
                         {
                           resourceMetadata: {
-                            id: '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.ServiceBus/namespaces/gmm-data-prodv2'
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.ServiceBus/namespaces/${name}'
                           }
                           name: 'IncomingMessages'
                           aggregationType: 1
                           namespace: 'microsoft.servicebus/namespaces'
                           metricVisualization: {
                             displayName: 'Incoming Messages'
-                            resourceDisplayName: 'gmm-data-prodv2'
+                            resourceDisplayName: '${name}'
                           }
                         }
                         {
                           resourceMetadata: {
-                            id: '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.ServiceBus/namespaces/gmm-data-prodv2'
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.ServiceBus/namespaces/${name}'
                           }
                           name: 'OutgoingMessages'
                           aggregationType: 1
                           namespace: 'microsoft.servicebus/namespaces'
                           metricVisualization: {
                             displayName: 'Outgoing Messages'
-                            resourceDisplayName: 'gmm-data-prodv2'
+                            resourceDisplayName: '${name}'
                           }
                         }
                       ]
@@ -2119,26 +2121,26 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                       metrics: [
                         {
                           resourceMetadata: {
-                            id: '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.ServiceBus/namespaces/gmm-data-prodv2'
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.ServiceBus/namespaces/${name}'
                           }
                           name: 'IncomingMessages'
                           aggregationType: 1
                           namespace: 'microsoft.servicebus/namespaces'
                           metricVisualization: {
                             displayName: 'Incoming Messages'
-                            resourceDisplayName: 'gmm-data-prodv2'
+                            resourceDisplayName: '${name}'
                           }
                         }
                         {
                           resourceMetadata: {
-                            id: '/subscriptions/35a55dce-4df3-4970-82ed-e61d13b5193a/resourceGroups/gmm-data-prodv2/providers/Microsoft.ServiceBus/namespaces/gmm-data-prodv2'
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${name}/providers/Microsoft.ServiceBus/namespaces/${name}'
                           }
                           name: 'OutgoingMessages'
                           aggregationType: 1
                           namespace: 'microsoft.servicebus/namespaces'
                           metricVisualization: {
                             displayName: 'Outgoing Messages'
-                            resourceDisplayName: 'gmm-data-prodv2'
+                            resourceDisplayName: '${name}'
                           }
                         }
                       ]

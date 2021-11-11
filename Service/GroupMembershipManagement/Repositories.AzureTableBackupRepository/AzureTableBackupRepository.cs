@@ -32,29 +32,21 @@ namespace Repositories.AzureTableBackupRepository
 
             var storageAccount = CloudStorageAccount.Parse(backupSettings.DestinationConnectionString);
             var tableClient = storageAccount.CreateCloudTableClient();
-            var tables = tableClient.ListTables(prefix: BACKUP_PREFIX + backupSettings.SourceTableName).ToList();
-            var backupCloudTables = new List<BackupEntity>();
 
-            foreach (var table in tables)
+            List<CloudTable> tables;
+
+            if (backupSettings.SourceTableName == "*")
             {
-                var backupTable = new BackupEntity
-                {
-                    Name = table.Name,
-                    StorageType = "table",
-                    CreatedDate = DateTime.SpecifyKind(
-                                            DateTime.ParseExact(table.Name.Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
-                                                BACKUP_DATE_FORMAT,
-                                                CultureInfo.InvariantCulture,
-                                                DateTimeStyles.AssumeUniversal), 
-                                        DateTimeKind.Utc)
-                };
-
-                backupCloudTables.Add(backupTable);
+                tables = tableClient.ListTables().ToList();
+            }
+            else
+            {
+                tables = tableClient.ListTables(prefix: BACKUP_PREFIX + backupSettings.SourceTableName).ToList();
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Found {tables.Count} backup tables for table {backupSettings.SourceTableName}" });
 
-            return backupCloudTables;
+            return tables.Select(table => new BackupEntity(table.Name, "table")).ToList();
         }
 
         public async Task<List<DynamicTableEntity>> GetEntitiesAsync(IAzureTableBackup backupSettings)
@@ -181,7 +173,48 @@ namespace Repositories.AzureTableBackupRepository
             return new BackupResult(tableName, "table", backupCount);
         }
 
-        public async Task DeleteBackupAsync(IAzureTableBackup backupSettings, string tableName)
+        public async Task<List<string>> DeleteBackupsAsync(IAzureTableBackup backupSettings, List<BackupEntity> entities)
+        {
+            var cutOffDate = DateTime.UtcNow.AddDays(-backupSettings.DeleteAfterDays);
+            var deletedEntities = new List<string>();
+            var tableNames = entities.Select(e => e.Name);
+
+            if (backupSettings.SourceTableName == "*")
+            {
+                foreach (var tableName in tableNames)
+                {
+                    var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, tableName);
+                    var query = table.CreateQuery<TableEntity>().AsQueryable().Where(e => e.Timestamp >= cutOffDate);
+                    var results = table.ExecuteQuery(query.AsTableQuery()).ToList();
+
+                    if (results.Count == 0)
+                    {
+                        await DeleteBackupAsync(backupSettings, tableName);
+                        deletedEntities.Add(tableName);
+                    }
+                }
+            }
+            else
+            {
+                foreach (var tableName in tableNames)
+                {
+                    var CreatedDate = DateTime.SpecifyKind(
+                        DateTime.ParseExact(tableName.Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
+                            BACKUP_DATE_FORMAT,
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.AssumeUniversal),
+                        DateTimeKind.Utc);
+                    if (CreatedDate < cutOffDate)
+                    {
+                        await DeleteBackupAsync(backupSettings, tableName);
+                        deletedEntities.Add(tableName);
+                    }
+                }
+            }
+
+            return deletedEntities;
+        }
+        private async Task DeleteBackupAsync(IAzureTableBackup backupSettings, string tableName)
         {
             await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Deleting backup table: {tableName}" });
 

@@ -25,7 +25,7 @@ namespace Hosts.AzureTableBackup
         {
             _loggingRepository.SyncJobProperties = new Dictionary<string, string> { { "runId", Guid.NewGuid().ToString() } };
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"AzureTableBackup function started at: {DateTime.UtcNow}" });
-            await _azureTableBackupService.BackupTablesAsync();
+            await _azureTableBackupService.RunBackupServiceAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"AzureTableBackup function completed at: {DateTime.UtcNow}" });
         }
     }

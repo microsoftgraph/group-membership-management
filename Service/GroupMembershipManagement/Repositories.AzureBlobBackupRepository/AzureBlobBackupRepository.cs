@@ -96,38 +96,80 @@ namespace Repositories.AzureBlobBackupRepository
 			return toReturn;
 		}
 
-		public async Task DeleteBackupAsync(IAzureTableBackup backupSettings, string backupName)
+		public async Task<List<BackupEntity>> GetBackupsAsync(IAzureTableBackup backupSettings)
 		{
-			BlobServiceClient blobServiceClient = new BlobServiceClient(backupSettings.DestinationConnectionString);
-			var containerName = GetContainerName(backupSettings);
-			var blobClient = blobServiceClient.GetBlobContainerClient(containerName);
-			if(!await blobClient.ExistsAsync())
+			var blobContainerClient = await GetContainerClient(backupSettings);
+			if(blobContainerClient == null)
+            {
+				return new List<BackupEntity>();
+            }
+
+			var backupEntities = new List<BackupEntity>();
+			backupEntities.Add(new BackupEntity(GetContainerName(backupSettings), "blob"));
+			return backupEntities;
+		}
+
+		public async Task<List<string>> DeleteBackupsAsync(IAzureTableBackup backupSettings, List<BackupEntity> entities)
+		{
+			var cutOffDate = DateTime.UtcNow.AddDays(-backupSettings.DeleteAfterDays);
+			var deletedBlobs = new List<string>();
+
+			var blobContainerClient = await GetContainerClient(backupSettings);
+			var blobs = blobContainerClient.GetBlobsAsync();
+			await foreach (var blob in blobs)
 			{
-				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"The blob container {containerName} did not exist when trying to delete blob {backupName}." });
+				try
+				{
+					var parsedDateTimeOffset = DateTimeOffset.ParseExact(blob.Name.Replace(".csv", string.Empty).Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
+						BACKUP_DATE_FORMAT,
+						null,
+						DateTimeStyles.AssumeUniversal);
+
+					var CreatedDate = blob.Properties.CreatedOn.GetValueOrDefault(parsedDateTimeOffset).UtcDateTime;
+
+					if (CreatedDate < cutOffDate)
+                    {
+						await DeleteBackupAsync(backupSettings, blob.Name);
+						deletedBlobs.Add(blob.Name);
+                    }
+				}
+				catch
+                {
+					await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"The blob item {blob.Name} did not have a CreatedOn property and its name was unparseable" });
+				}
+			}
+
+			return deletedBlobs;
+		}
+
+		private async Task DeleteBackupAsync(IAzureTableBackup backupSettings, string backupName)
+		{
+			var blobContainerClient = await GetContainerClient(backupSettings);
+			if (blobContainerClient == null)
+			{
+				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"The blob container {GetContainerName(backupSettings)} did not exist when trying to delete blob {backupName}." });
 				return;
 			}
+
 			// This only gives us a "true" or a "false". I assume a "false" means the blob didn't exist.
 			// I think the only way this could try to delete a blob that doesn't exist is if there's some kind of weird race condition
 			// that leads to a blob getting deleted twice, and that's fine, too.
-			var response = await blobClient.DeleteBlobIfExistsAsync(backupName);
+			var response = await blobContainerClient.DeleteBlobIfExistsAsync(backupName);
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Got {response.Value} when deleting blob {backupName}." });
 		}
 
-		public async Task<List<BackupEntity>> GetBackupsAsync(IAzureTableBackup backupSettings)
-		{
+		private async Task<BlobContainerClient> GetContainerClient(IAzureTableBackup backupSettings)
+        {
 			BlobServiceClient blobServiceClient = new BlobServiceClient(backupSettings.DestinationConnectionString);
-			var containerClient = blobServiceClient.GetBlobContainerClient(GetContainerName(backupSettings));
-			var blobs = containerClient.GetBlobsAsync();
-			var toReturn = new List<BackupEntity>();
-			await foreach (var blob in blobs)
+			var containerName = GetContainerName(backupSettings);
+			var blobClient = blobServiceClient.GetBlobContainerClient(containerName);
+			if (!await blobClient.ExistsAsync())
 			{
-				var parsedDateTimeOffset = DateTimeOffset.ParseExact(blob.Name.Replace(".csv", string.Empty).Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
-					BACKUP_DATE_FORMAT, 
-					null,
-					DateTimeStyles.AssumeUniversal);
-				toReturn.Add(new BackupEntity { Name = blob.Name, StorageType = "blob", CreatedDate = blob.Properties.CreatedOn.GetValueOrDefault(parsedDateTimeOffset).UtcDateTime });
+				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"The blob container {containerName} does not exist." });
+				return null;
 			}
-			return toReturn;
+
+			return blobClient;
 		}
 	}
 }

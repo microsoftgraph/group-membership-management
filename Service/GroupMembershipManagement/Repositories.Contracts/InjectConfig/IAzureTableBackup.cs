@@ -7,7 +7,8 @@ namespace Repositories.Contracts.InjectConfig
         string SourceTableName { get; }
         string SourceConnectionString { get; }
         string DestinationConnectionString { get; }
-        string BackUpTo { get; }
+        string BackupType { get; }
+        bool CleanupOnly { get; }
         int DeleteAfterDays { get; }
     }
 }

@@ -19,6 +19,9 @@ param resourceGroupClassification string = 'data'
 @maxLength(6)
 param environmentAbbreviation string
 
+@description('Subscription Id for the environment')
+param subscriptionId string = subscription().subscriptionId
+
 @description('Tenant id.')
 param tenantId string
 
@@ -379,6 +382,8 @@ module dashboardTemplate 'dashboard.bicep' = {
   params: {
     location: location
     name: '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
+    subscriptionId: subscriptionId
+    jobsStorageAccountName: jobsStorageAccountName
   }
 }
 

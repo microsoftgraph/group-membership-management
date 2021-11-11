@@ -31,7 +31,7 @@ namespace Services
 			_azureBlobBackupRepository = azureBlobBackupRepository ?? throw new ArgumentNullException(nameof(azureBlobBackupRepository));
 		}
 
-		public async Task BackupTablesAsync()
+		public async Task RunBackupServiceAsync()
 		{
 			if (!_tablesToBackup.Any())
 			{
@@ -41,31 +41,43 @@ namespace Services
 
 			foreach (var table in _tablesToBackup)
 			{
-				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Starting backup for table: {table.SourceTableName}" });
-				var entities = await _azureTableBackupRepository.GetEntitiesAsync(table);
-
-				if (entities == null)
-					continue;
-
-				// basically, the table storage gets used regardless, to read the source table
-				// and to maintain the tracking table. this determines whether the backup data
-				// is stored in table or blob storage.
-				IAzureStorageBackupRepository backUpTo = DetermineBackupStorage(table.BackUpTo);
-				if (backUpTo == null)
+				if(table.CleanupOnly)
 				{
-					await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"BackUpTo must be 'table' or 'blob'. Was {table.BackUpTo}. Not backing up {table.SourceTableName}." });
-					continue;
+					await DeleteOldBackupsAsync(table);
 				}
-
-				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Backing up {entities.Count} entites from table {table.SourceTableName} to {table.BackUpTo} storage." });
-				var backupResult = await backUpTo.BackupEntitiesAsync(table, entities);
-
-				await CompareBackupResults(table, backupResult);
-
-				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleting old backups for table: {table.SourceTableName}" });
-				var deletedTables = await DeleteOldBackupsAsync(table);
-				await DeleteOldBackupTrackersAsync(table, deletedTables);
+				else
+				{
+					await BackupTableAsync(table);
+				}
 			}
+		}
+
+		private async Task BackupTableAsync(IAzureTableBackup table)
+		{
+			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Starting backup maintenance for table: {table.SourceTableName}" });
+			var entities = await _azureTableBackupRepository.GetEntitiesAsync(table);
+
+			if (entities == null)
+				return;
+
+			// basically, the table storage gets used regardless, to read the source table
+			// and to maintain the tracking table. this determines whether the backup data
+			// is stored in table or blob storage.
+			IAzureStorageBackupRepository backUpTo = DetermineBackupStorage(table.BackupType);
+			if (backUpTo == null)
+			{
+				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"BackupType must be 'table' or 'blob'. Was {table.BackupType}. Not backing up {table.SourceTableName}." });
+				return;
+			}
+
+			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Backing up {entities.Count} entites from table {table.SourceTableName} to {table.BackupType} storage." });
+			var backupResult = await backUpTo.BackupEntitiesAsync(table, entities);
+
+			await CompareBackupResults(table, backupResult);
+
+			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleting old backups for table: {table.SourceTableName}" });
+			var deletedTables = await DeleteOldBackupsAsync(table);
+			await DeleteOldBackupTrackersAsync(table, deletedTables);
 		}
 
 		private IAzureStorageBackupRepository DetermineBackupStorage(string backUpTo)
@@ -87,20 +99,11 @@ namespace Services
 			// note that only backups of the current storage type will be deleted
 			// if you switch from table to blob, this won't delete the table backups
 			// unless you delete them manually or switch back to table storage.
-			var backupStorage = DetermineBackupStorage(backupSettings.BackUpTo);
+			var backupStorage = DetermineBackupStorage(backupSettings.BackupType);
 			var backupEntities = await backupStorage.GetBackupsAsync(backupSettings);
-			var cutOffDate = DateTime.UtcNow.AddDays(-backupSettings.DeleteAfterDays);
-			var deletedEntities = new List<string>();
+			var deletedEntities = await backupStorage.DeleteBackupsAsync(backupSettings, backupEntities);
 
-			foreach (var entity in backupEntities)
-			{
-				if (entity.CreatedDate < cutOffDate)
-				{
-					await backupStorage.DeleteBackupAsync(backupSettings, entity.Name);
-					deletedEntities.Add(entity.Name);
-				}
-			}
-
+			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleted {deletedEntities.Count} old backups for table: {backupSettings.SourceTableName}" });
 			return deletedEntities;
 		}
 
