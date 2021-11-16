@@ -41,14 +41,14 @@
     },
     "servicePlanName": {
       "type": "string",
-      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-', parameters('resourceGroupClassification'), '-', parameters('environmentAbbreviation'), '-premium')]",
+      "defaultValue": "[concat(parameters('solutionAbbreviation'), '-', parameters('resourceGroupClassification'), '-', parameters('environmentAbbreviation'))]",
       "metadata": {
         "description": "Service plan name."
       }
     },
     "servicePlanSku": {
       "type": "string",
-      "defaultValue": "EP1",
+      "defaultValue": "Y1",
       "metadata": {
         "description": "Service plan sku"
       }
