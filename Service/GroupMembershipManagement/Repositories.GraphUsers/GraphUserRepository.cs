@@ -25,6 +25,7 @@ namespace Repositories.GraphAzureADUsers
 
         private const string IdFieldName = "id";
         private const string PersonnelNumberFieldName = "onPremisesImmutableId";
+        private const string UserPrincipalNameFieldName = "userPrincipalName";
 
         private readonly Dictionary<string, GraphProfileInformation> _cache;
         private readonly IGraphServiceClient _graphClient;
@@ -111,7 +112,7 @@ namespace Repositories.GraphAzureADUsers
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{unprocessedPersonnelNumbers.Count} out of {personnelNumbers.Count} need to be retrieved from graph.", RunId = runId });
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{_cache.Keys.Count} profiles exist in the cache.", RunId = runId });
 
-            var fields = string.Join(",", new[] { IdFieldName, PersonnelNumberFieldName });
+            var fields = string.Join(",", new[] { IdFieldName, PersonnelNumberFieldName, UserPrincipalNameFieldName });
 
             // Graph currently limits batches to 10 requests per batch
             // Graph currently limits the number of conditions in a $filter expression to 20
@@ -192,7 +193,8 @@ namespace Repositories.GraphAzureADUsers
                                 var profile = new GraphProfileInformation
                                 {
                                     Id = user.Id,
-                                    PersonnelNumber = user.OnPremisesImmutableId
+                                    PersonnelNumber = user.OnPremisesImmutableId,
+                                    UserPrincipalName = user.UserPrincipalName
                                 };
 
                                 profiles.Add(profile);
