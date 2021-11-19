@@ -29,12 +29,12 @@ stages:
     - deployment: ${{ parameters.stageName }}_DeployResources
       displayName: ${{ parameters.stageName }}_DeployResources
       pool:
-        vmImage: "vs2017-win2016"
+        vmImage: "windows-2019"
       # creates an environment if it doesn't exist
       variables:
-        ${{ if in(parameters.stageName, 'production', 'ua') }}:
+        ${{ if in(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
           buildType: 'release'
-        ${{ if notIn(parameters.stageName, 'production', 'ua') }}:
+        ${{ if notIn(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
           buildType: 'debug'
       environment: ${{ parameters.solutionAbbreviation }}-${{ parameters.environmentAbbreviation }}
       strategy:
@@ -57,9 +57,9 @@ stages:
         data_storageAccountName: $[ dependencies.DeployResources.outputs['DeployResources.dataVariables.data_storageAccountName'] ]
         data_containerEndPoint: $[ dependencies.DeployResources.outputs['DeployResources.dataVariables.data_containerEndPoint'] ]
         data_containerSASToken: $[ dependencies.DeployResources.outputs['DeployResources.dataVariables.data_containerSASToken'] ]
-        ${{ if in(parameters.stageName, 'production', 'ua') }}:
+        ${{ if in(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
           buildType: 'release'
-        ${{ if notIn(parameters.stageName, 'production', 'ua') }}:
+        ${{ if notIn(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
           buildType: 'debug'
       steps:
 
