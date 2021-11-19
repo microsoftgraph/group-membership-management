@@ -1,6 +1,3 @@
-param containerBaseUrl string
-param containerSasToken string
-
 @description('Enter an abbreviation for the solution.')
 @minLength(2)
 @maxLength(3)
