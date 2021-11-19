@@ -19,9 +19,7 @@ steps:
     csmParametersFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/data/parameters/parameters.${{parameters.environmentAbbreviation}}.json
     overrideParameters: -environmentAbbreviation "${{parameters.environmentAbbreviation}}" 
                         -tenantId "${{parameters.tenantId}}"
-                        -solutionAbbreviation "${{parameters.solutionAbbreviation}}" 
-                        -containerBaseUrl "$(data_containerEndPoint)functions/${{ parameters.name }}/Infrastructure/data/" 
-                        -containerSasToken "$(data_containerSASToken)"
+                        -solutionAbbreviation "${{parameters.solutionAbbreviation}}"
                         -storageAccountName "$(data_storageAccountName)"
     deploymentMode: 'Incremental'
 
