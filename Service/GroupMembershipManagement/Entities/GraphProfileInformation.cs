@@ -23,12 +23,12 @@ namespace Entities
 
         public bool Equals(GraphProfileInformation other)
         {
-            return Id.Equals(other.Id) && PersonnelNumber.Equals(other.PersonnelNumber);
+            return PersonnelNumber.Equals(other.PersonnelNumber);
         }
 
         public override int GetHashCode()
         {
-            return (Id + PersonnelNumber).GetHashCode();
+            return PersonnelNumber.GetHashCode();
         }
     }
 }
