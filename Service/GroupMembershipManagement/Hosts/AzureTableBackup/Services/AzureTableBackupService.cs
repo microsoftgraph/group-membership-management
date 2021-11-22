@@ -41,14 +41,12 @@ namespace Services
 
 			foreach (var table in _tablesToBackup)
 			{
-				if(table.CleanupOnly)
-				{
-					await DeleteOldBackupsAsync(table);
-				}
-				else
+				if (!table.CleanupOnly)
 				{
 					await BackupTableAsync(table);
 				}
+
+				await DeleteOldBackupsAsync(table);
 			}
 		}
 
@@ -74,10 +72,6 @@ namespace Services
 			var backupResult = await backUpTo.BackupEntitiesAsync(table, entities);
 
 			await CompareBackupResults(table, backupResult);
-
-			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleting old backups for table: {table.SourceTableName}" });
-			var deletedTables = await DeleteOldBackupsAsync(table);
-			await DeleteOldBackupTrackersAsync(table, deletedTables);
 		}
 
 		private IAzureStorageBackupRepository DetermineBackupStorage(string backUpTo)
@@ -99,11 +93,19 @@ namespace Services
 			// note that only backups of the current storage type will be deleted
 			// if you switch from table to blob, this won't delete the table backups
 			// unless you delete them manually or switch back to table storage.
+			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleting old backups for table: {backupSettings.SourceTableName}" });
+
 			var backupStorage = DetermineBackupStorage(backupSettings.BackupType);
 			var backupEntities = await backupStorage.GetBackupsAsync(backupSettings);
 			var deletedEntities = await backupStorage.DeleteBackupsAsync(backupSettings, backupEntities);
 
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleted {deletedEntities.Count} old backups for table: {backupSettings.SourceTableName}" });
+
+			if (!backupSettings.CleanupOnly)
+            {
+				await DeleteOldBackupTrackersAsync(backupSettings, deletedEntities);
+			}
+
 			return deletedEntities;
 		}
 
