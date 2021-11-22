@@ -23,7 +23,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Repositories.AzureTableBackupRepository\Repositories.AzureTableBackupRepository.csproj" />
-    <ProjectReference Include="..\Services.Contract\Services.Contracts.csproj" />
     <ProjectReference Include="..\Services.Entities\Services.Entities.csproj" />
     <ProjectReference Include="..\Services\Services.csproj" />
   </ItemGroup>

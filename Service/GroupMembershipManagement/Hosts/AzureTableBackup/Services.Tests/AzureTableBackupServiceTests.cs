@@ -7,6 +7,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -22,7 +23,7 @@ namespace Services.Tests
             var loggerMock = new Mock<ILoggingRepository>();
             loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<string>(), It.IsAny<string>()));
 
-            var backupSettings = new List<IAzureTableBackup>();
+            var backupSettings = new List<AzureTableBackup>();
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
 
@@ -41,7 +42,7 @@ namespace Services.Tests
             var loggerMock = new Mock<ILoggingRepository>();
             loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<string>(), It.IsAny<string>()));
 
-            var backupSettings = new List<IAzureTableBackup>()
+            var backupSettings = new List<AzureTableBackup>()
             {
                 new Services.Entities.AzureTableBackup("tableOne", "sourceConnection", "destinationConnection", "Table", false, 7),
                 new Services.Entities.AzureTableBackup("tableOne", "sourceConnection", "destinationConnection", "Blob", false, 7)
@@ -90,7 +91,7 @@ namespace Services.Tests
             var loggerMock = new Mock<ILoggingRepository>();
             loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<string>(), It.IsAny<string>()));
 
-            var backupSettings = new List<IAzureTableBackup>()
+            var backupSettings = new List<AzureTableBackup>()
             {
                 new Services.Entities.AzureTableBackup("tableOne", "sourceConnection", "destinationConnection", "Table", false, 7),
                 new Services.Entities.AzureTableBackup("tableOne", "sourceConnection", "destinationConnection", "Blob", false, 7)
@@ -139,7 +140,7 @@ namespace Services.Tests
             var loggerMock = new Mock<ILoggingRepository>();
             loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<string>(), It.IsAny<string>()));
 
-            var backupSettings = new List<IAzureTableBackup>()
+            var backupSettings = new List<AzureTableBackup>()
             {
                 new Services.Entities.AzureTableBackup("tableOne", "sourceConnection", "destinationConnection", "Table", true, 7),
                 new Services.Entities.AzureTableBackup("*", "otherSourceConnection", "otherDestinationConnection", "Table", true, 30)
