@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Services.Entities;
 using Services.Contracts;
+using System.Linq;
+using Repositories.Contracts.InjectConfig;
 
 namespace Hosts.AzureTableBackup
 {
@@ -34,36 +36,34 @@ namespace Hosts.AzureTableBackup
 
             await context.CallActivityAsync(nameof(TableBackupFunction), null);
 
-            var tablesToReview = await context.CallActivityAsync<List<ReviewAndDeleteRequest>>(
+            var reviewAndDeleteRequests = await context.CallActivityAsync<List<ReviewAndDeleteRequest>>(
                 nameof(RetrieveBackupsFunction), 
                 new RetrieveBackupsRequest());
 
-            var tablesDeleted = new Dictionary<string, int>();
+            var backupSettings = reviewAndDeleteRequests.Select(e => e.BackupSetting).Distinct();
 
-            foreach (var tableToReview in tablesToReview)
+            foreach (var backupSetting in backupSettings)
             {
-                var entityDeleted = await context.CallActivityAsync<bool>(nameof(ReviewAndDeleteFunction), tableToReview);
-                if (entityDeleted)
+                var reviewAndDeleteRequestsForSetting = reviewAndDeleteRequests.Where(e => e.BackupSetting.Equals(backupSetting)).ToList();
+
+                var tasks = new List<Task<bool>>();
+
+                foreach(var backupToReview in reviewAndDeleteRequestsForSetting)
                 {
-                    if (tablesDeleted.ContainsKey(tableToReview.TableName))
-                    {
-                        tablesDeleted[tableToReview.TableName] = tablesDeleted[tableToReview.TableName] + 1;
-                    }
-                    else
-                    {
-                        tablesDeleted.Add(tableToReview.TableName, 1);
-                    }
+                    var task = context.CallActivityAsync<bool>(nameof(ReviewAndDeleteFunction), backupToReview);
+                    tasks.Add(task);
                 }
-            }
 
-            foreach (var item in tablesDeleted)
-            {
+                await Task.WhenAll(tasks);
+
+                var backupsDeleted = tasks.Where(t => t.Result == true).Count();
+
                 await context.CallActivityAsync(
                                    nameof(LoggerFunction),
                                    new LoggerRequest
                                    {
                                        RunId = runId,
-                                       Message = $"Deleted {item.Value} old backups for table: {item.Key}"
+                                       Message = $"Deleted {backupsDeleted} old backups for table: {backupSetting.SourceTableName}"
                                    });
             }
 

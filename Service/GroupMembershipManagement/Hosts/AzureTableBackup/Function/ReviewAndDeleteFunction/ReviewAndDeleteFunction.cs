@@ -22,7 +22,7 @@ namespace Hosts.AzureTableBackup
         }
 
         [FunctionName(nameof(ReviewAndDeleteFunction))]
-        public async Task<bool> BackupTables([ActivityTrigger] ReviewAndDeleteRequest request)
+        public async Task<bool> ReviewAndDelete([ActivityTrigger] ReviewAndDeleteRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ReviewAndDeleteFunction)} function started at: {DateTime.UtcNow}" });
             var entityDeleted = await _azureTableBackupService.ReviewAndDeleteAsync(request.BackupSetting, request.TableName);
