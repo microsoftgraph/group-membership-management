@@ -156,7 +156,7 @@ param appConfigurationKeyData array = [
   }
   {
     key: 'GraphUpdater:MaximumNumberOfThresholdRecipients'
-    value: '10'
+    value: '3'
     contentType: 'integer'
     tag: {
       tag1: 'GraphUpdater'
