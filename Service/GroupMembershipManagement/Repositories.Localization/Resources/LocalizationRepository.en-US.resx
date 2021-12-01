@@ -139,11 +139,16 @@ This is an auto-generated email. Please reach out to {1} if you have further que
 This is an auto-generated email. Please reach out to {1} if you have further questions about GMM.</value>
   </data>
   <data name="SyncJobDisabledEmailBody" xml:space="preserve">
-    <value>The synchronization job for group {0} with Id: {1} has been disabled. If you would like to have it re-enabled please reach out to {2}.
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group. Please visit {3} to learn more about GMM.
 
-To learn more about GMM visit {3}.
+The synchronization job for group {0} with Id: {1} has been disabled. 
 
-This is an auto-generated email. Please reach out to {2} if you have further questions about GMM.</value>
+If you would like to have it re-enabled please reach out to {2}.
+
+The group sync will be PAUSED until your response is received.
+
+Regards,
+GMM Team</value>
   </data>
   <data name="SyncStartedEmailBody" xml:space="preserve">
     <value>The group {0} with Id: {1} has started its initial sync.
@@ -151,27 +156,55 @@ This is an auto-generated email. Please reach out to {2} if you have further que
 This is an auto-generated email. Please reach out to {2} if you have further questions about GMM.</value>
   </data>
   <data name="SyncThresholdBothEmailBody" xml:space="preserve">
-    <value>The group {0} with Id: {1} has exceeded the specified increase and decrease thresholds.
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group. Please visit {6} to learn more about GMM.
+
+The group {0} with Id: {1} has exceeded the specified thresholds.
+
 Increase membership threshold {2}%. Detected threshold {3}%.
 Decrease membership threshold {4}%. Detected threshold {5}%.
 
-Please 'Reply All' indicating what GMM should do about the threshold, i.e. Increase threshold to x%, Disable threshold checks, Leave threshold as is.
-Do not change subject line when replying.
+What is Threshold?
 
-To learn more about GMM visit {6}.
+The Configurable Threshold is a feature of GMM aimed to protect group membership from drastic changes caused by unexpected reasons such as re-organization, source group reconstruction, etc. It alerts the group requestor that the membership change will go beyond the specified Threshold and provides the opportunity for the requestor to review and confirm before GMM takes action.
 
-This is an auto-generated email. Please reach out to {7} if you have further questions about GMM.</value>
+This is a default-on feature for all the groups, but you may request to update the threshold number or choose to disable this feature at all. Please note GMM does NOT log the individual member change per PII, so the membership change list is not available.
+
+Actions needed - Please 'Reply All' indicating what GMM should do about the threshold by highlighting one of the following options.
+
+The membership change looks right.  Please run through the threshold this time.
+The membership change looks right.  Please run through the threshold this time and update the default threshold to X%
+The membership change looks right.  I don’t need the threshold check in the future, and please disable this feature. (Not recommended)
+It does NOT look right to me. Please don’t run through the threshold. I will contact GMMSupport to follow up.
+ 
+The group sync will be PAUSED until your response is received.
+ 
+Regards,
+GMM Team</value>
   </data>
   <data name="SyncThresholdDecreaseEmailBody" xml:space="preserve">
-    <value>The group {0} with Id: {1} has exceeded the specified decrease threshold.
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group. Please visit {4} to learn more about GMM.
+
+The group {0} with Id: {1} has exceeded the specified {2}% threshold.
+
 Decrease membership threshold {2}%. Detected threshold {3}%.
 
-Please 'Reply All' indicating what GMM should do about the threshold, i.e. Increase threshold to x%, Disable threshold checks, Leave threshold as is.
-Do not change subject line when replying.
+What is Threshold?
 
-To learn more about GMM visit {4}.
+The Configurable Threshold is a feature of GMM aimed to protect group membership from drastic changes caused by unexpected reasons such as re-organization, source group reconstruction, etc. It alerts the group requestor that the membership change will go beyond the specified Threshold and provides the opportunity for the requestor to review and confirm before GMM takes action.
 
-This is an auto-generated email. Please reach out to {5} if you have further questions about GMM.</value>
+This is a default-on feature for all the groups, but you may request to update the threshold number or choose to disable this feature at all. Please note GMM does NOT log the individual member change per PII, so the membership change list is not available.
+
+Actions needed - Please 'Reply All' indicating what GMM should do about the threshold by highlighting one of the following options.
+
+The membership change looks right.  Please run through the threshold this time.
+The membership change looks right.  Please run through the threshold this time and update the default threshold to X%
+The membership change looks right.  I don’t need the threshold check in the future, and please disable this feature. (Not recommended)
+It does NOT look right to me. Please don’t run through the threshold. I will contact GMMSupport to follow up.
+ 
+The group sync will be PAUSED until your response is received.
+ 
+Regards,
+GMM Team</value>
   </data>
   <data name="SyncThresholdDisablingJobEmailSubject" xml:space="preserve">
     <value>[THRESHOLD_EXCEEDED] GMM: Synchronization job for group {0} has been disabled.</value>
@@ -180,14 +213,28 @@ This is an auto-generated email. Please reach out to {5} if you have further que
     <value>[THRESHOLD_EXCEEDED] GMM: Action required for group {0}.</value>
   </data>
   <data name="SyncThresholdIncreaseEmailBody" xml:space="preserve">
-    <value>The group {0} with Id: {1} has exceeded the specified increase threshold.
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group. Please visit {4} to learn more about GMM.
+
+The group {0} with Id: {1} has exceeded the specified {2}% threshold.
+
 Increase membership threshold {2}%. Detected threshold {3}%.
 
-Please 'Reply All' indicating what GMM should do about the threshold, i.e. Increase threshold to x%, Disable threshold checks, Leave threshold as is.
-Do not change subject line when replying.
+What is Threshold?
 
-To learn more about GMM visit {4}.
+The Configurable Threshold is a feature of GMM aimed to protect group membership from drastic changes caused by unexpected reasons such as re-organization, source group reconstruction, etc. It alerts the group requestor that the membership change will go beyond the specified Threshold and provides the opportunity for the requestor to review and confirm before GMM takes action.
 
-This is an auto-generated email. Please reach out to {5} if you have further questions about GMM.</value>
+This is a default-on feature for all the groups, but you may request to update the threshold number or choose to disable this feature at all. Please note GMM does NOT log the individual member change per PII, so the membership change list is not available.
+
+Actions needed - Please 'Reply All' indicating what GMM should do about the threshold by highlighting one of the following options.
+
+The membership change looks right.  Please run through the threshold this time.
+The membership change looks right.  Please run through the threshold this time and update the default threshold to X%
+The membership change looks right.  I don’t need the threshold check in the future, and please disable this feature. (Not recommended)
+It does NOT look right to me. Please don’t run through the threshold. I will contact GMMSupport to follow up.
+ 
+The group sync will be PAUSED until your response is received.
+ 
+Regards,
+GMM Team</value>
   </data>
 </root>

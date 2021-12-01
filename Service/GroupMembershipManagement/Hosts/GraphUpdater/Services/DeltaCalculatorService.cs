@@ -289,6 +289,7 @@ namespace Services
                     contentTemplate,
                     additionalContent,
                     runId,
+                    ccEmail: _emailSenderAndRecipients.SupportEmailAddresses,
                     emailSubject: emailSubject,
                     additionalSubjectParams: additionalSubjectContent);
         }
