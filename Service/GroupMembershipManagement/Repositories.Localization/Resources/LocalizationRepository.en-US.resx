@@ -165,16 +165,16 @@ Decrease membership threshold {4}%. Detected threshold {5}%.
 
 What is Threshold?
 
-The Configurable Threshold is a feature of GMM aimed to protect group membership from drastic changes caused by unexpected reasons such as re-organization, source group reconstruction, etc. It alerts the group requestor that the membership change will go beyond the specified Threshold and provides the opportunity for the requestor to review and confirm before GMM takes action.
+The Configurable Threshold is a feature of GMM aimed to protect group membership from drastic changes caused by unexpected reasons such as re-organization, source group reconstruction, etc. It alerts the group requestor that the membership change will go beyond the specified Threshold and provides an opportunity for the requestor to review and confirm before GMM takes action.
 
-This is a default-on feature for all the groups, but you may request to update the threshold number or choose to disable this feature at all. Please note GMM does NOT log the individual member change per PII, so the membership change list is not available.
+This is a default-on feature for all the groups, but you may request to update the threshold number or choose to disable this feature all together. Please note GMM does NOT log the individual member to be added or removed due to PII concerns, so we are unable to provide this information.
 
 Actions needed - Please 'Reply All' indicating what GMM should do about the threshold by highlighting one of the following options.
 
-The membership change looks right.  Please run through the threshold this time.
-The membership change looks right.  Please run through the threshold this time and update the default threshold to X%
-The membership change looks right.  I don’t need the threshold check in the future, and please disable this feature. (Not recommended)
-It does NOT look right to me. Please don’t run through the threshold. I will contact GMMSupport to follow up.
+The membership change looks right.  Please allow the threshold to be exceeded this time only.
+The membership change looks right.  Please allow the threshold to be exceeded, and update the default threshold to X%
+The membership change looks right.  I don’t need the threshold check in the future so please disable this feature. (Not recommended)
+The projected increase or decrease does not look right to me. Please do not allow the sync to exceed the threshold. I will contact GMMSupport to follow up.
  
 The group sync will be PAUSED until your response is received.
  
@@ -190,16 +190,16 @@ Decrease membership threshold {2}%. Detected threshold {3}%.
 
 What is Threshold?
 
-The Configurable Threshold is a feature of GMM aimed to protect group membership from drastic changes caused by unexpected reasons such as re-organization, source group reconstruction, etc. It alerts the group requestor that the membership change will go beyond the specified Threshold and provides the opportunity for the requestor to review and confirm before GMM takes action.
+The Configurable Threshold is a feature of GMM aimed to protect group membership from drastic changes caused by unexpected reasons such as re-organization, source group reconstruction, etc. It alerts the group requestor that the membership change will go beyond the specified Threshold and provides an opportunity for the requestor to review and confirm before GMM takes action.
 
-This is a default-on feature for all the groups, but you may request to update the threshold number or choose to disable this feature at all. Please note GMM does NOT log the individual member change per PII, so the membership change list is not available.
+This is a default-on feature for all the groups, but you may request to update the threshold number or choose to disable this feature all together. Please note GMM does NOT log the individual member to be added or removed due to PII concerns, so we are unable to provide this information.
 
 Actions needed - Please 'Reply All' indicating what GMM should do about the threshold by highlighting one of the following options.
 
-The membership change looks right.  Please run through the threshold this time.
-The membership change looks right.  Please run through the threshold this time and update the default threshold to X%
-The membership change looks right.  I don’t need the threshold check in the future, and please disable this feature. (Not recommended)
-It does NOT look right to me. Please don’t run through the threshold. I will contact GMMSupport to follow up.
+The membership change looks right.  Please allow the threshold to be exceeded this time only.
+The membership change looks right.  Please allow the threshold to be exceeded, and update the default threshold to X%
+The membership change looks right.  I don’t need the threshold check in the future so please disable this feature. (Not recommended)
+The projected increase or decrease does not look right to me. Please do not allow the sync to exceed the threshold. I will contact GMMSupport to follow up.
  
 The group sync will be PAUSED until your response is received.
  
@@ -221,16 +221,16 @@ Increase membership threshold {2}%. Detected threshold {3}%.
 
 What is Threshold?
 
-The Configurable Threshold is a feature of GMM aimed to protect group membership from drastic changes caused by unexpected reasons such as re-organization, source group reconstruction, etc. It alerts the group requestor that the membership change will go beyond the specified Threshold and provides the opportunity for the requestor to review and confirm before GMM takes action.
+The Configurable Threshold is a feature of GMM aimed to protect group membership from drastic changes caused by unexpected reasons such as re-organization, source group reconstruction, etc. It alerts the group requestor that the membership change will go beyond the specified Threshold and provides an opportunity for the requestor to review and confirm before GMM takes action.
 
-This is a default-on feature for all the groups, but you may request to update the threshold number or choose to disable this feature at all. Please note GMM does NOT log the individual member change per PII, so the membership change list is not available.
+This is a default-on feature for all the groups, but you may request to update the threshold number or choose to disable this feature all together. Please note GMM does NOT log the individual member to be added or removed due to PII concerns, so we are unable to provide this information.
 
 Actions needed - Please 'Reply All' indicating what GMM should do about the threshold by highlighting one of the following options.
 
-The membership change looks right.  Please run through the threshold this time.
-The membership change looks right.  Please run through the threshold this time and update the default threshold to X%
-The membership change looks right.  I don’t need the threshold check in the future, and please disable this feature. (Not recommended)
-It does NOT look right to me. Please don’t run through the threshold. I will contact GMMSupport to follow up.
+The membership change looks right.  Please allow the threshold to be exceeded this time only.
+The membership change looks right.  Please allow the threshold to be exceeded, and update the default threshold to X%
+The membership change looks right.  I don’t need the threshold check in the future so please disable this feature. (Not recommended)
+The projected increase or decrease does not look right to me. Please do not allow the sync to exceed the threshold. I will contact GMMSupport to follow up.
  
 The group sync will be PAUSED until your response is received.
  
