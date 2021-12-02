@@ -44,6 +44,7 @@ namespace Services.Tests
             MockGraphGroupRepository mockGroupRepo;
             MembershipDifferenceCalculator<AzureADUser> calculator;
             ThresholdConfig thresholdConfig;
+            MockLocalizationRepository localizationRepository;
 
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -57,6 +58,8 @@ namespace Services.Tests
             calculator = new MembershipDifferenceCalculator<AzureADUser>();
             mockGroupRepo = new MockGraphGroupRepository();
             mockSyncJobRepo = new MockSyncJobRepository();
+            localizationRepository = new MockLocalizationRepository();
+
             deltaCalculatorService = new DeltaCalculatorService(
                                             calculator,
                                             mockSyncJobRepo,
@@ -65,7 +68,8 @@ namespace Services.Tests
                                             mockGraphUpdaterService,
                                             dryRun,
                                             thresholdConfig,
-                                            _gmmResources);
+                                            _gmmResources,
+                                            localizationRepository);
 
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
@@ -135,6 +139,7 @@ namespace Services.Tests
             MockGraphGroupRepository mockGroupRepo;
             MembershipDifferenceCalculator<AzureADUser> calculator;
             ThresholdConfig thresholdConfig;
+            MockLocalizationRepository localizationRepository;
 
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -148,6 +153,8 @@ namespace Services.Tests
             calculator = new MembershipDifferenceCalculator<AzureADUser>();
             mockGroupRepo = new MockGraphGroupRepository();
             mockSyncJobRepo = new MockSyncJobRepository();
+            localizationRepository = new MockLocalizationRepository();
+
             deltaCalculatorService = new DeltaCalculatorService(
                                             calculator,
                                             mockSyncJobRepo,
@@ -156,7 +163,8 @@ namespace Services.Tests
                                             mockGraphUpdaterService,
                                             dryRun,
                                             thresholdConfig,
-                                            _gmmResources);
+                                            _gmmResources,
+                                            localizationRepository);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -227,6 +235,7 @@ namespace Services.Tests
             MockGraphGroupRepository mockGroupRepo;
             MembershipDifferenceCalculator<AzureADUser> calculator;
             ThresholdConfig thresholdConfig;
+            MockLocalizationRepository localizationRepository;
 
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -240,6 +249,7 @@ namespace Services.Tests
             calculator = new MembershipDifferenceCalculator<AzureADUser>();
             mockGroupRepo = new MockGraphGroupRepository();
             mockSyncJobRepo = new MockSyncJobRepository();
+            localizationRepository = new MockLocalizationRepository();
             deltaCalculatorService = new DeltaCalculatorService(
                                             calculator,
                                             mockSyncJobRepo,
@@ -248,7 +258,8 @@ namespace Services.Tests
                                             mockGraphUpdaterService,
                                             dryRun,
                                             thresholdConfig,
-                                            _gmmResources);
+                                            _gmmResources,
+                                            localizationRepository);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -312,6 +323,7 @@ namespace Services.Tests
             MockGraphGroupRepository mockGroupRepo;
             MembershipDifferenceCalculator<AzureADUser> calculator;
             ThresholdConfig thresholdConfig;
+            MockLocalizationRepository localizationRepository;
 
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -325,6 +337,7 @@ namespace Services.Tests
             calculator = new MembershipDifferenceCalculator<AzureADUser>();
             mockGroupRepo = new MockGraphGroupRepository();
             mockSyncJobRepo = new MockSyncJobRepository();
+            localizationRepository = new MockLocalizationRepository();
             deltaCalculatorService = new DeltaCalculatorService(
                                             calculator,
                                             mockSyncJobRepo,
@@ -333,7 +346,8 @@ namespace Services.Tests
                                             mockGraphUpdaterService,
                                             dryRun,
                                             thresholdConfig,
-                                            _gmmResources);
+                                            _gmmResources,
+                                            localizationRepository);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -401,6 +415,7 @@ namespace Services.Tests
             MockGraphGroupRepository mockGroupRepo;
             MembershipDifferenceCalculator<AzureADUser> calculator;
             ThresholdConfig thresholdConfig;
+            MockLocalizationRepository localizationRepository;
 
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -414,6 +429,7 @@ namespace Services.Tests
             calculator = new MembershipDifferenceCalculator<AzureADUser>();
             mockGroupRepo = new MockGraphGroupRepository();
             mockSyncJobRepo = new MockSyncJobRepository();
+            localizationRepository = new MockLocalizationRepository();
             deltaCalculatorService = new DeltaCalculatorService(
                                             calculator,
                                             mockSyncJobRepo,
@@ -422,7 +438,8 @@ namespace Services.Tests
                                             mockGraphUpdaterService,
                                             dryRun,
                                             thresholdConfig,
-                                            _gmmResources);
+                                            _gmmResources,
+                                            localizationRepository);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -492,6 +509,7 @@ namespace Services.Tests
             MockGraphGroupRepository mockGroupRepo;
             MembershipDifferenceCalculator<AzureADUser> calculator;
             ThresholdConfig thresholdConfig;
+            MockLocalizationRepository localizationRepository;
 
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -505,6 +523,7 @@ namespace Services.Tests
             calculator = new MembershipDifferenceCalculator<AzureADUser>();
             mockGroupRepo = new MockGraphGroupRepository();
             mockSyncJobRepo = new MockSyncJobRepository();
+            localizationRepository = new MockLocalizationRepository();
             deltaCalculatorService = new DeltaCalculatorService(
                                             calculator,
                                             mockSyncJobRepo,
@@ -513,7 +532,8 @@ namespace Services.Tests
                                             mockGraphUpdaterService,
                                             dryRun,
                                             thresholdConfig,
-                                            _gmmResources);
+                                            _gmmResources,
+                                            localizationRepository);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -568,7 +588,7 @@ namespace Services.Tests
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"Threshold exceeded, no changes made to group")));
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"{nameof(DeltaCalculatorFunction)} function completed")));
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function did not complete"));
-            Assert.IsTrue(mockMailRepo.SentEmails.First().Content == "SyncThresholdDecreaseEmailBody");
+            Assert.IsTrue(mockMailRepo.SentEmails.First().Content == "SyncThresholdBothEmailBody");
             Assert.AreEqual(SyncStatus.Idle, updateJobRequest.Status);
             Assert.IsTrue(response.ShouldCompleteMessage);
             Assert.AreEqual(graphUpdaterRequest.MessageLockToken, response.CompletedGroupMembershipMessages.Single().LockToken);
@@ -592,6 +612,7 @@ namespace Services.Tests
             MockGraphGroupRepository mockGroupRepo;
             MembershipDifferenceCalculator<AzureADUser> calculator;
             ThresholdConfig thresholdConfig;
+            MockLocalizationRepository localizationRepository;
 
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -605,6 +626,7 @@ namespace Services.Tests
             calculator = new MembershipDifferenceCalculator<AzureADUser>();
             mockGroupRepo = new MockGraphGroupRepository();
             mockSyncJobRepo = new MockSyncJobRepository();
+            localizationRepository = new MockLocalizationRepository();
             deltaCalculatorService = new DeltaCalculatorService(
                                             calculator,
                                             mockSyncJobRepo,
@@ -613,7 +635,8 @@ namespace Services.Tests
                                             mockGraphUpdaterService,
                                             dryRun,
                                             thresholdConfig,
-                                            _gmmResources);
+                                            _gmmResources,
+                                            localizationRepository);
 
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
@@ -684,7 +707,7 @@ namespace Services.Tests
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"Threshold exceeded, no changes made to group")));
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"{nameof(DeltaCalculatorFunction)} function completed")));
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function did not complete"));
-            Assert.IsTrue(mockMailRepo.SentEmails.First().Content == "SyncThresholdDecreaseEmailBody");
+            Assert.IsTrue(mockMailRepo.SentEmails.First().Content == "SyncThresholdBothEmailBody");
             Assert.AreEqual(SyncStatus.Idle, updateJobRequest.Status);
             Assert.AreEqual(thresholdViolationCountLimit, updateJobRequest.ThresholdViolations);
             Assert.AreEqual(thresholdViolationCountLimit, mockGraphUpdaterService.Jobs[(syncJob.PartitionKey, syncJob.RowKey)].ThresholdViolations);

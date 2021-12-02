@@ -14,14 +14,16 @@ using Repositories.Mocks;
 using Services.Entities;
 using Microsoft.Graph;
 using System.Collections;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Localization;
+using Repositories.Localization;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Services.Tests
 {
     [TestClass]
     public class MembershipThresholdTests
     {
-        const string SyncThresholdIncreaseEmailBody = "SyncThresholdIncreaseEmailBody";
-        const string SyncThresholdDecreaseEmailBody = "SyncThresholdDecreaseEmailBody";
         const string SyncThresholdBothEmailBody = "SyncThresholdBothEmailBody";
         const string SyncJobDisabledEmailBody = "SyncJobDisabledEmailBody";
 
@@ -37,6 +39,7 @@ namespace Services.Tests
         {
             LearnMoreAboutGMMUrl = "http://learn-more-url"
         };
+        MockLocalizationRepository _localizationRepository = new MockLocalizationRepository();
 
         [TestInitialize]
         public void SetupData()
@@ -88,7 +91,7 @@ namespace Services.Tests
             var graphUpdaterService = new MockGraphUpdaterService(mailRepository);
             var dryRun = new DryRunValue();
             var thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
-           
+
             dryRun.DryRunEnabled = false;
 
             var deltaCalculator = new DeltaCalculatorService(
@@ -99,7 +102,8 @@ namespace Services.Tests
                                      graphUpdaterService,
                                      dryRun,
                                      thresholdConfig,
-                                     _gmmResources);
+                                     _gmmResources,
+                                     _localizationRepository);
 
 
             var targetGroupUsers = new List<AzureADUser>();
@@ -139,7 +143,8 @@ namespace Services.Tests
                                     graphUpdaterService,
                                     dryRun,
                                     thresholdConfig,
-                                    _gmmResources);
+                                    _gmmResources,
+                                    _localizationRepository);
 
 
             syncjobRepository.ExistingSyncJobs.Add((_partitionKey, _rowKey), _job);
@@ -164,7 +169,7 @@ namespace Services.Tests
             var dryRun = new DryRunValue();
             var thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             var graphUpdaterService = new MockGraphUpdaterService(mailRepository);
-
+            
             var deltaCalculator = new DeltaCalculatorService(
                                     calculator,
                                     syncjobRepository,
@@ -173,7 +178,8 @@ namespace Services.Tests
                                     graphUpdaterService,
                                     dryRun,
                                     thresholdConfig,
-                                    _gmmResources);
+                                    _gmmResources,
+                                    _localizationRepository);
 
             var targetGroupUsers = new List<AzureADUser>();
 
@@ -194,9 +200,9 @@ namespace Services.Tests
             Assert.AreEqual(GraphUpdaterStatus.ThresholdExceeded, response.GraphUpdaterStatus);
             Assert.AreEqual(targetGroupUsers.Count, graphUpdaterService.GroupsToUsers[_targetGroupId].Count);
             Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is greater than threshold value")));
-            Assert.AreEqual(SyncThresholdIncreaseEmailBody, emailMessage.Content);
+            Assert.AreEqual(SyncThresholdBothEmailBody, emailMessage.Content);
             Assert.AreEqual(_targetGroupId.ToString(), emailMessage.AdditionalContentParams[1]);
-            Assert.AreEqual(6, emailMessage.AdditionalContentParams.Length);
+            Assert.AreEqual(5, emailMessage.AdditionalContentParams.Length);
         }
 
         [TestMethod]
@@ -220,7 +226,8 @@ namespace Services.Tests
                                     graphUpdaterService,
                                     dryRun,
                                     thresholdConfig,
-                                    _gmmResources);
+                                    _gmmResources,
+                                    _localizationRepository);
 
             var users = _membership.SourceMembers;
             _membership.SourceMembers = users.Take(2).ToList();
@@ -243,9 +250,9 @@ namespace Services.Tests
             Assert.AreEqual(GraphUpdaterStatus.ThresholdExceeded, response.GraphUpdaterStatus);
             Assert.AreEqual(targetGroupUsers.Count, graphUpdaterService.GroupsToUsers[_targetGroupId].Count);
             Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is lesser than threshold value")));
-            Assert.AreEqual(SyncThresholdDecreaseEmailBody, emailMessage.Content);
+            Assert.AreEqual(SyncThresholdBothEmailBody, emailMessage.Content);
             Assert.AreEqual(_targetGroupId.ToString(), emailMessage.AdditionalContentParams[1]);
-            Assert.AreEqual(6, emailMessage.AdditionalContentParams.Length);
+            Assert.AreEqual(5, emailMessage.AdditionalContentParams.Length);
         }
 
         [TestMethod]
@@ -269,7 +276,8 @@ namespace Services.Tests
                                     graphUpdaterService,
                                     dryRun,
                                     thresholdConfig,
-                                    _gmmResources);
+                                    _gmmResources,
+                                    _localizationRepository);
 
             var users = _membership.SourceMembers;
             _membership.SourceMembers = users.Take(2).ToList();
@@ -294,7 +302,7 @@ namespace Services.Tests
             Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is lesser than threshold value")));
             Assert.AreEqual(SyncThresholdBothEmailBody, emailMessage.Content);
             Assert.AreEqual(_targetGroupId.ToString(), emailMessage.AdditionalContentParams[1]);
-            Assert.AreEqual(8, emailMessage.AdditionalContentParams.Length);
+            Assert.AreEqual(5, emailMessage.AdditionalContentParams.Length);
         }
 
         [TestMethod]
@@ -309,7 +317,6 @@ namespace Services.Tests
             var dryRun = new DryRunValue();
             var thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             var graphUpdaterService = new MockGraphUpdaterService(mailRepository);
-
             var deltaCalculator = new DeltaCalculatorService(
                                     calculator,
                                     syncjobRepository,
@@ -318,7 +325,8 @@ namespace Services.Tests
                                     graphUpdaterService,
                                     dryRun,
                                     thresholdConfig,
-                                    _gmmResources);
+                                    _gmmResources,
+                                    _localizationRepository);
 
             var targetGroupUsers = new List<AzureADUser>();
 
@@ -361,7 +369,8 @@ namespace Services.Tests
                                     graphUpdaterService,
                                     dryRun,
                                     thresholdConfig,
-                                    _gmmResources);
+                                    _gmmResources,
+                                    _localizationRepository);
 
             var targetGroupUsers = new List<AzureADUser>();
             var ownersPage = new GroupOwnersPage();
@@ -424,7 +433,8 @@ namespace Services.Tests
                                     graphUpdaterService,
                                     dryRun,
                                     thresholdConfig,
-                                    _gmmResources);
+                                    _gmmResources,
+                                    _localizationRepository);
 
             var targetGroupUsers = new List<AzureADUser>();
             var ownersPage = new GroupOwnersPage();
@@ -454,12 +464,12 @@ namespace Services.Tests
             Assert.AreEqual(SyncStatus.Idle, response.SyncStatus);
             Assert.AreEqual(GraphUpdaterStatus.ThresholdExceeded, response.GraphUpdaterStatus);
             Assert.AreEqual(targetGroupUsers.Count, graphUpdaterService.GroupsToUsers[_targetGroupId].Count);
-            Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is greater than threshold value")));
+            Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is greater than threshold value")));            
 
             if (currentThresoldViolations != 9)
             {
-                Assert.AreEqual(SyncThresholdIncreaseEmailBody, emailMessage.Content);
-                Assert.AreEqual(6, emailMessage.AdditionalContentParams.Length);
+                Assert.AreEqual(SyncThresholdBothEmailBody, emailMessage.Content);
+                Assert.AreEqual(5, emailMessage.AdditionalContentParams.Length);
             }
             else
             {
@@ -495,7 +505,8 @@ namespace Services.Tests
                                     graphUpdaterService,
                                     dryRun,
                                     thresholdConfig,
-                                    _gmmResources);
+                                    _gmmResources,
+                                    _localizationRepository);
 
             var targetGroupUsers = new List<AzureADUser>();
             var ownersPage = new GroupOwnersPage();
@@ -519,9 +530,9 @@ namespace Services.Tests
             Assert.AreEqual(GraphUpdaterStatus.ThresholdExceeded, response.GraphUpdaterStatus);
             Assert.AreEqual(targetGroupUsers.Count, graphUpdaterService.GroupsToUsers[_targetGroupId].Count);
             Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is greater than threshold value")));
-            Assert.AreEqual(SyncThresholdIncreaseEmailBody, emailMessage.Content);
+            Assert.AreEqual(SyncThresholdBothEmailBody, emailMessage.Content);
             Assert.AreEqual(_targetGroupId.ToString(), emailMessage.AdditionalContentParams[1]);
-            Assert.AreEqual(6, emailMessage.AdditionalContentParams.Length);
+            Assert.AreEqual(5, emailMessage.AdditionalContentParams.Length);
 
             foreach (var owner in owners)
             {
@@ -553,7 +564,8 @@ namespace Services.Tests
                                     graphUpdaterService,
                                     dryRun,
                                     thresholdConfig,
-                                    _gmmResources);
+                                    _gmmResources,
+                                    _localizationRepository);
 
             var targetGroupUsers = new List<AzureADUser>();
             var ownersPage = new GroupOwnersPage();
@@ -577,9 +589,9 @@ namespace Services.Tests
             Assert.AreEqual(GraphUpdaterStatus.ThresholdExceeded, response.GraphUpdaterStatus);
             Assert.AreEqual(targetGroupUsers.Count, graphUpdaterService.GroupsToUsers[_targetGroupId].Count);
             Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is greater than threshold value")));
-            Assert.AreEqual(SyncThresholdIncreaseEmailBody, emailMessage.Content);
+            Assert.AreEqual(SyncThresholdBothEmailBody, emailMessage.Content);
             Assert.AreEqual(_targetGroupId.ToString(), emailMessage.AdditionalContentParams[1]);
-            Assert.AreEqual(6, emailMessage.AdditionalContentParams.Length);
+            Assert.AreEqual(5, emailMessage.AdditionalContentParams.Length);
             Assert.AreEqual(senderRecipients.SupportEmailAddresses, emailMessage.ToEmailAddresses);
         }
 

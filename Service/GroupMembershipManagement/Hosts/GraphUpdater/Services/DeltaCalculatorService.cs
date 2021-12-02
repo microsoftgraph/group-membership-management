@@ -17,11 +17,11 @@ namespace Services
     public class DeltaCalculatorService : IDeltaCalculatorService
     {
         private const string SyncThresholdBothEmailBody = "SyncThresholdBothEmailBody";
-        private const string SyncThresholdIncreaseEmailBody = "SyncThresholdIncreaseEmailBody";
-        private const string SyncThresholdDecreaseEmailBody = "SyncThresholdDecreaseEmailBody";
         private const string SyncThresholdEmailSubject = "SyncThresholdEmailSubject";
         private const string SyncThresholdDisablingJobEmailSubject = "SyncThresholdDisablingJobEmailSubject";
         private const string SyncJobDisabledEmailBody = "SyncJobDisabledEmailBody";
+        private const string IncreaseThresholdMessage = "IncreaseThresholdMessage";
+        private const string DecreaseThresholdMessage = "DecreaseThresholdMessage";
 
         private readonly IMembershipDifferenceCalculator<AzureADUser> _differenceCalculator;
         private readonly ISyncJobRepository _syncJobRepository;
@@ -30,6 +30,7 @@ namespace Services
         private readonly IGraphUpdaterService _graphUpdaterService;
         private readonly IThresholdConfig _thresholdConfig;
         private readonly IGMMResources _gmmResources;
+        private readonly ILocalizationRepository _localizationRepository;
         private readonly bool _isGraphUpdaterDryRunEnabled;
 
         public DeltaCalculatorService(
@@ -40,7 +41,8 @@ namespace Services
             IGraphUpdaterService graphUpdaterService,
             IDryRunValue dryRun,
             IThresholdConfig thresholdConfig,
-            IGMMResources gmmResources
+            IGMMResources gmmResources,
+            ILocalizationRepository localizationRepository
             )
         {
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
@@ -51,6 +53,7 @@ namespace Services
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
             _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
             _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
+            _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
         }
 
         public async Task<DeltaResponse> CalculateDifferenceAsync(GroupMembership membership, List<AzureADUser> membersFromDestinationGroup)
@@ -220,47 +223,9 @@ namespace Services
             string[] additionalContent;
             string[] additionalSubjectContent = new[] { groupName };
 
-            if (threshold.IsAdditionsThresholdExceeded && threshold.IsRemovalsThresholdExceeded)
-            {
-                contentTemplate = SyncThresholdBothEmailBody;
-                additionalContent = new[]
-                {
-                      groupName,
-                      job.TargetOfficeGroupId.ToString(),
-                      job.ThresholdPercentageForAdditions.ToString(),
-                      threshold.IncreaseThresholdPercentage.ToString("F2"),
-                      job.ThresholdPercentageForRemovals.ToString(),
-                      threshold.DecreaseThresholdPercentage.ToString("F2"),
-                      _gmmResources.LearnMoreAboutGMMUrl,
-                      _emailSenderAndRecipients.SupportEmailAddresses
-                };
-            }
-            else if (threshold.IsAdditionsThresholdExceeded)
-            {
-                contentTemplate = SyncThresholdIncreaseEmailBody;
-                additionalContent = new[]
-                {
-                      groupName,
-                      job.TargetOfficeGroupId.ToString(),
-                      job.ThresholdPercentageForAdditions.ToString(),
-                      threshold.IncreaseThresholdPercentage.ToString("F2"),
-                      _gmmResources.LearnMoreAboutGMMUrl,
-                      _emailSenderAndRecipients.SupportEmailAddresses
-                    };
-            }
-            else
-            {
-                contentTemplate = SyncThresholdDecreaseEmailBody;
-                additionalContent = new[]
-                {
-                      groupName,
-                      job.TargetOfficeGroupId.ToString(),
-                      job.ThresholdPercentageForRemovals.ToString(),
-                      threshold.DecreaseThresholdPercentage.ToString("F2"),
-                      _gmmResources.LearnMoreAboutGMMUrl,
-                      _emailSenderAndRecipients.SupportEmailAddresses
-                };
-            }
+            var thresholdEmail = GetThresholdEmail(groupName, threshold, job);
+            contentTemplate = thresholdEmail.ContentTemplate;
+            additionalContent = thresholdEmail.AdditionalContent;
 
             var recipients = _emailSenderAndRecipients.SupportEmailAddresses ?? _emailSenderAndRecipients.SyncDisabledCCAddresses;
 
@@ -292,6 +257,60 @@ namespace Services
                     ccEmail: _emailSenderAndRecipients.SupportEmailAddresses,
                     emailSubject: emailSubject,
                     additionalSubjectParams: additionalSubjectContent);
+        }
+
+        private (string ContentTemplate, string[] AdditionalContent) GetThresholdEmail(string groupName, ThresholdResult threshold, SyncJob job)
+        {
+            string increasedThresholdMessage = null;
+            string decreasedThresholdMessage = null;
+            string contentTemplate = SyncThresholdBothEmailBody;
+            string[] additionalContent;
+
+            increasedThresholdMessage = _localizationRepository.TranslateSetting(
+                                                        IncreaseThresholdMessage,
+                                                        job.ThresholdPercentageForAdditions.ToString(),
+                                                        threshold.IncreaseThresholdPercentage.ToString("F2"));
+
+            decreasedThresholdMessage = _localizationRepository.TranslateSetting(
+                                               DecreaseThresholdMessage,
+                                               job.ThresholdPercentageForRemovals.ToString(),
+                                               threshold.DecreaseThresholdPercentage.ToString("F2"));
+
+            if (threshold.IsAdditionsThresholdExceeded && threshold.IsRemovalsThresholdExceeded)
+            {
+                additionalContent = new[]
+                {
+                      groupName,
+                      job.TargetOfficeGroupId.ToString(),
+                      $"{increasedThresholdMessage}\n{decreasedThresholdMessage}",
+                      _gmmResources.LearnMoreAboutGMMUrl,
+                      _emailSenderAndRecipients.SupportEmailAddresses
+                };
+            }
+            else if (threshold.IsAdditionsThresholdExceeded)
+            {
+                additionalContent = new[]
+                {
+                      groupName,
+                      job.TargetOfficeGroupId.ToString(),
+                      $"{increasedThresholdMessage}\n",
+                      _gmmResources.LearnMoreAboutGMMUrl,
+                      _emailSenderAndRecipients.SupportEmailAddresses
+                    };
+            }
+            else
+            {
+                additionalContent = new[]
+                {
+                      groupName,
+                      job.TargetOfficeGroupId.ToString(),
+                      $"{decreasedThresholdMessage}\n",
+                      _gmmResources.LearnMoreAboutGMMUrl,
+                      _emailSenderAndRecipients.SupportEmailAddresses
+                };
+            }
+
+            return (contentTemplate, additionalContent);
         }
 
         private async Task<List<string>> GetThresholdRecipientsAsync(string requestors, Guid targetOfficeGroupId)
