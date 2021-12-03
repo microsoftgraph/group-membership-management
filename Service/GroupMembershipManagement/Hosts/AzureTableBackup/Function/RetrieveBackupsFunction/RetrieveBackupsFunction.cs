@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using Services.Contracts;
 using Repositories.Contracts;
 using Services.Entities;
@@ -25,7 +24,7 @@ namespace Hosts.AzureTableBackup
         }
 
         [FunctionName(nameof(RetrieveBackupsFunction))]
-        public async Task<List<ReviewAndDeleteRequest>> RetrieveBackups([ActivityTrigger] RetrieveBackupsRequest request)
+        public async Task<List<ReviewAndDeleteRequest>> RetrieveBackups([ActivityTrigger] object request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RetrieveBackupsFunction)} function started at: {DateTime.UtcNow}" });
             var backups = await _azureTableBackupService.RetrieveBackupsAsync();

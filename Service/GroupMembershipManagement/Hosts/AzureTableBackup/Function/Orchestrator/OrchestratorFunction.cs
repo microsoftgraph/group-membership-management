@@ -31,14 +31,12 @@ namespace Hosts.AzureTableBackup
                                new LoggerRequest
                                {
                                    RunId = runId,
-                                   Message = $"{nameof(OrchestratorFunction)} function started at: {DateTime.UtcNow}"
+                                   Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}"
                                });
 
             await context.CallActivityAsync(nameof(TableBackupFunction), null);
 
-            var reviewAndDeleteRequests = await context.CallActivityAsync<List<ReviewAndDeleteRequest>>(
-                nameof(RetrieveBackupsFunction), 
-                new RetrieveBackupsRequest());
+            var reviewAndDeleteRequests = await context.CallActivityAsync<List<ReviewAndDeleteRequest>>(nameof(RetrieveBackupsFunction), null);
 
             var backupSettings = reviewAndDeleteRequests.Select(e => e.BackupSetting).Distinct();
 
@@ -72,7 +70,7 @@ namespace Hosts.AzureTableBackup
                                new LoggerRequest
                                {
                                    RunId = runId,
-                                   Message = $"{nameof(OrchestratorFunction)} function completed at: {DateTime.UtcNow}"
+                                   Message = $"{nameof(OrchestratorFunction)} function completed at: {context.CurrentUtcDateTime}"
                                });
         }
     }

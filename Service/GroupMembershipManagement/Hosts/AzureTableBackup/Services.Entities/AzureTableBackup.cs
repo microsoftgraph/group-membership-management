@@ -30,12 +30,14 @@ namespace Services.Entities
                 return false;
             }
 
-            return (SourceTableName == ((AzureTableBackup) other).SourceTableName)
-                && (SourceConnectionString == ((AzureTableBackup)other).SourceConnectionString)
-                && (DestinationConnectionString == ((AzureTableBackup) other).DestinationConnectionString)
-                && (BackupType == ((AzureTableBackup) other).BackupType)
-                && (CleanupOnly == ((AzureTableBackup) other).CleanupOnly)
-                && (DeleteAfterDays == ((AzureTableBackup) other).DeleteAfterDays);
+            var otherBackup = other as AzureTableBackup;
+
+            return SourceTableName == otherBackup.SourceTableName
+                && SourceConnectionString == otherBackup.SourceConnectionString
+                && DestinationConnectionString == otherBackup.DestinationConnectionString
+                && BackupType == otherBackup.BackupType
+                && CleanupOnly == otherBackup.CleanupOnly
+                && DeleteAfterDays == otherBackup.DeleteAfterDays;
         }
 
         public override int GetHashCode()
