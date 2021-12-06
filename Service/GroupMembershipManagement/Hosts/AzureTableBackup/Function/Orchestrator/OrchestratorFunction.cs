@@ -3,13 +3,10 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Services.Entities;
-using Services.Contracts;
 using System.Linq;
-using Repositories.Contracts.InjectConfig;
 
 namespace Hosts.AzureTableBackup
 {
@@ -24,7 +21,7 @@ namespace Hosts.AzureTableBackup
         public async Task RunOrchestrator(
             [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            var runId = Guid.NewGuid();
+            var runId = context.NewGuid();
 
             await context.CallActivityAsync(
                                nameof(LoggerFunction),
