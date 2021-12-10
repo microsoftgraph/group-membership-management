@@ -97,6 +97,15 @@ function New-GmmSecurityGroupSyncJob {
 	$tableName = "syncJobs"
 	$cloudTable = (Get-AzStorageTable -Name $tableName -Context $jobStorageAccount.Context).CloudTable
 
+	# see https://docs.microsoft.com/en-us/rest/api/storageservices/querying-tables-and-entities#filtering-on-guid-properties
+	$rowExists = Get-AzTableRow -Table $cloudTable  -CustomFilter "(TargetOfficeGroupId eq guid'$TargetOfficeGroupId')"
+
+	if ($null -ne $rowExists)
+	{
+		Write-Host "A group with TargetOfficeGroup Id $TargetOfficeGroupId already exists in the table. This job will not be onboarded." -ForegroundColor Red 
+		return;
+	}
+
 	$now = Get-Date
 	$partitionKey = "$($now.Year)-$($now.Month)-$($now.Day)"
 	$rowKey = (New-Guid).Guid
