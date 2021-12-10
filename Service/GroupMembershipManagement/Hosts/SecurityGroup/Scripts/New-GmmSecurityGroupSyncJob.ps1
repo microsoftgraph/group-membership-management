@@ -119,7 +119,9 @@ function New-GmmSecurityGroupSyncJob {
 			"StartDate"=$StartDate;
 			"Enabled"=$Enabled;
 			"ThresholdPercentageForAdditions"=$ThresholdPercentageForAdditions;
-			"ThresholdPercentageForRemovals"=$ThresholdPercentageForRemovals
+			"ThresholdPercentageForRemovals"=$ThresholdPercentageForRemovals;
+			"IsDryRunEnabled"=$False;
+			"DryRunTimeStamp"=$lastRunTime;
 		}
 
 	Add-AzTableRow `
