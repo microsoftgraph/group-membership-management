@@ -495,14 +495,14 @@ Flag to enable or disable a synchronization job.
 
 ## ThresholdPercentageForAdditions
 Threshold percentage for users being added.
-If the threshold is exceeded GMM is not going to make any changes to the destination group and an email notification will be sent describing the issue. 
+If the threshold is exceeded GMM is not going to make any changes to the destination group and an email notification will be sent describing the issue.
 The email notification will be sent to the recipients defined in the 'SyncDisabledEmailBody' setting located in the prereqs keyvault. Multiple email addresses can be specified separated by semicolon.
 To continue processing the job increase the threshold value or disable the threshold check by set it to 0 (zero).
 - DataType: int
 
 ## ThresholdPercentageForRemovals
 Threshold percentage for users being removed.
-If the threshold is exceeded GMM is not going to make any changes to the destination group and an email notification will be sent describing the issue. 
+If the threshold is exceeded GMM is not going to make any changes to the destination group and an email notification will be sent describing the issue.
 The email notification will be sent to the recipients defined in the 'SyncDisabledEmailBody' setting located in the prereqs keyvault. Multiple email addresses can be specified separated by semicolon.
 To continue processing the job increase the threshold value or disable the threshold check by set it to 0 (zero).
 - DataType: int
@@ -558,7 +558,7 @@ A newer version of this cmdlet is under development.  It will be available in an
 Dry run settings are present in GMM to provide users the ability to test new changes without affecting the group membership. This configuration is present in the application configuration table.
 If you would like to have the default setting to be false, then please update the settings in the app configuration to false for the GraphUpdater and SecurityGroup.
 
-There are 3 Dry Run flags in GMM. If any of these Dry run flags are set, the sync will be completed but destination membership will not be affected. 
+There are 3 Dry Run flags in GMM. If any of these Dry run flags are set, the sync will be completed but destination membership will not be affected.
 1. IsDryRunEnabled: This is a property that is set on an individual sync. Setting this to true will run this sync in dry run.
 2. IsSecurityGroupDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all Security Group syncs in dry run.
 3. IsGraphUpdaterDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all syncs in dry run.
@@ -571,7 +571,7 @@ In order for the Function Apps `<SolutionAbbreviation>`-compute-`<EnvironmentAbb
     2. Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `
                                     -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
                                     -FunctionAppName "<function app name>" `
-                                    -AppConfigName "<SolutionAbbreviation>-appConfiguration-<EnvironmentAbbreviation>" `
+                                    -AppConfigName "<SolutionAbbreviation>-appConfig-<EnvironmentAbbreviation>" `
                                     -Verbose
 
         FunctionAppName: <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-<GraphUpdater>
@@ -580,7 +580,7 @@ In order for the Function Apps `<SolutionAbbreviation>`-compute-`<EnvironmentAbb
     2. Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `
                                     -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
                                     -FunctionAppName "<function app name>" `
-                                    -AppConfigName "<SolutionAbbreviation>-appConfiguration-<EnvironmentAbbreviation>" `
+                                    -AppConfigName "<SolutionAbbreviation>-appConfig-<EnvironmentAbbreviation>" `
                                     -Verbose
 
 # Setting AzureTableBackup function
