@@ -38,8 +38,6 @@ To find out what .NET SDK versions you currently have installed run this command
 
     dotnet --list-sdks
 
-
-
 ## Download GMM source code from GitHub
 
 Navigate to GMM repository [here](https://github.com/microsoftgraph/group-membership-management) to download the source code.
@@ -58,7 +56,7 @@ The code is provided with three sample environments:
 
 These names must not be reused, see [`'Resource groups'`](#resource-groups) for more details.
 
-The steps in this document will setup a single environment i.e. prodv2, if you would like to setup other enviroments i.e. int and ua, you will need to go through these steps again replacing `<EnvironmentAbbreviation>` accordingly.
+The steps in this document will setup a single environment i.e. prodv2, if you would like to setup other environments i.e. int and ua, you will need to go through these steps again replacing `<EnvironmentAbbreviation>` accordingly.
 
 Both `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` must be all numbers and lowercase letters! Using capital letters in either will cause problems later down the line!
 
@@ -80,6 +78,9 @@ If you would like to add additional environments, follow these steps:
             - name: 'JobTrigger'
             - name: 'GraphUpdater'
             - name: 'SecurityGroup'
+            - name: 'AzureTableBackup'
+            - name: 'AzureUserReader'
+            - name: 'JobScheduler'
             condition: |
             and(
                 succeeded('Build_Functions'),
@@ -122,6 +123,9 @@ If you would like to remove environments, follow these steps:
             - name: 'JobTrigger'
             - name: 'GraphUpdater'
             - name: 'SecurityGroup'
+            - name: 'AzureTableBackup'
+            - name: 'AzureUserReader'
+            - name: 'JobScheduler'
             condition: |
             and(
                 succeeded('Build_Functions'),
