@@ -232,6 +232,16 @@
           "secretSettings": {
             "value": [
               {
+                "name": "WEBSITE_RUN_FROM_PACKAGE",
+                "value": 1,
+                "slotSetting": false
+              },
+              {
+                "name": "WEBSITE_ENABLE_SYNC_UPDATE_SITE",
+                "value": 1,
+                "slotSetting": false
+              },
+              {
                 "name": "SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT",
                 "value": "0",
                 "slotSetting": false
