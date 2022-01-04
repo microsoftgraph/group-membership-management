@@ -83,33 +83,20 @@ function Set-GraphCredentialsAzureADApplication {
 
 	#region Delete Application / Service Principal if they already exist
     $graphAppDisplayName = "$SolutionAbbreviation-Graph-$EnvironmentAbbreviation"
-	$graphApp = (Get-AzADApplication -DisplayName $graphAppDisplayName)
+	$graphApps = (Get-AzADApplication -DisplayName $graphAppDisplayName)
 
-	if ($null -ne $graphApp)
-	{
-		$graphApp = $graphApp[0];
-	}
-
-	if($graphApp -and $Clean)
-	{
-        Write-Verbose "Removing existing $graphAppDisplayName"
-		Update-AzADApplication	-ObjectId $graphApp.ObjectId `
-                                -AvailableToOtherTenants $false
-
-        Write-Verbose "Removing Application for $graphAppDisplayName..."
-		do
-		{
-			$secondsToSleep = 5
-            Write-Verbose "Waiting $secondsToSleep seconds for $graphAppDisplayName's Application to be removed."
-			Start-Sleep -Seconds $secondsToSleep
-			Remove-AzADApplication 	-ObjectId $graphApp.ObjectId `
-										-ErrorAction SilentlyContinue `
-										-ErrorVariable $removeAdAppError
-		}
-		while($removeAdAppError)
-        $graphApp = Get-AzADApplication -DisplayName $graphAppDisplayName
-        Write-Verbose "Removed existing $graphAppDisplayName"
-	}
+	$graphApps | ForEach-Object {
+    
+        $displayName = $_.DisplayName;
+        $objectId = $_.Id;
+        try {
+            Remove-AzureADApplication -ObjectId $objectId
+            Write-Host "Removed $displayName..." -ForegroundColor Green;
+        }
+        catch {
+            Write-Host "Failed to remove $displayName..." -ForegroundColor Red;
+        }
+    }
     #endregion
 
     # These are the function apps that need to interact with the graph.
@@ -138,14 +125,14 @@ function Set-GraphCredentialsAzureADApplication {
 	if($null -eq $graphApp)
 	{
 		Write-Verbose "Creating Azure AD app $graphAppDisplayName"
-		$appIdGuid = New-Guid
-        $graphApp = New-AzureADApplication	-DisplayName $graphAppDisplayName `
-                                                -IdentifierUris "api://$appIDGuid" `
-                                                -ReplyUrls $replyUrls `
-                                                -RequiredResourceAccess $requiredResourceAccess `
-												-AvailableToOtherTenants $false `
-												-Oauth2AllowImplicitFlow $false `
-												-PublicClient $false
+		$graphApp = New-AzureADApplication	-DisplayName $graphAppDisplayName `
+                                            -ReplyUrls $replyUrls `
+                                            -RequiredResourceAccess $requiredResourceAccess `
+											-AvailableToOtherTenants $false `
+											-Oauth2AllowImplicitFlow $false `
+											-PublicClient $false
+
+        Set-AzureADApplication -ObjectId $graphApp.ObjectId -IdentifierUris "api://$($graphApp.AppId)"
 	}
 	else
 	{
@@ -161,14 +148,11 @@ function Set-GraphCredentialsAzureADApplication {
 
 	# These need to go into the key vault
 	$graphAppTenantId = $TenantIdToCreateAppIn;
-	$graphAppClientId = $graphApp.ApplicationId;
+	$graphAppClientId = $graphApp.AppId;
 
 	# Create new secret
-	Add-Type -AssemblyName System.Web
-	$passString = [System.Web.Security.Membership]::GeneratePassword(24,5)
-  	$graphAppSecureSecret = ConvertTo-SecureString $passString -AsPlainText -Force
 	$endDate = [System.DateTime]::Now.AddYears(1)
-	New-AzADAppCredential -ObjectId $graphApp.ObjectId -Password $graphAppSecureSecret -startDate $(get-date) -EndDate $endDate
+    $graphAppClientSecret = Get-AzADApplication -ApplicationId $graphAppClientId | New-AzADAppCredential -StartDate $(get-date) -EndDate $endDate
 
 	do {
 		Write-Host "Please sign in with an account that can write to the prereqs key vault."
@@ -196,11 +180,12 @@ function Set-GraphCredentialsAzureADApplication {
 	Write-Verbose "$graphClientIdKeyVaultSecretName added to vault for $graphAppDisplayName."
 
 	# Store Application secret in KeyVault
-	$graphAppClientSecret = "graphAppClientSecret"
+	$graphAppClientSecretName = "graphAppClientSecret"
+    $graphClientSecret = ConvertTo-SecureString -AsPlainText -Force $($graphAppClientSecret.SecretText)
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-							-Name $graphAppClientSecret `
-							-SecretValue $graphAppSecureSecret
-	Write-Verbose "$graphAppClientSecret added to vault for $graphAppDisplayName."
+							-Name $graphAppClientSecretName `
+							-SecretValue $graphClientSecret
+	Write-Verbose "$graphAppClientSecretName added to vault for $graphAppDisplayName."
 
 	# Store tenantID in KeyVault
 	$graphTenantSecretName = "graphAppTenantId"

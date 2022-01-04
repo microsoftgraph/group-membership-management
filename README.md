@@ -215,7 +215,8 @@ From your PowerShell command prompt navigate to the Scripts folder then type the
     2. Set-Environment  -solutionAbbreviation "<solutionAbbreviation>" `
                         -environmentAbbreviation "<environmentAbbreviation>" `
                         -objectId "<objectId>" `
-                        -resourceGroupLocation "<resourceGroupLocation>"
+                        -resourceGroupLocation "<resourceGroupLocation>" `
+                        -overwrite $true
 
 `<objectId>` is the Azure Object Id of the user, group or service principal to which access to the prereqs keyvault is going to be granted. This object Id must be located in the same Azure tenant where the keyvault is going to be created.
 `<resourceGroupLocation>` is the Azure location where the resources are going to be created. Please refer to [this](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/resource-location?tabs=azure-powershell) documentation to know the available resource locations.
@@ -242,6 +243,7 @@ From your PowerShell command prompt navigate to the Scripts folder then type the
                                                 -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
                                                 -TenantIdToCreateAppIn "<TenantId>" `
                                                 -TenantIdWithKeyVault "<TenantId>" `
+                                                -Clean $true `
                                                 -Verbose
 
     Follow the instructions on the screen.

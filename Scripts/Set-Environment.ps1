@@ -29,6 +29,8 @@ Set-Environment -solutionAbbreviation "<solutionAbbreviation>" `
 
 function Set-Subscription {
 
+    Connect-AzAccount
+
     if (-not $SubscriptionId) {
 		Write-Host "`nCurrent subscription:`n"
 		$currentSubscription = (Get-AzContext).Subscription
