@@ -8,6 +8,7 @@ namespace Entities
         InProgress = 1,
         Idle = 2,
         Error = 3,
-        ThresholdExceeded = 4
+        ThresholdExceeded = 4,
+        NoSourceMembership = 5
     }
 }
