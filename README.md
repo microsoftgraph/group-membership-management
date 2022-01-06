@@ -92,19 +92,10 @@ If you would like to add additional environments, follow these steps:
    - serviceConnection
    - stageName
 
-   Save your changes.
-
-4. Navigate to these locations
-    - Infrastructure\data\parameters
-    - Service\GroupMembershipManagement\Hosts\GraphUpdater\Infrastructure\data\parameters
-    - Service\GroupMembershipManagement\Hosts\GraphUpdater\Infrastructure\compute\parameters
-    - Service\GroupMembershipManagement\Hosts\JobTrigger\Infrastructure\data\parameters
-    - Service\GroupMembershipManagement\Hosts\JobTrigger\Infrastructure\compute\parameters
-    - Service\GroupMembershipManagement\Hosts\SecurityGroup\Infrastructure\data\parameters
-    - Service\GroupMembershipManagement\Hosts\SecurityGroup\Infrastructure\compute\parameters
-
-    For each location copy the file named parameters.int.json and rename it to parameters.`<your-new-environment-name>`.json
-
+   Save your changes.   
+4. Search for the file `parameters.int.json`. Repeat the following steps for all the files:
+        * Copy and paste the same file at the same location
+        * Change the name to `parameters.<your-new-environment-name>.json`
 ### Remove existing environments
 If you would like to remove environments, follow these steps:
 
@@ -133,18 +124,7 @@ If you would like to remove environments, follow these steps:
                 in(variables['Build.Reason'], 'IndividualCI', 'Manual')
             )
 3. Delete the template and save your changes. You might need to update any templates that had a dependency on the deleted template. For instance `dependsOn` and `condition` settings in `prodv2` template reference `ua`, so these would need to be updated in case `ua` was removed.
-
-4. Navigate to these locations
-    - Infrastructure\data\parameters
-    - Service\GroupMembershipManagement\Hosts\GraphUpdater\Infrastructure\data\parameters
-    - Service\GroupMembershipManagement\Hosts\GraphUpdater\Infrastructure\compute\parameters
-    - Service\GroupMembershipManagement\Hosts\JobTrigger\Infrastructure\data\parameters
-    - Service\GroupMembershipManagement\Hosts\JobTrigger\Infrastructure\compute\parameters
-    - Service\GroupMembershipManagement\Hosts\SecurityGroup\Infrastructure\data\parameters
-    - Service\GroupMembershipManagement\Hosts\SecurityGroup\Infrastructure\compute\parameters
-
-    For each location select the file for the environment you would like to delete (parameters.`<EnvironmentAbbreviation>`.json) and delete the file.
-
+4. Search for the file `parameters.<environment-you-want-to-delete>.json` and delete the file.
 # Create Resource Groups and prereqs keyvault
 
 ## Resource groups
@@ -182,14 +162,10 @@ Both `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` must be all number
 The changes required are:
 - Rename the parameter files provided (parameters.int.json, parameters.ua.json and parameters.prodv2.json) updating the environment part. parameters.`<EnvironmentAbbreviation>`.json.
 The files are located in these folders:
-  - Infrastructure\data\parameters
-  - Service\GroupMembershipManagement\Hosts\GraphUpdater\Infrastructure\data\parameters
-  - Service\GroupMembershipManagement\Hosts\GraphUpdater\Infrastructure\compute\parameters
-  - Service\GroupMembershipManagement\Hosts\JobTrigger\Infrastructure\data\parameters
-  - Service\GroupMembershipManagement\Hosts\JobTrigger\Infrastructure\compute\parameters
-  - Service\GroupMembershipManagement\Hosts\SecurityGroup\Infrastructure\data\parameters
-  - Service\GroupMembershipManagement\Hosts\SecurityGroup\Infrastructure\compute\parameters
-- Update vsts-cicd.yml settings.
+  - `Infrastructure\data\parameters`
+  - `Service\GroupMembershipManagement\Hosts\*\Infrastructure\data\parameters`
+  - `Service\GroupMembershipManagement\Hosts\*\Infrastructure\compute\parameters`
+- Update vsts-cicd.yml settings:
    - environmentAbbreviation
    - serviceConnection
    - stageName
@@ -261,7 +237,7 @@ Once your application is created we need to grant the requested permissions to u
 
 -   ### Sign in to [Azure DevOps](https://azure.microsoft.com/en-us/services/devops/)
 
--   ### Create a project
+-   ### Create a private project
 
     -   You can use an existing project in your organization.
     -   To create a new project see [Create a project in AzureDevOps](https://docs.microsoft.com/en-us/azure/devops/organizations/projects/create-project?view=azure-devops&tabs=preview-page) documentation.
@@ -301,9 +277,9 @@ Once your application is created we need to grant the requested permissions to u
 
     In order to push GMM code to your repository see [Manually import a repo](https://docs.microsoft.com/en-us/azure/devops/repos/git/import-git-repository?view=azure-devops#manually-import-a-repo) documentation.
 
--   ### Create an "Azure Resource Manager" Service Connection
+-   ### Create a Service Connection
 
-    -   In order be able to deploy GMM resources through a pipeline we need to create a [Service Connection](https://docs.microsoft.com/en-us/azure/devops/pipelines/library/service-endpoints?view=azure-devops&tabs=yaml) and grant permissions to it.
+    In order to deploy GMM resources through a pipeline we need to create a [Service Connection](https://docs.microsoft.com/en-us/azure/devops/pipelines/library/service-endpoints?view=azure-devops&tabs=yaml) and grant permissions to it.
 
     GMM provides a PowerShell script to accomplish this.
 
@@ -396,13 +372,17 @@ Once your application is created we need to grant the requested permissions to u
 
         When running the pipeline for the first time you might be prompted to authorize resources, click on "Authorize resources" buttons.
 
+        *Points to remember while running the pipeline:*
+         * *If you see an error task `mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks` is missing, install it from [here](https://marketplace.visualstudio.com/items?itemName=mspremier.BuildQualityChecks&ssr=false&referrer=https%3A%2F%2Fapp.vssps.visualstudio.com%2F#overview)*
+         * *If you see an error `no hosted parallelism has been purchased or granted`, please fill out [this](https://aka.ms/azpipelines-parallelism-request) form to request a free parallelism grant*
+
 # Post-Deployment Tasks
 
 Once the pipeline has completed building and deploying GMM code and resources to your Azure resource groups, we need to make some final configuration changes.
 
 ### Grant SecurityGroup function access to the Queue and Topic
 
-Once your Function App `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-SecurityGroup has been created we need to grant it access to the Queue and Topic.
+Once your Function App `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup` has been created we need to grant it access to the Queue and Topic.
 
     QueueName: membership
     TopicName: syncjobs
@@ -443,6 +423,8 @@ A synchronization job must have the following properties populated:
 - Query
 - StartDate
 - Enabled
+- ThresholdPercentageForAdditions
+- ThresholdPercentageForRemovals
 
 ### PartitionKey
 Partition key, the value added here represents the date the job was added to the table.
@@ -499,18 +481,18 @@ i.e. 2021-01-01T00:00:00.000Z
 Flag to enable or disable a synchronization job.
 - DataType: bool
 
-## ThresholdPercentageForAdditions
+### ThresholdPercentageForAdditions
 Threshold percentage for users being added.
 If the threshold is exceeded GMM is not going to make any changes to the destination group and an email notification will be sent describing the issue.
 The email notification will be sent to the recipients defined in the 'SyncDisabledEmailBody' setting located in the prereqs keyvault. Multiple email addresses can be specified separated by semicolon.
-To continue processing the job increase the threshold value or disable the threshold check by set it to 0 (zero).
+To continue processing the job increase the threshold value or disable the threshold check by setting it to 0 (zero).
 - DataType: int
 
-## ThresholdPercentageForRemovals
+### ThresholdPercentageForRemovals
 Threshold percentage for users being removed.
 If the threshold is exceeded GMM is not going to make any changes to the destination group and an email notification will be sent describing the issue.
 The email notification will be sent to the recipients defined in the 'SyncDisabledEmailBody' setting located in the prereqs keyvault. Multiple email addresses can be specified separated by semicolon.
-To continue processing the job increase the threshold value or disable the threshold check by set it to 0 (zero).
+To continue processing the job increase the threshold value or disable the threshold check by setting it to 0 (zero).
 - DataType: int
 
 
@@ -569,9 +551,9 @@ There are 3 Dry Run flags in GMM. If any of these Dry run flags are set, the syn
 2. IsSecurityGroupDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all Security Group syncs in dry run.
 3. IsGraphUpdaterDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all syncs in dry run.
 
-In order for the Function Apps `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-<SecurityGroup&GraphUpdater> to read the dry run values assigned above, we need to grant them access to the AppConfiguration.
+In order for the Function Apps SecurityGroup and GraphUpdater to read the dry run values assigned above, we need to grant them access to the AppConfiguration:
 
-    FunctionAppName: <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-<SecurityGroup>
+FunctionAppName: <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup
 
     1. . ./Set-AppConfigurationManagedIdentityRoles.ps1
     2. Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `
@@ -580,7 +562,7 @@ In order for the Function Apps `<SolutionAbbreviation>`-compute-`<EnvironmentAbb
                                     -AppConfigName "<SolutionAbbreviation>-appConfig-<EnvironmentAbbreviation>" `
                                     -Verbose
 
-        FunctionAppName: <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-<GraphUpdater>
+FunctionAppName: <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-GraphUpdater
 
     1. . ./Set-AppConfigurationManagedIdentityRoles.ps1
     2. Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `

@@ -111,7 +111,7 @@ function Set-ServicePrincipal {
     if($null -eq $servicePrincipal) {
         #region Create service principal
         Write-Host "The service principal is being created..."
-        $servicePrincipal = New-AzADServicePrincipal -Role "Owner" -Scope $scope -DisplayName $servicePrincipalName -SkipAssignment
+        $servicePrincipal = New-AzADServicePrincipal -Role "Owner" -Scope $scope -DisplayName $servicePrincipalName
         Write-Host "The service principal has been created."
         #endregion
 
@@ -126,6 +126,6 @@ function Set-ServicePrincipal {
     foreach ($resourceGroupType in $resourceGroupTypes)
     {
         $resourceGroupName = "$solutionAbbreviation-$resourceGroupType-$environmentAbbreviation"
-        Set-Role -RoleDefinitionName "CSEO DevOps Role" -ResourceGroupName $resourceGroupName -ObjectId $servicePrincipal.Id
+        Set-Role -RoleDefinitionName "Contributor" -ResourceGroupName $resourceGroupName -ObjectId $servicePrincipal.Id
     }
 }
