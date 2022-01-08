@@ -29,7 +29,7 @@ stages:
     - deployment: ${{ parameters.stageName }}_DeployResources
       displayName: ${{ parameters.stageName }}_DeployResources
       pool:
-        vmImage: "windows-2019"
+        vmImage: "windows-latest"
       # creates an environment if it doesn't exist
       variables:
         ${{ if in(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
@@ -54,9 +54,9 @@ stages:
     - job: ${{ parameters.stageName }}_DeployFunctions
       dependsOn: ${{ parameters.stageName }}_DeployResources
       variables:
-        data_storageAccountName: $[ dependencies.DeployResources.outputs['DeployResources.dataVariables.data_storageAccountName'] ]
-        data_containerEndPoint: $[ dependencies.DeployResources.outputs['DeployResources.dataVariables.data_containerEndPoint'] ]
-        data_containerSASToken: $[ dependencies.DeployResources.outputs['DeployResources.dataVariables.data_containerSASToken'] ]
+        data_storageAccountName: $[ dependencies.${{ parameters.stageName }}_DeployResources.outputs['${{ parameters.stageName }}_DeployResources.dataVariables.data_storageAccountName'] ]
+        data_containerEndPoint: $[ dependencies.${{ parameters.stageName }}_DeployResources.outputs['${{ parameters.stageName }}_DeployResources.dataVariables.data_containerEndPoint'] ]
+        data_containerSASToken: $[ dependencies.${{ parameters.stageName }}_DeployResources.outputs['${{ parameters.stageName }}_DeployResources.dataVariables.data_containerSASToken'] ]
         ${{ if in(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
           buildType: 'release'
         ${{ if notIn(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
@@ -75,7 +75,7 @@ stages:
               solutionAbbreviation: ${{ parameters.solutionAbbreviation }}
               environmentAbbreviation: ${{ parameters.environmentAbbreviation }}
               serviceConnection: ${{ parameters.serviceConnection }}
-              tenantId: ${{ parameters.tenantId }}
               location: ${{ parameters.location }}
+              tenantId: ${{ parameters.tenantId }}
               root: $(System.ArtifactsDirectory)/$(Build.BuildNumber)_$(buildType)
               name: ${{ func.name }}

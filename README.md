@@ -375,6 +375,7 @@ Once your application is created we need to grant the requested permissions to u
         *Points to remember while running the pipeline:*
          * *If you see an error task `mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks` is missing, install it from [here](https://marketplace.visualstudio.com/items?itemName=mspremier.BuildQualityChecks&ssr=false&referrer=https%3A%2F%2Fapp.vssps.visualstudio.com%2F#overview)*
          * *If you see an error `no hosted parallelism has been purchased or granted`, please fill out [this](https://aka.ms/azpipelines-parallelism-request) form to request a free parallelism grant*
+         * *If you see an error `MissingSubscriptionRegistration`, go to Subscription -> Resource Providers and register the missing provider*
 
 # Post-Deployment Tasks
 
@@ -405,6 +406,18 @@ In the event that you need to grant access to the queue and topic to an Azure ac
                                         -QueueName "membership" `
                                         -TopicName "syncjobs" `
                                         -Verbose
+### Access to App Configuration
+
+Grant all the functions access to the AppConfiguration by running the following script:
+
+    1. . ./Set-AppConfigurationManagedIdentityRoles.ps1
+    2. Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `
+                                                -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
+                                                -FunctionAppName "<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-JobTrigger" `
+                                                -AppConfigName "<SolutionAbbreviation>-appConfig-<EnvironmentAbbreviation>" `
+                                                -Verbose
+
+- The above is an example for `JobTrigger`. Please update FunctionAppName and run the script for other functions as well.
 
 ### Creating synchronization jobs for source groups
 
@@ -515,9 +528,9 @@ The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGrou
 
 You can also use Microsoft Azure Storage Explorer to add, edit or delete synchronization jobs. see [Get started with Storage Explorer](https://docs.microsoft.com/en-us/azure/vs-azure-tools-storage-manage-with-storage-explorer?tabs=windows).
 
-### Adding `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application as an owner to any destination group that will be managed by GMM.
+### Adding Graph application as an owner to GMM managed destination group
 
-`<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application must be added as an owner to any destination group that will be managed by GMM in order for GMM to have the right permissions to update the group.
+`<solutionAbbreviation>-Graph-<environmentAbbreviation>` application must be added as an owner to any destination group that will be managed by GMM in order for GMM to have the right permissions to update the group.
 
 In order to add the application as an owner of a group follow the next steps:
 1. In the Azure Portal navigate to your 'Azure Active Directory'. If you don't see it on your screen, you can use the top search bar to locate it.
@@ -553,7 +566,7 @@ There are 3 Dry Run flags in GMM. If any of these Dry run flags are set, the syn
 
 In order for the Function Apps SecurityGroup and GraphUpdater to read the dry run values assigned above, we need to grant them access to the AppConfiguration:
 
-FunctionAppName: <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup
+FunctionAppName: `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup`
 
     1. . ./Set-AppConfigurationManagedIdentityRoles.ps1
     2. Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `
@@ -562,7 +575,7 @@ FunctionAppName: <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-Securi
                                     -AppConfigName "<SolutionAbbreviation>-appConfig-<EnvironmentAbbreviation>" `
                                     -Verbose
 
-FunctionAppName: <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-GraphUpdater
+FunctionAppName: `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-GraphUpdater`
 
     1. . ./Set-AppConfigurationManagedIdentityRoles.ps1
     2. Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `

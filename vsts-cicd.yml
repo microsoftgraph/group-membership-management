@@ -10,7 +10,7 @@ trigger:
 - users/*
 
 pool:
-  vmImage: "windows-2019"
+  vmImage: "windows-latest"
 
 variables:
   "major": '2'
