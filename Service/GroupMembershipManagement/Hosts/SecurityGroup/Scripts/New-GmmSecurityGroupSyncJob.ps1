@@ -88,8 +88,6 @@ function New-GmmSecurityGroupSyncJob {
 	)
 	"New-GmmSecurityGroupSyncJob starting..."
 
-	# Write-Host "Please sign into an account that can access the sync job table."
-	# $jobTableContext = (Connect-AzAccount -SubscriptionName $SubscriptionName).Context
 	$jobTableContext = Set-AzContext -SubscriptionName $SubscriptionName
 
 	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
