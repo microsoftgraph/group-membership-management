@@ -3,7 +3,6 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
@@ -25,11 +24,12 @@ namespace Hosts.GraphUpdater
         }
 
         [FunctionName(nameof(JobStatusUpdaterFunction))]
-        public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request, ILogger log)
+        public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.RunId });
 
             var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobPartitionKey, request.JobRowKey);
+            syncJob.ThresholdViolations = request.ThresholdViolations;
 
             if (syncJob != null)
             {

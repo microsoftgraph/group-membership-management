@@ -16,15 +16,19 @@ namespace Entities
         /// Gets or sets the onPremisesImmutableId of a Graph User
         /// </summary>
         public string PersonnelNumber { get; set; }
+        /// <summary>
+        /// Gets or sets the userPrincipalName of a Graph User
+        /// </summary>
+        public string UserPrincipalName { get; set; }
 
         public bool Equals(GraphProfileInformation other)
         {
-            return Id.Equals(other.Id) && PersonnelNumber.Equals(other.PersonnelNumber);
+            return PersonnelNumber.Equals(other.PersonnelNumber);
         }
 
         public override int GetHashCode()
         {
-            return (Id + PersonnelNumber).GetHashCode();
+            return PersonnelNumber.GetHashCode();
         }
     }
 }

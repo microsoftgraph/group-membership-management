@@ -17,6 +17,7 @@
     "jobsTableName": "",
     "senderAddress": "",
     "senderPassword": "",
-    "syncDisabledCCEmailAddresses": ""
+    "syncDisabledCCEmailAddresses": "",
+    "supportEmailAddresses": ""
   }
 }

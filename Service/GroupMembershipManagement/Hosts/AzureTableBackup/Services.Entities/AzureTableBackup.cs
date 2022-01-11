@@ -22,5 +22,32 @@ namespace Services.Entities
             CleanupOnly = cleanupOnly;
             DeleteAfterDays = deleteAfterDays;
         }
+
+        public override bool Equals(object other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+
+            var otherBackup = other as AzureTableBackup;
+
+            return SourceTableName == otherBackup.SourceTableName
+                && SourceConnectionString == otherBackup.SourceConnectionString
+                && DestinationConnectionString == otherBackup.DestinationConnectionString
+                && BackupType == otherBackup.BackupType
+                && CleanupOnly == otherBackup.CleanupOnly
+                && DeleteAfterDays == otherBackup.DeleteAfterDays;
+        }
+
+        public override int GetHashCode()
+        {
+            return SourceTableName.GetHashCode() 
+                ^ SourceConnectionString.GetHashCode()
+                ^ DestinationConnectionString.GetHashCode()
+                ^ BackupType.GetHashCode()
+                ^ CleanupOnly.GetHashCode()
+                ^ DeleteAfterDays.GetHashCode();
+        }
     }
 }

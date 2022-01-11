@@ -5,13 +5,12 @@ using Microsoft.Graph;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace Tests.FunctionApps.Mocks
 {
-	class MockGraphGroupRepository : IGraphGroupRepository
+    class MockGraphGroupRepository : IGraphGroupRepository
 	{
 		public Dictionary<Guid, List<AzureADUser>> GroupsToUsers { get; set; }
 		public Dictionary<string, int> nonUserGraphObjects { get; set; }
@@ -21,7 +20,6 @@ namespace Tests.FunctionApps.Mocks
 		public int ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess { get; set; } = 0;
 		public bool ThrowNonSocketExceptionFromGetUsersInGroup { get; set; } = false;
 		public Guid RunId { get; set; }
-		IGroupTransitiveMembersCollectionWithReferencesPage UsersFromPage { get; set; }
 
 		public Task<(ResponseCode ResponseCode, int SuccessCount)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
 		{
@@ -94,7 +92,17 @@ namespace Tests.FunctionApps.Mocks
             var nonUserGraphObjects = new Dictionary<string, int>();
             return Task.FromResult((users, nonUserGraphObjects, "", (IGroupTransitiveMembersCollectionWithReferencesPage)null));
 		}
-	}
+
+        public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+        {
+            throw new NotImplementedException();
+        }
+    }
 
 	public class MockException : Exception { }
 

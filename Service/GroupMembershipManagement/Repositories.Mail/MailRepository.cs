@@ -4,7 +4,6 @@ using Entities;
 using Microsoft.Graph;
 using Microsoft.Graph.Auth;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,7 +26,7 @@ namespace Repositories.Mail
         }
 
         public async Task SendMailAsync(EmailMessage emailMessage, Guid? runId)
-        {     
+        {
             if (emailMessage is null)
             {
                 throw new ArgumentNullException(nameof(emailMessage));
@@ -35,7 +34,7 @@ namespace Repositories.Mail
 
             var message = new Message
             {
-                Subject = _localizationRepository.TranslateSetting(emailMessage?.Subject),
+                Subject = _localizationRepository.TranslateSetting(emailMessage?.Subject, emailMessage?.AdditionalSubjectParams),
                 Body = new ItemBody
                 {
                     ContentType = BodyType.Text,
@@ -44,7 +43,7 @@ namespace Repositories.Mail
             };
 
             if (!string.IsNullOrEmpty(emailMessage?.ToEmailAddresses))
-                message.ToRecipients = GetEmailAddresses(emailMessage?.ToEmailAddresses);            
+                message.ToRecipients = GetEmailAddresses(emailMessage?.ToEmailAddresses);
 
             if (!string.IsNullOrEmpty(emailMessage?.CcEmailAddresses))
                 message.CcRecipients = GetEmailAddresses(emailMessage?.CcEmailAddresses);

@@ -1,6 +1,3 @@
-param containerBaseUrl string
-param containerSasToken string
-
 @description('Enter an abbreviation for the solution.')
 @minLength(2)
 @maxLength(3)
@@ -155,11 +152,51 @@ param appConfigurationKeyData array = [
     }
   }
   {
+    key: 'GraphUpdater:MaximumNumberOfThresholdRecipients'
+    value: '3'
+    contentType: 'integer'
+    tag: {
+      tag1: 'GraphUpdater'
+    }
+  }
+  {
+    key: 'GraphUpdater:NumberOfThresholdViolationsToNotify'
+    value: '3'
+    contentType: 'integer'
+    tag: {
+      tag1: 'GraphUpdater'
+    }
+  }
+  {
+    key: 'GraphUpdater:NumberOfThresholdViolationsFollowUps'
+    value: '3'
+    contentType: 'integer'
+    tag: {
+      tag1: 'GraphUpdater'
+    }
+  }
+  {
+    key: 'GraphUpdater:NumberOfThresholdViolationsToDisableJob'
+    value: '10'
+    contentType: 'integer'
+    tag: {
+      tag1: 'GraphUpdater'
+    }
+  }
+  {
     key: 'JobScheduler:JobSchedulerConfiguration'
     value: '{ "ResetJobs": false, "DaysToAddForReset": 0, "DistributeJobs": true, "IncludeFutureJobs": false, "StartTimeDelayMinutes": 5, "DelayBetweenSyncsSeconds": 5, "DefaultRuntimeSeconds": 60 }'
     contentType: 'string'
     tag: {
       tag1: 'JobScheduler'
+    }
+  }
+  {
+    key: 'GMM:LearnMoreUrl'
+    value: 'http://learn-more-about-gmm-url.com'
+    contentType: 'string'
+    tag: {
+      tag1: 'GMM'
     }
   }
 ]

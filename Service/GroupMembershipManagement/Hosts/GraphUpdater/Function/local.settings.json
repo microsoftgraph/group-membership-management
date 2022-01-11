@@ -19,6 +19,7 @@
     "senderPassword": "",
     "syncCompletedCCEmailAddresses": "",
     "syncDisabledCCEmailAddresses": "",
+    "supportEmailAddresses": "",
     "membershipQueueName": "",
     "appConfigurationEndpoint": "",
     "APPINSIGHTS_INSTRUMENTATIONKEY": ""

@@ -56,7 +56,7 @@ namespace Services
             foreach (var user in newUsers)
             {
                 if (!existingUserIds.Contains(user.PersonnelNumber))
-                    users.Add(new GraphProfileInformation { PersonnelNumber = user.PersonnelNumber, Id = user.Id });
+                    users.Add(user);
             }
 
             await UploadFileAsync(_storageAccountSecret.ConnectionString, request.ContainerName, blobPath, users);
@@ -140,8 +140,8 @@ namespace Services
             foreach (var line in lines)
             {
                 var data = line.Split(",", StringSplitOptions.RemoveEmptyEntries);
-                if (data.Length >= 2)
-                    users.Add(new GraphProfileInformation { PersonnelNumber = data[0], Id = data[1] });
+                if (data.Length >= 3)
+                    users.Add(new GraphProfileInformation { PersonnelNumber = data[0], Id = data[1], UserPrincipalName = data[2] });
             }
 
             return users;
@@ -151,10 +151,10 @@ namespace Services
         {
             var blobClient = _blobClientFactory.GetBlobClient(connectionString, containerName, filePath);
             using var st = new StreamWriter(new MemoryStream());
-            st.WriteLine("PersonnelNumber,AzureObjectId");
+            st.WriteLine("PersonnelNumber,AzureObjectId,UserPrincipalName");
             foreach (var user in users)
             {
-                st.WriteLine($"{user.PersonnelNumber},{user.Id}");
+                st.WriteLine($"{user.PersonnelNumber},{user.Id},{user.UserPrincipalName}");
             }
 
             await st.FlushAsync();

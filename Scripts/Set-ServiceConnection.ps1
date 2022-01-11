@@ -114,25 +114,15 @@ function Set-ServiceConnection {
 
 	#region Create service connection
 	$serviceConnectionServicePrincipal = Get-AzADServicePrincipal -DisplayName $servicePrincipalName
-	$serviceConnectionApplication = Get-AzADApplication -ApplicationId $serviceConnectionServicePrincipal.ApplicationId
-	
-	Add-Type -AssemblyName System.Web
-	$passString = [System.Web.Security.Membership]::GeneratePassword(24,5)
-  	$securepass = ConvertTo-SecureString $passString -AsPlainText -Force
-
-	New-AzADAppCredential 	-ObjectId $serviceConnectionApplication.ObjectId `
-							-Password $securepass `
-							-StartDate (Get-Date).AddHours(-1) `
-							-EndDate (Get-Date).AddYears(1)
-
-	Write-Host "`nThe Azure DevOps RM App ServicePrincipal ObjectID is: $($serviceConnectionServicePrincipal.Id)"
+    $serviceConnectionCredential = Get-AzADApplication -ApplicationId $serviceConnectionServicePrincipal.AppId | New-AzADAppCredential -StartDate (Get-Date).AddHours(-1) -EndDate (Get-Date).AddYears(1)
+    Write-Host "`nThe Azure DevOps RM App ServicePrincipal ObjectID is: $($serviceConnectionServicePrincipal.Id)"
 
 	Add-VSTeamAzureRMServiceEndpoint    -DisplayName $servicePrincipalName `
 										-ProjectName $ProjectName `
 										-SubscriptionId $SubscriptionId `
 										-subscriptionTenantId $subscriptionTenantId `
-										-servicePrincipalId $serviceConnectionServicePrincipal.ApplicationId `
-										-servicePrincipalKey $passString `
+										-servicePrincipalId $serviceConnectionServicePrincipal.AppId `
+										-servicePrincipalKey $($serviceConnectionCredential.SecretText) `
 										-ErrorAction SilentlyContinue `
 										| Out-Null
 

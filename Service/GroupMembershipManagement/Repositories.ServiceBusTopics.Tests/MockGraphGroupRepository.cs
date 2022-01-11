@@ -70,5 +70,15 @@ namespace Repositories.ServiceBusTopics.Tests
 		{
 			throw new NotImplementedException();
 		}
-	}
+
+        public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }

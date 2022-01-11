@@ -10,7 +10,7 @@ trigger:
 - users/*
 
 pool:
-  vmImage: "windows-2019"
+  vmImage: "windows-latest"
 
 variables:
   "major": '2'
@@ -44,7 +44,7 @@ stages:
        coverageThreshold: 95
     - function:
         name: 'AzureTableBackup'
-        coverageThreshold: 93
+        coverageThreshold: 95
     - function:
         name: 'AzureUserReader'
         coverageThreshold: 45

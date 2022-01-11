@@ -11,6 +11,7 @@
     "serviceBusSyncJobTopic": "",
     "jobTriggerSchedule": "0 */1 * * * *",
     "syncDisabledCCEmailAddresses": "",
+    "supportEmailAddresses": "",
     "senderAddress": "",
     "senderPassword": "",
     "graphCredentials:ClientId": "",

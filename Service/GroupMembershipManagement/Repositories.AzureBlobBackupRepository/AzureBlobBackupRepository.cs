@@ -109,40 +109,42 @@ namespace Repositories.AzureBlobBackupRepository
 			return backupEntities;
 		}
 
-		public async Task<List<string>> DeleteBackupsAsync(IAzureTableBackup backupSettings, List<BackupEntity> entities)
+		public async Task<bool> VerifyDeleteBackupAsync(IAzureTableBackup backupSettings, string blobName)
 		{
 			var cutOffDate = DateTime.UtcNow.AddDays(-backupSettings.DeleteAfterDays);
-			var deletedBlobs = new List<string>();
 
 			var blobContainerClient = await GetContainerClient(backupSettings);
-			var blobs = blobContainerClient.GetBlobsAsync();
-			await foreach (var blob in blobs)
+			var blobClient = blobContainerClient.GetBlobClient(blobName);
+
+			try
 			{
-				try
-				{
-					var parsedDateTimeOffset = DateTimeOffset.ParseExact(blob.Name.Replace(".csv", string.Empty).Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
-						BACKUP_DATE_FORMAT,
-						null,
-						DateTimeStyles.AssumeUniversal);
+				var parsedDateTimeOffset = DateTimeOffset.ParseExact(blobName.Replace(".csv", string.Empty).Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
+					BACKUP_DATE_FORMAT,
+					null,
+					DateTimeStyles.AssumeUniversal);
 
-					var CreatedDate = blob.Properties.CreatedOn.GetValueOrDefault(parsedDateTimeOffset).UtcDateTime;
-
-					if (CreatedDate < cutOffDate)
-                    {
-						await DeleteBackupAsync(backupSettings, blob.Name);
-						deletedBlobs.Add(blob.Name);
-                    }
-				}
-				catch
+				var blobProperties = await blobClient.GetPropertiesAsync();
+				var CreatedDate = parsedDateTimeOffset.UtcDateTime;
+				// Use the blob property if it can be retrieved, otherwise parse time
+				if (blobProperties.Value != null)
                 {
-					await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"The blob item {blob.Name} did not have a CreatedOn property and its name was unparseable" });
+					CreatedDate = blobProperties.Value.CreatedOn.UtcDateTime;
+				}
+
+				if (CreatedDate != null && CreatedDate < cutOffDate)
+				{
+					return true;
 				}
 			}
-
-			return deletedBlobs;
+			catch
+			{
+				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"The blob item {blobName} did not have a CreatedOn property and its name was unparseable" });
+			}
+			
+			return false;
 		}
 
-		private async Task DeleteBackupAsync(IAzureTableBackup backupSettings, string backupName)
+		public async Task DeleteBackupAsync(IAzureTableBackup backupSettings, string backupName)
 		{
 			var blobContainerClient = await GetContainerClient(backupSettings);
 			if (blobContainerClient == null)

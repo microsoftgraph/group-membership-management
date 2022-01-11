@@ -52,7 +52,7 @@ You could also leverage an existing one which has this permission Microsoft.Grap
 1. Register a new application using the Azure Portal see [Register an application with the Microsoft identity platform](https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app) documentation.
 2. Grant Delegated Microsoft.Graph -> User.ReadWrite.All permission. If you need more information on how to grant API permissions to your application see [Add permissions to access web APIs](https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-configure-app-access-web-apis#add-permissions-to-access-web-apis) documentation.
 
-### Setting up the console application
+### Setting up users in your demo tenant
 
 1. Using the file explorer or a command prompt navigate to where GMM code is located, from the root folder navigate to Service\GroupMembershipManagement\Hosts\Console\DemoUserSetup.
 2. Open DemoUserSetup.sln in Visual Studio.
@@ -60,7 +60,7 @@ You could also leverage an existing one which has this permission Microsoft.Grap
    Notice it has several settings: ClientId, TenantId, TenantName, UserCount
     - ClientId - This the Application (client) Id of the application we created in the previous step. You will find this id under the Overview blade of your application on the Azure Portal.
     - TenandId - This is your tenant id, you can find this value under the Overview blade for Azure 'Active Directory'.
-    - TenantName - This is the domain used on your users email addressses. i.e. "contoso.com, <MyDomain>.onmicrosoft.com"
+    - TenantName - This is the domain used on your users' email addresses. i.e. "contoso.com, <MyDomain>.onmicrosoft.com"
     - UserCount - This is the number of users that will be generated. This also represent the number of users that will be read from the data.csv file.
 4. Save your changes and run the application (You might need to set DemoUserSetup as your startup project).
 5. It will open a browser window asking you to login to they tenant where you want to generate the demo data.

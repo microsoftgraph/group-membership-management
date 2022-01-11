@@ -16,7 +16,9 @@ namespace Repositories.Localization
 
         public string TranslateSetting(string settingName, params string[] additionalParams)
         {
-            return _localizer.GetString(settingName, additionalParams);
+            return additionalParams == null
+                    ? _localizer.GetString(settingName)
+                    : _localizer.GetString(settingName, additionalParams);
         }
     }
 }

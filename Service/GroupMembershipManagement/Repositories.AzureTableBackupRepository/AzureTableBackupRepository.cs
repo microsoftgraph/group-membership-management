@@ -173,48 +173,39 @@ namespace Repositories.AzureTableBackupRepository
             return new BackupResult(tableName, "table", backupCount);
         }
 
-        public async Task<List<string>> DeleteBackupsAsync(IAzureTableBackup backupSettings, List<BackupEntity> entities)
+        public async Task<bool> VerifyDeleteBackupAsync(IAzureTableBackup backupSettings, string tableName)
         {
             var cutOffDate = DateTime.UtcNow.AddDays(-backupSettings.DeleteAfterDays);
-            var deletedEntities = new List<string>();
-            var tableNames = entities.Select(e => e.Name);
 
             if (backupSettings.SourceTableName == "*")
             {
-                foreach (var tableName in tableNames)
-                {
-                    var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, tableName);
-                    var query = table.CreateQuery<TableEntity>().AsQueryable().Where(e => e.Timestamp >= cutOffDate);
-                    var results = table.ExecuteQuery(query.AsTableQuery()).ToList();
+                var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, tableName);
+                var query = table.CreateQuery<TableEntity>().AsQueryable().Where(e => e.Timestamp >= cutOffDate);
+                var results = table.ExecuteQuery(query.AsTableQuery()).ToList();
 
-                    if (results.Count == 0)
-                    {
-                        await DeleteBackupAsync(backupSettings, tableName);
-                        deletedEntities.Add(tableName);
-                    }
+                if (results.Count == 0)
+                {
+                    return true;
                 }
             }
             else
             {
-                foreach (var tableName in tableNames)
+                var CreatedDate = DateTime.SpecifyKind(
+                    DateTime.ParseExact(tableName.Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
+                        BACKUP_DATE_FORMAT,
+                        CultureInfo.InvariantCulture,
+                        DateTimeStyles.AssumeUniversal),
+                    DateTimeKind.Utc);
+                if (CreatedDate < cutOffDate)
                 {
-                    var CreatedDate = DateTime.SpecifyKind(
-                        DateTime.ParseExact(tableName.Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
-                            BACKUP_DATE_FORMAT,
-                            CultureInfo.InvariantCulture,
-                            DateTimeStyles.AssumeUniversal),
-                        DateTimeKind.Utc);
-                    if (CreatedDate < cutOffDate)
-                    {
-                        await DeleteBackupAsync(backupSettings, tableName);
-                        deletedEntities.Add(tableName);
-                    }
+                    return true;
                 }
             }
 
-            return deletedEntities;
+            return false;
         }
-        private async Task DeleteBackupAsync(IAzureTableBackup backupSettings, string tableName)
+
+        public async Task DeleteBackupAsync(IAzureTableBackup backupSettings, string tableName)
         {
             await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Deleting backup table: {tableName}" });
 

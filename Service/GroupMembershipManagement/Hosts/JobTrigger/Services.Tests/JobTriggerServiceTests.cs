@@ -356,6 +356,8 @@ namespace Services.Tests
             public string SyncCompletedCCAddresses => "";
 
             public string SyncDisabledCCAddresses => "";
+
+            public string SupportEmailAddresses => "";
         }
 
         private class MockKeyVaultSecret<T> : IKeyVaultSecret<T>

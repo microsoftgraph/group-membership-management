@@ -22,8 +22,8 @@ namespace Repositories.GraphGroups
     public class GraphGroupRepository : IGraphGroupRepository
     {
         private readonly IGraphServiceClient _graphServiceClient;
-		private readonly TelemetryClient _telemetryClient;
-		private readonly ILoggingRepository _log;
+        private readonly TelemetryClient _telemetryClient;
+        private readonly ILoggingRepository _log;
 
         public Guid RunId { get; set; }
 
@@ -37,16 +37,16 @@ namespace Repositories.GraphGroups
         private const int MaxRetries = 10;
         private const int MaxResultCount = 999;
 
-		private const string ResourceUnitHeader = "x-ms-resource-unit";
-		private const string ThrottlePercentageHeader = "x-ms-throttle-limit-percentage";
+        private const string ResourceUnitHeader = "x-ms-resource-unit";
+        private const string ThrottlePercentageHeader = "x-ms-throttle-limit-percentage";
 
         public async Task<bool> GroupExists(Guid objectId)
         {
             try
             {
                 var group = await _graphServiceClient.Groups[objectId.ToString()].Request().WithMaxRetry(MaxRetries).GetAsync();
-				TrackMetrics(group.AdditionalData);
-				return group != null;
+                TrackMetrics(group.AdditionalData);
+                return group != null;
             }
             catch (ServiceException ex)
             {
@@ -69,25 +69,88 @@ namespace Repositories.GraphGroups
 
             // get the service principal ID by its app ID
             var servicePrincipal = (await _graphServiceClient.ServicePrincipals.Request().WithMaxRetry(MaxRetries).Filter($"appId eq '{appId}'").GetAsync()).Single();
-			TrackMetrics(servicePrincipal.AdditionalData);
+            TrackMetrics(servicePrincipal.AdditionalData);
 
-			await _log.LogMessageAsync(new LogMessage
+            await _log.LogMessageAsync(new LogMessage
             {
                 RunId = RunId,
                 Message = $"Checking if app ID {appId} (service principal with object ID {servicePrincipal.Id}) owns the group {groupObjectId}."
             });
 
+            return await IsGroupOwnerAsync($"id eq '{servicePrincipal.Id}'", groupObjectId);
+        }
+
+        public async Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
+        {
+            if (await GroupExists(groupObjectId) == false) { return false; }
+
+            User user = null;
+
             try
             {
-                var groupOwners = await _graphServiceClient.Groups[groupObjectId.ToString()].Owners.Request().WithMaxRetry(MaxRetries).Filter($"id eq '{servicePrincipal.Id}'").GetAsync();
-                TrackMetrics(groupOwners.AdditionalData);
-                return groupOwners.Any();
+                user = await _graphServiceClient.Users[email].Request().GetAsync();
             }
             catch (ServiceException ex)
             {
                 if (ex.StatusCode == HttpStatusCode.NotFound)
                     return false;
 
+                await _log.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = RunId
+                });
+
+                throw;
+            }
+
+            await _log.LogMessageAsync(new LogMessage
+            {
+                RunId = RunId,
+                Message = $"Checking if email owns the group {groupObjectId}."
+            });
+
+            return await IsGroupOwnerAsync($"id eq '{user.Id}'", groupObjectId);
+        }
+
+        public async Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+        {
+            await _log.LogMessageAsync(new LogMessage
+            {
+                RunId = RunId,
+                Message = $"Getting owners of group {groupObjectId}."
+            });
+
+            var owners = new List<User>();
+
+            try
+            {
+                var request = _graphServiceClient.Groups[groupObjectId.ToString()].Owners
+                                        .Request().WithMaxRetry(MaxRetries);
+
+                if (top > 0) request = request.Top(top);
+
+                var groupOwners = await request.GetAsync();
+                owners.AddRange(groupOwners.CurrentPage.OfType<User>());
+                TrackMetrics(groupOwners.AdditionalData);
+
+                while (groupOwners.NextPageRequest != null)
+                {
+                    groupOwners = await groupOwners.NextPageRequest.WithMaxRetry(MaxRetries).GetAsync();
+                    TrackMetrics(groupOwners.AdditionalData);
+                    owners.AddRange(groupOwners.CurrentPage.OfType<User>());
+                }
+
+                await _log.LogMessageAsync(new LogMessage
+                {
+                    RunId = RunId,
+                    Message = $"Retrieved{(top > 0 ? " top " : " ")}{owners.Count} owners of group {groupObjectId}."
+                });
+
+                return owners;
+            }
+            catch (ServiceException ex)
+            {
                 await _log.LogMessageAsync(new LogMessage
                 {
                     Message = ex.GetBaseException().ToString(),
@@ -103,7 +166,7 @@ namespace Repositories.GraphGroups
             try
             {
                 var group = await _graphServiceClient.Groups[objectId.ToString()].Request().WithMaxRetry(MaxRetries).GetAsync();
-				TrackMetrics(group.AdditionalData);
+                TrackMetrics(group.AdditionalData);
                 return group != null ? group.DisplayName : string.Empty;
             }
             catch (ServiceException ex)
@@ -132,14 +195,14 @@ namespace Repositories.GraphGroups
                             .WithMaxRetry(MaxRetries)
                             .Select("id")
                             .GetAsync();
-				TrackMetrics(members.AdditionalData);
+                TrackMetrics(members.AdditionalData);
 
-				var toReturn = new List<AzureADUser>(ToUsers(members.CurrentPage, nonUserGraphObjects));
+                var toReturn = new List<AzureADUser>(ToUsers(members.CurrentPage, nonUserGraphObjects));
                 while (members.NextPageRequest != null)
                 {
                     members = await members.NextPageRequest.WithMaxRetry(MaxRetries).GetAsync();
-					TrackMetrics(members.AdditionalData);
-					toReturn.AddRange(ToUsers(members.CurrentPage, nonUserGraphObjects));
+                    TrackMetrics(members.AdditionalData);
+                    toReturn.AddRange(ToUsers(members.CurrentPage, nonUserGraphObjects));
                 }
 
                 var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, nonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
@@ -255,24 +318,24 @@ namespace Repositories.GraphGroups
             }
         }
 
-		void TrackMetrics(IDictionary<string, object> additionalData)
-		{
+        void TrackMetrics(IDictionary<string, object> additionalData)
+        {
             // some replies just don't have the response headers
             // i suspect those either aren't throttled the same way or it's a different kind of call
             if (!additionalData.TryGetValue("responseHeaders", out var headers))
                 return;
 
-			// see https://github.com/microsoftgraph/msgraph-sdk-dotnet/blob/dev/docs/headers.md#reading-response-headers
-			var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
+            // see https://github.com/microsoftgraph/msgraph-sdk-dotnet/blob/dev/docs/headers.md#reading-response-headers
+            var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
 
-			if (responseHeaders.TryGetValue(ResourceUnitHeader, out var resourceValues))
-				_telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
+            if (responseHeaders.TryGetValue(ResourceUnitHeader, out var resourceValues))
+                _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
 
-			if (responseHeaders.TryGetValue(ThrottlePercentageHeader, out var throttleValues))
-				_telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage)).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
-		}
+            if (responseHeaders.TryGetValue(ThrottlePercentageHeader, out var throttleValues))
+                _telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage)).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
+        }
 
-		const int GraphBatchLimit = 20;
+        const int GraphBatchLimit = 20;
         const int ConcurrentRequests = 10;
         public Task<(ResponseCode ResponseCode, int SuccessCount)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
@@ -559,17 +622,17 @@ namespace Repositories.GraphGroups
 
         delegate bool TryParseFunction<T>(string str, out T parsed);
         private static T ParseFirst<T>(IEnumerable<string> toParse, TryParseFunction<T> tryParse)
-		{
+        {
             foreach (var str in toParse)
-			{
+            {
                 if (tryParse(str, out var parsed))
-				{
+                {
                     return parsed;
-				}
-			}
+                }
+            }
 
             return default;
-		}
+        }
 
         private static bool IsOkayError(string error)
         {
@@ -664,6 +727,29 @@ namespace Repositories.GraphGroups
                             nonUserGraphObjects[directoryObj.ODataType] = 1;
                         break;
                 }
+            }
+        }
+
+        private async Task<bool> IsGroupOwnerAsync(string query, Guid groupObjectId)
+        {
+            try
+            {
+                var groupOwners = await _graphServiceClient.Groups[groupObjectId.ToString()].Owners.Request().WithMaxRetry(MaxRetries).Filter(query).GetAsync();
+                TrackMetrics(groupOwners.AdditionalData);
+                return groupOwners.Any();
+            }
+            catch (ServiceException ex)
+            {
+                if (ex.StatusCode == HttpStatusCode.NotFound)
+                    return false;
+
+                await _log.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = RunId
+                });
+
+                throw;
             }
         }
     }

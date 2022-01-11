@@ -100,6 +100,12 @@ namespace Entities
             }
         }
 
+        /// <summary>
+        /// Tracks how many threshold violations have occurred
+        /// </summary>
+        [IgnoreLogging]
+        public int ThresholdViolations { get; set; }
+
         public Dictionary<string, string> ToDictionary() =>
             DictionaryHelper.ToDictionary(this, new DictionaryHelper.Options
             {

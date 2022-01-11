@@ -145,9 +145,9 @@ namespace Services.Tests
 
             var personnelNumbers = new[] { "111111", "222222", "333333", "444444" };
             var sw = new StreamWriter(new MemoryStream());
-            sw.WriteLine("PersonnelNumber,AzureObjectId");
-            sw.WriteLine($"{personnelNumbers[0]},{Guid.NewGuid().ToString()}");
-            sw.WriteLine($"{personnelNumbers[1]},{Guid.NewGuid().ToString()}");
+            sw.WriteLine("PersonnelNumber,AzureObjectId,UserPrincipalName");
+            sw.WriteLine($"{personnelNumbers[0]},{Guid.NewGuid()},user1@domain.com");
+            sw.WriteLine($"{personnelNumbers[1]},{Guid.NewGuid()},user2@domain.com");
             sw.Flush();
             sw.BaseStream.Position = 0;
 

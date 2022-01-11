@@ -117,43 +117,92 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="DecreaseThresholdMessage" xml:space="preserve">
+    <value>Decrease membership threshold {0}%. Detected threshold {1}%.</value>
+  </data>
   <data name="EmailSubject" xml:space="preserve">
     <value>Group Membership Management (GMM) onboarding update</value>
   </data>
+  <data name="IncreaseThresholdMessage" xml:space="preserve">
+    <value>Increase membership threshold {0}%. Detected threshold {1}%.</value>
+  </data>
+  <data name="NoDataEmailContent" xml:space="preserve">
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group {0}.
+
+The group sync will be PAUSED since there is no data to sync to group {0}.
+
+Please reach out to your GMM team to get this issue resolved.
+ 
+Regards,
+GMM Team</value>
+  </data>
+  <data name="NoDataEmailSubject" xml:space="preserve">
+    <value>Group Membership Management - No data found for group {0}</value>
+  </data>
   <data name="SyncCompletedEmailBody" xml:space="preserve">
     <value>The group {0} with Id: {1} has completed its initial sync. Added {2} users and removed {3} users.
-This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
+This is an auto-generated email. Please reach out to {4} if you have further questions about GMM.</value>
   </data>
   <data name="SyncDisabledNoGroupEmailBody" xml:space="preserve">
     <value>The sync has been disabled because the group(s) with object Id(s): {0} doesn't/don't exist.
-This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
+This is an auto-generated email. Please reach out to {1} if you have further questions about GMM.</value>
   </data>
   <data name="SyncDisabledNoOwnerEmailBody" xml:space="preserve">
     <value>The sync has been disabled because GMM is not an owner of the group with object Id: {0}.
-This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
+
+This is an auto-generated email. Please reach out to {1} if you have further questions about GMM.</value>
   </data>
   <data name="SyncDisabledNoValidGroupIds" xml:space="preserve">
-    <value>The sync has been disabled because the object ID(s) {0} aren't valid GUIDs and cannot refer to valid groups.
-This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
+    <value>The sync has been disabled because the object ID(s) {0} are not valid GUIDs and do not refer to valid groups.
+
+This is an auto-generated email. Please reach out to {1} if you have further questions about GMM.</value>
+  </data>
+  <data name="SyncJobDisabledEmailBody" xml:space="preserve">
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group. Please visit {3} to learn more about GMM.
+
+The synchronization job for group {0} with Id: {1} has been disabled. 
+
+If you would like to have it re-enabled please reach out to {2}.
+
+The group sync will be PAUSED until your response is received.
+
+Regards,
+GMM Team</value>
   </data>
   <data name="SyncStartedEmailBody" xml:space="preserve">
     <value>The group {0} with Id: {1} has started its initial sync.
-This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
+
+This is an auto-generated email. Please reach out to {2} if you have further questions about GMM.</value>
   </data>
   <data name="SyncThresholdBothEmailBody" xml:space="preserve">
-    <value>The group {0} with Id: {1} has exceeded the specified increase and decrease thresholds.
-Increase membership threshold {2}%. Detected threshold {3}%.
-Decrease membership threshold {4}%. Detected threshold {5}%.
-This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group. Please visit {3} to learn more about GMM.
+
+The group {0} with Id: {1} has exceeded the specified thresholds.
+
+{2}
+
+What is Threshold?
+
+The Configurable Threshold is a feature of GMM aimed to protect group membership from drastic changes caused by unexpected reasons such as re-organization, source group reconstruction, etc. It alerts the group requestor that the membership change will go beyond the specified Threshold and provides an opportunity for the requestor to review and confirm before GMM takes action.
+
+This is a default-on feature for all the groups, but you may request to update the threshold number or choose to disable this feature all together. Please note GMM does NOT log the individual member to be added or removed due to PII concerns, so we are unable to provide this information.
+
+Actions needed - Please 'Reply All' indicating what GMM should do about the threshold by highlighting one of the following options.
+
+The membership change looks right.  Please allow the threshold to be exceeded this time only.
+The membership change looks right.  Please allow the threshold to be exceeded, and update the default threshold to X%
+The membership change looks right.  I don’t need the threshold check in the future so please disable this feature. (Not recommended)
+The projected increase or decrease does not look right to me. Please do not allow the sync to exceed the threshold. I will contact GMMSupport to follow up.
+ 
+The group sync will be PAUSED until your response is received.
+ 
+Regards,
+GMM Team</value>
   </data>
-  <data name="SyncThresholdDecreaseEmailBody" xml:space="preserve">
-    <value>The group {0} with Id: {1} has exceeded the specified decrease threshold.
-Decrease membership threshold {2}%. Detected threshold {3}%.
-This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
+  <data name="SyncThresholdDisablingJobEmailSubject" xml:space="preserve">
+    <value>[THRESHOLD_EXCEEDED] GMM: Synchronization job for group {0} has been disabled.</value>
   </data>
-  <data name="SyncThresholdIncreaseEmailBody" xml:space="preserve">
-    <value>The group {0} with Id: {1} has exceeded the specified increase threshold.
-Increase membership threshold {2}%. Detected threshold {3}%.
-This is an auto-generated email. Please reach out to GMMSupport &lt;GMMSupport@service.microsoft.com&gt; if you have further questions about GMM.</value>
+  <data name="SyncThresholdEmailSubject" xml:space="preserve">
+    <value>[THRESHOLD_EXCEEDED] GMM: Action required for group {0}.</value>
   </data>
 </root>

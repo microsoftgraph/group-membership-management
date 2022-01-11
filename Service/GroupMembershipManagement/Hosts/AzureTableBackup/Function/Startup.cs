@@ -30,14 +30,14 @@ namespace Hosts.AzureTableBackup
             builder.Services.AddScoped<IAzureTableBackupRepository, AzureTableBackupRepository>();
             builder.Services.AddScoped<IAzureStorageBackupRepository, AzureBlobBackupRepository>();
             builder.Services.AddScoped<IAzureTableBackupService>(services =>
-             {
-                 var tablesToBackupSetting = GetValueOrDefault("tablesToBackup");
-                 var tablesToBackup = string.IsNullOrWhiteSpace(tablesToBackupSetting)
-                                        ? new List<Services.Entities.AzureTableBackup>()
-                                        : JsonConvert.DeserializeObject<List<Services.Entities.AzureTableBackup>>(tablesToBackupSetting);
+            {
+                var tablesToBackupSetting = GetValueOrDefault("tablesToBackup");
+                var tablesToBackup = string.IsNullOrWhiteSpace(tablesToBackupSetting)
+                                    ? new List<Services.Entities.AzureTableBackup>()
+                                    : JsonConvert.DeserializeObject<List<Services.Entities.AzureTableBackup>>(tablesToBackupSetting);
 
-                 return new AzureTableBackupService(tablesToBackup.ToList<IAzureTableBackup>(), services.GetService<ILoggingRepository>(), services.GetService<IAzureTableBackupRepository>(), services.GetService<IAzureStorageBackupRepository>());
-             });
+                return new AzureTableBackupService(tablesToBackup, services.GetService<ILoggingRepository>(), services.GetService<IAzureTableBackupRepository>(), services.GetService<IAzureStorageBackupRepository>());
+            });
         }
     }
 }
