@@ -69,6 +69,19 @@ namespace Hosts.AzureUserReader
                     await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request body is not valid." });
                     return (HttpStatusCode.BadRequest, null);
                 }
+
+                if (userReaderRequest.ShouldCreateNewUsers)
+                {
+                    if (userReaderRequest.TenantInformation == null ||
+                        string.IsNullOrWhiteSpace(userReaderRequest.TenantInformation.TenantDomain) ||
+                        string.IsNullOrWhiteSpace(userReaderRequest.TenantInformation.EmailPrefix) ||
+                        string.IsNullOrWhiteSpace(userReaderRequest.TenantInformation.CountryCode)
+                        )
+                    {
+                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request body is not valid. TenantInformation is missing." });
+                        return (HttpStatusCode.BadRequest, null);
+                    }
+                }
             }
             catch (Exception ex) when (ex.GetType() == typeof(JsonReaderException) || ex.GetType() == typeof(JsonSerializationException))
             {
