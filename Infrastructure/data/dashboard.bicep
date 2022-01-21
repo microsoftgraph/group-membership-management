@@ -2017,7 +2017,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 content: {
                   Query: 'customEvents\n| where name == "SyncComplete"\n| project TimeElapsed = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) * 1s,\n    Destination = customDimensions["TargetOfficeGroupId"],\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"]\n| where Result == "Success" and DryRun == "False"\n| project TimeElapsed, Destination\n| order by TimeElapsed desc\n\n'
                   ControlType: 'AnalyticsGrid'
-                  PartTitle: 'Sunc Job Run Durations List'
+                  PartTitle: 'Sync Job Run Durations List'
                   PartSubTitle: 'Descending order'
                 }
               }
@@ -2486,12 +2486,12 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     percentile_Minutes_99: '169px'
                     percentile_Minutes_100: '191px'
                   }
-                  PartTitle: 'Sunc Job Run Durations Chart'
+                  PartTitle: 'Sync Job Run Durations Chart'
                   PartSubTitle: 'Rounded up to nearest minute'
                 }
               }
               partHeader: {
-                title: 'Sunc Job Run Durations List'
+                title: 'Sync Job Run Durations Chart'
                 subtitle: 'Rounded up to nearest minute'
               }
             }
