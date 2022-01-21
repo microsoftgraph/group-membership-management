@@ -1,0 +1,86 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+name: $(major).$(minor).$(Date:yyMM).$(Rev:r)
+
+resources:
+  repositories:
+  - repository: group-membership-management
+    type: git
+    name: <ProjectName>/<RepositoryName>
+    ref: main
+
+trigger:
+- develop
+- main
+- users/*
+
+pool:
+  vmImage: "windows-latest"
+
+variables:
+  "major": '2'
+  "minor": '0'
+  "BuildConfiguration": 'debug'
+  "SolutionAbbreviation": 'gmm'
+  disable.coverage.autogenerate: 'true'
+
+stages:
+
+- template: build-services.yml@group-membership-management
+  parameters:
+    repoToCheckout: group-membership-management
+    checkoutPath: '$(Build.BuildNumber)'
+
+- template: yaml/build-functionapps.yml@group-membership-management
+  parameters:
+    dependsOn: Build_Common
+    condition: succeeded('Build_Common')
+    repoToCheckout: group-membership-management
+    checkoutPath: '$(Build.BuildNumber)'
+    functionApps:
+    - function:
+       name: 'JobTrigger'
+       coverageThreshold: 93
+    - function:
+       name: 'GraphUpdater'
+       coverageThreshold: 42
+    - function:
+       name: 'SecurityGroup'
+       coverageThreshold: 86
+
+### internal section start ###
+- template: yaml/copy-parameter-files.yml
+  parameters:
+    functionApps:
+    - name: 'JobTrigger'
+    - name: 'GraphUpdater'
+    - name: 'SecurityGroup'
+### internal section end ###
+
+### internal section start ###
+- template: build-services.yml
+### internal section end ###
+
+### internal section start ###
+- template: yaml/deploy-pipeline.yml
+  parameters:
+    solutionAbbreviation: '$(SolutionAbbreviation)'
+    environmentAbbreviation: 'env'
+    tenantId: $(tenantId)
+    keyVaultReaders: $(keyVaultReaders_nonprod)
+    location: $(location)
+    serviceConnection: '$(SolutionAbbreviation)-serviceconnection-env'
+    dependsOn: Build_CommonInternal
+    stageName: 'NonProd_env'
+    functionApps:
+    - name: 'JobTrigger'
+    - name: 'GraphUpdater'
+    - name: 'SecurityGroup' 
+    condition: |
+      and(
+        succeeded('Build_CommonInternal'),
+        eq(variables['Build.SourceBranch'], 'refs/heads/main'),
+        in(variables['Build.Reason'], 'IndividualCI', 'Manual')
+      )

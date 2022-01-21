@@ -242,12 +242,36 @@ Once your application is created we need to grant the requested permissions to u
     -   You can use an existing project in your organization.
     -   To create a new project see [Create a project in AzureDevOps](https://docs.microsoft.com/en-us/azure/devops/organizations/projects/create-project?view=azure-devops&tabs=preview-page) documentation.
 
--   ### Create a repository
+-   ### Create repositories
 
-    -   Once your project is created in the previous step, it will have an empty repository, we are going to need a repository in the nexts steps, you can use this one or if you prefer to create a new one see [Create a new Git repo in your project](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-new-repo?toc=%2Fazure%2Fdevops%2Forganizations%2Ftoc.json&bc=%2Fazure%2Fdevops%2Forganizations%2Fbreadcrumb%2Ftoc.json&view=azure-devops) documentation.
-
-    Make sure to take note of your repository since we are going to need it to push GMM code to it.
-
+    -   Create two new repositories:
+        - one repository (let's call it `public`) that mimics this GitHub repository.
+            - see [Manually import a repo](https://docs.microsoft.com/en-us/azure/devops/repos/git/import-git-repository?view=azure-devops#manually-import-a-repo) documentation to push the code from this GitHub repo to `public` repo
+            - keep the commit history of `public` repo in sync with this GitHub repo by running the following commands from `public` repo:
+            ```
+            git remote add upstream https://github.com/microsoftgraph/group-membership-management.git
+            git fetch upstream
+            git checkout upstream/master -b `<name-of-your-branch-in-public-repo>`
+            git merge upstream/master
+            git push --set-upstream origin <name-of-your-branch-in-public-repo> -f
+            ```
+        - another repository (let's call it `private`) that refers to `public`repository as a submodule:
+            - copy the files from [Private](/Private) folder to your `private` repository
+            - rename the file `parameters.env.json` to `parameters.<your-environment-abbreviation>.json`
+            - replace `<ProjectName>/<RepositoryName>` in vsts-cicd.yml with your project name & repository name
+            - replace `env` in vsts-cicd.yml with your environment abbreviation
+            - create `public` submodule by running the following command:
+            ```
+            git submodule add <url-of-public-repo> <name-of-public-repo>
+            ```
+            - Let’s say a new commit is added to the main branch in `public` repository. To add that new commit to the submodule in `private` repository, run the following commands:
+            ```
+            git submodule update --remote --merge
+            git add *
+            git commit -m “updated public submodule”
+            git push
+            ```
+     *Follow [Create a new Git repo in your project](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-new-repo?toc=%2Fazure%2Fdevops%2Forganizations%2Ftoc.json&bc=%2Fazure%2Fdevops%2Forganizations%2Fbreadcrumb%2Ftoc.json&view=azure-devops) to create this repository.*
 -   ### Getting GMM code ready
 
     GMM uses ARM templates to create all the resources it needs. It requires you to provide information specific to your Azure Subscription in order to create these resources.
@@ -272,11 +296,6 @@ Once your application is created we need to grant the requested permissions to u
 
     Note:
     Currently `<SolutionAbbreviation>` default value is 'gmm'. To change this value, update the `solutionAbbreviation` variable in vsts-cicd.yml file.
-
--   ### Pushing GMM code to your repository
-
-    In order to push GMM code to your repository see [Manually import a repo](https://docs.microsoft.com/en-us/azure/devops/repos/git/import-git-repository?view=azure-devops#manually-import-a-repo) documentation.
-
 -   ### Create a Service Connection
 
     In order to deploy GMM resources through a pipeline we need to create a [Service Connection](https://docs.microsoft.com/en-us/azure/devops/pipelines/library/service-endpoints?view=azure-devops&tabs=yaml) and grant permissions to it.
