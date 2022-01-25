@@ -301,7 +301,7 @@ namespace Repositories.GraphAzureADUsers
 
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
-                    Message = $"Waiting for {waitTime} to continue.",
+                    Message = $"Waiting for {waitTime / 1000} seconds to continue.",
                     RunId = null
                 });
 
