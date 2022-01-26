@@ -16,35 +16,6 @@ parameters:
 
 steps:
 
-- task: AzurePowerShell@4
-  displayName: 'Azure PowerShell script: FilePath CopyChildTemplatesToContainer'
-  inputs:
-    azureSubscription: ${{parameters.serviceConnection}}
-    ScriptPath: ${{ parameters.root }}/Scripts/ReleaseManagement/CopyChildTemplatesToContainer.ps1
-    ScriptArguments: '-resourceGroupName ''${{ parameters.solutionAbbreviation}}-data-${{ parameters.environmentAbbreviation}}'' 
-        -storageAccountName ''${{ parameters.solutionAbbreviation}}data${{ parameters.environmentAbbreviation}}'' 
-        -storageContainerName ''${{ parameters.solutionAbbreviation}}data${{ parameters.environmentAbbreviation}}''
-        -storageAccountLocation ''${{parameters.location}}''
-        -sourceFolderPath "${{ parameters.root }}\Infrastructure\" 
-        -Verbose'
-    azurePowerShellVersion: LatestVersion
-  name: copyChildTemplates
-
-- task: AzurePowerShell@4
-  displayName: 'Copy functions templates'
-  inputs:
-    azureSubscription: ${{parameters.serviceConnection}}
-    ScriptPath: ${{ parameters.root }}/Scripts/ReleaseManagement/CopyChildTemplatesToContainer.ps1
-    ScriptArguments: '-resourceGroupName ''${{ parameters.solutionAbbreviation}}-data-${{ parameters.environmentAbbreviation}}'' 
-        -storageAccountName ''${{ parameters.solutionAbbreviation}}data${{ parameters.environmentAbbreviation}}'' 
-        -storageContainerName ''${{ parameters.solutionAbbreviation}}data${{ parameters.environmentAbbreviation}}'' 
-        -storageAccountLocation ''${{parameters.location}}''
-        -sourceFolderPath "${{ parameters.root }}\functions_arm_templates\" 
-        -targetFolderPathPrefix functions
-        -Verbose'
-    azurePowerShellVersion: LatestVersion
-  name: copyFunctionsTemplates
-
 - task: AzureResourceGroupDeployment@2
   displayName: 'deploy persistent data'
   inputs:
@@ -64,7 +35,5 @@ steps:
       Write-Host "##vso[task.setvariable variable=data_$($output.Name);isOutput=true]$($output.Value.value)"
     }
 
-    Write-Host "##vso[task.setvariable variable=data_containerSASToken;isOutput=true]$(copyFunctionsTemplates.containerSASToken)"
-    Write-Host "##vso[task.setvariable variable=data_containerEndPoint;isOutput=true]$(copyFunctionsTemplates.containerEndPoint)"
   displayName: 'set data output variables'
   name: dataVariables
