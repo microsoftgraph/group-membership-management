@@ -92,7 +92,7 @@ If you would like to add additional environments, follow these steps:
    - serviceConnection
    - stageName
 
-   Save your changes.   
+   Save your changes.
 4. Search for the file `parameters.int.json`. Repeat the following steps for all the files:
         * Copy and paste the same file at the same location
         * Change the name to `parameters.<your-new-environment-name>.json`
@@ -605,7 +605,7 @@ FunctionAppName: `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-Graph
 
 # Setting AzureTableBackup function
 `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureTableBackup function can create backups for Azure Storage Tables and delete older backups automatically.
-Out of the box, the AzureTableBackup function will backup the 'syncJobs' table; where all the groups' sync parameters are defined. The function is set to run every day at midnight and will delete backups older than 7 days.
+Out of the box, the AzureTableBackup function will backup the 'syncJobs' table; where all the groups' sync parameters are defined. The function is set to run every day at midnight and will delete backups older than 30 days.
 
 The function reads the backup configuration settings from the data keyvault (`<SolutionAbbreviation>`-data-`<EnvironmentAbbreviation>`), specifically from a secret named 'tablesToBackup' which is a string that represents a json array of backup configurations.
 
@@ -614,7 +614,7 @@ The function reads the backup configuration settings from the data keyvault (`<S
             "SourceTableName": "syncJobs",
             "SourceConnectionString": "<storage-account-connectionstring>",
             "DestinationConnectionString": "<storage-account-connectionstring>",
-            "DeleteAfterDays": 7
+            "DeleteAfterDays": 30
         }
     ]
 
