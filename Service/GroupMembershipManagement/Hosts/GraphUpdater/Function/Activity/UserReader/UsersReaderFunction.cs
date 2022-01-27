@@ -26,9 +26,13 @@ namespace Hosts.GraphUpdater
         [FunctionName(nameof(UsersReaderFunction))]
         public async Task<UsersPageResponse> GetUsersAsync([ActivityTrigger] UsersReaderRequest request, ILogger log)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersReaderFunction)} function started", RunId = request.SyncJob.RunId });
-            var response = await _usersReaderService.GetFirstMembersPageAsync(request.SyncJob.TargetOfficeGroupId, request.SyncJob.RunId.GetValueOrDefault());
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersReaderFunction)} function completed", RunId = request.SyncJob.RunId });
+            var response = new UsersPageResponse();
+            if (request.SyncJob != null)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersReaderFunction)} function started", RunId = request.SyncJob.RunId });
+                response = await _usersReaderService.GetFirstMembersPageAsync(request.SyncJob.TargetOfficeGroupId, request.SyncJob.RunId.GetValueOrDefault());
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersReaderFunction)} function completed", RunId = request.SyncJob.RunId });
+            }
             return response;
         }
     }

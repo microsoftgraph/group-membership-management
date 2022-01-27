@@ -25,7 +25,7 @@ namespace Hosts.GraphUpdater
             var allUsers = new List<AzureADUser>();
             var allNonUserGraphObjects = new Dictionary<string, int>();
 
-            if (request != null)
+            if (request != null && request.SyncJob != null)
             {
 
                 await context.CallActivityAsync(nameof(LoggerFunction),
