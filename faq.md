@@ -106,7 +106,7 @@ This change will be overwritten next time a deployment occurs, in order to preve
 
 To update the ARM template:
 
-1. Locate the template.json file, you will find it under JobTrigger/Infrastructure/compute/ folder ![template.json](/Service/GroupMembershipManagement/Hosts/JobTrigger/Infrastructure/compute/template.json)
+1. Locate the template.bicep file, you will find it under JobTrigger/Infrastructure/compute/ folder ![template.bicep](/Service/GroupMembershipManagement/Hosts/JobTrigger/Infrastructure/compute/template.bicep)
 2. Locate and edit the 'jobTriggerSchedule' setting.
 3. Save your changes.
 
