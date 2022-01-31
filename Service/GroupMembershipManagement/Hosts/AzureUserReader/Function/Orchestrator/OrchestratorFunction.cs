@@ -32,25 +32,19 @@ namespace Hosts.AzureUserReader
             {
                 var request = context.GetInput<AzureUserReaderRequest>();
                 var personnelNumbers = await context.CallActivityAsync<IList<string>>(nameof(PersonnelNumberReaderFunction), request);
+                var users = await context.CallSubOrchestratorAsync<List<GraphProfileInformation>>(nameof(UserReaderSubOrchestratorFunction), personnelNumbers);
+                var missingUsers = new HashSet<string>(personnelNumbers).Except(users.Select(x => x.PersonnelNumber)).ToList();
 
-                List<string> batch;
-                int skip = 0, take = 1000, leftToProcess = personnelNumbers.Count;
-                var users = new List<GraphProfileInformation>();
-                var readerTasks = new List<Task<IList<GraphProfileInformation>>>();
-
-                while ((batch = personnelNumbers.Skip(skip).Take(take).ToList()).Any())
+                if (request.ShouldCreateNewUsers && missingUsers.Count > 0)
                 {
-                    readerTasks.Add(context.CallActivityAsync<IList<GraphProfileInformation>>(nameof(AzureUserReaderFunction), batch));
-
-                    if (readerTasks.Count == 5 || leftToProcess <= take)
+                    var userCreatorRequest = new AzureUserCreatorRequest
                     {
-                        var results = await Task.WhenAll(readerTasks);
-                        users.AddRange(results.SelectMany(x => x));
-                        readerTasks.Clear();
-                    }
+                        PersonnelNumbers = missingUsers,
+                        TenantInformation = request.TenantInformation
+                    };
 
-                    skip += take;
-                    leftToProcess -= take;
+                    var newUsers = await context.CallSubOrchestratorAsync<List<GraphProfileInformation>>(nameof(UserCreatorSubOrchestratorFunction), userCreatorRequest);
+                    users.AddRange(newUsers);
                 }
 
                 if (users.Count > 0)

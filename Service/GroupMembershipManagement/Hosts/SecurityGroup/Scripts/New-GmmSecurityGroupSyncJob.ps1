@@ -82,11 +82,13 @@ function New-GmmSecurityGroupSyncJob {
 		[Parameter(Mandatory=$True)]
 		[boolean] $Enabled,
 		[Parameter(Mandatory=$False)]
-		[string] $ErrorActionPreference = $Stop
+		[string] $ErrorActionPreference = $Stop,
+		[Parameter(Mandatory=$False)]
+		[Guid] $GroupTenantId
 	)
 	"New-GmmSecurityGroupSyncJob starting..."
-	
-	Set-AzContext -SubscriptionName $SubscriptionName
+
+	$jobTableContext = Set-AzContext -SubscriptionName $SubscriptionName
 
 	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
 	$storageAccounts = Get-AzStorageAccount -ResourceGroupName $resourceGroupName
@@ -106,6 +108,37 @@ function New-GmmSecurityGroupSyncJob {
 		return;
 	}
 
+	if ($null -ne $GroupTenantId -and [Guid]::Parse($jobTableContext.Tenant.Id) -ne $GroupTenantId)
+	{
+		Write-Host "Please sign into an account that can read the display names of groups in the $GroupTenantId tenant."
+		Add-AzAccount -Tenant $GroupTenantId
+	}
+	
+	$targetGroup = Get-AzADGroup -ObjectId $TargetOfficeGroupId
+	$sourceGroups = $Query.Split(";") | ForEach-Object { Get-AzADGroup -ObjectId $_ } | ForEach-Object { "$($_.DisplayName) ($($_.Id))" }
+
+	# set the context back even if they cancel out of this
+	Set-AzContext -Context $jobTableContext | Out-Null
+
+	if ($null -eq $targetGroup)
+	{
+		Write-Host -Object "Could not read group names. Ensure GroupTenantId is set to the tenant the groups exist in." -ForegroundColor Yellow
+		Write-Host "Syncing the group(s) $Query into the destination: $TargetOfficeGroupId."
+	}
+	else 
+	{
+		Write-Host "Syncing the group(s) $($sourceGroups -join ", ") into the destination: $($targetGroup.DisplayName) ($($targetGroup.Id))."
+	}
+
+	$response = Read-Host -Prompt "Are these groups correct? [y/n]"
+
+	if ( -not $response.ToLower().StartsWith("y"))
+	{
+		Write-Host "Not onboarding the sync."
+		return;
+	}
+
+	
 	$now = Get-Date
 	$partitionKey = "$($now.Year)-$($now.Month)-$($now.Day)"
 	$rowKey = (New-Guid).Guid

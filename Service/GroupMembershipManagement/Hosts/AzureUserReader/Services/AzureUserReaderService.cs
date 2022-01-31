@@ -120,7 +120,7 @@ namespace Services
                 string line;
                 while ((line = reader.ReadLine()) != null)
                 {
-                    lines.Add(line);
+                    lines.Add(line.Replace("\"", string.Empty).Trim());
                 }
             }
 

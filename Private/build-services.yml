@@ -1,0 +1,40 @@
+stages:
+
+- stage: Build_CommonInternal
+  jobs:
+  - job: Build_CommonInternal
+    strategy:
+      maxParallel: 2
+      matrix:
+        debug:
+          BuildConfiguration: debug
+        release:
+          BuildConfiguration: release
+
+    steps:
+
+    - powershell: |
+              $bicepTemplates = Get-ChildItem -Filter "template.bicep" -Recurse
+              foreach($template in $bicepTemplates)
+              {
+                az bicep build --file $template.FullName
+              }
+      displayName: 'Compile Bicep templates'
+
+    - task: CopyFiles@2
+      displayName: 'copy arm templates'
+      inputs:
+        SourceFolder: Infrastructure
+        TargetFolder: '$(build.artifactstagingdirectory)/Infrastructure'
+
+    - task: CopyFiles@2
+      displayName: 'copy release management scripts'
+      inputs:
+        SourceFolder: Scripts
+        TargetFolder: '$(build.artifactstagingdirectory)/Scripts'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'publish artifact'
+      inputs:
+        PathtoPublish: '$(build.artifactstagingdirectory)'
+        ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'
