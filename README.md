@@ -153,7 +153,7 @@ You will need to replace `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>
 
 Currently `<SolutionAbbreviation>` default value is 'gmm'. To change this value, update the `solutionAbbreviation` variable in vsts-cicd.yml file. You can make this change as part of 'Getting GMM code ready' step.
 
-`<SolutionAbbreviation>` currently support names of 2 or 3 characters long. `<EnvironmentAbbreviation>` currently support names from 2 to 6 characters long. This can be changed in the ARM templates (template.json) by updating the `minLength` and `maxLength` settings for `solutionAbbreviation` and `environmentAbbreviation` parameters.
+`<SolutionAbbreviation>` currently support names of 2 or 3 characters long. `<EnvironmentAbbreviation>` currently support names from 2 to 6 characters long. This can be changed in the ARM templates (template.bicep) by updating the `minLength` and `maxLength` settings for `solutionAbbreviation` and `environmentAbbreviation` parameters.
 
 We recommend trying to use unique `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` names, since some resources in Azure require to have unique names globally so it is possible to have name collisions.
 
@@ -618,9 +618,9 @@ The function reads the backup configuration settings from the data keyvault (`<S
         }
     ]
 
-The default configuration for the 'syncJobs' table is generated via an ARM template. For more details see the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureTableBackup\Infrastructure\data\template.json
+The default configuration for the 'syncJobs' table is generated via an ARM template. For more details see the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureTableBackup\Infrastructure\data\template.bicep
 
-The run frequency is set to every day at midnight, it is defined as a NCRONTAB expression in the application setting named 'backupTriggerSchedule' which can be updated on the Azure Portal, it's located under the Configuration blade for `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureTableBackup Function App, additionally it can be updated directly in the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureTableBackup\Infrastructure\compute\template.json
+The run frequency is set to every day at midnight, it is defined as a NCRONTAB expression in the application setting named 'backupTriggerSchedule' which can be updated on the Azure Portal, it's located under the Configuration blade for `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureTableBackup Function App, additionally it can be updated directly in the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureTableBackup\Infrastructure\compute\template.bicep
 
 # Setting GMM in a demo tenant
 

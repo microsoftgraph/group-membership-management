@@ -54,9 +54,7 @@ stages:
     - job: ${{ parameters.stageName }}_DeployFunctions
       dependsOn: ${{ parameters.stageName }}_DeployResources
       variables:
-        data_storageAccountName: $[ dependencies.${{ parameters.stageName }}_DeployResources.outputs['${{ parameters.stageName }}_DeployResources.dataVariables.data_storageAccountName'] ]
-        data_containerEndPoint: $[ dependencies.${{ parameters.stageName }}_DeployResources.outputs['${{ parameters.stageName }}_DeployResources.dataVariables.data_containerEndPoint'] ]
-        data_containerSASToken: $[ dependencies.${{ parameters.stageName }}_DeployResources.outputs['${{ parameters.stageName }}_DeployResources.dataVariables.data_containerSASToken'] ]
+        data_storageAccountName: $[ dependencies.DeployResources.outputs['DeployResources.dataVariables.data_storageAccountName'] ]
         ${{ if in(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
           buildType: 'release'
         ${{ if notIn(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:

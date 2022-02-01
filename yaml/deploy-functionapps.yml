@@ -33,9 +33,7 @@ steps:
     overrideParameters: -environmentAbbreviation "${{parameters.environmentAbbreviation}}"
                         -tenantId "${{parameters.tenantId}}"
                         -location "${{parameters.location}}"
-                        -solutionAbbreviation "${{parameters.solutionAbbreviation}}"
-                        -containerBaseUrl "$(data_containerEndPoint)functions/${{ parameters.name }}/Infrastructure/compute/"
-                        -containerSasToken "$(data_containerSASToken)"
+                        -solutionAbbreviation "${{parameters.solutionAbbreviation}}" 
                         -storageAccountName "$(data_storageAccountName)"
     deploymentMode: 'Incremental'
 
