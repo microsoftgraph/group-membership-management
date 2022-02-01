@@ -7,6 +7,11 @@ namespace Entities.AzureTableBackup
     {
         public string Name { get; set; }
         public string StorageType { get; set; }
-        public DateTime CreatedDate { get; set; }
+
+        public BackupEntity(string name, string storageType)
+        {
+            Name = name;
+            StorageType = storageType;
+        }
     }
 }
