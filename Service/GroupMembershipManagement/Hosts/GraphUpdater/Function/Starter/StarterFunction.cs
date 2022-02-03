@@ -1,12 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using Entities;
 using Entities.ServiceBus;
 using Microsoft.Azure.ServiceBus;
@@ -17,7 +10,11 @@ using Newtonsoft.Json;
 using Polly;
 using Repositories.Contracts;
 using Services.Contracts;
-using Services.Entities;
+using System;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Hosts.GraphUpdater
 {
@@ -28,7 +25,8 @@ namespace Hosts.GraphUpdater
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly IServiceBusMessageService _messageService = null;
         private readonly IConfiguration _configuration = null;
-        private static ConcurrentDictionary<string, SessionTracker> _sessionsTracker = new ConcurrentDictionary<string, SessionTracker>();
+        private SessionTracker _sessionTracker = new SessionTracker();
+        private static readonly TimeSpan _waitBetweenQueuePolling = TimeSpan.FromSeconds(1);
 
         public StarterFunction(ILoggingRepository loggingRepository, IServiceBusMessageService messageService, IConfiguration configuraion)
         {
@@ -39,28 +37,91 @@ namespace Hosts.GraphUpdater
 
         [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
-        [ServiceBusTrigger("%membershipQueueName%", Connection = "differenceQueueConnection", IsSessionsEnabled = true)] Message message,
+        [ServiceBusTrigger("%membershipQueueName%", Connection = "differenceQueueConnection", IsSessionsEnabled = true)] Message[] messages,
         [DurableClient] IDurableOrchestrationClient starter, IMessageSession messageSession)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(StarterFunction) + " function started" });
+            var runId = new Guid(messageSession.SessionId);
+            await _loggingRepository.LogMessageAsync(new LogMessage {
+                Message = nameof(StarterFunction) + " function started",
+                RunId = runId
+            });
 
-            var messageDetails = _messageService.GetMessageProperties(message);
-            var graphRequest = new GraphUpdaterFunctionRequest()
-            {
-                Message = Encoding.UTF8.GetString(messageDetails.Body),
-                MessageSessionId = messageDetails.SessionId,
-                MessageLockToken = messageDetails.LockToken
-            };
+            // Update session tracker with needed values
+            _sessionTracker.LastAccessTime = DateTime.UtcNow;
+            _sessionTracker.MessagesInSession = messages.ToList();
+            _sessionTracker.SessionId = messageSession.SessionId;
 
-            var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(graphRequest.Message);
+            var latestMessage = messages.Last();
+            var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(Encoding.UTF8.GetString(latestMessage.Body));
 
-            SetSessionTracker(messageDetails, groupMembership);
+            _sessionTracker.ReceivedLastMessage = groupMembership.IsLastMessage;
+            _sessionTracker.TotalMessageCountExpected = groupMembership.TotalMessageCount;
+            _sessionTracker.SyncJobPartitionKey = groupMembership.SyncJobPartitionKey;
+            _sessionTracker.SyncJobRowKey = groupMembership.SyncJobRowKey;
 
             var source = new CancellationTokenSource();
-            var renew = RenewMessages(starter, messageSession, source, messageDetails.MessageId);
+            var renew = RenewMessages(starter, messageSession, source);
+
+            // Obtain all messages in session
+            while (!_sessionTracker.ReceivedLastMessage || _sessionTracker.MessagesInSession.Count < _sessionTracker.TotalMessageCountExpected)
+            {
+                if(source.IsCancellationRequested)
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"Error: Process was cancelled, likely due to a timeout on receiving messages from ServiceBus",
+                        RunId = runId
+                    });
+
+                    return;
+                }
+
+                var moreMessages = await messageSession.ReceiveAsync(1000);
+
+                _sessionTracker.MessagesInSession.AddRange(moreMessages);
+                
+                var orderedMessages = moreMessages.OrderBy(message => message.ScheduledEnqueueTimeUtc).ToList();
+                var lastMessage = orderedMessages.Last();
+
+                if (IsLastMessageInSession(lastMessage))
+                {
+                    _sessionTracker.ReceivedLastMessage = true;
+                    var messageDetails = _messageService.GetMessageProperties(lastMessage);
+                    var membership = JsonConvert.DeserializeObject<GroupMembership>(Encoding.UTF8.GetString(messageDetails.Body));
+                }
+
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = "Currently retrieved " + _sessionTracker.MessagesInSession.Count + " out of " + _sessionTracker.TotalMessageCountExpected +
+                    " messages from session with SessionId: " + _sessionTracker.SessionId,
+                    RunId = runId
+                });
+
+                await Task.Delay(_waitBetweenQueuePolling);
+            }
+
+            await _loggingRepository.LogMessageAsync(new LogMessage { 
+                Message = "Obtained all " + _sessionTracker.MessagesInSession.Count + " messages from session with SessionId: " + _sessionTracker.SessionId,
+                RunId = runId
+            });
+
+            // Update group membership with expected full membership to send over to OrchestratorFunction
+            groupMembership.SourceMembers = _sessionTracker.MessagesInSession
+                .SelectMany(message =>
+            {
+                var messageDetails = _messageService.GetMessageProperties(message);
+                var membership = JsonConvert.DeserializeObject<GroupMembership>(Encoding.UTF8.GetString(messageDetails.Body));
+                return membership.SourceMembers;
+            }).ToList();
+
+            var graphRequest = new GraphUpdaterFunctionRequest()
+            {
+                MessageSessionId = _sessionTracker.SessionId,
+                IsCancelationRequest = false,
+                Membership = groupMembership
+            };
+
             var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), graphRequest);
-            var completedGroupMembershipMessages = default(List<GroupMembershipMessage>);
-            var isLastMessage = false;
             var orchestratorRuntimeStatusCodesWorthRetrying = new OrchestrationRuntimeStatus[]
             {
                 OrchestrationRuntimeStatus.ContinuedAsNew,
@@ -97,40 +158,41 @@ namespace Hosts.GraphUpdater
 
             if (result.RuntimeStatus == OrchestrationRuntimeStatus.Failed || result.RuntimeStatus == OrchestrationRuntimeStatus.Terminated)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error: Status of instance {result.InstanceId} is {result.RuntimeStatus}. The error message is : {result.Output}" });
-
-                // stop renewing the message session
-                source.Cancel();
+                await _loggingRepository.LogMessageAsync(new LogMessage {
+                    Message = $"Error: Status of instance {result.InstanceId} is {result.RuntimeStatus}. The error message is : {result.Output}",
+                    RunId = runId
+                });
             }
             else
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Instance processing completed for {result.InstanceId}" });
-                var orchestratorResponseOutput = JsonConvert.DeserializeObject<GroupMembershipMessageResponse>(result.Output.ToString());
-                completedGroupMembershipMessages = orchestratorResponseOutput.CompletedGroupMembershipMessages;
-                isLastMessage = orchestratorResponseOutput.ShouldCompleteMessage;
+                await _loggingRepository.LogMessageAsync(new LogMessage { 
+                    Message = $"Instance processing completed for {result.InstanceId}",
+                    RunId = runId
+                });
             }
+            
+            var completedLockTokens = _sessionTracker.MessagesInSession.Select(message => message.SystemProperties.LockToken);
 
-            if (isLastMessage)
-            {
-                var completedLockTokens = completedGroupMembershipMessages.Select(x => x.LockToken);
-                await messageSession.CompleteAsync(completedLockTokens);
-                await messageSession.CloseAsync();
-                source.Cancel();
-            }
+            // Complete messages in message session, close the message session and then stop renewing it
+            await messageSession.CompleteAsync(completedLockTokens);
+            await messageSession.CloseAsync();
+            source.Cancel();
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = nameof(StarterFunction) + " function completed" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { 
+                Message = nameof(StarterFunction) + " function completed",
+                RunId = runId
+            });
         }
 
         private static readonly TimeSpan _waitBetweenRenew = TimeSpan.FromSeconds(30);
         private async Task RenewMessages(
             IDurableOrchestrationClient starter,
             IMessageSession messageSession,
-            CancellationTokenSource cancellationToken,
-            string messageId)
+            CancellationTokenSource cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                var action = await TrackLastMessageTimeout(starter, messageSession, messageId);
+                var action = await TrackLastMessageTimeout(starter, messageSession, cancellationToken);
                 if (action == SessionTrackerAction.Stop)
                 {
                     break;
@@ -141,86 +203,47 @@ namespace Hosts.GraphUpdater
             }
         }
 
-        private void SetSessionTracker(MessageInformation messageDetails, GroupMembership groupMembership)
+        private async Task<SessionTrackerAction> TrackLastMessageTimeout(IDurableOrchestrationClient starter, IMessageSession messageSession, CancellationTokenSource cancellationToken)
         {
-            if (_sessionsTracker.ContainsKey(messageDetails.SessionId))
+            if (!_sessionTracker.ReceivedLastMessage)
             {
-                var sessionTracker = _sessionsTracker[messageDetails.SessionId];
-                var lockTokens = sessionTracker.LockTokens;
-
-                lockTokens.Add(messageDetails.LockToken);
-                _sessionsTracker.TryUpdate(messageDetails.SessionId,
-                                            new SessionTracker
-                                            {
-                                                LastAccessTime = DateTime.UtcNow,
-                                                LatestMessageId = messageDetails.MessageId,
-                                                RunId = groupMembership.RunId,
-                                                LockTokens = lockTokens,
-                                                JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                                                JobRowKey = groupMembership.SyncJobRowKey,
-                                                ReceivedLastMessage = groupMembership.IsLastMessage
-                                            },
-                                            sessionTracker
-                                           );
-            }
-            else
-            {
-                _sessionsTracker.TryAdd(messageDetails.SessionId,
-                                        new SessionTracker
-                                        {
-                                            LastAccessTime = DateTime.UtcNow,
-                                            LatestMessageId = messageDetails.MessageId,
-                                            RunId = groupMembership.RunId,
-                                            LockTokens = new List<string> { messageDetails.LockToken },
-                                            JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                                            JobRowKey = groupMembership.SyncJobRowKey,
-                                            ReceivedLastMessage = groupMembership.IsLastMessage
-                                        });
-            }
-        }
-
-        private async Task<SessionTrackerAction> TrackLastMessageTimeout(IDurableOrchestrationClient starter, IMessageSession messageSession, string messageId)
-        {
-            if (_sessionsTracker.TryGetValue(messageSession.SessionId, out var sessionTracker))
-            {
-                if (sessionTracker.ReceivedLastMessage)
-                {
-                    return SessionTrackerAction.Continue;
-                }
-
-                if (messageId != sessionTracker.LatestMessageId)
-                {
-                    return SessionTrackerAction.Stop;
-                }
-
                 int.TryParse(_configuration["GraphUpdater:LastMessageWaitTimeout"], out int timeOut);
                 timeOut = timeOut == 0 ? 10 : timeOut;
 
-                var elapsedTime = DateTime.UtcNow - sessionTracker.LastAccessTime;
+                var elapsedTime = DateTime.UtcNow - _sessionTracker.LastAccessTime;
                 if (elapsedTime.TotalMinutes >= timeOut)
                 {
-                    _sessionsTracker.Remove(messageSession.SessionId, out _);
-                    await messageSession.CompleteAsync(sessionTracker.LockTokens);
+                    var lockTokens = _sessionTracker.MessagesInSession.Select(message => message.SystemProperties.LockToken);
+                    await messageSession.CompleteAsync(lockTokens);
                     await messageSession.CloseAsync();
+                    cancellationToken.Cancel();
 
-                    var cancelationRequest = new GraphUpdaterFunctionRequest
+                    var cancellationRequest = new GraphUpdaterFunctionRequest
                     {
                         IsCancelationRequest = true,
                         MessageSessionId = messageSession.SessionId,
-                        Message = JsonConvert.SerializeObject(new GroupMembership
+                        Membership = new GroupMembership
                         {
-                            SyncJobPartitionKey = sessionTracker.JobPartitionKey,
-                            SyncJobRowKey = sessionTracker.JobRowKey,
-                            RunId = sessionTracker.RunId
-                        }),
+                            SyncJobPartitionKey = _sessionTracker.SyncJobPartitionKey,
+                            SyncJobRowKey = _sessionTracker.SyncJobRowKey,
+                            RunId = _sessionTracker.RunId
+                        }
                     };
 
-                    await starter.StartNewAsync(nameof(OrchestratorFunction), cancelationRequest);
+                    await starter.StartNewAsync(nameof(OrchestratorFunction), cancellationRequest);
                     return SessionTrackerAction.Stop;
                 }
             }
 
             return SessionTrackerAction.Continue;
+        }
+
+        private bool IsLastMessageInSession(Message message)
+        {
+            var messageDetails = _messageService.GetMessageProperties(message);
+            var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(Encoding.UTF8.GetString(messageDetails.Body));
+
+            return groupMembership.IsLastMessage;
         }
     }
 }

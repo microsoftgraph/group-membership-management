@@ -55,7 +55,6 @@ namespace Hosts.GraphUpdater
                 return new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value));
             })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
-            .AddSingleton<MessageCollector>()
             .AddSingleton<IDeltaCalculatorService, DeltaCalculatorService>()
             .AddSingleton<IGraphUpdaterService, GraphUpdaterService>()
             .AddSingleton<IServiceBusMessageService, ServiceBusMessageService>();
