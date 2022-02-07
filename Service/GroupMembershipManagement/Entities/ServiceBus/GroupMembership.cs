@@ -22,6 +22,7 @@ namespace Entities.ServiceBus
 		/// Don't worry about setting this yourself, this is for Split and the serializer to set.
 		/// </summary>
 		public bool IsLastMessage { get; set; }
+		public int TotalMessageCount { get; set; }
 
 		/// <summary>
 		/// This is made public mostly for testing, but you can use it to get an idea of how many GroupMemberships[] you'll get after calling Split if you want.
@@ -29,10 +30,15 @@ namespace Entities.ServiceBus
 		public const int MembersPerChunk = 3765;
 		public GroupMembership[] Split(int perChunk = MembersPerChunk)
 		{
-			var toReturn = ChunksOfSize(SourceMembers, perChunk).
+			var chunks = ChunksOfSize(SourceMembers, perChunk);
+			var chunkCount = chunks.ToList().Count;
+
+			var toReturn = chunks.
 				Select(x => new GroupMembership { Destination = Destination, SyncJobPartitionKey = SyncJobPartitionKey, SyncJobRowKey = SyncJobRowKey,
-					SourceMembers = x, RunId = RunId, MembershipObtainerDryRunEnabled = MembershipObtainerDryRunEnabled, IsLastMessage = false }).ToArray();
+					SourceMembers = x, RunId = RunId, MembershipObtainerDryRunEnabled = MembershipObtainerDryRunEnabled, IsLastMessage = false,
+					TotalMessageCount = chunkCount }).ToArray();
 			toReturn.Last().IsLastMessage = true;
+
 			return toReturn;
 		}
 
