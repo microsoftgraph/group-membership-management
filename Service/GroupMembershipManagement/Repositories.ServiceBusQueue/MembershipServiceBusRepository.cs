@@ -32,7 +32,7 @@ namespace Repositories.ServiceBusQueue
 			foreach (var message in groupMembership.Split().Select(x => new Message
 			{
 				Body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(x)),
-				SessionId = groupMembership.Destination.ObjectId.ToString(),
+				SessionId = groupMembership.RunId.ToString(),
 				ContentType = "application/json",
 				Label = sentFrom
 			}))
