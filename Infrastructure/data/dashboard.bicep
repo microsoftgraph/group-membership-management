@@ -2138,8 +2138,28 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customMetrics\n| where name == "ResourceUnitsUsed"\n| project TimeGenerated=timestamp, Value=valueSum, Function=operation_Name\n\n'
+                  Query: 'customMetrics\n| where name == "ResourceUnitsUsed"\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum(customMetric_valueSum) by bin(timestamp, 10s)\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'StackedColumn'
                   PartTitle: 'ResourceUnitsUsed'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'timestamp'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'customMetrics/ResourceUnitsUsed_sum'
+                        type: 'real'
+                      }
+                    ]
+                    splitBy: []
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
                 }
               }
               partHeader: {
