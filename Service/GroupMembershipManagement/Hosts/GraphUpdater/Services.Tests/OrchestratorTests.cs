@@ -71,15 +71,12 @@ namespace Services.Tests
                                             _gmmResources,
                                             localizationRepository);
 
-
+            var groupMembership = GetGroupMembership();
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
-                Message = GetMessageBody(),
-                MessageLockToken = Guid.NewGuid().ToString(),
-                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35",
-                RunId = Guid.NewGuid()
+                Membership = groupMembership,
+                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
             };
-            var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(graphUpdaterRequest.Message);
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -98,8 +95,6 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
-            context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
-                    .Returns(async () => await GetGroupMembershipMessageResponseAsync(graphUpdaterRequest, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
                     .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
             context.Setup(x => x.CallSubOrchestratorAsync<List<AzureADUser>>(It.IsAny<string>(), It.IsAny<UsersReaderRequest>()))
@@ -113,10 +108,9 @@ namespace Services.Tests
             var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
-            Assert.IsTrue(response.ShouldCompleteMessage);
+            Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"{nameof(DeltaCalculatorFunction)} function completed")));
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
-            Assert.AreEqual(graphUpdaterRequest.MessageLockToken, response.CompletedGroupMembershipMessages.Single().LockToken);
 
             context.Verify(x => x.CallSubOrchestratorAsync<GraphUpdaterStatus>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()), Times.Exactly(2));
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
@@ -166,14 +160,12 @@ namespace Services.Tests
                                             _gmmResources,
                                             localizationRepository);
 
+            var groupMembership = GetGroupMembership();
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
-                Message = GetMessageBody(),
-                MessageLockToken = Guid.NewGuid().ToString(),
-                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35",
-                RunId = Guid.NewGuid()
+                Membership = groupMembership,
+                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
             };
-            var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(graphUpdaterRequest.Message);
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -192,8 +184,6 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
-            context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
-                    .Returns(async () => await GetGroupMembershipMessageResponseAsync(graphUpdaterRequest, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
                     .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
             context.Setup(x => x.CallSubOrchestratorAsync<List<AzureADUser>>(It.IsAny<string>(), It.IsAny<UsersReaderRequest>()))
@@ -209,10 +199,9 @@ namespace Services.Tests
             var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
-            Assert.IsTrue(response.ShouldCompleteMessage);
+            Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"{nameof(DeltaCalculatorFunction)} function completed")));
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
-            Assert.AreEqual(graphUpdaterRequest.MessageLockToken, response.CompletedGroupMembershipMessages.Single().LockToken);
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
@@ -261,14 +250,12 @@ namespace Services.Tests
                                             _gmmResources,
                                             localizationRepository);
 
+            var groupMembership = GetGroupMembership();
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
-                Message = GetMessageBody(),
-                MessageLockToken = Guid.NewGuid().ToString(),
-                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35",
-                RunId = Guid.NewGuid()
+                Membership = groupMembership,
+                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
             };
-            var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(graphUpdaterRequest.Message);
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -287,7 +274,9 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
-            context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
+            context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
+                    .ReturnsAsync(true);
+            context.Setup(x => x.CallSubOrchestratorAsync<List<AzureADUser>>(It.IsAny<string>(), It.IsAny<UsersReaderRequest>()))
                     .Throws(new Exception("Something went wrong!"));
 
             JobStatusUpdaterRequest updateJobRequest = null;
@@ -349,14 +338,12 @@ namespace Services.Tests
                                             _gmmResources,
                                             localizationRepository);
 
+            var groupMembership = GetGroupMembership();
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
-                Message = GetMessageBody(),
-                MessageLockToken = Guid.NewGuid().ToString(),
-                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35",
-                RunId = Guid.NewGuid()
+                Membership = groupMembership,
+                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
             };
-            var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(graphUpdaterRequest.Message);
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -375,8 +362,6 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
-            context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
-                    .Returns(async () => await GetGroupMembershipMessageResponseAsync(graphUpdaterRequest, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
                     .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
 
@@ -391,10 +376,9 @@ namespace Services.Tests
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.AreEqual(SyncStatus.Error, updateJobRequest.Status);
-            Assert.IsTrue(response.ShouldCompleteMessage);
+            Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"Group with ID {groupMembership.Destination.ObjectId} doesn't exist.")));
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function did not complete"));
-            Assert.AreEqual(graphUpdaterRequest.MessageLockToken, response.CompletedGroupMembershipMessages.Single().LockToken);
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
@@ -441,16 +425,14 @@ namespace Services.Tests
                                             _gmmResources,
                                             localizationRepository);
 
+            var groupMembership = GetGroupMembership();
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
-                Message = GetMessageBody(),
-                MessageLockToken = Guid.NewGuid().ToString(),
+                Membership = groupMembership,
                 MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35",
-                RunId = Guid.NewGuid(),
                 IsCancelationRequest = true
             };
 
-            var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(graphUpdaterRequest.Message);
             groupMembership.IsLastMessage = false;
 
             var syncJob = new SyncJob
@@ -483,7 +465,7 @@ namespace Services.Tests
             var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
-            Assert.IsFalse(response.ShouldCompleteMessage);
+            Assert.IsTrue(response == OrchestrationRuntimeStatus.Canceled);
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"Canceling session")));
             Assert.IsNotNull(jobUpdateRequest);
             Assert.AreEqual(SyncStatus.Error, jobUpdateRequest.Status);
@@ -535,14 +517,12 @@ namespace Services.Tests
                                             _gmmResources,
                                             localizationRepository);
 
+            var groupMembership = GetGroupMembership();
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
-                Message = GetMessageBody(),
-                MessageLockToken = Guid.NewGuid().ToString(),
-                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35",
-                RunId = Guid.NewGuid()
+                Membership = groupMembership,
+                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
             };
-            var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(graphUpdaterRequest.Message);
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -562,8 +542,6 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
-            context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
-                    .Returns(async () => await GetGroupMembershipMessageResponseAsync(graphUpdaterRequest, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
                     .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
             context.Setup(x => x.CallSubOrchestratorAsync<List<AzureADUser>>(It.IsAny<string>(), It.IsAny<UsersReaderRequest>()))
@@ -590,8 +568,7 @@ namespace Services.Tests
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function did not complete"));
             Assert.IsTrue(mockMailRepo.SentEmails.First().Content == "SyncThresholdBothEmailBody");
             Assert.AreEqual(SyncStatus.Idle, updateJobRequest.Status);
-            Assert.IsTrue(response.ShouldCompleteMessage);
-            Assert.AreEqual(graphUpdaterRequest.MessageLockToken, response.CompletedGroupMembershipMessages.Single().LockToken);
+            Assert.IsTrue(response == OrchestrationRuntimeStatus.Terminated);
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
@@ -638,14 +615,13 @@ namespace Services.Tests
                                             _gmmResources,
                                             localizationRepository);
 
+            var groupMembership = GetGroupMembership();
             var graphUpdaterRequest = new GraphUpdaterFunctionRequest
             {
-                Message = GetMessageBody(),
-                MessageLockToken = Guid.NewGuid().ToString(),
-                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35",
-                RunId = Guid.NewGuid()
+                Membership = groupMembership,
+                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
             };
-            var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(graphUpdaterRequest.Message);
+
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -678,8 +654,6 @@ namespace Services.Tests
 
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
-            context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
-                    .Returns(async () => await GetGroupMembershipMessageResponseAsync(graphUpdaterRequest, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
                     .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
             context.Setup(x => x.CallSubOrchestratorAsync<List<AzureADUser>>(It.IsAny<string>(), It.IsAny<UsersReaderRequest>()))
@@ -695,7 +669,7 @@ namespace Services.Tests
                         await RunJobStatusUpdaterFunctionAsync(mockLoggingRepo, mockGraphUpdaterService, updateJobRequest);
                     });
 
-            GroupMembershipMessageResponse response = null;
+            OrchestrationRuntimeStatus response = OrchestrationRuntimeStatus.Unknown;
             var thresholdViolationCountLimit = 3;
             for (var thresholdViolationCount = 1; thresholdViolationCount <= thresholdViolationCountLimit; thresholdViolationCount++)
             {
@@ -711,8 +685,7 @@ namespace Services.Tests
             Assert.AreEqual(SyncStatus.Idle, updateJobRequest.Status);
             Assert.AreEqual(thresholdViolationCountLimit, updateJobRequest.ThresholdViolations);
             Assert.AreEqual(thresholdViolationCountLimit, mockGraphUpdaterService.Jobs[(syncJob.PartitionKey, syncJob.RowKey)].ThresholdViolations);
-            Assert.IsTrue(response.ShouldCompleteMessage);
-            Assert.AreEqual(graphUpdaterRequest.MessageLockToken, response.CompletedGroupMembershipMessages.Single().LockToken);
+            Assert.IsTrue(response == OrchestrationRuntimeStatus.Terminated);
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
@@ -730,14 +703,6 @@ namespace Services.Tests
         {
             var jobStatusUpdaterFunction = new JobStatusUpdaterFunction(loggingRepository, graphUpdaterService);
             await jobStatusUpdaterFunction.UpdateJobStatusAsync(request);
-        }
-
-        private async Task<GroupMembershipMessageResponse> GetGroupMembershipMessageResponseAsync(GraphUpdaterFunctionRequest request, MockLoggingRepository mockLoggingRepo)
-        {
-            var messageCollector = new MessageCollector(mockLoggingRepo);
-            var messageCollectorFunction = new MessageCollectorFunction(messageCollector, mockLoggingRepo);
-            var response = await messageCollectorFunction.CollectMessagesAsync(request);
-            return response;
         }
 
         private async Task<bool> CheckIfGroupExistsAsync(
@@ -832,7 +797,7 @@ namespace Services.Tests
             return await calculatorFunction.CalculateDeltaAsync(request);
         }
 
-        private string GetMessageBody()
+        private GroupMembership GetGroupMembership()
         {
             var json =
             "{" +
@@ -851,8 +816,9 @@ namespace Services.Tests
             "  'Errored': false," +
             "  'IsLastMessage': true" +
             "}";
+            var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(json);
 
-            return json;
+            return groupMembership;
         }
 
         private async Task LogMessageAsync(LoggerRequest loggerRequest, MockLoggingRepository mockLoggingRepository)
