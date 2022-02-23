@@ -6,6 +6,7 @@ name: $(major).$(minor).$(Date:yyMM).$(Rev:r)
 
 trigger:
 - develop
+- main
 - master
 - users/*
 
@@ -96,7 +97,7 @@ stages:
     condition: |
       and(
           succeeded('Build_Functions'),
-          eq(variables['Build.SourceBranch'], 'refs/heads/master'),
+          in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/main'),
           in(variables['Build.Reason'], 'IndividualCI', 'Manual')
       )
 
@@ -122,6 +123,6 @@ stages:
       and(
         succeeded('NonProd_ua'),
         succeeded('Build_Functions'),
-        eq(variables['Build.SourceBranch'], 'refs/heads/master'),
+        in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/main'),
         in(variables['Build.Reason'], 'IndividualCI', 'Manual')
       )
