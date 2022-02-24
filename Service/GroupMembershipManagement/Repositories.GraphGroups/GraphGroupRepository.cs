@@ -444,6 +444,7 @@ namespace Repositories.GraphGroups
 
                     if (chunkToRetry.ShouldRetry)
                     {
+                        // Not found
                         if (chunkToRetry.ToSend.Count > 1
                             && !string.IsNullOrWhiteSpace(idToRetry.AzureObjectId))
                         {
@@ -464,10 +465,32 @@ namespace Repositories.GraphGroups
                             }
                         }
 
-                        requeued++;
-                        var originalId = chunkToRetry.Id;
-                        queue.Enqueue(chunkToRetry.UpdateIdForRetry(threadNumber));
-                        await _log.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId} as {chunkToRetry.Id}", RunId = RunId });
+                        // Break down request for individual retries
+                        if (chunkToRetry.ToSend.Count > 1 && idToRetry.ResponseCode == ResponseCode.IndividualRetry)
+                        {
+                            var chunksOfUsers = chunkToRetry.ToSend.Select(x => new ChunkOfUsers
+                            {
+                                Id = GetNewChunkId(),
+                                ToSend = new List<AzureADUser> { x }
+                            });
+
+                            foreach (var chunk in chunksOfUsers)
+                            {
+                                requeued++;
+                                queue.Enqueue(chunk.UpdateIdForRetry(threadNumber));
+                                await _log.LogMessageAsync(new LogMessage { Message = $"Queued {chunk.Id} from {chunkToRetry.Id}", RunId = RunId });
+                            }
+
+                            chunkToRetry.ToSend.Clear();
+                        }
+
+                        if (chunkToRetry.ToSend.Count > 0)
+                        {
+                            requeued++;
+                            var originalId = chunkToRetry.Id;
+                            queue.Enqueue(chunkToRetry.UpdateIdForRetry(threadNumber));
+                            await _log.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId} as {chunkToRetry.Id}", RunId = RunId });
+                        }
                     }
                 }
                 await _log.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.", RunId = RunId });
@@ -598,6 +621,14 @@ namespace Repositories.GraphGroups
                     {
                         RequestId = kvp.Key,
                         ResponseCode = ResponseCode.Ok
+                    };
+                }
+                else if (status == HttpStatusCode.Forbidden && content.Contains("Guests users are not allowed to join"))
+                {
+                    yield return new RetryResponse
+                    {
+                        RequestId = kvp.Key,
+                        ResponseCode = ResponseCode.IndividualRetry
                     };
                 }
                 else if (_shouldRetry.Contains(status))
