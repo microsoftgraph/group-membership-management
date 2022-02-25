@@ -102,6 +102,26 @@ namespace Tests.FunctionApps.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task<bool> GroupExists(string groupName)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<AzureADGroup> GetGroup(string groupName)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task CreateGroup(string newGroupName)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<AzureADUser>> GetTenantUsers(int userCount)
+        {
+            throw new NotImplementedException();
+        }
     }
 
 	public class MockException : Exception { }

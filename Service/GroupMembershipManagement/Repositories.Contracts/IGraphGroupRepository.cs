@@ -19,6 +19,10 @@ namespace Repositories.Contracts
 		Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId);
 		Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0);
 		Task<bool> GroupExists(Guid objectId);
+		Task<bool> GroupExists(string groupName);
+		Task<AzureADGroup> GetGroup(string groupName);
+		Task CreateGroup(string newGroupName);
+		Task<List<AzureADUser>> GetTenantUsers(int userCount);
 		Task<List<AzureADUser>> GetUsersInGroupTransitively(Guid objectId);
 		Task<(ResponseCode ResponseCode, int SuccessCount)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup);
 		Task<(ResponseCode ResponseCode, int SuccessCount)> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup);
