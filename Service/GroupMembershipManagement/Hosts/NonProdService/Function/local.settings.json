@@ -1,0 +1,16 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+    "logAnalyticsCustomerId": "",
+    "logAnalyticsPrimarySharedKey": "",
+    "graphCredentials:ClientId": "",
+    "graphCredentials:ClientSecret": "",
+    "graphCredentials:KeyVaultName": "gmm-prereqs-<env>",
+    "graphCredentials:KeyVaultTenantId": "<demo-tenant-id>",
+    "graphCredentials:TenantId": "<demo-tenant-id>",
+    "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
+    "APPINSIGHTS_INSTRUMENTATIONKEY": ""
+  }
+}
