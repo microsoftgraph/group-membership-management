@@ -39,7 +39,7 @@ namespace Hosts.SecurityGroup
 				if (groupExistsResult.Outcome == OutcomeType.Successful)
                 {
 					await _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.ObjectId} doesn't exist. Stopping sync and marking as error." });
-					if (request.SyncJob != null) await _calculator.SendEmailAsync(request.SyncJob, request.RunId, SyncDisabledNoGroupEmailBody, new[] { request.ObjectId.ToString() });
+					if (request.SyncJob != null && request.ObjectId != null) await _calculator.SendEmailAsync(request.SyncJob, request.RunId, SyncDisabledNoGroupEmailBody, new[] { request.ObjectId.ToString() });
 				}
 				else if (groupExistsResult.FaultType == FaultType.ExceptionHandledByThisPolicy)
 					await _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Exceeded {NumberOfGraphRetries} while trying to determine if a group exists. Stopping sync and marking as error." });
