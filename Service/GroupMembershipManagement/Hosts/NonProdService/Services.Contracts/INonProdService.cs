@@ -9,7 +9,6 @@ namespace Services.Contracts
 {
     public interface INonProdService
     {
-        Task<bool> CreateTestGroups();
-        Task<bool> FillTestGroups();
+        MembershipDifference GetMembershipDifference(AzureADGroup group, List<AzureADUser> currentMembership, List<AzureADUser> targetMembership, Guid runId);
     }
 }

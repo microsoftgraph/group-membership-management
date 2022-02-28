@@ -683,7 +683,7 @@ namespace Repositories.GraphGroups
                 if (status == HttpStatusCode.BadRequest && IsOkayError(content)) { }
                 else if (status == HttpStatusCode.NotFound && (content).Contains("does not exist or one of its queried reference-property objects are not present."))
                 {
-                    await _log.LogMessageAsync(new LogMessage
+                    await _loggingRepository.LogMessageAsync(new LogMessage
                     {
                         Message = $"Regex Expression: {_userNotFound} and Content: {content}",
                         RunId = RunId
@@ -695,7 +695,7 @@ namespace Repositories.GraphGroups
                     if (match.Success)
                     {
                         userId = match.Groups["id"].Value;
-                        await _log.LogMessageAsync(new LogMessage
+                        await _loggingRepository.LogMessageAsync(new LogMessage
                         {
                             Message = $"User ID is found",
                             RunId = RunId
@@ -704,7 +704,7 @@ namespace Repositories.GraphGroups
 
                     else
                     {                        
-                        await _log.LogMessageAsync(new LogMessage
+                        await _loggingRepository.LogMessageAsync(new LogMessage
                         {
                             Message = $"User ID is missing",
                             RunId = RunId
@@ -912,7 +912,7 @@ namespace Repositories.GraphGroups
                        retryAttempt => TimeSpan.FromMinutes(2),
                        onRetry: async (ex, count) =>
                        {
-                           await _log.LogMessageAsync(new LogMessage
+                           await _loggingRepository.LogMessageAsync(new LogMessage
                            {
                                Message = $"Got a transient exception. Retrying. This was try {count} out of {retryLimit}.\n{ex}"
                            });
