@@ -9,6 +9,6 @@ namespace Services.Contracts
 {
     public interface INonProdService
     {
-        MembershipDifference GetMembershipDifference(AzureADGroup group, List<AzureADUser> currentMembership, List<AzureADUser> targetMembership, Guid runId);
+        MembershipDifference GetMembershipDifference(List<AzureADUser> currentMembership, List<AzureADUser> targetMembership);
     }
 }

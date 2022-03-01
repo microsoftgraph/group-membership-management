@@ -20,11 +20,15 @@ namespace Services
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        public MembershipDifference GetMembershipDifference(AzureADGroup group, List<AzureADUser> currentMembership, List<AzureADUser> targetMembership, Guid runId)
+        public MembershipDifference GetMembershipDifference(List<AzureADUser> currentMembership, List<AzureADUser> targetMembership)
         {
+            if(currentMembership == null || targetMembership == null)
+            {
+                throw new ArgumentNullException("Either the current or target membership input was null. GetMembershipDifference inputs must be lists");
+            }
+
             var usersToAdd = targetMembership.Where(x => !currentMembership.Contains(x)).ToList();
             var usersToRemove = currentMembership.Where(x => !targetMembership.Contains(x)).ToList();
-
 
             return new MembershipDifference
             {

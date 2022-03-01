@@ -86,7 +86,7 @@ namespace Hosts.NonProdService
                     throw new Exception($"Error occurred in the  {nameof(GroupCreatorAndRetrieverFunction)}, possibly due to not enough users existing in the tenant not getting retrieved");
                 }
 
-                var membershipDifference = _nonProdService.GetMembershipDifference(groupResponse.TargetGroup, groupResponse.Members, desiredMembership, runId);
+                var membershipDifference = _nonProdService.GetMembershipDifference(groupResponse.Members, desiredMembership);
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LogMessage
                 {
