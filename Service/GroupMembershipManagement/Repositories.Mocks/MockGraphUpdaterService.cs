@@ -72,7 +72,6 @@ namespace Repositories.Mocks
         {
             job.RunId = runId;
             job.Status = status.ToString();
-            job.Enabled = status != SyncStatus.Error;
             var isDryRunSync = job.IsDryRunEnabled || isDryRun;
 
             if (isDryRunSync)

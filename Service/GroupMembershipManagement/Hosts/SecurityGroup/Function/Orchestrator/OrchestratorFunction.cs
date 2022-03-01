@@ -84,7 +84,6 @@ namespace Hosts.SecurityGroup
                 }
                 else
                 {
-                    syncJob.Enabled = false;
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
                 }
             }

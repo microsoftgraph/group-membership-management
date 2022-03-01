@@ -117,7 +117,6 @@ namespace Services
                 job.LastRunTime = DateTime.UtcNow;
 
             job.RunId = runId;
-            job.Enabled = status != SyncStatus.Error;
 
             await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
 

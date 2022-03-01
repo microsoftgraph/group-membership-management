@@ -93,7 +93,6 @@ namespace Services
             }
             else
             {
-                job.Enabled = false;
                 await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.Error);
             }
 
