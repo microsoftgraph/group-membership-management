@@ -26,13 +26,13 @@ namespace Hosts.GraphUpdater
         private readonly IServiceBusMessageService _messageService = null;
         private readonly IConfiguration _configuration = null;
         private SessionTracker _sessionTracker = new SessionTracker();
-        private static readonly TimeSpan _waitBetweenQueuePolling = TimeSpan.FromSeconds(1);
+        private static readonly TimeSpan _waitBetweenQueuePolling = TimeSpan.FromSeconds(5);
 
-        public StarterFunction(ILoggingRepository loggingRepository, IServiceBusMessageService messageService, IConfiguration configuraion)
+        public StarterFunction(ILoggingRepository loggingRepository, IServiceBusMessageService messageService, IConfiguration configuration)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _messageService = messageService ?? throw new ArgumentNullException(nameof(messageService));
-            _configuration = configuraion ?? throw new ArgumentNullException(nameof(configuraion));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
         [FunctionName(nameof(StarterFunction))]
@@ -78,21 +78,38 @@ namespace Hosts.GraphUpdater
 
                 var moreMessages = await messageSession.ReceiveAsync(1000);
 
-                _sessionTracker.MessagesInSession.AddRange(moreMessages);
-                
-                var orderedMessages = moreMessages.OrderBy(message => message.ScheduledEnqueueTimeUtc).ToList();
-                var lastMessage = orderedMessages.Last();
-
-                if (IsLastMessageInSession(lastMessage))
+                if (moreMessages != null)
                 {
-                    _sessionTracker.ReceivedLastMessage = true;
-                    var messageDetails = _messageService.GetMessageProperties(lastMessage);
-                    var membership = JsonConvert.DeserializeObject<GroupMembership>(Encoding.UTF8.GetString(messageDetails.Body));
+                    _sessionTracker.MessagesInSession.AddRange(moreMessages);
+
+                    var orderedMessages = moreMessages.OrderBy(message => message.ScheduledEnqueueTimeUtc).ToList();
+                    var lastMessage = orderedMessages.Last();
+
+                    if (IsLastMessageInSession(lastMessage))
+                    {
+                        _sessionTracker.ReceivedLastMessage = true;
+                        var messageDetails = _messageService.GetMessageProperties(lastMessage);
+                        var membership = JsonConvert.DeserializeObject<GroupMembership>(Encoding.UTF8.GetString(messageDetails.Body));
+                    }
+
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = "Received " + moreMessages.Count + " new messages from session with SessionId: " + _sessionTracker.SessionId,
+                        RunId = runId
+                    });
+                }
+                else
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = "Received no new messages from session with SessionId: " + _sessionTracker.SessionId,
+                        RunId = runId
+                    });
                 }
 
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
-                    Message = "Currently retrieved " + _sessionTracker.MessagesInSession.Count + " out of " + _sessionTracker.TotalMessageCountExpected +
+                    Message = "Currently received " + _sessionTracker.MessagesInSession.Count + " out of " + _sessionTracker.TotalMessageCountExpected +
                     " messages from session with SessionId: " + _sessionTracker.SessionId,
                     RunId = runId
                 });
