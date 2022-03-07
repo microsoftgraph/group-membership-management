@@ -54,7 +54,6 @@ namespace Hosts.GraphUpdater
             var latestMessage = messages.Last();
             var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(Encoding.UTF8.GetString(latestMessage.Body));
 
-            _sessionTracker.ReceivedLastMessage = groupMembership.IsLastMessage;
             _sessionTracker.TotalMessageCountExpected = groupMembership.TotalMessageCount;
             _sessionTracker.SyncJobPartitionKey = groupMembership.SyncJobPartitionKey;
             _sessionTracker.SyncJobRowKey = groupMembership.SyncJobRowKey;
@@ -63,7 +62,7 @@ namespace Hosts.GraphUpdater
             var renew = RenewMessages(starter, messageSession, source);
 
             // Obtain all messages in session
-            while (!_sessionTracker.ReceivedLastMessage || _sessionTracker.MessagesInSession.Count < _sessionTracker.TotalMessageCountExpected)
+            while (_sessionTracker.MessagesInSession.Count < _sessionTracker.TotalMessageCountExpected)
             {
                 if(source.IsCancellationRequested)
                 {
@@ -81,16 +80,6 @@ namespace Hosts.GraphUpdater
                 if (moreMessages != null)
                 {
                     _sessionTracker.MessagesInSession.AddRange(moreMessages);
-
-                    var orderedMessages = moreMessages.OrderBy(message => message.ScheduledEnqueueTimeUtc).ToList();
-                    var lastMessage = orderedMessages.Last();
-
-                    if (IsLastMessageInSession(lastMessage))
-                    {
-                        _sessionTracker.ReceivedLastMessage = true;
-                        var messageDetails = _messageService.GetMessageProperties(lastMessage);
-                        var membership = JsonConvert.DeserializeObject<GroupMembership>(Encoding.UTF8.GetString(messageDetails.Body));
-                    }
 
                     await _loggingRepository.LogMessageAsync(new LogMessage
                     {
@@ -222,7 +211,7 @@ namespace Hosts.GraphUpdater
 
         private async Task<SessionTrackerAction> TrackLastMessageTimeout(IDurableOrchestrationClient starter, IMessageSession messageSession, CancellationTokenSource cancellationToken)
         {
-            if (!_sessionTracker.ReceivedLastMessage)
+            if (_sessionTracker.MessagesInSession.Count < _sessionTracker.TotalMessageCountExpected)
             {
                 int.TryParse(_configuration["GraphUpdater:LastMessageWaitTimeout"], out int timeOut);
                 timeOut = timeOut == 0 ? 10 : timeOut;

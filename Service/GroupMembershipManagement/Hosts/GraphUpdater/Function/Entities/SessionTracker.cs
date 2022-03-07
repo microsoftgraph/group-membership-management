@@ -12,7 +12,6 @@ namespace Hosts.GraphUpdater
         public List<Message> MessagesInSession { get; set; }
         public string SessionId { get; set; }
         public Guid RunId { get { return new Guid(SessionId); } }
-        public bool ReceivedLastMessage { get; set; }
         public int TotalMessageCountExpected { get; set; }
         public string SyncJobPartitionKey { get; set; }
         public string SyncJobRowKey { get; set; }

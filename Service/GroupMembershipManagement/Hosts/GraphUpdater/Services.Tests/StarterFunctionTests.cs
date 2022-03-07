@@ -153,8 +153,8 @@ namespace Services.Tests
             _messageSessionMock
                 .Setup(x => x.ReceiveAsync(1000))
                 .ReturnsAsync(new Message[] { new Message {
-                        Body = Encoding.UTF8.GetBytes(GetMembershipBody(false)),
-                        SessionId = GetGroupMembership(false).RunId.ToString(),
+                        Body = Encoding.UTF8.GetBytes(GetMembershipBody(1000)),
+                        SessionId = GetGroupMembership(1000).RunId.ToString(),
                         ContentType = "application/json",
                         Label = ""
                     } }
@@ -162,7 +162,7 @@ namespace Services.Tests
 
             _messageService
                 .Setup(x => x.GetMessageProperties(It.IsAny<Message>()))
-                .Returns(new MessageInformation { Body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(GetGroupMembership(false))) });
+                .Returns(new MessageInformation { Body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(GetGroupMembership(1000))) });
 
             _configuration.SetupGet(x => x["GraphUpdater:LastMessageWaitTimeout"]).Returns("1");
 
@@ -185,8 +185,8 @@ namespace Services.Tests
             var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object);
 
             await starterFunction.RunAsync(new Message[] { new Message {
-                    Body = Encoding.UTF8.GetBytes(GetMembershipBody(false)),
-                    SessionId = GetGroupMembership(false).RunId.ToString(),
+                    Body = Encoding.UTF8.GetBytes(GetMembershipBody(1000)),
+                    SessionId = GetGroupMembership(1000).RunId.ToString(),
                     ContentType = "application/json",
                     Label = ""
                 } },
@@ -231,8 +231,8 @@ namespace Services.Tests
                     messagesReceivedSoFar++;
 
                     return new Message[] { new Message {
-                            Body = Encoding.UTF8.GetBytes(GetMembershipBody(totalMessages == messagesReceivedSoFar)),
-                            SessionId = GetGroupMembership(totalMessages == messagesReceivedSoFar).RunId.ToString(),
+                            Body = Encoding.UTF8.GetBytes(GetMembershipBody(totalMessages)),
+                            SessionId = GetGroupMembership(totalMessages).RunId.ToString(),
                             ContentType = "application/json",
                             Label = ""
                         }
@@ -245,15 +245,15 @@ namespace Services.Tests
                 .Returns(() => {
                     return new MessageInformation
                     {
-                        Body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(GetGroupMembership(totalMessages == messagesReceivedSoFar)))
+                        Body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(GetGroupMembership(totalMessages)))
                     };
                 });
 
             var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object);
 
             await starterFunction.RunAsync(new Message[] { new Message {
-                    Body = Encoding.UTF8.GetBytes(GetMembershipBody(false)),
-                    SessionId = GetGroupMembership(false).RunId.ToString(),
+                    Body = Encoding.UTF8.GetBytes(GetMembershipBody(totalMessages)),
+                    SessionId = GetGroupMembership(totalMessages).RunId.ToString(),
                     ContentType = "application/json",
                     Label = ""
                 } },
@@ -266,7 +266,7 @@ namespace Services.Tests
             _durableClientMock.Verify(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()), Times.Once());
         }
 
-        private string GetMembershipBody(bool isLastMessage = true)
+        private string GetMembershipBody(int totalMessageCount = 1)
         {
             var json =
             "{" +
@@ -283,15 +283,15 @@ namespace Services.Tests
             "  'SyncJobRowKey': '0a4cc250-69a0-4019-8298-96bf492aca01'," +
             "  'SyncJobPartitionKey': '2021-01-01'," +
             "  'Errored': false," +
-            "  'IsLastMessage': " + isLastMessage.ToString().ToLower() +
+            "  'TotalMessageCount': " + totalMessageCount.ToString() +
             "}";
 
             return json;
         }
 
-        private GroupMembership GetGroupMembership(bool isLastMessage = true)
+        private GroupMembership GetGroupMembership(int totalMessageCount = 1)
         {
-            var json = GetMembershipBody(isLastMessage);
+            var json = GetMembershipBody(totalMessageCount);
             var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(json);
 
             return groupMembership;
