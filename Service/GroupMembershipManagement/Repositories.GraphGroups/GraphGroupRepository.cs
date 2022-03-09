@@ -4,6 +4,8 @@ using Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
 using Newtonsoft.Json.Linq;
+using Polly;
+using Polly.Retry;
 using Repositories.Contracts;
 using System;
 using System.Collections.Concurrent;
@@ -228,13 +230,17 @@ namespace Repositories.GraphGroups
         /// <returns>group members page.</returns>
         public async Task<IGroupTransitiveMembersCollectionWithReferencesPage> GetGroupMembersPageByIdAsync(string groupId)
         {
-            return await _graphServiceClient
-                                    .Groups[groupId]
-                                    .TransitiveMembers
-                                    .Request()
-                                    .Top(MaxResultCount)
-                                    .WithMaxRetry(MaxRetries)
-                                    .GetAsync();
+            var retryPolicy = GetRetryPolicy();
+            return await retryPolicy.ExecuteAsync(async () =>
+            {
+                return await _graphServiceClient
+                                .Groups[groupId]
+                                .TransitiveMembers
+                                .Request()
+                                .Top(MaxResultCount)
+                                .WithMaxRetry(MaxRetries)
+                                .GetAsync();
+            });
         }
 
         /// <summary>
@@ -247,10 +253,14 @@ namespace Repositories.GraphGroups
             IGroupTransitiveMembersCollectionWithReferencesPage groupMembersRef,
             string nextPageUrl)
         {
-            groupMembersRef.InitializeNextPageRequest(_graphServiceClient, nextPageUrl);
-            return await groupMembersRef
-                .NextPageRequest
-                .GetAsync();
+            var retryPolicy = GetRetryPolicy();
+            return await retryPolicy.ExecuteAsync(async () =>
+            {
+                groupMembersRef.InitializeNextPageRequest(_graphServiceClient, nextPageUrl);
+                return await groupMembersRef
+                                .NextPageRequest
+                                .GetAsync();
+            });
         }
 
         public async Task<(List<AzureADUser> users,
@@ -783,6 +793,25 @@ namespace Repositories.GraphGroups
                 throw;
             }
         }
+
+        private AsyncRetryPolicy GetRetryPolicy()
+        {
+            var retryLimit = 2;
+            var retryPolicy = Policy.Handle<ServiceException>()
+                    .WaitAndRetryAsync(
+                       retryCount: retryLimit,
+                       retryAttempt => TimeSpan.FromMinutes(Math.Pow(2, retryAttempt)),
+                       onRetry: async (ex, count) =>
+                       {
+                           await _log.LogMessageAsync(new LogMessage
+                           {
+                               Message = $"Got a transient exception. Retrying. This was try {count} out of {retryLimit}.\n{ex}"
+                           });
+                       }
+                    );
+
+            return retryPolicy;
+        }
     }
 
     internal class RetryResponse
@@ -792,3 +821,4 @@ namespace Repositories.GraphGroups
         public string AzureObjectId { get; set; }
     }
 }
+
