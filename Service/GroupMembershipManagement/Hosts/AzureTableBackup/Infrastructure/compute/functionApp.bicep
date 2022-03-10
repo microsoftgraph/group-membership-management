@@ -29,6 +29,7 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
     clientAffinityEnabled: false
     httpsOnly: true
     siteConfig: {
+      use32BitWorkerProcess : false
       appSettings: secretSettings
     }
   }
