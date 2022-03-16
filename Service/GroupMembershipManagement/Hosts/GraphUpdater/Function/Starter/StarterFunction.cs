@@ -192,7 +192,19 @@ namespace Hosts.GraphUpdater
 
             // Complete messages in message session, close the message session and then stop renewing it
             await messageSession.CompleteAsync(completedLockTokens);
-            await messageSession.CloseAsync();
+
+            try
+            {
+                await messageSession.CloseAsync();
+            }
+            catch(SessionLockLostException ex)
+            {
+                var exceptionMessage = $"Session lock lost in GraphUpdater for session with RunId: {runId}, " +
+                    $"TargetOfficeGroupId: {groupMembership.Destination.ObjectId}, and {_sessionTracker.MessagesInSession.Count} messages in session.";
+
+                throw new GraphUpdaterSessionLockLostException(exceptionMessage, ex);
+            }
+            
             source.Cancel();
 
             await _loggingRepository.LogMessageAsync(new LogMessage { 
