@@ -11,6 +11,7 @@ using Polly;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -41,10 +42,6 @@ namespace Hosts.GraphUpdater
         [DurableClient] IDurableOrchestrationClient starter, IMessageSession messageSession)
         {
             var runId = new Guid(messageSession.SessionId);
-            await _loggingRepository.LogMessageAsync(new LogMessage {
-                Message = nameof(StarterFunction) + " function started",
-                RunId = runId
-            });
 
             // Update session tracker with needed values
             _sessionTracker.LastAccessTime = DateTime.UtcNow;
@@ -57,6 +54,20 @@ namespace Hosts.GraphUpdater
             _sessionTracker.TotalMessageCountExpected = groupMembership.TotalMessageCount;
             _sessionTracker.SyncJobPartitionKey = groupMembership.SyncJobPartitionKey;
             _sessionTracker.SyncJobRowKey = groupMembership.SyncJobRowKey;
+
+            _loggingRepository.SyncJobProperties = new Dictionary<string, string>()
+            {
+                {"RowKey", groupMembership.SyncJobRowKey },
+                {"PartitionKey", groupMembership.SyncJobPartitionKey },
+                {"TargetOfficeGroupId", groupMembership.Destination.ObjectId.ToString() },
+                {"RunId", groupMembership.RunId.ToString() }
+            };
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = nameof(StarterFunction) + " function started",
+                RunId = runId
+            });
 
             var source = new CancellationTokenSource();
             var renew = RenewMessages(starter, messageSession, source);
