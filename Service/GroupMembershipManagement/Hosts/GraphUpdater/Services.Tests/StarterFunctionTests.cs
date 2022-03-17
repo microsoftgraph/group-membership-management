@@ -3,6 +3,8 @@
 using Entities;
 using Entities.ServiceBus;
 using Hosts.GraphUpdater;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
@@ -26,6 +28,7 @@ namespace Services.Tests
     {
         private string _instanceId;
         private MockLoggingRepository _loggerMock;
+        private TelemetryClient _telemetryMock;
         private Mock<IDurableOrchestrationClient> _durableClientMock;
         private Mock<IMessageSession> _messageSessionMock;
         private Mock<IServiceBusMessageService> _messageService;
@@ -37,6 +40,7 @@ namespace Services.Tests
             _instanceId = "1234567890";
             _durableClientMock = new Mock<IDurableOrchestrationClient>();
             _loggerMock = new MockLoggingRepository();
+            _telemetryMock = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             _messageSessionMock = new Mock<IMessageSession>();
             _messageService = new Mock<IServiceBusMessageService>();
             _configuration = new Mock<IConfiguration>();
@@ -67,7 +71,7 @@ namespace Services.Tests
                 .Setup(x => x.GetMessageProperties(It.IsAny<Message>()))
                 .Returns(new MessageInformation { Body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(GetGroupMembership())) });
 
-            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object);
+            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object, _telemetryMock);
 
             await starterFunction.RunAsync(new Message[] { new Message {
                     Body = Encoding.UTF8.GetBytes(GetMembershipBody()),
@@ -118,7 +122,7 @@ namespace Services.Tests
                 .Setup(x => x.GetMessageProperties(It.IsAny<Message>()))
                 .Returns(new MessageInformation { Body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(GetGroupMembership())) });
 
-            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object);
+            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object, _telemetryMock);
 
             await starterFunction.RunAsync(new Message[] { new Message {
                     Body = Encoding.UTF8.GetBytes(GetMembershipBody()),
@@ -182,7 +186,7 @@ namespace Services.Tests
                 .Setup(x => x.GetStatusAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
                 .ReturnsAsync(status);
 
-            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object);
+            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object, _telemetryMock);
 
             await starterFunction.RunAsync(new Message[] { new Message {
                     Body = Encoding.UTF8.GetBytes(GetMembershipBody(1000)),
@@ -249,7 +253,7 @@ namespace Services.Tests
                     };
                 });
 
-            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object);
+            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object, _telemetryMock);
 
             await starterFunction.RunAsync(new Message[] { new Message {
                     Body = Encoding.UTF8.GetBytes(GetMembershipBody(totalMessages)),
