@@ -195,6 +195,7 @@ namespace Hosts.GraphUpdater
                     {
                         { nameof(SyncJob.TargetOfficeGroupId), groupMembership.Destination.ObjectId.ToString() },
                         { nameof(SyncJob.Type), deltaResponse.SyncJobType },
+                        { nameof(groupMembership.RunId), groupMembership.RunId.ToString() },
                         { "Result", deltaResponse.SyncStatus == SyncStatus.Idle ? "Success": "Failure" },
                         { nameof(SyncJob.IsDryRunEnabled), deltaResponse.IsDryRunSync.ToString() },
                         { nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob.ToString() },
