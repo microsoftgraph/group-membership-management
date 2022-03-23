@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Entities;
 using Entities.ServiceBus;
+using Microsoft.ApplicationInsights;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -26,14 +27,16 @@ namespace Hosts.GraphUpdater
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly IServiceBusMessageService _messageService = null;
         private readonly IConfiguration _configuration = null;
+        TelemetryClient _telemetryClient = null;
         private SessionTracker _sessionTracker = new SessionTracker();
         private static readonly TimeSpan _waitBetweenQueuePolling = TimeSpan.FromSeconds(5);
 
-        public StarterFunction(ILoggingRepository loggingRepository, IServiceBusMessageService messageService, IConfiguration configuration)
+        public StarterFunction(ILoggingRepository loggingRepository, IServiceBusMessageService messageService, IConfiguration configuration, TelemetryClient telemetryClient)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _messageService = messageService ?? throw new ArgumentNullException(nameof(messageService));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         [FunctionName(nameof(StarterFunction))]
@@ -202,7 +205,16 @@ namespace Hosts.GraphUpdater
                 var exceptionMessage = $"Session lock lost in GraphUpdater for session with RunId: {runId}, " +
                     $"TargetOfficeGroupId: {groupMembership.Destination.ObjectId}, and {_sessionTracker.MessagesInSession.Count} messages in session.";
 
-                throw new GraphUpdaterSessionLockLostException(exceptionMessage, ex);
+                var guSessionLockException = new GraphUpdaterSessionLockLostException(exceptionMessage, ex);
+
+                _telemetryClient.TrackException(guSessionLockException, new Dictionary<string, string>()
+                {
+                    {"TargetOfficeGroupId", groupMembership.Destination.ObjectId.ToString() },
+                    {"RunId", runId.ToString() },
+                    {"MessagesInSessionCount", _sessionTracker.MessagesInSession.Count.ToString() }
+                });
+
+                throw guSessionLockException;
             }
             
             source.Cancel();
