@@ -796,11 +796,11 @@ namespace Repositories.GraphGroups
 
         private AsyncRetryPolicy GetRetryPolicy()
         {
-            var retryLimit = 2;
+            var retryLimit = 4;
             var retryPolicy = Policy.Handle<ServiceException>()
                     .WaitAndRetryAsync(
                        retryCount: retryLimit,
-                       retryAttempt => TimeSpan.FromMinutes(Math.Pow(2, retryAttempt)),
+                       retryAttempt => TimeSpan.FromMinutes(2),
                        onRetry: async (ex, count) =>
                        {
                            await _log.LogMessageAsync(new LogMessage
