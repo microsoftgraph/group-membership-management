@@ -79,9 +79,6 @@ param serviceBusTopicSubscriptions array = [
   }
 ]
 
-@description('Enter service bus queue name.')
-param serviceBusQueueName string = 'membership'
-
 @description('Enter storage account name.')
 @minLength(1)
 @maxLength(24)
@@ -99,6 +96,10 @@ param storageAccountSku string = 'Standard_LRS'
 @description('Enter storage account name.')
 @minLength(1)
 param jobsStorageAccountName string = 'jobs${environmentAbbreviation}${uniqueString(resourceGroup().id)}'
+
+@description('Enter membership container name.')
+@minLength(1)
+param membershipContainerName string = 'membership'
 
 @description('Enter jobs table name.')
 @minLength(1)
@@ -280,18 +281,6 @@ module serviceBusSubscriptionsTemplate 'serviceBusSubscription.bicep' = {
   ]
 }
 
-module serviceBusQueueTemplate 'serviceBusQueue.bicep' = {
-  name: 'serviceBusQueueTemplate'
-  params: {
-    serviceBusName: serviceBusName
-    queueName: serviceBusQueueName
-    requiresSession: true
-  }
-  dependsOn: [
-    serviceBusTemplate
-  ]
-}
-
 module storageAccountTemplate 'storageAccount.bicep' = {
   name: 'storageAccountTemplate'
   params: {
@@ -343,6 +332,10 @@ module logAlertRuleTemplate 'logAlertRule.bicep' = {
     location: location
     actionGroupId: actionGroupTemplate.outputs.actionGroupId
   }
+  dependsOn: [
+    logAnalyticsTemplate
+    actionGroupTemplate
+  ]
 }
 
 module secretsTemplate 'keyVaultSecrets.bicep' = {
@@ -361,6 +354,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'jobsStorageAccountName'
         value: jobsStorageAccountName
+      }
+      {
+        name: 'membershipContainerName'
+        value: membershipContainerName
       }
       {
         name: 'jobsStorageAccountConnectionString'
@@ -395,10 +392,6 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: serviceBusTopicName
       }
       {
-        name: 'serviceBusMembershipQueue'
-        value: serviceBusQueueName
-      }
-      {
         name: 'logAnalyticsCustomerId'
         value: logAnalyticsTemplate.outputs.customerId
       }
@@ -422,6 +415,9 @@ module dashboardTemplate 'dashboard.bicep' = {
     subscriptionId: subscriptionId
     jobsStorageAccountName: jobsStorageAccountName
   }
+  dependsOn: [
+    jobsStorageAccountTemplate
+  ]
 }
 
 output storageAccountName string = storageAccountName

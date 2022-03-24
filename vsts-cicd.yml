@@ -68,12 +68,12 @@ stages:
     stageName: 'NonProd_int'
     functionApps:
     - name: 'NonProdService'
-    - name: 'JobTrigger'
     - name: 'GraphUpdater'
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
     - name: 'AzureUserReader'
     - name: 'JobScheduler'
+    - name: 'JobTrigger'
     condition: |
       and(
         succeeded('Build_Functions'),
@@ -93,12 +93,12 @@ stages:
     stageName: 'NonProd_ua'
     functionApps:
     - name: 'NonProdService'
-    - name: 'JobTrigger'
     - name: 'GraphUpdater'
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
     - name: 'AzureUserReader'
     - name: 'JobScheduler'
+    - name: 'JobTrigger'
     condition: |
       and(
           succeeded('Build_Functions'),
@@ -118,12 +118,12 @@ stages:
     dependsOn: NonProd_ua
     stageName: 'Prod_production'
     functionApps:
-    - name: 'JobTrigger'
     - name: 'GraphUpdater'
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
     - name: 'AzureUserReader'
     - name: 'JobScheduler'
+    - name: 'JobTrigger'
     condition: |
       and(
         succeeded('NonProd_ua'),

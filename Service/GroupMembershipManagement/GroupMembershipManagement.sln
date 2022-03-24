@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30011.22
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32210.238
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.SecurityGroupCrawler", "Repositories.SecurityGroupCrawler\Repositories.SecurityGroupCrawler.csproj", "{0BBBF0EF-5006-4BF0-A8DF-6A18592EBB97}"
 EndProject
@@ -54,6 +54,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.GraphAzureADUsers", "Repositories.GraphUsers\Repositories.GraphAzureADUsers.csproj", "{6F5C7C65-3C4B-40E6-ACA9-632FBE6FF17E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.GraphUsers.Tests", "Repositories.GraphUsers.Tests\Repositories.GraphUsers.Tests.csproj", "{36F60687-8727-4A28-AAA3-5C5B79F992D4}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.BlobStorage", "Repositories.BlobStorage\Repositories.BlobStorage.csproj", "{3B3732FE-07C6-439B-B2A4-EDADF2F07C39}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -157,6 +159,10 @@ Global
 		{36F60687-8727-4A28-AAA3-5C5B79F992D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{36F60687-8727-4A28-AAA3-5C5B79F992D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{36F60687-8727-4A28-AAA3-5C5B79F992D4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3B3732FE-07C6-439B-B2A4-EDADF2F07C39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B3732FE-07C6-439B-B2A4-EDADF2F07C39}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B3732FE-07C6-439B-B2A4-EDADF2F07C39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B3732FE-07C6-439B-B2A4-EDADF2F07C39}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
