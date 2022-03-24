@@ -73,8 +73,6 @@ var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVa
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountConnectionString')
 var jobsTableName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsTableName')
-var serviceBusConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusConnectionString')
-var serviceBusMembershipQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusMembershipQueue')
 var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
 var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientSecret')
 var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppTenantId')
@@ -83,6 +81,8 @@ var senderPassword = resourceId(subscription().subscriptionId, prereqsKeyVaultRe
 var syncCompletedCCEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'syncCompletedCCEmailAddresses')
 var syncDisabledCCEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'syncDisabledCCEmailAddresses')
 var supportEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'supportEmailAddresses')
+var membershipStorageAccountName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountName')
+var membershipContainerName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipContainerName')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate'
@@ -158,16 +158,6 @@ module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
         slotSetting: false
       }
       {
-        name: 'membershipQueueName'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipQueue, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'differenceQueueConnection'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusConnectionString, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
         name: 'graphCredentials:ClientSecret'
         value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
         slotSetting: false
@@ -237,6 +227,16 @@ module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
         value: appConfigurationEndpoint
         slotSetting: false
       }
+      {
+        name: 'membershipStorageAccountName'
+        value: '@Microsoft.KeyVault(SecretUri=${reference(membershipStorageAccountName, '2019-09-01').secretUriWithVersion})'
+        slotSetting: false
+      }
+      {
+        name: 'membershipContainerName'
+        value: '@Microsoft.KeyVault(SecretUri=${reference(membershipContainerName, '2019-09-01').secretUriWithVersion})'
+        slotSetting: false
+      }
     ]
   }
   dependsOn: [
@@ -284,5 +284,31 @@ module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   }
   dependsOn: [
     functionAppTemplate_GraphUpdater
+  ]
+}
+
+module secretsTemplate 'keyVaultSecrets.bicep' = {
+  name: 'secretsTemplate'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultParameters: [
+      {
+        name: 'graphUpdaterUrl'
+        value: '${functionAppTemplate_GraphUpdater.outputs.hostName}/api/StarterFunction'
+      }
+      {
+        name: 'graphUpdaterFunctionKey'
+        value: functionAppTemplate_GraphUpdater.outputs.adfKey
+      }
+      {
+        name: 'graphUpdaterFunctionName'
+        value: '${functionAppName}-GraphUpdater'
+      }      
+    ]
+  }
+  dependsOn: [
+    functionAppTemplate_GraphUpdater
+    dataKeyVaultPoliciesTemplate
   ]
 }

@@ -3,8 +3,6 @@
 using Entities;
 using Entities.ServiceBus;
 using Hosts.GraphUpdater;
-using Microsoft.ApplicationInsights;
-using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
@@ -18,6 +16,8 @@ using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -28,10 +28,7 @@ namespace Services.Tests
     {
         private string _instanceId;
         private MockLoggingRepository _loggerMock;
-        private TelemetryClient _telemetryMock;
         private Mock<IDurableOrchestrationClient> _durableClientMock;
-        private Mock<IMessageSession> _messageSessionMock;
-        private Mock<IServiceBusMessageService> _messageService;
         private Mock<IConfiguration> _configuration;
 
         [TestInitialize]
@@ -40,234 +37,91 @@ namespace Services.Tests
             _instanceId = "1234567890";
             _durableClientMock = new Mock<IDurableOrchestrationClient>();
             _loggerMock = new MockLoggingRepository();
-            _telemetryMock = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            _messageSessionMock = new Mock<IMessageSession>();
-            _messageService = new Mock<IServiceBusMessageService>();
             _configuration = new Mock<IConfiguration>();
         }
 
         [TestMethod]
-        public async Task ProcessSingleMessageSuccessTest()
+        public async Task ProcessValidRequestTest()
         {
-            var status = new DurableOrchestrationStatus
-            {
-                RuntimeStatus = OrchestrationRuntimeStatus.Completed,
-                Output = ""
-            };
-
             _durableClientMock
-                .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
+                .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<GraphUpdaterHttpRequest>()))
                 .ReturnsAsync(_instanceId);
 
-            _durableClientMock
-                .Setup(x => x.GetStatusAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
-                .ReturnsAsync(status);
+            var starterFunction = new StarterFunction(_loggerMock, _configuration.Object);
+            var groupMembership = GetGroupMembership();
+            var content = new GraphUpdaterHttpRequest
+            {
+                FilePath = "file/path/name.json",
+                RunId = groupMembership.RunId,
+                JobPartitionKey = groupMembership.SyncJobPartitionKey,
+                JobRowKey = groupMembership.SyncJobRowKey
+            };
 
-            _messageSessionMock
-                .Setup(x => x.SessionId)
-                .Returns(GetGroupMembership().RunId.ToString());
+            var request = new HttpRequestMessage
+            {
+                Method = HttpMethod.Post,
+                Content = new StringContent(JsonConvert.SerializeObject(content)),
+            };
 
-            _messageService
-                .Setup(x => x.GetMessageProperties(It.IsAny<Message>()))
-                .Returns(new MessageInformation { Body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(GetGroupMembership())) });
+            var response = await starterFunction.RunAsync(request, _durableClientMock.Object);
 
-            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object, _telemetryMock);
-
-            await starterFunction.RunAsync(new Message[] { new Message {
-                    Body = Encoding.UTF8.GetBytes(GetMembershipBody()),
-                    SessionId = GetGroupMembership().RunId.ToString(),
-                    ContentType = "application/json",
-                    Label = ""
-                } },
-                _durableClientMock.Object,
-                _messageSessionMock.Object);
-
-            _messageSessionMock.Verify(mock => mock.CompleteAsync(It.IsAny<IEnumerable<string>>()), Times.Once());
-            _messageSessionMock.Verify(mock => mock.CloseAsync(), Times.Once());
-
-            Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message.Contains("Instance processing completed")));
+            Assert.AreEqual(HttpStatusCode.NoContent, response.StatusCode);
+            Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message.Contains("function started")));
+            Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message.Contains("InstanceId:")));
             Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message.Contains("function complete")));
         }
 
         [TestMethod]
-        public async Task ProcessSingleMessageFailTest()
+        public async Task ProcessEmptyRequestTest()
         {
-            var status = new DurableOrchestrationStatus
-            {
-                RuntimeStatus = OrchestrationRuntimeStatus.Failed,
-                Output = ""
-            };
-
             _durableClientMock
-                  .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
+                  .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<GraphUpdaterHttpRequest>()))
                   .ReturnsAsync(_instanceId);
 
-            var attempt = 1;
-            _durableClientMock
-                .Setup(x => x.GetStatusAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
-                .Callback(() =>
-                    {
-                        if (attempt > 1)
-                            status.RuntimeStatus = OrchestrationRuntimeStatus.Terminated;
+            var starterFunction = new StarterFunction(_loggerMock, _configuration.Object);
+            var request = new HttpRequestMessage
+            {
+                Method = HttpMethod.Post
+            };
 
-                        attempt++;
-                    })
-                .ReturnsAsync(status);
-            
-            _messageSessionMock
-                .Setup(x => x.SessionId)
-                .Returns(GetGroupMembership().RunId.ToString());
+            var response = await starterFunction.RunAsync(request, _durableClientMock.Object);
+            var responseContent = await response.Content.ReadAsStringAsync();
 
-            _messageService
-                .Setup(x => x.GetMessageProperties(It.IsAny<Message>()))
-                .Returns(new MessageInformation { Body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(GetGroupMembership())) });
-
-            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object, _telemetryMock);
-
-            await starterFunction.RunAsync(new Message[] { new Message {
-                    Body = Encoding.UTF8.GetBytes(GetMembershipBody()),
-                    SessionId = GetGroupMembership().RunId.ToString(),
-                    ContentType = "application/json",
-                    Label = ""
-                } },
-                _durableClientMock.Object,
-                _messageSessionMock.Object);
-
-            _messageSessionMock.Verify(mock => mock.CompleteAsync(It.IsAny<IEnumerable<string>>()), Times.Once());
-            _messageSessionMock.Verify(mock => mock.CloseAsync(), Times.Once());
-
-            Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message.Contains("Error: Status of instance")));
-            Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message.Contains("function complete")));
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.AreEqual("Request content is empty.", responseContent);
+            Assert.AreEqual(0, _loggerMock.MessagesLogged.Count(x => x.Message.Contains("function started")));
+            Assert.AreEqual(0, _loggerMock.MessagesLogged.Count(x => x.Message.Contains("function complete")));
         }
 
         [TestMethod]
-        [Timeout(180000)]
-        public async Task ProcessSessionWithNoLastMessageTest()
+        public async Task ProcessInvalidRequestTest()
         {
-            var status = new DurableOrchestrationStatus
+            _durableClientMock
+                  .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<GraphUpdaterHttpRequest>()))
+                  .ReturnsAsync(_instanceId);
+
+            var starterFunction = new StarterFunction(_loggerMock, _configuration.Object);
+            var groupMembership = GetGroupMembership();
+            var content = new GraphUpdaterHttpRequest
             {
-                RuntimeStatus = OrchestrationRuntimeStatus.Completed,
-                Output = ""
+                FilePath = null,
+                RunId = groupMembership.RunId,
+                JobPartitionKey = groupMembership.SyncJobPartitionKey,
+                JobRowKey = groupMembership.SyncJobRowKey
             };
 
-            _messageSessionMock
-                .Setup(x => x.SessionId)
-                .Returns(GetGroupMembership().RunId.ToString());
-
-            _messageSessionMock
-                .Setup(x => x.ReceiveAsync(1000))
-                .ReturnsAsync(new Message[] { new Message {
-                        Body = Encoding.UTF8.GetBytes(GetMembershipBody(1000)),
-                        SessionId = GetGroupMembership(1000).RunId.ToString(),
-                        ContentType = "application/json",
-                        Label = ""
-                    } }
-                );
-
-            _messageService
-                .Setup(x => x.GetMessageProperties(It.IsAny<Message>()))
-                .Returns(new MessageInformation { Body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(GetGroupMembership(1000))) });
-
-            _configuration.SetupGet(x => x["GraphUpdater:LastMessageWaitTimeout"]).Returns("1");
-
-            var cancelationRequestCount = 0;
-
-            _durableClientMock
-                 .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
-                 .Callback<string, object>((name, request) =>
-                 {
-                     var graphUpdaterRequest = request as GraphUpdaterFunctionRequest;
-                     if (graphUpdaterRequest != null && graphUpdaterRequest.IsCancelationRequest)
-                         cancelationRequestCount++;
-                 })
-                 .ReturnsAsync(_instanceId);
-
-            _durableClientMock
-                .Setup(x => x.GetStatusAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
-                .ReturnsAsync(status);
-
-            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object, _telemetryMock);
-
-            await starterFunction.RunAsync(new Message[] { new Message {
-                    Body = Encoding.UTF8.GetBytes(GetMembershipBody(1000)),
-                    SessionId = GetGroupMembership(1000).RunId.ToString(),
-                    ContentType = "application/json",
-                    Label = ""
-                } },
-                _durableClientMock.Object,
-                _messageSessionMock.Object);
-
-            _messageSessionMock.Verify(mock => mock.CompleteAsync(It.IsAny<IEnumerable<string>>()), Times.Once());
-            _messageSessionMock.Verify(mock => mock.CloseAsync(), Times.Once());
-
-            _durableClientMock.Verify(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()), Times.Exactly(1));
-            Assert.AreEqual(1, cancelationRequestCount);
-        }
-
-        [TestMethod]
-        [Timeout(180000)]
-        public async Task ProcessSessionWithLastMessageTest()
-        {
-            var totalMessages = 10;
-            var messagesReceivedSoFar = 1;
-
-            var status = new DurableOrchestrationStatus
+            var request = new HttpRequestMessage
             {
-                RuntimeStatus = OrchestrationRuntimeStatus.Completed,
-                Output = ""
+                Content = new StringContent(JsonConvert.SerializeObject(content)),
             };
 
-            _durableClientMock
-                .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
-                .ReturnsAsync(_instanceId);
+            var response = await starterFunction.RunAsync(request, _durableClientMock.Object);
+            var responseContent = await response.Content.ReadAsStringAsync();
 
-            _durableClientMock
-                .Setup(x => x.GetStatusAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
-                .ReturnsAsync(status);
-
-            _messageSessionMock
-                .Setup(x => x.SessionId)
-                .Returns(GetGroupMembership().RunId.ToString());
-
-            _messageSessionMock
-                .Setup(x => x.ReceiveAsync(It.IsAny<int>()))
-                .ReturnsAsync(() => {
-                    messagesReceivedSoFar++;
-
-                    return new Message[] { new Message {
-                            Body = Encoding.UTF8.GetBytes(GetMembershipBody(totalMessages)),
-                            SessionId = GetGroupMembership(totalMessages).RunId.ToString(),
-                            ContentType = "application/json",
-                            Label = ""
-                        }
-                    };
-                    }
-                );
-
-            _messageService
-                .Setup(x => x.GetMessageProperties(It.IsAny<Message>()))
-                .Returns(() => {
-                    return new MessageInformation
-                    {
-                        Body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(GetGroupMembership(totalMessages)))
-                    };
-                });
-
-            var starterFunction = new StarterFunction(_loggerMock, _messageService.Object, _configuration.Object, _telemetryMock);
-
-            await starterFunction.RunAsync(new Message[] { new Message {
-                    Body = Encoding.UTF8.GetBytes(GetMembershipBody(totalMessages)),
-                    SessionId = GetGroupMembership(totalMessages).RunId.ToString(),
-                    ContentType = "application/json",
-                    Label = ""
-                } },
-                _durableClientMock.Object,
-                _messageSessionMock.Object);
-
-            _messageSessionMock.Verify(mock => mock.ReceiveAsync(1000), Times.Exactly(9));
-            _messageSessionMock.Verify(mock => mock.CompleteAsync(It.IsAny<IEnumerable<string>>()), Times.Once());
-            _messageSessionMock.Verify(mock => mock.CloseAsync(), Times.Once());
-            _durableClientMock.Verify(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()), Times.Once());
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.AreEqual("Request is not valid, FilePath is missing.", responseContent);
+            Assert.AreEqual(0, _loggerMock.MessagesLogged.Count(x => x.Message.Contains("function started")));
+            Assert.AreEqual(0, _loggerMock.MessagesLogged.Count(x => x.Message.Contains("function complete")));
         }
 
         private string GetMembershipBody(int totalMessageCount = 1)

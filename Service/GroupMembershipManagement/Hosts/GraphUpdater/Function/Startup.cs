@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
+using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
@@ -57,7 +58,14 @@ namespace Hosts.GraphUpdater
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
             .AddSingleton<IDeltaCalculatorService, DeltaCalculatorService>()
             .AddSingleton<IGraphUpdaterService, GraphUpdaterService>()
-            .AddSingleton<IServiceBusMessageService, ServiceBusMessageService>();
+            .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
+            {
+                var configuration = s.GetService<IConfiguration>();
+                var storageAccountName = configuration["membershipStorageAccountName"];
+                var containerName = configuration["membershipContainerName"];
+
+                return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
+            });
         }
 
         private int GetIntSetting(IConfiguration configuration, string settingName, int defaultValue)

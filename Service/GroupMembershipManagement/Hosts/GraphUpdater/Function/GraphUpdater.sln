@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30323.103
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32228.430
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GraphUpdater", "GraphUpdater.csproj", "{ADB39082-0BF4-4E12-A197-AF110B5F2835}"
 EndProject
@@ -34,9 +34,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hosts.FunctionBase", "..\..
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services", "..\Services\Services.csproj", "{6D97FD41-E62F-419D-85CD-4D2562AA4FB1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Services.Contracts", "..\Services.Contracts\Services.Contracts.csproj", "{6E0ED8FB-C78B-4AA7-AA01-1DA1B784DE3A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Contracts", "..\Services.Contracts\Services.Contracts.csproj", "{6E0ED8FB-C78B-4AA7-AA01-1DA1B784DE3A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Services.Entities", "..\Services.Entities\Services.Entities.csproj", "{A73323C8-E7F2-4F65-A6E7-1B52A86BEBEF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Entities", "..\Services.Entities\Services.Entities.csproj", "{A73323C8-E7F2-4F65-A6E7-1B52A86BEBEF}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.BlobStorage", "..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj", "{FFBFBD09-3D56-4A29-8AE4-2F9B472993B8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -116,6 +118,10 @@ Global
 		{A73323C8-E7F2-4F65-A6E7-1B52A86BEBEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A73323C8-E7F2-4F65-A6E7-1B52A86BEBEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A73323C8-E7F2-4F65-A6E7-1B52A86BEBEF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FFBFBD09-3D56-4A29-8AE4-2F9B472993B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FFBFBD09-3D56-4A29-8AE4-2F9B472993B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FFBFBD09-3D56-4A29-8AE4-2F9B472993B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FFBFBD09-3D56-4A29-8AE4-2F9B472993B8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

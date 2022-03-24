@@ -52,35 +52,33 @@ namespace Hosts.GraphUpdater
         public async Task<OrchestrationRuntimeStatus> RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             GroupMembership groupMembership = null;
-            GraphUpdaterFunctionRequest graphRequest = null;
+            GraphUpdaterHttpRequest graphRequest = null;
             SyncJob syncJob = null;
 
-            graphRequest = context.GetInput<GraphUpdaterFunctionRequest>();
-            groupMembership = graphRequest.Membership;
-            var updatedSourceMembers = groupMembership.SourceMembers.Distinct().ToList();
+            graphRequest = context.GetInput<GraphUpdaterHttpRequest>();
 
             try
             {
                 syncJob = await context.CallActivityAsync<SyncJob>(nameof(JobReaderFunction),
                                                        new JobReaderRequest
                                                        {
-                                                           JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                                                           JobRowKey = groupMembership.SyncJobRowKey,
-                                                           RunId = groupMembership.RunId
+                                                           JobPartitionKey = graphRequest.JobPartitionKey,
+                                                           JobRowKey = graphRequest.JobRowKey,
+                                                           RunId = graphRequest.RunId
                                                        });
 
+                var fileContent = await context.CallActivityAsync<string>(nameof(FileDownloaderFunction),
+                                                                            new FileDownloaderRequest
+                                                                            {
+                                                                                FilePath = graphRequest.FilePath,
+                                                                                RunId = graphRequest.RunId,
+                                                                                SyncJob = syncJob
+                                                                            });
+
+                groupMembership = JsonConvert.DeserializeObject<GroupMembership>(fileContent);
+                var updatedSourceMembers = groupMembership.SourceMembers.Distinct().ToList();
+
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob });
-
-                if (graphRequest.IsCancelationRequest)
-                {
-                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Canceling session {graphRequest.MessageSessionId}", SyncJob = syncJob });
-
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                        CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
-                                                                        SyncStatus.Error, groupMembership.MembershipObtainerDryRunEnabled, syncJob.ThresholdViolations, groupMembership.RunId));
-
-                    return OrchestrationRuntimeStatus.Canceled;
-                }
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Received membership from StarterFunction and will sync the obtained {updatedSourceMembers.Count} distinct members", SyncJob = syncJob });
 
@@ -219,7 +217,7 @@ namespace Hosts.GraphUpdater
 
                 if (syncJob == null)
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = "SyncJob is null. Removing the message from the queue..."});
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = "SyncJob is null. Removing the message from the queue..." });
                     return OrchestrationRuntimeStatus.Failed;
                 }
 

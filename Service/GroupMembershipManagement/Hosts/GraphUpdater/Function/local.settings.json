@@ -1,27 +1,24 @@
 {
-    "IsEncrypted": false,
+  "IsEncrypted": false,
   "Values": {
+    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
-    "logAnalyticsCustomerId": "",
-    "logAnalyticsPrimarySharedKey": "",
-    "differenceQueueConnection": "",
-    "keyVaultName": "",
+    "graphCredentials:KeyVaultName": "",
+    "graphCredentials:KeyVaultTenantId": "",
+    "appConfigurationEndpoint": "",
     "jobsStorageAccountConnectionString": "",
     "jobsTableName": "",
-    "syncJobTableName": "",
     "graphCredentials:ClientSecret": "",
     "graphCredentials:ClientId": "",
-    "graphCredentials:KeyVaultName": "gmm-prereqs-<env>",
-    "graphCredentials:KeyVaultTenantId": "",
     "graphCredentials:TenantId": "",
+    "logAnalyticsCustomerId": "",
+    "logAnalyticsPrimarySharedKey": "",
     "senderAddress": "",
     "senderPassword": "",
     "syncCompletedCCEmailAddresses": "",
     "syncDisabledCCEmailAddresses": "",
     "supportEmailAddresses": "",
-    "membershipQueueName": "",
-    "appConfigurationEndpoint": "",
-    "APPINSIGHTS_INSTRUMENTATIONKEY": ""
+    "membershipStorageAccountName": "",
+    "membershipContainerName": ""
   }
 }

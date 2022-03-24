@@ -11,12 +11,14 @@ using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Newtonsoft.Json;
+using Repositories.Contracts;
 using Repositories.MembershipDifference;
 using Repositories.Mocks;
 using Services.Entities;
 using Services.Tests.Mocks;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -45,6 +47,7 @@ namespace Services.Tests
             MembershipDifferenceCalculator<AzureADUser> calculator;
             ThresholdConfig thresholdConfig;
             MockLocalizationRepository localizationRepository;
+            MockBlobStorageRepository blobStorageRepository;
 
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -59,6 +62,7 @@ namespace Services.Tests
             mockGroupRepo = new MockGraphGroupRepository();
             mockSyncJobRepo = new MockSyncJobRepository();
             localizationRepository = new MockLocalizationRepository();
+            blobStorageRepository = new MockBlobStorageRepository();
 
             deltaCalculatorService = new DeltaCalculatorService(
                                             calculator,
@@ -72,11 +76,14 @@ namespace Services.Tests
                                             localizationRepository);
 
             var groupMembership = GetGroupMembership();
-            var graphUpdaterRequest = new GraphUpdaterFunctionRequest
+            var input = new GraphUpdaterHttpRequest
             {
-                Membership = groupMembership,
-                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
+                FilePath = "/file/path/name.json",
+                RunId = groupMembership.RunId,
+                JobPartitionKey = groupMembership.SyncJobPartitionKey,
+                JobRowKey = groupMembership.SyncJobRowKey
             };
+
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -90,9 +97,20 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
+            var fileDownloaderRequest = new FileDownloaderRequest
+            {
+                FilePath = input.FilePath,
+                RunId   = input.RunId,
+                SyncJob = syncJob
+            };
+
+            blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
+
             var context = new Mock<IDurableOrchestrationContext>();
-            context.Setup(x => x.GetInput<GraphUpdaterFunctionRequest>()).Returns(graphUpdaterRequest);
+            context.Setup(x => x.GetInput<GraphUpdaterHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
+                    .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
@@ -161,11 +179,14 @@ namespace Services.Tests
                                             localizationRepository);
 
             var groupMembership = GetGroupMembership();
-            var graphUpdaterRequest = new GraphUpdaterFunctionRequest
+            var input = new GraphUpdaterHttpRequest
             {
-                Membership = groupMembership,
-                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
+                FilePath = "/file/path/name.json",
+                RunId = groupMembership.RunId,
+                JobPartitionKey = groupMembership.SyncJobPartitionKey,
+                JobRowKey = groupMembership.SyncJobRowKey
             };
+
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -180,8 +201,9 @@ namespace Services.Tests
             };
 
             var context = new Mock<IDurableOrchestrationContext>();
-            context.Setup(x => x.GetInput<GraphUpdaterFunctionRequest>()).Returns(graphUpdaterRequest);
+            context.Setup(x => x.GetInput<GraphUpdaterHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonConvert.SerializeObject(groupMembership));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
@@ -225,7 +247,9 @@ namespace Services.Tests
             MembershipDifferenceCalculator<AzureADUser> calculator;
             ThresholdConfig thresholdConfig;
             MockLocalizationRepository localizationRepository;
+            MockBlobStorageRepository blobStorageRepository;
 
+            blobStorageRepository = new MockBlobStorageRepository();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
@@ -251,11 +275,14 @@ namespace Services.Tests
                                             localizationRepository);
 
             var groupMembership = GetGroupMembership();
-            var graphUpdaterRequest = new GraphUpdaterFunctionRequest
+            var input = new GraphUpdaterHttpRequest
             {
-                Membership = groupMembership,
-                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
+                FilePath = "/file/path/name.json",
+                RunId = groupMembership.RunId,
+                JobPartitionKey = groupMembership.SyncJobPartitionKey,
+                JobRowKey = groupMembership.SyncJobRowKey
             };
+
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -269,9 +296,20 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
+            var fileDownloaderRequest = new FileDownloaderRequest
+            {
+                FilePath = input.FilePath,
+                RunId = input.RunId,
+                SyncJob = syncJob
+            };
+
+            blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
+
             var context = new Mock<IDurableOrchestrationContext>();
-            context.Setup(x => x.GetInput<GraphUpdaterFunctionRequest>()).Returns(graphUpdaterRequest);
+            context.Setup(x => x.GetInput<GraphUpdaterHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
+                    .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
@@ -296,6 +334,101 @@ namespace Services.Tests
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RowKey"], syncJob.RowKey);
+        }
+
+        [TestMethod]
+        public async Task RunOrchestratorFileNotFoundExceptionTest()
+        {
+            MockLoggingRepository mockLoggingRepo;
+            TelemetryClient mockTelemetryClient;
+            MockMailRepository mockMailRepo;
+            MockGraphUpdaterService mockGraphUpdaterService;
+            DryRunValue dryRun;
+            DeltaCalculatorService deltaCalculatorService;
+            EmailSenderRecipient mailSenders;
+            MockSyncJobRepository mockSyncJobRepo;
+            MockGraphGroupRepository mockGroupRepo;
+            MembershipDifferenceCalculator<AzureADUser> calculator;
+            ThresholdConfig thresholdConfig;
+            MockLocalizationRepository localizationRepository;
+            MockBlobStorageRepository blobStorageRepository;
+
+            mockLoggingRepo = new MockLoggingRepository();
+            mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            mockMailRepo = new MockMailRepository();
+            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
+            dryRun = new DryRunValue(false);
+            thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
+            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
+                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+
+            calculator = new MembershipDifferenceCalculator<AzureADUser>();
+            mockGroupRepo = new MockGraphGroupRepository();
+            mockSyncJobRepo = new MockSyncJobRepository();
+            localizationRepository = new MockLocalizationRepository();
+            blobStorageRepository = new MockBlobStorageRepository();
+
+            deltaCalculatorService = new DeltaCalculatorService(
+                                            calculator,
+                                            mockSyncJobRepo,
+                                            mockLoggingRepo,
+                                            mailSenders,
+                                            mockGraphUpdaterService,
+                                            dryRun,
+                                            thresholdConfig,
+                                            _gmmResources,
+                                            localizationRepository);
+
+            var groupMembership = GetGroupMembership();
+            var input = new GraphUpdaterHttpRequest
+            {
+                FilePath = "/file/path/name.json",
+                RunId = groupMembership.RunId,
+                JobPartitionKey = groupMembership.SyncJobPartitionKey,
+                JobRowKey = groupMembership.SyncJobRowKey
+            };
+
+            var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
+            var syncJob = new SyncJob
+            {
+                PartitionKey = groupMembership.SyncJobPartitionKey,
+                RowKey = groupMembership.SyncJobRowKey,
+                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
+                ThresholdPercentageForAdditions = -1,
+                ThresholdPercentageForRemovals = -1,
+                LastRunTime = DateTime.UtcNow.AddDays(-1),
+                Requestor = "user@domail.com",
+                RunId = Guid.NewGuid()
+            };
+
+            var fileDownloaderRequest = new FileDownloaderRequest
+            {
+                FilePath = "some/invalid/path/file.json",
+                RunId = input.RunId,
+                SyncJob = syncJob
+            };
+
+            blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
+
+            var context = new Mock<IDurableOrchestrationContext>();
+            context.Setup(x => x.GetInput<GraphUpdaterHttpRequest>()).Returns(input);
+            context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
+                    .Returns(async () => await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
+                    .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
+            context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
+                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
+            context.Setup(x => x.CallSubOrchestratorAsync<List<AzureADUser>>(It.IsAny<string>(), It.IsAny<UsersReaderRequest>()))
+                    .ReturnsAsync(destinationMembers);
+            context.Setup(x => x.CallActivityAsync<DeltaResponse>(It.IsAny<string>(), It.IsAny<DeltaCalculatorRequest>()))
+                    .Returns(async () => await GetDeltaResponseAsync(groupMembership, destinationMembers, mockLoggingRepo, deltaCalculatorService));
+
+            mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
+            mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
+
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
+            await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
         }
 
         [TestMethod]
@@ -339,11 +472,14 @@ namespace Services.Tests
                                             localizationRepository);
 
             var groupMembership = GetGroupMembership();
-            var graphUpdaterRequest = new GraphUpdaterFunctionRequest
+            var input = new GraphUpdaterHttpRequest
             {
-                Membership = groupMembership,
-                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
+                FilePath = "/file/path/name.json",
+                RunId = groupMembership.RunId,
+                JobPartitionKey = groupMembership.SyncJobPartitionKey,
+                JobRowKey = groupMembership.SyncJobRowKey
             };
+
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -358,8 +494,9 @@ namespace Services.Tests
             };
 
             var context = new Mock<IDurableOrchestrationContext>();
-            context.Setup(x => x.GetInput<GraphUpdaterFunctionRequest>()).Returns(graphUpdaterRequest);
+            context.Setup(x => x.GetInput<GraphUpdaterHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonConvert.SerializeObject(groupMembership));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
@@ -383,98 +520,6 @@ namespace Services.Tests
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RowKey"], syncJob.RowKey);
-        }
-
-        [TestMethod]
-        public async Task RunOrchestratorCancelationRequest()
-        {
-            MockLoggingRepository mockLoggingRepo;
-            TelemetryClient mockTelemetryClient;
-            MockMailRepository mockMailRepo;
-            MockGraphUpdaterService mockGraphUpdaterService;
-            DryRunValue dryRun;
-            DeltaCalculatorService deltaCalculatorService;
-            EmailSenderRecipient mailSenders;
-            MockSyncJobRepository mockSyncJobRepo;
-            MockGraphGroupRepository mockGroupRepo;
-            MembershipDifferenceCalculator<AzureADUser> calculator;
-            ThresholdConfig thresholdConfig;
-            MockLocalizationRepository localizationRepository;
-
-            mockLoggingRepo = new MockLoggingRepository();
-            mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            mockMailRepo = new MockMailRepository();
-            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
-            dryRun = new DryRunValue(false);
-            thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
-            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
-
-            calculator = new MembershipDifferenceCalculator<AzureADUser>();
-            mockGroupRepo = new MockGraphGroupRepository();
-            mockSyncJobRepo = new MockSyncJobRepository();
-            localizationRepository = new MockLocalizationRepository();
-            deltaCalculatorService = new DeltaCalculatorService(
-                                            calculator,
-                                            mockSyncJobRepo,
-                                            mockLoggingRepo,
-                                            mailSenders,
-                                            mockGraphUpdaterService,
-                                            dryRun,
-                                            thresholdConfig,
-                                            _gmmResources,
-                                            localizationRepository);
-
-            var groupMembership = GetGroupMembership();
-            var graphUpdaterRequest = new GraphUpdaterFunctionRequest
-            {
-                Membership = groupMembership,
-                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35",
-                IsCancelationRequest = true
-            };
-
-            groupMembership.IsLastMessage = false;
-
-            var syncJob = new SyncJob
-            {
-                PartitionKey = groupMembership.SyncJobPartitionKey,
-                RowKey = groupMembership.SyncJobRowKey,
-                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                ThresholdPercentageForAdditions = -1,
-                ThresholdPercentageForRemovals = -1,
-                LastRunTime = DateTime.UtcNow.AddDays(-1),
-                Requestor = "user@domail.com",
-                RunId = Guid.NewGuid()
-            };
-
-            var context = new Mock<IDurableOrchestrationContext>();
-            var jobUpdateRequest = default(JobStatusUpdaterRequest);
-
-            context.Setup(x => x.GetInput<GraphUpdaterFunctionRequest>()).Returns(graphUpdaterRequest);
-            context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
-            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
-                    .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
-            context.Setup(x => x.CallActivityAsync<GroupMembershipMessageResponse>(It.IsAny<string>(), It.IsAny<GraphUpdaterFunctionRequest>()))
-                    .ReturnsAsync(new GroupMembershipMessageResponse());
-            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()))
-                    .Callback<string, object>((name, request) =>
-                    {
-                        jobUpdateRequest = request as JobStatusUpdaterRequest;
-                    });
-
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
-            var response = await orchestrator.RunOrchestratorAsync(context.Object);
-
-            Assert.IsTrue(response == OrchestrationRuntimeStatus.Canceled);
-            Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"Canceling session")));
-            Assert.IsNotNull(jobUpdateRequest);
-            Assert.AreEqual(SyncStatus.Error, jobUpdateRequest.Status);
-            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
-            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
-            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
-            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RowKey"], syncJob.RowKey);
-
-            context.Verify(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()), Times.Once());
         }
 
         [TestMethod]
@@ -518,11 +563,14 @@ namespace Services.Tests
                                             localizationRepository);
 
             var groupMembership = GetGroupMembership();
-            var graphUpdaterRequest = new GraphUpdaterFunctionRequest
+            var input = new GraphUpdaterHttpRequest
             {
-                Membership = groupMembership,
-                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
+                FilePath = "/file/path/name.json",
+                RunId = groupMembership.RunId,
+                JobPartitionKey = groupMembership.SyncJobPartitionKey,
+                JobRowKey = groupMembership.SyncJobRowKey
             };
+
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -538,8 +586,9 @@ namespace Services.Tests
             };
 
             var context = new Mock<IDurableOrchestrationContext>();
-            context.Setup(x => x.GetInput<GraphUpdaterFunctionRequest>()).Returns(graphUpdaterRequest);
+            context.Setup(x => x.GetInput<GraphUpdaterHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonConvert.SerializeObject(groupMembership));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
@@ -616,10 +665,12 @@ namespace Services.Tests
                                             localizationRepository);
 
             var groupMembership = GetGroupMembership();
-            var graphUpdaterRequest = new GraphUpdaterFunctionRequest
+            var input = new GraphUpdaterHttpRequest
             {
-                Membership = groupMembership,
-                MessageSessionId = "dc04c21f-091a-44a9-a661-9211dd9ccf35"
+                FilePath = "/file/path/name.json",
+                RunId = groupMembership.RunId,
+                JobPartitionKey = groupMembership.SyncJobPartitionKey,
+                JobRowKey = groupMembership.SyncJobRowKey
             };
 
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
@@ -641,7 +692,7 @@ namespace Services.Tests
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
             var context = new Mock<IDurableOrchestrationContext>();
-            context.Setup(x => x.GetInput<GraphUpdaterFunctionRequest>()).Returns(graphUpdaterRequest);
+            context.Setup(x => x.GetInput<GraphUpdaterHttpRequest>()).Returns(input);
 
             SyncJob syncJobResponse = null;
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>()))
@@ -651,7 +702,7 @@ namespace Services.Tests
                          syncJobResponse = await RunJobReaderFunctionAsync(mockLoggingRepo, mockGraphUpdaterService, getJobRequest);
                      })
                      .ReturnsAsync(() => syncJobResponse);
-
+            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonConvert.SerializeObject(groupMembership));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await LogMessageAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
@@ -795,6 +846,13 @@ namespace Services.Tests
 
             var calculatorFunction = new DeltaCalculatorFunction(mockLoggingRepo, deltaCalculatorService);
             return await calculatorFunction.CalculateDeltaAsync(request);
+        }
+
+        private async Task<string> DownloadFileAsync(FileDownloaderRequest request, MockLoggingRepository mockLoggingRepo, MockBlobStorageRepository blobStorageRepository)
+        {
+            var function = new FileDownloaderFunction(mockLoggingRepo, blobStorageRepository);
+            var fileContent = await function.DownloadFileAsync(request);
+            return fileContent;
         }
 
         private GroupMembership GetGroupMembership()
