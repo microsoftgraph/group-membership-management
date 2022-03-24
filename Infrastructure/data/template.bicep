@@ -404,6 +404,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
   dependsOn: [
     dataKeyVaultTemplate
     storageAccountTemplate
+    jobsStorageAccountTemplate
+    serviceBusTemplate
+    logAnalyticsTemplate
+    appInsightsTemplate
   ]
 }
 
