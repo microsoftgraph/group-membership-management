@@ -21,12 +21,14 @@ namespace Hosts.SecurityGroup
 		}
 
 		[FunctionName(nameof(UsersSenderFunction))]
-		public async Task SendUsersAsync([ActivityTrigger] UsersSenderRequest request, ILogger log)
+		public async Task<string> SendUsersAsync([ActivityTrigger] UsersSenderRequest request)
 		{
+			string filePath = null;
+
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function started", RunId = request.RunId });
 			if (request.Users != null)
 			{
-				await _calculator.SendMembershipAsync(request.SyncJob, request.RunId, request.Users);
+				filePath = await _calculator.SendMembershipAsync(request.SyncJob, request.Users);
 
 				await _log.LogMessageAsync(new LogMessage
 				{
@@ -35,6 +37,8 @@ namespace Hosts.SecurityGroup
 				});
 			}
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function completed", RunId = request.RunId });
+
+			return filePath;
 		}
 	}
 }

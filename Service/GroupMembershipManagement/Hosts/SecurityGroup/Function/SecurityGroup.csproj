@@ -14,10 +14,10 @@
     <ProjectReference Include="..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj" />
     <ProjectReference Include="..\..\..\DIConcreteTypes\DIConcreteTypes.csproj" />
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Logging\Repositories.Logging.csproj" />
-    <ProjectReference Include="..\..\..\Repositories.ServiceBusQueue\Repositories.ServiceBusQueue.csproj" />
     <ProjectReference Include="..\Services\SecurityGroupService\SecurityGroupService.csproj" />
   </ItemGroup>
   <ItemGroup>

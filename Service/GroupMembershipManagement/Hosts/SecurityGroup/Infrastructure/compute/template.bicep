@@ -66,9 +66,6 @@ param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbre
 @description('Name of the resource group where the \'data\' key vault is located.')
 param dataKeyVaultResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
-@description('Enter service bus namespace name.')
-param serviceBusNamespace string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
 @description('Provides the endpoint for the app configuration resource.')
 param appConfigurationEndpoint string = 'https://${solutionAbbreviation}-appconfig-${environmentAbbreviation}.azconfig.io'
 
@@ -78,7 +75,6 @@ var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionI
 var jobsTableName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsTableName')
 var serviceBusConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusConnectionString')
 var serviceBusSyncJobTopic = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusSyncJobTopic')
-var serviceBusMembershipQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusMembershipQueue')
 var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
 var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientSecret')
 var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppTenantId')
@@ -86,6 +82,10 @@ var senderUsername = resourceId(subscription().subscriptionId, prereqsKeyVaultRe
 var senderPassword = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'senderPassword')
 var syncDisabledCCEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'syncDisabledCCEmailAddresses')
 var supportEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'supportEmailAddresses')
+var membershipStorageAccountName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountName')
+var membershipContainerName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipContainerName')
+var graphUpdaterUrl = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUpdaterUrl')
+var graphUpdaterFunctionKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUpdaterFunctionKey')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate'
@@ -148,16 +148,6 @@ module functionAppTemplate_SecurityGroup 'functionApp.bicep' = {
       {
         name: 'FUNCTIONS_EXTENSION_VERSION'
         value: '~3'
-        slotSetting: false
-      }
-      {
-        name: 'differenceServiceBusNamespace'
-        value: serviceBusNamespace
-        slotSetting: false
-      }
-      {
-        name: 'membershipQueueName'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipQueue, '2019-09-01').secretUriWithVersion})'
         slotSetting: false
       }
       {
@@ -233,6 +223,26 @@ module functionAppTemplate_SecurityGroup 'functionApp.bicep' = {
       {
         name: 'supportEmailAddresses'
         value: '@Microsoft.KeyVault(SecretUri=${reference(supportEmailAddresses, '2019-09-01').secretUriWithVersion})'
+        slotSetting: false
+      }
+      {
+        name: 'membershipStorageAccountName'
+        value: '@Microsoft.KeyVault(SecretUri=${reference(membershipStorageAccountName, '2019-09-01').secretUriWithVersion})'
+        slotSetting: false
+      }
+      {
+        name: 'membershipContainerName'
+        value: '@Microsoft.KeyVault(SecretUri=${reference(membershipContainerName, '2019-09-01').secretUriWithVersion})'
+        slotSetting: false
+      }
+      {
+        name: 'graphUpdaterUrl'
+        value: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterUrl, '2019-09-01').secretUriWithVersion})'
+        slotSetting: false
+      }
+      {
+        name: 'graphUpdaterFunctionKey'
+        value: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterFunctionKey, '2019-09-01').secretUriWithVersion})'
         slotSetting: false
       }
       {
