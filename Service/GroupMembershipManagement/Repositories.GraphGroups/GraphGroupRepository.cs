@@ -600,12 +600,38 @@ namespace Repositories.GraphGroups
                 if (status == HttpStatusCode.BadRequest && IsOkayError(content)) { }
                 else if (status == HttpStatusCode.NotFound && (content).Contains("does not exist or one of its queried reference-property objects are not present."))
                 {
+                    await _log.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"Regex Expression: {_userNotFound} and Content: {content}",
+                        RunId = RunId
+                    });
+
                     var match = _userNotFound.Match(content);
                     var userId = default(string);
 
                     if (match.Success)
                     {
                         userId = match.Groups["id"].Value;
+                        await _log.LogMessageAsync(new LogMessage
+                        {
+                            Message = $"User ID is found",
+                            RunId = RunId
+                        });
+                    }
+
+                    else
+                    {                        
+                        await _log.LogMessageAsync(new LogMessage
+                        {
+                            Message = $"User ID is missing",
+                            RunId = RunId
+                        });
+
+                        yield return new RetryResponse
+                        {
+                            RequestId = kvp.Key,
+                            ResponseCode = ResponseCode.Ok
+                        };
                     }
 
                     yield return new RetryResponse
