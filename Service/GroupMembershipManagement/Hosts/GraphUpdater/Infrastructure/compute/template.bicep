@@ -101,6 +101,8 @@ module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     secretSettings: [
       {
         name: 'WEBSITE_RUN_FROM_PACKAGE'
@@ -284,31 +286,5 @@ module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   }
   dependsOn: [
     functionAppTemplate_GraphUpdater
-  ]
-}
-
-module secretsTemplate 'keyVaultSecrets.bicep' = {
-  name: 'secretsTemplate'
-  scope: resourceGroup(dataKeyVaultResourceGroup)
-  params: {
-    keyVaultName: dataKeyVaultName
-    keyVaultParameters: [
-      {
-        name: 'graphUpdaterUrl'
-        value: '${functionAppTemplate_GraphUpdater.outputs.hostName}/api/StarterFunction'
-      }
-      {
-        name: 'graphUpdaterFunctionKey'
-        value: functionAppTemplate_GraphUpdater.outputs.adfKey
-      }
-      {
-        name: 'graphUpdaterFunctionName'
-        value: '${functionAppName}-GraphUpdater'
-      }      
-    ]
-  }
-  dependsOn: [
-    functionAppTemplate_GraphUpdater
-    dataKeyVaultPoliciesTemplate
   ]
 }
