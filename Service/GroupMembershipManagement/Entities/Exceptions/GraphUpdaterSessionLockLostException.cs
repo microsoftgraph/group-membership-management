@@ -8,9 +8,17 @@ namespace Entities
 	[ExcludeFromCodeCoverage]
 	public class GraphUpdaterSessionLockLostException: Exception
 	{
-        public GraphUpdaterSessionLockLostException(string message, Exception inner) 
+
+        Guid TargetOfficeGroupId;
+        Guid RunId;
+        int MessagesInSession;
+
+        public GraphUpdaterSessionLockLostException(string message, Exception inner, Guid targetOfficeGroupId, Guid runId, int messagesInSession) 
             : base(message, inner)
         {
+            TargetOfficeGroupId = targetOfficeGroupId;
+            RunId = runId;
+            MessagesInSession = messagesInSession;
         }
     }
 }

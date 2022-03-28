@@ -205,7 +205,7 @@ namespace Hosts.GraphUpdater
                 var exceptionMessage = $"Session lock lost in GraphUpdater for session with RunId: {runId}, " +
                     $"TargetOfficeGroupId: {groupMembership.Destination.ObjectId}, and {_sessionTracker.MessagesInSession.Count} messages in session.";
 
-                var guSessionLockException = new GraphUpdaterSessionLockLostException(exceptionMessage, ex);
+                var guSessionLockException = new GraphUpdaterSessionLockLostException(exceptionMessage, ex, groupMembership.Destination.ObjectId, runId, _sessionTracker.MessagesInSession.Count);
 
                 _telemetryClient.TrackException(guSessionLockException, new Dictionary<string, string>()
                 {
