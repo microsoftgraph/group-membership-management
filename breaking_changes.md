@@ -1,6 +1,6 @@
 # Breaking Changes
 
-10/27/2021
+## 10/27/2021
 ## GMM now uses an application secret instead of a certificate 
 
 We have updated `Set-GraphCredentialsAzureADApplication.ps1` script to generate and store a client secret when creating `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application.
@@ -67,3 +67,12 @@ Once the new secret is generated and stored in the keyvault, you can proceed to 
 6. Locate and add your certificate.
 
 For more information about `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application see section [Create `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` Azure Application](README.md#populate-prereqs-keyvault)
+
+## 3/28/2022
+### Send group membership via blobs instead of queue
+
+GMM has been updated to send group membership through blobs instead of queues. So the 'membership' queue has been removed from the ARM templates and is not longer used by the code.
+
+See section [Grant SecurityGroup, GraphUpdater function access to storage account](README.md#grant-securitygroup-graphupdater-function-access-to-storage-account) for more information.
+
+Once these changes are deployed successfully to your enviroment it will be safe to delete the 'membership' queue from your Azure Resources.

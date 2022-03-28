@@ -75,12 +75,12 @@ If you would like to add additional environments, follow these steps:
             dependsOn: Build_Functions
             stageName: 'NonProd_int'
             functionApps:
-            - name: 'JobTrigger'
-            - name: 'GraphUpdater'
+            - name: 'GraphUpdater'                        
             - name: 'SecurityGroup'
             - name: 'AzureTableBackup'
             - name: 'AzureUserReader'
             - name: 'JobScheduler'
+            - name: 'JobTrigger'
             condition: |
             and(
                 succeeded('Build_Functions'),
@@ -96,6 +96,10 @@ If you would like to add additional environments, follow these steps:
 4. Search for the file `parameters.int.json`. Repeat the following steps for all the files:
         * Copy and paste the same file at the same location
         * Change the name to `parameters.<your-new-environment-name>.json`
+
+
+Note: Make sure GraphUpdater is the first function deployed as SecurityGroup function has a dependency on that.
+
 ### Remove existing environments
 If you would like to remove environments, follow these steps:
 
@@ -111,12 +115,12 @@ If you would like to remove environments, follow these steps:
             dependsOn: Build_Functions
             stageName: 'NonProd_int'
             functionApps:
-            - name: 'JobTrigger'
             - name: 'GraphUpdater'
             - name: 'SecurityGroup'
             - name: 'AzureTableBackup'
             - name: 'AzureUserReader'
             - name: 'JobScheduler'
+            - name: 'JobTrigger'
             condition: |
             and(
                 succeeded('Build_Functions'),
@@ -400,31 +404,32 @@ Once your application is created we need to grant the requested permissions to u
 
 Once the pipeline has completed building and deploying GMM code and resources to your Azure resource groups, we need to make some final configuration changes.
 
-### Grant SecurityGroup function access to the Queue and Topic
+### Grant SecurityGroup, GraphUpdater function access to storage account
 
-Once your Function App `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup` has been created we need to grant it access to the Queue and Topic.
+SecurityGroup and GraphUpdater need MSI access to the storage account where the membership blobs are going to be temporary stored.
 
-    QueueName: membership
-    TopicName: syncjobs
-    FunctionAppName: <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup
+Once your Function Apps:  
+- `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup` 
+- `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-GraphUpdater`
 
-    1. . ./Set-ServiceBusManagedIdentityRoles.ps1
-    2. Set-ServiceBusManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `
-                                        -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-                                        -FunctionAppName "<FunctionAppName>" `
-                                        -QueueName "membership" `
-                                        -TopicName "syncjobs" `
-                                        -Verbose
+have been created we need to grant them access to the storage account containers.
+    
+    By default GMM uses the same account that was automatically created to store the sync job's information.
+    The naming convention is jobs<environmentAbbreviation><randomId>, the exact name can be found in the data key vault secrets under 'jobsStorageAccountName'.
 
-In the event that you need to grant access to the queue and topic to an Azure active directory group (i.e. a group that contains your development team) in your tenant, you may need to use the provided powershell script below:
+    StorageAccountName:  jobs<environmentAbbreviation><randomId>
+    FunctionAppNames: 
+    <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup
+    <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-GraphUpdater
 
-    1. . ./Set-ServiceBusManagedIdentityRolesToADGroup.ps1
-    2. Set-ServiceBusManagedIdentityRolesToADGroup  -SolutionAbbreviation "<SolutionAbbreviation>" `
-                                        -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-                                        -GroupName "<GroupName>" `
-                                        -QueueName "membership" `
-                                        -TopicName "syncjobs" `
-                                        -Verbose
+    1. . ./Set-StorageAccountContainerManagedIdentityRoles.ps1
+    2. Set-StorageAccountContainerManagedIdentityRoles -SolutionAbbreviation "<SolutionAbbreviation>" `
+                                                       -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
+                                                       -StorageAccountName "<StorageAccountName>
+                                                       -FunctionAppName "<FunctionAppName>" `
+                                                       -Verbose
+
+    Run the script for each function app name, in this case we need to run the script twice once for SecurityGroup and once for GraphUpdater functions.
 ### Access to App Configuration
 
 Grant all the functions access to the AppConfiguration by running the following script:
@@ -457,6 +462,7 @@ A synchronization job must have the following properties populated:
 - Enabled
 - ThresholdPercentageForAdditions
 - ThresholdPercentageForRemovals
+- ThresholdViolations
 
 ### PartitionKey
 Partition key, the value added here represents the date the job was added to the table.
@@ -546,6 +552,10 @@ The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGrou
 							-Verbose
 
 You can also use Microsoft Azure Storage Explorer to add, edit or delete synchronization jobs. see [Get started with Storage Explorer](https://docs.microsoft.com/en-us/azure/vs-azure-tools-storage-manage-with-storage-explorer?tabs=windows).
+
+### ThresholdViolations
+Indicates how many times the threshold has been exceeded.
+It gets reset to 0 once the job syncs successfully.
 
 ### Adding Graph application as an owner to GMM managed destination group
 
