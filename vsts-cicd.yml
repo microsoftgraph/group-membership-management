@@ -35,6 +35,9 @@ stages:
     checkoutPath: ''
     functionApps:
     - function:
+        name: 'NonProdService'
+        coverageThreshold: 100
+    - function:
        name: 'JobTrigger'
        coverageThreshold: 97
     - function:
@@ -64,6 +67,7 @@ stages:
     dependsOn: Build_Functions
     stageName: 'NonProd_int'
     functionApps:
+    - name: 'NonProdService'
     - name: 'JobTrigger'
     - name: 'GraphUpdater'
     - name: 'SecurityGroup'
@@ -88,6 +92,7 @@ stages:
     dependsOn: Build_Functions
     stageName: 'NonProd_ua'
     functionApps:
+    - name: 'NonProdService'
     - name: 'JobTrigger'
     - name: 'GraphUpdater'
     - name: 'SecurityGroup'
