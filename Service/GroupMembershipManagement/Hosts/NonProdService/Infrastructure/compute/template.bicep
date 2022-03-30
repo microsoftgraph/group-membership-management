@@ -205,8 +205,8 @@ module functionAppTemplate_NonProdService 'functionApp.bicep' = {
   ]
 }
 
-module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'keyVaultPoliciesTemplate'
+module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
+  name: 'dataKeyVaultPoliciesTemplate'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     name: dataKeyVaultName
@@ -217,6 +217,7 @@ module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
           'get'
           'list'
         ]
+        type: 'secrets'
       }
     ]
     tenantId: tenantId
@@ -244,5 +245,27 @@ module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   }
   dependsOn: [
     functionAppTemplate_NonProdService
+  ]
+}
+
+module secretsTemplate 'keyVaultSecrets.bicep' = {
+  name: 'secretsTemplate'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultParameters: [
+      {
+        name: 'nonProdServiceUrl'
+        value: functionAppTemplate_NonProdService.outputs.hostName
+      }
+      {
+        name: 'nonProdServiceKey'
+        value: functionAppTemplate_NonProdService.outputs.adfKey
+      }
+    ]
+  }
+  dependsOn: [
+    functionAppTemplate_NonProdService
+    dataKeyVaultPoliciesTemplate
   ]
 }
