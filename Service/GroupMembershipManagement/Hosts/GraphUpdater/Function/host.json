@@ -4,16 +4,9 @@
   "extensions": {
     "durableTask": {
       "extendedSessionsEnabled": true,
-      "extendedSessionIdleTimeoutInSeconds": 30
-    },
-    "serviceBus": {
-      "SessionHandlerOptions": {
-        "MaxAutoRenewDuration": "03:00:00",
-        "MaxLockDuration": "03:00:00",
-        "MessageWaitTimeout": "03:00:00",
-        "MaxConcurrentSessions": 1,
-        "AutoComplete": false
-      }
+      "extendedSessionIdleTimeoutInSeconds": 30,
+      "maxConcurrentActivityFunctions": 10,
+      "maxConcurrentOrchestratorFunctions": 2
     }
   },
   "logging": {
