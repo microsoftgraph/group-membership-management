@@ -7,6 +7,15 @@
       "extendedSessionIdleTimeoutInSeconds": 30,
       "maxConcurrentActivityFunctions": 10,
       "maxConcurrentOrchestratorFunctions": 2
+    },
+    "serviceBus": {
+      "SessionHandlerOptions": {
+        "MaxAutoRenewDuration": "03:00:00",
+        "MaxLockDuration": "03:00:00",
+        "MessageWaitTimeout": "03:00:00",
+        "MaxConcurrentSessions": 1,
+        "AutoComplete": false
+      }
     }
   },
   "logging": {
