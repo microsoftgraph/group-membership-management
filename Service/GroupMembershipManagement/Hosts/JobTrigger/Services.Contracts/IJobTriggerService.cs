@@ -13,7 +13,7 @@ namespace Services.Contracts
         Task<string> GetGroupNameAsync(Guid groupId);
         Task SendEmailAsync(SyncJob job, string groupName);
         Task<bool> CanWriteToGroup(SyncJob job);
-        Task UpdateSyncJobStatusAsync(bool canWriteToGroup, SyncJob job);
+        Task UpdateSyncJobStatusAsync(SyncStatus status, SyncJob job);
         Task SendMessageAsync(SyncJob job);
     }
 }

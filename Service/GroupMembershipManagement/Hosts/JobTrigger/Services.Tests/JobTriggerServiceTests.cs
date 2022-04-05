@@ -168,8 +168,8 @@ namespace Services.Tests
             foreach (var job in _syncJobRepository.Jobs)
             {
                 var canWriteToGroup = await _jobTriggerService.CanWriteToGroup(job);
-                await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup, job);
-                Assert.AreEqual(job.Status, "InProgress");
+                await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
+                Assert.AreEqual(job.Status, SyncStatus.InProgress.ToString());
             }
         }
 
@@ -183,8 +183,8 @@ namespace Services.Tests
             foreach (var job in _syncJobRepository.Jobs)
             {
                 var canWriteToGroup = await _jobTriggerService.CanWriteToGroup(job);
-                await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup, job);
-                Assert.AreEqual(job.Status, "Error");
+                await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
+                Assert.AreEqual(job.Status, SyncStatus.NotOwnerOfDestinationGroup.ToString());
             }
         }
 

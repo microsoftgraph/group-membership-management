@@ -9,6 +9,8 @@ namespace Entities
         Idle = 2,
         Error = 3,
         ThresholdExceeded = 4,
-        NoSourceMembership = 5
+        NoSourceMembership = 5,
+        DestinationGroupNotFound = 6,
+        NotOwnerOfDestinationGroup = 7        
     }
 }

@@ -79,22 +79,18 @@ namespace Services
             }
         }
 
-        public async Task UpdateSyncJobStatusAsync(bool canWriteToGroup, SyncJob job)
+        public async Task UpdateSyncJobStatusAsync(SyncStatus status, SyncJob job)
         {
-            if (canWriteToGroup)
+            if (status == SyncStatus.InProgress)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     RunId = job.RunId,
                     Message = $"Starting job."
-                });
+                });                
+            }
 
-                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.InProgress);
-            }
-            else
-            {
-                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.Error);
-            }
+            await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
 
             // Don't leak this to the start and stop logs.
             // The logging repository has this SyncJobInfo property that gets appended to all the logs,
