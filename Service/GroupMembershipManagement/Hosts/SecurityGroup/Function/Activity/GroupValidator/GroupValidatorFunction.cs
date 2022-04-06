@@ -40,7 +40,7 @@ namespace Hosts.SecurityGroup
             {
                 if (groupExistsResult.Outcome == OutcomeType.Successful)
                 {
-                    await _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.ObjectId} doesn't exist. Stopping sync and marking as error." });
+                    await _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.ObjectId} doesn't exist. Stopping sync and marking as {SyncStatus.SecurityGroupNotFound}." });
                     if (request.SyncJob != null && request.ObjectId != null)
                         await _calculator.SendEmailAsync(request.SyncJob, 
                                                             request.RunId, 

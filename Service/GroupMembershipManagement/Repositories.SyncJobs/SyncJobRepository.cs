@@ -114,6 +114,7 @@ namespace Repositories.SyncJobsRepository
                     if (status != null)
                     {
                         job.Status = status.ToString();
+                        await _log.LogMessageAsync(new LogMessage { Message = $"Setting job status to {status} for job Rowkey:{job.RowKey}", RunId = job.RunId });
                     }
 
                     job.ETag = "*";

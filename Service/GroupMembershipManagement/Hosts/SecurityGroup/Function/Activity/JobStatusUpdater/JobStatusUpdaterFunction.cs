@@ -26,14 +26,8 @@ namespace Hosts.SecurityGroup
             if (request.SyncJob != null)
             {
                 await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId });
-                await _calculator.UpdateSyncJobStatusAsync(request.SyncJob, request.Status);
-                await _log.LogMessageAsync(new LogMessage
-                {
-                    RunId = request.SyncJob.RunId,
-                    Message = $"Sync job errored out trying to read from source groups {request.SyncJob.Query}."
-                });
+                await _calculator.UpdateSyncJobStatusAsync(request.SyncJob, request.Status);               
                 await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId });
-
             }
         }
     }
