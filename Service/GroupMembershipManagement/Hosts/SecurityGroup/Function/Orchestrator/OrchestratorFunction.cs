@@ -56,16 +56,22 @@ namespace Hosts.SecurityGroup
                 else
                 {
                     // Run multiple source group processing flows in parallel
-                    var processingTasks = new List<Task<List<AzureADUser>>>();
+                    var processingTasks = new List<Task<(List<AzureADUser> Users, SyncStatus Status)>>();
                     foreach (var sourceGroup in sourceGroups)
                     {
-                        var processTask = context.CallSubOrchestratorAsync<List<AzureADUser>>(nameof(SubOrchestratorFunction), new SecurityGroupRequest { SyncJob = syncJob, SourceGroup = sourceGroup, RunId = runId });
+                        var processTask = context.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(nameof(SubOrchestratorFunction), new SecurityGroupRequest { SyncJob = syncJob, SourceGroup = sourceGroup, RunId = runId });
                         processingTasks.Add(processTask);
                     }
+
                     var tasks = await Task.WhenAll(processingTasks);
+                    if (tasks.Any(x => x.Status == SyncStatus.SecurityGroupNotFound))
+                    {                        
+                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.SecurityGroupNotFound });
+                        return;
+                    }
 
                     var users = new List<AzureADUser>();
-                    foreach (var task in tasks)
+                    foreach (var task in tasks.Select(x => x.Users))
                         users.AddRange(task);
 
                     distinctUsers = users.GroupBy(user => user.ObjectId).Select(userGrp => userGrp.First()).ToList();
@@ -95,8 +101,8 @@ namespace Hosts.SecurityGroup
                     }
                     else
                     {
-                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
-                        _ = _log.LogMessageAsync(new LogMessage { Message = "Membership file path is not valid, marking sync job as errored.", RunId = runId });
+                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.FilePathNotValid });
+                        _ = _log.LogMessageAsync(new LogMessage { Message = $"Membership file path is not valid, marking sync job as {SyncStatus.FilePathNotValid}.", RunId = runId });
                     }
                 }
             }

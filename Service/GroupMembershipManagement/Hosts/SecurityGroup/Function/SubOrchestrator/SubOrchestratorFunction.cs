@@ -22,7 +22,7 @@ namespace Hosts.SecurityGroup
         }
 
         [FunctionName(nameof(SubOrchestratorFunction))]
-        public async Task<List<AzureADUser>> RunSubOrchestrator([OrchestrationTrigger] IDurableOrchestrationContext context)
+        public async Task<(List<AzureADUser> Users, SyncStatus Status)> RunSubOrchestrator([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var request = context.GetInput<SecurityGroupRequest>();
             var allUsers = new List<AzureADUser>();
@@ -32,7 +32,7 @@ namespace Hosts.SecurityGroup
             {
                 _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = request.RunId });
                 var isExistingGroup = await context.CallActivityAsync<bool>(nameof(GroupValidatorFunction), new GroupValidatorRequest { SyncJob = request.SyncJob, RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId });
-                if (!isExistingGroup) { return null; }
+                if (!isExistingGroup) { return (null, SyncStatus.SecurityGroupNotFound); }
                 var response = await context.CallActivityAsync<(List<AzureADUser> users,
                                                                 Dictionary<string, int> nonUserGraphObjects,
                                                                 string nextPageUrl,
@@ -60,7 +60,7 @@ namespace Hosts.SecurityGroup
                 });
             }
             _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = request.RunId });
-            return allUsers;
+            return (allUsers, SyncStatus.InProgress);
         }
     }
 }

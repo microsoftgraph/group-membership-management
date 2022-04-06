@@ -11,6 +11,8 @@ namespace Entities
         ThresholdExceeded = 4,
         NoSourceMembership = 5,
         DestinationGroupNotFound = 6,
-        NotOwnerOfDestinationGroup = 7        
+        NotOwnerOfDestinationGroup = 7,
+        SecurityGroupNotFound = 8,
+        FilePathNotValid = 9
     }
 }
