@@ -28,6 +28,7 @@ namespace Hosts.GraphUpdater
         enum Metric
         {
             SyncComplete,
+            Result,
             SyncJobTimeElapsedSeconds,
             ProjectedMemberCount
         }
@@ -196,12 +197,13 @@ namespace Hosts.GraphUpdater
                         { nameof(SyncJob.TargetOfficeGroupId), groupMembership.Destination.ObjectId.ToString() },
                         { nameof(SyncJob.Type), deltaResponse.SyncJobType },
                         { nameof(groupMembership.RunId), groupMembership.RunId.ToString() },
-                        { "Result", deltaResponse.SyncStatus == SyncStatus.Idle ? "Success": "Failure" },
+                        { nameof(Metric.Result), deltaResponse.SyncStatus == SyncStatus.Idle ? "Success": "Failure" },
                         { nameof(SyncJob.IsDryRunEnabled), deltaResponse.IsDryRunSync.ToString() },
                         { nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob.ToString() },
                         { nameof(DeltaResponse.MembersToAdd), deltaResponse.MembersToAdd.Count.ToString() },
                         { nameof(DeltaResponse.MembersToRemove), deltaResponse.MembersToRemove.Count.ToString() },
-                        { nameof(Metric.ProjectedMemberCount), fullMembership.SourceMembers.Count.ToString() }
+                        { nameof(Metric.ProjectedMemberCount), fullMembership.SourceMembers.Count.ToString() },
+                        { nameof(DeltaResponse.IsInitialSync), deltaResponse.IsInitialSync.ToString() }
                     };
 
                 _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteEvent);
