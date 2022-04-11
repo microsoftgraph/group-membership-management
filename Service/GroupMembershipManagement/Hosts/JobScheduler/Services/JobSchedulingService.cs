@@ -44,7 +44,7 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = message });
 
             var schedulerSyncJobs = new List<SchedulerSyncJob>();
-            var jobs = _syncJobRepository.GetSyncJobsAsync(SyncStatus.All, false, false);
+            var jobs = _syncJobRepository.GetSyncJobsAsync(SyncStatus.All, false);
             await foreach (var job in jobs)
             {
                 if (includeFutureStartDates || job.StartDate.CompareTo(DateTime.UtcNow) < 0)
@@ -109,7 +109,7 @@ namespace Services
         }
 
         private async Task<List<SchedulerSyncJob>> DistributeJobStartTimesForPeriod(
-            List<SchedulerSyncJob> schedulerSyncJobs, 
+            List<SchedulerSyncJob> schedulerSyncJobs,
             int periodInHours,
             Dictionary<Guid, double> runtimeMap)
         {

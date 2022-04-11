@@ -67,7 +67,6 @@ namespace Services.Tests
                 RowKey = _rowKey,
                 Status = SyncStatus.Idle.ToString(),
                 LastRunTime = DateTime.FromFileTimeUtc(0),
-                Enabled = true,
                 Query = _sources[0].ObjectId.ToString(),
                 TargetOfficeGroupId = _targetGroupId,
                 ThresholdPercentageForAdditions = 50,

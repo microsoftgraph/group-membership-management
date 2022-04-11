@@ -64,24 +64,6 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task VerifyEnabledJobsAreProcessed()
-        {
-            var enabledJobs = 5;
-            var disabledJobs = 3;
-
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(enabledJobs, Organization, enabled: true));
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(disabledJobs, Organization, enabled: false));
-
-            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
-            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
-
-            var jobs = await _jobTriggerService.GetSyncJobsAsync();
-
-            Assert.AreEqual(enabledJobs, jobs.Count);
-        }
-
-
-        [TestMethod]
         public async Task VerifyJobsWithNonexistentTargetGroupsAreErrored()
         {
             var enabledJobs = 5;
@@ -328,7 +310,6 @@ namespace Services.Tests
             {
                 var job = new SyncJob
                 {
-                    Enabled = enabled,
                     Requestor = $"requestor_{i}@email.com",
                     PartitionKey = DateTime.UtcNow.ToString("MMddyyyy"),
                     RowKey = Guid.NewGuid().ToString(),

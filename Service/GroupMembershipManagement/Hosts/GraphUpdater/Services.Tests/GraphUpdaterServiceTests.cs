@@ -166,7 +166,7 @@ namespace Services.Tests
 
             var runId = Guid.NewGuid();
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
-            var job = new SyncJob { PartitionKey = "00-00-00", RowKey = Guid.NewGuid().ToString(), Status = SyncStatus.InProgress.ToString(), Enabled = true, LastRunTime = lastRunTime };
+            var job = new SyncJob { PartitionKey = "00-00-00", RowKey = Guid.NewGuid().ToString(), Status = SyncStatus.InProgress.ToString(), LastRunTime = lastRunTime };
 
             mockSynJobs.ExistingSyncJobs.Add((job.PartitionKey, job.RowKey), job);
 
@@ -193,7 +193,7 @@ namespace Services.Tests
 
             var runId = Guid.NewGuid();
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
-            var job = new SyncJob { PartitionKey = "00-00-00", RowKey = Guid.NewGuid().ToString(), Status = SyncStatus.InProgress.ToString(), Enabled = true, DryRunTimeStamp = lastRunTime };
+            var job = new SyncJob { PartitionKey = "00-00-00", RowKey = Guid.NewGuid().ToString(), Status = SyncStatus.InProgress.ToString(), DryRunTimeStamp = lastRunTime };
 
             mockSynJobs.ExistingSyncJobs.Add((job.PartitionKey, job.RowKey), job);
 
@@ -217,7 +217,7 @@ namespace Services.Tests
             var dryRun = new DryRunValue(false);
             var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs, dryRun);
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
-            var job = new SyncJob { PartitionKey = "00-00-00", RowKey = Guid.NewGuid().ToString(), Status = SyncStatus.InProgress.ToString(), Enabled = true, LastRunTime = lastRunTime };
+            var job = new SyncJob { PartitionKey = "00-00-00", RowKey = Guid.NewGuid().ToString(), Status = SyncStatus.InProgress.ToString(), LastRunTime = lastRunTime };
 
             mockSynJobs.ExistingSyncJobs.Add((job.PartitionKey, job.RowKey), job);
 

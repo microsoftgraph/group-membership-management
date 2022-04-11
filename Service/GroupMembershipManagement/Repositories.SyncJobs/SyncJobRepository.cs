@@ -38,7 +38,7 @@ namespace Repositories.SyncJobsRepository
             return null;
         }
 
-        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false, bool applyFilters = true)
+        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool applyFilters = true)
         {
             var syncJobs = new List<SyncJob>();
             var table = _tableClient.GetTableReference(_syncJobsTableName);
@@ -47,11 +47,6 @@ namespace Repositories.SyncJobsRepository
             if (status != SyncStatus.All)
             {
                 linqQuery = linqQuery.Where(x => x.Status == status.ToString());
-            }
-
-            if (!includeDisabled)
-            {
-                linqQuery = linqQuery.Where(x => x.Enabled);
             }
 
             TableContinuationToken continuationToken = null;

@@ -19,18 +19,13 @@ namespace Repositories.SyncJobs.Tests
             return await Task.FromResult(job);
         }
 
-        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false, bool applyFilters = true)
+        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool applyFilters = true)
         {
             var jobs = Jobs.Where(x => x.StartDate <= DateTime.UtcNow);
 
             if (status != SyncStatus.All)
             {
                 jobs = jobs.Where(x => x.Status == status.ToString());
-            }
-
-            if (!includeDisabled)
-            {
-                jobs = jobs.Where(x => x.Enabled);
             }
 
             if (applyFilters)

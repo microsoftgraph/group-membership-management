@@ -59,9 +59,6 @@ namespace Entities
         [IgnoreLogging]
         public DateTime StartDate { get; set; }
 
-        [IgnoreLogging]
-        public bool Enabled { get; set; }
-
         /// <summary>
         /// Threshold percentage for users being added
         /// </summary>
@@ -87,9 +84,9 @@ namespace Entities
         [IgnoreLogging]
         public DateTime DryRunTimeStamp
         {
-            get 
-            { 
-                return _dryRunTimeStamp;  
+            get
+            {
+                return _dryRunTimeStamp;
             }
             set
             {

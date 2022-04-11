@@ -62,7 +62,6 @@ namespace Tests.Repositories
             {
                 var job = new SyncJob
                 {
-                    Enabled = enabled,
                     Requestor = $"requestor_{i}@email.com",
                     PartitionKey = DateTime.UtcNow.ToString("MMddyyyy"),
                     RowKey = Guid.NewGuid().ToString(),
