@@ -459,7 +459,6 @@ A synchronization job must have the following properties populated:
 - Period
 - Query
 - StartDate
-- Enabled
 - ThresholdPercentageForAdditions
 - ThresholdPercentageForRemovals
 - ThresholdViolations
@@ -515,10 +514,6 @@ i.e. 2021-01-01T00:00:00.000Z
 - DataType: DateTime
 - Format: YYYY-MM-DDThh:mm:ss.zzzZ
 
-### Enabled
-Flag to enable or disable a synchronization job.
-- DataType: bool
-
 ### ThresholdPercentageForAdditions
 Threshold percentage for users being added.
 If the threshold is exceeded GMM is not going to make any changes to the destination group and an email notification will be sent describing the issue.
@@ -548,7 +543,6 @@ The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGrou
 							-Period <in hours, integer only> `
 							-ThresholdPercentageForAdditions <integer only> `
 							-ThresholdPercentageForRemovals <integer only> `
-							-Enabled $True `
 							-Verbose
 
 You can also use Microsoft Azure Storage Explorer to add, edit or delete synchronization jobs. see [Get started with Storage Explorer](https://docs.microsoft.com/en-us/azure/vs-azure-tools-storage-manage-with-storage-explorer?tabs=windows).

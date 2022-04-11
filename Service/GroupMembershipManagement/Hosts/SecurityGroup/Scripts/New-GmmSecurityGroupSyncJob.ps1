@@ -27,9 +27,6 @@ The date that the sync job should start.
 .PARAMETER Period
 Sets the frequency for the job execution. In hours. Integers only. Default is 6 hours.
 
-.PARAMETER Enabled
-Sets the sync job to enabled if $True and disabled if $False
-
 .PARAMETER Query
 This value depends on the type of sync job.  See example below for details.
 
@@ -51,7 +48,6 @@ New-GmmSecurityGroupSyncJob	-SubscriptionName "<subscription name>" `
 							-Period <in hours, integer only> `
 							-ThresholdPercentageForAdditions <integer only> `
 							-ThresholdPercentageForRemovals <integer only> `
-							-Enabled $False `
 							-ThresholdPercentageForAdditions <100> `
 							-ThresholdPercentageForRemovals <10> `
 							-Verbose
@@ -79,8 +75,6 @@ function New-GmmSecurityGroupSyncJob {
 		[int] $ThresholdPercentageForAdditions = 100,
 		[Parameter(Mandatory=$True)]
 		[int] $ThresholdPercentageForRemovals = 10,
-		[Parameter(Mandatory=$True)]
-		[boolean] $Enabled,
 		[Parameter(Mandatory=$False)]
 		[string] $ErrorActionPreference = $Stop,
 		[Parameter(Mandatory=$False)]
@@ -159,7 +153,6 @@ function New-GmmSecurityGroupSyncJob {
 			"Period"=$Period;  # in hours, integers only
 			"Query"=$Query;
 			"StartDate"=$StartDate;
-			"Enabled"=$Enabled;
 			"ThresholdPercentageForAdditions"=$ThresholdPercentageForAdditions;
 			"ThresholdPercentageForRemovals"=$ThresholdPercentageForRemovals;
 			"IsDryRunEnabled"=$False;
