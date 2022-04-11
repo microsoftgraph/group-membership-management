@@ -43,7 +43,7 @@ namespace Hosts.NonProdService
         [FunctionName(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            var runId = Guid.NewGuid();
+            var runId = context.NewGuid();
 
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId });
 
@@ -58,7 +58,7 @@ namespace Hosts.NonProdService
 
             if(tenantUsers == null)
             {
-                await context.CallActivityAsync(nameof(LoggerFunction), new LogMessage { Message = $"Error with {nameof(TenantUserReaderFunction)}, check exception" });
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Error with {nameof(TenantUserReaderFunction)}, check exception" });
 
                 throw new Exception($"Error occurred in the {nameof(TenantUserReaderFunction)}, because there are not enough users in tenant to meet minimum requirement of {tenantUsersRequired}");
             }
@@ -88,7 +88,7 @@ namespace Hosts.NonProdService
 
                 var membershipDifference = _nonProdService.GetMembershipDifference(groupResponse.Members, desiredMembership);
 
-                await context.CallActivityAsync(nameof(LoggerFunction), new LogMessage
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
                 {
                     Message = $"Calculated membership difference for {groupName}: Must add {membershipDifference.UsersToAdd.Count} users and remove {membershipDifference.UsersToRemove.Count} users.",
                     RunId = runId
