@@ -20,10 +20,10 @@ param environmentAbbreviation string
 param tenantId string
 
 @description('Service plan name.')
-param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-premium'
+param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
 
 @description('Service plan sku')
-param servicePlanSku string = 'EP1'
+param servicePlanSku string = 'Y1'
 
 @description('Resource location.')
 param location string
@@ -306,7 +306,7 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'graphUpdaterFunctionName'
         value: '${functionAppName}-GraphUpdater'
-      }      
+      }
     ]
   }
   dependsOn: [
