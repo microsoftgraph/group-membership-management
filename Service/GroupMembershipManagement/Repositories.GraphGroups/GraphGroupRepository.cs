@@ -658,6 +658,7 @@ namespace Repositories.GraphGroups
 
             var resourceUnitsUsed = _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed));
             var throttleLimitPercentage = _telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage));
+            var writesUsed = _telemetryClient.GetMetric(nameof(Metric.WritesUsed));
 
             foreach (var kvp in responses)
             {
@@ -725,7 +726,7 @@ namespace Repositories.GraphGroups
                     };
 
                 }
-                else if (_isOkay.Contains(status)) { }
+                else if (_isOkay.Contains(status)) { writesUsed.TrackValue(1); }
                 else if (status == HttpStatusCode.TooManyRequests)
                 {
                     // basically, each request in the batch will probably say it's been throttled
