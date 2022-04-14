@@ -6,6 +6,7 @@ using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Services
@@ -24,6 +25,7 @@ namespace Services
         private readonly string _gmmAppId;
         private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
+        private readonly IGMMResources _gmmResources;
 
         public JobTriggerService(
             ILoggingRepository loggingRepository,
@@ -32,7 +34,8 @@ namespace Services
             IGraphGroupRepository graphGroupRepository,
             IKeyVaultSecret<IJobTriggerService> gmmAppId,
             IMailRepository mailRepository,
-            IEmailSenderRecipient emailSenderAndRecipients
+            IEmailSenderRecipient emailSenderAndRecipients,
+            IGMMResources gmmResources
             )
         {
             _emailSenderAndRecipients = emailSenderAndRecipients;
@@ -42,6 +45,7 @@ namespace Services
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _gmmAppId = gmmAppId.Secret;
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
+            _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
         }
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()
@@ -64,15 +68,24 @@ namespace Services
         {
             if (job != null && job.LastRunTime == DateTime.FromFileTimeUtc(0))
             {
+                var owners = await _graphGroupRepository.GetGroupOwnersAsync(job.TargetOfficeGroupId);
+                var ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
                 var message = new EmailMessage
                 {
                     Subject = EmailSubject,
                     Content = SyncStartedEmailBody,
                     SenderAddress = _emailSenderAndRecipients.SenderAddress,
                     SenderPassword = _emailSenderAndRecipients.SenderPassword,
-                    ToEmailAddresses = job.Requestor,
+                    ToEmailAddresses = ownerEmails,
                     CcEmailAddresses = string.Empty,
-                    AdditionalContentParams = new[] { groupName, job.TargetOfficeGroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses }
+                    AdditionalContentParams = new[]
+                    {
+                        groupName,
+                        job.TargetOfficeGroupId.ToString(),
+                        _emailSenderAndRecipients.SupportEmailAddresses,
+                        _gmmResources.LearnMoreAboutGMMUrl,
+                        job.Requestor
+                    }
                 };
 
                 await _mailRepository.SendMailAsync(message, job.RunId);
@@ -87,7 +100,7 @@ namespace Services
                 {
                     RunId = job.RunId,
                     Message = $"Starting job."
-                });                
+                });
             }
 
             await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, status);

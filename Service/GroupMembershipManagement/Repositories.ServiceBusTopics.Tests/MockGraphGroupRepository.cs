@@ -78,7 +78,17 @@ namespace Repositories.ServiceBusTopics.Tests
 
         public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
         {
-            throw new NotImplementedException();
+            var owners = new List<User>();
+            for (var i = 0; i < 10; i++)
+            {
+                owners.Add(new User
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Mail = $"user{i}@mydomain.com"
+                });
+            }
+
+            return Task.FromResult(owners);
         }
 
         public Task<bool> GroupExists(string groupName)
