@@ -187,10 +187,12 @@ namespace Hosts.GraphUpdater
                                     CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
                                                                     SyncStatus.Idle, groupMembership.MembershipObtainerDryRunEnabled, 0, groupMembership.RunId));
 
-                var timeElapsedForJob = (context.CurrentUtcDateTime - deltaResponse.Timestamp).TotalSeconds;
-                _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
+                if (!context.IsReplaying)
+                {
+                    var timeElapsedForJob = (context.CurrentUtcDateTime - deltaResponse.Timestamp).TotalSeconds;
+                    _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
 
-                var syncCompleteEvent = new Dictionary<string, string>
+                    var syncCompleteEvent = new Dictionary<string, string>
                     {
                         { nameof(SyncJob.TargetOfficeGroupId), groupMembership.Destination.ObjectId.ToString() },
                         { nameof(SyncJob.Type), deltaResponse.SyncJobType },
@@ -204,8 +206,8 @@ namespace Hosts.GraphUpdater
                         { nameof(DeltaResponse.IsInitialSync), deltaResponse.IsInitialSync.ToString() }
                     };
 
-                _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteEvent);
-
+                    _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteEvent);
+                }
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob });
 
