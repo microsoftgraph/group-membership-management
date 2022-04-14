@@ -25,7 +25,7 @@ namespace Hosts.GraphUpdater
         public async Task RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var skip = 0;
-            var batchSize = 100;
+            var batchSize = 500;
             var request = context.GetInput<GroupUpdaterRequest>();
             var totalSuccessCount = 0;
 
