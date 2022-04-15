@@ -41,6 +41,8 @@ namespace Repositories.GraphGroups
 
         private const string ResourceUnitHeader = "x-ms-resource-unit";
         private const string ThrottlePercentageHeader = "x-ms-throttle-limit-percentage";
+        private const string ThrottleInfoHeader = "x-ms-throttle-information";
+        private const string ThrottleScopeHeader = "x-ms-throttle-scope";
 
         public async Task<bool> GroupExists(Guid objectId)
         {
@@ -733,7 +735,15 @@ namespace Repositories.GraphGroups
                     // but we only need to wait the first time.
                     if (!beenThrottled)
                     {
-                        await HandleThrottling(response.Headers.RetryAfter);
+                        // basically, go ahead and start waiting while we log the throttling info
+                        var startThrottling = HandleThrottling(response.Headers.RetryAfter);
+                        var gotThrottleInfo = response.Headers.TryGetValues(ThrottleInfoHeader, out var throttleInfo);
+                        var gotThrottleScope = response.Headers.TryGetValues(ThrottleInfoHeader, out var throttleScope);
+                        await _loggingRepository.LogMessageAsync(new LogMessage { 
+                            Message = string.Format("Got 429 throttled. Reason: {0} Scope: {1}", 
+                                gotThrottleInfo ? string.Join(',', throttleInfo) : "(none)",
+                                gotThrottleScope ? string.Join(',', throttleScope) : "(none)"), RunId = RunId });
+                        await startThrottling;
                         beenThrottled = true;
                     }
 
