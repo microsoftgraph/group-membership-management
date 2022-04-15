@@ -5,6 +5,7 @@ using Entities.ServiceBus;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Graph;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -24,6 +25,7 @@ namespace Hosts.GraphUpdater
         private readonly IGraphUpdaterService _graphUpdaterService = null;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
         private readonly IThresholdConfig _thresholdConfig = null;
+        private readonly IGMMResources _gmmResources = null;
         private readonly bool _isDryRunEnabled;
         enum Metric
         {
@@ -39,13 +41,15 @@ namespace Hosts.GraphUpdater
             IGraphUpdaterService graphUpdaterService,
             IDryRunValue dryRun,
             IEmailSenderRecipient emailSenderAndRecipients,
-            IThresholdConfig thresholdConfig)
+            IThresholdConfig thresholdConfig,
+            IGMMResources gmmResources)
         {
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
             _isDryRunEnabled = loggingRepository.DryRun = dryRun != null ? dryRun.DryRunEnabled : throw new ArgumentNullException(nameof(dryRun));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
+            _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
@@ -159,19 +163,27 @@ namespace Hosts.GraphUpdater
                     {
                         var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
                                                         new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
+
+                        var groupOwners = await context.CallActivityAsync<List<User>>(nameof(GroupOwnersReaderFunction),
+                                                        new GroupOwnersReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
+
+                        var ownerEmails = string.Join(";", groupOwners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
+
                         var additonalContent = new[]
                         {
                                 groupName,
                                 groupMembership.Destination.ObjectId.ToString(),
                                 deltaResponse.MembersToAdd.Count.ToString(),
                                 deltaResponse.MembersToRemove.Count.ToString(),
+                                deltaResponse.Requestor,
+                                _gmmResources.LearnMoreAboutGMMUrl,
                                 _emailSenderAndRecipients.SupportEmailAddresses
-                            };
+                        };
 
                         await context.CallActivityAsync(nameof(EmailSenderFunction),
                                         new EmailSenderRequest
                                         {
-                                            ToEmail = deltaResponse.Requestor,
+                                            ToEmail = ownerEmails,
                                             CcEmail = _emailSenderAndRecipients.SyncCompletedCCAddresses,
                                             ContentTemplate = SyncCompletedEmailBody,
                                             AdditionalContentParams = additonalContent,

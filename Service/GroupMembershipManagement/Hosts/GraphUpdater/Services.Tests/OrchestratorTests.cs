@@ -100,7 +100,7 @@ namespace Services.Tests
             var fileDownloaderRequest = new FileDownloaderRequest
             {
                 FilePath = input.FilePath,
-                RunId   = input.RunId,
+                RunId = input.RunId,
                 SyncJob = syncJob
             };
 
@@ -123,7 +123,7 @@ namespace Services.Tests
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig, _gmmResources);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
@@ -200,6 +200,18 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
+            var owners = new List<User>();
+            for (int i = 0; i < 10; i++)
+            {
+                owners.Add(new User
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Mail = $"user{i}@mydomain.com"
+                });
+            }
+
+            var ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
+
             var context = new Mock<IDurableOrchestrationContext>();
             context.Setup(x => x.GetInput<GraphUpdaterHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
@@ -214,11 +226,19 @@ namespace Services.Tests
                     .Returns(async () => await GetDeltaResponseAsync(groupMembership, destinationMembers, mockLoggingRepo, deltaCalculatorService));
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<GroupNameReaderRequest>()))
                     .ReturnsAsync("Target group");
+            context.Setup(x => x.CallActivityAsync<List<User>>(It.IsAny<string>(), It.IsAny<GroupOwnersReaderRequest>()))
+                    .ReturnsAsync(owners);
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<EmailSenderRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        var emailSenderFunction = new EmailSenderFunction(mockLoggingRepo, mockGraphUpdaterService);
+                        await emailSenderFunction.SendEmailAsync((EmailSenderRequest)request);
+                    });
 
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig, _gmmResources);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
@@ -228,6 +248,9 @@ namespace Services.Tests
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
             Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RowKey"], syncJob.RowKey);
+            Assert.AreEqual(1, mockMailRepo.SentEmails.Count);
+            Assert.AreEqual(7, mockMailRepo.SentEmails[0].AdditionalContentParams.Length);
+            Assert.AreEqual(ownerEmails, mockMailRepo.SentEmails[0].ToEmailAddresses);
 
             context.Verify(x => x.CallSubOrchestratorAsync<GraphUpdaterStatus>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()), Times.Exactly(2));
         }
@@ -324,7 +347,7 @@ namespace Services.Tests
                         updateJobRequest = request as JobStatusUpdaterRequest;
                     });
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig, _gmmResources);
             await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
 
             Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
@@ -427,7 +450,7 @@ namespace Services.Tests
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig, _gmmResources);
             await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
         }
 
@@ -509,7 +532,7 @@ namespace Services.Tests
                         updateJobRequest = request as JobStatusUpdaterRequest;
                     });
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig, _gmmResources);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.AreEqual(SyncStatus.DestinationGroupNotFound, updateJobRequest.Status);
@@ -608,7 +631,7 @@ namespace Services.Tests
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
+            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig, _gmmResources);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"is lesser than threshold value {syncJob.ThresholdPercentageForRemovals}")));
@@ -724,7 +747,7 @@ namespace Services.Tests
             var thresholdViolationCountLimit = 3;
             for (var thresholdViolationCount = 1; thresholdViolationCount <= thresholdViolationCountLimit; thresholdViolationCount++)
             {
-                var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig);
+                var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, dryRun, mailSenders, thresholdConfig, _gmmResources);
                 response = await orchestrator.RunOrchestratorAsync(context.Object);
             }
 
