@@ -771,8 +771,10 @@ namespace Repositories.GraphGroups
                                 var gotThrottleScope = response.Headers.TryGetValues(ThrottleScopeHeader, out var throttleScope);
                                 await _loggingRepository.LogMessageAsync(new LogMessage
                                 {
-                                    Message = string.Format("Got 429 throttled. Waiting {0} seconds. Reason: {1} Scope: {2}",
+                                    Message = string.Format("Got 429 throttled. Waiting {0} seconds. Delta: {1} Date: {2} Reason: {3} Scope: {4}",
                                         throttleWait.TotalSeconds,
+                                        response.Headers.RetryAfter.Delta != null ? response.Headers.RetryAfter.Delta.ToString() : "(none)",
+                                        response.Headers.RetryAfter.Date != null ? response.Headers.RetryAfter.Date.ToString() : "(none)",
                                         gotThrottleInfo ? string.Join(',', throttleInfo) : "(none)",
                                         gotThrottleScope ? string.Join(',', throttleScope) : "(none)"),
                                     RunId = RunId
@@ -843,7 +845,9 @@ namespace Repositories.GraphGroups
         }
         private static TimeSpan CalculateThrottleWait(RetryConditionHeaderValue wait)
         {
-            TimeSpan waitFor = TimeSpan.FromSeconds(120);
+            // we're much more likely to hit the write quota, so default to the 2 minute and 30 second wait
+            // https://docs.microsoft.com/en-us/graph/throttling#pattern
+            TimeSpan waitFor = TimeSpan.FromSeconds(150);
             if (wait.Delta.HasValue) { waitFor = wait.Delta.Value; }
             if (wait.Date.HasValue) { waitFor = wait.Date.Value - DateTimeOffset.UtcNow; }
             return waitFor;
