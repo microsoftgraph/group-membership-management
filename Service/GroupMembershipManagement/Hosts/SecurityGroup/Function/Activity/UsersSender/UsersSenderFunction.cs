@@ -33,7 +33,7 @@ namespace Hosts.SecurityGroup
 				await _log.LogMessageAsync(new LogMessage
 				{
 					RunId = request.RunId,
-					Message = $"Successfully sent {request.Users.Count} users from source groups {request.SyncJob.Query} to GraphUpdater to be put into the destination group {request.SyncJob.TargetOfficeGroupId}."
+					Message = $"Successfully uploaded {request.Users.Count} users from source groups {request.SyncJob.Query} to blob storage to be put into the destination group {request.SyncJob.TargetOfficeGroupId}."
 				});
 			}
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function completed", RunId = request.RunId });
