@@ -415,7 +415,8 @@ module dashboardTemplate 'dashboard.bicep' = {
   name: 'dashboardTemplate'
   params: {
     location: location
-    name: '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
+    dashboardName: 'GMM Dashboard (${environmentAbbreviation})'
+    resourceGroup: '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
     subscriptionId: subscriptionId
     jobsStorageAccountName: jobsStorageAccountName
   }
