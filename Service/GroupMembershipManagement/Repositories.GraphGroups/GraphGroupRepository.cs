@@ -750,7 +750,7 @@ namespace Repositories.GraphGroups
                     yield return new RetryResponse
                     {
                         RequestId = kvp.Key,
-                        ResponseCode = ResponseCode.Ok
+                        ResponseCode = ResponseCode.IndividualRetry
                     };
                 }
                 else if (status == HttpStatusCode.Forbidden && content.Contains("Guests users are not allowed to join"))
