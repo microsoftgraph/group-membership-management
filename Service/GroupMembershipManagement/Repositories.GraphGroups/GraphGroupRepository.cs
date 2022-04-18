@@ -15,6 +15,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Group = Microsoft.Graph.Group;
 using Metric = Services.Entities.Metric;
@@ -626,6 +627,20 @@ namespace Repositories.GraphGroups
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sending requests {string.Join(",", tosend.BatchRequestSteps.Keys)}.", RunId = RunId });
 
+                // If CurrentCount is 1, we're not throttled and should let as many threads go as they want.
+                // If CurrentCount is 0, we are throttled and should wait.
+                // This is a weird way to use a semaphore- it's being used as kind of a floodgate.
+                // If it's open, as many requests can go as possible. If it's closed, nobody goes until it gets opened by the thread waiting to finish the throttling
+                if (_currentlyThrottled.CurrentCount == 0)
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = "Waiting until we're no longer throttled to send more requests.", RunId = RunId });
+                    // if we are throttled, wait for the throttle to be up by trying to grab the semaphore
+                    await _currentlyThrottled.WaitAsync();
+                    // then, immediately release the semaphore to minimize contention. Once the floodgate is open, all the threads can go through.
+                    _currentlyThrottled.Release();
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"No longer throttled. Sending requests {string.Join(",", tosend.BatchRequestSteps.Keys)}.", RunId = RunId });
+                }
+
                 var response = await _graphServiceClient.Batch.Request().PostAsync(tosend);
                 return GetStepIdsToRetry(await response.GetResponsesAsync());
             }
@@ -653,6 +668,8 @@ namespace Repositories.GraphGroups
             };
 
         private static readonly Regex _userNotFound = new Regex(@"Resource '(?<id>[({]?[a-fA-F0-9]{8}[-]?([a-fA-F0-9]{4}[-]?){3}[a-fA-F0-9]{12}[})]?)' does not exist", RegexOptions.IgnoreCase);
+
+        private static readonly SemaphoreSlim _currentlyThrottled = new SemaphoreSlim(1, 1);
 
         private async IAsyncEnumerable<RetryResponse> GetStepIdsToRetry(Dictionary<string, HttpResponseMessage> responses)
         {
@@ -733,18 +750,38 @@ namespace Repositories.GraphGroups
                 {
                     // basically, each request in the batch will probably say it's been throttled
                     // but we only need to wait the first time.
+
+                    // the first thread to get throttled will make it into the semaphore and actually do the waiting.
+                    // the point of this double if statement here is to ensure we only wait once, even if two threads come through here at the same time
+                    // without making too many threads wait on the semaphore
+                    // if this semaphore is being held, it prevents any new requests from going out
                     if (!beenThrottled)
                     {
-                        // basically, go ahead and start waiting while we log the throttling info
-                        var startThrottling = HandleThrottling(response.Headers.RetryAfter);
-                        var gotThrottleInfo = response.Headers.TryGetValues(ThrottleInfoHeader, out var throttleInfo);
-                        var gotThrottleScope = response.Headers.TryGetValues(ThrottleInfoHeader, out var throttleScope);
-                        await _loggingRepository.LogMessageAsync(new LogMessage { 
-                            Message = string.Format("Got 429 throttled. Reason: {0} Scope: {1}", 
-                                gotThrottleInfo ? string.Join(',', throttleInfo) : "(none)",
-                                gotThrottleScope ? string.Join(',', throttleScope) : "(none)"), RunId = RunId });
-                        await startThrottling;
-                        beenThrottled = true;
+                        await _currentlyThrottled.WaitAsync();
+                        try
+                        {
+                            if (!beenThrottled)
+                            {
+                                // basically, go ahead and start waiting while we log the throttling info
+                                var startThrottling = HandleThrottling(response.Headers.RetryAfter);
+                                var gotThrottleInfo = response.Headers.TryGetValues(ThrottleInfoHeader, out var throttleInfo);
+                                var gotThrottleScope = response.Headers.TryGetValues(ThrottleInfoHeader, out var throttleScope);
+                                await _loggingRepository.LogMessageAsync(new LogMessage
+                                {
+                                    Message = string.Format("Got 429 throttled. Reason: {0} Scope: {1}",
+                                        gotThrottleInfo ? string.Join(',', throttleInfo) : "(none)",
+                                        gotThrottleScope ? string.Join(',', throttleScope) : "(none)"),
+                                    RunId = RunId
+                                });
+                                await startThrottling;
+                                beenThrottled = true;
+                            }
+                        }
+                        finally
+                        {
+                            // always release the semaphore if something happens here
+                            _currentlyThrottled.Release();
+                        }
                     }
 
                     yield return new RetryResponse
