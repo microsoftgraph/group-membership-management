@@ -760,15 +760,19 @@ namespace Repositories.GraphGroups
                         await _currentlyThrottled.WaitAsync();
                         try
                         {
+                            // if two threads enter the outer if block at the same time, one will grab the semaphore, wait out the throttling, then release
+                            // the second thread will then get the semaphore, see that the throttling wait is done, and immediately release
                             if (!beenThrottled)
                             {
                                 // basically, go ahead and start waiting while we log the throttling info
-                                var startThrottling = HandleThrottling(response.Headers.RetryAfter);
+                                var throttleWait = CalculateThrottleWait(response.Headers.RetryAfter);
+                                var startThrottling = Task.Delay(throttleWait);
                                 var gotThrottleInfo = response.Headers.TryGetValues(ThrottleInfoHeader, out var throttleInfo);
-                                var gotThrottleScope = response.Headers.TryGetValues(ThrottleInfoHeader, out var throttleScope);
+                                var gotThrottleScope = response.Headers.TryGetValues(ThrottleScopeHeader, out var throttleScope);
                                 await _loggingRepository.LogMessageAsync(new LogMessage
                                 {
-                                    Message = string.Format("Got 429 throttled. Reason: {0} Scope: {1}",
+                                    Message = string.Format("Got 429 throttled. Waiting {0} seconds. Reason: {1} Scope: {2}",
+                                        throttleWait.TotalSeconds,
                                         gotThrottleInfo ? string.Join(',', throttleInfo) : "(none)",
                                         gotThrottleScope ? string.Join(',', throttleScope) : "(none)"),
                                     RunId = RunId
@@ -837,12 +841,12 @@ namespace Repositories.GraphGroups
             error = JObject.Parse(error)["error"]["message"].Value<string>();
             return _okayErrorMessages.Any(x => error.Contains(x));
         }
-        private static Task HandleThrottling(RetryConditionHeaderValue wait)
+        private static TimeSpan CalculateThrottleWait(RetryConditionHeaderValue wait)
         {
             TimeSpan waitFor = TimeSpan.FromSeconds(120);
             if (wait.Delta.HasValue) { waitFor = wait.Delta.Value; }
             if (wait.Date.HasValue) { waitFor = wait.Date.Value - DateTimeOffset.UtcNow; }
-            return Task.Delay(waitFor);
+            return waitFor;
         }
 
         private HttpRequestMessage MakeBulkAddRequest(List<AzureADUser> batch, Guid targetGroup)
