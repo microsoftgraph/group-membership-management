@@ -766,7 +766,7 @@ namespace Repositories.GraphGroups
                             {
                                 // basically, go ahead and start waiting while we log the throttling info
                                 var throttleWait = CalculateThrottleWait(response.Headers.RetryAfter);
-                                var startThrottling = Task.Delay(throttleWait);
+                                var startThrottling = Task.Delay(throttleWait + TimeSpan.FromSeconds(10));
                                 var gotThrottleInfo = response.Headers.TryGetValues(ThrottleInfoHeader, out var throttleInfo);
                                 var gotThrottleScope = response.Headers.TryGetValues(ThrottleScopeHeader, out var throttleScope);
                                 await _loggingRepository.LogMessageAsync(new LogMessage
