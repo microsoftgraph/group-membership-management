@@ -766,6 +766,8 @@ namespace Repositories.GraphGroups
                             {
                                 // basically, go ahead and start waiting while we log the throttling info
                                 var throttleWait = CalculateThrottleWait(response.Headers.RetryAfter);
+
+                                // add a few seconds to account for other 419s that happen before we can send the signal to pause.
                                 var startThrottling = Task.Delay(throttleWait + TimeSpan.FromSeconds(10));
                                 var gotThrottleInfo = response.Headers.TryGetValues(ThrottleInfoHeader, out var throttleInfo);
                                 var gotThrottleScope = response.Headers.TryGetValues(ThrottleScopeHeader, out var throttleScope);
@@ -790,6 +792,7 @@ namespace Repositories.GraphGroups
                         }
                     }
 
+                    // it's possible for only some requests in a batch to be throttled, so only retry the ones that were throttled.
                     yield return new RetryResponse
                     {
                         RequestId = kvp.Key,
