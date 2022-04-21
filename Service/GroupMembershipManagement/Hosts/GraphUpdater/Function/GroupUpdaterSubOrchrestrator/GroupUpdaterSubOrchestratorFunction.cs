@@ -25,7 +25,7 @@ namespace Hosts.GraphUpdater
         public async Task RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var skip = 0;
-            var batchSize = 500;
+            const int batchSize = 500;
             var request = context.GetInput<GroupUpdaterRequest>();
             var totalSuccessCount = 0;
 
@@ -38,6 +38,9 @@ namespace Hosts.GraphUpdater
                                                 new LoggerRequest { Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function started", SyncJob = request.SyncJob });
 
             var batch = request.Members?.Skip(skip).Take(batchSize).ToList() ?? new List<AzureADUser>();
+
+            // just for benchmarking reasons, remove this before merging back in
+            _telemetryClient.TrackMetric(nameof(Services.Entities.Metric.BatchSize), batchSize);
 
             while (batch.Count > 0)
             {

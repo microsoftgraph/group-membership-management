@@ -14,6 +14,7 @@ namespace Services.Entities
         MembersNotFound,
 		ResourceUnitsUsed,
 		ThrottleLimitPercentage,
-        WritesUsed
+        WritesUsed,
+        BatchSize
 	};
 }
