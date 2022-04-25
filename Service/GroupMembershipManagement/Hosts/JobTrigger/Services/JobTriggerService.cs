@@ -26,6 +26,7 @@ namespace Services
         private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IGMMResources _gmmResources;
+        private readonly IJobTriggerConfig _jobTriggerConfig;
 
         public JobTriggerService(
             ILoggingRepository loggingRepository,
@@ -35,7 +36,8 @@ namespace Services
             IKeyVaultSecret<IJobTriggerService> gmmAppId,
             IMailRepository mailRepository,
             IEmailSenderRecipient emailSenderAndRecipients,
-            IGMMResources gmmResources
+            IGMMResources gmmResources,
+            IJobTriggerConfig jobTriggerConfig
             )
         {
             _emailSenderAndRecipients = emailSenderAndRecipients;
@@ -46,6 +48,7 @@ namespace Services
             _gmmAppId = gmmAppId.Secret;
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
+            _jobTriggerConfig = jobTriggerConfig ?? throw new ArgumentNullException(nameof(jobTriggerConfig));
         }
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()
@@ -123,7 +126,7 @@ namespace Services
         {
             foreach (var strat in new JobVerificationStrategy[] {
                 new JobVerificationStrategy { TestFunction = _graphGroupRepository.GroupExists, StatusMessage = $"Destination group {job.TargetOfficeGroupId} exists.", ErrorMessage = $"destination group {job.TargetOfficeGroupId} doesn't exist.", EmailBody = SyncDisabledNoGroupEmailBody },
-                new JobVerificationStrategy { TestFunction = (groupId) => _graphGroupRepository.IsAppIDOwnerOfGroup(_gmmAppId, groupId), StatusMessage = $"GMM is an owner of destination group {job.TargetOfficeGroupId}.", ErrorMessage = $"GMM is not an owner of destination group {job.TargetOfficeGroupId}.", EmailBody = SyncDisabledNoOwnerEmailBody }})
+                new JobVerificationStrategy { TestFunction = (groupId) => HasGroupGraphWritePermissions(groupId), StatusMessage = $"GMM is an owner of destination group {job.TargetOfficeGroupId}.", ErrorMessage = $"GMM is not an owner of destination group {job.TargetOfficeGroupId}.", EmailBody = SyncDisabledNoOwnerEmailBody }})
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Checking: " + strat.StatusMessage });
                 // right now, we stop after the first failed strategy, because it doesn't make sense to find that the destination group doesn't exist and then check if we own it.
@@ -148,6 +151,15 @@ namespace Services
             }
 
             return true;
+        }
+
+        private async Task<bool> HasGroupGraphWritePermissions(Guid groupId)
+        {
+            if(_jobTriggerConfig.GMMHasGroupReadWriteAllPermissions)
+                return true;
+            
+            var isAppIdOwner = await _graphGroupRepository.IsAppIDOwnerOfGroup(_gmmAppId, groupId);
+            return isAppIdOwner;
         }
 
         private class JobVerificationStrategy
