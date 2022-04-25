@@ -129,11 +129,19 @@ param appConfigurationName string = '${solutionAbbreviation}-appConfig-${environ
 param appConfigurationSku string = 'Standard'
 param appConfigurationKeyData array = [
   {
+    key: 'JobTrigger:Group.ReadWrite.All=True'
+    value: 'false'
+    contentType: 'boolean'
+    tag: {
+      tag1: 'JobTrigger'
+    }
+  }
+  {
     key: 'SecurityGroup:IsSecurityGroupDryRunEnabled'
     value: 'false'
     contentType: 'boolean'
     tag: {
-      tag1: 'tag-dry-run'
+      tag1: 'DryRun'
     }
   }
   {
@@ -141,15 +149,7 @@ param appConfigurationKeyData array = [
     value: 'false'
     contentType: 'boolean'
     tag: {
-      tag1: 'tag-dry-run'
-    }
-  }
-  {
-    key: 'GraphUpdater:LastMessageWaitTimeout'
-    value: '10'
-    contentType: 'integer'
-    tag: {
-      tag1: 'GraphUpdater'
+      tag1: 'DryRun'
     }
   }
   {
