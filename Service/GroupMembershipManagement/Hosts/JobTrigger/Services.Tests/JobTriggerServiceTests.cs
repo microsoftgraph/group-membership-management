@@ -28,6 +28,7 @@ namespace Services.Tests
         private MockGraphGroupRepository _graphGroupRepository;
         private MockMailRepository _mailRepository = null;
         private GMMResources _gMMResources = null;
+        private MockJobTriggerConfig _jobTriggerConfig = null;
 
         private const string Organization = "Organization";
         private const string SecurityGroup = "SecurityGroup";
@@ -45,6 +46,7 @@ namespace Services.Tests
             _serviceBusTopicsRepository = new MockServiceBusTopicsRepository();
             _graphGroupRepository = new MockGraphGroupRepository();
             _mailRepository = new MockMailRepository();
+            _jobTriggerConfig = new MockJobTriggerConfig();
             _jobTriggerService = new JobTriggerService(
                                         _loggingRepository,
                                         _syncJobRepository,
@@ -52,7 +54,8 @@ namespace Services.Tests
                                         _graphGroupRepository,
                                         new MockKeyVaultSecret<IJobTriggerService>(), _mailRepository,
                                         new MockEmail<IEmailSenderRecipient>(),
-                                        _gMMResources);
+                                        _gMMResources,
+                                        _jobTriggerConfig);
         }
 
         [TestMethod]
@@ -168,17 +171,36 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task VerifyJobStatusIsUpdatedToError()
+        public async Task VerifyJobStatusIsUpdatedToErrorDueToNoGroupOwnership()
         {
             var jobs = 2;
 
             _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(jobs, Organization, enabled: true));
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
 
             foreach (var job in _syncJobRepository.Jobs)
             {
                 var canWriteToGroup = await _jobTriggerService.CanWriteToGroup(job);
                 await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
                 Assert.AreEqual(job.Status, SyncStatus.NotOwnerOfDestinationGroup.ToString());
+            }
+        }
+
+        [TestMethod]
+        public async Task VerifyJobStatusIsUpdatedToInProgressDueToTenantAPIPermissions()
+        {
+            var jobs = 2;
+
+            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(jobs, Organization, enabled: true));
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
+
+            _jobTriggerConfig.GMMHasGroupReadWriteAllPermissions = true;
+
+            foreach (var job in _syncJobRepository.Jobs)
+            {
+                var canWriteToGroup = await _jobTriggerService.CanWriteToGroup(job);
+                await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
+                Assert.AreEqual(job.Status, SyncStatus.InProgress.ToString());
             }
         }
 
@@ -231,7 +253,8 @@ namespace Services.Tests
                 new MockKeyVaultSecret<IJobTriggerService>(),
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
-                _gMMResources);
+                _gMMResources,
+                _jobTriggerConfig);
 
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
@@ -267,7 +290,8 @@ namespace Services.Tests
                 new MockKeyVaultSecret<IJobTriggerService>(),
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
-                _gMMResources);
+                _gMMResources,
+                _jobTriggerConfig);
 
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
@@ -302,7 +326,8 @@ namespace Services.Tests
                 new MockKeyVaultSecret<IJobTriggerService>(),
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
-                _gMMResources);
+                _gMMResources,
+                _jobTriggerConfig);
 
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
@@ -336,7 +361,8 @@ namespace Services.Tests
                 new MockKeyVaultSecret<IJobTriggerService>(),
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
-                _gMMResources);
+                _gMMResources,
+                _jobTriggerConfig);
 
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
