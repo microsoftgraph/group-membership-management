@@ -2427,7 +2427,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     usersAdded: '127px'
                     DestinationGroupObjectId: '260px'
                   }
-                  Query: 'ApplicationLog_CL\n| where (location_s == "GraphUpdater" and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress")\n| project TimeGenerated, Message, TargetOfficeGroupId_g, RunId_g\n| order by TimeGenerated desc\n\n'
+                  Query: 'ApplicationLog_CL\n| where (location_s == "GraphUpdater" and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress")\n| project TimeGenerated, Message, RowKey_g, TargetOfficeGroupId_g, RunId_g\n| order by TimeGenerated desc\n\n'
                   PartTitle: 'Jobs marked as Error'
                   PartSubTitle: 'ApplicationLog_CL'
                 }
