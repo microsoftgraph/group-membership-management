@@ -28,7 +28,7 @@ namespace Hosts.JobTrigger
             if (syncJob != null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupVerifierFunction)} function started", RunId = syncJob.RunId });
-                canWriteToGroup = await _jobTriggerService.CanWriteToGroup(syncJob);
+                canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(syncJob);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupVerifierFunction)} function completed", RunId = syncJob.RunId });
             }
             return canWriteToGroup;

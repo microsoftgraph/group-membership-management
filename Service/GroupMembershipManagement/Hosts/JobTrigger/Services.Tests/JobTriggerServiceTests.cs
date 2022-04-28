@@ -91,7 +91,7 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs.Take(enabledJobs))
             {
-                var response = await _jobTriggerService.CanWriteToGroup(job);
+                var response = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
                 Assert.AreEqual(false, response);
             }
         }
@@ -109,7 +109,7 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs.Take(enabledJobs))
             {
-                var response = await _jobTriggerService.CanWriteToGroup(job);
+                var response = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
                 Assert.AreEqual(false, response);
             }
         }
@@ -164,7 +164,7 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs)
             {
-                var canWriteToGroup = await _jobTriggerService.CanWriteToGroup(job);
+                var canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
                 await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
                 Assert.AreEqual(job.Status, SyncStatus.InProgress.ToString());
             }
@@ -180,7 +180,7 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs)
             {
-                var canWriteToGroup = await _jobTriggerService.CanWriteToGroup(job);
+                var canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
                 await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
                 Assert.AreEqual(job.Status, SyncStatus.NotOwnerOfDestinationGroup.ToString());
             }
@@ -198,7 +198,7 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs)
             {
-                var canWriteToGroup = await _jobTriggerService.CanWriteToGroup(job);
+                var canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
                 await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
                 Assert.AreEqual(job.Status, SyncStatus.InProgress.ToString());
             }

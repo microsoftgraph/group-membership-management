@@ -129,7 +129,7 @@ param appConfigurationName string = '${solutionAbbreviation}-appConfig-${environ
 param appConfigurationSku string = 'Standard'
 param appConfigurationKeyData array = [
   {
-    key: 'JobTrigger:Group.ReadWrite.All=True'
+    key: 'JobTrigger:IsGroupReadWriteAllGranted'
     value: 'false'
     contentType: 'boolean'
     tag: {

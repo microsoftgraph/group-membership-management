@@ -30,7 +30,7 @@ namespace Hosts.JobTrigger
 
             builder.Services.AddOptions<JobTriggerConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
-                settings.GMMHasGroupReadWriteAllPermissions = GetBoolSetting(configuration, "JobTrigger:Group.ReadWrite.All=True", false);
+                settings.GMMHasGroupReadWriteAllPermissions = GetBoolSetting(configuration, "JobTrigger:IsGroupReadWriteAllGranted", false);
             });
 
             builder.Services.AddSingleton<IJobTriggerConfig>(services =>
