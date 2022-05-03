@@ -75,7 +75,6 @@ namespace Services.Tests
                 Requestor = "requestor@mail.com,requestor2@mail.com",
                 RunId = _rundId,
                 StartDate = DateTime.UtcNow.Date.AddDays(-10),
-                Type = "SecurityGroup"
             };
         }
 
@@ -168,7 +167,7 @@ namespace Services.Tests
             var dryRun = new DryRunValue();
             var thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             var graphUpdaterService = new MockGraphUpdaterService(mailRepository);
-            
+
             var deltaCalculator = new DeltaCalculatorService(
                                     calculator,
                                     syncjobRepository,
@@ -463,7 +462,7 @@ namespace Services.Tests
             Assert.AreEqual(SyncStatus.Idle, response.SyncStatus);
             Assert.AreEqual(GraphUpdaterStatus.ThresholdExceeded, response.GraphUpdaterStatus);
             Assert.AreEqual(targetGroupUsers.Count, graphUpdaterService.GroupsToUsers[_targetGroupId].Count);
-            Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is greater than threshold value")));            
+            Assert.IsTrue(loggingRepository.MessagesLogged.Any(x => x.Message.Contains("is greater than threshold value")));
 
             if (currentThresoldViolations != 9)
             {

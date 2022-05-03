@@ -15,7 +15,6 @@ namespace Services.Entities
         public bool IsInitialSync { get; set; }
         public bool IsDryRunSync { get; set; }
         public string Requestor { get; set; }
-        public string SyncJobType { get; set; }
         public DateTimeOffset Timestamp { get; set; }
     }
 }

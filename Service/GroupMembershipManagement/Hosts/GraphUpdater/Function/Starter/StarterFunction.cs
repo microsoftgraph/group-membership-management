@@ -4,7 +4,6 @@ using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
@@ -17,12 +16,10 @@ namespace Hosts.GraphUpdater
     public class StarterFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IConfiguration _configuration = null;
 
-        public StarterFunction(ILoggingRepository loggingRepository, IConfiguration configuration)
+        public StarterFunction(ILoggingRepository loggingRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
         [FunctionName(nameof(StarterFunction))]
@@ -42,17 +39,17 @@ namespace Hosts.GraphUpdater
                 return validationInfo.Response;
             }
 
-            var request = JsonConvert.DeserializeObject<GraphUpdaterHttpRequest>(content);
+            var request = JsonConvert.DeserializeObject<MembershipHttpRequest>(content);
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"{nameof(StarterFunction)} function started",
-                RunId = request.RunId
+                RunId = request.SyncJob.RunId
             });
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = content,
-                RunId = request.RunId,
+                RunId = request.SyncJob.RunId
             });
 
             var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
@@ -60,13 +57,13 @@ namespace Hosts.GraphUpdater
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"InstanceId: {instanceId}",
-                RunId = request.RunId
+                RunId = request.SyncJob.RunId
             });
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"{nameof(StarterFunction)} function completed",
-                RunId = request.RunId
+                RunId = request.SyncJob.RunId
             });
 
             return validationInfo.Response;
@@ -93,7 +90,7 @@ namespace Hosts.GraphUpdater
                 );
             }
 
-            var request = JsonConvert.DeserializeObject<GraphUpdaterHttpRequest>(content);
+            var request = JsonConvert.DeserializeObject<MembershipHttpRequest>(content);
 
             if (string.IsNullOrWhiteSpace(request.FilePath))
             {
@@ -101,7 +98,7 @@ namespace Hosts.GraphUpdater
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = $"{nameof(StarterFunction)}. {msg}",
-                    RunId = request.RunId,
+                    RunId = request.SyncJob.RunId,
                 });
 
                 return

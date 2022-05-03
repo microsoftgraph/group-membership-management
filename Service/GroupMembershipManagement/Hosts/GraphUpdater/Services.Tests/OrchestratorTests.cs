@@ -76,14 +76,6 @@ namespace Services.Tests
                                             localizationRepository);
 
             var groupMembership = GetGroupMembership();
-            var input = new GraphUpdaterHttpRequest
-            {
-                FilePath = "/file/path/name.json",
-                RunId = groupMembership.RunId,
-                JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                JobRowKey = groupMembership.SyncJobRowKey
-            };
-
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -97,17 +89,22 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
+            var input = new MembershipHttpRequest
+            {
+                FilePath = "/file/path/name.json",
+                SyncJob = syncJob
+            };
+
             var fileDownloaderRequest = new FileDownloaderRequest
             {
                 FilePath = input.FilePath,
-                RunId = input.RunId,
                 SyncJob = syncJob
             };
 
             blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
-            context.Setup(x => x.GetInput<GraphUpdaterHttpRequest>()).Returns(input);
+            context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
                     .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
@@ -179,14 +176,6 @@ namespace Services.Tests
                                             localizationRepository);
 
             var groupMembership = GetGroupMembership();
-            var input = new GraphUpdaterHttpRequest
-            {
-                FilePath = "/file/path/name.json",
-                RunId = groupMembership.RunId,
-                JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                JobRowKey = groupMembership.SyncJobRowKey
-            };
-
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -198,6 +187,12 @@ namespace Services.Tests
                 LastRunTime = DateTime.FromFileTimeUtc(0),
                 Requestor = "user@domail.com",
                 RunId = Guid.NewGuid()
+            };
+
+			var input = new MembershipHttpRequest
+            {
+                FilePath = "/file/path/name.json",
+                SyncJob = syncJob
             };
 
             var owners = new List<User>();
@@ -213,7 +208,7 @@ namespace Services.Tests
             var ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
 
             var context = new Mock<IDurableOrchestrationContext>();
-            context.Setup(x => x.GetInput<GraphUpdaterHttpRequest>()).Returns(input);
+            context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonConvert.SerializeObject(groupMembership));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
@@ -298,14 +293,6 @@ namespace Services.Tests
                                             localizationRepository);
 
             var groupMembership = GetGroupMembership();
-            var input = new GraphUpdaterHttpRequest
-            {
-                FilePath = "/file/path/name.json",
-                RunId = groupMembership.RunId,
-                JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                JobRowKey = groupMembership.SyncJobRowKey
-            };
-
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -319,17 +306,22 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
+            var input = new MembershipHttpRequest
+            {
+                FilePath = "/file/path/name.json",
+                SyncJob = syncJob
+            };
+
             var fileDownloaderRequest = new FileDownloaderRequest
             {
                 FilePath = input.FilePath,
-                RunId = input.RunId,
                 SyncJob = syncJob
             };
 
             blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
-            context.Setup(x => x.GetInput<GraphUpdaterHttpRequest>()).Returns(input);
+            context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
                     .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
@@ -403,14 +395,6 @@ namespace Services.Tests
                                             localizationRepository);
 
             var groupMembership = GetGroupMembership();
-            var input = new GraphUpdaterHttpRequest
-            {
-                FilePath = "/file/path/name.json",
-                RunId = groupMembership.RunId,
-                JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                JobRowKey = groupMembership.SyncJobRowKey
-            };
-
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -424,17 +408,22 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
+            var input = new MembershipHttpRequest
+            {
+                FilePath = "/file/path/name.json",
+                SyncJob = syncJob
+            };
+
             var fileDownloaderRequest = new FileDownloaderRequest
             {
                 FilePath = "some/invalid/path/file.json",
-                RunId = input.RunId,
                 SyncJob = syncJob
             };
 
             blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
-            context.Setup(x => x.GetInput<GraphUpdaterHttpRequest>()).Returns(input);
+            context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
                     .Returns(async () => await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
@@ -495,14 +484,6 @@ namespace Services.Tests
                                             localizationRepository);
 
             var groupMembership = GetGroupMembership();
-            var input = new GraphUpdaterHttpRequest
-            {
-                FilePath = "/file/path/name.json",
-                RunId = groupMembership.RunId,
-                JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                JobRowKey = groupMembership.SyncJobRowKey
-            };
-
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -516,8 +497,14 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
+            var input = new MembershipHttpRequest
+            {
+                FilePath = "/file/path/name.json",
+                SyncJob = syncJob
+            };
+
             var context = new Mock<IDurableOrchestrationContext>();
-            context.Setup(x => x.GetInput<GraphUpdaterHttpRequest>()).Returns(input);
+            context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonConvert.SerializeObject(groupMembership));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
@@ -586,14 +573,6 @@ namespace Services.Tests
                                             localizationRepository);
 
             var groupMembership = GetGroupMembership();
-            var input = new GraphUpdaterHttpRequest
-            {
-                FilePath = "/file/path/name.json",
-                RunId = groupMembership.RunId,
-                JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                JobRowKey = groupMembership.SyncJobRowKey
-            };
-
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -608,8 +587,14 @@ namespace Services.Tests
                 ThresholdViolations = 2
             };
 
+            var input = new MembershipHttpRequest
+            {
+                FilePath = "/file/path/name.json",
+                SyncJob = syncJob
+            };
+
             var context = new Mock<IDurableOrchestrationContext>();
-            context.Setup(x => x.GetInput<GraphUpdaterHttpRequest>()).Returns(input);
+            context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonConvert.SerializeObject(groupMembership));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
@@ -688,14 +673,6 @@ namespace Services.Tests
                                             localizationRepository);
 
             var groupMembership = GetGroupMembership();
-            var input = new GraphUpdaterHttpRequest
-            {
-                FilePath = "/file/path/name.json",
-                RunId = groupMembership.RunId,
-                JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                JobRowKey = groupMembership.SyncJobRowKey
-            };
-
             var destinationMembers = await GetDestinationMembersAsync(groupMembership, mockLoggingRepo);
             var syncJob = new SyncJob
             {
@@ -710,12 +687,18 @@ namespace Services.Tests
                 ThresholdViolations = 0
             };
 
+            var input = new MembershipHttpRequest
+            {
+                FilePath = "/file/path/name.json",
+                SyncJob = syncJob
+            };
+
             mockGraphUpdaterService.Jobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
             var context = new Mock<IDurableOrchestrationContext>();
-            context.Setup(x => x.GetInput<GraphUpdaterHttpRequest>()).Returns(input);
+            context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
 
             SyncJob syncJobResponse = null;
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>()))

@@ -56,26 +56,25 @@ namespace Hosts.GraphUpdater
         public async Task<OrchestrationRuntimeStatus> RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             GroupMembership groupMembership = null;
-            GraphUpdaterHttpRequest graphRequest = null;
+            MembershipHttpRequest graphRequest = null;
             SyncJob syncJob = null;
 
-            graphRequest = context.GetInput<GraphUpdaterHttpRequest>();
+            graphRequest = context.GetInput<MembershipHttpRequest>();
 
             try
             {
                 syncJob = await context.CallActivityAsync<SyncJob>(nameof(JobReaderFunction),
                                                        new JobReaderRequest
                                                        {
-                                                           JobPartitionKey = graphRequest.JobPartitionKey,
-                                                           JobRowKey = graphRequest.JobRowKey,
-                                                           RunId = graphRequest.RunId
+                                                           JobPartitionKey = graphRequest.SyncJob.PartitionKey,
+                                                           JobRowKey = graphRequest.SyncJob.RowKey,
+                                                           RunId = graphRequest.SyncJob.RunId.GetValueOrDefault()
                                                        });
 
                 var fileContent = await context.CallActivityAsync<string>(nameof(FileDownloaderFunction),
                                                                             new FileDownloaderRequest
                                                                             {
                                                                                 FilePath = graphRequest.FilePath,
-                                                                                RunId = graphRequest.RunId,
                                                                                 SyncJob = syncJob
                                                                             });
 
@@ -207,7 +206,6 @@ namespace Hosts.GraphUpdater
                     var syncCompleteEvent = new Dictionary<string, string>
                     {
                         { nameof(SyncJob.TargetOfficeGroupId), groupMembership.Destination.ObjectId.ToString() },
-                        { nameof(SyncJob.Type), deltaResponse.SyncJobType },
                         { nameof(groupMembership.RunId), groupMembership.RunId.ToString() },
                         { nameof(Metric.Result), deltaResponse.SyncStatus == SyncStatus.Idle ? "Success": "Failure" },
                         { nameof(SyncJob.IsDryRunEnabled), deltaResponse.IsDryRunSync.ToString() },

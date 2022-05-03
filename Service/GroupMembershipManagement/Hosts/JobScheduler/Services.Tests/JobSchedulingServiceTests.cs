@@ -222,7 +222,6 @@ namespace Services.Tests
                     StartDate = StartDateBase.AddDays(-1 * i),
                     Status = SyncStatus.Idle.ToString(),
                     TargetOfficeGroupId = Guid.NewGuid(),
-                    Type = "Any",
                     LastRunTime = LastRunTimeBase.AddDays(-1 * i)
                 };
 

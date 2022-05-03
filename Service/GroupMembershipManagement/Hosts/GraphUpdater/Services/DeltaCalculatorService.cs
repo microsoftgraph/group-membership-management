@@ -105,7 +105,6 @@ namespace Services
                 deltaResponse.IsInitialSync = isInitialSync;
                 deltaResponse.IsDryRunSync = isDryRunSync;
                 deltaResponse.Requestor = job.Requestor;
-                deltaResponse.SyncJobType = job.Type;
                 deltaResponse.Timestamp = job.Timestamp;
                 deltaResponse.GraphUpdaterStatus = GraphUpdaterStatus.Ok;
 

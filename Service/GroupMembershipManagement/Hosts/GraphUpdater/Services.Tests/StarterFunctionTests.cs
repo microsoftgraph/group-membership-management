@@ -3,22 +3,16 @@
 using Entities;
 using Entities.ServiceBus;
 using Hosts.GraphUpdater;
-using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Repositories.Mocks;
-using Services.Contracts;
-using Services.Entities;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Services.Tests
@@ -29,7 +23,7 @@ namespace Services.Tests
         private string _instanceId;
         private MockLoggingRepository _loggerMock;
         private Mock<IDurableOrchestrationClient> _durableClientMock;
-        private Mock<IConfiguration> _configuration;
+        private SyncJob _syncJob;
 
         [TestInitialize]
         public void SetupTest()
@@ -37,24 +31,33 @@ namespace Services.Tests
             _instanceId = "1234567890";
             _durableClientMock = new Mock<IDurableOrchestrationClient>();
             _loggerMock = new MockLoggingRepository();
-            _configuration = new Mock<IConfiguration>();
+            _syncJob = new SyncJob
+            {
+                PartitionKey = "00-00-0000",
+                RowKey = Guid.NewGuid().ToString(),
+                TargetOfficeGroupId = Guid.NewGuid(),
+                ThresholdPercentageForAdditions = 80,
+                ThresholdPercentageForRemovals = 20,
+                LastRunTime = DateTime.UtcNow.AddDays(-1),
+                Requestor = "user@domail.com",
+                RunId = Guid.NewGuid(),
+                ThresholdViolations = 0
+            };
         }
 
         [TestMethod]
         public async Task ProcessValidRequestTest()
         {
             _durableClientMock
-                .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<GraphUpdaterHttpRequest>()))
+                .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<MembershipHttpRequest>()))
                 .ReturnsAsync(_instanceId);
 
-            var starterFunction = new StarterFunction(_loggerMock, _configuration.Object);
+            var starterFunction = new StarterFunction(_loggerMock);
             var groupMembership = GetGroupMembership();
-            var content = new GraphUpdaterHttpRequest
+            var content = new MembershipHttpRequest
             {
                 FilePath = "file/path/name.json",
-                RunId = groupMembership.RunId,
-                JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                JobRowKey = groupMembership.SyncJobRowKey
+                SyncJob = _syncJob
             };
 
             var request = new HttpRequestMessage
@@ -75,10 +78,10 @@ namespace Services.Tests
         public async Task ProcessEmptyRequestTest()
         {
             _durableClientMock
-                  .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<GraphUpdaterHttpRequest>()))
+                  .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<MembershipHttpRequest>()))
                   .ReturnsAsync(_instanceId);
 
-            var starterFunction = new StarterFunction(_loggerMock, _configuration.Object);
+            var starterFunction = new StarterFunction(_loggerMock);
             var request = new HttpRequestMessage
             {
                 Method = HttpMethod.Post
@@ -97,17 +100,15 @@ namespace Services.Tests
         public async Task ProcessInvalidRequestTest()
         {
             _durableClientMock
-                  .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<GraphUpdaterHttpRequest>()))
+                  .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<MembershipHttpRequest>()))
                   .ReturnsAsync(_instanceId);
 
-            var starterFunction = new StarterFunction(_loggerMock, _configuration.Object);
+            var starterFunction = new StarterFunction(_loggerMock);
             var groupMembership = GetGroupMembership();
-            var content = new GraphUpdaterHttpRequest
+            var content = new MembershipHttpRequest
             {
                 FilePath = null,
-                RunId = groupMembership.RunId,
-                JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                JobRowKey = groupMembership.SyncJobRowKey
+                SyncJob = _syncJob
             };
 
             var request = new HttpRequestMessage
