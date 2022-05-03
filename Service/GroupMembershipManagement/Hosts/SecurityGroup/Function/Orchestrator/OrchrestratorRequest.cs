@@ -1,14 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using Entities;
-using System;
 
 namespace Hosts.SecurityGroup
 {
-    public class SourceGroupsReaderRequest
+    public class OrchestratorRequest
     {
         public SyncJob SyncJob { get; set; }
-        public Guid RunId { get; set; }
+        public int TotalParts { get; set; }
         public int CurrentPart { get; set; }
     }
 }

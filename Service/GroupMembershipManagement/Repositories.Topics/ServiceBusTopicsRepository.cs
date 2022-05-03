@@ -6,6 +6,8 @@ using Repositories.Contracts;
 using System.Threading.Tasks;
 using System.Text;
 using System.Text.Json;
+using Newtonsoft.Json.Linq;
+using System.Linq;
 
 namespace Repositories.ServiceBusTopics
 {
@@ -20,7 +22,21 @@ namespace Repositories.ServiceBusTopics
 
         public async Task AddMessageAsync(SyncJob job)
         {
-            await _topicClient.SendAsync(CreateMessage(job));
+            var index = 1;
+            var queries = JArray.Parse(job.Query);
+            var queryTypes = queries.SelectTokens("$..type")
+                                    .Select(x => x.Value<string>())
+                                    .ToList();
+
+            foreach(var type in queryTypes)
+            {
+                var message = CreateMessage(job);
+                message.UserProperties.Add("Type", type);
+                message.UserProperties.Add("TotalParts", queryTypes.Count);
+                message.UserProperties.Add("CurrentPart", index);
+                message.MessageId += $"_{index++}";
+                await _topicClient.SendAsync(message);
+            }
         }
 
         private Message CreateMessage(SyncJob job)
@@ -31,7 +47,6 @@ namespace Repositories.ServiceBusTopics
                 Body = Encoding.UTF8.GetBytes(body)
             };
 
-            message.UserProperties.Add("Type", job.Type);
             message.MessageId = $"{job.PartitionKey}_{job.RowKey}_{job.RunId}";
 
             return message;

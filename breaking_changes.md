@@ -1,5 +1,35 @@
 # Breaking Changes
 
+## 05/02/2022
+
+### - SecurityGroup query format has changed to JSON
+SecurityGroup query format has been updated in order to support hybrid sync jobs. List of semicolon separated group ids list has been replaced by a JSON query.
+
+Previous query format sample, list of group ids separated by semicolon.  
+```
+a167b6c1-a2b3-4e16-aa8b-0ad0de5f44d9;04a8c19e-96a4-4570-b946-befd5bedca0e
+```
+
+New query format sample:
+```
+[
+    {
+        "type": "SecurityGroup",
+        "sources":
+        [
+            "a167b6c1-a2b3-4e16-aa8b-0ad0de5f44d9",
+            "04a8c19e-96a4-4570-b946-befd5bedca0e"
+        ]
+    }
+]
+```
+
+A powershell script has been added to help convert all existing SecurityGroup jobs to the new format.
+Script can be found here [Set-UpdateSecurityGroupQuery.ps1](
+Service\GroupMembershipManagement\Hosts\SecurityGroup\Scripts\Set-UpdateSecurityGroupQuery.ps1).
+
+### - Type field has been removed.
+
 ## 10/27/2021
 ## GMM now uses an application secret instead of a certificate 
 

@@ -75,7 +75,8 @@ If you would like to add additional environments, follow these steps:
             dependsOn: Build_Functions
             stageName: 'NonProd_int'
             functionApps:
-            - name: 'GraphUpdater'                        
+            - name: 'GraphUpdater'
+            - name: 'MembershipAggregator'
             - name: 'SecurityGroup'
             - name: 'AzureTableBackup'
             - name: 'AzureUserReader'
@@ -98,7 +99,11 @@ If you would like to add additional environments, follow these steps:
         * Change the name to `parameters.<your-new-environment-name>.json`
 
 
-Note: Make sure GraphUpdater is the first function deployed as SecurityGroup function has a dependency on that.
+Note: The order in which some of the functions are deployed is really important, make sure these functions are defined in your YAML in this order:
+- GraphUpdater
+- MembershipAggregator
+- SecurityGroup
+
 
 ### Remove existing environments
 If you would like to remove environments, follow these steps:
@@ -116,6 +121,7 @@ If you would like to remove environments, follow these steps:
             stageName: 'NonProd_int'
             functionApps:
             - name: 'GraphUpdater'
+            - name: 'MembershipAggregator'
             - name: 'SecurityGroup'
             - name: 'AzureTableBackup'
             - name: 'AzureUserReader'
@@ -404,22 +410,24 @@ Once your application is created we need to grant the requested permissions to u
 
 Once the pipeline has completed building and deploying GMM code and resources to your Azure resource groups, we need to make some final configuration changes.
 
-### Grant SecurityGroup, GraphUpdater function access to storage account
+### Grant SecurityGroup, MembershipAggregator, GraphUpdater function access to storage account
 
 SecurityGroup and GraphUpdater need MSI access to the storage account where the membership blobs are going to be temporary stored.
 
-Once your Function Apps:  
-- `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup` 
+Once your Function Apps:
+- `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup`
+- `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-MembershipAggregator`
 - `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-GraphUpdater`
 
 have been created we need to grant them access to the storage account containers.
-    
+
     By default GMM uses the same account that was automatically created to store the sync job's information.
     The naming convention is jobs<environmentAbbreviation><randomId>, the exact name can be found in the data key vault secrets under 'jobsStorageAccountName'.
 
     StorageAccountName:  jobs<environmentAbbreviation><randomId>
-    FunctionAppNames: 
+    FunctionAppNames:
     <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup
+    <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-MembershipAggregator
     <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-GraphUpdater
 
     1. . ./Set-StorageAccountContainerManagedIdentityRoles.ps1
@@ -429,7 +437,7 @@ have been created we need to grant them access to the storage account containers
                                                        -FunctionAppName "<FunctionAppName>" `
                                                        -Verbose
 
-    Run the script for each function app name, in this case we need to run the script twice once for SecurityGroup and once for GraphUpdater functions.
+    Run the script for each function app name, SecurityGroup, MembershipAggregator and GraphUpdater.
 ### Access to App Configuration
 
 Grant all the functions access to the AppConfiguration by running the following script:
@@ -452,7 +460,6 @@ A synchronization job must have the following properties populated:
 - PartitionKey
 - RowKey
 - Requestor
-- Type
 - TargetOfficeGroupId
 - Status
 - LastRunTime
@@ -477,11 +484,6 @@ Unique key of the synchronization job.
 Email address of the person who requested the synchronization job.
 - DataType: string
 - Format: Email address
-
-### Type
-Type of synchronization job.
-- DataType: string
-- Valid value(s): SecurityGroup
 
 ### TargetOfficeGroupId
 Azure Object Id of destination group.
@@ -528,9 +530,28 @@ The email notification will be sent to the recipients defined in the 'SyncDisabl
 To continue processing the job increase the threshold value or disable the threshold check by setting it to 0 (zero).
 - DataType: int
 
+### ThresholdViolations
+Indicates how many times the threshold has been exceeded.
+It gets reset to 0 once the job syncs successfully.
 
+### Powershell script to create SecurityGroup jobs
 A PowerShell script [New-GmmSecurityGroupSyncJob.ps1](/Service/GroupMembershipManagement/Hosts/SecurityGroup/Scripts/New-GmmSecurityGroupSyncJob.ps1) is provided to help you create the synchronization jobs.
 
+The Query field requires a JSON object that must follow this format:
+
+```
+[
+    {
+        "type": "SecurityGroup",
+        "sources":
+        [
+            "id 1",
+            "id 2",
+            "id n"
+        ]
+    }
+]
+```
 The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGroup\Scripts folder.
 
     1. . ./New-GmmSecurityGroupSyncJob.ps1
@@ -539,17 +560,13 @@ The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGrou
 							-EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
 							-Requestor "<RequestorEmailAddress>" `
 							-TargetOfficeGroupId "<DestinationGroupObjectId>" `
-							-Query "<source group object id(s) (separated by ';')>" `
+							-Query "<JSON string>" `
 							-Period <in hours, integer only> `
 							-ThresholdPercentageForAdditions <integer only> `
 							-ThresholdPercentageForRemovals <integer only> `
 							-Verbose
 
 You can also use Microsoft Azure Storage Explorer to add, edit or delete synchronization jobs. see [Get started with Storage Explorer](https://docs.microsoft.com/en-us/azure/vs-azure-tools-storage-manage-with-storage-explorer?tabs=windows).
-
-### ThresholdViolations
-Indicates how many times the threshold has been exceeded.
-It gets reset to 0 once the job syncs successfully.
 
 ### Adding Graph application as an owner to GMM managed destination group
 

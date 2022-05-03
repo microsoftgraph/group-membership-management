@@ -48,9 +48,9 @@ namespace Hosts.SecurityGroup
         private AsyncRetryPolicy _graphRetryPolicy;
         private const string EmailSubject = "EmailSubject";
 
-        public AzureADGroup[] ReadSourceGroups(SyncJob syncJob)
+        public AzureADGroup[] ReadSourceGroups(string ids)
         {
-            return syncJob.Query.Split(';').Select(x => Guid.TryParse(x, out var parsed) ? parsed : Guid.Empty)
+            return ids.Split(';').Select(x => Guid.TryParse(x, out var parsed) ? parsed : Guid.Empty)
                                            .Where(x => x != Guid.Empty)
                                            .Select(x => new AzureADGroup { ObjectId = x }).ToArray();
         }
@@ -90,7 +90,7 @@ namespace Hosts.SecurityGroup
             return result;
         }
 
-        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<AzureADUser> allusers)
+        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<AzureADUser> allusers, int currentPart)
         {
             var runId = syncJob.RunId.GetValueOrDefault();
             var groupMembership = new GroupMembership
@@ -104,7 +104,7 @@ namespace Hosts.SecurityGroup
             };
 
             var timeStamp = syncJob.Timestamp.ToString("MMddyyyy-HHmmss");
-            var fileName = $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_{syncJob.Type}.json";
+            var fileName = $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_SecurityGroup_{currentPart}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
 
             return fileName;

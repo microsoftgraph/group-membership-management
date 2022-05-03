@@ -4,7 +4,6 @@ using Entities;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -28,9 +27,8 @@ namespace Hosts.SecurityGroup
         }
 
         [FunctionName(nameof(StarterFunction))]
-        public async Task Run([ServiceBusTrigger("%serviceBusSyncJobTopic%", "SecurityGroup", Connection = "serviceBusTopicConnection")] Message message,
-                              [DurableClient] IDurableOrchestrationClient starter,
-                              ILogger log)
+        public async Task RunAsync([ServiceBusTrigger("%serviceBusSyncJobTopic%", "SecurityGroup", Connection = "serviceBusTopicConnection")] Message message,
+                              [DurableClient] IDurableOrchestrationClient starter)
         {
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));
             _log.SyncJobProperties = syncJob.ToDictionary();
@@ -44,7 +42,14 @@ namespace Hosts.SecurityGroup
             }
             else
             {
-                var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), syncJob);
+                var request = new OrchestratorRequest
+                {
+                    SyncJob = syncJob,
+                    CurrentPart = message.UserProperties.ContainsKey("CurrentPart") ? Convert.ToInt32(message.UserProperties["CurrentPart"]) : 1,
+                    TotalParts = message.UserProperties.ContainsKey("TotalParts") ? Convert.ToInt32(message.UserProperties["TotalParts"]) : 1,
+                };
+
+                var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
                 await _log.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job RowKey: {syncJob.RowKey} ", RunId = syncJob.RunId });
             }
 
