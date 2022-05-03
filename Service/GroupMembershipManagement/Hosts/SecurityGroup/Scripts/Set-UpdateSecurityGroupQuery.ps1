@@ -33,20 +33,20 @@ function Set-UpdateSecurityGroupQuery {
             continue;
         }
 
-        $newQuery = "[{ 'type': 'SecurityGroup', 'sources': ["
+        $newQuery = '[{ "type": "SecurityGroup", "sources": ['
 
         if (![string]::IsNullOrEmpty($currentQuery))
         {
             $groupIds = $currentQuery.Split(";")
             for ($i=0; $i -lt $groupIds.Length; $i++)
             {
-                $groupIds[$i] = "'$($groupIds[$i])'"
+                $groupIds[$i] = """$($groupIds[$i])"""
             }
 
             $newQuery += [string]::Join(",", $groupIds)
         }
 
-        $newQuery += "]}]"
+        $newQuery += ']}]'
 
         $job.Query = $newQuery
         $job | Update-AzTableRow -table $cloudTable
