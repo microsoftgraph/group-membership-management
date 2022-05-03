@@ -1,0 +1,124 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+using Entities;
+using Hosts.MembershipAggregator;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Moq;
+using Newtonsoft.Json;
+using Repositories.Contracts;
+using System;
+using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
+
+namespace Services.Tests
+{
+    [TestClass]
+    public class StarterFunctionTests
+    {
+        private SyncJob _syncJob;
+        private string _instanceId;
+        private Mock<ILoggingRepository> _loggingRepository;
+        private Mock<IDurableOrchestrationClient> _durableClient;
+
+        [TestInitialize]
+        public void SetupTest()
+        {
+            _instanceId = "1234567890";
+            _loggingRepository = new Mock<ILoggingRepository>();
+            _durableClient = new Mock<IDurableOrchestrationClient>();
+            _syncJob = new SyncJob
+            {
+                PartitionKey = "00-00-0000",
+                RowKey = Guid.NewGuid().ToString(),
+                TargetOfficeGroupId = Guid.NewGuid(),
+                ThresholdPercentageForAdditions = 80,
+                ThresholdPercentageForRemovals = 20,
+                LastRunTime = DateTime.UtcNow.AddDays(-1),
+                Requestor = "user@domail.com",
+                RunId = Guid.NewGuid(),
+                ThresholdViolations = 0
+            };
+
+            _durableClient
+                  .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<MembershipAggregatorHttpRequest>()))
+                  .ReturnsAsync(_instanceId);
+        }
+
+        [TestMethod]
+        public async Task ProcessEmptyRequestTestAsync()
+        {
+            var starterFunction = new StarterFunction(_loggingRepository.Object);
+            var request = new HttpRequestMessage
+            {
+                Method = HttpMethod.Post
+            };
+
+            var response = await starterFunction.RunAsync(request, _durableClient.Object);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.AreEqual("Request content is empty.", responseContent);
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                                It.Is<LogMessage>(m => m.Message.StartsWith("MembershipAggregator instance id")),
+                                                It.IsAny<string>(),
+                                                It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task ProcessInvalidRequestTestAsync()
+        {
+            var starterFunction = new StarterFunction(_loggingRepository.Object);
+            var content = new MembershipHttpRequest
+            {
+                FilePath = null,
+                SyncJob = _syncJob
+            };
+
+            var request = new HttpRequestMessage
+            {
+                Content = new StringContent(JsonConvert.SerializeObject(content)),
+            };
+
+            var response = await starterFunction.RunAsync(request, _durableClient.Object);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.AreEqual("Request is not valid.", responseContent);
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                    It.Is<LogMessage>(m => m.Message.StartsWith("MembershipAggregator instance id")),
+                                    It.IsAny<string>(),
+                                    It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task ProcessValidRequestTestAsync()
+        {
+            var starterFunction = new StarterFunction(_loggingRepository.Object);
+            var content = new MembershipAggregatorHttpRequest
+            {
+                FilePath = "file/path/name.json",
+                SyncJob = _syncJob,
+                PartNumber = 1,
+                PartsCount = 1
+            };
+
+            var request = new HttpRequestMessage
+            {
+                Method = HttpMethod.Post,
+                Content = new StringContent(JsonConvert.SerializeObject(content)),
+            };
+
+            var response = await starterFunction.RunAsync(request, _durableClient.Object);
+
+            Assert.AreEqual(HttpStatusCode.NoContent, response.StatusCode);
+            Assert.IsNull(response.Content);
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                    It.Is<LogMessage>(m => m.Message.StartsWith("MembershipAggregator instance id")),
+                                    It.IsAny<string>(),
+                                    It.IsAny<string>()), Times.Once());
+        }
+    }
+}

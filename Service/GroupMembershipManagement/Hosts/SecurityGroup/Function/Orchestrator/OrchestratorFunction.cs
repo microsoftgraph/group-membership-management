@@ -90,7 +90,7 @@ namespace Hosts.SecurityGroup
                                                                             new UsersSenderRequest { SyncJob = syncJob, RunId = runId, Users = distinctUsers, CurrentPart = mainRequest.CurrentPart });
                     if (!string.IsNullOrWhiteSpace(filePath))
                     {
-                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = "Calling GraphUpdater", RunId = runId });
+                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = "Calling MembershipAggregator", RunId = runId });
                         var content = new MembershipAggregatorHttpRequest
                         {
                             FilePath = filePath,
@@ -106,7 +106,7 @@ namespace Hosts.SecurityGroup
                                                                 httpRetryOptions: new HttpRetryOptions(TimeSpan.FromSeconds(30), 3));
 
                         var response = await context.CallHttpAsync(request);
-                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"GraphUpdater response Code: {response.StatusCode}, Content: {response.Content}", RunId = runId });
+                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"MembershipAggregator response Code: {response.StatusCode}, Content: {response.Content}", RunId = runId });
 
                         if (response.StatusCode != HttpStatusCode.NoContent)
                         {

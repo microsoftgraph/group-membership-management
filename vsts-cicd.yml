@@ -55,6 +55,9 @@ stages:
     - function:
         name: 'JobScheduler'
         coverageThreshold: 65
+    - function:
+        name: 'MembershipAggregator'
+        coverageThreshold: 86
 
 - template: yaml/deploy-pipeline.yml
   parameters:
@@ -69,6 +72,7 @@ stages:
     functionApps:
     - name: 'NonProdService'
     - name: 'GraphUpdater'
+    - name: 'MembershipAggregator'
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
     - name: 'AzureUserReader'
@@ -94,6 +98,7 @@ stages:
     functionApps:
     - name: 'NonProdService'
     - name: 'GraphUpdater'
+    - name: 'MembershipAggregator'
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
     - name: 'AzureUserReader'
@@ -119,6 +124,7 @@ stages:
     stageName: 'Prod_production'
     functionApps:
     - name: 'GraphUpdater'
+    - name: 'MembershipAggregator'
     - name: 'SecurityGroup'
     - name: 'AzureTableBackup'
     - name: 'AzureUserReader'

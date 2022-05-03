@@ -1,0 +1,16 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+    "AzureWebJobsStorage": "",
+    "appConfigurationEndpoint": "",
+    "logAnalyticsCustomerId": "",
+    "logAnalyticsPrimarySharedKey": "",
+    "jobsStorageAccountConnectionString": "",
+    "jobsTableName": "",
+    "graphUpdaterUrl": "",
+    "graphUpdaterFunctionKey": "",
+    "membershipStorageAccountName": "",
+    "membershipContainerName": ""
+  }
+}

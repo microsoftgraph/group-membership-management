@@ -27,11 +27,6 @@ namespace Entities
         public string Requestor { get; set; }
 
         /// <summary>
-        /// Synchronization type
-        /// </summary>
-        public string Type { get; set; }
-
-        /// <summary>
         /// Office group AD id
         /// </summary>
         public Guid TargetOfficeGroupId { get; set; }
