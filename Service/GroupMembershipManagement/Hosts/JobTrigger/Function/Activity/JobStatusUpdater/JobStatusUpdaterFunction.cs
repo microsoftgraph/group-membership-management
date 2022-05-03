@@ -3,7 +3,6 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
@@ -22,7 +21,7 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName(nameof(JobStatusUpdaterFunction))]
-        public async Task UpdateJobStatus([ActivityTrigger] JobStatusUpdaterRequest request, ILogger log)
+        public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
             if (request.SyncJob != null)
             {

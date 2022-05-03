@@ -20,7 +20,7 @@ namespace Entities
 
         public Dictionary<string, string> ToDictionary()
         {
-            var properties = DictionaryHelper.ToDictionary(this, new DictionaryHelper.Options { UseCamelCase = true });
+            var properties = DictionaryHelper.ToDictionary(this, new DictionaryHelper.Options { UseCamelCase = false });
             foreach(var property in DynamicProperties)
             {
                 properties[property.Key] = property.Value;
@@ -28,7 +28,5 @@ namespace Entities
 
             return properties;
         }
-
-
     }
 }

@@ -70,7 +70,6 @@ namespace Tests.Repositories
                     StartDate = startDateBase ?? DateTime.UtcNow.AddDays(-1),
                     Status = SyncStatus.Idle.ToString(),
                     TargetOfficeGroupId = Guid.NewGuid(),
-                    Type = syncType,
                     LastRunTime = lastRunTime ?? DateTime.SpecifyKind(new DateTime(), DateTimeKind.Utc)
                 };
 

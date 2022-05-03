@@ -13,6 +13,8 @@ namespace Entities
         DestinationGroupNotFound = 6,
         NotOwnerOfDestinationGroup = 7,
         SecurityGroupNotFound = 8,
-        FilePathNotValid = 9
+        FilePathNotValid = 9,
+        QueryNotValid = 10,
+        FileNotFound = 11
     }
 }

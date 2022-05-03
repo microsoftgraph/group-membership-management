@@ -3,7 +3,6 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
@@ -23,7 +22,8 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName(nameof(SyncJobsReaderFunction))]
-        public async Task<List<SyncJob>> GetSyncJobs([ActivityTrigger] ILogger log)        {
+        public async Task<List<SyncJob>> GetSyncJobsAsync([ActivityTrigger] object obj)
+        {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SyncJobsReaderFunction)} function started" });
             var jobs = await _jobTriggerService.GetSyncJobsAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SyncJobsReaderFunction)} function completed" });

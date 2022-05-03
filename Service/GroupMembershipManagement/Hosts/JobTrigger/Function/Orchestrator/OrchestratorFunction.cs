@@ -3,9 +3,7 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
-using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -24,9 +22,7 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
-        public async Task RunOrchestrator(
-            [OrchestrationTrigger] IDurableOrchestrationContext context,
-            ILogger log)
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started" });
             var syncJobs = await context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), null);

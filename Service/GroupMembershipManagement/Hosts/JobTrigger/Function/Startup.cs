@@ -52,10 +52,7 @@ namespace Hosts.JobTrigger
         private bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)
         {
             var checkParse = bool.TryParse(configuration[settingName], out bool value);
-
-            if (checkParse)
-                return value;
-            return defaultValue;
+            return checkParse ? value : defaultValue;
         }
     }
 }

@@ -3,7 +3,6 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
@@ -22,7 +21,7 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName(nameof(EmailSenderFunction))]
-        public async Task SendEmail([ActivityTrigger] SyncJobGroup group, ILogger log)
+        public async Task SendEmailAsync([ActivityTrigger] SyncJobGroup group)
         {
             if (group != null)
             {

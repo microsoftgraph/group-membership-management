@@ -64,8 +64,8 @@ namespace Services.Tests
             var organizationJobCount = 5;
             var securityGroupJobCount = 3;
 
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(organizationJobCount, Organization));
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(securityGroupJobCount, SecurityGroup));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(organizationJobCount, Organization));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(securityGroupJobCount, SecurityGroup));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
@@ -84,8 +84,8 @@ namespace Services.Tests
             var enabledJobs = 5;
             var disabledJobs = 3;
 
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(enabledJobs, Organization, enabled: true));
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(disabledJobs, Organization, enabled: false));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(enabledJobs, Organization));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(disabledJobs, Organization));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
@@ -102,8 +102,8 @@ namespace Services.Tests
             var enabledJobs = 5;
             var disabledJobs = 3;
 
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(enabledJobs, Organization, enabled: true));
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(disabledJobs, Organization, enabled: false));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(enabledJobs, Organization));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(disabledJobs, Organization));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
 
@@ -120,8 +120,8 @@ namespace Services.Tests
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
 
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(validStartDateJobs, Organization, enabled: true));
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(futureStartDateJobs, Organization, enabled: true, startDateBase: DateTime.UtcNow.AddDays(5)));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(validStartDateJobs, Organization));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(futureStartDateJobs, Organization, startDateBase: DateTime.UtcNow.AddDays(5)));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
@@ -139,8 +139,8 @@ namespace Services.Tests
             var jobsWithValidPeriods = 5;
             var jobsWithInvalidPeriods = 3;
 
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(jobsWithValidPeriods, Organization, enabled: true));
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(jobsWithInvalidPeriods, Organization, enabled: true, lastRunTime: DateTime.UtcNow.AddMinutes(30)));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsWithValidPeriods, Organization));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsWithInvalidPeriods, Organization, lastRunTime: DateTime.UtcNow.AddMinutes(30)));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
@@ -157,7 +157,7 @@ namespace Services.Tests
         {
             var jobs = 2;
 
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(jobs, Organization, enabled: true));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobs, Organization));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
@@ -175,7 +175,7 @@ namespace Services.Tests
         {
             var jobs = 2;
 
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(jobs, Organization, enabled: true));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobs, Organization));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
 
             foreach (var job in _syncJobRepository.Jobs)
@@ -191,7 +191,7 @@ namespace Services.Tests
         {
             var jobs = 2;
 
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(jobs, Organization, enabled: true));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobs, Organization));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
 
             _jobTriggerConfig.GMMHasGroupReadWriteAllPermissions = true;
@@ -212,7 +212,7 @@ namespace Services.Tests
             var MessageIdTwo = "";
 
             var securityGroupJobCount = 1;
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(securityGroupJobCount, SecurityGroup));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(securityGroupJobCount, SecurityGroup));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
@@ -259,8 +259,8 @@ namespace Services.Tests
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
 
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(validStartDateJobs, Organization, enabled: true, lastRunTime: DateTime.FromFileTimeUtc(0)));
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(futureStartDateJobs, Organization, enabled: true, startDateBase: DateTime.UtcNow.AddDays(5), lastRunTime: DateTime.FromFileTimeUtc(0)));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(validStartDateJobs, Organization, lastRunTime: DateTime.FromFileTimeUtc(0)));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(futureStartDateJobs, Organization, startDateBase: DateTime.UtcNow.AddDays(5), lastRunTime: DateTime.FromFileTimeUtc(0)));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
@@ -296,8 +296,8 @@ namespace Services.Tests
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
 
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(validStartDateJobs, Organization, enabled: true));
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(futureStartDateJobs, Organization, enabled: true, startDateBase: DateTime.UtcNow.AddDays(5)));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(validStartDateJobs, Organization));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(futureStartDateJobs, Organization, startDateBase: DateTime.UtcNow.AddDays(5)));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
@@ -332,8 +332,8 @@ namespace Services.Tests
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
 
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(validStartDateJobs, Organization, enabled: true));
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(futureStartDateJobs, Organization, enabled: true, startDateBase: DateTime.UtcNow.AddDays(5)));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(validStartDateJobs, Organization));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(futureStartDateJobs, Organization, startDateBase: DateTime.UtcNow.AddDays(5)));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
@@ -367,8 +367,8 @@ namespace Services.Tests
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
 
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(validStartDateJobs, Organization, enabled: true));
-            _syncJobRepository.Jobs.AddRange(CreateSampleSyncJobs(futureStartDateJobs, Organization, enabled: true, startDateBase: DateTime.UtcNow.AddDays(5)));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(validStartDateJobs, Organization));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(futureStartDateJobs, Organization, startDateBase: DateTime.UtcNow.AddDays(5)));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
@@ -380,32 +380,6 @@ namespace Services.Tests
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
-        }
-
-        private List<SyncJob> CreateSampleSyncJobs(int numberOfJobs, string syncType, bool enabled = true, int period = 1, DateTime? startDateBase = null, DateTime? lastRunTime = null)
-        {
-            var jobs = new List<SyncJob>();
-
-            for (int i = 0; i < numberOfJobs; i++)
-            {
-                var job = new SyncJob
-                {
-                    Requestor = $"requestor_{i}@email.com",
-                    PartitionKey = DateTime.UtcNow.ToString("MMddyyyy"),
-                    RowKey = Guid.NewGuid().ToString(),
-                    Period = period,
-                    Query = $"select * from users where id = '{i}'",
-                    StartDate = startDateBase ?? DateTime.UtcNow.AddDays(-1),
-                    Status = SyncStatus.Idle.ToString(),
-                    TargetOfficeGroupId = Guid.NewGuid(),
-                    Type = syncType,
-                    LastRunTime = lastRunTime ?? DateTime.FromFileTimeUtc(0)
-                };
-
-                jobs.Add(job);
-            }
-
-            return jobs;
         }
 
         private class MockEmail<T> : IEmailSenderRecipient

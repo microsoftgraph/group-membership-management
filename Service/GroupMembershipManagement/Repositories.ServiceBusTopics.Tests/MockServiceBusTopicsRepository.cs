@@ -2,8 +2,10 @@
 // Licensed under the MIT license.
 using Entities;
 using Microsoft.Azure.ServiceBus;
+using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -16,15 +18,23 @@ namespace Tests.Repositories
 
         public async Task AddMessageAsync(SyncJob job)
         {
-            var message = CreateMessage(job);
-            var syncType = message.UserProperties["Type"].ToString();
-            if (Subscriptions.ContainsKey(syncType))
+            var allQueries = JArray.Parse(job.Query);
+            var queryTypes = allQueries.SelectTokens("$..type")
+                                    .Select(x => x.Value<string>())
+                                    .Distinct()
+                                    .ToList();
+
+            foreach (var queryType in queryTypes)
             {
-                Subscriptions[syncType].Add(message);
-            }
-            else
-            {
-                Subscriptions.Add(syncType, new List<Message> { message });
+                var message = CreateMessage(job);
+                if (Subscriptions.ContainsKey(queryType))
+                {
+                    Subscriptions[queryType].Add(message);
+                }
+                else
+                {
+                    Subscriptions.Add(queryType, new List<Message> { message });
+                }
             }
 
             await Task.CompletedTask;
@@ -38,7 +48,6 @@ namespace Tests.Repositories
                 Body = Encoding.UTF8.GetBytes(body)
             };
 
-            message.UserProperties.Add("Type", job.Type);
             message.MessageId = $"{job.PartitionKey}_{job.RowKey}_{job.RunId}";
 
             return message;
