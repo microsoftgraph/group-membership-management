@@ -71,6 +71,13 @@ namespace Hosts.MembershipAggregator
                     await context.CallActivityAsync(nameof(FileUploaderFunction), uploadRequest);
                     await proxy.Delete();
 
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                                                    new LogMessage
+                                                    {
+                                                        Message = $"Uploaded membership file {filePath} with {allMembers.Count} unique members",
+                                                        DynamicProperties = syncJobProperties
+                                                    });
+
                     var updateRequestContent = new MembershipHttpRequest { FilePath = filePath, SyncJob = request.SyncJob };
                     var updateRequest = new DurableHttpRequest(HttpMethod.Post,
                                                                 new Uri(_configuration["graphUpdaterUrl"]),
