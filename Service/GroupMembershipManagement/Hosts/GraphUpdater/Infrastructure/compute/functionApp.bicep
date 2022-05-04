@@ -64,11 +64,6 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       }      
     ]
   }
-  dependsOn: [
-    functionApp
-  ]
 }
 
 output msi string = functionApp.identity.principalId
-output hostName string = 'https://${functionApp.properties.defaultHostName}'
-output adfKey string = listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
