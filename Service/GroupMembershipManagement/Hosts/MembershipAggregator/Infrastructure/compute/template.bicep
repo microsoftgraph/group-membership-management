@@ -360,6 +360,35 @@ module functionAppSlotTemplate_MembershipAggregator 'functionAppSlot.bicep' = {
   ]
 }
 
+module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
+  name: 'dataKeyVaultPoliciesTemplate'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    name: dataKeyVaultName
+    policies: [
+      {
+        objectId: functionAppTemplate_MembershipAggregator.outputs.msi
+        permissions: [
+          'get'
+          'list'
+        ]
+      }
+      {
+        objectId: functionAppSlotTemplate_MembershipAggregator.outputs.msi
+        permissions: [
+          'get'
+          'list'
+        ]
+      }
+    ]
+    tenantId: tenantId
+  }
+  dependsOn: [
+    functionAppTemplate_MembershipAggregator
+    functionAppSlotTemplate_MembershipAggregator
+  ]
+}
+
 module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   name: 'PrereqsKeyVaultPoliciesTemplate'
   scope: resourceGroup(prereqsKeyVaultResourceGroup)

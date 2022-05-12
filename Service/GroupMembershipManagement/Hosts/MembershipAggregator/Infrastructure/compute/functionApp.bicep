@@ -47,26 +47,8 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
   }
 }
 
-module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'keyVaultPoliciesTemplate'
-  scope: resourceGroup(dataKeyVaultResourceGroup)
-  params: {
-    name: dataKeyVaultName
-    policies: [
-      {
-        objectId: functionApp.identity.principalId
-        permissions: [
-          'get'
-          'list'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-}
-
 module secretsTemplate 'keyVaultSecrets.bicep' = {
-  name: 'dataSecretsTemplate-MembershipAggregator'
+  name: 'secretsTemplate'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     keyVaultName: dataKeyVaultName
@@ -85,10 +67,8 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       }
     ]
   }
-  dependsOn: [
-    keyVaultPoliciesTemplate
-  ]
 }
+
 
 resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
   name: 'slotConfigNames'
