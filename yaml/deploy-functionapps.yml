@@ -41,13 +41,15 @@ steps:
   displayName: 'Wait for ARM resources'
 
 - task: AzureFunctionApp@1
-  displayName: 'deploy ${{ parameters.name }} function app'
+  displayName: 'deploy ${{ parameters.name }} function app (staging)'
   inputs:
     appType: 'functionapp'
     azureSubscription: ${{parameters.serviceConnection}}
     appName: '${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}-${{ parameters.name }}'
     Package: '${{ parameters.root }}/function_packages/${{ parameters.name }}.zip'
     deploymentMethod: 'runFromPackage'
+    deployToSlotOrASE: true
+    slotName: 'staging'
     resourceGroupName: '${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}'
 
 # This sets the "Enforce Scale Out Limit" in the function app configuration. This is apparently the only way to do it automatically. ARM templates don't support it.
