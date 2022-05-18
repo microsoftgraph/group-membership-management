@@ -469,6 +469,8 @@ A synchronization job must have the following properties populated:
 - ThresholdPercentageForAdditions
 - ThresholdPercentageForRemovals
 - ThresholdViolations
+- IsDryRunEnabled
+- DryRunTimeStamp
 
 ### PartitionKey
 Partition key, the value added here represents the date the job was added to the table.
@@ -533,6 +535,13 @@ To continue processing the job increase the threshold value or disable the thres
 ### ThresholdViolations
 Indicates how many times the threshold has been exceeded.
 It gets reset to 0 once the job syncs successfully.
+
+### IsDryRunEnabled
+Indicates if the job will run in DryRun (read-only) mode making no changes to the destination group.
+### DryRunTimeStamp
+Last date time the synchronization job ran in DryRun mode. Set to 1601-01-01T00:00:00.000Z for new synchronization jobs.
+- DataType: DateTime
+- Format: YYYY-MM-DDThh:mm:ss.zzzZ
 
 ### Powershell script to create SecurityGroup jobs
 A PowerShell script [New-GmmSecurityGroupSyncJob.ps1](/Service/GroupMembershipManagement/Hosts/SecurityGroup/Scripts/New-GmmSecurityGroupSyncJob.ps1) is provided to help you create the synchronization jobs.

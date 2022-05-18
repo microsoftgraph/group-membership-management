@@ -3,7 +3,6 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Repositories.Contracts;
 using System.Collections.Generic;
@@ -23,7 +22,7 @@ namespace Hosts.SecurityGroup
 		}
 
 		[FunctionName(nameof(SubsequentUsersReaderFunction))]
-		public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetUsersAsync([ActivityTrigger] SubsequentUsersReaderRequest request, ILogger log)
+		public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetUsersAsync([ActivityTrigger] SubsequentUsersReaderRequest request)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentUsersReaderFunction)} function started", RunId = request.RunId });
 			var response = await _calculator.GetNextUsersPageAsync(request.NextPageUrl, request.GroupMembersPage);

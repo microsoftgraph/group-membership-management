@@ -28,6 +28,12 @@ A powershell script has been added to help convert all existing SecurityGroup jo
 Script can be found here [Set-UpdateSecurityGroupQuery.ps1](
 Service\GroupMembershipManagement\Hosts\SecurityGroup\Scripts\Set-UpdateSecurityGroupQuery.ps1).
 
+    1. . ./Set-UpdateSecurityGroupQuery.ps1
+    2. Set-UpdateSecurityGroupQuery	-SubscriptionName "<SubscriptionName>" `
+                                    -SolutionAbbreviation "<SolutionAbbreviation>" `
+							        -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
+							        -Verbose
+
 ### - Type field has been removed.
 
 ## 10/27/2021

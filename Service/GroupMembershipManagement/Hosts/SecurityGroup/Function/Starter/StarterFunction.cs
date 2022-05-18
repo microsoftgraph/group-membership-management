@@ -15,45 +15,47 @@ namespace Hosts.SecurityGroup
 {
     public class StarterFunction
     {
-        private readonly ILoggingRepository _log;
-        private readonly ISyncJobRepository _syncJob;
+        private readonly ILoggingRepository _loggingRepository;
+        private readonly ISyncJobRepository _syncJobRepository;
         private readonly bool _isSecurityGroupDryRunEnabled;
 
-        public StarterFunction(ILoggingRepository loggingRepository, ISyncJobRepository syncJob, IDryRunValue dryRun)
+        public StarterFunction(ILoggingRepository loggingRepository, ISyncJobRepository syncJobRepository, IDryRunValue dryRun)
         {
-            _log = loggingRepository;
-            _syncJob = syncJob;
+            _loggingRepository = loggingRepository;
+            _syncJobRepository = syncJobRepository;
             _isSecurityGroupDryRunEnabled = dryRun.DryRunEnabled;
         }
 
         [FunctionName(nameof(StarterFunction))]
-        public async Task RunAsync([ServiceBusTrigger("%serviceBusSyncJobTopic%", "SecurityGroup", Connection = "serviceBusTopicConnection")] Message message,
-                              [DurableClient] IDurableOrchestrationClient starter)
+        public async Task RunAsync(
+            [ServiceBusTrigger("%serviceBusSyncJobTopic%", "SecurityGroup", Connection = "serviceBusTopicConnection")] Message message,
+            [DurableClient] IDurableOrchestrationClient starter)
         {
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));
-            _log.SyncJobProperties = syncJob.ToDictionary();
+            _loggingRepository.SyncJobProperties = syncJob.ToDictionary();
 
-            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = syncJob.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = syncJob.RunId });
 
             if ((DateTime.UtcNow - syncJob.DryRunTimeStamp) < TimeSpan.FromHours(syncJob.Period) && _isSecurityGroupDryRunEnabled == true)
             {
-                await _syncJob.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Idle);
-                await _log.LogMessageAsync(new LogMessage { Message = $"Setting the status of the sync back to Idle as the sync has run within the previous DryRunTimeStamp period", RunId = syncJob.RunId });
+                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Idle);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Setting the status of the sync back to Idle as the sync has run within the previous DryRunTimeStamp period", RunId = syncJob.RunId });
             }
             else
             {
                 var request = new OrchestratorRequest
                 {
                     SyncJob = syncJob,
-                    CurrentPart = message.UserProperties.ContainsKey("CurrentPart") ? Convert.ToInt32(message.UserProperties["CurrentPart"]) : 1,
-                    TotalParts = message.UserProperties.ContainsKey("TotalParts") ? Convert.ToInt32(message.UserProperties["TotalParts"]) : 1,
+                    CurrentPart = message.UserProperties.ContainsKey("CurrentPart") ? Convert.ToInt32(message.UserProperties["CurrentPart"]) : 0,
+                    TotalParts = message.UserProperties.ContainsKey("TotalParts") ? Convert.ToInt32(message.UserProperties["TotalParts"]) : 0,
+                    IsDestinationPart = message.UserProperties.ContainsKey("IsDestinationPart") ? Convert.ToBoolean(message.UserProperties["IsDestinationPart"]) : false,
                 };
 
                 var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
-                await _log.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job RowKey: {syncJob.RowKey} ", RunId = syncJob.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job RowKey: {syncJob.RowKey} ", RunId = syncJob.RunId });
             }
 
-            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = syncJob.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = syncJob.RunId });
         }
     }
 }

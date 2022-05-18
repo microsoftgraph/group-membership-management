@@ -8,7 +8,7 @@ using System.Linq;
 namespace Entities.ServiceBus
 {
     [ExcludeFromCodeCoverage]
-    public class GroupMembership
+    public class GroupMembership : ICloneable
     {
         public AzureADGroup Destination { get; set; }
         public List<AzureADUser> SourceMembers { get; set; } = new List<AzureADUser>();
@@ -49,22 +49,21 @@ namespace Entities.ServiceBus
             return toReturn;
         }
 
-        public GroupMembership Clone(bool includeSourceMembers = false)
+        /// <summary>
+        /// Does a full deep clone
+        /// </summary>
+        /// <returns></returns>
+        public object Clone()
         {
-            var groupMembership = new GroupMembership
-            {
-                Destination = new AzureADGroup { ObjectId = this.Destination.ObjectId },
-                RunId = this.RunId,
-                SyncJobPartitionKey = this.SyncJobPartitionKey,
-                SyncJobRowKey = this.SyncJobRowKey,
-                MembershipObtainerDryRunEnabled = this.MembershipObtainerDryRunEnabled,
-                SourceMembers = new List<AzureADUser>()
-            };
-
-            if (includeSourceMembers)
-            {
-                groupMembership.SourceMembers.AddRange(this.SourceMembers);
-            }
+            var groupMembership = (GroupMembership)this.MemberwiseClone();
+            groupMembership.Destination = new AzureADGroup { ObjectId = this.Destination.ObjectId };
+            groupMembership.SyncJobPartitionKey = string.Copy(this.SyncJobPartitionKey);
+            groupMembership.SyncJobRowKey = string.Copy(this.SyncJobRowKey);
+            SourceMembers = this.SourceMembers.Select(x => new AzureADUser
+                                                            {
+                                                                ObjectId = x.ObjectId,
+                                                                MembershipAction = x.MembershipAction
+                                                            }).ToList();
 
             return groupMembership;
         }

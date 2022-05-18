@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -11,7 +12,7 @@ namespace Tests.Services
 
         public string GetQuery()
         {
-            var allParts = QueryParts.Select(x => $"{{'type':'{x.Type}','sources': [{string.Join(",", x.SourceIds)}]}}");
+            var allParts = QueryParts.Select(x => $"{{'type':'{x.Type}','sources': [{string.Join(",", x.SourceIds.Select(id => $"'{id}'"))}]}}");
             return $"[{string.Join(",", allParts)}]";
         }
 
@@ -19,13 +20,29 @@ namespace Tests.Services
         {
             return string.Join(";", QueryParts[partIndex].SourceIds);
         }
+
+        public static QuerySample GenerateQuerySample(string syncType, int numberOfParts = 2)
+        {
+            var sampleQuery = new QuerySample();
+            for (int i = 0; i < numberOfParts; i++)
+            {
+                sampleQuery.QueryParts.Add(new QueryPart
+                {
+                    Index = i,
+                    Type = syncType,
+                    SourceIds = Enumerable.Range(0, 3).Select(x => Guid.NewGuid()).ToList()
+                });
+
+            }
+
+            return sampleQuery;
+        }
     }
 
     public class QueryPart
     {
         public int Index { get; set; }
         public string Type { get; set; }
-        public string Query { get; }
-        public List<string> SourceIds { get; set; }
+        public List<Guid> SourceIds { get; set; }
     }
 }

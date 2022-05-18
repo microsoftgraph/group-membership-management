@@ -29,9 +29,9 @@ namespace Tests.FunctionApps
             var allUsers = new List<AzureADUser> { };
             var destinationGroup = Guid.NewGuid();
             var partIndex = 0;
-            var sampleQuery = GetQuerySample("SecurityGroup");
+            var sampleQuery = QuerySample.GenerateQuerySample("SecurityGroup");
             var groupsToUsers = sampleQuery.QueryParts[partIndex].SourceIds.ToDictionary(
-                                                                                x => Guid.Parse(x),
+                                                                                x => x,
                                                                                 x => Enumerable.Range(0, userCount)
                                                                                                 .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() }).ToList());
             var graphRepo = new MockGraphGroupRepository()
@@ -82,16 +82,16 @@ namespace Tests.FunctionApps
             var destinationGroup = Guid.NewGuid();
             var allUsers = new List<AzureADUser>();
             var partIndex = 0;
-            var sampleQuery = GetQuerySample("SecurityGroup");
+            var sampleQuery = QuerySample.GenerateQuerySample("SecurityGroup");
             var groupsToUsers = sampleQuery.QueryParts[partIndex].SourceIds.ToDictionary(
-                                                                                x => Guid.Parse(x),
+                                                                                x => x,
                                                                                 x => Enumerable.Range(0, userCount)
                                                                                                 .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() }).ToList());
 
             var mockGroups = new Dictionary<Guid, List<AzureADUser>>();
             for (int i = 0; i < userCount; i++)
             {
-                var currentGroup = Guid.Parse(sampleQuery.QueryParts[partIndex].SourceIds[i % sampleQuery.QueryParts[partIndex].SourceIds.Count]);
+                var currentGroup = sampleQuery.QueryParts[partIndex].SourceIds[i % sampleQuery.QueryParts[partIndex].SourceIds.Count];
                 var userToAdd = new AzureADUser { ObjectId = Guid.NewGuid() };
                 if (mockGroups.TryGetValue(currentGroup, out var users))
                 {
@@ -152,15 +152,15 @@ namespace Tests.FunctionApps
             var destinationGroup = Guid.NewGuid();
             var mockGroups = new Dictionary<Guid, List<AzureADUser>>();
             var partIndex = 0;
-            var sampleQuery = GetQuerySample("SecurityGroup");
+            var sampleQuery = QuerySample.GenerateQuerySample("SecurityGroup");
             var groupsToUsers = sampleQuery.QueryParts[partIndex].SourceIds.ToDictionary(
-                                                                                x => Guid.Parse(x),
+                                                                                x => x,
                                                                                 x => Enumerable.Range(0, userCount)
                                                                                                 .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() }).ToList());
 
             for (int i = 0; i < userCount; i++)
             {
-                var currentGroup = Guid.Parse(sampleQuery.QueryParts[partIndex].SourceIds[i % sampleQuery.QueryParts[partIndex].SourceIds.Count]);
+                var currentGroup = sampleQuery.QueryParts[partIndex].SourceIds[i % sampleQuery.QueryParts[partIndex].SourceIds.Count];
                 var userToAdd = new AzureADUser { ObjectId = Guid.NewGuid() };
                 if (mockGroups.TryGetValue(currentGroup, out var users))
                 {
@@ -252,7 +252,7 @@ namespace Tests.FunctionApps
 
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
-            var sampleQuery = GetQuerySample("SecurityGroup");
+            var sampleQuery = QuerySample.GenerateQuerySample("SecurityGroup");
             var testJob = new SyncJob
             {
                 RowKey = "row",
@@ -315,7 +315,7 @@ namespace Tests.FunctionApps
 
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
-            var sampleQuery = GetQuerySample("SecurityGroup");
+            var sampleQuery = QuerySample.GenerateQuerySample("SecurityGroup");
             var testJob = new SyncJob
             {
                 RowKey = "row",
@@ -378,7 +378,7 @@ namespace Tests.FunctionApps
 
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
-            var sampleQuery = GetQuerySample("SecurityGroup");
+            var sampleQuery = QuerySample.GenerateQuerySample("SecurityGroup");
             var testJob = new SyncJob
             {
                 RowKey = "row",
@@ -480,7 +480,7 @@ namespace Tests.FunctionApps
 
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
-            var sampleQuery = GetQuerySample("SecurityGroup");
+            var sampleQuery = QuerySample.GenerateQuerySample("SecurityGroup");
             var testJob = new SyncJob
             {
                 RowKey = "row",
@@ -544,7 +544,7 @@ namespace Tests.FunctionApps
 
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
-            var sampleQuery = GetQuerySample("SecurityGroup");
+            var sampleQuery = QuerySample.GenerateQuerySample("SecurityGroup");
             var testJob = new SyncJob
             {
                 RowKey = "row",
@@ -564,23 +564,6 @@ namespace Tests.FunctionApps
                 await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Content", null);
             }
             Assert.AreEqual(0, blobRepository.Sent.Count);
-        }
-
-        private QuerySample GetQuerySample(string syncType, int numberOfParts = 2)
-        {
-            var sampleQuery = new QuerySample();
-            for (int i = 0; i < numberOfParts; i++)
-            {
-                sampleQuery.QueryParts.Add(new QueryPart
-                {
-                    Index = i,
-                    Type = syncType,
-                    SourceIds = Enumerable.Range(0, 3).Select(x => $"{Guid.NewGuid()}").ToList()
-                });
-
-            }
-
-            return sampleQuery;
         }
     }
 }

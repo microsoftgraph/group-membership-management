@@ -49,9 +49,22 @@ namespace Hosts.SecurityGroup
 
             try
             {
+                if (mainRequest.CurrentPart <= 0 || mainRequest.TotalParts <= 0)
+                {
+                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Found invalid value for CurrentPart or TotalParts" });
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
+                    return;
+                }
+
                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId });
                 var sourceGroups = await context.CallActivityAsync<AzureADGroup[]>(nameof(SourceGroupsReaderFunction),
-                                                                                    new SourceGroupsReaderRequest { SyncJob = syncJob, CurrentPart = mainRequest.CurrentPart, RunId = runId });
+                                                                                    new SourceGroupsReaderRequest
+                                                                                    {
+                                                                                        SyncJob = syncJob,
+                                                                                        CurrentPart = mainRequest.CurrentPart,
+                                                                                        IsDestinationPart = mainRequest.IsDestinationPart,
+                                                                                        RunId = runId
+                                                                                    });
 
                 if (sourceGroups.Length == 0)
                 {
@@ -88,35 +101,29 @@ namespace Hosts.SecurityGroup
 
                     var filePath = await context.CallActivityAsync<string>(nameof(UsersSenderFunction),
                                                                             new UsersSenderRequest { SyncJob = syncJob, RunId = runId, Users = distinctUsers, CurrentPart = mainRequest.CurrentPart });
-                    if (!string.IsNullOrWhiteSpace(filePath))
+
+                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = "Calling MembershipAggregator", RunId = runId });
+                    var content = new MembershipAggregatorHttpRequest
                     {
-                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = "Calling MembershipAggregator", RunId = runId });
-                        var content = new MembershipAggregatorHttpRequest
-                        {
-                            FilePath = filePath,
-                            PartNumber = mainRequest.CurrentPart,
-                            PartsCount = mainRequest.TotalParts,
-                            SyncJob = syncJob
-                        };
+                        FilePath = filePath,
+                        PartNumber = mainRequest.CurrentPart,
+                        PartsCount = mainRequest.TotalParts,
+                        SyncJob = syncJob,
+                        IsDestinationPart = mainRequest.IsDestinationPart
+                    };
 
-                        var request = new DurableHttpRequest(HttpMethod.Post,
-                                                                new Uri(_configuration["membershipAggregatorUrl"]),
-                                                                content: JsonConvert.SerializeObject(content),
-                                                                headers: new Dictionary<string, StringValues> { { "x-functions-key", _configuration["membershipAggregatorFunctionKey"] } },
-                                                                httpRetryOptions: new HttpRetryOptions(TimeSpan.FromSeconds(30), 3));
+                    var request = new DurableHttpRequest(HttpMethod.Post,
+                                                            new Uri(_configuration["membershipAggregatorUrl"]),
+                                                            content: JsonConvert.SerializeObject(content),
+                                                            headers: new Dictionary<string, StringValues> { { "x-functions-key", _configuration["membershipAggregatorFunctionKey"] } },
+                                                            httpRetryOptions: new HttpRetryOptions(TimeSpan.FromSeconds(30), 3));
 
-                        var response = await context.CallHttpAsync(request);
-                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"MembershipAggregator response Code: {response.StatusCode}, Content: {response.Content}", RunId = runId });
+                    var response = await context.CallHttpAsync(request);
+                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"MembershipAggregator response Code: {response.StatusCode}, Content: {response.Content}", RunId = runId });
 
-                        if (response.StatusCode != HttpStatusCode.NoContent)
-                        {
-                            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
-                        }
-                    }
-                    else
+                    if (response.StatusCode != HttpStatusCode.NoContent)
                     {
-                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.FilePathNotValid });
-                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"Membership file path is not valid Part# {mainRequest.CurrentPart}, marking sync job as {SyncStatus.FilePathNotValid}.", RunId = runId });
+                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
                     }
                 }
             }

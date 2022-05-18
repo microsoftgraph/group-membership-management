@@ -22,7 +22,7 @@ namespace Hosts.SecurityGroup
         }
 
         [FunctionName(nameof(SubOrchestratorFunction))]
-        public async Task<(List<AzureADUser> Users, SyncStatus Status)> RunSubOrchestrator([OrchestrationTrigger] IDurableOrchestrationContext context)
+        public async Task<(List<AzureADUser> Users, SyncStatus Status)> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var request = context.GetInput<SecurityGroupRequest>();
             var allUsers = new List<AzureADUser>();
