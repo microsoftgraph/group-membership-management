@@ -1757,7 +1757,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               x: 1
               y: 25
               colSpan: 3
-              rowSpan: 8
+              rowSpan: 9
             }
             metadata: {
               inputs: []
@@ -2193,7 +2193,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '25': {
             position: {
               x: 1
-              y: 33
+              y: 34
               colSpan: 6
               rowSpan: 4
             }
@@ -2762,8 +2762,8 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '31': {
             position: {
-              x: 5
-              y: 33
+              x: 7
+              y: 34
               colSpan: 6
               rowSpan: 4
             }
