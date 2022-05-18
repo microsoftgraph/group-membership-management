@@ -145,7 +145,7 @@ param appConfigurationKeyData array = [
     }
   }
   {
-    key: 'GraphUpdater:IsGraphUpdaterDryRunEnabled'
+    key: 'MembershipAggregator:IsMembershipAggregatorDryRunEnabled'
     value: 'false'
     contentType: 'boolean'
     tag: {
@@ -153,35 +153,35 @@ param appConfigurationKeyData array = [
     }
   }
   {
-    key: 'GraphUpdater:MaximumNumberOfThresholdRecipients'
+    key: 'MembershipAggregator:MaximumNumberOfThresholdRecipients'
     value: '3'
     contentType: 'integer'
     tag: {
-      tag1: 'GraphUpdater'
+      tag1: 'MembershipAggregator'
     }
   }
   {
-    key: 'GraphUpdater:NumberOfThresholdViolationsToNotify'
+    key: 'MembershipAggregator:NumberOfThresholdViolationsToNotify'
     value: '3'
     contentType: 'integer'
     tag: {
-      tag1: 'GraphUpdater'
+      tag1: 'MembershipAggregator'
     }
   }
   {
-    key: 'GraphUpdater:NumberOfThresholdViolationsFollowUps'
+    key: 'MembershipAggregator:NumberOfThresholdViolationsFollowUps'
     value: '3'
     contentType: 'integer'
     tag: {
-      tag1: 'GraphUpdater'
+      tag1: 'MembershipAggregator'
     }
   }
   {
-    key: 'GraphUpdater:NumberOfThresholdViolationsToDisableJob'
+    key: 'MembershipAggregator:NumberOfThresholdViolationsToDisableJob'
     value: '10'
     contentType: 'integer'
     tag: {
-      tag1: 'GraphUpdater'
+      tag1: 'MembershipAggregator'
     }
   }
   {

@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 using Entities;
-using Entities.ServiceBus;
 using Hosts.MembershipAggregator;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
@@ -20,16 +19,15 @@ namespace Services.Tests
     public class OrchestratorTests
     {
         private SyncJob _syncJob;
-        private string _fileContent;
-        private BlobResult _blobResult;
         private DurableHttpResponse _durableHttpResponse;
         private MembershipAggregatorHttpRequest _membershipAggregatorHttpRequest;
+        private MembershipSubOrchestratorResponse _membershipSubOrchestratorResponse;
+
         private Mock<IConfiguration> _configuration;
         private Mock<JobTrackerEntity> _jobTrackerEntity;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<ISyncJobRepository> _syncJobRepository;
         private Mock<IDurableOrchestrationContext> _durableContext;
-        private Mock<IBlobStorageRepository> _blobStorageRepository;
 
         [TestInitialize]
         public void SetupTest()
@@ -39,7 +37,6 @@ namespace Services.Tests
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<ISyncJobRepository>();
             _durableContext = new Mock<IDurableOrchestrationContext>();
-            _blobStorageRepository = new Mock<IBlobStorageRepository>();
 
             _syncJob = new SyncJob
             {
@@ -62,25 +59,18 @@ namespace Services.Tests
                 PartsCount = 1
             };
 
-            _blobResult = new BlobResult
+            _membershipSubOrchestratorResponse = new MembershipSubOrchestratorResponse
             {
-                BlobStatus = BlobStatus.Found,
-                Content = new BinaryData(new GroupMembership
-                {
-                    SourceMembers = new List<AzureADUser> { { new AzureADUser { ObjectId = Guid.NewGuid() } } },
-                    Destination = new AzureADGroup { ObjectId = Guid.NewGuid() }
-                })
+                FilePath = "http://file-path",
+                MembershipDeltaStatus = Entities.MembershipDeltaStatus.Ok
             };
 
-            _fileContent = null;
+            _durableHttpResponse = new DurableHttpResponse(System.Net.HttpStatusCode.NoContent);
 
             _configuration.Setup(x => x[It.Is<string>(x => x == "graphUpdaterUrl")])
                             .Returns("http://graph-updater-url");
             _configuration.Setup(x => x[It.Is<string>(x => x == "graphUpdaterFunctionKey")])
                             .Returns("112233445566");
-
-            _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.IsAny<string>()))
-                                    .ReturnsAsync(() => _blobResult);
 
             _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<string>(), It.IsAny<string>()))
                                 .ReturnsAsync(() => _syncJob);
@@ -90,21 +80,6 @@ namespace Services.Tests
 
             _durableContext.Setup(x => x.CreateEntityProxy<IJobTracker>(It.IsAny<EntityId>()))
                             .Returns(() => _jobTrackerEntity.Object);
-
-            _durableContext.Setup(x => x.CallActivityAsync<string>(It.Is<string>(x => x == nameof(FileDownloaderFunction)), It.IsAny<FileDownloaderRequest>()))
-                            .Callback<string, object>(async (name, request) =>
-                            {
-                                var fileDownloaderRequest = request as FileDownloaderRequest;
-                                _fileContent = await CallFileDownloaderFunctionAsync(fileDownloaderRequest);
-                            })
-                            .ReturnsAsync(() => _fileContent);
-
-            _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(FileUploaderFunction)), It.IsAny<FileUploaderRequest>()))
-                            .Callback<string, object>(async (name, request) =>
-                            {
-                                var fileUploaderRequest = request as FileUploaderRequest;
-                                await CallFileDownloaderFunctionAsync(fileUploaderRequest);
-                            });
 
             _durableContext.Setup(x => x.CallHttpAsync(It.IsAny<DurableHttpRequest>()))
                             .ReturnsAsync(() => _durableHttpResponse);
@@ -122,21 +97,71 @@ namespace Services.Tests
                                 var updateRequest = request as JobStatusUpdaterRequest;
                                 await CallJobStatusUpdaterFunctionAsync(updateRequest);
                             });
+
+            _durableContext.Setup(x => x.CallSubOrchestratorAsync<MembershipSubOrchestratorResponse>
+                                                (
+                                                    It.Is<string>(x => x == nameof(MembershipSubOrchestratorFunction)),
+                                                    It.IsAny<MembershipSubOrchestratorRequest>())
+                                                )
+                            .ReturnsAsync(() => _membershipSubOrchestratorResponse);
         }
 
         [TestMethod]
         public async Task TestJobWithSinglePartAsync()
         {
-            _durableHttpResponse = new DurableHttpResponse(System.Net.HttpStatusCode.NoContent);
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
+
+            Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), It.IsAny<string>(), It.IsAny<string>()));
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), It.IsAny<string>(), It.IsAny<string>()));
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
+            _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task TestMissingPartAsync()
+        {
+            _membershipAggregatorHttpRequest.PartsCount = 2;
 
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.Once());
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
+            Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
+            _jobTrackerEntity.Verify(x => x.Delete(), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task TestDestinationPartAsync()
+        {
+            _membershipAggregatorHttpRequest.IsDestinationPart = true;
+
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
+
+            Assert.IsNotNull(_jobTrackerEntity.Object.JobState.DestinationPart);
+            Assert.AreEqual(_membershipAggregatorHttpRequest.FilePath, _jobTrackerEntity.Object.JobState.DestinationPart);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), It.IsAny<string>(), It.IsAny<string>()));
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), It.IsAny<string>(), It.IsAny<string>()));
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
+            _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task TestNotSuccessMembershipDeltaStatusAsync()
+        {
+            _membershipSubOrchestratorResponse.MembershipDeltaStatus = Entities.MembershipDeltaStatus.Error;
+
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
+            _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
         [TestMethod]
@@ -147,37 +172,59 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.Once());
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), It.IsAny<string>(), It.IsAny<string>()));
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), It.IsAny<string>(), It.IsAny<string>()));
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.Is<SyncStatus>(s => s == SyncStatus.Error)), Times.Once());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.Is<SyncStatus>(s => s == SyncStatus.Error)), Times.Once());
+            _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
         [TestMethod]
         public async Task HandleFileNotFoundAsync()
         {
-            _durableContext.Setup(x => x.CallActivityAsync<string>(It.Is<string>(x => x == nameof(FileDownloaderFunction)), It.IsAny<FileDownloaderRequest>())).Throws<FileNotFoundException>();
+            _durableContext.Setup(x => x.CallSubOrchestratorAsync<MembershipSubOrchestratorResponse>
+                                               (
+                                                   It.Is<string>(x => x == nameof(MembershipSubOrchestratorFunction)),
+                                                   It.IsAny<MembershipSubOrchestratorRequest>())
+                                               )
+                            .Throws<FileNotFoundException>();
 
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
             await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object));
 
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Never());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), It.IsAny<string>(), It.IsAny<string>()), Times.Never());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), It.IsAny<string>(), It.IsAny<string>()), Times.Never());
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.Is<SyncStatus>(s => s == SyncStatus.FileNotFound)), Times.Once());
+            _durableContext.Verify(x => x.CallActivityAsync(
+                                                            It.Is<string>(x => x == nameof(JobStatusUpdaterFunction)),
+                                                            It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.FileNotFound)
+                                                           )
+                                            , Times.Once());
+
+            _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
-        private async Task<string> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)
+        [TestMethod]
+        public async Task HandleUnexpectedExceptionAsync()
         {
-            var fileDownloaderFunction = new FileDownloaderFunction(_loggingRepository.Object, _blobStorageRepository.Object);
-            return await fileDownloaderFunction.DownloadFileAsync(request);
-        }
+            _durableContext.Setup(x => x.CallSubOrchestratorAsync<MembershipSubOrchestratorResponse>
+                                               (
+                                                   It.Is<string>(x => x == nameof(MembershipSubOrchestratorFunction)),
+                                                   It.IsAny<MembershipSubOrchestratorRequest>())
+                                               )
+                            .Throws<Exception>();
 
-        private async Task CallFileDownloaderFunctionAsync(FileUploaderRequest request)
-        {
-            var fileUploaderFunction = new FileUploaderFunction(_loggingRepository.Object, _blobStorageRepository.Object);
-            await fileUploaderFunction.UploadFileAsync(request);
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
+            await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object));
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Unexpected exception")), It.IsAny<string>(), It.IsAny<string>()), Times.Once());
+            _durableContext.Verify(x => x.CallActivityAsync(
+                                                            It.Is<string>(x => x == nameof(JobStatusUpdaterFunction)),
+                                                            It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.Error)
+                                                           )
+                                            , Times.Once());
+
+            _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
         private async Task CallLoggerFunctionAsync(LogMessage request)

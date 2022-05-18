@@ -29,7 +29,15 @@ namespace Hosts.MembershipAggregator
             var syncJob = await _syncJobrespository.GetSyncJobAsync(request.SyncJob.PartitionKey, request.SyncJob.RowKey);
             if (syncJob != null)
             {
-                await _syncJobrespository.UpdateSyncJobStatusAsync(new[] { syncJob }, request.Status);
+                if (request.ThresholdViolations.HasValue)
+                    syncJob.ThresholdViolations = request.ThresholdViolations.Value;
+
+                if (request.IsDryRun)
+                    syncJob.DryRunTimeStamp = DateTime.UtcNow;
+                else
+                    syncJob.LastRunTime = DateTime.UtcNow;
+
+                await _syncJobrespository.UpdateSyncJobsAsync(new[] { syncJob }, request.Status);
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", DynamicProperties = syncJobProperties });

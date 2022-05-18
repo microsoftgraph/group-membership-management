@@ -22,7 +22,7 @@ namespace Hosts.MembershipAggregator
         }
 
         [FunctionName(nameof(FileDownloaderFunction))]
-        public async Task<string> DownloadFileAsync([ActivityTrigger] FileDownloaderRequest request)
+        public async Task<(string FilePath, string Content)> DownloadFileAsync([ActivityTrigger] FileDownloaderRequest request)
         {
             var syncJobProperties = request.SyncJob.ToDictionary();
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloading file {request.FilePath}", DynamicProperties = syncJobProperties });
@@ -34,7 +34,7 @@ namespace Hosts.MembershipAggregator
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloaded file {request.FilePath}", DynamicProperties = syncJobProperties });
-            return blobResult.Content.ToString();
+            return (request.FilePath, blobResult.Content.ToString());
         }
     }
 }

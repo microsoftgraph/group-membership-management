@@ -7,6 +7,7 @@ namespace Hosts.MembershipAggregator
     public interface IJobTracker
     {
         Task AddCompletedPart(string filePath);
+        Task SetDestinationPart(string filePath);
         Task<JobState> GetState();
         Task<bool> IsComplete();
         Task SetTotalParts(int totalParts);

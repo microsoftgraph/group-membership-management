@@ -82,10 +82,12 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'membershipAggregatorFunctionName'
         value: '${name}-MembershipAggregator'
-      }      
+      }
     ]
   }
-  dependsOn: [    
+  dependsOn: [
     keyVaultPoliciesTemplate
   ]
 }
+
+output msi string = functionApp.identity.principalId

@@ -56,14 +56,16 @@ namespace Entities.ServiceBus
         public object Clone()
         {
             var groupMembership = (GroupMembership)this.MemberwiseClone();
-            groupMembership.Destination = new AzureADGroup { ObjectId = this.Destination.ObjectId };
-            groupMembership.SyncJobPartitionKey = string.Copy(this.SyncJobPartitionKey);
-            groupMembership.SyncJobRowKey = string.Copy(this.SyncJobRowKey);
-            SourceMembers = this.SourceMembers.Select(x => new AzureADUser
-                                                            {
-                                                                ObjectId = x.ObjectId,
-                                                                MembershipAction = x.MembershipAction
-                                                            }).ToList();
+            groupMembership.Destination = this.Destination != null ? new AzureADGroup { ObjectId = this.Destination.ObjectId } : null;
+            groupMembership.SyncJobPartitionKey = this.SyncJobPartitionKey != null ? string.Copy(this.SyncJobPartitionKey) : null;
+            groupMembership.SyncJobRowKey = this.SyncJobRowKey != null ? string.Copy(this.SyncJobRowKey) : null;
+            SourceMembers = this.SourceMembers != null
+                            ? this.SourceMembers.Select(x => new AzureADUser
+                            {
+                                ObjectId = x.ObjectId,
+                                MembershipAction = x.MembershipAction
+                            }).ToList()
+                            : null;
 
             return groupMembership;
         }

@@ -611,7 +611,7 @@ If you would like to have the default setting to be false, then please update th
 There are 3 Dry Run flags in GMM. If any of these Dry run flags are set, the sync will be completed but destination membership will not be affected.
 1. IsDryRunEnabled: This is a property that is set on an individual sync. Setting this to true will run this sync in dry run.
 2. IsSecurityGroupDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all Security Group syncs in dry run.
-3. IsGraphUpdaterDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all syncs in dry run.
+3. IsMembershipAggregatorDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all syncs in dry run.
 
 In order for the Function Apps SecurityGroup and GraphUpdater to read the dry run values assigned above, we need to grant them access to the AppConfiguration:
 

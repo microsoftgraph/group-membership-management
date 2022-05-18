@@ -18,6 +18,12 @@ namespace Hosts.MembershipAggregator
             return Task.CompletedTask;
         }
 
+        public Task SetDestinationPart(string filePath)
+        {
+            JobState.DestinationPart = filePath;
+            return Task.CompletedTask;
+        }
+
         public Task<JobState> GetState()
         {
             return Task.FromResult(JobState);

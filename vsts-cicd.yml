@@ -57,7 +57,7 @@ stages:
         coverageThreshold: 65
     - function:
         name: 'MembershipAggregator'
-        coverageThreshold: 86
+        coverageThreshold: 85
 
 - template: yaml/deploy-pipeline.yml
   parameters:

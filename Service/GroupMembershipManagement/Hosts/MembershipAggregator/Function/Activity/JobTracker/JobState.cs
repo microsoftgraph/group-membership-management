@@ -7,6 +7,7 @@ namespace Hosts.MembershipAggregator
     public class JobState
     {
         public List<string> CompletedParts { get; set; } = new List<string>();
+        public string DestinationPart { get; set; }
         public int TotalParts { get; set; }
     }
 }
