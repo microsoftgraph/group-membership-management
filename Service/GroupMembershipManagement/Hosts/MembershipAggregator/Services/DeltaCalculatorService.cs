@@ -70,22 +70,47 @@ namespace Services
 
             var isDryRunSync = _loggingRepository.DryRun = job.IsDryRunEnabled || sourceMembership.MembershipObtainerDryRunEnabled || _isDryRunEnabled;
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"The Dry Run Enabled configuration is currently set to {isDryRunSync}. We will not be syncing members if any of the 3 Dry Run Enabled configurations is set to True.", RunId = sourceMembership.RunId });
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Processing sync job : Partition key {sourceMembership.SyncJobPartitionKey} , Row key {sourceMembership.SyncJobRowKey}", RunId = sourceMembership.RunId });
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{job.TargetOfficeGroupId} job's status is {job.Status}.", RunId = sourceMembership.RunId });
+            var dynamicProperties = job.ToDictionary();
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"The Dry Run Enabled configuration is currently set to {isDryRunSync}. " +
+                          $"We will not be syncing members if any of the 3 Dry Run Enabled configurations is set to True.",
+                RunId = sourceMembership.RunId,
+                DynamicProperties = dynamicProperties
+            });
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Processing sync job : Partition key {sourceMembership.SyncJobPartitionKey} , Row key {sourceMembership.SyncJobRowKey}",
+                RunId = sourceMembership.RunId,
+                DynamicProperties = dynamicProperties
+            });
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"{job.TargetOfficeGroupId} job's status is {job.Status}.",
+                RunId = sourceMembership.RunId,
+                DynamicProperties = dynamicProperties
+            });
 
             var fromto = $"to {sourceMembership.Destination}";
             var groupExistsResult = await _graphAPIService.GroupExistsAsync(sourceMembership.Destination.ObjectId, sourceMembership.RunId);
             if (!groupExistsResult.Result)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"When syncing {fromto}, destination group {sourceMembership.Destination} doesn't exist. Not syncing and marking as error.", RunId = sourceMembership.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"When syncing {fromto}, destination group {sourceMembership.Destination} doesn't exist. Not syncing and marking as error.",
+                    RunId = sourceMembership.RunId,
+                    DynamicProperties = dynamicProperties
+                });
+
                 deltaResponse.MembershipDeltaStatus = MembershipDeltaStatus.Error;
                 return deltaResponse;
             }
 
             if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.Ok)
             {
-                var delta = await CalculateDeltaAsync(sourceMembership, destinationMembership, fromto);
+                var delta = await CalculateDeltaAsync(sourceMembership, destinationMembership, fromto, job);
                 var isInitialSync = job.LastRunTime == DateTime.FromFileTimeUtc(0);
                 var threshold = isInitialSync ? new ThresholdResult() : await CalculateThresholdAsync(job, delta.Delta, delta.TotalMembersCount, sourceMembership.RunId);
 
@@ -109,13 +134,19 @@ namespace Services
             return deltaResponse;
         }
 
-        private async Task<(MembershipDelta<AzureADUser> Delta, int TotalMembersCount)> CalculateDeltaAsync(GroupMembership sourceMembership, GroupMembership destinationMembership, string fromto)
+        private async Task<(MembershipDelta<AzureADUser> Delta, int TotalMembersCount)> CalculateDeltaAsync(
+                                                                                            GroupMembership sourceMembership,
+                                                                                            GroupMembership destinationMembership,
+                                                                                            string fromto,
+                                                                                            SyncJob job)
         {
+            var dynamicProperties = job.ToDictionary();
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"Calculating membership difference {fromto}. " +
                           $"Destination group has {destinationMembership.SourceMembers.Count} users.",
-                RunId = sourceMembership.RunId
+                RunId = sourceMembership.RunId,
+                DynamicProperties = dynamicProperties
             });
 
             var stopwatch = Stopwatch.StartNew();
@@ -139,8 +170,9 @@ namespace Services
             new LogMessage
             {
                 Message = $"Calculated membership difference {fromto} in {stopwatch.Elapsed.TotalSeconds} seconds. " +
-                            $"Adding {delta.ToAdd.Count} users and removing {delta.ToRemove.Count}.",
-                RunId = sourceMembership.RunId
+                          $"Adding {delta.ToAdd.Count} users and removing {delta.ToRemove.Count}.",
+                RunId = sourceMembership.RunId,
+                DynamicProperties = dynamicProperties
             });
 
             return (delta, destinationMembership.SourceMembers.Count);
@@ -166,7 +198,8 @@ namespace Services
                         {
                             Message = $"Membership increase in {job.TargetOfficeGroupId} is {percentageIncrease}% " +
                                       $"and is greater than threshold value {job.ThresholdPercentageForAdditions}%",
-                            RunId = runId
+                            RunId = runId,
+                            DynamicProperties = job.ToDictionary()
                         });
                 }
             }
@@ -183,7 +216,8 @@ namespace Services
                         {
                             Message = $"Membership decrease in {job.TargetOfficeGroupId} is {percentageDecrease}% " +
                                       $"and is lesser than threshold value {job.ThresholdPercentageForRemovals}%",
-                            RunId = runId
+                            RunId = runId,
+                            DynamicProperties = job.ToDictionary()
                         });
                 }
             }
@@ -208,7 +242,8 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"Threshold exceeded, no changes made to group {groupName} ({job.TargetOfficeGroupId}). ",
-                RunId = runId
+                RunId = runId,
+                DynamicProperties = job.ToDictionary()
             });
 
             if (!sendNotification && !sendDisableJobNotification)

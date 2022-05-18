@@ -30,14 +30,11 @@ namespace Services.Tests
             var mockMail = new MockMailRepository();
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSynJobs = new MockSyncJobRepository();
-            var dryRun = new DryRunValue(false);
-
-
             var samplePageResponse = GetPageSampleResponse(100, true);
             var userCount = 100;
             mockGraphGroup.Setup(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>())).ReturnsAsync(samplePageResponse);
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs, dryRun);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs);
 
             var groupId = Guid.NewGuid();
             var runId = Guid.NewGuid();
@@ -57,15 +54,12 @@ namespace Services.Tests
             var mockMail = new MockMailRepository();
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSynJobs = new MockSyncJobRepository();
-            var dryRun = new DryRunValue(false);
-
             var samplePageResponse = GetPageSampleResponse(100, true);
-
             var userCount = 100;
             mockGraphGroup.Setup(x => x.GetNextUsersPageAsync(It.IsAny<string>(), It.IsAny<IGroupTransitiveMembersCollectionWithReferencesPage>()))
                             .ReturnsAsync(samplePageResponse);
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs, dryRun);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs);
 
             var groupId = Guid.NewGuid();
             var runId = Guid.NewGuid();
@@ -85,9 +79,8 @@ namespace Services.Tests
             var mockMail = new MockMailRepository();
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSynJobs = new MockSyncJobRepository();
-            var dryRun = new DryRunValue(false);
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs, dryRun);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs);
 
             var groupId = Guid.NewGuid();
             var runId = Guid.NewGuid();
@@ -108,7 +101,7 @@ namespace Services.Tests
             var mockMail = new MockMailRepository();
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSynJobs = new MockSyncJobRepository();
-            var dryRun = new DryRunValue(false);
+
 
             var attemptNumber = 1;
             mockGraphGroup.Setup(x => x.GroupExists(It.IsAny<Guid>())).Callback(() =>
@@ -120,7 +113,7 @@ namespace Services.Tests
                 }
             }).ReturnsAsync(true);
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs, dryRun);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs);
 
             var groupId = Guid.NewGuid();
             var runId = Guid.NewGuid();
@@ -139,9 +132,8 @@ namespace Services.Tests
             var mockMail = new MockMailRepository();
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSynJobs = new MockSyncJobRepository();
-            var dryRun = new DryRunValue(false);
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs, dryRun);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs);
 
             var toEmail = "user@domain";
             var template = "SampleTemplate";
@@ -160,9 +152,9 @@ namespace Services.Tests
             var mockMail = new MockMailRepository();
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSynJobs = new MockSyncJobRepository();
-            var dryRun = new DryRunValue(false);
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs, dryRun);
+
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs);
 
             var runId = Guid.NewGuid();
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
@@ -187,9 +179,8 @@ namespace Services.Tests
             var mockMail = new MockMailRepository();
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSynJobs = new MockSyncJobRepository();
-            var dryRun = new DryRunValue(false);
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs, dryRun);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs);
 
             var runId = Guid.NewGuid();
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
@@ -214,8 +205,8 @@ namespace Services.Tests
             var mockMail = new MockMailRepository();
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSynJobs = new MockSyncJobRepository();
-            var dryRun = new DryRunValue(false);
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs, dryRun);
+
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs);
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
             var job = new SyncJob { PartitionKey = "00-00-00", RowKey = Guid.NewGuid().ToString(), Status = SyncStatus.InProgress.ToString(), LastRunTime = lastRunTime };
 
@@ -237,8 +228,8 @@ namespace Services.Tests
             var mockMail = new MockMailRepository();
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSynJobs = new MockSyncJobRepository();
-            var dryRun = new DryRunValue(false);
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs, dryRun);
+
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs);
 
             var groupName = "MyTestGroup";
             mockGraphGroup.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>())).ReturnsAsync(groupName);

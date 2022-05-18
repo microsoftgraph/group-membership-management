@@ -49,7 +49,7 @@ namespace Hosts.MembershipAggregator
 
             if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.Ok)
             {
-                var uploadRequest = CreateFileUploaderRequest((GroupMembership)SourceMembership.Clone(), deltaResponse, request.SyncJob);
+                var uploadRequest = CreateFileUploaderRequest(SourceMembership, deltaResponse, request.SyncJob);
                 await context.CallActivityAsync(nameof(FileUploaderFunction), uploadRequest);
                 await context.CallActivityAsync(nameof(LoggerFunction),
                                                 new LogMessage
@@ -130,12 +130,14 @@ namespace Hosts.MembershipAggregator
 
         private FileUploaderRequest CreateFileUploaderRequest(GroupMembership membership, DeltaResponse deltaResponse, SyncJob syncJob)
         {
-            membership.SourceMembers.AddRange(deltaResponse.MembersToAdd);
-            membership.SourceMembers.AddRange(deltaResponse.MembersToRemove);
+            var newMembership = (GroupMembership)membership.Clone();
+            newMembership.SourceMembers.Clear();
+            newMembership.SourceMembers.AddRange(deltaResponse.MembersToAdd);
+            newMembership.SourceMembers.AddRange(deltaResponse.MembersToRemove);
 
             var timeStamp = syncJob.Timestamp.ToString("MMddyyyy-HHmmss");
-            var filePath = $"/{membership.Destination.ObjectId}/{timeStamp}_{syncJob.RunId}_Aggregated.json";
-            var content = JsonConvert.SerializeObject(membership);
+            var filePath = $"/{newMembership.Destination.ObjectId}/{timeStamp}_{syncJob.RunId}_Aggregated.json";
+            var content = JsonConvert.SerializeObject(newMembership);
 
             return new FileUploaderRequest { FilePath = filePath, Content = content, SyncJob = syncJob };
         }

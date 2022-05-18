@@ -27,7 +27,6 @@ namespace Services
         private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly ISyncJobRepository _syncJobRepository;
-        private readonly bool _isGraphUpdaterDryRunEnabled;
 
         public GraphUpdaterService(
                 ILoggingRepository loggingRepository,
@@ -35,8 +34,7 @@ namespace Services
                 IGraphGroupRepository graphGroupRepository,
                 IMailRepository mailRepository,
                 IEmailSenderRecipient emailSenderAndRecipients,
-                ISyncJobRepository syncJobRepository,
-                IDryRunValue dryRun)
+                ISyncJobRepository syncJobRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
@@ -44,7 +42,6 @@ namespace Services
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
-            _isGraphUpdaterDryRunEnabled = _loggingRepository.DryRun = dryRun != null ? dryRun.DryRunEnabled : throw new ArgumentNullException(nameof(dryRun));
         }
 
         public async Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId)
@@ -109,7 +106,7 @@ namespace Services
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set job status to {status}.", RunId = runId });
 
-            var isDryRunSync = job.IsDryRunEnabled || _isGraphUpdaterDryRunEnabled || isDryRun;
+            var isDryRunSync = job.IsDryRunEnabled || isDryRun;
 
             if (isDryRunSync)
                 job.DryRunTimeStamp = DateTime.UtcNow;
@@ -139,11 +136,6 @@ namespace Services
 
         public async Task<(GraphUpdaterStatus Status, int SuccessCount)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
         {
-            if (_isGraphUpdaterDryRunEnabled)
-            {
-                return (GraphUpdaterStatus.Ok, 0);
-            }
-
             var stopwatch = Stopwatch.StartNew();
             var graphResponse = await _graphGroupRepository.AddUsersToGroup(members, new AzureADGroup { ObjectId = targetGroupId });
             stopwatch.Stop();
@@ -167,11 +159,6 @@ namespace Services
 
         public async Task<(GraphUpdaterStatus Status, int SuccessCount)> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
         {
-            if (_isGraphUpdaterDryRunEnabled)
-            {
-                return (GraphUpdaterStatus.Ok, 0);
-            }
-
             var stopwatch = Stopwatch.StartNew();
             var graphResponse = await _graphGroupRepository.RemoveUsersFromGroup(members, new AzureADGroup { ObjectId = targetGroupId });
             stopwatch.Stop();

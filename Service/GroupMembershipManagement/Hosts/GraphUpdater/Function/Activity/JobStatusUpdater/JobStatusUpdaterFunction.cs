@@ -33,7 +33,7 @@ namespace Hosts.GraphUpdater
 
             if (syncJob != null)
             {
-                await _graphUpdaterService.UpdateSyncJobStatusAsync(syncJob, request.Status, request.IsDryRun, request.RunId);
+                await _graphUpdaterService.UpdateSyncJobStatusAsync(syncJob, request.Status, false, request.RunId);
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.RunId });

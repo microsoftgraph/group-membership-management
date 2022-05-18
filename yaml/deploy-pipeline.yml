@@ -52,6 +52,7 @@ stages:
                keyVaultReaders: ${{ parameters.keyVaultReaders }}
 
     - job: ${{ parameters.stageName }}_DeployFunctions
+      timeoutInMinutes: 120
       dependsOn: ${{ parameters.stageName }}_DeployResources
       variables:
         data_storageAccountName: $[ dependencies.DeployResources.outputs['DeployResources.dataVariables.data_storageAccountName'] ]
