@@ -4,15 +4,13 @@ using Entities;
 using Entities.ServiceBus;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Services.Tests.Mocks;
+using System;
+using System.Linq;
 
 namespace Services.Tests
 {
-	[TestClass]
+    [TestClass]
 	public class MembershipChangeTests
 	{
 		private const int ChunkSize = GroupMembership.MembersPerChunk;
@@ -109,52 +107,6 @@ namespace Services.Tests
 			Assert.AreEqual(initial.SyncJobRowKey, rejoined.SyncJobRowKey);
 			Assert.AreEqual(initial.SyncJobPartitionKey, rejoined.SyncJobPartitionKey);
 			CollectionAssert.AreEqual(initial.SourceMembers, rejoined.SourceMembers);
-		}
-
-		// DynamicData example from https://www.meziantou.net/mstest-v2-data-tests.htm
-		[DataTestMethod]
-		[DynamicData(nameof(SizesToTest), DynamicDataSourceType.Method)]
-		public void SerializationSize(int chunkSize)
-		{
-			// https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-quotas
-			const int maxMessageSize = 256 * 1024; // 256 kilobytes
-			const int largestSafePayload = maxMessageSize - (64 * 1024); // minus the maximum header size
-
-			var initial = MockGroupMembershipHelper.MockGroupMembership();
-			foreach (var chunk in initial.Split(chunkSize))
-			{
-				var serialized = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(chunk));
-				Assert.IsTrue(serialized.Length <= largestSafePayload);
-			}
-		}
-
-		public static IEnumerable<object[]> SizesToTest()
-		{
-			for (int i = 100; i < 3700; i += 100)
-			{
-				yield return new object[] { i };
-			}
-
-			for (int i = 3700; i <= ChunkSize; i += 1)
-			{
-				yield return new object[] { i };
-			}
-		}
-
-		[TestMethod]
-		public void DefaultSerializationSizeWorks()
-		{
-			// https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-quotas
-			const int maxMessageSize = 256 * 1024; // 256 kilobytes
-			const int largestSafePayload = maxMessageSize - (64 * 1024); // minus the maximum header size
-
-			var initial = MockGroupMembershipHelper.MockGroupMembership();
-
-			foreach (var chunk in initial.Split())
-			{
-				var serialized = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(chunk));
-				Assert.IsTrue(serialized.Length <= largestSafePayload);
-			}
 		}
 	}
 }

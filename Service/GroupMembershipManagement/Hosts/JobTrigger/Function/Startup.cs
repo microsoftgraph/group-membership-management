@@ -14,6 +14,7 @@ using Microsoft.Extensions.Options;
 using Repositories.GraphGroups;
 using Microsoft.Graph;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Azure.ServiceBus;
 
 [assembly: FunctionsStartup(typeof(Hosts.JobTrigger.Startup))]
 
@@ -41,11 +42,11 @@ namespace Hosts.JobTrigger
             builder.Services.AddSingleton<IKeyVaultSecret<IJobTriggerService>>(services => new KeyVaultSecret<IJobTriggerService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
             .AddSingleton<IGraphServiceClient>((services) =>
             {
-               return new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value));
+                return new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value));
             })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>();
 
-            builder.Services.AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(GetValueOrThrow("serviceBusConnectionString"), GetValueOrThrow("serviceBusSyncJobTopic")));
+            builder.Services.AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(new TopicClient(GetValueOrThrow("serviceBusConnectionString"), GetValueOrThrow("serviceBusSyncJobTopic"))));
             builder.Services.AddSingleton<IJobTriggerService, JobTriggerService>();
         }
 

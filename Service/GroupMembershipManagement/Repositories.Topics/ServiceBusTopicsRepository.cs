@@ -8,16 +8,17 @@ using System.Text;
 using System.Text.Json;
 using Newtonsoft.Json.Linq;
 using System.Linq;
+using System;
 
 namespace Repositories.ServiceBusTopics
 {
     public class ServiceBusTopicsRepository : IServiceBusTopicsRepository
     {
-        private TopicClient _topicClient;
+        private ITopicClient _topicClient;
 
-        public ServiceBusTopicsRepository(string connectionString, string entityPath)
+        public ServiceBusTopicsRepository(ITopicClient topicClient)
         {
-            _topicClient = new TopicClient(connectionString, entityPath);
+            _topicClient = topicClient ?? throw new ArgumentNullException(nameof(topicClient));
         }
 
         public async Task AddMessageAsync(SyncJob job)
@@ -28,15 +29,26 @@ namespace Repositories.ServiceBusTopics
                                     .Select(x => x.Value<string>())
                                     .ToList();
 
-            foreach(var type in queryTypes)
+            // + 1 to include destination group
+            var totalParts = queryTypes.Count + 1;
+
+            foreach (var type in queryTypes)
             {
-                var message = CreateMessage(job);
-                message.UserProperties.Add("Type", type);
-                message.UserProperties.Add("TotalParts", queryTypes.Count);
-                message.UserProperties.Add("CurrentPart", index);
-                message.MessageId += $"_{index++}";
-                await _topicClient.SendAsync(message);
+                var sourceGroupMessage = CreateMessage(job);
+                sourceGroupMessage.UserProperties.Add("Type", type);
+                sourceGroupMessage.UserProperties.Add("TotalParts", totalParts);
+                sourceGroupMessage.UserProperties.Add("CurrentPart", index);
+                sourceGroupMessage.MessageId += $"_{index++}";
+                await _topicClient.SendAsync(sourceGroupMessage);
             }
+
+            var destinationGroupMessage = CreateMessage(job);
+            destinationGroupMessage.UserProperties.Add("Type", "SecurityGroup");
+            destinationGroupMessage.UserProperties.Add("TotalParts", totalParts);
+            destinationGroupMessage.UserProperties.Add("CurrentPart", index);
+            destinationGroupMessage.UserProperties.Add("IsDestinationPart", true);
+            destinationGroupMessage.MessageId += $"_{index}";
+            await _topicClient.SendAsync(destinationGroupMessage);
         }
 
         private Message CreateMessage(SyncJob job)
