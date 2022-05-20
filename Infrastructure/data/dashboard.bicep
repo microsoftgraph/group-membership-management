@@ -2881,7 +2881,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '32': {
             position: {
-              x: 4
+              x: 20
               y: 29
               colSpan: 11
               rowSpan: 5
