@@ -57,8 +57,8 @@ namespace Entities.ServiceBus
         {
             var groupMembership = (GroupMembership)this.MemberwiseClone();
             groupMembership.Destination = this.Destination != null ? new AzureADGroup { ObjectId = this.Destination.ObjectId } : null;
-            groupMembership.SyncJobPartitionKey = this.SyncJobPartitionKey != null ? string.Copy(this.SyncJobPartitionKey) : null;
-            groupMembership.SyncJobRowKey = this.SyncJobRowKey != null ? string.Copy(this.SyncJobRowKey) : null;
+            groupMembership.SyncJobPartitionKey = this.SyncJobPartitionKey;
+            groupMembership.SyncJobRowKey = this.SyncJobRowKey;
             SourceMembers = this.SourceMembers != null
                             ? this.SourceMembers.Select(x => new AzureADUser
                             {
