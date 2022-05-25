@@ -94,6 +94,235 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   }
 }
 
+var appSettings = [
+  {
+    name: 'WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG'
+    value: 1
+  }
+  {
+    name: 'WEBSITE_RUN_FROM_PACKAGE'
+    value: 1
+  }
+  {
+    name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
+    value: 1
+  }
+  {
+    name: 'SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT'
+    value: 0
+  }
+  {
+    name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+    value: reference(resourceId(appInsightsResourceGroup, 'microsoft.insights/components/', appInsightsName), '2015-05-01').InstrumentationKey
+  }
+  {
+    name: 'AzureWebJobsStorage'
+    value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${listKeys(resourceId(storageAccountResourceGroup, 'Microsoft.Storage/storageAccounts', storageAccountName), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value}'
+  }
+  {
+    name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
+    value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${listKeys(resourceId(storageAccountResourceGroup, 'Microsoft.Storage/storageAccounts', storageAccountName), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value}'
+  }
+  {
+    name: 'FUNCTIONS_WORKER_RUNTIME'
+    value: 'dotnet'
+  }
+  {
+    name: 'FUNCTIONS_EXTENSION_VERSION'
+    value: '~3'
+  }
+  {
+    name: 'jobsStorageAccountConnectionString'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'jobsTableName'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'graphCredentials:ClientSecret'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'graphCredentials:ClientId'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'graphCredentials:TenantId'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'graphCredentials:KeyVaultName'
+    value: prereqsKeyVaultName
+  }
+  {
+    name: 'graphCredentials:KeyVaultTenantId'
+    value: tenantId
+  }
+  {
+    name: 'logAnalyticsCustomerId'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'logAnalyticsPrimarySharedKey'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'senderAddress'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(senderUsername, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'senderPassword'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(senderPassword, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'syncCompletedCCEmailAddresses'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(syncCompletedCCEmailAddresses, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'syncDisabledCCEmailAddresses'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(syncDisabledCCEmailAddresses, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'supportEmailAddresses'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(supportEmailAddresses, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'WEBSITE_MAX_DYNAMIC_APPLICATION_SCALE_OUT'
+    value: maximumElasticWorkerCount
+  }
+  {
+    name: 'appConfigurationEndpoint'
+    value: appConfigurationEndpoint
+  }
+  {
+    name: 'membershipStorageAccountName'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(membershipStorageAccountName, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'membershipContainerName'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(membershipContainerName, '2019-09-01').secretUriWithVersion})'
+  }
+]
+
+var stagingSettings = [
+  {
+    name: 'WEBSITE_CONTENTSHARE'
+    value: toLower('functionApp-GraphUpdater-staging')
+  }
+  {
+    name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
+    value: '${solutionAbbreviation}compute${environmentAbbreviation}GraphUpdaterStaging'
+  }
+  {
+    name: 'AzureWebJobs.StarterFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.OrchestratorFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled'
+    value: 1
+  }  
+  {
+    name: 'AzureWebJobs.EmailSenderFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.FileDownloaderFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.GroupNameReaderFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.GroupOwnersReaderFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.GroupUpdaterFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.GroupValidatorFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.JobReaderFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.LoggerFunction.Disabled'
+    value: 1
+  }
+]
+
+var productionSettings = [
+  {
+    name: 'WEBSITE_CONTENTSHARE'
+    value: toLower('functionApp-GraphUpdater')
+  }
+  {
+    name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
+    value: '${solutionAbbreviation}compute${environmentAbbreviation}GraphUpdater'
+  }
+  {
+    name: 'AzureWebJobs.StarterFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.OrchestratorFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.EmailSenderFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.FileDownloaderFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.GroupNameReaderFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.GroupOwnersReaderFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.GroupUpdaterFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.GroupValidatorFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.JobReaderFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.LoggerFunction.Disabled'
+    value: 0
+  }
+]
+
 module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
   name: 'functionAppTemplate-GraphUpdater'
   params: {
@@ -103,146 +332,26 @@ module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    secretSettings: [
-      {
-        name: 'WEBSITE_RUN_FROM_PACKAGE'
-        value: 1
-        slotSetting: false
-      }
-      {
-        name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
-        value: 1
-        slotSetting: false
-      }
-      {
-        name: 'SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT'
-        value: '0'
-        slotSetting: false
-      }
-      {
-        name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-        value: reference(resourceId(appInsightsResourceGroup, 'microsoft.insights/components/', appInsightsName), '2015-05-01').InstrumentationKey
-        slotSetting: false
-      }
-      {
-        name: 'AzureWebJobsStorage'
-        value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${listKeys(resourceId(storageAccountResourceGroup, 'Microsoft.Storage/storageAccounts', storageAccountName), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value}'
-        slotSetting: false
-      }
-      {
-        name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-        value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${listKeys(resourceId(storageAccountResourceGroup, 'Microsoft.Storage/storageAccounts', storageAccountName), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value}'
-        slotSetting: false
-      }
-      {
-        name: 'WEBSITE_CONTENTSHARE'
-        value: toLower('functionApp-GraphUpdater')
-        slotSetting: false
-      }
-      {
-        name: 'FUNCTIONS_WORKER_RUNTIME'
-        value: 'dotnet'
-        slotSetting: false
-      }
-      {
-        name: 'FUNCTIONS_EXTENSION_VERSION'
-        value: '~3'
-        slotSetting: false
-      }
-      {
-        name: 'jobsStorageAccountConnectionString'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'jobsTableName'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'graphCredentials:ClientSecret'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'graphCredentials:ClientId'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'graphCredentials:TenantId'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'graphCredentials:KeyVaultName'
-        value: prereqsKeyVaultName
-        slotSetting: false
-      }
-      {
-        name: 'graphCredentials:KeyVaultTenantId'
-        value: tenantId
-        slotSetting: false
-      }
-      {
-        name: 'logAnalyticsCustomerId'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'logAnalyticsPrimarySharedKey'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'senderAddress'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(senderUsername, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'senderPassword'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(senderPassword, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'syncCompletedCCEmailAddresses'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(syncCompletedCCEmailAddresses, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'syncDisabledCCEmailAddresses'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(syncDisabledCCEmailAddresses, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'supportEmailAddresses'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(supportEmailAddresses, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'WEBSITE_MAX_DYNAMIC_APPLICATION_SCALE_OUT'
-        value: maximumElasticWorkerCount
-        slotSetting: false
-      }
-      {
-        name: 'appConfigurationEndpoint'
-        value: appConfigurationEndpoint
-        slotSetting: false
-      }
-      {
-        name: 'membershipStorageAccountName'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(membershipStorageAccountName, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'membershipContainerName'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(membershipContainerName, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-    ]
+    secretSettings: union(appSettings, productionSettings)
   }
   dependsOn: [
     servicePlanTemplate
+  ]
+}
+
+module functionAppSlotTemplate_GraphUpdater 'functionAppSlot.bicep' = {
+  name: 'functionAppSlotTemplate-GraphUpdater'
+  params: {
+    name: '${functionAppName}-GraphUpdater/staging'
+    kind: functionAppKind
+    location: location
+    servicePlanName: servicePlanName
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
+    secretSettings: union(appSettings, stagingSettings)
+  }
+  dependsOn: [
+    functionAppTemplate_GraphUpdater
   ]
 }
 
@@ -260,11 +369,20 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
         ]
         type: 'secrets'
       }
+      {
+        objectId: functionAppSlotTemplate_GraphUpdater.outputs.msi
+        permissions: [
+          'get'
+          'list'
+        ]
+        type: 'secrets'
+      }
     ]
     tenantId: tenantId
   }
   dependsOn: [
     functionAppTemplate_GraphUpdater
+    functionAppSlotTemplate_GraphUpdater
   ]
 }
 
@@ -281,10 +399,18 @@ module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
         ]
         type: 'secrets'
       }
+      {
+        objectId: functionAppSlotTemplate_GraphUpdater.outputs.msi
+        permissions: [
+          'get'
+        ]
+        type: 'secrets'
+      }
     ]
     tenantId: tenantId
   }
   dependsOn: [
     functionAppTemplate_GraphUpdater
+    functionAppSlotTemplate_GraphUpdater
   ]
 }

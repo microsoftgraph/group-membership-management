@@ -66,4 +66,26 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
   }
 }
 
+resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
+  name: 'slotConfigNames'
+  parent: functionApp
+  properties: {
+    appSettingNames: [
+      'AzureFunctionsJobHost__extensions__durableTask__hubName'
+      'AzureWebJobs.StarterFunction.Disabled'
+      'AzureWebJobs.OrchestratorFunction.Disabled'
+      'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled'
+      'AzureWebJobs.EmailSenderFunction.Disabled'
+      'AzureWebJobs.FileDownloaderFunction.Disabled'
+      'AzureWebJobs.GroupNameReaderFunction.Disabled'
+      'AzureWebJobs.GroupOwnersReaderFunction.Disabled'
+      'AzureWebJobs.GroupUpdaterFunction.Disabled'
+      'AzureWebJobs.GroupValidatorFunction.Disabled'
+      'AzureWebJobs.JobReaderFunction.Disabled'
+      'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
+      'AzureWebJobs.LoggerFunction.Disabled'
+    ]
+  }
+}
+
 output msi string = functionApp.identity.principalId

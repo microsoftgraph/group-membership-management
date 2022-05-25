@@ -38,4 +38,23 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
   }
 }
 
+resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
+  name: 'slotConfigNames'
+  parent: functionApp
+  properties: {
+    appSettingNames: [
+      'AzureFunctionsJobHost__extensions__durableTask__hubName'
+      'AzureWebJobs.StarterFunction.Disabled'
+      'AzureWebJobs.OrchestratorFunction.Disabled'
+      'AzureWebJobs.SubOrchestratorFunction.Disabled'
+      'AzureWebJobs.EmailSenderFunction.Disabled'
+      'AzureWebJobs.GroupNameReaderFunction.Disabled'
+      'AzureWebJobs.GroupVerifierFunction.Disabled'
+      'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
+      'AzureWebJobs.SyncJobsReaderFunction.Disabled'
+      'AzureWebJobs.TopicMessageSenderFunction.Disabled'
+    ]
+  }
+}
+
 output msi string = functionApp.identity.principalId

@@ -29,14 +29,15 @@ param dataKeyVaultResourceGroup string
 @description('Tenant id.')
 param tenantId string
 
-resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
+resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
   name: name
-  location: location
   kind: kind
+  location: location
   properties: {
-    serverFarmId: resourceId('Microsoft.Web/serverfarms', servicePlanName)
-    clientAffinityEnabled: false
+    clientAffinityEnabled: true
+    enabled: true
     httpsOnly: true
+    serverFarmId: resourceId('Microsoft.Web/serverfarms', servicePlanName)
     siteConfig: {
       use32BitWorkerProcess : false
       appSettings: secretSettings
@@ -54,7 +55,7 @@ module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
     name: dataKeyVaultName
     policies: [
       {
-        objectId: functionApp.identity.principalId
+        objectId: functionAppSlot.identity.principalId
         permissions: [
           'get'
           'list'
@@ -72,16 +73,16 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
     keyVaultName: dataKeyVaultName
     keyVaultParameters: [
       {
-        name: 'membershipAggregatorUrl'
-        value: 'https://${functionApp.properties.defaultHostName}/api/StarterFunction'
+        name: 'membershipAggregatorStagingUrl'
+        value: 'https://${functionAppSlot.properties.defaultHostName}/api/StarterFunction'
       }
       {
-        name: 'membershipAggregatorFunctionKey'
-        value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
+        name: 'membershipAggregatorStagingFunctionKey'
+        value: listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default
       }
       {
-        name: 'membershipAggregatorFunctionName'
-        value: '${name}-MembershipAggregator'
+        name: 'membershipAggregatorStagingFunctionName'
+        value: '${name}-MembershipAggregator/staging'
       }
     ]
   }
@@ -90,23 +91,4 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
   ]
 }
 
-resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
-  name: 'slotConfigNames'
-  parent: functionApp
-  properties: {
-    appSettingNames: [
-      'AzureFunctionsJobHost__extensions__durableTask__hubName'
-      'AzureWebJobs.StarterFunction.Disabled'
-      'AzureWebJobs.OrchestratorFunction.Disabled'
-      'AzureWebJobs.MembershipSubOrchestratorFunction.Disabled'
-      'AzureWebJobs.DeltaCalculatorFunction.Disabled'
-      'AzureWebJobs.FileDownloaderFunction.Disabled'
-      'AzureWebJobs.FileUploaderFunction.Disabled'
-      'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
-      'AzureWebJobs.JobTrackerEntity.Disabled'
-      'AzureWebJobs.LoggerFunction.Disabled'
-    ]
-  }
-}
-
-output msi string = functionApp.identity.principalId
+output msi string = functionAppSlot.identity.principalId
