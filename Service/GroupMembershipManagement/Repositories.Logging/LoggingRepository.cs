@@ -65,6 +65,9 @@ namespace Repositories.Logging
             properties.Add("location", _location);
             properties.Add("DryRun", DryRun.ToString());
 
+            var slot = Environment.GetEnvironmentVariable("APPSETTING_WEBSITE_SLOT_NAME", EnvironmentVariableTarget.Process);
+            properties.Add("slot", slot);
+
             if (!string.IsNullOrWhiteSpace(caller))
                 properties.Add("event", caller);
 
