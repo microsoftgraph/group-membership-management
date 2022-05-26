@@ -3,13 +3,14 @@
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-@description('Classify the types of resources in this resource group.')
-@allowed([
-  'prereqs'
-  'data'
-  'compute'
-])
+@description('Classify the types of resources in data resource group.')
 param resourceGroupClassification string = 'data'
+
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
+
+@description('Classify the types of resources in compute resource group.')
+param computeResourceGroupClassification string = 'compute'
 
 @description('Enter an abbreviation for the environment.')
 @minLength(2)
@@ -417,6 +418,8 @@ module dashboardTemplate 'dashboard.bicep' = {
     location: location
     dashboardName: 'GMM Dashboard (${environmentAbbreviation})'
     resourceGroup: '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
+    computeResourceGroup: '${solutionAbbreviation}-${computeResourceGroupClassification}-${environmentAbbreviation}'
+    prereqsResourceGroup: '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
     subscriptionId: subscriptionId
     jobsStorageAccountName: jobsStorageAccountName
   }

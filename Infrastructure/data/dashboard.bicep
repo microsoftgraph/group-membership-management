@@ -4,6 +4,12 @@ param dashboardName string
 @description('Resource group to retrieve data from.')
 param resourceGroup string
 
+@description('Name of prereqs resource group')
+param prereqsResourceGroup string
+
+@description('Name of compute resource group')
+param computeResourceGroup string
+
 @description('Resource location.')
 param location string
 
@@ -1277,6 +1283,285 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
             position: {
               x: 1
               y: 14
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'scope'
+                  value: '/subscriptions/${subscriptionId}/resourceGroups/${computeResourceGroup}'
+                }
+                {
+                  name: 'scopeName'
+                  value: computeResourceGroup
+                }
+                {
+                  name: 'view'
+                  value: {
+                    currency: 'USD'
+                    dateRange: 'Last7Days'
+                    query: {
+                      type: 'ActualCost'
+                      dataSet: {
+                        granularity: 'Daily'
+                        aggregation: {
+                          totalCost: {
+                            name: 'Cost'
+                            function: 'Sum'
+                          }
+                          totalCostUSD: {
+                            name: 'CostUSD'
+                            function: 'Sum'
+                          }
+                        }
+                        sorting: [
+                          {
+                            direction: 'ascending'
+                            name: 'UsageDate'
+                          }
+                        ]
+                      }
+                      timeframe: 'None'
+                    }
+                    chart: 'Area'
+                    accumulated: 'false'
+                    pivots: [
+                      {
+                        type: 'Dimension'
+                        name: 'ServiceName'
+                      }
+                      {
+                        type: 'Dimension'
+                        name: 'ResourceLocation'
+                      }
+                      {
+                        type: 'Dimension'
+                        name: 'ResourceId'
+                      }
+                    ]
+                    scope: 'subscriptions/${subscriptionId}/resourceGroups/${computeResourceGroup}'
+                    kpis: [
+                      {
+                        type: 'Budget'
+                        id: 'COST_NAVIGATOR.BUDGET_OPTIONS.NONE'
+                        enabled: true
+                        extendedProperties: {
+                          name: 'COST_NAVIGATOR.BUDGET_OPTIONS.NONE'
+                        }
+                      }
+                      {
+                        type: 'Forecast'
+                        enabled: true
+                      }
+                    ]
+                    displayName: 'AccumulatedCosts'
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'externalState'
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_Azure_CostManagement/PartType/CostAnalysisPinPart'
+              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${computeResourceGroup}/costanalysis'
+              partHeader: {
+                title: 'Cost Analysis'
+                subtitle: computeResourceGroup
+              }
+            }
+          }
+          '15': {
+            position: {
+              x: 7
+              y: 14
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'scope'
+                  value: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}'
+                }
+                {
+                  name: 'scopeName'
+                  value: resourceGroup
+                }
+                {
+                  name: 'view'
+                  value: {
+                    currency: 'USD'
+                    dateRange: 'Last7Days'
+                    query: {
+                      type: 'ActualCost'
+                      dataSet: {
+                        granularity: 'Daily'
+                        aggregation: {
+                          totalCost: {
+                            name: 'Cost'
+                            function: 'Sum'
+                          }
+                          totalCostUSD: {
+                            name: 'CostUSD'
+                            function: 'Sum'
+                          }
+                        }
+                        sorting: [
+                          {
+                            direction: 'ascending'
+                            name: 'UsageDate'
+                          }
+                        ]
+                      }
+                      timeframe: 'None'
+                    }
+                    chart: 'Area'
+                    accumulated: 'false'
+                    pivots: [
+                      {
+                        type: 'Dimension'
+                        name: 'ServiceName'
+                      }
+                      {
+                        type: 'Dimension'
+                        name: 'ResourceLocation'
+                      }
+                      {
+                        type: 'Dimension'
+                        name: 'ResourceId'
+                      }
+                    ]
+                    scope: 'subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}'
+                    kpis: [
+                      {
+                        type: 'Budget'
+                        id: 'COST_NAVIGATOR.BUDGET_OPTIONS.NONE'
+                        enabled: true
+                        extendedProperties: {
+                          name: 'COST_NAVIGATOR.BUDGET_OPTIONS.NONE'
+                        }
+                      }
+                      {
+                        type: 'Forecast'
+                        enabled: true
+                      }
+                    ]
+                    displayName: 'AccumulatedCosts'
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'externalState'
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_Azure_CostManagement/PartType/CostAnalysisPinPart'
+              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/costanalysis'
+              partHeader: {
+                title: 'Cost Analysis'
+                subtitle: resourceGroup
+              }
+            }
+          }
+          '16': {
+            position: {
+              x: 13
+              y: 14
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'scope'
+                  value: '/subscriptions/${subscriptionId}/resourceGroups/${prereqsResourceGroup}'
+                }
+                {
+                  name: 'scopeName'
+                  value: prereqsResourceGroup
+                }
+                {
+                  name: 'view'
+                  value: {
+                    currency: 'USD'
+                    dateRange: 'Last7Days'
+                    query: {
+                      type: 'ActualCost'
+                      dataSet: {
+                        granularity: 'Daily'
+                        aggregation: {
+                          totalCost: {
+                            name: 'Cost'
+                            function: 'Sum'
+                          }
+                          totalCostUSD: {
+                            name: 'CostUSD'
+                            function: 'Sum'
+                          }
+                        }
+                        sorting: [
+                          {
+                            direction: 'ascending'
+                            name: 'UsageDate'
+                          }
+                        ]
+                      }
+                      timeframe: 'None'
+                    }
+                    chart: 'Area'
+                    accumulated: 'false'
+                    pivots: [
+                      {
+                        type: 'Dimension'
+                        name: 'ServiceName'
+                      }
+                      {
+                        type: 'Dimension'
+                        name: 'ResourceLocation'
+                      }
+                      {
+                        type: 'Dimension'
+                        name: 'ResourceId'
+                      }
+                    ]
+                    scope: 'subscriptions/${subscriptionId}/resourceGroups/${prereqsResourceGroup}'
+                    kpis: [
+                      {
+                        type: 'Budget'
+                        id: 'COST_NAVIGATOR.BUDGET_OPTIONS.NONE'
+                        enabled: true
+                        extendedProperties: {
+                          name: 'COST_NAVIGATOR.BUDGET_OPTIONS.NONE'
+                        }
+                      }
+                      {
+                        type: 'Forecast'
+                        enabled: true
+                      }
+                    ]
+                    displayName: 'AccumulatedCosts'
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'externalState'
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_Azure_CostManagement/PartType/CostAnalysisPinPart'
+              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${prereqsResourceGroup}/costanalysis'
+              partHeader: {
+                title: 'Cost Analysis'
+                subtitle: prereqsResourceGroup
+              }
+            }
+          }
+          '17': {
+            position: {
+              x: 1
+              y: 18
               colSpan: 17
               rowSpan: 2
             }
@@ -1393,10 +1678,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '15': {
+          '18': {
             position: {
               x: 1
-              y: 17
+              y: 21
               colSpan: 7
               rowSpan: 2
             }
@@ -1416,10 +1701,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '16': {
+          '19': {
             position: {
               x: 1
-              y: 19
+              y: 23
               colSpan: 14
               rowSpan: 2
             }
@@ -1521,10 +1806,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '17': {
+          '20': {
             position: {
               x: 1
-              y: 21
+              y: 25
               colSpan: 3
               rowSpan: 4
             }
@@ -1535,237 +1820,6 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 content: {
                   settings: {
                     content: '### <span style="color:lightseagreen">Onboarding vs. Ongoing</span>\r\n\r\nThe two tiles on the right show percentiles for sync job run durations, separating onboarding sync jobs and ongoing sync jobs.'
-                    title: ''
-                    subtitle: ''
-                    markdownSource: 1
-                    markdownUri: null
-                  }
-                }
-              }
-            }
-          }
-          '18': {
-            position: {
-              x: 4
-              y: 21
-              colSpan: 11
-              rowSpan: 2
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'resourceTypeMode'
-                  isOptional: true
-                }
-                {
-                  name: 'ComponentId'
-                  isOptional: true
-                }
-                {
-                  name: 'Scope'
-                  value: {
-                    resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
-                    ]
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'PartId'
-                  value: '15bd1362-68dd-413e-a9fd-87c931d2c932'
-                  isOptional: true
-                }
-                {
-                  name: 'Version'
-                  value: '2.0'
-                  isOptional: true
-                }
-                {
-                  name: 'TimeRange'
-                  value: 'P1D'
-                  isOptional: true
-                }
-                {
-                  name: 'DashboardId'
-                  isOptional: true
-                }
-                {
-                  name: 'DraftRequestParameters'
-                  isOptional: true
-                }
-                {
-                  name: 'Query'
-                  value: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\nResult = customDimensions["Result"],\nDryRun = customDimensions["IsDryRunEnabled"],\nType = customDimensions["Type"]\n| where Result == "Success" and DryRun == "False"\n| project Minutes, tostring(Type)\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100) by Type\n'
-                  isOptional: true
-                }
-                {
-                  name: 'ControlType'
-                  value: 'AnalyticsGrid'
-                  isOptional: true
-                }
-                {
-                  name: 'SpecificChart'
-                  isOptional: true
-                }
-                {
-                  name: 'PartTitle'
-                  value: 'Analytics'
-                  isOptional: true
-                }
-                {
-                  name: 'PartSubTitle'
-                  value: resourceGroup
-                  isOptional: true
-                }
-                {
-                  name: 'Dimensions'
-                  isOptional: true
-                }
-                {
-                  name: 'LegendOptions'
-                  isOptional: true
-                }
-                {
-                  name: 'IsQueryContainTimeRange'
-                  value: false
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
-              settings: {
-                content: {
-                  GridColumnsWidth: {
-                    percentile_Minutes_50: '171px'
-                    Type: '108px'
-                    percentile_Minutes_75: '170px'
-                    percentile_Minutes_95: '172px'
-                    percentile_Minutes_99: '170px'
-                    percentile_Minutes_100: '180px'
-                  }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Onboarding = tobool(customDimensions["IsInitialSync"])\n| where Result == "Success" and DryRun == false and Onboarding == true\n| project Minutes, tostring(Type)\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100) by Type\n| order by Type desc\n\n'
-                  PartTitle: 'Onboarding Sync Job Run Durations Chart'
-                }
-              }
-            }
-          }
-          '19': {
-            position: {
-              x: 4
-              y: 23
-              colSpan: 11
-              rowSpan: 2
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'resourceTypeMode'
-                  isOptional: true
-                }
-                {
-                  name: 'ComponentId'
-                  isOptional: true
-                }
-                {
-                  name: 'Scope'
-                  value: {
-                    resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
-                    ]
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'PartId'
-                  value: '15bd1362-68dd-413e-a9fd-87c931d2c932'
-                  isOptional: true
-                }
-                {
-                  name: 'Version'
-                  value: '2.0'
-                  isOptional: true
-                }
-                {
-                  name: 'TimeRange'
-                  value: 'P1D'
-                  isOptional: true
-                }
-                {
-                  name: 'DashboardId'
-                  isOptional: true
-                }
-                {
-                  name: 'DraftRequestParameters'
-                  isOptional: true
-                }
-                {
-                  name: 'Query'
-                  value: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\nResult = customDimensions["Result"],\nDryRun = customDimensions["IsDryRunEnabled"],\nType = customDimensions["Type"]\n| where Result == "Success" and DryRun == "False"\n| project Minutes, tostring(Type)\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100) by Type\n'
-                  isOptional: true
-                }
-                {
-                  name: 'ControlType'
-                  value: 'AnalyticsGrid'
-                  isOptional: true
-                }
-                {
-                  name: 'SpecificChart'
-                  isOptional: true
-                }
-                {
-                  name: 'PartTitle'
-                  value: 'Analytics'
-                  isOptional: true
-                }
-                {
-                  name: 'PartSubTitle'
-                  value: resourceGroup
-                  isOptional: true
-                }
-                {
-                  name: 'Dimensions'
-                  isOptional: true
-                }
-                {
-                  name: 'LegendOptions'
-                  isOptional: true
-                }
-                {
-                  name: 'IsQueryContainTimeRange'
-                  value: false
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
-              settings: {
-                content: {
-                  GridColumnsWidth: {
-                    percentile_Minutes_50: '172px'
-                    Type: '108px'
-                    percentile_Minutes_75: '172px'
-                    percentile_Minutes_95: '172px'
-                    percentile_Minutes_99: '171px'
-                    percentile_Minutes_100: '176px'
-                  }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Onboarding = tobool(customDimensions["IsInitialSync"])\n| where Result == "Success" and DryRun == false and Onboarding == false\n| project Minutes, tostring(Type)\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100) by Type\n| order by Type desc\n\n'
-                  PartTitle: 'Ongoing Sync Job Run Durations Chart'
-                }
-              }
-            }
-          }
-          '20': {
-            position: {
-              x: 1
-              y: 25
-              colSpan: 3
-              rowSpan: 8
-            }
-            metadata: {
-              inputs: []
-              type: 'Extension/HubsExtension/PartType/MarkdownPart'
-              settings: {
-                content: {
-                  settings: {
-                    content: '### <span style="color:lightseagreen">By Destination Size Range</span>\r\n\r\nThe four tiles on the right show percentiles for sync job run durations, separating them by ranges between the sizes of destinations.'
                     title: ''
                     subtitle: ''
                     markdownSource: 1
@@ -1866,6 +1920,237 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               settings: {
                 content: {
                   GridColumnsWidth: {
+                    percentile_Minutes_50: '171px'
+                    Type: '108px'
+                    percentile_Minutes_75: '170px'
+                    percentile_Minutes_95: '172px'
+                    percentile_Minutes_99: '170px'
+                    percentile_Minutes_100: '180px'
+                  }
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Onboarding = tobool(customDimensions["IsInitialSync"])\n| where Result == "Success" and DryRun == false and Onboarding == true\n| project Minutes, tostring(Type)\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100) by Type\n| order by Type desc\n\n'
+                  PartTitle: 'Onboarding Sync Job Run Durations Chart'
+                }
+              }
+            }
+          }
+          '22': {
+            position: {
+              x: 4
+              y: 27
+              colSpan: 11
+              rowSpan: 2
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '15bd1362-68dd-413e-a9fd-87c931d2c932'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\nResult = customDimensions["Result"],\nDryRun = customDimensions["IsDryRunEnabled"],\nType = customDimensions["Type"]\n| where Result == "Success" and DryRun == "False"\n| project Minutes, tostring(Type)\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100) by Type\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  GridColumnsWidth: {
+                    percentile_Minutes_50: '172px'
+                    Type: '108px'
+                    percentile_Minutes_75: '172px'
+                    percentile_Minutes_95: '172px'
+                    percentile_Minutes_99: '171px'
+                    percentile_Minutes_100: '176px'
+                  }
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Onboarding = tobool(customDimensions["IsInitialSync"])\n| where Result == "Success" and DryRun == false and Onboarding == false\n| project Minutes, tostring(Type)\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100) by Type\n| order by Type desc\n\n'
+                  PartTitle: 'Ongoing Sync Job Run Durations Chart'
+                }
+              }
+            }
+          }
+          '23': {
+            position: {
+              x: 1
+              y: 29
+              colSpan: 3
+              rowSpan: 8
+            }
+            metadata: {
+              inputs: []
+              type: 'Extension/HubsExtension/PartType/MarkdownPart'
+              settings: {
+                content: {
+                  settings: {
+                    content: '### <span style="color:lightseagreen">By Destination Size Range</span>\r\n\r\nThe four tiles on the right show percentiles for sync job run durations, separating them by ranges between the sizes of destinations.'
+                    title: ''
+                    subtitle: ''
+                    markdownSource: 1
+                    markdownUri: null
+                  }
+                }
+              }
+            }
+          }
+          '24': {
+            position: {
+              x: 4
+              y: 29
+              colSpan: 11
+              rowSpan: 2
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '15bd1362-68dd-413e-a9fd-87c931d2c932'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\nResult = customDimensions["Result"],\nDryRun = customDimensions["IsDryRunEnabled"],\nType = customDimensions["Type"]\n| where Result == "Success" and DryRun == "False"\n| project Minutes, tostring(Type)\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100) by Type\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  GridColumnsWidth: {
                     percentile_Minutes_50: '173px'
                     Type: '112px'
                     percentile_Minutes_75: '170px'
@@ -1879,10 +2164,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '22': {
+          '25': {
             position: {
               x: 4
-              y: 27
+              y: 31
               colSpan: 11
               rowSpan: 2
             }
@@ -1983,10 +2268,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '23': {
+          '26': {
             position: {
               x: 4
-              y: 29
+              y: 33
               colSpan: 11
               rowSpan: 2
             }
@@ -2087,10 +2372,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '24': {
+          '27': {
             position: {
               x: 4
-              y: 31
+              y: 35
               colSpan: 11
               rowSpan: 2
             }
@@ -2190,10 +2475,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '25': {
+          '28': {
             position: {
               x: 1
-              y: 33
+              y: 37
               colSpan: 6
               rowSpan: 4
             }
@@ -2310,10 +2595,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '26': {
+          '29': {
             position: {
               x: 1
-              y: 38
+              y: 42
               colSpan: 9
               rowSpan: 2
             }
@@ -2333,10 +2618,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '27': {
+          '30': {
             position: {
               x: 1
-              y: 40
+              y: 44
               colSpan: 5
               rowSpan: 4
             }
@@ -2434,10 +2719,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '28': {
+          '31': {
             position: {
               x: 6
-              y: 40
+              y: 44
               colSpan: 5
               rowSpan: 4
             }
@@ -2537,10 +2822,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '29': {
+          '32': {
             position: {
               x: 11
-              y: 40
+              y: 44
               colSpan: 5
               rowSpan: 4
             }
@@ -2634,10 +2919,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '30': {
+          '33': {
             position: {
               x: 1
-              y: 44
+              y: 48
               colSpan: 8
               rowSpan: 4
             }
@@ -2760,10 +3045,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '31': {
+          '34': {
             position: {
               x: 7
-              y: 33
+              y: 37
               colSpan: 6
               rowSpan: 4
             }
@@ -2879,10 +3164,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '32': {
+          '35': {
             position: {
               x: 9
-              y: 44
+              y: 48
               colSpan: 8
               rowSpan: 4
             }
