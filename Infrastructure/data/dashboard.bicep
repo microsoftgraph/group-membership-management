@@ -1300,7 +1300,6 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'view'
                   value: {
                     currency: 'USD'
-                    dateRange: 'Last7Days'
                     query: {
                       type: 'ActualCost'
                       dataSet: {
@@ -1319,6 +1318,12 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                           {
                             direction: 'ascending'
                             name: 'UsageDate'
+                          }
+                        ]
+                        grouping: [
+                          {
+                            type: 'Dimension'
+                            name: 'MeterSubCategory'
                           }
                         ]
                       }
@@ -1355,7 +1360,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                         enabled: true
                       }
                     ]
-                    displayName: 'AccumulatedCosts'
+                    displayName: 'DailyCosts'
                   }
                   isOptional: true
                 }
@@ -1367,7 +1372,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_Azure_CostManagement/PartType/CostAnalysisPinPart'
               deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${computeResourceGroup}/costanalysis'
               partHeader: {
-                title: 'Cost Analysis'
+                title: 'Daily Costs'
                 subtitle: computeResourceGroup
               }
             }
@@ -1393,7 +1398,6 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'view'
                   value: {
                     currency: 'USD'
-                    dateRange: 'Last7Days'
                     query: {
                       type: 'ActualCost'
                       dataSet: {
@@ -1412,6 +1416,12 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                           {
                             direction: 'ascending'
                             name: 'UsageDate'
+                          }
+                        ]
+                        grouping: [
+                          {
+                            type: 'Dimension'
+                            name: 'MeterCategory'
                           }
                         ]
                       }
@@ -1448,7 +1458,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                         enabled: true
                       }
                     ]
-                    displayName: 'AccumulatedCosts'
+                    displayName: 'DailyCosts'
                   }
                   isOptional: true
                 }
@@ -1460,7 +1470,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_Azure_CostManagement/PartType/CostAnalysisPinPart'
               deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/costanalysis'
               partHeader: {
-                title: 'Cost Analysis'
+                title: 'Daily Costs'
                 subtitle: resourceGroup
               }
             }
@@ -1486,7 +1496,6 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'view'
                   value: {
                     currency: 'USD'
-                    dateRange: 'Last7Days'
                     query: {
                       type: 'ActualCost'
                       dataSet: {
@@ -1505,6 +1514,12 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                           {
                             direction: 'ascending'
                             name: 'UsageDate'
+                          }
+                        ]
+                        grouping: [
+                          {
+                            type: 'Dimension'
+                            name: 'MeterCategory'
                           }
                         ]
                       }
@@ -1541,7 +1556,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                         enabled: true
                       }
                     ]
-                    displayName: 'AccumulatedCosts'
+                    displayName: 'DailyCosts'
                   }
                   isOptional: true
                 }
@@ -1553,7 +1568,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_Azure_CostManagement/PartType/CostAnalysisPinPart'
               deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${prereqsResourceGroup}/costanalysis'
               partHeader: {
-                title: 'Cost Analysis'
+                title: 'Daily Costs'
                 subtitle: prereqsResourceGroup
               }
             }
@@ -2701,7 +2716,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'IsQueryContainTimeRange'
-                  isOptional: true
+                  isOptional: false
                 }
               ]
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
@@ -2802,7 +2817,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'IsQueryContainTimeRange'
-                  isOptional: true
+                  isOptional: false
                 }
               ]
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
@@ -2817,7 +2832,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   Query: 'ApplicationLog_CL\n| where TimeGenerated >= now(-30d)\n| project TimeGenerated, Message, location_s\n| where (location_s == "JobTrigger" and Message has "RunId" and Message !has "FilePath") or (location_s == "GraphUpdater" and Message has "RunId" and Message !has "FilePath")\n| extend RunId = tostring(split(Message, \' \')[2])\n| order by RunId desc, TimeGenerated asc\n| where location_s == "JobTrigger" and RunId == next(RunId) and next(location_s) <> "GraphUpdater"\n| project TimeGenerated,\n    TargetOfficeGroupId = tostring(split(Message, \' \')[6]),\n    RunId = split(RunId, \'\\n\')[0],\n    Type = split(split(Message, \' \')[6], \'\\n\')[0]\n| where TimeGenerated <= iff(Type == "SecurityGroup", now(-6h), now(-24h))\n| order by TimeGenerated desc\n\n'
                   PartTitle: 'Jobs stuck as InProgress'
                   PartSubTitle: 'ApplicationLog_CL'
-                  IsQueryContainTimeRange: true
+                  IsQueryContainTimeRange: false
                 }
               }
             }
@@ -3214,7 +3229,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'let start = now(-7d);\nrequests\n| where timestamp > start\n| project-rename Location=operation_Name, FunctionName=name, DurationInMilliseconds=duration\n| project timestamp, FunctionName, Location, DurationInMilliseconds\n| order by DurationInMilliseconds desc \n'
+                  value: 'requests\n| project name, operation_Name, duration=duration / 1000 / 60\n| summarize max_Duration=max(duration) by name, operation_Name\n| order by max_Duration desc\n\n'
                   isOptional: true
                 }
                 {
@@ -3246,7 +3261,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'IsQueryContainTimeRange'
-                  value: true
+                  value: false
                   isOptional: true
                 }
               ]
