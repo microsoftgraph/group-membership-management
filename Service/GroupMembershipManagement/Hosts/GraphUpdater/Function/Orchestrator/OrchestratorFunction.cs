@@ -14,6 +14,7 @@ using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Hosts.GraphUpdater
@@ -35,7 +36,6 @@ namespace Hosts.GraphUpdater
         }
 
         public OrchestratorFunction(
-            ILoggingRepository loggingRepository,
             TelemetryClient telemetryClient,
             IGraphUpdaterService graphUpdaterService,
             IEmailSenderRecipient emailSenderAndRecipients,
@@ -53,8 +53,10 @@ namespace Hosts.GraphUpdater
             GroupMembership groupMembership = null;
             MembershipHttpRequest graphRequest = null;
             SyncJob syncJob = null;
+            var syncCompleteEvent = new SyncCompleteCustomEvent();
 
             graphRequest = context.GetInput<MembershipHttpRequest>();
+
 
             try
             {
@@ -65,6 +67,9 @@ namespace Hosts.GraphUpdater
                                                            JobRowKey = graphRequest.SyncJob.RowKey,
                                                            RunId = graphRequest.SyncJob.RunId.GetValueOrDefault()
                                                        });
+                syncCompleteEvent.TargetOfficeGroupId = syncJob.TargetOfficeGroupId.ToString();
+                syncCompleteEvent.RunId = syncJob.RunId.ToString();
+                syncCompleteEvent.IsDryRunEnabled = false.ToString();
 
                 var fileContent = await context.CallActivityAsync<string>(nameof(FileDownloaderFunction),
                                                                             new FileDownloaderRequest
@@ -74,6 +79,7 @@ namespace Hosts.GraphUpdater
                                                                             });
 
                 groupMembership = JsonConvert.DeserializeObject<GroupMembership>(fileContent);
+                syncCompleteEvent.RunId = groupMembership.SourceMembers.Count.ToString();
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob });
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
@@ -104,8 +110,11 @@ namespace Hosts.GraphUpdater
                 }
 
                 var isInitialSync = syncJob.LastRunTime == DateTime.FromFileTimeUtc(0);
+                syncCompleteEvent.IsInitialSync = isInitialSync.ToString();
                 var membersToAdd = groupMembership.SourceMembers.Where(x => x.MembershipAction == MembershipAction.Add).Distinct().ToList();
+                syncCompleteEvent.MembersToAdd = membersToAdd.Count.ToString();
                 var membersToRemove = groupMembership.SourceMembers.Where(x => x.MembershipAction == MembershipAction.Remove).Distinct().ToList();
+                syncCompleteEvent.MembersToRemove = membersToRemove.Count.ToString();
 
                 await context.CallSubOrchestratorAsync(nameof(GroupUpdaterSubOrchestratorFunction),
                                 CreateGroupUpdaterRequest(syncJob, membersToAdd, RequestType.Add, isInitialSync));
@@ -123,7 +132,7 @@ namespace Hosts.GraphUpdater
 
                     var ownerEmails = string.Join(";", groupOwners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
 
-                    var additonalContent = new[]
+                    var additionalContent = new[]
                     {
                                 groupName,
                                 groupMembership.Destination.ObjectId.ToString(),
@@ -140,7 +149,7 @@ namespace Hosts.GraphUpdater
                                                         ToEmail = ownerEmails,
                                                         CcEmail = _emailSenderAndRecipients.SyncCompletedCCAddresses,
                                                         ContentTemplate = SyncCompletedEmailBody,
-                                                        AdditionalContentParams = additonalContent,
+                                                        AdditionalContentParams = additionalContent,
                                                         RunId = groupMembership.RunId
                                                     });
                 }
@@ -155,21 +164,7 @@ namespace Hosts.GraphUpdater
 
                 if (!context.IsReplaying)
                 {
-                    var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.Timestamp).TotalSeconds;
-                    _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
-
-                    var syncCompleteEvent = new Dictionary<string, string>
-                    {
-                        { nameof(SyncJob.TargetOfficeGroupId), groupMembership.Destination.ObjectId.ToString() },
-                        { nameof(groupMembership.RunId), groupMembership.RunId.ToString() },
-                        { nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob.ToString() },
-                        { nameof(DeltaResponse.MembersToAdd), membersToAdd.Count.ToString() },
-                        { nameof(DeltaResponse.MembersToRemove), membersToRemove.Count.ToString() },
-                        { nameof(Metric.ProjectedMemberCount), groupMembership.SourceMembers.Count.ToString() },
-                        { nameof(DeltaResponse.IsInitialSync), isInitialSync.ToString() }
-                    };
-
-                    _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteEvent);
+                    TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, true);
                 }
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob });
@@ -193,8 +188,25 @@ namespace Hosts.GraphUpdater
                                                                     SyncStatus.Error, syncJob.ThresholdViolations, groupMembership.RunId));
                 }
 
+                TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, false);
+
                 throw;
             }
+        }
+
+        private void TrackSyncCompleteEvent(IDurableOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, bool success)
+        {
+            var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.Timestamp).TotalSeconds;
+            _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
+
+            syncCompleteEvent.SyncJobTimeElapsedSeconds = timeElapsedForJob.ToString();
+            syncCompleteEvent.Result = success ? "Success" : "Failure";
+
+            var syncCompleteDict = syncCompleteEvent.GetType()
+                .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                .ToDictionary(prop => prop.Name, prop => (string)prop.GetValue(syncCompleteEvent, null));
+
+            _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteDict);
         }
 
         private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(string partitionKey, string rowKey, SyncStatus syncStatus, int thresholdViolations, Guid runId)
