@@ -108,7 +108,7 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
                     .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
@@ -216,7 +216,7 @@ namespace Services.Tests
                         await emailSenderFunction.SendEmailAsync((EmailSenderRequest)request);
                     });
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
@@ -309,7 +309,7 @@ namespace Services.Tests
 
             context.Setup(x => x.CallSubOrchestratorAsync(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>())).Throws<Exception>();
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
             await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
 
             Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
@@ -369,7 +369,7 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
             await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
@@ -450,7 +450,7 @@ namespace Services.Tests
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
             await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
         }
 
@@ -519,7 +519,7 @@ namespace Services.Tests
                         updateJobRequest = request as JobStatusUpdaterRequest;
                     });
 
-            var orchestrator = new OrchestratorFunction(mockLoggingRepo, mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.AreEqual(SyncStatus.DestinationGroupNotFound, updateJobRequest.Status);
