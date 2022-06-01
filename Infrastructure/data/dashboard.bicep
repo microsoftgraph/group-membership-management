@@ -165,7 +165,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| distinct TargetOfficeGroupId\n| summarize Count = count()\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| distinct TargetOfficeGroupId\n| summarize Count = count()\n\n'
                   ControlType: 'AnalyticsGrid'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Sync Count'
@@ -289,7 +289,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   GridColumnsWidth: {
                     Count: '81px'
                   }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| distinct TargetOfficeGroupId, Type\n| summarize Count = count() by Type\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| distinct TargetOfficeGroupId\n| summarize Count = count()\n\n'
                   ControlType: 'AnalyticsGrid'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Syncs By Type'
@@ -488,7 +488,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| summarize by TargetOfficeGroupId, Type, Bin = bin(timestamp, 1d)\n| summarize count() by Bin, Type\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| summarize by TargetOfficeGroupId, Bin = bin(timestamp, 1d)\n| summarize count() by Bin\n\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Sync Jobs Successful'
@@ -503,12 +503,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                         type: 'long'
                       }
                     ]
-                    splitBy: [
-                      {
-                        name: 'Type'
-                        type: 'string'
-                      }
-                    ]
+                    splitBy: []
                     aggregation: 'Sum'
                   }
                   LegendOptions: {
@@ -609,7 +604,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Onboarding = tobool(customDimensions["IsInitialSync"])\n| where Result == "Success" and DryRun == false and Onboarding == true\n| summarize count() by bin(timestamp, 1d), Type\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Onboarding = tobool(customDimensions["IsInitialSync"])\n| where Result == "Success" and DryRun == false and Onboarding == true\n| summarize count() by bin(timestamp, 1d)\n\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Onboardings Per Day'
@@ -624,12 +619,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                         type: 'long'
                       }
                     ]
-                    splitBy: [
-                      {
-                        name: 'Type'
-                        type: 'string'
-                      }
-                    ]
+                    splitBy: []
                     aggregation: 'Sum'
                   }
                   LegendOptions: {
@@ -753,7 +743,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    ToAdd = toint(customDimensions["MembersToAdd"]),\n    ToRemove = toint(customDimensions["MembersToRemove"])\n| where Result == "Success" and DryRun == false\n| summarize UsersAdded = sum(ToAdd), UsersRemoved = sum(ToRemove) by bin(timestamp, 1d)\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    ToAdd = toint(customDimensions["MembersToAdd"]),\n    ToRemove = toint(customDimensions["MembersToRemove"])\n| where Result == "Success" and DryRun == false\n| summarize UsersAdded = sum(ToAdd), UsersRemoved = sum(ToRemove) by bin(timestamp, 1d)\n\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Total Members Added and Removed'
@@ -1686,7 +1676,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     From300kTo400k: '137px'
                     MoreThan400k: '126px'
                   }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    MemberCount = toint(customDimensions["ProjectedMemberCount"])\n| where Result == "Success"\n| summarize MaxMemberCount = max(MemberCount) by TargetOfficeGroupId, Type\n| summarize LessThan1k = countif(MaxMemberCount < 1000), From1kTo5k = countif(MaxMemberCount >= 1000 and MaxMemberCount < 5000), From5kTo10k = countif(MaxMemberCount >= 5000 and MaxMemberCount < 10000), From10kTo25k = countif(MaxMemberCount >= 10000 and MaxMemberCount < 25000), From25kTo50k = countif(MaxMemberCount >= 25000 and MaxMemberCount < 50000), From50kTo75k = countif(MaxMemberCount >= 50000 and MaxMemberCount < 75000), From75kTo100k = countif(MaxMemberCount >= 75000 and MaxMemberCount < 100000), From100kTo200k = countif(MaxMemberCount >= 100000 and MaxMemberCount < 200000), From200kTo300k = countif(MaxMemberCount >= 200000 and MaxMemberCount < 300000), From300kTo400k = countif(MaxMemberCount >= 300000 and MaxMemberCount < 400000), MoreThan400k = countif(MaxMemberCount >= 400000) by Type\n| order by Type desc\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),    \n    Result = tostring(customDimensions["Result"]),\n    MemberCount = toint(customDimensions["ProjectedMemberCount"])\n| where Result == "Success"\n| summarize MaxMemberCount = max(MemberCount) by TargetOfficeGroupId\n| summarize LessThan1k = countif(MaxMemberCount < 1000), From1kTo5k = countif(MaxMemberCount >= 1000 and MaxMemberCount < 5000), From5kTo10k = countif(MaxMemberCount >= 5000 and MaxMemberCount < 10000), From10kTo25k = countif(MaxMemberCount >= 10000 and MaxMemberCount < 25000), From25kTo50k = countif(MaxMemberCount >= 25000 and MaxMemberCount < 50000), From50kTo75k = countif(MaxMemberCount >= 50000 and MaxMemberCount < 75000), From75kTo100k = countif(MaxMemberCount >= 75000 and MaxMemberCount < 100000), From100kTo200k = countif(MaxMemberCount >= 100000 and MaxMemberCount < 200000), From200kTo300k = countif(MaxMemberCount >= 200000 and MaxMemberCount < 300000), From300kTo400k = countif(MaxMemberCount >= 300000 and MaxMemberCount < 400000), MoreThan400k = countif(MaxMemberCount >= 400000)\n'
                   PartTitle: 'Group Counts based on Size Buckets'
                   PartSubTitle: resourceGroup
                 }
@@ -1814,7 +1804,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     percentile_Minutes_100: '183px'
                     Type: '105px'
                   }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| project Minutes, tostring(Type)\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100) by Type\n| order by Type desc\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)\n'
                   PartTitle: 'Overall Sync Job Run Durations'
                   PartSubTitle: resourceGroup
                 }
@@ -1942,7 +1932,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     percentile_Minutes_99: '170px'
                     percentile_Minutes_100: '180px'
                   }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Onboarding = tobool(customDimensions["IsInitialSync"])\n| where Result == "Success" and DryRun == false and Onboarding == true\n| project Minutes, tostring(Type)\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100) by Type\n| order by Type desc\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Onboarding = tobool(customDimensions["IsInitialSync"])\n| where Result == "Success" and DryRun == false and Onboarding == true\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)\n'
                   PartTitle: 'Onboarding Sync Job Run Durations Chart'
                 }
               }
@@ -2046,7 +2036,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     percentile_Minutes_99: '171px'
                     percentile_Minutes_100: '176px'
                   }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Onboarding = tobool(customDimensions["IsInitialSync"])\n| where Result == "Success" and DryRun == false and Onboarding == false\n| project Minutes, tostring(Type)\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100) by Type\n| order by Type desc\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,    \n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Onboarding = tobool(customDimensions["IsInitialSync"])\n| where Result == "Success" and DryRun == false and Onboarding == false\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)\n'
                   PartTitle: 'Ongoing Sync Job Run Durations Chart'
                 }
               }
@@ -2173,7 +2163,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     percentile_Minutes_99: '170px'
                     percentile_Minutes_100: '175px'
                   }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    Type = customDimensions["Type"],\n    Size = customDimensions["ProjectedMemberCount"]\n| where Result == "Success" and DryRun == "False" and Size < 10000\n| project Minutes, tostring(Type)\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100) by Type\n| order by Type desc\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],   \n    Size = customDimensions["ProjectedMemberCount"]\n| where Result == "Success" and DryRun == "False" and Size < 10000\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)\n'
                   PartTitle: 'Size <10k Sync Job Durations'
                 }
               }
@@ -2484,7 +2474,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     percentile_Minutes_100: '177px'
                     Type: '117px'
                   }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    Type = customDimensions["Type"],\n    Size = customDimensions["ProjectedMemberCount"]\n| where Result == "Success" and DryRun == "False" and Size >= 100000\n| project Minutes, tostring(Type)\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100) by Type\n| order by Type desc\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],  \n    Size = customDimensions["ProjectedMemberCount"]\n| where Result == "Success" and DryRun == "False" and Size >= 100000\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)\n'
                   PartTitle: 'Size 100k+ Sync Job Durations'
                 }
               }
