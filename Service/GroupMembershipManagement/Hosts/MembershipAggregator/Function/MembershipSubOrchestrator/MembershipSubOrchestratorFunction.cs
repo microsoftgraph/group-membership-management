@@ -16,6 +16,7 @@ namespace Hosts.MembershipAggregator
 {
     public class MembershipSubOrchestratorFunction
     {
+        private const int MEMBERS_LIMIT = 100000;
         private readonly IThresholdConfig _thresholdConfig = null;
 
         public MembershipSubOrchestratorFunction(IThresholdConfig thresholdConfig)
@@ -39,17 +40,42 @@ namespace Hosts.MembershipAggregator
             }
 
             var (SourceMembership, DestinationMembership) = (await Task.WhenAll(ExtractMembershipInformationAsync(downloadFileTasks, state.DestinationPart))).First();
+            var deltaCalculatorRequest = new DeltaCalculatorRequest
+            {
+                RunId = request.SyncJob.RunId
+            };
 
-            var deltaResponse = await context.CallActivityAsync<DeltaResponse>(nameof(DeltaCalculatorFunction),
-                                                                                new DeltaCalculatorRequest
-                                                                                {
-                                                                                    SourceGroupMembership = SourceMembership,
-                                                                                    DestinationGroupMembership = DestinationMembership
-                                                                                });
+            if (SourceMembership.SourceMembers.Count >= MEMBERS_LIMIT || DestinationMembership.SourceMembers.Count >= MEMBERS_LIMIT)
+            {
+                var sourceFilePath = GenerateFileName(request.SyncJob, "SourceMembership");
+                var sourceContent = JsonConvert.SerializeObject(SourceMembership);
+                var sourceRequest = new FileUploaderRequest { FilePath = sourceFilePath, Content = sourceContent, SyncJob = request.SyncJob };
+
+                var destinationFilePath = GenerateFileName(request.SyncJob, "DestinationMembership");
+                var destinationContent = JsonConvert.SerializeObject(DestinationMembership);
+                var destinationRequest = new FileUploaderRequest { FilePath = destinationFilePath, Content = destinationContent, SyncJob = request.SyncJob };
+
+                await Task.WhenAll
+                (
+                    context.CallActivityAsync(nameof(FileUploaderFunction), sourceRequest),
+                    context.CallActivityAsync(nameof(FileUploaderFunction), destinationRequest)
+                );
+
+                deltaCalculatorRequest.ReadFromBlobs = true;
+                deltaCalculatorRequest.SourceMembershipFilePath = sourceFilePath;
+                deltaCalculatorRequest.DestinationMembershipFilePath = destinationFilePath;
+            }
+            else
+            {
+                deltaCalculatorRequest.SourceGroupMembership = SourceMembership;
+                deltaCalculatorRequest.DestinationGroupMembership = DestinationMembership;
+            }
+
+            var deltaResponse = await context.CallActivityAsync<DeltaResponse>(nameof(DeltaCalculatorFunction), deltaCalculatorRequest);
 
             if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.Ok)
             {
-                var uploadRequest = CreateFileUploaderRequest(SourceMembership, deltaResponse, request.SyncJob);
+                var uploadRequest = CreateAggregatedFileUploaderRequest(SourceMembership, deltaResponse, request.SyncJob);
                 await context.CallActivityAsync(nameof(FileUploaderFunction), uploadRequest);
                 await context.CallActivityAsync(nameof(LoggerFunction),
                                                 new LogMessage
@@ -128,18 +154,23 @@ namespace Hosts.MembershipAggregator
             return (sourceGroupMembership, destinationGroupMembership);
         }
 
-        private FileUploaderRequest CreateFileUploaderRequest(GroupMembership membership, DeltaResponse deltaResponse, SyncJob syncJob)
+        private FileUploaderRequest CreateAggregatedFileUploaderRequest(GroupMembership membership, DeltaResponse deltaResponse, SyncJob syncJob)
         {
             var newMembership = (GroupMembership)membership.Clone();
             newMembership.SourceMembers.Clear();
             newMembership.SourceMembers.AddRange(deltaResponse.MembersToAdd);
             newMembership.SourceMembers.AddRange(deltaResponse.MembersToRemove);
 
-            var timeStamp = syncJob.Timestamp.ToString("MMddyyyy-HHmmss");
-            var filePath = $"/{newMembership.Destination.ObjectId}/{timeStamp}_{syncJob.RunId}_Aggregated.json";
+            var filePath = GenerateFileName(syncJob, "Aggregated");
             var content = JsonConvert.SerializeObject(newMembership);
 
             return new FileUploaderRequest { FilePath = filePath, Content = content, SyncJob = syncJob };
+        }
+
+        private string GenerateFileName(SyncJob syncJob, string suffix)
+        {
+            var timeStamp = syncJob.Timestamp.ToString("MMddyyyy-HHmmss");
+            return $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{syncJob.RunId}_{suffix}.json";
         }
     }
 }

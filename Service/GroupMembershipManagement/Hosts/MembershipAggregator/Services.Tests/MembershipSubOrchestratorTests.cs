@@ -31,6 +31,7 @@ namespace Services.Tests
         private int _numberOfUsersForSourcePart;
         private JobTrackerEntity _jobTrackerEntity;
         private int _numberOfUsersForDestinationPart;
+        private Dictionary<string, int> _membersPerFile;
         private DeltaCalculatorService _deltaCalculatorService;
         private (string FilePath, string Content) _downloaderResponse;
         private MembershipSubOrchestratorRequest _membershipSubOrchestratorRequest;
@@ -72,9 +73,11 @@ namespace Services.Tests
                                                 _localizationRepository.Object
                                             );
 
+
             _deltaResponse = null;
             _numberOfUsersForSourcePart = 10;
             _numberOfUsersForDestinationPart = 10;
+            _membersPerFile = new Dictionary<string, int>();
             _groupExists = PolicyResult<bool>.Successful(true, new Context());
 
             _syncJob = new SyncJob
@@ -115,7 +118,7 @@ namespace Services.Tests
 
             _downloaderResponse = (null, null);
 
-            _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.IsAny<string>()))
+            _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path"))))
                                     .Callback<string>(path =>
                                     {
                                         var userCount = path == _jobState.DestinationPart
@@ -144,6 +147,34 @@ namespace Services.Tests
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
+
+            _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => !x.StartsWith("http://file-path"))))
+                        .Callback<string>(path =>
+                        {
+                            var userCount = _membersPerFile[path];
+
+                            _blobResult = new BlobResult
+                            {
+                                BlobStatus = BlobStatus.Found,
+                                Content = new BinaryData(new GroupMembership
+                                {
+                                    SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                    SyncJobRowKey = _syncJob?.RowKey,
+                                    MembershipObtainerDryRunEnabled = false,
+                                    RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                    SourceMembers = Enumerable.Range(0, userCount)
+                                                             .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                             .ToList(),
+                                    Destination = new AzureADGroup
+                                    {
+                                        ObjectId = _syncJob != null
+                                                    ? _syncJob.TargetOfficeGroupId
+                                                    : Guid.Empty
+                                    }
+                                })
+                            };
+                        })
+                        .ReturnsAsync(() => _blobResult);
 
             var owners = new List<User>
             {
@@ -498,6 +529,41 @@ namespace Services.Tests
                                                         , Times.Once());
         }
 
+        [TestMethod]
+        public async Task ProcessMembershipFromFilesForLargeSyncsAsync()
+        {
+            _syncJob.ThresholdPercentageForAdditions = -1;
+            _syncJob.ThresholdPercentageForRemovals = -1;
+            _numberOfUsersForSourcePart = 50000;
+
+            _membersPerFile.Add(GenerateFileName(_syncJob, "SourceMembership"), 100000);
+            _membersPerFile.Add(GenerateFileName(_syncJob, "DestinationMembership"), 0);
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("SourceMembership")),
+                                                                 It.IsAny<string>(),
+                                                                 It.IsAny<Dictionary<string, string>>()), Times.Once());
+
+            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("DestinationMembership")),
+                                                                 It.IsAny<string>(),
+                                                                 It.IsAny<Dictionary<string, string>>()), Times.Once());
+
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.Is<string>(x => x.Contains("SourceMembership"))), Times.Once());
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.Is<string>(x => x.Contains("DestinationMembership"))), Times.Once());
+
+            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("Aggregated")),
+                                                                 It.IsAny<string>(),
+                                                                 It.IsAny<Dictionary<string, string>>()), Times.Once());
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Uploaded membership file")), It.IsAny<string>(), It.IsAny<string>()), Times.Once());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
+
+            Assert.IsNotNull(response.FilePath);
+            Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
+        }
+
         private async Task<(string FilePath, string Content)> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)
         {
             var function = new FileDownloaderFunction(_loggingRepository.Object, _blobStorageRepository.Object);
@@ -524,8 +590,14 @@ namespace Services.Tests
 
         private async Task<DeltaResponse> CallDeltaCalculatorFunctionAsync(DeltaCalculatorRequest request)
         {
-            var function = new DeltaCalculatorFunction(_loggingRepository.Object, _deltaCalculatorService);
+            var function = new DeltaCalculatorFunction(_loggingRepository.Object, _blobStorageRepository.Object, _deltaCalculatorService);
             return await function.CalculateDeltaAsync(request);
+        }
+
+        private string GenerateFileName(SyncJob syncJob, string suffix)
+        {
+            var timeStamp = syncJob.Timestamp.ToString("MMddyyyy-HHmmss");
+            return $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{syncJob.RunId}_{suffix}.json";
         }
     }
 }
