@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -30,9 +31,7 @@ namespace Hosts.GraphUpdater
         enum Metric
         {
             SyncComplete,
-            Result,
-            SyncJobTimeElapsedSeconds,
-            ProjectedMemberCount
+            SyncJobTimeElapsedSeconds
         }
 
         public OrchestratorFunction(
@@ -67,6 +66,13 @@ namespace Hosts.GraphUpdater
                                                            JobRowKey = graphRequest.SyncJob.RowKey,
                                                            RunId = graphRequest.SyncJob.RunId.GetValueOrDefault()
                                                        });
+
+                var queries = JArray.Parse(syncJob.Query);
+                var queryTypes = queries.SelectTokens("$..type")
+                                        .Select(x => x.Value<string>())
+                                        .ToList();
+
+                syncCompleteEvent.Type = queryTypes.Distinct().Count() == 1 ? queryTypes[0] : "Hybrid";
                 syncCompleteEvent.TargetOfficeGroupId = syncJob.TargetOfficeGroupId.ToString();
                 syncCompleteEvent.RunId = syncJob.RunId.ToString();
                 syncCompleteEvent.IsDryRunEnabled = false.ToString();

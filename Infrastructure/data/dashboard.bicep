@@ -200,7 +200,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
             position: {
               x: 10
               y: 0
-              colSpan: 3
+              colSpan: 6
               rowSpan: 2
             }
             metadata: {
@@ -289,7 +289,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   GridColumnsWidth: {
                     Count: '81px'
                   }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| distinct TargetOfficeGroupId\n| summarize Count = count()\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| distinct TargetOfficeGroupId, Type\n| summarize Count = count() by Type'
                   ControlType: 'AnalyticsGrid'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Syncs By Type'
@@ -317,6 +317,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     position: 'Bottom'
                   }
                 }
+              }
+              partHeader: {
+                title: 'Syncs By Type'
+                subtitle: resourceGroup
               }
             }
           }
@@ -488,7 +492,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| summarize by TargetOfficeGroupId, Bin = bin(timestamp, 1d)\n| summarize count() by Bin\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| summarize by TargetOfficeGroupId, Type, Bin = bin(timestamp, 1d)\n| summarize count() by Bin, Type\n\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Sync Jobs Successful'
@@ -503,7 +507,12 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                         type: 'long'
                       }
                     ]
-                    splitBy: []
+                    splitBy: [
+                      {
+                        name: 'Type'
+                        type: 'string'
+                      }
+                    ]
                     aggregation: 'Sum'
                   }
                   LegendOptions: {
@@ -604,7 +613,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Onboarding = tobool(customDimensions["IsInitialSync"])\n| where Result == "Success" and DryRun == false and Onboarding == true\n| summarize count() by bin(timestamp, 1d)\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Onboarding = tobool(customDimensions["IsInitialSync"])\n| where Result == "Success" and DryRun == false and Onboarding == true\n| summarize count() by bin(timestamp, 1d), Type\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Onboardings Per Day'
@@ -619,7 +628,12 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                         type: 'long'
                       }
                     ]
-                    splitBy: []
+                    splitBy: [
+                      {
+                        name: 'Type'
+                        type: 'string'
+                      }
+                    ]
                     aggregation: 'Sum'
                   }
                   LegendOptions: {

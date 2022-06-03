@@ -71,6 +71,7 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
+                Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = Guid.NewGuid()
             };
 
@@ -160,6 +161,7 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.FromFileTimeUtc(0),
                 Requestor = "user@domail.com",
+                Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = Guid.NewGuid()
             };
 
@@ -273,6 +275,7 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.FromFileTimeUtc(0),
                 Requestor = "user@domail.com",
+                Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = Guid.NewGuid()
             };
 
@@ -420,6 +423,7 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
+                Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = Guid.NewGuid()
             };
 
@@ -494,9 +498,10 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
+                Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = Guid.NewGuid()
             };
-
+                        
             var input = new MembershipHttpRequest
             {
                 FilePath = "/file/path/name.json",

@@ -18,5 +18,6 @@ namespace Services.Entities
         public string IsInitialSync { get; set; } = "N/A";
         public string Result { get; set; } = "N/A";
         public string SyncJobTimeElapsedSeconds { get; set; } = "N/A";
+        public string Type { get; set; } = "N/A";
     }
 }
