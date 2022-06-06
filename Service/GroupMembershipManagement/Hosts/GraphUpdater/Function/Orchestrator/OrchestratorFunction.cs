@@ -79,7 +79,7 @@ namespace Hosts.GraphUpdater
                                                                             });
 
                 groupMembership = JsonConvert.DeserializeObject<GroupMembership>(fileContent);
-                syncCompleteEvent.RunId = groupMembership.SourceMembers.Count.ToString();
+                syncCompleteEvent.ProjectedMemberCount = groupMembership.SourceMembers.Count.ToString();
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob });
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
