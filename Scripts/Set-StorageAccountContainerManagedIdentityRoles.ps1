@@ -3,7 +3,7 @@
 Adds the app service's managed service identity as a storage blob data contributor on the specified storage account.
 
 .DESCRIPTION
-Adds the app service's managed service identity as a storage blob data contributor on the specified storage account so we don't need connection strings as much. 
+Adds the app service's managed service identity as a storage blob data contributor on the specified storage account so we don't need connection strings as much.
 This should be run by an owner on the subscription after the storage account and app service have been set up.
 This should only have to be run once per function app.
 
@@ -14,7 +14,7 @@ The abbreviation for your solution.
 A 2-6 character abbreviation for your environment.
 
 .PARAMETER FunctionAppName
-Function app name
+Function app name [Optional: default will run through all 3 functions listed in README]
 
 .PARAMETER StorageAccountName
 Storage account name
@@ -26,10 +26,9 @@ Parameter description
 Set-StorageAccountContainerManagedIdentityRoles	-SolutionAbbreviation "gmm" `
 												-EnvironmentAbbreviation "<env>" `
 												-StorageAccountName "<name>" `
-												-FunctionAppName "<function app name>" `
 												-Verbose
 #>
-function Set-StorageAccountContainerManagedIdentityRoles 
+function Set-StorageAccountContainerManagedIdentityRoles
 {
 	[CmdletBinding()]
 	param(
@@ -38,33 +37,43 @@ function Set-StorageAccountContainerManagedIdentityRoles
 		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation,
 		[Parameter(Mandatory = $True)]
-		[string] $StorageAccountName,        
-		[Parameter(Mandatory = $True)]
+		[string] $StorageAccountName,
+		[Parameter(Mandatory = $False)]
 		[string] $FunctionAppName,
 		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
 	)
 
-	Write-Host "Granting app service access to storage account blobs";
+	$functionApps = @("SecurityGroup","MembershipAggregator","GraphUpdater")
 
-	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
-	$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $FunctionAppName;
-    
-	# Grant the app service access to the storage account blobs
-	if (![string]::IsNullOrEmpty($StorageAccountName)) 
+
+	foreach ($functionApp in $functionApps)
 	{
-		$storageAccountObject = Get-AzStorageAccount -ResourceGroupName $resourceGroupName -Name $StorageAccountName;
 
-		if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $storageAccountObject.Id)) 
+		Write-Host "Granting app service access to storage account blobs";
+
+		$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
+		$FunctionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp"
+
+
+		$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $FunctionAppName;
+
+		# Grant the app service access to the storage account blobs
+		if (![string]::IsNullOrEmpty($StorageAccountName))
 		{
-			New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $storageAccountObject.Id -RoleDefinitionName "Storage Blob Data Contributor";
-			Write-Host "Added role assignment to allow $FunctionAppName to access on the $StorageAccountName blobs.";
+			$storageAccountObject = Get-AzStorageAccount -ResourceGroupName $resourceGroupName -Name $StorageAccountName;
+
+			if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $storageAccountObject.Id))
+			{
+				New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $storageAccountObject.Id -RoleDefinitionName "Storage Blob Data Contributor";
+				Write-Host "Added role assignment to allow $FunctionAppName to access on the $StorageAccountName blobs.";
+			}
+			else
+			{
+				Write-Host "$FunctionAppName already has access to $StorageAccountName blobs.";
+			}
 		}
-		else 
-		{
-			Write-Host "$FunctionAppName already has access to $StorageAccountName blobs.";
-		}
-	}    
-    	
-	Write-Host "Done.";
+
+		Write-Host "Done.";
+	}
 }

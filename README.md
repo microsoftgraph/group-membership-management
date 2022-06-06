@@ -425,19 +425,15 @@ have been created we need to grant them access to the storage account containers
     The naming convention is jobs<environmentAbbreviation><randomId>, the exact name can be found in the data key vault secrets under 'jobsStorageAccountName'.
 
     StorageAccountName:  jobs<environmentAbbreviation><randomId>
-    FunctionAppNames:
-    <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup
-    <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-MembershipAggregator
-    <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-GraphUpdater
 
     1. . ./Set-StorageAccountContainerManagedIdentityRoles.ps1
     2. Set-StorageAccountContainerManagedIdentityRoles -SolutionAbbreviation "<SolutionAbbreviation>" `
                                                        -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
                                                        -StorageAccountName "<StorageAccountName>
-                                                       -FunctionAppName "<FunctionAppName>" `
                                                        -Verbose
 
-    Run the script for each function app name, SecurityGroup, MembershipAggregator and GraphUpdater.
+    By default, the script will run for each of the three function app names: SecurityGroup, MembershipAggregator and GraphUpdater.
+
 ### Access to App Configuration
 
 Grant all the functions access to the AppConfiguration by running the following script:
@@ -445,11 +441,8 @@ Grant all the functions access to the AppConfiguration by running the following 
     1. . ./Set-AppConfigurationManagedIdentityRoles.ps1
     2. Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `
                                                 -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-                                                -FunctionAppName "<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-JobTrigger" `
                                                 -AppConfigName "<SolutionAbbreviation>-appConfig-<EnvironmentAbbreviation>" `
                                                 -Verbose
-
-- The above is an example for `JobTrigger`. Please update FunctionAppName and run the script for other functions as well.
 
 ### Creating synchronization jobs for source groups
 
