@@ -317,7 +317,7 @@ Once your application is created we need to grant the requested permissions to u
         This script will create a new service principal.
         It takes two arguments: `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>`.
 
-        From your PowerShell command prompt navigate to the Scripts folder then type these commands. This script must be run by someone with the Owner role on the subscription.
+        From your PowerShell command prompt navigate to the Scripts folder then type these commands.
 
             1. . ./Set-ServicePrincipal.ps1
             2. Set-ServicePrincipal -SolutionAbbreviation "<SolutionAbbreviation>"  `
@@ -328,9 +328,21 @@ Once your application is created we need to grant the requested permissions to u
 
         Locate the service connection name on the screen. It follows this naming convention: `<SolutionAbbreviation>`-serviceconnection-`<EnvironmentAbbreviation>`.
 
-    2. Set-ServiceConnection
+    2.  Set-ServicePrincipalManagedIdentityRoles.ps1
 
-        This script sets up the service connection. Ensure that you're an owner of the service connection you created in the last step. Then, run the following command. `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` are as before, plus two new ones.
+        This script will grant the service principal Contributor role over all resource groups for GMM.
+        It takes two arguments: `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>`.
+
+        From your PowerShell command prompt navigate to the Scripts folder then type these commands. This script must be run by someone with the <b>Owner role on the subscription.</b>
+
+            1. . ./Set-ServicePrincipalManagedIdentityRoles.ps1
+            2. Set-ServicePrincipalManagedIdentityRoles -SolutionAbbreviation "<SolutionAbbreviation>"  `
+            		                              -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
+            		                              -Verbose
+
+    3. Set-ServiceConnection
+
+        This script sets up the service connection. Ensure that you're an owner of the service connection you created in step 1. Then, run the following command. `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` are as before, plus two new ones.
 
         `<OrganizationName>` - This is the name of your organization used in Azure DevOps.
         `<ProjectName>` - This is the name of the project in Azure DevOps we just created in a previous step.
