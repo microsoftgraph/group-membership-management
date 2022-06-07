@@ -20,14 +20,15 @@ param servicePlanName string
 @description('Array of key vault references to be set in app settings')
 param secretSettings array
 
-resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
+resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
   name: name
-  location: location
   kind: kind
+  location: location
   properties: {
-    serverFarmId: resourceId('Microsoft.Web/serverfarms', servicePlanName)
-    clientAffinityEnabled: false
+    clientAffinityEnabled: true
+    enabled: true
     httpsOnly: true
+    serverFarmId: resourceId('Microsoft.Web/serverfarms', servicePlanName)
     siteConfig: {
       use32BitWorkerProcess : false
       appSettings: secretSettings
@@ -38,15 +39,4 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
   }
 }
 
-resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
-  name: 'slotConfigNames'
-  parent: functionApp
-  properties: {
-    appSettingNames: [
-      'AzureFunctionsJobHost__extensions__durableTask__hubName'
-      'AzureWebJobs.JobSchedulerFunction.Disabled'   
-    ]
-  }
-}
-
-output msi string = functionApp.identity.principalId
+output msi string = functionAppSlot.identity.principalId
