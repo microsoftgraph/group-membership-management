@@ -266,6 +266,8 @@ module functionAppTemplate_AzureUserReader 'functionApp.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     secretSettings: union(appSettings, productionSettings)
   }
   dependsOn: [
@@ -280,6 +282,8 @@ module functionAppSlotTemplate_AzureUserReader 'functionAppSlot.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     secretSettings: union(appSettings, stagingSettings)
   }
   dependsOn: [
@@ -344,44 +348,5 @@ module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   dependsOn: [
     functionAppTemplate_AzureUserReader
     functionAppSlotTemplate_AzureUserReader
-  ]
-}
-
-module secretsTemplate 'keyVaultSecrets.bicep' = {
-  name: 'secretsTemplate'
-  scope: resourceGroup(dataKeyVaultResourceGroup)
-  params: {
-    keyVaultName: dataKeyVaultName
-    keyVaultParameters: [
-      {
-        name: 'azureUserReaderUrl'
-        value: functionAppTemplate_AzureUserReader.outputs.hostName
-      }
-      {
-        name: 'azureUserReaderKey'
-        value: functionAppTemplate_AzureUserReader.outputs.adfKey
-      }
-      {
-        name: 'azureUserReaderFunctionName'
-        value: '${functionAppName}-AzureUserReader'
-      }
-      {
-        name: 'azureUserReaderStagingUrl'
-        value: functionAppSlotTemplate_AzureUserReader.outputs.hostName
-      }
-      {
-        name: 'azureUserReaderStagingKey'
-        value: functionAppSlotTemplate_AzureUserReader.outputs.adfKey
-      }
-      {
-        name: 'azureUserReaderStagingFunctionName'
-        value: '${functionAppName}-AzureUserReader-staging'
-      }
-    ]
-  }
-  dependsOn: [
-    functionAppTemplate_AzureUserReader
-    functionAppSlotTemplate_AzureUserReader
-    dataKeyVaultPoliciesTemplate
   ]
 }
