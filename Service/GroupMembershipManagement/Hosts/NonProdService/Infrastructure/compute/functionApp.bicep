@@ -37,6 +37,23 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
   }
 }
 
+resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
+  name: 'slotConfigNames'
+  parent: functionApp
+  properties: {
+    appSettingNames: [
+      'AzureFunctionsJobHost__extensions__durableTask__hubName'
+      'AzureWebJobs.StarterFunction.Disabled'
+      'AzureWebJobs.OrchestratorFunction.Disabled'  
+      'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled'     
+      'AzureWebJobs.GroupCreatorAndRetrieverFunction.Disabled'
+      'AzureWebJobs.GroupUpdaterFunction.Disabled'
+      'AzureWebJobs.LoggerFunction.Disabled'
+      'AzureWebJobs.TenantUserReaderFunction.Disabled'          
+    ]
+  }
+}
+
 output msi string = functionApp.identity.principalId
 output hostName string = 'https://${functionApp.properties.defaultHostName}'
 output adfKey string = listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
