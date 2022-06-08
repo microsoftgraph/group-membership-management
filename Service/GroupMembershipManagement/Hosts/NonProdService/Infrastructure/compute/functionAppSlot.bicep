@@ -20,6 +20,12 @@ param servicePlanName string
 @description('Array of key vault references to be set in app settings')
 param secretSettings array
 
+@description('Name of the \'data\' key vault.')
+param dataKeyVaultName string
+
+@description('Name of the resource group where the \'data\' key vault is located.')
+param dataKeyVaultResourceGroup string
+
 resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
   name: name
   kind: kind
@@ -39,6 +45,22 @@ resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
   }
 }
 
+module secretsTemplate 'keyVaultSecrets.bicep' = {
+  name: 'secretsTemplate'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultParameters: [
+      {
+        name: 'nonProdServiceStagingUrl'
+        value: 'https://${functionAppSlot.properties.defaultHostName}/api/StarterFunction'
+      }
+      {
+        name: 'nonProdServiceStagingKey'
+        value: listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default
+      }
+    ]
+  }
+}
+
 output msi string = functionAppSlot.identity.principalId
-output hostName string = 'https://${functionAppSlot.properties.defaultHostName}'
-output adfKey string = listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default

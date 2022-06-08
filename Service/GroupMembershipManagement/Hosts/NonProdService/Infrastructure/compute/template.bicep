@@ -257,6 +257,8 @@ module functionAppTemplate_NonProdService 'functionApp.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     secretSettings: union(appSettings, productionSettings)
   }
   dependsOn: [
@@ -271,6 +273,8 @@ module functionAppSlotTemplate_NonProdService 'functionAppSlot.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     secretSettings: union(appSettings, stagingSettings)
   }
   dependsOn: [
@@ -335,36 +339,5 @@ module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   dependsOn: [
     functionAppTemplate_NonProdService
     functionAppSlotTemplate_NonProdService
-  ]
-}
-
-module secretsTemplate 'keyVaultSecrets.bicep' = {
-  name: 'secretsTemplate'
-  scope: resourceGroup(dataKeyVaultResourceGroup)
-  params: {
-    keyVaultName: dataKeyVaultName
-    keyVaultParameters: [
-      {
-        name: 'nonProdServiceUrl'
-        value: functionAppTemplate_NonProdService.outputs.hostName
-      }
-      {
-        name: 'nonProdServiceKey'
-        value: functionAppTemplate_NonProdService.outputs.adfKey
-      }
-      {
-        name: 'nonProdServiceStagingUrl'
-        value: functionAppSlotTemplate_NonProdService.outputs.hostName
-      }
-      {
-        name: 'nonProdServiceStagingKey'
-        value: functionAppSlotTemplate_NonProdService.outputs.adfKey
-      }
-    ]
-  }
-  dependsOn: [
-    functionAppTemplate_NonProdService
-    functionAppSlotTemplate_NonProdService
-    dataKeyVaultPoliciesTemplate
   ]
 }
