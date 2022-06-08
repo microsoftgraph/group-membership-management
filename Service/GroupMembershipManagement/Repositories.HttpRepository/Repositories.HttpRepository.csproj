@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+	  <PackageReference Include="Azure.Storage.Blobs" Version="12.10.0" />
+	  <PackageReference Include="Microsoft.ApplicationInsights" Version="2.18.0" />
+	  <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
+	  <PackageReference Include="Microsoft.Extensions.Http" Version="2.2.0" />
+	  <PackageReference Include="Polly" Version="7.2.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DIConcreteTypes\DIConcreteTypes.csproj" />
+    <ProjectReference Include="..\Repositories.Contracts\Repositories.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
