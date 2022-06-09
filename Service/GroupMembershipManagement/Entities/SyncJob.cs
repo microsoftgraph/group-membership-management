@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
+using Azure.Data.Tables;
 using Entities.CustomAttributes;
-using Microsoft.Azure.Cosmos.Table;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -9,7 +10,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Entities
 {
     [ExcludeFromCodeCoverage]
-    public class SyncJob : TableEntity
+    public class SyncJob : ITableEntity
     {
         public SyncJob()
         {
@@ -20,6 +21,8 @@ namespace Entities
             PartitionKey = partitionKey;
             RowKey = rowKey;
         }
+        public string PartitionKey { get; set; }
+        public string RowKey { get; set; }
 
         public Guid? RunId { get; set; }
 
@@ -103,6 +106,8 @@ namespace Entities
         /// </summary>
         [IgnoreLogging]
         public int ThresholdViolations { get; set; }
+        public DateTimeOffset? Timestamp { get; set; }
+        public ETag ETag { get; set; }
 
         public Dictionary<string, string> ToDictionary() =>
             DictionaryHelper.ToDictionary(this, new DictionaryHelper.Options
