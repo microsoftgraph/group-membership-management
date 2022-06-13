@@ -116,7 +116,8 @@ namespace Services.Tests
             var response = await starterFunction.RunAsync(request, _durableClient.Object);
 
             Assert.AreEqual(HttpStatusCode.NoContent, response.StatusCode);
-            Assert.IsNull(response.Content);
+            var contentString = await response.Content.ReadAsStringAsync();
+            Assert.AreEqual(0, contentString.Length);
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                     It.Is<LogMessage>(m => m.Message.StartsWith("MembershipAggregator instance id")),
                                     VerbosityLevel.INFO,
