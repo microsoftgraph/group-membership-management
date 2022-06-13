@@ -234,11 +234,19 @@ module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
           'list'
         ]
       }
+      {
+        objectId: functionAppSlotTemplate_JobScheduler.outputs.msi
+        permissions: [
+          'get'
+          'list'
+        ]
+      }
     ]
     tenantId: tenantId
   }
   dependsOn: [
     functionAppTemplate_JobScheduler
+    functionAppSlotTemplate_JobScheduler
   ]
 }
 
@@ -255,10 +263,18 @@ module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
         ]
         type: 'secrets'
       }
+      {
+        objectId: functionAppSlotTemplate_JobScheduler.outputs.msi
+        permissions: [
+          'get'
+        ]
+        type: 'secrets'
+      }
     ]
     tenantId: tenantId
   }
   dependsOn: [
     functionAppTemplate_JobScheduler
+    functionAppSlotTemplate_JobScheduler
   ]
 }

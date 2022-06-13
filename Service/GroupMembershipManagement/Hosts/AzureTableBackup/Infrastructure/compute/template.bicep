@@ -243,10 +243,18 @@ module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
           'list'
         ]
       }
+      {
+        objectId: functionAppSlotTemplate_AzureTableBackup.outputs.msi
+        permissions: [
+          'get'
+          'list'
+        ]
+      }
     ]
     tenantId: tenantId
   }
   dependsOn: [
     functionAppTemplate_AzureTableBackup
+    functionAppSlotTemplate_AzureTableBackup
   ]
 }
