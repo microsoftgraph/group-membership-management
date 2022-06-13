@@ -103,7 +103,7 @@ namespace Hosts.SecurityGroup
                 MembershipObtainerDryRunEnabled = _isSecurityGroupDryRunEnabled
             };
 
-            var timeStamp = syncJob.Timestamp.ToString("MMddyyyy-HHmmss");
+            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
             var fileName = $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_SecurityGroup_{currentPart}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
 

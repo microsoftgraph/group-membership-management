@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Function\MembershipAggregator.csproj" />
+    <ProjectReference Include="..\Services.Entities\Services.Entities.csproj" />
   </ItemGroup>
 
 </Project>

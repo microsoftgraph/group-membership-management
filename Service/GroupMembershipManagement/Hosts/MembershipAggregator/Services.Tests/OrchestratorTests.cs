@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Repositories.Contracts;
+using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -62,7 +63,7 @@ namespace Services.Tests
             _membershipSubOrchestratorResponse = new MembershipSubOrchestratorResponse
             {
                 FilePath = "http://file-path",
-                MembershipDeltaStatus = Entities.MembershipDeltaStatus.Ok
+                MembershipDeltaStatus = MembershipDeltaStatus.Ok
             };
 
             _durableHttpResponse = new DurableHttpResponse(System.Net.HttpStatusCode.NoContent);
