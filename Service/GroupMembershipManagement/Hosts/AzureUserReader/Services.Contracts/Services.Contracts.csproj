@@ -5,10 +5,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.10.0" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\..\Entities\Entities.csproj" />
     <ProjectReference Include="..\Services.Entities\Services.Entities.csproj" />
   </ItemGroup>
