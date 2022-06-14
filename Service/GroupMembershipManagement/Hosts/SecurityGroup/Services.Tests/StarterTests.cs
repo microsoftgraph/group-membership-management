@@ -61,12 +61,14 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                     It.Is<LogMessage>(m => m.Message.StartsWith("InstanceId")),
+                                                    It.IsAny<VerbosityLevel>(),
                                                     It.IsAny<string>(),
                                                     It.IsAny<string>()
                                                 ), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                     It.Is<LogMessage>(m => m.Message.Contains("function completed")),
+                                                    It.IsAny<VerbosityLevel>(), 
                                                     It.IsAny<string>(),
                                                     It.IsAny<string>()
                                                 ), Times.Once);
@@ -90,18 +92,21 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.StartsWith("Setting the status of the sync back to Idle")),
+                                                It.IsAny<VerbosityLevel>(),
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
                                                 ), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.StartsWith("InstanceId")),
+                                                It.IsAny<VerbosityLevel>(), 
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
                                                 ), Times.Never);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains("function completed")),
+                                                It.IsAny<VerbosityLevel>(),
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
                                                 ), Times.Once);

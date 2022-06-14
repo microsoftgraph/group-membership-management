@@ -25,9 +25,9 @@ namespace Hosts.JobTrigger
         {
             if (group != null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = group.SyncJob.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = group.SyncJob.RunId }, VerbosityLevel.DEBUG);
                 await _jobTriggerService.SendEmailAsync(group.SyncJob, group.Name);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = group.SyncJob.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = group.SyncJob.RunId }, VerbosityLevel.DEBUG);
             }
         }
     }

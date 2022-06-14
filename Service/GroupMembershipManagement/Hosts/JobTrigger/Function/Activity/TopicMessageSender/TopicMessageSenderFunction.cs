@@ -25,9 +25,9 @@ namespace Hosts.JobTrigger
         {
             if (syncJob != null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TopicMessageSenderFunction)} function started", RunId = syncJob.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TopicMessageSenderFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
                 await _jobTriggerService.SendMessageAsync(syncJob);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TopicMessageSenderFunction)} function completed", RunId = syncJob.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TopicMessageSenderFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
             }
         }
     }

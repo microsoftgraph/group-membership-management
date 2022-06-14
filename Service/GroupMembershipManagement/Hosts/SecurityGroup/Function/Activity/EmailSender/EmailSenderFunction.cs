@@ -29,9 +29,9 @@ namespace Hosts.SecurityGroup
         {
             if (request.SyncJob != null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = request.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
                 await _calculator.SendEmailAsync(request.SyncJob, request.RunId, SyncDisabledNoValidGroupIds, new[] { request.SyncJob.Query, _emailSenderRecipient.SupportEmailAddresses });
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = request.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             }
         }
     }

@@ -144,6 +144,7 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains("Found invalid value for CurrentPart or TotalParts")),
+                                                It.IsAny<VerbosityLevel>(),
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
                                             ), Times.Once);
@@ -171,6 +172,7 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains($"None of the source groups in Part#")),
+                                                It.IsAny<VerbosityLevel>(),
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
                                             ), Times.Once);
@@ -220,6 +222,7 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.StartsWith("Caught unexpected exception")),
+                        It.IsAny<VerbosityLevel>(), 
                         It.IsAny<string>(),
                         It.IsAny<string>()
                     ), Times.Once);
@@ -247,6 +250,7 @@ namespace Tests.Services
             var totalUsersFound = _querySample.QueryParts[_orchestratorRequest.CurrentPart - 1].SourceIds.Count * _usersToReturn;
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains($"Read {totalUsersFound} users from source groups")),
+                                                It.IsAny<VerbosityLevel>(),
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
                                             ), Times.Once);
@@ -259,12 +263,14 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.StartsWith("MembershipAggregator response")),
+                                                It.IsAny<VerbosityLevel>(),
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
                                             ), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message == $"{nameof(OrchestratorFunction)} function completed"),
+                                                It.IsAny<VerbosityLevel>(), 
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
                                             ), Times.Once);
@@ -290,6 +296,7 @@ namespace Tests.Services
             var totalUsersFound = _querySample.QueryParts[_orchestratorRequest.CurrentPart - 1].SourceIds.Count * _usersToReturn;
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains($"Read {totalUsersFound} users from source groups")),
+                                                It.IsAny<VerbosityLevel>(),
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
                                             ), Times.Once);
@@ -302,6 +309,7 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message == $"{nameof(OrchestratorFunction)} function completed"),
+                                                It.IsAny<VerbosityLevel>(),
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
                                             ), Times.Once);

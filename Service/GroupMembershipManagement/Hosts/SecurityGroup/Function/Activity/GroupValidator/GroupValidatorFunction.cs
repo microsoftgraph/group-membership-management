@@ -29,7 +29,7 @@ namespace Hosts.SecurityGroup
         public async Task<bool> ValidateGroupAsync([ActivityTrigger] GroupValidatorRequest request)
         {
             bool isExistingGroup = false;
-            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function started", RunId = request.RunId });
+            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             var groupExistsResult = await _calculator.GroupExistsAsync(request.ObjectId, request.RunId);
             if (groupExistsResult.Outcome == OutcomeType.Successful && groupExistsResult.Result)
             {
@@ -57,7 +57,7 @@ namespace Hosts.SecurityGroup
                 if (groupExistsResult.FinalException != null) { throw groupExistsResult.FinalException; }
                 isExistingGroup = false;
             }
-            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function completed", RunId = request.RunId });
+            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             return isExistingGroup;
         }
     }

@@ -26,11 +26,11 @@ namespace Hosts.JobTrigger
             var group = new SyncJobGroup();
             if (syncJob != null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function started", RunId = syncJob.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
                 var groupName = await _jobTriggerService.GetGroupNameAsync(syncJob.TargetOfficeGroupId);
                 group.SyncJob = syncJob;
                 group.Name = groupName;
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function completed", RunId = syncJob.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
             }
             return group;
         }

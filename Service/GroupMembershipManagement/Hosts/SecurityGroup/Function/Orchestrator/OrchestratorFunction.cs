@@ -56,7 +56,7 @@ namespace Hosts.SecurityGroup
                     return;
                 }
 
-                if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId });
+                if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
                 var sourceGroups = await context.CallActivityAsync<AzureADGroup[]>(nameof(SourceGroupsReaderFunction),
                                                                                     new SourceGroupsReaderRequest
                                                                                     {
@@ -137,7 +137,7 @@ namespace Hosts.SecurityGroup
                 throw;
             }
 
-            if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed", RunId = runId });
+            if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
         }
     }
 }

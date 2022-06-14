@@ -24,7 +24,7 @@ namespace Hosts.SecurityGroup
         {
             string filePath = null;
 
-            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function started", RunId = request.RunId });
+            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
             filePath = await _calculator.SendMembershipAsync(request.SyncJob, request.Users, request.CurrentPart);
 
@@ -34,7 +34,7 @@ namespace Hosts.SecurityGroup
                 Message = $"Successfully uploaded {request.Users.Count} users from source groups {request.SyncJob.Query} to blob storage to be put into the destination group {request.SyncJob.TargetOfficeGroupId}."
             });
 
-            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function completed", RunId = request.RunId });
+            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
             return filePath;
         }

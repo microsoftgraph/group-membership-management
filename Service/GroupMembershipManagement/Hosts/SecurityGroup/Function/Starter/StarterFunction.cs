@@ -34,7 +34,7 @@ namespace Hosts.SecurityGroup
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));
             _loggingRepository.SyncJobProperties = syncJob.ToDictionary();
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = syncJob.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
 
             if ((DateTime.UtcNow - syncJob.DryRunTimeStamp) < TimeSpan.FromHours(syncJob.Period) && _isSecurityGroupDryRunEnabled == true)
             {
@@ -55,7 +55,7 @@ namespace Hosts.SecurityGroup
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job RowKey: {syncJob.RowKey} ", RunId = syncJob.RunId });
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = syncJob.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
         }
     }
 }

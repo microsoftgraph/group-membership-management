@@ -152,12 +152,14 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_securityGroupRequest.SourceGroup.ObjectId} exists.")),
+                                   It.IsAny<VerbosityLevel>(),
                                    It.IsAny<string>(),
                                    It.IsAny<string>()
                                ), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                     It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
+                                    It.IsAny<VerbosityLevel>(),
                                     It.IsAny<string>(),
                                     It.IsAny<string>()
                                 ), Times.Once);
@@ -167,12 +169,14 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.Contains($"read {_userCount} users")),
+                        It.IsAny<VerbosityLevel>(),
                         It.IsAny<string>(),
                         It.IsAny<string>()
                     ), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
+                        It.IsAny<VerbosityLevel>(), 
                         It.IsAny<string>(),
                         It.IsAny<string>()
                     ), Times.Once);
@@ -192,12 +196,14 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_securityGroupRequest.SourceGroup.ObjectId} exists.")),
+                                   It.IsAny<VerbosityLevel>(),
                                    It.IsAny<string>(),
                                    It.IsAny<string>()
                                ), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                     It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
+                                    It.IsAny<VerbosityLevel>(),
                                     It.IsAny<string>(),
                                     It.IsAny<string>()
                                 ), Times.Once);
@@ -207,12 +213,14 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.Contains($"read {_userCount * Number_Of_Pages} users")),
+                        It.IsAny<VerbosityLevel>(),
                         It.IsAny<string>(),
                         It.IsAny<string>()
                     ), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
+                        It.IsAny<VerbosityLevel>(),
                         It.IsAny<string>(),
                         It.IsAny<string>()
                     ), Times.Once);
@@ -232,6 +240,7 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                 It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
+                                It.IsAny<VerbosityLevel>(),
                                 It.IsAny<string>(),
                                 It.IsAny<string>()
                             ), Times.Once);
@@ -240,12 +249,14 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                 It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_securityGroupRequest.SourceGroup.ObjectId} exists")),
+                                It.IsAny<VerbosityLevel>(),
                                 It.IsAny<string>(),
                                 It.IsAny<string>()
                             ), Times.Never);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                 It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_securityGroupRequest.SourceGroup.ObjectId} doesn't exist")),
+                                It.IsAny<VerbosityLevel>(),
                                 It.IsAny<string>(),
                                 It.IsAny<string>()
                             ), Times.Once);

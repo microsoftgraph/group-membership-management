@@ -84,6 +84,7 @@ namespace Services.Tests
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.Contains("JSON query is not valid")),
+                It.IsAny<VerbosityLevel>(),
                 It.IsAny<string>(),
                 It.IsAny<string>()));
         }
@@ -102,6 +103,7 @@ namespace Services.Tests
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.Contains("Job query is empty for job")),
+                It.IsAny<VerbosityLevel>(),
                 It.IsAny<string>(),
                 It.IsAny<string>()));
         }
@@ -116,6 +118,7 @@ namespace Services.Tests
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => !m.Message.Contains("JSON query is not valid") && !m.Message.Contains("Job query is empty for job")),
+                It.IsAny<VerbosityLevel>(),
                 It.IsAny<string>(),
                 It.IsAny<string>()));
 
@@ -168,6 +171,7 @@ namespace Services.Tests
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => !m.Message.Contains("JSON query is not valid") && !m.Message.Contains("Job query is empty for job")),
+                It.IsAny<VerbosityLevel>(), 
                 It.IsAny<string>(),
                 It.IsAny<string>()));
 

@@ -24,7 +24,7 @@ namespace Hosts.JobTrigger
         [FunctionName(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started" });
+            _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started" }, VerbosityLevel.DEBUG);
             var syncJobs = await context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), null);
             if (syncJobs != null && syncJobs.Count > 0)
             {
@@ -39,7 +39,7 @@ namespace Hosts.JobTrigger
                 }
                 await Task.WhenAll(processingTasks);
             }
-            _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed" });
+            _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed" }, VerbosityLevel.DEBUG);
         }
     }
 }

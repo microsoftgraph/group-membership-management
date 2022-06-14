@@ -30,7 +30,7 @@ namespace Hosts.SecurityGroup
 
             if (request != null)
             {
-                _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = request.RunId });
+                _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
                 var isExistingGroup = await context.CallActivityAsync<bool>(nameof(GroupValidatorFunction), new GroupValidatorRequest { SyncJob = request.SyncJob, RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId });
                 if (!isExistingGroup) { return (null, SyncStatus.SecurityGroupNotFound); }
                 var response = await context.CallActivityAsync<(List<AzureADUser> users,
@@ -59,7 +59,7 @@ namespace Hosts.SecurityGroup
                                 $"and the following other directory objects:\n{nonUserGraphObjectsSummary}\n"
                 });
             }
-            _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = request.RunId });
+            _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             return (allUsers, SyncStatus.InProgress);
         }
     }

@@ -26,7 +26,7 @@ namespace Hosts.JobTrigger
             var syncJob = context.GetInput<SyncJob>();
 
             if (!context.IsReplaying)
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = syncJob.RunId });
+                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
 
             try
             {
@@ -70,7 +70,7 @@ namespace Hosts.JobTrigger
             }
 
             if (!context.IsReplaying)
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = syncJob.RunId });
+                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
         }
     }
 }

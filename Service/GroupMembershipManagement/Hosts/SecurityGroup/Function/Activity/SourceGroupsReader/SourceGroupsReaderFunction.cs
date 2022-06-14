@@ -23,7 +23,7 @@ namespace Hosts.SecurityGroup
         [FunctionName(nameof(SourceGroupsReaderFunction))]
         public async Task<AzureADGroup[]> GetSourceGroupsAsync([ActivityTrigger] SourceGroupsReaderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SourceGroupsReaderFunction)} function started", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SourceGroupsReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 RunId = request.RunId,
@@ -34,7 +34,7 @@ namespace Hosts.SecurityGroup
                                             ? sourceGroups = new [] { new AzureADGroup { ObjectId = request.SyncJob.TargetOfficeGroupId } }
                                             : sourceGroups = GetSourceGroups(request);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SourceGroupsReaderFunction)} function completed", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SourceGroupsReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             return sourceGroups;
         }
 

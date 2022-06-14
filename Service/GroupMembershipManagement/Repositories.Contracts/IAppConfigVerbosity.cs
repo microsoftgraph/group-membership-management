@@ -5,8 +5,8 @@ namespace Repositories.Contracts
 {
     public enum VerbosityLevel
     {
-        LOW = 1,
-        HIGH = 2
+        INFO = 1,
+        DEBUG = 2
     }
 
     public interface IAppConfigVerbosity

@@ -52,7 +52,7 @@ namespace Repositories.Logging
             return client;
         }
 
-        public async Task LogMessageAsync(LogMessage logMessage, VerbosityLevel verbosityLevel = VerbosityLevel.LOW, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
+        public async Task LogMessageAsync(LogMessage logMessage, VerbosityLevel verbosityLevel = VerbosityLevel.INFO, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
         {
             if (verbosityLevel <= _appConfigVerbosity.Verbosity)
             {
