@@ -241,15 +241,6 @@ module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   ]
 }
 
-module appInsightsTemplate 'applicationInsights.bicep' = {
-  name: 'appInsightsTemplate'
-  params: {
-    name: appInsightsName
-    location: location
-    kind: appInsightsKind
-  }
-}
-
 module serviceBusTemplate 'serviceBus.bicep' = {
   name: 'serviceBusTemplate'
   params: {
@@ -305,6 +296,19 @@ module logAnalyticsTemplate 'logAnalytics.bicep' = {
     sku: logAnalyticsSku
     location: location
   }
+}
+
+module appInsightsTemplate 'applicationInsights.bicep' = {
+  name: 'appInsightsTemplate'
+  params: {
+    name: appInsightsName
+    location: location
+    kind: appInsightsKind
+    workspaceId: logAnalyticsTemplate.outputs.resourceId
+  }
+  dependsOn: [
+    logAnalyticsTemplate
+  ]
 }
 
 module appConfigurationTemplate 'appConfiguration.bicep' = {
