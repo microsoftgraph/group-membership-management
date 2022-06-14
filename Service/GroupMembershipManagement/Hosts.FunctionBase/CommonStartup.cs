@@ -73,6 +73,15 @@ namespace Hosts.FunctionBase
             builder.Services.AddSingleton<ILocalizationRepository, LocalizationRepository>();
 
             builder.Services.AddSingleton<ILogAnalyticsSecret<LoggingRepository>>(new LogAnalyticsSecret<LoggingRepository>(GetValueOrThrow("logAnalyticsCustomerId"), GetValueOrThrow("logAnalyticsPrimarySharedKey"), FunctionName));
+            builder.Services.AddOptions<AppConfigVerbosity>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.Verbosity = configuration.GetValue<VerbosityLevel>("GMM:LoggingVerbosity");
+            });
+            builder.Services.AddSingleton<IAppConfigVerbosity>(services =>
+            {
+                var creds = services.GetService<IOptions<AppConfigVerbosity>>();
+                return new AppConfigVerbosity(creds.Value.Verbosity);
+            });
             builder.Services.AddSingleton<ILoggingRepository, LoggingRepository>();
 
             builder.Services.AddOptions<GMMResources>().Configure<IConfiguration>((settings, configuration) =>
