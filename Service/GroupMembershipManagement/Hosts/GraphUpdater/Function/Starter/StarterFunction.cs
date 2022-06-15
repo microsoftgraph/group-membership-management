@@ -44,7 +44,7 @@ namespace Hosts.GraphUpdater
             {
                 Message = $"{nameof(StarterFunction)} function started",
                 RunId = request.SyncJob.RunId
-            });
+            }, VerbosityLevel.DEBUG);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
@@ -58,13 +58,13 @@ namespace Hosts.GraphUpdater
             {
                 Message = $"InstanceId: {instanceId}",
                 RunId = request.SyncJob.RunId
-            });
+            }, VerbosityLevel.DEBUG);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"{nameof(StarterFunction)} function completed",
                 RunId = request.SyncJob.RunId
-            });
+            }, VerbosityLevel.DEBUG);
 
             return validationInfo.Response;
         }

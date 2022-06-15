@@ -30,7 +30,7 @@ namespace Hosts.GraphUpdater
         [FunctionName(nameof(GroupValidatorFunction))]
         public async Task<bool> ValidateGroupAsync([ActivityTrigger] GroupValidatorRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function started", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
             bool isExistingGroup = false;
             var groupExistsResult = await _graphUpdaterService.GroupExistsAsync(request.GroupId, request.RunId);
@@ -63,7 +63,7 @@ namespace Hosts.GraphUpdater
                 isExistingGroup = false;
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function completed", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             return isExistingGroup;
         }
     }

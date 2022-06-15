@@ -87,7 +87,7 @@ namespace Hosts.GraphUpdater
                 groupMembership = JsonConvert.DeserializeObject<GroupMembership>(fileContent);
                 syncCompleteEvent.ProjectedMemberCount = groupMembership.SourceMembers.Count.ToString();
 
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob });
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
                 {
                     Message = $"Received membership from StarterFunction and will sync the obtained " +
@@ -173,7 +173,7 @@ namespace Hosts.GraphUpdater
                     TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, true);
                 }
 
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob });
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
 
                 return OrchestrationRuntimeStatus.Completed;
             }

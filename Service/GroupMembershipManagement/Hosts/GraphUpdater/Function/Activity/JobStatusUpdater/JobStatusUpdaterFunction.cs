@@ -26,7 +26,7 @@ namespace Hosts.GraphUpdater
         [FunctionName(nameof(JobStatusUpdaterFunction))]
         public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
             var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobPartitionKey, request.JobRowKey);
             syncJob.ThresholdViolations = request.ThresholdViolations;
@@ -36,7 +36,7 @@ namespace Hosts.GraphUpdater
                 await _graphUpdaterService.UpdateSyncJobStatusAsync(syncJob, request.Status, false, request.RunId);
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
         }
     }
 }
