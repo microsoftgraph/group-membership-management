@@ -33,7 +33,7 @@ namespace Hosts.MembershipAggregator
         [FunctionName(nameof(DeltaCalculatorFunction))]
         public async Task<DeltaResponse> CalculateDeltaAsync([ActivityTrigger] DeltaCalculatorRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DeltaCalculatorFunction)} function started", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DeltaCalculatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
             GroupMembership sourceMembership;
             GroupMembership destinationMembership;
@@ -57,7 +57,7 @@ namespace Hosts.MembershipAggregator
 
             var response = await _deltaCalculatorService.CalculateDifferenceAsync(sourceMembership, destinationMembership);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DeltaCalculatorFunction)} function completed", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DeltaCalculatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             return response;
         }
     }

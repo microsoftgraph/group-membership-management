@@ -24,9 +24,9 @@ namespace Hosts.MembershipAggregator
         public async Task UploadFileAsync([ActivityTrigger] FileUploaderRequest request)
         {
             var syncJobProperties = request.SyncJob.ToDictionary();
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploading file {request.FilePath}", DynamicProperties = syncJobProperties });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploading file {request.FilePath}", DynamicProperties = syncJobProperties }, VerbosityLevel.DEBUG);
             await _blobStorageRepository.UploadFileAsync(request.FilePath, request.Content);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded file {request.FilePath}", DynamicProperties = syncJobProperties });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded file {request.FilePath}", DynamicProperties = syncJobProperties }, VerbosityLevel.DEBUG);
         }
     }
 }

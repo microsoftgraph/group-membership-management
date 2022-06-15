@@ -25,7 +25,7 @@ namespace Hosts.MembershipAggregator
         public async Task<(string FilePath, string Content)> DownloadFileAsync([ActivityTrigger] FileDownloaderRequest request)
         {
             var syncJobProperties = request.SyncJob.ToDictionary();
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloading file {request.FilePath}", DynamicProperties = syncJobProperties });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloading file {request.FilePath}", DynamicProperties = syncJobProperties }, VerbosityLevel.DEBUG);
 
             var blobResult = await _blobStorageRepository.DownloadFileAsync(request.FilePath);
             if (blobResult.BlobStatus == BlobStatus.NotFound)
@@ -33,7 +33,7 @@ namespace Hosts.MembershipAggregator
                 throw new FileNotFoundException($"File {request.FilePath} was not found");
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloaded file {request.FilePath}", DynamicProperties = syncJobProperties });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloaded file {request.FilePath}", DynamicProperties = syncJobProperties }, VerbosityLevel.DEBUG);
             return (request.FilePath, blobResult.Content.ToString());
         }
     }

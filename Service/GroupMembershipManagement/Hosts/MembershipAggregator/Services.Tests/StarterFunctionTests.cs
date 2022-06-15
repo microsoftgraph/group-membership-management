@@ -63,6 +63,7 @@ namespace Services.Tests
             Assert.AreEqual("Request content is empty.", responseContent);
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.StartsWith("MembershipAggregator instance id")),
+                                                VerbosityLevel.INFO,
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()), Times.Never());
         }
@@ -89,6 +90,7 @@ namespace Services.Tests
             Assert.AreEqual("Request is not valid.", responseContent);
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                     It.Is<LogMessage>(m => m.Message.StartsWith("MembershipAggregator instance id")),
+                                    VerbosityLevel.INFO,
                                     It.IsAny<string>(),
                                     It.IsAny<string>()), Times.Never());
         }
@@ -117,6 +119,7 @@ namespace Services.Tests
             Assert.IsNull(response.Content);
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                     It.Is<LogMessage>(m => m.Message.StartsWith("MembershipAggregator instance id")),
+                                    VerbosityLevel.INFO,
                                     It.IsAny<string>(),
                                     It.IsAny<string>()), Times.Once());
         }

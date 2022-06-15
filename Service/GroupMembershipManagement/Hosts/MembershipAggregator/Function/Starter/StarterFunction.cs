@@ -43,13 +43,13 @@ namespace Hosts.MembershipAggregator
             var runId = request.SyncJob.RunId;
             var syncJobProperties = request.SyncJob.ToDictionary();
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", DynamicProperties = syncJobProperties });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", DynamicProperties = syncJobProperties }, VerbosityLevel.DEBUG);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = content, RunId = runId });
 
             var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"MembershipAggregator instance id: {instanceId}", DynamicProperties = syncJobProperties });
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", DynamicProperties = syncJobProperties });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", DynamicProperties = syncJobProperties }, VerbosityLevel.DEBUG);
 
             return Response;
         }

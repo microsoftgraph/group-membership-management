@@ -24,7 +24,7 @@ namespace Hosts.MembershipAggregator
         public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
             var syncJobProperties = request.SyncJob.ToDictionary();
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", DynamicProperties = syncJobProperties });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", DynamicProperties = syncJobProperties }, VerbosityLevel.DEBUG);
 
             var syncJob = await _syncJobrespository.GetSyncJobAsync(request.SyncJob.PartitionKey, request.SyncJob.RowKey);
             if (syncJob != null)
@@ -38,7 +38,7 @@ namespace Hosts.MembershipAggregator
                 await _syncJobrespository.UpdateSyncJobsAsync(new[] { syncJob }, request.Status);
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", DynamicProperties = syncJobProperties });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", DynamicProperties = syncJobProperties }, VerbosityLevel.DEBUG);
         }
     }
 }

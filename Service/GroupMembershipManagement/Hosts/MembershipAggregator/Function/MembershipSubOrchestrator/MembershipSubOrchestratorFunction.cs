@@ -78,11 +78,14 @@ namespace Hosts.MembershipAggregator
                 var uploadRequest = CreateAggregatedFileUploaderRequest(SourceMembership, deltaResponse, request.SyncJob);
                 await context.CallActivityAsync(nameof(FileUploaderFunction), uploadRequest);
                 await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LogMessage
-                                                {
-                                                    Message = $"Uploaded membership file {uploadRequest.FilePath} with {SourceMembership.SourceMembers.Count} unique members",
-                                                    DynamicProperties = dynamicProperties
-                                                });
+                    new LoggerRequest
+                    {
+                        Message = new LogMessage
+                        {
+                            Message = $"Uploaded membership file {uploadRequest.FilePath} with {SourceMembership.SourceMembers.Count} unique members",
+                            DynamicProperties = dynamicProperties
+                        }
+                    });
 
                 return new MembershipSubOrchestratorResponse
                 {
@@ -111,8 +114,11 @@ namespace Hosts.MembershipAggregator
                               $"{deltaResponse.MembersToAdd.Count} users would have been added. " +
                               $"{deltaResponse.MembersToRemove.Count} users would have been removed.";
 
-                await context.CallActivityAsync(nameof(LoggerFunction), new LogMessage { Message = message, DynamicProperties = dynamicProperties });
-
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        Message = new LogMessage { Message = message, DynamicProperties = dynamicProperties }
+                    });
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest
                                                 {

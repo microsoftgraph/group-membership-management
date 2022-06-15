@@ -19,9 +19,9 @@ namespace Hosts.MembershipAggregator
         }
 
         [FunctionName(nameof(LoggerFunction))]
-        public async Task LogMessageAsync([ActivityTrigger] LogMessage logMessage)
+        public async Task LogMessageAsync([ActivityTrigger] LoggerRequest request)
         {
-            await _loggingRepository.LogMessageAsync(logMessage);
+            await _loggingRepository.LogMessageAsync(request.Message, request.Verbosity);
         }
     }
 }

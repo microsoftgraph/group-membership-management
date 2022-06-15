@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
+using Repositories.Contracts;
 using Services.Entities;
 using System;
 using System.Collections.Generic;
@@ -51,6 +52,17 @@ namespace Hosts.MembershipAggregator
 
                 if (hasSourceCompleted)
                 {
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                        new LoggerRequest
+                        {
+                            Message = new LogMessage
+                            {
+                                Message = $"{nameof(OrchestratorFunction)} function started",
+                                DynamicProperties = syncJobProperties
+                            },
+                            Verbosity = VerbosityLevel.DEBUG
+                        });
+
                     var membershipResponse = await context.CallSubOrchestratorAsync<MembershipSubOrchestratorResponse>
                                                                             (
                                                                                 nameof(MembershipSubOrchestratorFunction),
@@ -72,20 +84,27 @@ namespace Hosts.MembershipAggregator
                                                                     httpRetryOptions: new HttpRetryOptions(TimeSpan.FromSeconds(30), 3));
 
                         await context.CallActivityAsync(nameof(LoggerFunction),
-                                                        new LogMessage
-                                                        {
-                                                            Message = "Calling GraphUpdater",
-                                                            DynamicProperties = syncJobProperties
-                                                        });
+                            new LoggerRequest
+                            {
+                                Message = new LogMessage
+                                {
+                                    Message = "Calling GraphUpdater",
+                                    DynamicProperties = syncJobProperties
+                                }
+                            });
+                                                        
 
                         var response = await context.CallHttpAsync(updateRequest);
 
                         await context.CallActivityAsync(nameof(LoggerFunction),
-                                                        new LogMessage
-                                                        {
-                                                            Message = $"GraphUpdater response Code: {response.StatusCode}, Content: {response.Content}",
-                                                            DynamicProperties = syncJobProperties
-                                                        });
+                            new LoggerRequest
+                            {
+                                Message = new LogMessage
+                                {
+                                    Message = $"GraphUpdater response Code: {response.StatusCode}, Content: {response.Content}",
+                                    DynamicProperties = syncJobProperties
+                                }
+                            });
 
                         if (response.StatusCode != HttpStatusCode.NoContent)
                         {
@@ -93,6 +112,17 @@ namespace Hosts.MembershipAggregator
                                                             new JobStatusUpdaterRequest { SyncJob = request.SyncJob, Status = SyncStatus.Error });
                         }
                     }
+
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                        new LoggerRequest
+                        {
+                            Message = new LogMessage
+                            {
+                                Message = $"{nameof(OrchestratorFunction)} function completed",
+                                DynamicProperties = syncJobProperties
+                            },
+                            Verbosity = VerbosityLevel.DEBUG
+                        });
                 }
             }
             catch (FileNotFoundException fe)
@@ -100,7 +130,10 @@ namespace Hosts.MembershipAggregator
                 errorOccurred = true;
 
                 await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LogMessage { Message = fe.Message, DynamicProperties = syncJobProperties });
+                    new LoggerRequest
+                    {
+                        Message = new LogMessage { Message = fe.Message, DynamicProperties = syncJobProperties }
+                    });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest
@@ -116,7 +149,10 @@ namespace Hosts.MembershipAggregator
                 errorOccurred = true;
 
                 await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LogMessage { Message = $"Unexpected exception. {ex}", DynamicProperties = syncJobProperties });
+                    new LoggerRequest
+                    {
+                        Message = new LogMessage { Message = $"Unexpected exception. {ex}", DynamicProperties = syncJobProperties }
+                    });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest
@@ -134,7 +170,6 @@ namespace Hosts.MembershipAggregator
                     await proxy.Delete();
                 }
             }
-
         }
     }
 }

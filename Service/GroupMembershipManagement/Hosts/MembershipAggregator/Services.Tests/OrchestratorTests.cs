@@ -84,10 +84,10 @@ namespace Services.Tests
             _durableContext.Setup(x => x.CallHttpAsync(It.IsAny<DurableHttpRequest>()))
                             .ReturnsAsync(() => _durableHttpResponse);
 
-            _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(LoggerFunction)), It.IsAny<LogMessage>()))
+            _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(LoggerFunction)), It.IsAny<LoggerRequest>()))
                             .Callback<string, object>(async (name, request) =>
                             {
-                                var loggerRequest = request as LogMessage;
+                                var loggerRequest = request as LoggerRequest;
                                 await CallLoggerFunctionAsync(loggerRequest);
                             });
 
@@ -113,8 +113,8 @@ namespace Services.Tests
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), It.IsAny<string>(), It.IsAny<string>()));
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), It.IsAny<string>(), It.IsAny<string>()));
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
@@ -128,8 +128,8 @@ namespace Services.Tests
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), It.IsAny<string>(), It.IsAny<string>()), Times.Never());
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Never());
         }
@@ -144,8 +144,8 @@ namespace Services.Tests
 
             Assert.IsNotNull(_jobTrackerEntity.Object.JobState.DestinationPart);
             Assert.AreEqual(_membershipAggregatorHttpRequest.FilePath, _jobTrackerEntity.Object.JobState.DestinationPart);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), It.IsAny<string>(), It.IsAny<string>()));
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), It.IsAny<string>(), It.IsAny<string>()));
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
@@ -158,8 +158,8 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never);
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
@@ -172,8 +172,8 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), It.IsAny<string>(), It.IsAny<string>()));
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), It.IsAny<string>(), It.IsAny<string>()));
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.Is<SyncStatus>(s => s == SyncStatus.Error)), Times.Once());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
@@ -191,8 +191,8 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
             await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object));
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), It.IsAny<string>(), It.IsAny<string>()), Times.Never());
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
             _durableContext.Verify(x => x.CallActivityAsync(
                                                             It.Is<string>(x => x == nameof(JobStatusUpdaterFunction)),
                                                             It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.FileNotFound)
@@ -215,9 +215,9 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
             await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object));
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), It.IsAny<string>(), It.IsAny<string>()), Times.Never());
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), It.IsAny<string>(), It.IsAny<string>()), Times.Never());
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Unexpected exception")), It.IsAny<string>(), It.IsAny<string>()), Times.Once());
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Unexpected exception")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _durableContext.Verify(x => x.CallActivityAsync(
                                                             It.Is<string>(x => x == nameof(JobStatusUpdaterFunction)),
                                                             It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.Error)
@@ -227,7 +227,7 @@ namespace Services.Tests
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
-        private async Task CallLoggerFunctionAsync(LogMessage request)
+        private async Task CallLoggerFunctionAsync(LoggerRequest request)
         {
             var loggerFunction = new LoggerFunction(_loggingRepository.Object);
             await loggerFunction.LogMessageAsync(request);
