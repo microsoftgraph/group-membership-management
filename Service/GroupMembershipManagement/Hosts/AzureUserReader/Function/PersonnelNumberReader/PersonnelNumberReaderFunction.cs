@@ -26,11 +26,11 @@ namespace Hosts.AzureUserReader
         [FunctionName(nameof(PersonnelNumberReaderFunction))]
         public async Task<IList<string>> GetPersonnelNumbersAsync([ActivityTrigger] AzureUserReaderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PersonnelNumberReaderFunction)} function started" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PersonnelNumberReaderFunction)} function started" }, VerbosityLevel.DEBUG);
 
             var personnelNumbers = await _azureUserReaderService.GetPersonnelNumbersAsync(request.ContainerName, request.BlobPath);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PersonnelNumberReaderFunction)} function completed" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PersonnelNumberReaderFunction)} function completed" }, VerbosityLevel.DEBUG);
 
             return personnelNumbers;
         }

@@ -28,7 +28,7 @@ namespace Hosts.AzureUserReader
             [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestMessage req,
             [DurableClient] IDurableOrchestrationClient starter)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
 
             HttpResponseMessage response;
             var result = await ValidateRequestAsync(req);
@@ -43,7 +43,7 @@ namespace Hosts.AzureUserReader
                 response = new HttpResponseMessage { StatusCode = result.StatusCode };
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
 
             return response;
         }

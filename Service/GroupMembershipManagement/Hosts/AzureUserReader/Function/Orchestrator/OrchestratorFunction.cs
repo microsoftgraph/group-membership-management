@@ -26,7 +26,7 @@ namespace Hosts.AzureUserReader
             [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             if (!context.IsReplaying)
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started" });
+                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started" }, VerbosityLevel.DEBUG);
 
             try
             {
@@ -57,7 +57,7 @@ namespace Hosts.AzureUserReader
             }
 
             if (!context.IsReplaying)
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed" });
+                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed" }, VerbosityLevel.DEBUG);
         }
     }
 }
