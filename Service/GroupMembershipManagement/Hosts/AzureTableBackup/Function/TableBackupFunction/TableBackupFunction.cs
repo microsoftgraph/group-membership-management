@@ -23,9 +23,9 @@ namespace Hosts.AzureTableBackup
         [FunctionName(nameof(TableBackupFunction))]
         public async Task BackupTables([ActivityTrigger] object request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableBackupFunction)} function started at: {DateTime.UtcNow}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableBackupFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
             await _azureTableBackupService.RunBackupServiceAsync();
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableBackupFunction)} function completed at: {DateTime.UtcNow}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableBackupFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
         }
     }
 }
