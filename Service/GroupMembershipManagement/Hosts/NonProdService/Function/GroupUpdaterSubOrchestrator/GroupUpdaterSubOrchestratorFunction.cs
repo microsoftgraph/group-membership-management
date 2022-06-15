@@ -8,6 +8,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System;
 using Microsoft.ApplicationInsights;
+using Repositories.Contracts;
 
 namespace Hosts.NonProdService
 {
@@ -31,7 +32,7 @@ namespace Hosts.NonProdService
             }
 
             await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LoggerRequest { Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function started", RunId = request.RunId });
+                                                new LoggerRequest { Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function started", RunId = request.RunId, Verbosity = VerbosityLevel.DEBUG });
 
             var batch = request.Members?.Skip(skip).Take(batchSize).ToList() ?? new List<AzureADUser>();
 
@@ -69,7 +70,8 @@ namespace Hosts.NonProdService
                                                       new LoggerRequest
                                                       {
                                                           Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function completed",
-                                                          RunId = request.RunId
+                                                          RunId = request.RunId,
+                                                          Verbosity = VerbosityLevel.DEBUG
                                                       });
         }
     }

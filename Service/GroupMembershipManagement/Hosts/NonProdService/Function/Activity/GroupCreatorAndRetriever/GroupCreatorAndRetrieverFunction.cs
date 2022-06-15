@@ -25,7 +25,7 @@ namespace Hosts.NonProdService
         [FunctionName(nameof(GroupCreatorAndRetrieverFunction))]
         public async Task<GroupCreatorAndRetrieverResponse> GenerateGroup([ActivityTrigger] GroupCreatorAndRetrieverRequest request, ILogger log)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupCreatorAndRetrieverFunction)} function started", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupCreatorAndRetrieverFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
             await _graphGroupRepository.CreateGroup(request.GroupName);
 
@@ -49,7 +49,7 @@ namespace Hosts.NonProdService
 
             var usersInGroup = await _graphGroupRepository.GetUsersInGroupTransitively(group.ObjectId);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupCreatorAndRetrieverFunction)} function completed", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupCreatorAndRetrieverFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
             return new GroupCreatorAndRetrieverResponse
             {

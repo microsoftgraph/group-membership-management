@@ -25,7 +25,7 @@ namespace Hosts.NonProdService
         [FunctionName(nameof(GroupUpdaterFunction))]
         public async Task<int> UpdateGroupAsync([ActivityTrigger] GroupUpdaterRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function started", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
             var successCount = 0;
 
@@ -42,7 +42,7 @@ namespace Hosts.NonProdService
                 successCount = removeUsersFromGraphResponse.SuccessCount;
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function completed", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
             return successCount;
         }

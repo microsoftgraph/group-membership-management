@@ -3,6 +3,7 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Repositories.Contracts;
 using Services.Contracts;
 using Services.Entities;
 using System;
@@ -45,7 +46,7 @@ namespace Hosts.NonProdService
         {
             var runId = context.NewGuid();
 
-            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId });
+            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
 
             var tenantUsersRequired = GetMinimumUsersRequiredForTenant();
             var tenantUsers = await context.CallActivityAsync<List<AzureADUser>>(
@@ -117,7 +118,7 @@ namespace Hosts.NonProdService
                         });
             }
 
-            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", RunId = runId });
+            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
         }
 
         private int GetMinimumUsersRequiredForTenant()

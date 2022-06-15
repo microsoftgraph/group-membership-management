@@ -25,7 +25,7 @@ namespace Hosts.NonProdService
         [FunctionName(nameof(TenantUserReaderFunction))]
         public async Task<List<AzureADUser>> GetTenantUsersAsync([ActivityTrigger] TenantUserReaderRequest request, ILogger log)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TenantUserReaderFunction)} function started", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TenantUserReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
             var users = await _graphGroupRepository.GetTenantUsers(request.MinimunTenantUserCount);
 
@@ -34,7 +34,7 @@ namespace Hosts.NonProdService
                 return null;
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TenantUserReaderFunction)} function completed", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TenantUserReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
             return users;
         }

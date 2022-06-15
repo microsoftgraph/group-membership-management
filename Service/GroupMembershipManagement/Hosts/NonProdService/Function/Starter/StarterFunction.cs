@@ -25,12 +25,12 @@ namespace Hosts.NonProdService
         public async Task<HttpResponseMessage> HttpStart([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestMessage req,
             [DurableClient] IDurableOrchestrationClient starter)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
 
             var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), null);
             var response = starter.CreateCheckStatusResponse(req, instanceId);        
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
 
             return response;
         }
