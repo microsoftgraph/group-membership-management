@@ -1,0 +1,50 @@
+parameters:
+  solutionAbbreviation: ''
+  environmentAbbreviation: ''
+  serviceConnection: ''
+  location: ''
+  root: ''
+  tenantId: ''
+
+steps:
+  - task: AzureResourceGroupDeployment@2
+    displayName: 'deploy WebApp compute resources'
+    inputs:
+      azureSubscription: ${{parameters.serviceConnection}}
+      resourceGroupName: ${{parameters.solutionAbbreviation}}-compute-${{parameters.environmentAbbreviation}}
+      csmFile: ${{ parameters.root }}/webapp_arm_template/GmmUI/Infrastructure/compute/template.json
+      csmParametersFile: ${{ parameters.root }}/webapp_arm_template/GmmUI/Infrastructure/compute/parameters/parameters.${{parameters.environmentAbbreviation}}.json
+      overrideParameters: -environmentAbbreviation "${{parameters.environmentAbbreviation}}"
+                          -tenantId "${{parameters.tenantId}}"
+                          -location "${{parameters.location}}"
+                          -solutionAbbreviation "${{parameters.solutionAbbreviation}}"
+      deploymentMode: 'Incremental'
+      deploymentOutputs: deploymentOutputs
+
+  - task: PowerShell@2
+    name: 'SetDeploymentOutputVariables'
+    displayName: 'Set Deployment Output Variables'
+    inputs:
+      targetType: inline
+      script: |
+        $armOutputObj = '$(deploymentOutputs)' | ConvertFrom-Json
+        $armOutputObj.PSObject.Properties | ForEach-Object {
+          $keyname = $_.Name
+          $value = $_.Value.value
+
+          # Creates a standard pipeline variable
+          Write-Output "##vso[task.setvariable variable=$keyName;issecret=true]$value"
+
+          # Display keys in pipeline
+          Write-Output "output variable: $keyName"
+        }
+      pwsh: true
+
+  - task: AzureStaticWebApp@0
+    name: DeployStaticWebApp
+    displayName: Deploy Static Web App
+    inputs:
+      app_location: 'WebApp'
+      output_location: 'wwwroot'
+      cwd: '${{ parameters.root }}/webapp_package'
+      azure_static_web_apps_api_token: $(deployment_token) # captured from deploymentOutputs

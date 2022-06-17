@@ -1,0 +1,55 @@
+parameters:
+  solutionAbbreviation: ''
+  environmentAbbreviation: ''
+  serviceConnection: ''
+  location: ''
+  root: ''
+  tenantId: ''
+
+steps:
+
+  - task: DotNetCoreInstaller@0
+    displayName: 'Installing .NET Core SDK...'
+    inputs:
+      version: 6.0.300
+
+  - script: dotnet build --configuration $(buildConfiguration) public\Service\GroupMembershipManagement\Hosts\GmmUI\WebApp\WebApp.csproj
+    displayName: 'Building $(buildConfiguration)...'
+
+  - task: DotNetCoreCLI@2
+    displayName: 'dotnet publish GmmUI webapp'
+    inputs:
+      command: publish
+      arguments: '--configuration $(BuildConfiguration) --output GmmUI'
+      projects: 'public/Service/GroupMembershipManagement/Hosts/GmmUI/WebApp/*.csproj'
+      publishWebProjects: false
+      modifyOutputPath: false
+      zipAfterPublish: false
+
+  - task: CopyFiles@2
+    displayName: 'copy GmmUI webapp package'
+    inputs:
+      SourceFolder:  public/Service/GroupMembershipManagement/Hosts/GmmUI
+      Contents: '**\WebApp\**'
+      TargetFolder: '$(build.artifactstagingdirectory)/webapp_package/'
+
+  - powershell: |
+            $bicepTemplates = Get-ChildItem -Filter "template.bicep" -Recurse
+            foreach($template in $bicepTemplates)
+            {
+              az bicep build --file $template.FullName
+            }
+    displayName: 'Compile Bicep templates'
+
+  - task: CopyFiles@2
+    displayName: 'copy GmmUI webapp arm templates'
+    inputs:
+      SourceFolder: public/Service/GroupMembershipManagement/Hosts/GmmUI
+      Contents: '**\Infrastructure\**'
+      TargetFolder: '$(build.artifactstagingdirectory)/webapp_arm_template/GmmUI'
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'publish functions artifacts'
+    inputs:
+      PathtoPublish: '$(build.artifactstagingdirectory)'
+      ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'
