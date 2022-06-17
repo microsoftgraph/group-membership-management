@@ -69,11 +69,11 @@ If you would like to add additional environments, follow these steps:
         - template: yaml/deploy-pipeline.yml
         parameters:
             solutionAbbreviation: '$(SolutionAbbreviation)'
-            environmentAbbreviation: 'int'
+            environmentAbbreviation: '<env>'
             location: 'westus2'
-            serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
+            serviceConnection: '$(SolutionAbbreviation)-serviceconnection-<env>'
             dependsOn: Build_Functions
-            stageName: 'NonProd_int'
+            stageName: 'NonProd_<env>'
             functionApps:
             - name: 'GraphUpdater'
             - name: 'MembershipAggregator'
@@ -114,11 +114,11 @@ If you would like to remove environments, follow these steps:
         - template: yaml/deploy-pipeline.yml
         parameters:
             solutionAbbreviation: '$(SolutionAbbreviation)'
-            environmentAbbreviation: 'int'
+            environmentAbbreviation: '<env>'
             location: 'westus2'
-            serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
+            serviceConnection: '$(SolutionAbbreviation)-serviceconnection-<env>'
             dependsOn: Build_Functions
-            stageName: 'NonProd_int'
+            stageName: 'NonProd_<env>'
             functionApps:
             - name: 'GraphUpdater'
             - name: 'MembershipAggregator'
