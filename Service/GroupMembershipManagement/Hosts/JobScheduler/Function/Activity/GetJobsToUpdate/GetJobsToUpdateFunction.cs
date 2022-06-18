@@ -26,9 +26,9 @@ namespace Hosts.JobScheduler
         [FunctionName(nameof(GetJobsToUpdateFunction))]
         public async Task<List<SchedulerSyncJob>> GetJobsToUpdate([ActivityTrigger] object request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsToUpdateFunction)} function started at: {DateTime.UtcNow}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsToUpdateFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
             var jobsToUpdate = await _applicationService.GetJobsToUpdate();
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsToUpdateFunction)} function completed at: {DateTime.UtcNow}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsToUpdateFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
             return jobsToUpdate;
         }

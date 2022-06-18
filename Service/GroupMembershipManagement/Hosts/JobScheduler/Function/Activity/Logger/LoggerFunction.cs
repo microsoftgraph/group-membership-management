@@ -22,7 +22,7 @@ namespace Hosts.JobScheduler
         [FunctionName(nameof(LoggerFunction))]
         public async Task LogMessageAsync([ActivityTrigger] LoggerRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = request.Message, RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = request.Message, RunId = request.RunId },request.Verbosity);
         }
     }
 }

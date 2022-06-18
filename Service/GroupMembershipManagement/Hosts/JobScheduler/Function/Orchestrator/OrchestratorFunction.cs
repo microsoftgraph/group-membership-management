@@ -3,6 +3,7 @@
 
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Entities;
 using System;
@@ -30,7 +31,8 @@ namespace Hosts.JobScheduler
                 new LoggerRequest
                 {
                     RunId = runId,
-                    Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}"
+                    Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
+                    Verbosity = VerbosityLevel.DEBUG
                 });
 
             var jobsToUpdate = await context.CallActivityAsync<List<SchedulerSyncJob>>(nameof(GetJobsToUpdateFunction), null);
@@ -57,7 +59,8 @@ namespace Hosts.JobScheduler
                 new LoggerRequest
                 {
                     RunId = runId,
-                    Message = $"{nameof(OrchestratorFunction)} function completed at: {context.CurrentUtcDateTime}"
+                    Message = $"{nameof(OrchestratorFunction)} function completed at: {context.CurrentUtcDateTime}",
+                    Verbosity = VerbosityLevel.DEBUG
                 });
         }
     }
