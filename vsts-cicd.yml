@@ -54,7 +54,7 @@ stages:
         coverageThreshold: 45
     - function:
         name: 'JobScheduler'
-        coverageThreshold: 65
+        coverageThreshold: 60
     - function:
         name: 'MembershipAggregator'
         coverageThreshold: 85
