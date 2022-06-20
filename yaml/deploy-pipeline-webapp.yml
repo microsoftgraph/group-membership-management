@@ -3,8 +3,6 @@ parameters:
   type: string
 - name: tenantId
   type: string
-- name: keyVaultReaders
-  type: object
 - name: environmentAbbreviation
   type: string
 - name: location
@@ -17,8 +15,6 @@ parameters:
   type: string
 - name: condition
   type: object
-- name: integrationTests
-  type: boolean
 
 stages:
   - stage: ${{ parameters.stageName }}

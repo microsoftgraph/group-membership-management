@@ -51,12 +51,8 @@ param location string = 'westus'
 @description('Maximum elastic worker count.')
 param maximumElasticWorkerCount int = 1
 
-@description('Name of the \'data\' key vault.')
-param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Name of the resource group where the \'data\' key vault is located.')
-param dataKeyVaultResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
+@description('Name of the public source branch where webapp repo exists.')
+param branch string
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate'
@@ -69,7 +65,7 @@ module servicePlanTemplate 'servicePlan.bicep' = {
 }
 
 resource staticWebApp 'Microsoft.Web/staticSites@2021-03-01' = {
-  name: 'gmm-ui'
+  name: '${solutionAbbreviation}-ui'
   location: location
   sku: {
     name: 'Free'
@@ -77,7 +73,7 @@ resource staticWebApp 'Microsoft.Web/staticSites@2021-03-01' = {
   }
   properties: {
     allowConfigFileUpdates: true
-    branch: 'users/t-chenemily/deploy-webapp'
+    branch: branch
     buildProperties: {
       appBuildCommand: 'dotnet run'
       appLocation: 'Service/GroupMembershipManagement/Hosts/GmmUI/WebApp'

@@ -8,7 +8,7 @@ parameters:
 
 steps:
   - task: AzureResourceGroupDeployment@2
-    displayName: 'deploy WebApp compute resources'
+    displayName: 'Deploy WebApp compute resources'
     inputs:
       azureSubscription: ${{parameters.serviceConnection}}
       resourceGroupName: ${{parameters.solutionAbbreviation}}-compute-${{parameters.environmentAbbreviation}}
