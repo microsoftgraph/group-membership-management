@@ -7,12 +7,14 @@ parameters:
   tenantId: ''
 
 steps:
-  - task: AzureResourceGroupDeployment@2
+  - task: AzureResourceManagerTemplateDeployment@3
     displayName: 'Deploy WebApp compute resources'
     inputs:
-      azureSubscription: ${{parameters.serviceConnection}}
+      azureResourceManagerConnection: ${{parameters.serviceConnection}}
+      subscriptionId: ${{parameters.subscriptionId}}
       resourceGroupName: ${{parameters.solutionAbbreviation}}-compute-${{parameters.environmentAbbreviation}}
-      csmFile: ${{ parameters.root }}/webapp_arm_template/GmmUI/Infrastructure/compute/template.json
+      location: ${{parameters.location}}
+      csmFile: ${{ parameters.root }}/webapp_arm_template/GmmUI/Infrastructure/compute/template.bicep
       csmParametersFile: ${{ parameters.root }}/webapp_arm_template/GmmUI/Infrastructure/compute/parameters/parameters.${{parameters.environmentAbbreviation}}.json
       overrideParameters: -environmentAbbreviation "${{parameters.environmentAbbreviation}}"
                           -tenantId "${{parameters.tenantId}}"
