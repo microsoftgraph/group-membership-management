@@ -90,7 +90,8 @@ namespace Hosts.MembershipAggregator
                 return new MembershipSubOrchestratorResponse
                 {
                     FilePath = uploadRequest.FilePath,
-                    MembershipDeltaStatus = deltaResponse.MembershipDeltaStatus
+                    MembershipDeltaStatus = deltaResponse.MembershipDeltaStatus,
+                    ProjectedMemberCount = SourceMembership.SourceMembers.Count
                 };
             }
             else if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.ThresholdExceeded)

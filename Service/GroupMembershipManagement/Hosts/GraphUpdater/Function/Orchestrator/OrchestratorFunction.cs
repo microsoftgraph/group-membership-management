@@ -76,6 +76,7 @@ namespace Hosts.GraphUpdater
                 syncCompleteEvent.TargetOfficeGroupId = syncJob.TargetOfficeGroupId.ToString();
                 syncCompleteEvent.RunId = syncJob.RunId.ToString();
                 syncCompleteEvent.IsDryRunEnabled = false.ToString();
+                syncCompleteEvent.ProjectedMemberCount = graphRequest.ProjectedMemberCount.HasValue ? graphRequest.ProjectedMemberCount.ToString() : "Not provided";
 
                 var fileContent = await context.CallActivityAsync<string>(nameof(FileDownloaderFunction),
                                                                             new FileDownloaderRequest
@@ -85,7 +86,6 @@ namespace Hosts.GraphUpdater
                                                                             });
 
                 groupMembership = JsonConvert.DeserializeObject<GroupMembership>(fileContent);
-                syncCompleteEvent.ProjectedMemberCount = groupMembership.SourceMembers.Count.ToString();
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest

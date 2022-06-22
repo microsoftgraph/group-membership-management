@@ -75,7 +75,11 @@ namespace Hosts.MembershipAggregator
 
                     if (membershipResponse.MembershipDeltaStatus == MembershipDeltaStatus.Ok)
                     {
-                        var updateRequestContent = new MembershipHttpRequest { FilePath = membershipResponse.FilePath, SyncJob = request.SyncJob };
+                        var updateRequestContent = new MembershipHttpRequest {
+                            FilePath = membershipResponse.FilePath, 
+                            SyncJob = request.SyncJob,
+                            ProjectedMemberCount = membershipResponse.ProjectedMemberCount
+                        };
                         var updateRequest = new DurableHttpRequest(HttpMethod.Post,
                                                                     new Uri(_configuration["graphUpdaterUrl"]),
                                                                     content: JsonConvert.SerializeObject(updateRequestContent),

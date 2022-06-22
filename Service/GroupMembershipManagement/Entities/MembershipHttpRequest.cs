@@ -1,5 +1,7 @@
-﻿// Copyright (c) Microsoft Corporation.
+// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
+using System;
 
 namespace Entities
 {
@@ -7,5 +9,6 @@ namespace Entities
     {
         public string FilePath { get; set; }
         public SyncJob SyncJob { get; set; }
+        public int? ProjectedMemberCount { get; set; }
     }
 }
