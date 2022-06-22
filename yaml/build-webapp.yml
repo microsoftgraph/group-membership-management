@@ -1,11 +1,3 @@
-parameters:
-  solutionAbbreviation: ''
-  environmentAbbreviation: ''
-  serviceConnection: ''
-  location: ''
-  root: ''
-  tenantId: ''
-
 steps:
 
   - task: DotNetCoreInstaller@0
