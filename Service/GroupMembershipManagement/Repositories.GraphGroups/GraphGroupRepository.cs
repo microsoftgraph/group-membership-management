@@ -129,7 +129,7 @@ namespace Repositories.GraphGroups
                     SecurityEnabled = true
                 });
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error creating group: {e}" });
             }
@@ -142,7 +142,7 @@ namespace Repositories.GraphGroups
             var userResponse = await _graphServiceClient.Users.Request().GetAsync();
             tenantUsers.UnionWith(userResponse.CurrentPage.Select(graphUser => new AzureADUser { ObjectId = new Guid(graphUser.Id) }));
 
-            while(tenantUsers.Count < userCount)
+            while (tenantUsers.Count < userCount)
             {
                 userResponse = await userResponse.NextPageRequest.GetAsync();
                 tenantUsers.UnionWith(userResponse.CurrentPage.Select(graphUser => new AzureADUser { ObjectId = new Guid(graphUser.Id) }));
@@ -324,7 +324,6 @@ namespace Repositories.GraphGroups
                                 .TransitiveMembers
                                 .Request()
                                 .Top(MaxResultCount)
-                                .WithMaxRetry(MaxRetries)
                                 .GetAsync();
             });
         }
@@ -707,7 +706,7 @@ namespace Repositories.GraphGroups
                     }
 
                     else
-                    {                        
+                    {
                         await _loggingRepository.LogMessageAsync(new LogMessage
                         {
                             Message = $"User ID is missing",
@@ -937,11 +936,11 @@ namespace Repositories.GraphGroups
                     .WaitAndRetryAsync(
                        retryCount: retryLimit,
                        retryAttempt => TimeSpan.FromMinutes(2),
-                       onRetry: async (ex, count) =>
+                       onRetry: async (ex, waitTime, currentRetry, context) =>
                        {
                            await _loggingRepository.LogMessageAsync(new LogMessage
                            {
-                               Message = $"Got a transient exception. Retrying. This was try {count} out of {retryLimit}.\n{ex}"
+                               Message = $"Got a transient exception. Retrying. This was try {currentRetry} out of {retryLimit}.\n{ex}"
                            });
                        }
                     );
