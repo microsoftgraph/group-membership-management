@@ -94,14 +94,6 @@ stages:
             Contents: ${{ app.function.name }}.zip
             TargetFolder: '$(build.artifactstagingdirectory)/function_packages/'
 
-        - powershell: |
-                  $bicepTemplates = Get-ChildItem -Filter "template.bicep" -Recurse
-                  foreach($template in $bicepTemplates)
-                  {
-                    az bicep build --file $template.FullName
-                  }
-          displayName: 'Compile Bicep templates'
-
         - task: CopyFiles@2
           displayName: 'copy ${{ app.function.name }} function arm templates'
           inputs:

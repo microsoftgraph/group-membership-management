@@ -376,6 +376,10 @@ Once your application is created we need to grant the requested permissions to u
 
                location - This is your Azure location where the resources are going to be created.
 
+               subscriptionId_prod - This is the subscription Id of your production environment.
+
+               subscriptionId_nonprod - This is the subscription Id of your non-production environment.
+
                tenantId - This is your Azure Active Directory tenant Id, where GMM Azure resources were created.
 
                keyVaultReaders_prod - This is a list of service principals that will have access to the keyvaults in production environment. i.e. your own Azure user id, an Azure group id.

@@ -3,6 +3,8 @@ parameters:
   type: string
 - name: tenantId
   type: string
+- name: subscriptionId
+  type: string
 - name: keyVaultReaders
   type: object
 - name: environmentAbbreviation
@@ -49,6 +51,7 @@ stages:
                root: $(Pipeline.Workspace)/$(Build.BuildNumber)_$(buildType)
                location: ${{ parameters.location }}
                tenantId: ${{ parameters.tenantId }}
+               subscriptionId: ${{ parameters.subscriptionId }}
                keyVaultReaders: ${{ parameters.keyVaultReaders }}
 
     - job: ${{ parameters.stageName }}_DeployFunctions
@@ -76,5 +79,6 @@ stages:
               serviceConnection: ${{ parameters.serviceConnection }}
               location: ${{ parameters.location }}
               tenantId: ${{ parameters.tenantId }}
+              subscriptionId: ${{ parameters.subscriptionId }}
               root: $(System.ArtifactsDirectory)/$(Build.BuildNumber)_$(buildType)
               name: ${{ func.name }}

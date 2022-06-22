@@ -64,6 +64,7 @@ stages:
     solutionAbbreviation: '$(SolutionAbbreviation)'
     environmentAbbreviation: 'int'
     tenantId: $(tenantId)
+    subscriptionId: $(subscriptionId_nonprod)
     keyVaultReaders: $(keyVaultReaders_nonprod)
     location: $(location)
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
@@ -90,6 +91,7 @@ stages:
     solutionAbbreviation: '$(SolutionAbbreviation)'
     environmentAbbreviation: 'ua'
     tenantId: $(tenantId)
+    subscriptionId: $(subscriptionId_nonprod)
     keyVaultReaders: $(keyVaultReaders_nonprod)
     location: $(location)
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-ua'
@@ -117,6 +119,7 @@ stages:
     solutionAbbreviation: '$(SolutionAbbreviation)'
     environmentAbbreviation: 'prodv2'
     tenantId: $(tenantId)
+    subscriptionId: $(subscriptionId_prod)
     keyVaultReaders: $(keyVaultReaders_prod)
     location: $(location)
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-prodv2'

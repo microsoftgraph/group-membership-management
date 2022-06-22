@@ -70,14 +70,6 @@ stages:
         allowCoverageVariance: false
       condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
-    - powershell: |
-              $bicepTemplates = Get-ChildItem -Filter "template.bicep" -Recurse
-              foreach($template in $bicepTemplates)
-              {
-                az bicep build --file $template.FullName
-              }
-      displayName: 'Compile Bicep templates'
-
     - task: CopyFiles@2
       displayName: 'copy arm templates'
       inputs:

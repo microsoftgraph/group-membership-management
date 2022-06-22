@@ -18,19 +18,11 @@ stages:
               BuildConfiguration: release
 
         steps:
-        
+
         - task: DownloadBuildArtifacts@0
           inputs:
             artifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'
             downloadPath: Service\GroupMembershipManagement
-
-        - powershell: |
-                  $bicepTemplates = Get-ChildItem -Filter "template.bicep" -Recurse
-                  foreach($template in $bicepTemplates)
-                  {
-                    az bicep build --file $template.FullName
-                  }
-          displayName: 'Compile Bicep templates'
 
         - task: CopyFiles@2
           displayName: 'copy ${{ func.name }} function arm templates'
