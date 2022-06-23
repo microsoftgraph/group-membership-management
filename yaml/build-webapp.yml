@@ -5,11 +5,11 @@ steps:
     inputs:
       version: 6.0.300
 
-  - script: dotnet build --configuration $(buildConfiguration) public\Service\GroupMembershipManagement\Hosts\GmmUI\WebApp\WebApp.csproj
+  - script: dotnet build --configuration $(buildConfiguration) public\Service\GroupMembershipManagement\Hosts\GmmUI\WebApp\WebAppWithAuth.csproj
     displayName: 'Building $(buildConfiguration)...'
 
   - task: DotNetCoreCLI@2
-    displayName: 'dotnet publish GmmUI webapp'
+    displayName: 'Dotnet publish GmmUI webapp'
     inputs:
       command: publish
       arguments: '--configuration $(BuildConfiguration) --output GmmUI'
@@ -19,7 +19,7 @@ steps:
       zipAfterPublish: false
 
   - task: CopyFiles@2
-    displayName: 'copy GmmUI webapp package'
+    displayName: 'Copy GmmUI webapp package'
     inputs:
       SourceFolder:  public/Service/GroupMembershipManagement/Hosts/GmmUI
       Contents: '**\WebApp\**'
@@ -34,14 +34,14 @@ steps:
     displayName: 'Compile Bicep templates'
 
   - task: CopyFiles@2
-    displayName: 'copy GmmUI webapp arm templates'
+    displayName: 'Copy GmmUI webapp arm templates'
     inputs:
       SourceFolder: public/Service/GroupMembershipManagement/Hosts/GmmUI
       Contents: '**\Infrastructure\**'
       TargetFolder: '$(build.artifactstagingdirectory)/webapp_arm_template/GmmUI'
 
   - task: PublishBuildArtifacts@1
-    displayName: 'publish functions artifacts'
+    displayName: 'Publish functions artifacts'
     inputs:
       PathtoPublish: '$(build.artifactstagingdirectory)'
       ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'
