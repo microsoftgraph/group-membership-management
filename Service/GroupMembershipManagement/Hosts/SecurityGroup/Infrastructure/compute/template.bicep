@@ -105,10 +105,6 @@ var appSettings = [
     value: 1
   }
   {
-    name: 'WEBSITE_RUN_FROM_PACKAGE'
-    value: 1
-  }
-  {
     name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
     value: 1
   }
