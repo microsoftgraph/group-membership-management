@@ -56,6 +56,16 @@ steps:
     slotName: 'staging'
     resourceGroupName: '${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}'
 
+- task: AzureAppServiceManage@0
+  displayName: 'Swap ${{ parameters.name }} function app deployment slots'
+  inputs:
+    azureSubscription: ${{parameters.serviceConnection}}
+    webAppName: '${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}-${{ parameters.name }}'
+    resourceGroupName: ${{parameters.solutionAbbreviation}}-compute-${{parameters.environmentAbbreviation}}
+    sourceSlot: staging
+    swapWithProduction: true
+  condition: notIn('${{ parameters.environmentAbbreviation }}', 'ua', 'prodv2')
+
 # This sets the "Enforce Scale Out Limit" in the function app configuration. This is apparently the only way to do it automatically. ARM templates don't support it.
 # https://docs.microsoft.com/en-us/azure/azure-functions/event-driven-scaling#limit-scale-out
 - task: AzureCLI@2
