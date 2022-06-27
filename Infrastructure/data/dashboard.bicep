@@ -3280,7 +3280,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     TimeGenerated: '237px'
                     Location: '205px'
                   }
-                  Query: 'requests\n| project name, operation_Name, duration=duration / 1000 / 60\n| summarize max_Duration=max(duration) by name, operation_Name\n| order by max_Duration desc\n\n'
+                  Query: 'requests\n| project name, operation_Name, duration=duration / 1000 / 60\n| summarize max_Duration=max(duration), timeouts=countif(duration >= 10) by name, operation_Name\n| order by max_Duration desc\n\n'
                   PartTitle: 'Duration of Durable Functions'
                   PartSubTitle: 'In minutes'
                 }
