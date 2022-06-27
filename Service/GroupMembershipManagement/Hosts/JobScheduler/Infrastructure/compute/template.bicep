@@ -95,7 +95,7 @@ var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionI
 var jobsTableName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsTableName')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
-  name: 'servicePlanTemplate'
+  name: 'servicePlanTemplate-JobScheduler'
   params: {
     name: servicePlanName
     sku: servicePlanSku
@@ -218,7 +218,7 @@ module functionAppSlotTemplate_JobScheduler 'functionAppSlot.bicep' = {
 }
 
 module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'keyVaultPoliciesTemplate'
+  name: 'keyVaultPoliciesTemplate-JobScheduler'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     name: dataKeyVaultName
@@ -247,7 +247,7 @@ module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
 }
 
 module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'PrereqsKeyVaultPoliciesTemplate'
+  name: 'PrereqsKeyVaultPoliciesTemplate-JobScheduler'
   scope: resourceGroup(prereqsKeyVaultResourceGroup)
   params: {
     name: prereqsKeyVaultName

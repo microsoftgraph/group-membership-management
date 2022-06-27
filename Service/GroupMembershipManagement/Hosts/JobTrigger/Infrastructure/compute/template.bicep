@@ -104,7 +104,7 @@ var syncDisabledCCEmailAddresses = resourceId(subscription().subscriptionId, pre
 var supportEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'supportEmailAddresses')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
-  name: 'servicePlanTemplate'
+  name: 'servicePlanTemplate-JobTrigger'
   params: {
     name: servicePlanName
     sku: servicePlanSku
@@ -339,7 +339,7 @@ module functionAppSlotTemplate_JobTrigger 'functionAppSlot.bicep' = {
 }
 
 module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'keyVaultPoliciesTemplate'
+  name: 'keyVaultPoliciesTemplate-JobTrigger'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     name: dataKeyVaultName
@@ -368,7 +368,7 @@ module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
 }
 
 module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'PrereqsKeyVaultPoliciesTemplate'
+  name: 'PrereqsKeyVaultPoliciesTemplate-JobTrigger'
   scope: resourceGroup(prereqsKeyVaultResourceGroup)
   params: {
     name: prereqsKeyVaultName

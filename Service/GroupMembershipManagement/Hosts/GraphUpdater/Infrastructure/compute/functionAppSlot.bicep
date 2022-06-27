@@ -46,7 +46,7 @@ resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
 }
 
 module secretsTemplate 'keyVaultSecrets.bicep' = {
-  name: 'secretsTemplate'
+  name: 'secretsTemplate-GraphUpdaterStaging'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     keyVaultName: dataKeyVaultName

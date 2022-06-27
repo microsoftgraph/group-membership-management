@@ -96,7 +96,7 @@ var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsKeyV
 var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppTenantId')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
-  name: 'servicePlanTemplate'
+  name: 'servicePlanTemplate-NonProdService'
   params: {
     name: servicePlanName
     sku: servicePlanSku
@@ -279,7 +279,7 @@ module functionAppSlotTemplate_NonProdService 'functionAppSlot.bicep' = {
 }
 
 module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'dataKeyVaultPoliciesTemplate'
+  name: 'dataKeyVaultPoliciesTemplate-NonProdService'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     name: dataKeyVaultName
@@ -310,7 +310,7 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
 }
 
 module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'PrereqsKeyVaultPoliciesTemplate'
+  name: 'PrereqsKeyVaultPoliciesTemplate-NonProdService'
   scope: resourceGroup(prereqsKeyVaultResourceGroup)
   params: {
     name: prereqsKeyVaultName

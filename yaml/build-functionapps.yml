@@ -41,6 +41,7 @@ stages:
 
         - task: DotNetCoreCLI@2
           displayName: 'dotnet build ${{ app.function.name }} function'
+          retryCountOnTaskFailure: 3
           inputs:
             command: build
             projects: 'Service/GroupMembershipManagement/Hosts/${{ app.function.name }}/Function/*.csproj'
@@ -48,6 +49,7 @@ stages:
 
         - task: DotNetCoreCLI@2
           displayName: 'dotnet test ${{ app.function.name }} function'
+          retryCountOnTaskFailure: 3
           inputs:
             command: test
             projects: 'Service/GroupMembershipManagement/Hosts/${{ app.function.name }}/Services.Tests'

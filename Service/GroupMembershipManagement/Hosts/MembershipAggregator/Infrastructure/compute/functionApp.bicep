@@ -48,7 +48,7 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
 }
 
 module secretsTemplate 'keyVaultSecrets.bicep' = {
-  name: 'secretsTemplate'
+  name: 'secretsTemplate-MembershipAggregator'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     keyVaultName: dataKeyVaultName

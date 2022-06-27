@@ -80,7 +80,7 @@ var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVault
 var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, storageAccountSecretName)
 
 module servicePlanTemplate 'servicePlan.bicep' = {
-  name: 'servicePlanTemplate'
+  name: 'servicePlanTemplate-AzureUserReader'
   params: {
     name: servicePlanName
     sku: servicePlanSku
@@ -288,7 +288,7 @@ module functionAppSlotTemplate_AzureUserReader 'functionAppSlot.bicep' = {
 }
 
 module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'dataKeyVaultPoliciesTemplate'
+  name: 'dataKeyVaultPoliciesTemplate-AzureUserReader'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     name: dataKeyVaultName
@@ -319,7 +319,7 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
 }
 
 module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'PrereqsKeyVaultPoliciesTemplate'
+  name: 'PrereqsKeyVaultPoliciesTemplate-AzureUserReader'
   scope: resourceGroup(prereqsKeyVaultResourceGroup)
   params: {
     name: prereqsKeyVaultName

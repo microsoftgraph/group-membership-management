@@ -70,15 +70,29 @@ stages:
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
     dependsOn: Build_Functions
     stageName: 'NonProd_int'
-    functionApps:
-    - name: 'NonProdService'
-    - name: 'GraphUpdater'
-    - name: 'MembershipAggregator'
-    - name: 'SecurityGroup'
-    - name: 'AzureTableBackup'
-    - name: 'AzureUserReader'
-    - name: 'JobScheduler'
-    - name: 'JobTrigger'
+    functionApps:            
+    - function:
+       name: 'NonProdService'
+    - function:
+       name: 'GraphUpdater'
+    - function:
+       name: 'MembershipAggregator'
+       dependsOn:
+       - 'GraphUpdater'
+    - function:
+       name: 'AzureUserReader'    
+    - function:
+       name: 'SecurityGroup'
+       dependsOn:
+       - 'MembershipAggregator'
+    - function:
+       name: 'AzureTableBackup'
+    - function:
+       name: 'JobScheduler'
+    - function:
+       name: 'JobTrigger'
+       dependsOn:
+       - 'SecurityGroup'
     condition: |
       and(
         succeeded('Build_Functions'),
@@ -98,14 +112,28 @@ stages:
     dependsOn: Build_Functions
     stageName: 'NonProd_ua'
     functionApps:
-    - name: 'NonProdService'
-    - name: 'GraphUpdater'
-    - name: 'MembershipAggregator'
-    - name: 'SecurityGroup'
-    - name: 'AzureTableBackup'
-    - name: 'AzureUserReader'
-    - name: 'JobScheduler'
-    - name: 'JobTrigger'
+    - function:
+       name: 'NonProdService'
+    - function:
+       name: 'GraphUpdater'
+    - function:
+       name: 'MembershipAggregator'
+       dependsOn:
+       - 'GraphUpdater'
+    - function:
+       name: 'AzureUserReader'    
+    - function:
+       name: 'SecurityGroup'
+       dependsOn:
+       - 'MembershipAggregator'
+    - function:
+       name: 'AzureTableBackup'
+    - function:
+       name: 'JobScheduler'
+    - function:
+       name: 'JobTrigger'
+       dependsOn:
+       - 'SecurityGroup'
     condition: |
       and(
           succeeded('Build_Functions'),
@@ -126,13 +154,26 @@ stages:
     dependsOn: NonProd_ua
     stageName: 'Prod_production'
     functionApps:
-    - name: 'GraphUpdater'
-    - name: 'MembershipAggregator'
-    - name: 'SecurityGroup'
-    - name: 'AzureTableBackup'
-    - name: 'AzureUserReader'
-    - name: 'JobScheduler'
-    - name: 'JobTrigger'
+    - function:
+       name: 'GraphUpdater'
+    - function:
+       name: 'MembershipAggregator'
+       dependsOn:
+       - 'GraphUpdater'
+    - function:
+       name: 'AzureUserReader'    
+    - function:
+       name: 'SecurityGroup'
+       dependsOn:
+       - 'MembershipAggregator'
+    - function:
+       name: 'AzureTableBackup'
+    - function:
+       name: 'JobScheduler'
+    - function:
+       name: 'JobTrigger'
+       dependsOn:
+       - 'SecurityGroup'
     condition: |
       and(
         succeeded('NonProd_ua'),

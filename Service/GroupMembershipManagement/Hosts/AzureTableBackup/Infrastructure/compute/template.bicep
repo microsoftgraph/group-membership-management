@@ -68,7 +68,7 @@ var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dat
 var tablesToBackup = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'tablesToBackup')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
-  name: 'servicePlanTemplate'
+  name: 'servicePlanTemplate-AzureTableBackup'
   params: {
     name: servicePlanName
     sku: servicePlanSku
@@ -227,7 +227,7 @@ module functionAppSlotTemplate_AzureTableBackup 'functionAppSlot.bicep' = {
 }
 
 module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'keyVaultPoliciesTemplate'
+  name: 'keyVaultPoliciesTemplate-AzureTableBackup'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     name: dataKeyVaultName

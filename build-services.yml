@@ -37,6 +37,7 @@ stages:
 
     - task: DotNetCoreCLI@2
       displayName: dotnet build
+      retryCountOnTaskFailure: 3
       inputs:
         command: build
         workingDirectory: 'Service\GroupMembershipManagement'
@@ -44,6 +45,7 @@ stages:
 
     - task: DotNetCoreCLI@2
       displayName: 'dotnet test'
+      retryCountOnTaskFailure: 3
       inputs:
         command: test
         workingDirectory: 'Service\GroupMembershipManagement'
