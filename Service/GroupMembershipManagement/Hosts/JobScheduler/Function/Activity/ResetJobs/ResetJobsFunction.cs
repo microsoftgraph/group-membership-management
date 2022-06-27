@@ -13,19 +13,19 @@ namespace Hosts.JobScheduler
 {
     public class ResetJobsFunction
     {
-        private readonly IApplicationService _applicationService = null;
+        private readonly IJobSchedulingService _jobSchedulingService = null;
         private readonly ILoggingRepository _loggingRepository = null;
-        public ResetJobsFunction(IApplicationService applicationService, ILoggingRepository loggingRepository)
+        public ResetJobsFunction(IJobSchedulingService jobSchedulingService, ILoggingRepository loggingRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _applicationService = applicationService ?? throw new ArgumentNullException(nameof(applicationService));
+            _jobSchedulingService = jobSchedulingService ?? throw new ArgumentNullException(nameof(jobSchedulingService));
         }
 
         [FunctionName(nameof(ResetJobsFunction))]
         public async Task ResetJobs([ActivityTrigger] ResetJobsRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ResetJobsFunction)} function started at: {DateTime.UtcNow}" });
-            await _applicationService.ResetJobs(request.JobsToReset);
+            await _jobSchedulingService.ResetJobs(request.JobsToReset);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ResetJobsFunction)} function completed at: {DateTime.UtcNow}" });
         }
     }

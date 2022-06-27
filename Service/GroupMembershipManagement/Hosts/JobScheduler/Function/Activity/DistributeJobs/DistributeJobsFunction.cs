@@ -13,19 +13,19 @@ namespace Hosts.JobScheduler
 {
     public class DistributeJobsFunction
     {
-        private readonly IApplicationService _applicationService = null;
+        private readonly IJobSchedulingService _jobSchedulingService = null;
         private readonly ILoggingRepository _loggingRepository = null;
-        public DistributeJobsFunction(IApplicationService applicationService, ILoggingRepository loggingRepository)
+        public DistributeJobsFunction(IJobSchedulingService jobSchedulingService, ILoggingRepository loggingRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _applicationService = applicationService ?? throw new ArgumentNullException(nameof(applicationService));
+            _jobSchedulingService = jobSchedulingService ?? throw new ArgumentNullException(nameof(jobSchedulingService));
         }
 
         [FunctionName(nameof(DistributeJobsFunction))]
         public async Task DistributeJobs([ActivityTrigger] DistributeJobsRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DistributeJobsFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            await _applicationService.DistributeJobs(request.JobsToDistribute);
+            await _jobSchedulingService.DistributeJobs(request.JobsToDistribute);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DistributeJobsFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
         }
     }

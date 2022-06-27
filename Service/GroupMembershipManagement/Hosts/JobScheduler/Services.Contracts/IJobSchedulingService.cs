@@ -10,8 +10,8 @@ namespace Services.Contracts
     public interface IJobSchedulingService
     {
         public Task<List<SchedulerSyncJob>> GetAllSyncJobsAsync(bool includeFutureStartDates);
-        public Task UpdateSyncJobsAsync(List<SchedulerSyncJob> updatedSyncJobs);
-        public Task<List<SchedulerSyncJob>> DistributeJobStartTimesAsync(List<SchedulerSyncJob> schedulerSyncJobs);
-        public List<SchedulerSyncJob> ResetJobStartTimes(List<SchedulerSyncJob> schedulerSyncJobs, DateTime newStartTime, bool onlyUpdateOlderStartDates);
+        public Task<List<SchedulerSyncJob>> GetJobsToUpdate();
+        public Task ResetJobs(List<SchedulerSyncJob> jobs);
+        public Task DistributeJobs(List<SchedulerSyncJob> jobs);
     }
 }
