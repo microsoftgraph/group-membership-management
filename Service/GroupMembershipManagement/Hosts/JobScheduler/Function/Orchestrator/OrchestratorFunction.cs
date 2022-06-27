@@ -22,7 +22,7 @@ namespace Hosts.JobScheduler
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
-        public async Task RunOrchestrator(
+        public async Task RunOrchestratorAsync(
             [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var runId = context.NewGuid();

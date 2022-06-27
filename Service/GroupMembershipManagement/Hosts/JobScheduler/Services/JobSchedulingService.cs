@@ -40,13 +40,13 @@ namespace Services
             _loggingRepository = loggingRepository;
         }
 
-        public async Task<List<SchedulerSyncJob>> GetJobsToUpdate()
+        public async Task<List<SchedulerSyncJob>> GetJobsToUpdateAsync()
         {
             var jobs = await GetAllSyncJobsAsync(_jobSchedulerConfig.IncludeFutureJobs);
             return jobs;
         }
 
-        public async Task ResetJobs(List<SchedulerSyncJob> jobs)
+        public async Task ResetJobsAsync(List<SchedulerSyncJob> jobs)
         {
             var newStartTime = DateTime.UtcNow.AddDays(_jobSchedulerConfig.DaysToAddForReset);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Updating {jobs.Count} jobs to have StartDate of {newStartTime}" });
@@ -57,7 +57,7 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Updated {jobs.Count} jobs to have StartDate of {newStartTime}" });
         }
 
-        public async Task DistributeJobs(List<SchedulerSyncJob> jobs)
+        public async Task DistributeJobsAsync(List<SchedulerSyncJob> jobs)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Distributing {jobs.Count} jobs" });
 

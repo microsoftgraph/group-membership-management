@@ -22,10 +22,10 @@ namespace Hosts.JobScheduler
         }
 
         [FunctionName(nameof(DistributeJobsFunction))]
-        public async Task DistributeJobs([ActivityTrigger] DistributeJobsRequest request)
+        public async Task DistributeJobsAsync([ActivityTrigger] DistributeJobsRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DistributeJobsFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            await _jobSchedulingService.DistributeJobs(request.JobsToDistribute);
+            await _jobSchedulingService.DistributeJobsAsync(request.JobsToDistribute);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DistributeJobsFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
         }
     }

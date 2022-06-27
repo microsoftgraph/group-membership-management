@@ -23,7 +23,7 @@ namespace Hosts.JobScheduler
         }
 
         [FunctionName(nameof(StarterFunction))]
-        public async Task Run(
+        public async Task RunAsync(
             [TimerTrigger("%jobSchedulerSchedule%")] TimerInfo myTimer,
             [DurableClient] IDurableOrchestrationClient starter)
         {

@@ -33,12 +33,12 @@ namespace Services
 
             if (_jobSchedulerConfig.ResetJobs)
             {
-                await _jobSchedulingService.ResetJobs(jobs);   
+                await _jobSchedulingService.ResetJobsAsync(jobs);   
             }
 
             if (_jobSchedulerConfig.DistributeJobs)
             {
-                await _jobSchedulingService.DistributeJobs(jobs);
+                await _jobSchedulingService.DistributeJobsAsync(jobs);
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Completed JobScheduler console app." });

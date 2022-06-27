@@ -22,10 +22,10 @@ namespace Hosts.JobScheduler
         }
 
         [FunctionName(nameof(ResetJobsFunction))]
-        public async Task ResetJobs([ActivityTrigger] ResetJobsRequest request)
+        public async Task ResetJobsAsync([ActivityTrigger] ResetJobsRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ResetJobsFunction)} function started at: {DateTime.UtcNow}" });
-            await _jobSchedulingService.ResetJobs(request.JobsToReset);
+            await _jobSchedulingService.ResetJobsAsync(request.JobsToReset);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ResetJobsFunction)} function completed at: {DateTime.UtcNow}" });
         }
     }
