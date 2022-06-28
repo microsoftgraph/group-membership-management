@@ -25,14 +25,6 @@ steps:
       Contents: '**\WebApp\**'
       TargetFolder: '$(build.artifactstagingdirectory)/webapp_package/'
 
-  - powershell: |
-            $bicepTemplates = Get-ChildItem -Filter "template.bicep" -Recurse
-            foreach($template in $bicepTemplates)
-            {
-              az bicep build --file $template.FullName
-            }
-    displayName: 'Compile Bicep templates'
-
   - task: CopyFiles@2
     displayName: 'Copy GmmUI webapp arm templates'
     inputs:
