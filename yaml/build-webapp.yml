@@ -1,5 +1,49 @@
 steps:
+ 
+  - task: UseDotNet@2
+    inputs:
+      packageType: 'sdk'
+      useGlobalJson: true
+      workingDirectory: 'public\Service\GroupMembershipManagement'
+  
+  - task: DotNetCoreCLI@2
+    displayName: 'dotnet build webApp backend function'
+    inputs:
+      command: build
+      projects: 'public/Service/GroupMembershipManagement/Hosts/GmmUI/Function/*.csproj'
+      arguments: '--configuration $(buildConfiguration)'
+  
+  - task: DotNetCoreCLI@2
+    displayName: 'dotnet publish webApp backend function'
+    inputs:
+      command: publish
+      arguments: '--configuration $(BuildConfiguration) --output GmmUI'
+      projects: 'public/Service/GroupMembershipManagement/Hosts/GmmUI/Function/*.csproj'
+      publishWebProjects: false
+      modifyOutputPath: false
+      zipAfterPublish: false
+  
+  - task: ArchiveFiles@2
+    displayName: 'archive webApp backend function'
+    inputs:
+      rootFolderOrFile: "$(System.DefaultWorkingDirectory)/GmmUI"
+      includeRootFolder: false
+      archiveFile: "$(System.DefaultWorkingDirectory)/functions/webAppFunction.zip"
+  
+  - task: CopyFiles@2
+    displayName: 'copy webApp backend function package'
+    inputs:
+      SourceFolder: $(System.DefaultWorkingDirectory)/functions
+      Contents: webAppFunction.zip
+      TargetFolder: '$(build.artifactstagingdirectory)/function_packages/'
 
+  - task: CopyFiles@2
+    displayName: 'copy webApp backend function arm templates'
+    inputs:
+      SourceFolder: public/Service/GroupMembershipManagement/Hosts/GmmUI
+      Contents: '**\Infrastructure\**'
+      TargetFolder: '$(build.artifactstagingdirectory)/webapp_arm_templates/webAppFunction'
+  
   - task: DotNetCoreInstaller@0
     displayName: 'Installing .NET Core SDK...'
     inputs:
@@ -30,10 +74,10 @@ steps:
     inputs:
       SourceFolder: public/Service/GroupMembershipManagement/Hosts/GmmUI
       Contents: '**\Infrastructure\**'
-      TargetFolder: '$(build.artifactstagingdirectory)/webapp_arm_template/GmmUI'
+      TargetFolder: '$(build.artifactstagingdirectory)/webapp_arm_templates/GmmUI'
 
   - task: PublishBuildArtifacts@1
-    displayName: 'Publish functions artifacts'
+    displayName: 'Publish web app artifacts'
     inputs:
       PathtoPublish: '$(build.artifactstagingdirectory)'
       ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'

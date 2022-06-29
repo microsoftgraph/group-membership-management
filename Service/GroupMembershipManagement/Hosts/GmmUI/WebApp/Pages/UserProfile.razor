@@ -41,6 +41,7 @@ else
     {
         try
         {
+            var test = GraphServiceClient.Me.Request();
             user = await GraphServiceClient.Me.Request().GetAsync();
 
             // var groups = await GraphServiceClient.Me.GetMemberGroups().Request().GetAsync();

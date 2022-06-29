@@ -3,6 +3,10 @@ parameters:
   type: string
 - name: tenantId
   type: string
+- name: subscriptionId
+  type: string
+- name: keyVaultReaders
+  type: object
 - name: environmentAbbreviation
   type: string
 - name: location
@@ -36,18 +40,21 @@ stages:
       strategy:
         runOnce:
           deploy:
-           steps:
-           - task: DownloadBuildArtifacts@0
-             inputs:
-               buildType: 'current'
-               downloadType: 'single'
-               artifactName: $(Build.BuildNumber)_$(buildType)
+            steps:
+            
+            - task: DownloadBuildArtifacts@0
+              inputs:
+                buildType: 'current'
+                downloadType: 'single'
+                artifactName: $(Build.BuildNumber)_$(buildType)
 
-           - template: deploy-webapp.yml
-             parameters:
-               solutionAbbreviation: ${{ parameters.solutionAbbreviation }}
-               environmentAbbreviation: ${{ parameters.environmentAbbreviation }}
-               serviceConnection: ${{ parameters.serviceConnection }}
-               root: $(System.ArtifactsDirectory)/$(Build.BuildNumber)_$(buildType)
-               location: ${{ parameters.location }}
-               tenantId: ${{ parameters.tenantId }}
+            - template: deploy-webapp.yml
+              parameters:
+                solutionAbbreviation: ${{ parameters.solutionAbbreviation }}
+                environmentAbbreviation: ${{ parameters.environmentAbbreviation }}
+                serviceConnection: ${{ parameters.serviceConnection }}
+                root: $(System.ArtifactsDirectory)/$(Build.BuildNumber)_$(buildType)
+                subscriptionId: ${{ parameters.subscriptionId }}
+                location: ${{ parameters.location }}
+                tenantId: ${{ parameters.tenantId }}
+                name: 'GmmUI'

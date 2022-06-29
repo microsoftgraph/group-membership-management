@@ -1,14 +1,11 @@
 {
   "IsEncrypted": false,
   "Values": {
-    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
-    "logAnalyticsCustomerId": "",
-    "logAnalyticsPrimarySharedKey": "",
-    "jobsStorageAccountConnectionString": "",
-    "jobsTableName": "",
-    "jobSchedulerSchedule": "",
-    "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
-    "APPINSIGHTS_INSTRUMENTATIONKEY": ""
+
+    // FROM: https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference?tabs=blob
+    // TODO: FILL OUT CONNECTION NAME PREFIX
+    "<CONNECTION_NAME_PREFIX>__tenantId": "<tenantId>",
+    "<CONNECTION_NAME_PREFIX>__clientId": "<clientId>",
+    "<CONNECTION_NAME_PREFIX>__clientSecret": "<clientSecret>"
   }
 }
