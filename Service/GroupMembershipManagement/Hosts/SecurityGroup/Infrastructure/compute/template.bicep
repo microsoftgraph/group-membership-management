@@ -99,6 +99,11 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   }
 }
 
+var extendedSessions = toLower(environmentAbbreviation) != 'prodv2' ? {
+                        name: 'AzureFunctionsJobHost:extensions:durableTask:extendedSessionsEnabled'
+                        value: 'False'
+                      } : {}
+  
 var appSettings = [
   {
     name: 'WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG'
@@ -204,6 +209,7 @@ var appSettings = [
     name: 'appConfigurationEndpoint'
     value: appConfigurationEndpoint
   }
+  extendedSessions
 ]
 
 var stagingSettings = [
