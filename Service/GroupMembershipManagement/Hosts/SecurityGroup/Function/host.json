@@ -5,7 +5,8 @@
     "durableTask": {
       "extendedSessionsEnabled": true,
       "extendedSessionIdleTimeoutInSeconds": 30
-    },
+    }
+  },
   "logging": {
     "applicationInsights": {
       "samplingExcludedTypes": "Request",
