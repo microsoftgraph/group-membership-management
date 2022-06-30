@@ -34,6 +34,8 @@ namespace Hosts.MembershipAggregator
 
                 if (request.IsDryRun)
                     syncJob.DryRunTimeStamp = DateTime.UtcNow;
+                else
+                    syncJob.LastRunTime = DateTime.UtcNow;
 
                 await _syncJobrespository.UpdateSyncJobsAsync(new[] { syncJob }, request.Status);
             }
