@@ -23,24 +23,8 @@ steps:
       deploymentMode: 'Incremental'
       deploymentOutputs: deploymentOutputs
 
-  - task: AzureResourceManagerTemplateDeployment@3
-    displayName: 'deploy WebAppFunction backend compute resources'
-    inputs:
-      azureResourceManagerConnection: ${{parameters.serviceConnection}}
-      subscriptionId: ${{parameters.subscriptionId}}
-      resourceGroupName: ${{parameters.solutionAbbreviation}}-compute-${{parameters.environmentAbbreviation}}
-      location: ${{parameters.location}}
-      csmFile: ${{ parameters.root }}/webapp_arm_templates/GmmUI/Infrastructure/compute/template.bicep
-      csmParametersFile: ${{ parameters.root }}/webapp_arm_templates/GmmUI/Infrastructure/compute/parameters/parameters.${{parameters.environmentAbbreviation}}.json
-      overrideParameters: -environmentAbbreviation "${{parameters.environmentAbbreviation}}"
-                          -tenantId "${{parameters.tenantId}}"
-                          -location "${{parameters.location}}"
-                          -solutionAbbreviation "${{parameters.solutionAbbreviation}}"
-                          -storageAccountName "$(data_storageAccountName)"
-      deploymentMode: 'Incremental'
-
   - task: AzureFunctionApp@1
-    displayName: 'deploy WebApp function app (staging)'
+    displayName: 'Deploy WebApp function app (staging)'
     inputs:
       appType: 'functionapp'
       azureSubscription: ${{parameters.serviceConnection}}
@@ -67,7 +51,7 @@ steps:
     displayName: limit paralellism for ${{ parameters.name }}
     inputs:
       azureSubscription: ${{ parameters.serviceConnection }}
-      scriptType: 'ps'
+      scriptType: 'pscore'
       scriptLocation: 'inlineScript'
       inlineScript: 'az resource update --resource-type Microsoft.Web/sites -g ${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }} -n ${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}-${{ parameters.name }}/config/web --set properties.functionAppScaleLimit=1'
 

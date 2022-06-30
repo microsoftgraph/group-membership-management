@@ -32,6 +32,7 @@ stages:
         vmImage: "Ubuntu-latest"
       # creates an environment if it doesn't exist
       variables:
+        data_storageAccountName: $[ dependencies.${{ parameters.stageName }}_DeployResources.outputs['${{ parameters.stageName }}_DeployResources.dataVariables.data_storageAccountName'] ]
         ${{ if in(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
           buildType: 'release'
         ${{ if notIn(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
@@ -41,7 +42,7 @@ stages:
         runOnce:
           deploy:
             steps:
-            
+
             - task: DownloadBuildArtifacts@0
               inputs:
                 buildType: 'current'
@@ -57,4 +58,4 @@ stages:
                 subscriptionId: ${{ parameters.subscriptionId }}
                 location: ${{ parameters.location }}
                 tenantId: ${{ parameters.tenantId }}
-                name: 'GmmUI'
+                name: 'WebAppFunction'

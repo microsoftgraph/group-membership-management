@@ -55,7 +55,7 @@ param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbrev
 param appInsightsResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 @description('Enter storage account name.')
-param storageAccountName string = '${solutionAbbreviation}${environmentAbbreviation}${uniqueString(resourceGroup().id)}'
+param storageAccountName string = 'gmmecba5p7jzs65srg'
 
 @description('Resource group where storage account is located.')
 param storageAccountResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'

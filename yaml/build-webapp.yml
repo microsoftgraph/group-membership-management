@@ -36,13 +36,6 @@ steps:
       SourceFolder: $(System.DefaultWorkingDirectory)/functions
       Contents: webAppFunction.zip
       TargetFolder: '$(build.artifactstagingdirectory)/function_packages/'
-
-  - task: CopyFiles@2
-    displayName: 'copy webApp backend function arm templates'
-    inputs:
-      SourceFolder: public/Service/GroupMembershipManagement/Hosts/GmmUI
-      Contents: '**\Infrastructure\**'
-      TargetFolder: '$(build.artifactstagingdirectory)/webapp_arm_templates/webAppFunction'
   
   - task: DotNetCoreInstaller@0
     displayName: 'Installing .NET Core SDK...'
