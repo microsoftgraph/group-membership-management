@@ -149,8 +149,8 @@ namespace Services
             {
                 Message = $"Adding {members.Count} users to group {targetGroupId} complete in {stopwatch.Elapsed.TotalSeconds} seconds. " +
                 $"{members.Count / stopwatch.Elapsed.TotalSeconds} users added per second. ",
-                RunId = runId
-            });
+                RunId = runId,
+            }, VerbosityLevel.DEBUG);
             _telemetryClient.TrackMetric(nameof(Metric.GraphAddRatePerSecond), members.Count / stopwatch.Elapsed.TotalSeconds);
 
             var status = graphResponse.ResponseCode == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;

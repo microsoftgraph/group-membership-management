@@ -518,7 +518,7 @@ namespace Repositories.GraphGroups
 
         private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessBatch(ConcurrentQueue<ChunkOfUsers> queue, List<ChunkOfUsers> toSend, MakeBulkRequest makeRequest, int threadNumber)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: Sending a batch of {toSend.Count} requests.", RunId = RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: Sending a batch of {toSend.Count} requests.", RunId = RunId }, VerbosityLevel.DEBUG);
             int requeued = 0;
             bool hasUnrecoverableErrors = false;
             var successfulRequests = toSend.SelectMany(x => x.ToSend).ToList().Count;
@@ -588,7 +588,7 @@ namespace Repositories.GraphGroups
                         }
                     }
                 }
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.", RunId = RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.", RunId = RunId }, VerbosityLevel.DEBUG);
             }
             catch (ServiceException ex)
             {
@@ -679,7 +679,7 @@ namespace Repositories.GraphGroups
                 {
                     Message = $"Response - RequestId:{kvp.Key} - StatusCode:{status} - Content:{content}",
                     RunId = RunId
-                });
+                }, VerbosityLevel.DEBUG);
 
 
                 // Note that the ones with empty bodies mean "this response is okay and we don't have to do anything about it."
