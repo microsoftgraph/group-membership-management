@@ -202,11 +202,11 @@ var appSettings = [
 var stagingSettings = [
   {
     name: 'WEBSITE_CONTENTSHARE'
-    value: toLower('functionApp-GraphUpdater-staging')
+    value: toLower('functionApp-GroupTableManager-staging')
   }
   {
     name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
-    value: '${solutionAbbreviation}compute${environmentAbbreviation}GraphUpdaterStaging'
+    value: '${solutionAbbreviation}compute${environmentAbbreviation}GroupTableManagerStaging'
   }
   {
     name: 'AzureWebJobs.StarterFunction.Disabled'
@@ -256,16 +256,20 @@ var stagingSettings = [
     name: 'AzureWebJobs.LoggerFunction.Disabled'
     value: 1
   }
+  {
+    name: 'AzureWebJobs.WebAppFunction.Disabled'
+    value: 1
+  }
 ]
 
 var productionSettings = [
   {
     name: 'WEBSITE_CONTENTSHARE'
-    value: toLower('functionApp-GraphUpdater')
+    value: toLower('functionApp-GroupTableManager')
   }
   {
     name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
-    value: '${solutionAbbreviation}compute${environmentAbbreviation}GraphUpdater'
+    value: '${solutionAbbreviation}compute${environmentAbbreviation}GroupTableManager'
   }
   {
     name: 'AzureWebJobs.StarterFunction.Disabled'
@@ -276,7 +280,7 @@ var productionSettings = [
     value: 0
   }
   {
-    name: 'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled'
+    name: 'AzureWebJobs.GroupTableManagerSubOrchestratorFunction.Disabled'
     value: 0
   }
   {
@@ -314,6 +318,10 @@ var productionSettings = [
   {
     name: 'AzureWebJobs.LoggerFunction.Disabled'
     value: 0
+  }
+  {
+    name: 'AzureWebJobs.WebAppFunction.Disabled'
+    value: 1
   }
 ]
 
