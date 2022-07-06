@@ -14,8 +14,8 @@ steps:
       subscriptionId: ${{parameters.subscriptionId}}
       resourceGroupName: ${{parameters.solutionAbbreviation}}-compute-${{parameters.environmentAbbreviation}}
       location: ${{parameters.location}}
-      csmFile: ${{ parameters.root }}/webapp_arm_templates/GmmUI/Infrastructure/compute/template.bicep
-      csmParametersFile: ${{ parameters.root }}/webapp_arm_templates/GmmUI/Infrastructure/compute/parameters/parameters.${{parameters.environmentAbbreviation}}.json
+      csmFile: ${{ parameters.root }}/webapp_arm_templates/GroupTableManager/Infrastructure/compute/template.bicep
+      csmParametersFile: ${{ parameters.root }}/webapp_arm_templates/GroupTableManager/Infrastructure/compute/parameters/parameters.${{parameters.environmentAbbreviation}}.json
       overrideParameters: -environmentAbbreviation "${{parameters.environmentAbbreviation}}"
                           -tenantId "${{parameters.tenantId}}"
                           -location "${{parameters.location}}"

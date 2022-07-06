@@ -10,15 +10,15 @@ steps:
     displayName: 'dotnet build webApp backend function'
     inputs:
       command: build
-      projects: 'public/Service/GroupMembershipManagement/Hosts/GmmUI/Function/*.csproj'
+      projects: 'public/Service/GroupMembershipManagement/Hosts/GroupTableManager/Function/*.csproj'
       arguments: '--configuration $(buildConfiguration)'
   
   - task: DotNetCoreCLI@2
     displayName: 'dotnet publish webApp backend function'
     inputs:
       command: publish
-      arguments: '--configuration $(BuildConfiguration) --output GmmUI'
-      projects: 'public/Service/GroupMembershipManagement/Hosts/GmmUI/Function/*.csproj'
+      arguments: '--configuration $(BuildConfiguration) --output GroupTableManager'
+      projects: 'public/Service/GroupMembershipManagement/Hosts/GroupTableManager/Function/*.csproj'
       publishWebProjects: false
       modifyOutputPath: false
       zipAfterPublish: false
@@ -26,7 +26,7 @@ steps:
   - task: ArchiveFiles@2
     displayName: 'archive webApp backend function'
     inputs:
-      rootFolderOrFile: "$(System.DefaultWorkingDirectory)/GmmUI"
+      rootFolderOrFile: "$(System.DefaultWorkingDirectory)/GroupTableManager"
       includeRootFolder: false
       archiveFile: "$(System.DefaultWorkingDirectory)/functions/webAppFunction.zip"
   
@@ -42,7 +42,7 @@ steps:
     inputs:
       version: 6.0.300
 
-  - script: dotnet build --configuration $(buildConfiguration) public\Service\GroupMembershipManagement\Hosts\GmmUI\WebApp\WebAppWithAuth.csproj
+  - script: dotnet build --configuration $(buildConfiguration) public\UI\WebApp\WebAppWithAuth.csproj
     displayName: 'Building $(buildConfiguration)...'
 
   - task: DotNetCoreCLI@2
@@ -50,7 +50,7 @@ steps:
     inputs:
       command: publish
       arguments: '--configuration $(BuildConfiguration) --output GmmUI'
-      projects: 'public/Service/GroupMembershipManagement/Hosts/GmmUI/WebApp/*.csproj'
+      projects: 'public/UI/WebApp/*.csproj'
       publishWebProjects: false
       modifyOutputPath: false
       zipAfterPublish: false
@@ -58,16 +58,16 @@ steps:
   - task: CopyFiles@2
     displayName: 'Copy GmmUI webapp package'
     inputs:
-      SourceFolder:  public/Service/GroupMembershipManagement/Hosts/GmmUI
+      SourceFolder:  public/UI
       Contents: '**\WebApp\**'
       TargetFolder: '$(build.artifactstagingdirectory)/webapp_package/'
 
   - task: CopyFiles@2
     displayName: 'Copy GmmUI webapp arm templates'
     inputs:
-      SourceFolder: public/Service/GroupMembershipManagement/Hosts/GmmUI
+      SourceFolder: public/Service/GroupMembershipManagement/Hosts/GroupTableManager
       Contents: '**\Infrastructure\**'
-      TargetFolder: '$(build.artifactstagingdirectory)/webapp_arm_templates/GmmUI'
+      TargetFolder: '$(build.artifactstagingdirectory)/webapp_arm_templates/GroupTableManager'
 
   - task: PublishBuildArtifacts@1
     displayName: 'Publish web app artifacts'
