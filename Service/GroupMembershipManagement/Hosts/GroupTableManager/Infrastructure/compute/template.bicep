@@ -209,54 +209,6 @@ var stagingSettings = [
     value: '${solutionAbbreviation}compute${environmentAbbreviation}GroupTableManagerStaging'
   }
   {
-    name: 'AzureWebJobs.StarterFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.OrchestratorFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled'
-    value: 1
-  }  
-  {
-    name: 'AzureWebJobs.EmailSenderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.FileDownloaderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.GroupNameReaderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.GroupOwnersReaderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.GroupUpdaterFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.GroupValidatorFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.JobReaderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.LoggerFunction.Disabled'
-    value: 1
-  }
-  {
     name: 'AzureWebJobs.WebAppFunction.Disabled'
     value: 1
   }
@@ -270,54 +222,6 @@ var productionSettings = [
   {
     name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
     value: '${solutionAbbreviation}compute${environmentAbbreviation}GroupTableManager'
-  }
-  {
-    name: 'AzureWebJobs.StarterFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.OrchestratorFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.GroupTableManagerSubOrchestratorFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.EmailSenderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.FileDownloaderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.GroupNameReaderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.GroupOwnersReaderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.GroupUpdaterFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.GroupValidatorFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.JobReaderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.LoggerFunction.Disabled'
-    value: 0
   }
   {
     name: 'AzureWebJobs.WebAppFunction.Disabled'
