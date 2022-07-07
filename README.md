@@ -120,7 +120,7 @@ If you get an error stating "script is not digitally signed" when running any of
 
 ### Create `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` Azure Application
 
-From you `PowerShell 5.x` command prompt run this PowerShell script in order to create a new application that is going to enable GMM to access Microsoft Graph API, it will also save these settings in the prereqs keyvault.
+From your `PowerShell 5.x` command prompt run this PowerShell script in order to create a new application that is going to enable GMM to access Microsoft Graph API. It will also save these settings in the prereqs keyvault.
 
 -   graphAppClientId
 -   graphAppTenantId
