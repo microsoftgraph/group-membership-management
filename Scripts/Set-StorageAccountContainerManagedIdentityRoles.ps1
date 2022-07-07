@@ -58,7 +58,7 @@ function Set-StorageAccountContainerManagedIdentityRoles
 			$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $fa;
 
 			# Grant the app service access to the storage account blobs
-			if (![string]::IsNullOrEmpty($StorageAccountName))
+			if (![string]::IsNullOrEmpty($StorageAccountName) -and $appServicePrincipal)
 			{
 				$storageAccountObject = Get-AzStorageAccount -ResourceGroupName $resourceGroupName -Name $StorageAccountName;
 
@@ -71,6 +71,9 @@ function Set-StorageAccountContainerManagedIdentityRoles
 				{
 					Write-Host "$fa already has access to $StorageAccountName blobs.";
 				}
+			}
+			elseif ($null -eq $appServicePrincipal) {
+				Write-Host "Function $fa was not found!"
 			}
 
 			Write-Host "Done.";

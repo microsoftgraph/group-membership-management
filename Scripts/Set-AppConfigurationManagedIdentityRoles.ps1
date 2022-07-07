@@ -33,7 +33,7 @@ function Set-AppConfigurationManagedIdentityRoles
 		[string] $SolutionAbbreviation,
 		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation,
-		[Parameter(Mandatory = $False)]
+		[Parameter(Mandatory = $True)]
 		[string] $AppConfigName,
 		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
@@ -60,7 +60,7 @@ function Set-AppConfigurationManagedIdentityRoles
 			$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $fa;
 
 			# Grant the app service access to the app configuration
-			if (![string]::IsNullOrEmpty($AppConfigName))
+			if (![string]::IsNullOrEmpty($AppConfigName) -and $appServicePrincipal)
 			{
 				$appConfigObject = Get-AzAppConfigurationStore -ResourceGroupName $resourceGroupName -Name $AppConfigName;
 
@@ -73,11 +73,8 @@ function Set-AppConfigurationManagedIdentityRoles
 				{
 					Write-Host "$fa can already read keys from the $AppConfigName app configuration.";
 				}
-			}
-
-			if ([string]::IsNullOrEmpty($AppConfigName))
-			{
-				Write-Host "No app configuration was provided."
+			} elseif ($null -eq $appServicePrincipal) {
+				Write-Host "Function $fa was not found!"
 			}
 
 			Write-Host "Done.";
