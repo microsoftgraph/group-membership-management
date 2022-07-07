@@ -122,10 +122,6 @@ var appSettings = [
     value: 1
   }
   {
-    name: 'WEBSITE_RUN_FROM_PACKAGE'
-    value: 1
-  }
-  {
     name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
     value: 1
   }
@@ -210,7 +206,7 @@ var stagingSettings = [
   }
   {
     name: 'AzureWebJobs.GroupTableManager.Disabled'
-    value: 1
+    value: 0
   }
 ]
 
