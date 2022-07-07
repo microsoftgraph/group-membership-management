@@ -12,16 +12,16 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
-namespace Hosts.WebAppFunction
+namespace Hosts.GroupTableManager
 {
-    public class WebAppFunction
+    public class GroupTableManager
     {
 
-        public WebAppFunction()
+        public GroupTableManager()
         {
         }
 
-        [FunctionName("WebAppFunction")]
+        [FunctionName("GroupTableManager")]
         public Task<HttpResponseMessage> HttpStart([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestMessage req) 
         {
             return null;

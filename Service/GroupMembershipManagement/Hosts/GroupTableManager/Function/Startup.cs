@@ -5,11 +5,11 @@ using Newtonsoft.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
-using Hosts.WebAppFunction;
+using Hosts.GroupTableManager;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 
-namespace Hosts.WebAppFunction
+namespace Hosts.GroupTableManager
 {
     public class Startup : FunctionsStartup
     {

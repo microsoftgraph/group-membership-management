@@ -52,16 +52,16 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
     keyVaultName: dataKeyVaultName
     keyVaultParameters: [
       {
-        name: 'webAppFunctionStagingUrl'
+        name: 'groupTableManagerStagingUrl'
         value: 'https://${functionAppSlot.properties.defaultHostName}/api/StarterFunction'
       }
       {
-        name: 'webAppFunctionStagingFunctionKey'
+        name: 'groupTableManagerStagingFunctionKey'
         value: listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default
       }
       {
-        name: 'webAppFunctionStagingFunctionName'
-        value: '${name}-WebAppFunction/staging'
+        name: 'groupTableManagerStagingFunctionName'
+        value: '${name}-GroupTableManager/staging'
       }
     ]
   }

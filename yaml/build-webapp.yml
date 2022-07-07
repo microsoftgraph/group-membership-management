@@ -28,13 +28,13 @@ steps:
     inputs:
       rootFolderOrFile: "$(System.DefaultWorkingDirectory)/GroupTableManager"
       includeRootFolder: false
-      archiveFile: "$(System.DefaultWorkingDirectory)/functions/webAppFunction.zip"
+      archiveFile: "$(System.DefaultWorkingDirectory)/functions/groupTableManager.zip"
   
   - task: CopyFiles@2
     displayName: 'copy webApp backend function package'
     inputs:
       SourceFolder: $(System.DefaultWorkingDirectory)/functions
-      Contents: webAppFunction.zip
+      Contents: groupTableManager.zip
       TargetFolder: '$(build.artifactstagingdirectory)/function_packages/'
   
   - task: DotNetCoreInstaller@0

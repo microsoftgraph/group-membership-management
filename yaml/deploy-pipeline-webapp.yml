@@ -58,4 +58,4 @@ stages:
                 subscriptionId: ${{ parameters.subscriptionId }}
                 location: ${{ parameters.location }}
                 tenantId: ${{ parameters.tenantId }}
-                name: 'WebAppFunction'
+                name: 'GroupTableManager'

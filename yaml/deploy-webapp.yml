@@ -29,7 +29,7 @@ steps:
       appType: 'functionapp'
       azureSubscription: ${{parameters.serviceConnection}}
       appName: '${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}-${{ parameters.name }}'
-      Package: '${{ parameters.root }}/function_packages/webAppFunction.zip'
+      Package: '${{ parameters.root }}/function_packages/groupTableManager.zip'
       deploymentMethod: 'runFromPackage'
       deployToSlotOrASE: true
       slotName: 'staging'
@@ -70,7 +70,7 @@ steps:
           PostDeploymentScript -SolutionAbbreviation ${{parameters.solutionAbbreviation}} -EnvironmentAbbreviation ${{parameters.environmentAbbreviation}} -FunctionName ${{parameters.name}}
         }
       azurePowerShellVersion: LatestVersion
-    name: postDeploymentScript_webAppFunction
+    name: postDeploymentScript_groupTableManager
 
   - task: PowerShell@2
     name: 'SetDeploymentOutputVariables'

@@ -209,7 +209,7 @@ var stagingSettings = [
     value: '${solutionAbbreviation}compute${environmentAbbreviation}GroupTableManagerStaging'
   }
   {
-    name: 'AzureWebJobs.WebAppFunction.Disabled'
+    name: 'AzureWebJobs.GroupTableManager.Disabled'
     value: 1
   }
 ]
@@ -224,15 +224,15 @@ var productionSettings = [
     value: '${solutionAbbreviation}compute${environmentAbbreviation}GroupTableManager'
   }
   {
-    name: 'AzureWebJobs.WebAppFunction.Disabled'
+    name: 'AzureWebJobs.GroupTableManager.Disabled'
     value: 1
   }
 ]
 
-module functionAppTemplate_WebAppFunction 'functionApp.bicep' = {
-  name: 'functionAppTemplate-WebAppFunction'
+module functionAppTemplate_GroupTableManager 'functionApp.bicep' = {
+  name: 'functionAppTemplate-GroupTableManager'
   params: {
-    name: '${functionAppName}-WebAppFunction'
+    name: '${functionAppName}-GroupTableManager'
     kind: functionAppKind
     location: functionLocation
     servicePlanName: servicePlanName
@@ -245,10 +245,10 @@ module functionAppTemplate_WebAppFunction 'functionApp.bicep' = {
   ]
 }
 
-module functionAppSlotTemplate_WebAppFunction 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-WebAppFunction'
+module functionAppSlotTemplate_GroupTableManager 'functionAppSlot.bicep' = {
+  name: 'functionAppSlotTemplate-GroupTableManager'
   params: {
-    name: '${functionAppName}-WebAppFunction/staging'
+    name: '${functionAppName}-GroupTableManager/staging'
     kind: functionAppKind
     location: functionLocation
     servicePlanName: servicePlanName
@@ -257,7 +257,7 @@ module functionAppSlotTemplate_WebAppFunction 'functionAppSlot.bicep' = {
     secretSettings: union(appSettings, stagingSettings)
   }
   dependsOn: [
-    functionAppTemplate_WebAppFunction
+    functionAppTemplate_GroupTableManager
   ]
 }
 
@@ -268,7 +268,7 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
     name: dataKeyVaultName
     policies: [
       {
-        objectId: functionAppTemplate_WebAppFunction.outputs.msi
+        objectId: functionAppTemplate_GroupTableManager.outputs.msi
         permissions: [
           'get'
           'list'
@@ -276,7 +276,7 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
         type: 'secrets'
       }
       {
-        objectId: functionAppSlotTemplate_WebAppFunction.outputs.msi
+        objectId: functionAppSlotTemplate_GroupTableManager.outputs.msi
         permissions: [
           'get'
           'list'
@@ -287,8 +287,8 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
     tenantId: tenantId
   }
   dependsOn: [
-    functionAppTemplate_WebAppFunction
-    functionAppSlotTemplate_WebAppFunction
+    functionAppTemplate_GroupTableManager
+    functionAppSlotTemplate_GroupTableManager
   ]
 }
 
