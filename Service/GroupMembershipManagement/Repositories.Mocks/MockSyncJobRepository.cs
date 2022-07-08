@@ -20,9 +20,9 @@ namespace Repositories.Mocks
         }
 
         // these aren't actually async, but this is the easiest way to get these to return IAsyncEnumerables
-        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool includeDisabled = false, bool applyFilters = true)
+        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool applyFilters = true)
         {
-            foreach (var job in ExistingSyncJobs.Values.Where(x => Enum.Parse<SyncStatus>(x.Status) == status || status == SyncStatus.All).Where(x => includeDisabled && x.Enabled))
+            foreach (var job in ExistingSyncJobs.Values.Where(x => Enum.Parse<SyncStatus>(x.Status) == status || status == SyncStatus.All))
                 yield return await Task.FromResult(job);
         }
 

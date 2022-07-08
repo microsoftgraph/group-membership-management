@@ -24,9 +24,9 @@ namespace Hosts.GraphUpdater
         [FunctionName(nameof(GroupNameReaderFunction))]
         public async Task<string> GetGroupNameAsync([ActivityTrigger] GroupNameReaderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function started", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             var groupName = await _graphUpdaterService.GetGroupNameAsync(request.GroupId);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function completed", RunId = request.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
             return groupName;
         }

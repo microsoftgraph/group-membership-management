@@ -22,8 +22,9 @@ Limitations:
 -   Azure DevOps - [Try Azure DevOps Services](https://azure.microsoft.com/en-us/pricing/details/devops/azure-devops-services/)
 
     To follow these steps you will need to sign in to [Azure Portal](https://portal.azure.com/) and [Azure DevOps Portal](https://dev.azure.com/.) with an account that has permissions to create new Azure resources.
-
 -   Powershell v5.1 or later [Download and install Windows PowerShell 5.1](https://docs.microsoft.com/en-us/skypeforbusiness/set-up-your-computer-for-windows-powershell/download-and-install-windows-powershell-5-1)
+
+-   Powershell Core v7.2 or later [Download and install Windows PowerShell 7.2](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows)
 
 If you would like to customize GMM code, you could do so by using any of the following IDEs:
 
@@ -32,99 +33,13 @@ If you would like to customize GMM code, you could do so by using any of the fol
 
 You can download Visual Studio or Visual Studio Code from here [Download](https://visualstudio.microsoft.com/downloads/).
 
-Currently GMM is targeting .NET SDK version 3.1.410, this is being set in [global.json](/Service/GroupMembershipManagement/global.json), you can download this specific version from [Download .NET Core 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1) or alternatively download the latest version and update the global.json file.
+Currently GMM is targeting .NET SDK version 3.1.417, this is being set in [global.json](/Service/GroupMembershipManagement/global.json), you can download this specific version from [Download .NET Core 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1) or alternatively download the latest version and update the global.json file.
 
 To find out what .NET SDK versions you currently have installed run this command from the command line:
 
     dotnet --list-sdks
 
-## Download GMM source code from GitHub
 
-Navigate to GMM repository [here](https://github.com/microsoftgraph/group-membership-management) to download the source code.
-
-You can download the code as a zip file or clone the repository using this command:
-
-    git clone --bare https://github.com/microsoftgraph/group-membership-management.git
-
-## GMM Environments
-
-The code is provided with three sample environments:
-
- * int - integration
- * ua - user acceptance
- * prodv2 - production
-
-These names must not be reused, see [`'Resource groups'`](#resource-groups) for more details.
-
-The steps in this document will setup a single environment i.e. prodv2, if you would like to setup other environments i.e. int and ua, you will need to go through these steps again replacing `<EnvironmentAbbreviation>` accordingly.
-
-Both `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` must be all numbers and lowercase letters! Using capital letters in either will cause problems later down the line!
-
-### Add new environments
-If you would like to add additional environments, follow these steps:
-
-1. Locate and open file [vsts-cicd.yml](/vsts-cicd.yml)
-2. Locate `int` environment `yaml/deploy-pipeline.yml` template.
-
-        - template: yaml/deploy-pipeline.yml
-        parameters:
-            solutionAbbreviation: '$(SolutionAbbreviation)'
-            environmentAbbreviation: 'int'
-            location: 'westus2'
-            serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
-            dependsOn: Build_Functions
-            stageName: 'NonProd_int'
-            functionApps:
-            - name: 'JobTrigger'
-            - name: 'GraphUpdater'
-            - name: 'SecurityGroup'
-            - name: 'AzureTableBackup'
-            - name: 'AzureUserReader'
-            - name: 'JobScheduler'
-            condition: |
-            and(
-                succeeded('Build_Functions'),
-                eq(variables['Build.SourceBranch'], 'refs/heads/develop'),
-                in(variables['Build.Reason'], 'IndividualCI', 'Manual')
-            )
-3. Copy and paste the template located in step two, then replace the values for these settings accordingly using the name of your new environment.
-   - environmentAbbreviation
-   - serviceConnection
-   - stageName
-
-   Save your changes.
-4. Search for the file `parameters.int.json`. Repeat the following steps for all the files:
-        * Copy and paste the same file at the same location
-        * Change the name to `parameters.<your-new-environment-name>.json`
-### Remove existing environments
-If you would like to remove environments, follow these steps:
-
-1. Locate and open file [vsts-cicd.yml](/vsts-cicd.yml)
-2. Locate the `yaml/deploy-pipeline.yml` template for the environment you would like to delete.
-
-        - template: yaml/deploy-pipeline.yml
-        parameters:
-            solutionAbbreviation: '$(SolutionAbbreviation)'
-            environmentAbbreviation: 'int'
-            location: 'westus2'
-            serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
-            dependsOn: Build_Functions
-            stageName: 'NonProd_int'
-            functionApps:
-            - name: 'JobTrigger'
-            - name: 'GraphUpdater'
-            - name: 'SecurityGroup'
-            - name: 'AzureTableBackup'
-            - name: 'AzureUserReader'
-            - name: 'JobScheduler'
-            condition: |
-            and(
-                succeeded('Build_Functions'),
-                eq(variables['Build.SourceBranch'], 'refs/heads/develop'),
-                in(variables['Build.Reason'], 'IndividualCI', 'Manual')
-            )
-3. Delete the template and save your changes. You might need to update any templates that had a dependency on the deleted template. For instance `dependsOn` and `condition` settings in `prodv2` template reference `ua`, so these would need to be updated in case `ua` was removed.
-4. Search for the file `parameters.<environment-you-want-to-delete>.json` and delete the file.
 # Create Resource Groups and prereqs keyvault
 
 ## Resource groups
@@ -185,7 +100,7 @@ These two keyvaults are created by the ARM templates, so no action is needed for
 ## Resource Groups and prereqs keyvault creation script
 
 This script is going to create the Azure resource groups required to setup GMM.
-From your PowerShell command prompt navigate to the Scripts folder then type these commands:
+From your `PowerShell Core 7.2.x` command prompt navigate to the Scripts folder then type these commands:
 
     1. . ./Set-Environment.ps1
     2. Set-Environment  -solutionAbbreviation "<solutionAbbreviation>" `
@@ -205,7 +120,7 @@ If you get an error stating "script is not digitally signed" when running any of
 
 ### Create `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` Azure Application
 
-Run this PowerShell script in order to create a new application that is going to enable GMM to access Microsoft Graph API, it will also save these settings in the prereqs keyvault.
+From your `PowerShell 5.x` command prompt run this PowerShell script in order to create a new application that is going to enable GMM to access Microsoft Graph API. It will also save these settings in the prereqs keyvault.
 
 -   graphAppClientId
 -   graphAppTenantId
@@ -255,7 +170,7 @@ Once your application is created we need to grant the requested permissions to u
             git merge upstream/master
             git push --set-upstream origin <name-of-your-branch-in-public-repo> -f
             ```
-        - another repository (let's call it `private`) that refers to `public`repository as a submodule:
+        - another repository (let's call it `private`) that refers to `public` repository as a submodule:
             - copy the files from [Private](/Private) folder to your `private` repository
             - rename the file `parameters.env.json` to `parameters.<your-environment-abbreviation>.json`
             - replace `<ProjectName>/<RepositoryName>` in vsts-cicd.yml with your project name & repository name
@@ -296,18 +211,109 @@ Once your application is created we need to grant the requested permissions to u
 
     Note:
     Currently `<SolutionAbbreviation>` default value is 'gmm'. To change this value, update the `solutionAbbreviation` variable in vsts-cicd.yml file.
+
+-   ### GMM Environments
+
+    The code is provided with three sample environments:
+
+     * int - integration
+     * ua - user acceptance
+     * prodv2 - production
+
+    These names must not be reused, see [`'Resource groups'`](#resource-groups) for more details.
+
+    The steps in this document will setup a single environment i.e. prodv2, if you would like to setup other environments i.e. int and ua, you     will need to go through these steps again replacing `<EnvironmentAbbreviation>` accordingly.
+
+    Both `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` must be all numbers and lowercase letters! Using capital letters in either     will cause problems later down the line!
+
+    ### Add new environments
+    If you would like to add additional environments, follow these steps:
+
+    1. Locate and open file [vsts-cicd.yml](/vsts-cicd.yml)
+    2. Locate `int` environment `yaml/deploy-pipeline.yml` template.
+
+            - template: yaml/deploy-pipeline.yml
+            parameters:
+                solutionAbbreviation: '$(SolutionAbbreviation)'
+                environmentAbbreviation: '<env>'
+                location: 'westus2'
+                serviceConnection: '$(SolutionAbbreviation)-serviceconnection-<env>'
+                dependsOn: Build_Functions
+                stageName: 'NonProd_<env>'
+                functionApps:
+                - name: 'GraphUpdater'
+                - name: 'MembershipAggregator'
+                - name: 'SecurityGroup'
+                - name: 'AzureTableBackup'
+                - name: 'AzureUserReader'
+                - name: 'JobScheduler'
+                - name: 'JobTrigger'
+                condition: |
+                and(
+                    succeeded('Build_Functions'),
+                    eq(variables['Build.SourceBranch'], 'refs/heads/develop'),
+                    in(variables['Build.Reason'], 'IndividualCI', 'Manual')
+                )
+    3. Copy and paste the template located in step two, then replace the values for these settings accordingly using the name of your new     environment.
+       - environmentAbbreviation
+       - serviceConnection
+       - stageName
+
+       Save your changes.
+    4. Search for the file `parameters.int.json`. Repeat the following steps for all the files:
+            * Copy and paste the same file at the same location
+            * Change the name to `parameters.<your-new-environment-name>.json`
+
+
+    Note: The order in which some of the functions are deployed is really important, make sure these functions are defined in your YAML in this     order:
+    - GraphUpdater
+    - MembershipAggregator
+    - SecurityGroup
+
+
+    ### Remove existing environments
+    If you would like to remove environments, follow these steps:
+
+    1. Locate and open file [vsts-cicd.yml](/vsts-cicd.yml)
+    2. Locate the `yaml/deploy-pipeline.yml` template for the environment you would like to delete.
+
+            - template: yaml/deploy-pipeline.yml
+            parameters:
+                solutionAbbreviation: '$(SolutionAbbreviation)'
+                environmentAbbreviation: '<env>'
+                location: 'westus2'
+                serviceConnection: '$(SolutionAbbreviation)-serviceconnection-<env>'
+                dependsOn: Build_Functions
+                stageName: 'NonProd_<env>'
+                functionApps:
+                - name: 'GraphUpdater'
+                - name: 'MembershipAggregator'
+                - name: 'SecurityGroup'
+                - name: 'AzureTableBackup'
+                - name: 'AzureUserReader'
+                - name: 'JobScheduler'
+                - name: 'JobTrigger'
+                condition: |
+                and(
+                    succeeded('Build_Functions'),
+                    eq(variables['Build.SourceBranch'], 'refs/heads/develop'),
+                    in(variables['Build.Reason'], 'IndividualCI', 'Manual')
+                )
+    3. Delete the template and save your changes. You might need to update any templates that had a dependency on the deleted template. For     instance `dependsOn` and `condition` settings in `prodv2` template reference `ua`, so these would need to be updated in case `ua` was     removed.
+    4. Search for the file `parameters.<environment-you-want-to-delete>.json` and delete the file.
 -   ### Create a Service Connection
 
     In order to deploy GMM resources through a pipeline we need to create a [Service Connection](https://docs.microsoft.com/en-us/azure/devops/pipelines/library/service-endpoints?view=azure-devops&tabs=yaml) and grant permissions to it.
 
-    GMM provides a PowerShell script to accomplish this.
+    GMM provides a PowerShell script to accomplish this.  
+    From you `PowerShell 5.x` command prompt run the following scripts.
 
     1.  Set-ServicePrincipal.ps1
 
         This script will create a new service principal.
         It takes two arguments: `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>`.
 
-        From your PowerShell command prompt navigate to the Scripts folder then type these commands. This script must be run by someone with the Owner role on the subscription.
+        From your PowerShell command prompt navigate to the Scripts folder then type these commands.
 
             1. . ./Set-ServicePrincipal.ps1
             2. Set-ServicePrincipal -SolutionAbbreviation "<SolutionAbbreviation>"  `
@@ -318,24 +324,56 @@ Once your application is created we need to grant the requested permissions to u
 
         Locate the service connection name on the screen. It follows this naming convention: `<SolutionAbbreviation>`-serviceconnection-`<EnvironmentAbbreviation>`.
 
-    2. Set-ServiceConnection
+    2.  Set-ServicePrincipalManagedIdentityRoles.ps1
 
-        This script sets up the service connection. Ensure that you're an owner of the service connection you created in the last step. Then, run the following command. `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` are as before, plus two new ones.
+        This script will grant the service principal Contributor role over all resource groups for GMM.
+        It takes two arguments: `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>`.
 
-        `<OrganizationName>` - This is the name of your organization used in Azure DevOps.
+        From your PowerShell command prompt navigate to the Scripts folder then type these commands. This script must be run by someone with the <b>Owner role on the subscription.</b>
+
+            1. . ./Set-ServicePrincipalManagedIdentityRoles.ps1
+            2. Set-ServicePrincipalManagedIdentityRoles -SolutionAbbreviation "<SolutionAbbreviation>"  `
+            		                              -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
+            		                              -Verbose
+
+    3. Set-ServiceConnection
+
+        This script sets up the service connection. Ensure that you're an owner of the service connection you created in step 1. Then, run the following command. `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` are as before, plus two new ones.
+
+        `<OrganizationName>` - This is the name of your organization used in Azure DevOps.  
         `<ProjectName>` - This is the name of the project in Azure DevOps we just created in a previous step.
 
             1. . ./Set-ServiceConnection.ps1
             2. Set-ServiceConnection -SolutionAbbreviation "<SolutionAbbreviation>"  `
-            		                              -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
+            		                             -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
                                                  -OrganizationName "<OrganizationName>" `
                                                  -ProjectName "<ProjectName>" `
-            		                              -Verbose
+            		                             -Verbose
+
+            3. Follow the instructions in the screen.
 
 -   ### Email Notification
 
     Please follow the steps in this documentation, which will ensure that the requestor is notified regarding the synchronization job status:
     [SetSenderAddressForEmailNotification.md](/Service/GroupMembershipManagement/Repositories.Mail/Documentation/SetSenderAddressForEmailNotification.md)
+
+
+-   ### Create an ADO environment
+
+    An environment is necessary to manage deployment approvals.
+
+    1. On Azure DevOps left menu locate Pipelines menu click on 'Environments'.
+    2. Click on 'New environments' button.
+    3. Fill in 'Name' which must follow this naming convention <SolutionAbbreviation>-<EnvironmentAbbreviation>
+    4. Add a description (optional).
+    5. Click on 'Create' button.
+    6. Once created, locate and click on your environment.
+    7. Click on 'More Actions' button. It's displayed as a vertical ellipsis (three vertical dots).
+    8. Click on 'Approvals and checks' option.
+    9. Click on 'Add check' button.
+    10. Select 'Approvals' option then click on 'Next' button.
+    11. Add the user(s) or group(s) that will approve the deployment.
+    12. Click on 'Create' button.
 
 -   ### Create a pipeline
 
@@ -354,13 +392,17 @@ Once your application is created we need to grant the requested permissions to u
 
                location - This is your Azure location where the resources are going to be created.
 
+               subscriptionId_prod - This is the subscription Id of your production environment.
+
+               subscriptionId_nonprod - This is the subscription Id of your non-production environment.
+
                tenantId - This is your Azure Active Directory tenant Id, where GMM Azure resources were created.
 
-               keyVaultReaders_prod - This is a list of service principals that will have access to the keyvaults in production environment. i.e. your own Azure user id, an Azure group id.
+               keyVaultReaders_prod - This is a list of service principals that will have access to the keyvaults in production environment. i.e. your own Azure user id, an Azure group id. This variable's value is a JSON string that represents an array. See JSON format below.
 
-               keyVaultReaders_nonprod - This is a list of service principals that will have access to the keyvaults in non-production environments. i.e. your own Azure user id, an Azure group id.
+               keyVaultReaders_nonprod - This is a list of service principals that will have access to the keyvaults in non-production environments. i.e. your own Azure user id, an Azure group id. This variable's value is a JSON string that represents an array. See JSON format below.
 
-               This variable's value is a JSON string that represents an array, notice that each object in the array has two properties:
+               keyVaultReaders_prod/nonprod variables must be a JSON string that represents an array, notice that each object in the array has two properties:
 
                objectId: This is the group or user object id.
                permissions: This is the list of permissions that will be set.
@@ -400,43 +442,40 @@ Once your application is created we need to grant the requested permissions to u
 
 Once the pipeline has completed building and deploying GMM code and resources to your Azure resource groups, we need to make some final configuration changes.
 
-### Grant SecurityGroup function access to the Queue and Topic
+### Grant SecurityGroup, MembershipAggregator, GraphUpdater function access to storage account
 
-Once your Function App `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup` has been created we need to grant it access to the Queue and Topic.
+These functions need MSI access to the storage account where the membership blobs are going to be temporary stored.
 
-    QueueName: membership
-    TopicName: syncjobs
-    FunctionAppName: <SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup
+Once your Function Apps:
+- `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup`
+- `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-MembershipAggregator`
+- `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-GraphUpdater`
 
-    1. . ./Set-ServiceBusManagedIdentityRoles.ps1
-    2. Set-ServiceBusManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `
-                                        -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-                                        -FunctionAppName "<FunctionAppName>" `
-                                        -QueueName "membership" `
-                                        -TopicName "syncjobs" `
-                                        -Verbose
+have been created we need to grant them access to the storage account containers.
 
-In the event that you need to grant access to the queue and topic to an Azure active directory group (i.e. a group that contains your development team) in your tenant, you may need to use the provided powershell script below:
+From your `PowerShell Core 7.2.x` command prompt run this script:
 
-    1. . ./Set-ServiceBusManagedIdentityRolesToADGroup.ps1
-    2. Set-ServiceBusManagedIdentityRolesToADGroup  -SolutionAbbreviation "<SolutionAbbreviation>" `
-                                        -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-                                        -GroupName "<GroupName>" `
-                                        -QueueName "membership" `
-                                        -TopicName "syncjobs" `
-                                        -Verbose
-### Access to App Configuration
+    By default GMM uses the same account that was automatically created to store the sync job's information.
+    The naming convention  for the table that contains job information is jobs<environmentAbbreviation><randomId>.  
+    The exact name can be found in the data key vault secrets under 'jobsStorageAccountName'.      
 
-Grant all the functions access to the AppConfiguration by running the following script:
+    1. . ./Set-StorageAccountContainerManagedIdentityRoles.ps1
+    2. Set-StorageAccountContainerManagedIdentityRoles -SolutionAbbreviation "<SolutionAbbreviation>" `
+                                                       -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
+                                                       -StorageAccountName "<StorageAccountName>
+                                                       -Verbose
+
+    By default, the script will run for each of the three function app names: SecurityGroup, MembershipAggregator and GraphUpdater.
+
+### Grant access to App Configuration
+
+Grant all the functions access to the AppConfiguration by running the following script from your `PowerShell Core 7.2.x` command prompt:
 
     1. . ./Set-AppConfigurationManagedIdentityRoles.ps1
     2. Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `
                                                 -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-                                                -FunctionAppName "<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-JobTrigger" `
                                                 -AppConfigName "<SolutionAbbreviation>-appConfig-<EnvironmentAbbreviation>" `
                                                 -Verbose
-
-- The above is an example for `JobTrigger`. Please update FunctionAppName and run the script for other functions as well.
 
 ### Creating synchronization jobs for source groups
 
@@ -447,16 +486,17 @@ A synchronization job must have the following properties populated:
 - PartitionKey
 - RowKey
 - Requestor
-- Type
 - TargetOfficeGroupId
 - Status
 - LastRunTime
 - Period
 - Query
 - StartDate
-- Enabled
 - ThresholdPercentageForAdditions
 - ThresholdPercentageForRemovals
+- ThresholdViolations
+- IsDryRunEnabled
+- DryRunTimeStamp
 
 ### PartitionKey
 Partition key, the value added here represents the date the job was added to the table.
@@ -472,11 +512,6 @@ Unique key of the synchronization job.
 Email address of the person who requested the synchronization job.
 - DataType: string
 - Format: Email address
-
-### Type
-Type of synchronization job.
-- DataType: string
-- Valid value(s): SecurityGroup
 
 ### TargetOfficeGroupId
 Azure Object Id of destination group.
@@ -509,10 +544,6 @@ i.e. 2021-01-01T00:00:00.000Z
 - DataType: DateTime
 - Format: YYYY-MM-DDThh:mm:ss.zzzZ
 
-### Enabled
-Flag to enable or disable a synchronization job.
-- DataType: bool
-
 ### ThresholdPercentageForAdditions
 Threshold percentage for users being added.
 If the threshold is exceeded GMM is not going to make any changes to the destination group and an email notification will be sent describing the issue.
@@ -527,9 +558,35 @@ The email notification will be sent to the recipients defined in the 'SyncDisabl
 To continue processing the job increase the threshold value or disable the threshold check by setting it to 0 (zero).
 - DataType: int
 
+### ThresholdViolations
+Indicates how many times the threshold has been exceeded.
+It gets reset to 0 once the job syncs successfully.
 
+### IsDryRunEnabled
+Indicates if the job will run in DryRun (read-only) mode making no changes to the destination group.
+### DryRunTimeStamp
+Last date time the synchronization job ran in DryRun mode. Set to 1601-01-01T00:00:00.000Z for new synchronization jobs.
+- DataType: DateTime
+- Format: YYYY-MM-DDThh:mm:ss.zzzZ
+
+### Powershell script to create SecurityGroup jobs
 A PowerShell script [New-GmmSecurityGroupSyncJob.ps1](/Service/GroupMembershipManagement/Hosts/SecurityGroup/Scripts/New-GmmSecurityGroupSyncJob.ps1) is provided to help you create the synchronization jobs.
 
+The Query field requires a JSON object that must follow this format:
+
+```
+[
+    {
+        "type": "SecurityGroup",
+        "sources":
+        [
+            "id 1",
+            "id 2",
+            "id n"
+        ]
+    }
+]
+```
 The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGroup\Scripts folder.
 
     1. . ./New-GmmSecurityGroupSyncJob.ps1
@@ -538,11 +595,10 @@ The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGrou
 							-EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
 							-Requestor "<RequestorEmailAddress>" `
 							-TargetOfficeGroupId "<DestinationGroupObjectId>" `
-							-Query "<source group object id(s) (separated by ';')>" `
+							-Query "<JSON string>" `
 							-Period <in hours, integer only> `
 							-ThresholdPercentageForAdditions <integer only> `
 							-ThresholdPercentageForRemovals <integer only> `
-							-Enabled $True `
 							-Verbose
 
 You can also use Microsoft Azure Storage Explorer to add, edit or delete synchronization jobs. see [Get started with Storage Explorer](https://docs.microsoft.com/en-us/azure/vs-azure-tools-storage-manage-with-storage-explorer?tabs=windows).
@@ -581,27 +637,7 @@ If you would like to have the default setting to be false, then please update th
 There are 3 Dry Run flags in GMM. If any of these Dry run flags are set, the sync will be completed but destination membership will not be affected.
 1. IsDryRunEnabled: This is a property that is set on an individual sync. Setting this to true will run this sync in dry run.
 2. IsSecurityGroupDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all Security Group syncs in dry run.
-3. IsGraphUpdaterDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all syncs in dry run.
-
-In order for the Function Apps SecurityGroup and GraphUpdater to read the dry run values assigned above, we need to grant them access to the AppConfiguration:
-
-FunctionAppName: `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup`
-
-    1. . ./Set-AppConfigurationManagedIdentityRoles.ps1
-    2. Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `
-                                    -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-                                    -FunctionAppName "<function app name>" `
-                                    -AppConfigName "<SolutionAbbreviation>-appConfig-<EnvironmentAbbreviation>" `
-                                    -Verbose
-
-FunctionAppName: `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-GraphUpdater`
-
-    1. . ./Set-AppConfigurationManagedIdentityRoles.ps1
-    2. Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `
-                                    -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-                                    -FunctionAppName "<function app name>" `
-                                    -AppConfigName "<SolutionAbbreviation>-appConfig-<EnvironmentAbbreviation>" `
-                                    -Verbose
+3. IsMembershipAggregatorDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all syncs in dry run.
 
 # Setting AzureTableBackup function
 `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureTableBackup function can create backups for Azure Storage Tables and delete older backups automatically.

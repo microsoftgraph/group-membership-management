@@ -11,7 +11,6 @@ namespace Hosts.GraphUpdater
         public string JobPartitionKey { get; set; }
         public string JobRowKey { get; set; }
         public SyncStatus Status { get; set; }
-        public bool IsDryRun { get; set; }
         public int ThresholdViolations { get; set; }
     }
 }

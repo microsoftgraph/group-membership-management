@@ -78,6 +78,36 @@ namespace Repositories.ServiceBusTopics.Tests
 
         public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
         {
+            var owners = new List<User>();
+            for (var i = 0; i < 10; i++)
+            {
+                owners.Add(new User
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Mail = $"user{i}@mydomain.com"
+                });
+            }
+
+            return Task.FromResult(owners);
+        }
+
+        public Task<bool> GroupExists(string groupName)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<AzureADGroup> GetGroup(string groupName)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task CreateGroup(string newGroupName)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<AzureADUser>> GetTenantUsers(int userCount)
+        {
             throw new NotImplementedException();
         }
     }

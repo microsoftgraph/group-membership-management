@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Services.Entities;
 using System.Linq;
+using Repositories.Contracts;
 
 namespace Hosts.AzureTableBackup
 {
@@ -28,7 +29,8 @@ namespace Hosts.AzureTableBackup
                                new LoggerRequest
                                {
                                    RunId = runId,
-                                   Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}"
+                                   Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
+                                   Verbosity = VerbosityLevel.DEBUG
                                });
 
             await context.CallActivityAsync(nameof(TableBackupFunction), null);
@@ -67,7 +69,8 @@ namespace Hosts.AzureTableBackup
                                new LoggerRequest
                                {
                                    RunId = runId,
-                                   Message = $"{nameof(OrchestratorFunction)} function completed at: {context.CurrentUtcDateTime}"
+                                   Message = $"{nameof(OrchestratorFunction)} function completed at: {context.CurrentUtcDateTime}",
+                                   Verbosity = VerbosityLevel.DEBUG
                                });
         }
     }

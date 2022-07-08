@@ -5,12 +5,14 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Entities
 {
-	[ExcludeFromCodeCoverage]
+    [ExcludeFromCodeCoverage]
 	public class AzureADUser : IAzureADObject, IEquatable<AzureADUser>
 	{
 		public Guid ObjectId { get; set; }
 
-		public override bool Equals(object obj)
+        public MembershipAction? MembershipAction { get; set; }
+
+        public override bool Equals(object obj)
 		{
 			if (obj is null) return false;
 			return obj is AzureADUser && (obj as AzureADUser).ObjectId == ObjectId;

@@ -38,7 +38,7 @@ namespace Services.Tests
             var allProfiles = new List<GraphProfileInformation>();
             var currentPage = new List<GraphProfileInformation>();
 
-            loggingRepository.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<string>(), It.IsAny<string>()));
+            loggingRepository.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()));
             context.Setup(x => x.GetInput<AzureUserReaderRequest>()).Returns(request);
             context.Setup(x => x.CallActivityAsync<IList<string>>(It.IsAny<string>(), It.IsAny<AzureUserReaderRequest>())).ReturnsAsync(personnelNumbers);
             context.Setup(x => x.CallSubOrchestratorAsync<List<GraphProfileInformation>>(It.IsAny<string>(), It.IsAny<List<string>>()))
@@ -73,6 +73,7 @@ namespace Services.Tests
             context.Verify(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<UploadUsersRequest>()), Times.Once());
             loggingRepository.Verify(x => x.LogMessageAsync(
                                            It.Is<LogMessage>(m => m.Message.StartsWith($"{nameof(OrchestratorFunction)} function completed")),
+                                           VerbosityLevel.DEBUG,
                                            It.IsAny<string>(),
                                            It.IsAny<string>()), Times.Once());
         }
@@ -120,7 +121,7 @@ namespace Services.Tests
             var currentPage = new List<GraphProfileInformation>();
             var usersToUploadRequest = default(UploadUsersRequest);
 
-            loggingRepository.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<string>(), It.IsAny<string>()));
+            loggingRepository.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()));
             context.Setup(x => x.GetInput<AzureUserReaderRequest>()).Returns(request);
             context.Setup(x => x.CallActivityAsync<IList<string>>(It.IsAny<string>(), It.IsAny<AzureUserReaderRequest>())).ReturnsAsync(allPersonnelNumbers);
             context.Setup(x => x.CallSubOrchestratorAsync<List<GraphProfileInformation>>(It.IsAny<string>(), It.IsAny<List<string>>()))
@@ -178,6 +179,7 @@ namespace Services.Tests
             context.Verify(x => x.CallSubOrchestratorAsync<List<GraphProfileInformation>>(It.IsAny<string>(), It.IsAny<AzureUserCreatorRequest>()), Times.Once());
             loggingRepository.Verify(x => x.LogMessageAsync(
                                            It.Is<LogMessage>(m => m.Message.StartsWith($"{nameof(OrchestratorFunction)} function completed")),
+                                           VerbosityLevel.DEBUG,
                                            It.IsAny<string>(),
                                            It.IsAny<string>()), Times.Once());
 

@@ -3,13 +3,14 @@
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
-@description('Classify the types of resources in this resource group.')
-@allowed([
-  'prereqs'
-  'data'
-  'compute'
-])
+@description('Classify the types of resources in data resource group.')
 param resourceGroupClassification string = 'data'
+
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
+
+@description('Classify the types of resources in compute resource group.')
+param computeResourceGroupClassification string = 'compute'
 
 @description('Enter an abbreviation for the environment.')
 @minLength(2)
@@ -79,9 +80,6 @@ param serviceBusTopicSubscriptions array = [
   }
 ]
 
-@description('Enter service bus queue name.')
-param serviceBusQueueName string = 'membership'
-
 @description('Enter storage account name.')
 @minLength(1)
 @maxLength(24)
@@ -99,6 +97,10 @@ param storageAccountSku string = 'Standard_LRS'
 @description('Enter storage account name.')
 @minLength(1)
 param jobsStorageAccountName string = 'jobs${environmentAbbreviation}${uniqueString(resourceGroup().id)}'
+
+@description('Enter membership container name.')
+@minLength(1)
+param membershipContainerName string = 'membership'
 
 @description('Enter jobs table name.')
 @minLength(1)
@@ -128,59 +130,59 @@ param appConfigurationName string = '${solutionAbbreviation}-appConfig-${environ
 param appConfigurationSku string = 'Standard'
 param appConfigurationKeyData array = [
   {
+    key: 'JobTrigger:IsGroupReadWriteAllGranted'
+    value: 'false'
+    contentType: 'boolean'
+    tag: {
+      tag1: 'JobTrigger'
+    }
+  }
+  {
     key: 'SecurityGroup:IsSecurityGroupDryRunEnabled'
     value: 'false'
     contentType: 'boolean'
     tag: {
-      tag1: 'tag-dry-run'
+      tag1: 'DryRun'
     }
   }
   {
-    key: 'GraphUpdater:IsGraphUpdaterDryRunEnabled'
+    key: 'MembershipAggregator:IsMembershipAggregatorDryRunEnabled'
     value: 'false'
     contentType: 'boolean'
     tag: {
-      tag1: 'tag-dry-run'
+      tag1: 'DryRun'
     }
   }
   {
-    key: 'GraphUpdater:LastMessageWaitTimeout'
+    key: 'MembershipAggregator:MaximumNumberOfThresholdRecipients'
+    value: '3'
+    contentType: 'integer'
+    tag: {
+      tag1: 'MembershipAggregator'
+    }
+  }
+  {
+    key: 'MembershipAggregator:NumberOfThresholdViolationsToNotify'
+    value: '3'
+    contentType: 'integer'
+    tag: {
+      tag1: 'MembershipAggregator'
+    }
+  }
+  {
+    key: 'MembershipAggregator:NumberOfThresholdViolationsFollowUps'
+    value: '3'
+    contentType: 'integer'
+    tag: {
+      tag1: 'MembershipAggregator'
+    }
+  }
+  {
+    key: 'MembershipAggregator:NumberOfThresholdViolationsToDisableJob'
     value: '10'
     contentType: 'integer'
     tag: {
-      tag1: 'GraphUpdater'
-    }
-  }
-  {
-    key: 'GraphUpdater:MaximumNumberOfThresholdRecipients'
-    value: '3'
-    contentType: 'integer'
-    tag: {
-      tag1: 'GraphUpdater'
-    }
-  }
-  {
-    key: 'GraphUpdater:NumberOfThresholdViolationsToNotify'
-    value: '3'
-    contentType: 'integer'
-    tag: {
-      tag1: 'GraphUpdater'
-    }
-  }
-  {
-    key: 'GraphUpdater:NumberOfThresholdViolationsFollowUps'
-    value: '3'
-    contentType: 'integer'
-    tag: {
-      tag1: 'GraphUpdater'
-    }
-  }
-  {
-    key: 'GraphUpdater:NumberOfThresholdViolationsToDisableJob'
-    value: '10'
-    contentType: 'integer'
-    tag: {
-      tag1: 'GraphUpdater'
+      tag1: 'MembershipAggregator'
     }
   }
   {
@@ -239,15 +241,6 @@ module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   ]
 }
 
-module appInsightsTemplate 'applicationInsights.bicep' = {
-  name: 'appInsightsTemplate'
-  params: {
-    name: appInsightsName
-    location: location
-    kind: appInsightsKind
-  }
-}
-
 module serviceBusTemplate 'serviceBus.bicep' = {
   name: 'serviceBusTemplate'
   params: {
@@ -280,18 +273,6 @@ module serviceBusSubscriptionsTemplate 'serviceBusSubscription.bicep' = {
   ]
 }
 
-module serviceBusQueueTemplate 'serviceBusQueue.bicep' = {
-  name: 'serviceBusQueueTemplate'
-  params: {
-    serviceBusName: serviceBusName
-    queueName: serviceBusQueueName
-    requiresSession: true
-  }
-  dependsOn: [
-    serviceBusTemplate
-  ]
-}
-
 module storageAccountTemplate 'storageAccount.bicep' = {
   name: 'storageAccountTemplate'
   params: {
@@ -315,6 +296,19 @@ module logAnalyticsTemplate 'logAnalytics.bicep' = {
     sku: logAnalyticsSku
     location: location
   }
+}
+
+module appInsightsTemplate 'applicationInsights.bicep' = {
+  name: 'appInsightsTemplate'
+  params: {
+    name: appInsightsName
+    location: location
+    kind: appInsightsKind
+    workspaceId: logAnalyticsTemplate.outputs.resourceId
+  }
+  dependsOn: [
+    logAnalyticsTemplate
+  ]
 }
 
 module appConfigurationTemplate 'appConfiguration.bicep' = {
@@ -343,6 +337,10 @@ module logAlertRuleTemplate 'logAlertRule.bicep' = {
     location: location
     actionGroupId: actionGroupTemplate.outputs.actionGroupId
   }
+  dependsOn: [
+    logAnalyticsTemplate
+    actionGroupTemplate
+  ]
 }
 
 module secretsTemplate 'keyVaultSecrets.bicep' = {
@@ -361,6 +359,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'jobsStorageAccountName'
         value: jobsStorageAccountName
+      }
+      {
+        name: 'membershipContainerName'
+        value: membershipContainerName
       }
       {
         name: 'jobsStorageAccountConnectionString'
@@ -395,10 +397,6 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: serviceBusTopicName
       }
       {
-        name: 'serviceBusMembershipQueue'
-        value: serviceBusQueueName
-      }
-      {
         name: 'logAnalyticsCustomerId'
         value: logAnalyticsTemplate.outputs.customerId
       }
@@ -411,6 +409,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
   dependsOn: [
     dataKeyVaultTemplate
     storageAccountTemplate
+    jobsStorageAccountTemplate
+    serviceBusTemplate
+    logAnalyticsTemplate
+    appInsightsTemplate
   ]
 }
 
@@ -418,10 +420,16 @@ module dashboardTemplate 'dashboard.bicep' = {
   name: 'dashboardTemplate'
   params: {
     location: location
-    name: '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
+    dashboardName: 'GMM Dashboard (${environmentAbbreviation})'
+    resourceGroup: '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
+    computeResourceGroup: '${solutionAbbreviation}-${computeResourceGroupClassification}-${environmentAbbreviation}'
+    prereqsResourceGroup: '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
     subscriptionId: subscriptionId
     jobsStorageAccountName: jobsStorageAccountName
   }
+  dependsOn: [
+    jobsStorageAccountTemplate
+  ]
 }
 
 output storageAccountName string = storageAccountName

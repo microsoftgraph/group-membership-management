@@ -9,6 +9,12 @@ namespace Entities
         Idle = 2,
         Error = 3,
         ThresholdExceeded = 4,
-        NoSourceMembership = 5
+        CustomMembershipDataNotFound = 5,
+        DestinationGroupNotFound = 6,
+        NotOwnerOfDestinationGroup = 7,
+        SecurityGroupNotFound = 8,
+        FilePathNotValid = 9,
+        QueryNotValid = 10,
+        FileNotFound = 11
     }
 }

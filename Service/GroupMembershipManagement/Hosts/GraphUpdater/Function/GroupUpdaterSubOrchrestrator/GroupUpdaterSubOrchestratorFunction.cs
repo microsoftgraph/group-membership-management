@@ -25,7 +25,7 @@ namespace Hosts.GraphUpdater
         public async Task RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var skip = 0;
-            var batchSize = 100;
+            const int batchSize = 100;
             var request = context.GetInput<GroupUpdaterRequest>();
             var totalSuccessCount = 0;
 
@@ -35,7 +35,7 @@ namespace Hosts.GraphUpdater
             }
 
             await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LoggerRequest { Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function started", SyncJob = request.SyncJob });
+                                                new LoggerRequest { Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function started", SyncJob = request.SyncJob, Verbosity = VerbosityLevel.DEBUG });
 
             var batch = request.Members?.Skip(skip).Take(batchSize).ToList() ?? new List<AzureADUser>();
 
@@ -75,7 +75,8 @@ namespace Hosts.GraphUpdater
                                                       new LoggerRequest
                                                       {
                                                           Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function completed",
-                                                          SyncJob = request.SyncJob
+                                                          SyncJob = request.SyncJob,
+                                                          Verbosity = VerbosityLevel.DEBUG
                                                       });
         }
     }

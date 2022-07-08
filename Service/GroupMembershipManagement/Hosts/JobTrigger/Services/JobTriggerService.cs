@@ -6,6 +6,7 @@ using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Services
@@ -24,6 +25,8 @@ namespace Services
         private readonly string _gmmAppId;
         private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
+        private readonly IGMMResources _gmmResources;
+        private readonly IJobTriggerConfig _jobTriggerConfig;
 
         public JobTriggerService(
             ILoggingRepository loggingRepository,
@@ -32,7 +35,9 @@ namespace Services
             IGraphGroupRepository graphGroupRepository,
             IKeyVaultSecret<IJobTriggerService> gmmAppId,
             IMailRepository mailRepository,
-            IEmailSenderRecipient emailSenderAndRecipients
+            IEmailSenderRecipient emailSenderAndRecipients,
+            IGMMResources gmmResources,
+            IJobTriggerConfig jobTriggerConfig
             )
         {
             _emailSenderAndRecipients = emailSenderAndRecipients;
@@ -42,6 +47,8 @@ namespace Services
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _gmmAppId = gmmAppId.Secret;
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
+            _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
+            _jobTriggerConfig = jobTriggerConfig ?? throw new ArgumentNullException(nameof(jobTriggerConfig));
         }
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()
@@ -64,38 +71,42 @@ namespace Services
         {
             if (job != null && job.LastRunTime == DateTime.FromFileTimeUtc(0))
             {
+                var owners = await _graphGroupRepository.GetGroupOwnersAsync(job.TargetOfficeGroupId);
+                var ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
                 var message = new EmailMessage
                 {
                     Subject = EmailSubject,
                     Content = SyncStartedEmailBody,
                     SenderAddress = _emailSenderAndRecipients.SenderAddress,
                     SenderPassword = _emailSenderAndRecipients.SenderPassword,
-                    ToEmailAddresses = job.Requestor,
+                    ToEmailAddresses = ownerEmails,
                     CcEmailAddresses = string.Empty,
-                    AdditionalContentParams = new[] { groupName, job.TargetOfficeGroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses }
+                    AdditionalContentParams = new[]
+                    {
+                        groupName,
+                        job.TargetOfficeGroupId.ToString(),
+                        _emailSenderAndRecipients.SupportEmailAddresses,
+                        _gmmResources.LearnMoreAboutGMMUrl,
+                        job.Requestor
+                    }
                 };
 
                 await _mailRepository.SendMailAsync(message, job.RunId);
             }
         }
 
-        public async Task UpdateSyncJobStatusAsync(bool canWriteToGroup, SyncJob job)
+        public async Task UpdateSyncJobStatusAsync(SyncStatus status, SyncJob job)
         {
-            if (canWriteToGroup)
+            if (status == SyncStatus.InProgress)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     RunId = job.RunId,
                     Message = $"Starting job."
                 });
+            }
 
-                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.InProgress);
-            }
-            else
-            {
-                job.Enabled = false;
-                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.Error);
-            }
+            await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
 
             // Don't leak this to the start and stop logs.
             // The logging repository has this SyncJobInfo property that gets appended to all the logs,
@@ -111,11 +122,11 @@ namespace Services
             await _serviceBusTopicsRepository.AddMessageAsync(job);
         }
 
-        public async Task<bool> CanWriteToGroup(SyncJob job)
+        public async Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job)
         {
             foreach (var strat in new JobVerificationStrategy[] {
                 new JobVerificationStrategy { TestFunction = _graphGroupRepository.GroupExists, StatusMessage = $"Destination group {job.TargetOfficeGroupId} exists.", ErrorMessage = $"destination group {job.TargetOfficeGroupId} doesn't exist.", EmailBody = SyncDisabledNoGroupEmailBody },
-                new JobVerificationStrategy { TestFunction = (groupId) => _graphGroupRepository.IsAppIDOwnerOfGroup(_gmmAppId, groupId), StatusMessage = $"GMM is an owner of destination group {job.TargetOfficeGroupId}.", ErrorMessage = $"GMM is not an owner of destination group {job.TargetOfficeGroupId}.", EmailBody = SyncDisabledNoOwnerEmailBody }})
+                new JobVerificationStrategy { TestFunction = (groupId) => GMMCanWriteToGroupAsync(groupId), StatusMessage = $"GMM is an owner of destination group {job.TargetOfficeGroupId}.", ErrorMessage = $"GMM is not an owner of destination group {job.TargetOfficeGroupId}.", EmailBody = SyncDisabledNoOwnerEmailBody }})
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Checking: " + strat.StatusMessage });
                 // right now, we stop after the first failed strategy, because it doesn't make sense to find that the destination group doesn't exist and then check if we own it.
@@ -140,6 +151,15 @@ namespace Services
             }
 
             return true;
+        }
+
+        private async Task<bool> GMMCanWriteToGroupAsync(Guid groupId)
+        {
+            if(_jobTriggerConfig.GMMHasGroupReadWriteAllPermissions)
+                return true;
+            
+            var isAppIdOwner = await _graphGroupRepository.IsAppIDOwnerOfGroup(_gmmAppId, groupId);
+            return isAppIdOwner;
         }
 
         private class JobVerificationStrategy

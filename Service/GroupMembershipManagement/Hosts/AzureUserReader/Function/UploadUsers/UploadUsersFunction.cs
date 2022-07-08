@@ -27,7 +27,7 @@ namespace Hosts.AzureUserReader
         [FunctionName(nameof(UploadUsersFunction))]
         public async Task UploadUsersMemberIdAsync([ActivityTrigger] UploadUsersRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UploadUsersFunction)} function started" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UploadUsersFunction)} function started" }, VerbosityLevel.DEBUG);
 
             var serviceRequest = new UploadRequest
             {
@@ -38,7 +38,7 @@ namespace Hosts.AzureUserReader
 
             await _azureUserReaderService.UploadUsersMemberIdAsync(serviceRequest);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UploadUsersFunction)} function completed" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UploadUsersFunction)} function completed" }, VerbosityLevel.DEBUG);
         }
     }
 }

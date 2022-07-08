@@ -26,9 +26,9 @@ namespace Hosts.AzureTableBackup
         [FunctionName(nameof(RetrieveBackupsFunction))]
         public async Task<List<ReviewAndDeleteRequest>> RetrieveBackups([ActivityTrigger] object request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RetrieveBackupsFunction)} function started at: {DateTime.UtcNow}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RetrieveBackupsFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
             var backups = await _azureTableBackupService.RetrieveBackupsAsync();
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RetrieveBackupsFunction)} function completed at: {DateTime.UtcNow}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RetrieveBackupsFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
             return backups.Select(e => new ReviewAndDeleteRequest() { TableName = e.TableName, BackupSetting = e.BackupSetting }).ToList();
         }

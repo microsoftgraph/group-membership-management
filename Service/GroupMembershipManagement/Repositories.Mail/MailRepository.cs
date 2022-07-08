@@ -88,7 +88,7 @@ namespace Repositories.Mail
 
 		public IEnumerable<Recipient> GetEmailAddresses(string emailAddresses)
 		{
-			return emailAddresses.Split(',').Select(address => address.Trim()).ToList()
+			return emailAddresses.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(address => address.Trim()).ToList()
 									 .Select(address => new Recipient() { EmailAddress = new EmailAddress { Address = address } })
 									 .ToList();
 		}

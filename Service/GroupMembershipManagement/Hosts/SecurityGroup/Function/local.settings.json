@@ -1,23 +1,27 @@
 {
   "IsEncrypted": false,
   "Values": {
+    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "differenceServiceBusNamespace": "",
-    "graphCredentials:ClientSecret": "",
-    "graphCredentials:ClientId": "",
     "graphCredentials:KeyVaultName": "",
     "graphCredentials:KeyVaultTenantId": "",
+    "appConfigurationEndpoint": "",
+    "serviceBusSyncJobTopic": "",
+    "serviceBusTopicConnection": "",
+    "graphCredentials:ClientSecret": "",
+    "graphCredentials:ClientId": "",
     "graphCredentials:TenantId": "",
     "logAnalyticsCustomerId": "",
     "logAnalyticsPrimarySharedKey": "",
-    "membershipQueueName": "",
-    "serviceBusSyncJobTopic": "",
-    "serviceBusTopicConnection": "",
     "jobsStorageAccountConnectionString": "",
     "jobsTableName": "",
     "senderAddress": "",
     "senderPassword": "",
     "syncDisabledCCEmailAddresses": "",
-    "supportEmailAddresses": ""
+    "supportEmailAddresses": "",
+    "membershipStorageAccountName": "",
+    "membershipContainerName": "",
+    "graphUpdaterUrl": "",
+    "graphUpdaterFunctionKey": ""
   }
 }

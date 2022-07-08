@@ -27,7 +27,7 @@ namespace Hosts.AzureUserReader
         [FunctionName(nameof(AzureUserCreatorFunction))]
         public async Task<List<GraphProfileInformation>> AddUsersAsync([ActivityTrigger] AzureUserCreatorRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserCreatorFunction)} function started" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserCreatorFunction)} function started" }, VerbosityLevel.DEBUG);
 
             var newUsers = request.PersonnelNumbers.Select(x => new User
             {
@@ -43,7 +43,7 @@ namespace Hosts.AzureUserReader
 
             var newProfiles = await _graphUserRepository.AddUsersAsync(newUsers, null);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserCreatorFunction)} function completed" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserCreatorFunction)} function completed" }, VerbosityLevel.DEBUG);
 
             return newProfiles;
         }

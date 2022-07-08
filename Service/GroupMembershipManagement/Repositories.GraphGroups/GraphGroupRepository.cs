@@ -4,6 +4,8 @@ using Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
 using Newtonsoft.Json.Linq;
+using Polly;
+using Polly.Retry;
 using Repositories.Contracts;
 using System;
 using System.Collections.Concurrent;
@@ -13,6 +15,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Group = Microsoft.Graph.Group;
 using Metric = Services.Entities.Metric;
@@ -23,7 +26,7 @@ namespace Repositories.GraphGroups
     {
         private readonly IGraphServiceClient _graphServiceClient;
         private readonly TelemetryClient _telemetryClient;
-        private readonly ILoggingRepository _log;
+        private readonly ILoggingRepository _loggingRepository;
 
         public Guid RunId { get; set; }
 
@@ -31,7 +34,7 @@ namespace Repositories.GraphGroups
         {
             _graphServiceClient = graphServiceClient;
             _telemetryClient = telemetryClient;
-            _log = logger;
+            _loggingRepository = logger;
         }
 
         private const int MaxRetries = 10;
@@ -39,6 +42,8 @@ namespace Repositories.GraphGroups
 
         private const string ResourceUnitHeader = "x-ms-resource-unit";
         private const string ThrottlePercentageHeader = "x-ms-throttle-limit-percentage";
+        private const string ThrottleInfoHeader = "x-ms-throttle-information";
+        private const string ThrottleScopeHeader = "x-ms-throttle-scope";
 
         public async Task<bool> GroupExists(Guid objectId)
         {
@@ -53,7 +58,7 @@ namespace Repositories.GraphGroups
                 if (ex.StatusCode == HttpStatusCode.NotFound)
                     return false;
 
-                await _log.LogMessageAsync(new LogMessage
+                await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = ex.GetBaseException().ToString(),
                     RunId = RunId
@@ -61,6 +66,89 @@ namespace Repositories.GraphGroups
 
                 throw;
             }
+        }
+        public async Task<bool> GroupExists(string groupName)
+        {
+            try
+            {
+                var groupCollectionPage = await _graphServiceClient.Groups.Request().Filter($"startswith(displayName, '{groupName}')").GetAsync();
+                return groupCollectionPage.Count > 0;
+            }
+            catch (ServiceException ex)
+            {
+                if (ex.StatusCode == HttpStatusCode.NotFound)
+                    return false;
+
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = RunId
+                });
+
+                throw;
+            }
+        }
+
+        public async Task<AzureADGroup> GetGroup(string groupName)
+        {
+            try
+            {
+                var groupCollectionPage = await _graphServiceClient.Groups.Request().Filter($"startswith(displayName, '{groupName}')").GetAsync();
+                return new AzureADGroup { ObjectId = new Guid(groupCollectionPage.CurrentPage[0].Id) };
+            }
+            catch (ServiceException ex)
+            {
+                if (ex.StatusCode == HttpStatusCode.NotFound)
+                    return null;
+
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = RunId
+                });
+
+                return null;
+            }
+        }
+
+        public async Task CreateGroup(string newGroupName)
+        {
+            try
+            {
+                if (await GroupExists(newGroupName))
+                {
+                    return;
+                }
+
+                var group = await _graphServiceClient.Groups.Request().AddAsync(new Group
+                {
+                    DisplayName = newGroupName,
+                    Description = $"Integration test group: {newGroupName}",
+                    MailNickname = new Guid().ToString(),
+                    MailEnabled = false,
+                    SecurityEnabled = true
+                });
+            }
+            catch (Exception e)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error creating group: {e}" });
+            }
+        }
+
+        public async Task<List<AzureADUser>> GetTenantUsers(int userCount)
+        {
+            var tenantUsers = new HashSet<AzureADUser>();
+
+            var userResponse = await _graphServiceClient.Users.Request().GetAsync();
+            tenantUsers.UnionWith(userResponse.CurrentPage.Select(graphUser => new AzureADUser { ObjectId = new Guid(graphUser.Id) }));
+
+            while (tenantUsers.Count < userCount)
+            {
+                userResponse = await userResponse.NextPageRequest.GetAsync();
+                tenantUsers.UnionWith(userResponse.CurrentPage.Select(graphUser => new AzureADUser { ObjectId = new Guid(graphUser.Id) }));
+            }
+
+            return tenantUsers.ToList();
         }
 
         public async Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId)
@@ -71,7 +159,7 @@ namespace Repositories.GraphGroups
             var servicePrincipal = (await _graphServiceClient.ServicePrincipals.Request().WithMaxRetry(MaxRetries).Filter($"appId eq '{appId}'").GetAsync()).Single();
             TrackMetrics(servicePrincipal.AdditionalData);
 
-            await _log.LogMessageAsync(new LogMessage
+            await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 RunId = RunId,
                 Message = $"Checking if app ID {appId} (service principal with object ID {servicePrincipal.Id}) owns the group {groupObjectId}."
@@ -95,7 +183,7 @@ namespace Repositories.GraphGroups
                 if (ex.StatusCode == HttpStatusCode.NotFound)
                     return false;
 
-                await _log.LogMessageAsync(new LogMessage
+                await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = ex.GetBaseException().ToString(),
                     RunId = RunId
@@ -104,7 +192,7 @@ namespace Repositories.GraphGroups
                 throw;
             }
 
-            await _log.LogMessageAsync(new LogMessage
+            await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 RunId = RunId,
                 Message = $"Checking if email owns the group {groupObjectId}."
@@ -115,7 +203,7 @@ namespace Repositories.GraphGroups
 
         public async Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
         {
-            await _log.LogMessageAsync(new LogMessage
+            await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 RunId = RunId,
                 Message = $"Getting owners of group {groupObjectId}."
@@ -141,7 +229,7 @@ namespace Repositories.GraphGroups
                     owners.AddRange(groupOwners.CurrentPage.OfType<User>());
                 }
 
-                await _log.LogMessageAsync(new LogMessage
+                await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     RunId = RunId,
                     Message = $"Retrieved{(top > 0 ? " top " : " ")}{owners.Count} owners of group {groupObjectId}."
@@ -151,7 +239,7 @@ namespace Repositories.GraphGroups
             }
             catch (ServiceException ex)
             {
-                await _log.LogMessageAsync(new LogMessage
+                await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = ex.GetBaseException().ToString(),
                     RunId = RunId
@@ -174,7 +262,7 @@ namespace Repositories.GraphGroups
                 if (ex.StatusCode == HttpStatusCode.NotFound)
                     return string.Empty;
 
-                await _log.LogMessageAsync(new LogMessage
+                await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = ex.GetBaseException().ToString(),
                     RunId = RunId
@@ -206,12 +294,12 @@ namespace Repositories.GraphGroups
                 }
 
                 var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, nonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
-                await _log.LogMessageAsync(new LogMessage { RunId = RunId, Message = $"From group {objectId}, read {toReturn.Count} users, and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
+                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = RunId, Message = $"From group {objectId}, read {toReturn.Count} users, and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
                 return toReturn;
             }
             catch (ServiceException ex)
             {
-                await _log.LogMessageAsync(new LogMessage
+                await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = ex.GetBaseException().ToString(),
                     RunId = RunId
@@ -228,13 +316,16 @@ namespace Repositories.GraphGroups
         /// <returns>group members page.</returns>
         public async Task<IGroupTransitiveMembersCollectionWithReferencesPage> GetGroupMembersPageByIdAsync(string groupId)
         {
-            return await _graphServiceClient
-                                    .Groups[groupId]
-                                    .TransitiveMembers
-                                    .Request()
-                                    .Top(MaxResultCount)
-                                    .WithMaxRetry(MaxRetries)
-                                    .GetAsync();
+            var retryPolicy = GetRetryPolicy();
+            return await retryPolicy.ExecuteAsync(async () =>
+            {
+                return await _graphServiceClient
+                                .Groups[groupId]
+                                .TransitiveMembers
+                                .Request()
+                                .Top(MaxResultCount)
+                                .GetAsync();
+            });
         }
 
         /// <summary>
@@ -247,10 +338,14 @@ namespace Repositories.GraphGroups
             IGroupTransitiveMembersCollectionWithReferencesPage groupMembersRef,
             string nextPageUrl)
         {
-            groupMembersRef.InitializeNextPageRequest(_graphServiceClient, nextPageUrl);
-            return await groupMembersRef
-                .NextPageRequest
-                .GetAsync();
+            var retryPolicy = GetRetryPolicy();
+            return await retryPolicy.ExecuteAsync(async () =>
+            {
+                groupMembersRef.InitializeNextPageRequest(_graphServiceClient, nextPageUrl);
+                return await groupMembersRef
+                                .NextPageRequest
+                                .GetAsync();
+            });
         }
 
         public async Task<(List<AzureADUser> users,
@@ -308,7 +403,7 @@ namespace Repositories.GraphGroups
             }
             catch (ServiceException ex)
             {
-                await _log.LogMessageAsync(new LogMessage
+                await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = "Unable to retrieve group members.\n" + ex.GetBaseException().ToString(),
                     RunId = RunId
@@ -423,7 +518,7 @@ namespace Repositories.GraphGroups
 
         private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessBatch(ConcurrentQueue<ChunkOfUsers> queue, List<ChunkOfUsers> toSend, MakeBulkRequest makeRequest, int threadNumber)
         {
-            await _log.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: Sending a batch of {toSend.Count} requests.", RunId = RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: Sending a batch of {toSend.Count} requests.", RunId = RunId }, VerbosityLevel.DEBUG);
             int requeued = 0;
             bool hasUnrecoverableErrors = false;
             var successfulRequests = toSend.SelectMany(x => x.ToSend).ToList().Count;
@@ -444,6 +539,7 @@ namespace Repositories.GraphGroups
 
                     if (chunkToRetry.ShouldRetry)
                     {
+                        // Not found
                         if (chunkToRetry.ToSend.Count > 1
                             && !string.IsNullOrWhiteSpace(idToRetry.AzureObjectId))
                         {
@@ -460,17 +556,39 @@ namespace Repositories.GraphGroups
 
                                 requeued++;
                                 queue.Enqueue(notFoundChunk.UpdateIdForRetry(threadNumber));
-                                await _log.LogMessageAsync(new LogMessage { Message = $"Queued {notFoundChunk.Id} from {chunkToRetry.Id}", RunId = RunId });
+                                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Queued {notFoundChunk.Id} from {chunkToRetry.Id}", RunId = RunId });
                             }
                         }
 
-                        requeued++;
-                        var originalId = chunkToRetry.Id;
-                        queue.Enqueue(chunkToRetry.UpdateIdForRetry(threadNumber));
-                        await _log.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId} as {chunkToRetry.Id}", RunId = RunId });
+                        // Break down request for individual retries
+                        if (chunkToRetry.ToSend.Count > 1 && idToRetry.ResponseCode == ResponseCode.IndividualRetry)
+                        {
+                            var chunksOfUsers = chunkToRetry.ToSend.Select(x => new ChunkOfUsers
+                            {
+                                Id = GetNewChunkId(),
+                                ToSend = new List<AzureADUser> { x }
+                            });
+
+                            foreach (var chunk in chunksOfUsers)
+                            {
+                                requeued++;
+                                queue.Enqueue(chunk.UpdateIdForRetry(threadNumber));
+                                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Queued {chunk.Id} from {chunkToRetry.Id}", RunId = RunId });
+                            }
+
+                            chunkToRetry.ToSend.Clear();
+                        }
+
+                        if (chunkToRetry.ToSend.Count > 0)
+                        {
+                            requeued++;
+                            var originalId = chunkToRetry.Id;
+                            queue.Enqueue(chunkToRetry.UpdateIdForRetry(threadNumber));
+                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId} as {chunkToRetry.Id}", RunId = RunId });
+                        }
                     }
                 }
-                await _log.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.", RunId = RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.", RunId = RunId }, VerbosityLevel.DEBUG);
             }
             catch (ServiceException ex)
             {
@@ -480,7 +598,7 @@ namespace Repositories.GraphGroups
                 // but if a chunk has already been queued five times or so, drop it on the floor so we don't go forever
                 // in the future, log the exception and which ones get dropped.
 
-                await _log.LogMessageAsync(new LogMessage
+                await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = ex.GetBaseException().ToString(),
                     RunId = RunId
@@ -493,7 +611,7 @@ namespace Repositories.GraphGroups
                         var originalId = chunk.Id;
                         queue.Enqueue(chunk.UpdateIdForRetry(threadNumber));
 
-                        await _log.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId} as {chunk.Id}", RunId = RunId });
+                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId} as {chunk.Id}", RunId = RunId });
                     }
                 }
             }
@@ -506,14 +624,14 @@ namespace Repositories.GraphGroups
         {
             try
             {
-                await _log.LogMessageAsync(new LogMessage { Message = $"Sending requests {string.Join(",", tosend.BatchRequestSteps.Keys)}.", RunId = RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sending requests {string.Join(",", tosend.BatchRequestSteps.Keys)}.", RunId = RunId });
 
                 var response = await _graphServiceClient.Batch.Request().PostAsync(tosend);
                 return GetStepIdsToRetry(await response.GetResponsesAsync());
             }
             catch (ServiceException ex)
             {
-                await _log.LogMessageAsync(new LogMessage
+                await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = ex.GetBaseException().ToString(),
                     RunId = RunId
@@ -542,6 +660,7 @@ namespace Repositories.GraphGroups
 
             var resourceUnitsUsed = _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed));
             var throttleLimitPercentage = _telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage));
+            var writesUsed = _telemetryClient.GetMetric(nameof(Metric.WritesUsed));
 
             foreach (var kvp in responses)
             {
@@ -556,23 +675,49 @@ namespace Repositories.GraphGroups
                 if (response.Headers.TryGetValues(ThrottlePercentageHeader, out var throttleValues))
                     throttleLimitPercentage.TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
 
-                await _log.LogMessageAsync(new LogMessage
+                await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = $"Response - RequestId:{kvp.Key} - StatusCode:{status} - Content:{content}",
                     RunId = RunId
-                });
+                }, VerbosityLevel.DEBUG);
 
 
                 // Note that the ones with empty bodies mean "this response is okay and we don't have to do anything about it."
                 if (status == HttpStatusCode.BadRequest && IsOkayError(content)) { }
                 else if (status == HttpStatusCode.NotFound && (content).Contains("does not exist or one of its queried reference-property objects are not present."))
                 {
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"Regex Expression: {_userNotFound} and Content: {content}",
+                        RunId = RunId
+                    });
+
                     var match = _userNotFound.Match(content);
                     var userId = default(string);
 
                     if (match.Success)
                     {
                         userId = match.Groups["id"].Value;
+                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        {
+                            Message = $"User ID is found",
+                            RunId = RunId
+                        });
+                    }
+
+                    else
+                    {
+                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        {
+                            Message = $"User ID is missing",
+                            RunId = RunId
+                        });
+
+                        yield return new RetryResponse
+                        {
+                            RequestId = kvp.Key,
+                            ResponseCode = ResponseCode.Ok
+                        };
                     }
 
                     yield return new RetryResponse
@@ -583,21 +728,50 @@ namespace Repositories.GraphGroups
                     };
 
                 }
-                else if (_isOkay.Contains(status)) { }
+                else if (_isOkay.Contains(status)) { writesUsed.TrackValue(1); }
                 else if (status == HttpStatusCode.TooManyRequests)
                 {
                     // basically, each request in the batch will probably say it's been throttled
                     // but we only need to wait the first time.
+                    // this isn't strictly true- i believe that the count gets reset if any other threads send requests
+                    // but it's true enough until we can engineer something more robust
+
                     if (!beenThrottled)
                     {
-                        await HandleThrottling(response.Headers.RetryAfter);
+                        // basically, go ahead and start waiting while we log the throttling info
+                        // add a few seconds to account for other 419s that happen before we can send the signal to pause.
+                        var throttleWait = CalculateThrottleWait(response.Headers.RetryAfter) + TimeSpan.FromSeconds(10);
+
+                        var startThrottling = Task.Delay(throttleWait);
+                        var gotThrottleInfo = response.Headers.TryGetValues(ThrottleInfoHeader, out var throttleInfo);
+                        var gotThrottleScope = response.Headers.TryGetValues(ThrottleScopeHeader, out var throttleScope);
+                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        {
+                            Message = string.Format("Got 429 throttled. Waiting {0} seconds. Delta: {1} Date: {2} Reason: {3} Scope: {4}",
+                                throttleWait.TotalSeconds,
+                                response.Headers.RetryAfter.Delta != null ? response.Headers.RetryAfter.Delta.ToString() : "(none)",
+                                response.Headers.RetryAfter.Date != null ? response.Headers.RetryAfter.Date.ToString() : "(none)",
+                                gotThrottleInfo ? string.Join(',', throttleInfo) : "(none)",
+                                gotThrottleScope ? string.Join(',', throttleScope) : "(none)"),
+                            RunId = RunId
+                        });
+                        await startThrottling;
                         beenThrottled = true;
                     }
 
+                    // it's possible for only some requests in a batch to be throttled, so only retry the ones that were throttled.
                     yield return new RetryResponse
                     {
                         RequestId = kvp.Key,
-                        ResponseCode = ResponseCode.Ok
+                        ResponseCode = ResponseCode.IndividualRetry
+                    };
+                }
+                else if (status == HttpStatusCode.Forbidden && content.Contains("Guests users are not allowed to join"))
+                {
+                    yield return new RetryResponse
+                    {
+                        RequestId = kvp.Key,
+                        ResponseCode = ResponseCode.IndividualRetry
                     };
                 }
                 else if (_shouldRetry.Contains(status))
@@ -610,7 +784,7 @@ namespace Repositories.GraphGroups
                 }
                 else
                 {
-                    await _log.LogMessageAsync(new LogMessage { Message = $"Got an unexpected error from Graph, stopping all processing for current job: {status} {response.ReasonPhrase} {content}.", RunId = RunId });
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Got an unexpected error from Graph, stopping all processing for current job: {status} {response.ReasonPhrase} {content}.", RunId = RunId });
                     yield return new RetryResponse
                     {
                         RequestId = kvp.Key,
@@ -639,12 +813,14 @@ namespace Repositories.GraphGroups
             error = JObject.Parse(error)["error"]["message"].Value<string>();
             return _okayErrorMessages.Any(x => error.Contains(x));
         }
-        private static Task HandleThrottling(RetryConditionHeaderValue wait)
+        private static TimeSpan CalculateThrottleWait(RetryConditionHeaderValue wait)
         {
-            TimeSpan waitFor = TimeSpan.FromSeconds(120);
+            // we're much more likely to hit the write quota, so default to the 2 minute and 30 second wait
+            // https://docs.microsoft.com/en-us/graph/throttling#pattern
+            TimeSpan waitFor = TimeSpan.FromSeconds(150);
             if (wait.Delta.HasValue) { waitFor = wait.Delta.Value; }
             if (wait.Date.HasValue) { waitFor = wait.Date.Value - DateTimeOffset.UtcNow; }
-            return Task.Delay(waitFor);
+            return waitFor;
         }
 
         private HttpRequestMessage MakeBulkAddRequest(List<AzureADUser> batch, Guid targetGroup)
@@ -743,7 +919,7 @@ namespace Repositories.GraphGroups
                 if (ex.StatusCode == HttpStatusCode.NotFound)
                     return false;
 
-                await _log.LogMessageAsync(new LogMessage
+                await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = ex.GetBaseException().ToString(),
                     RunId = RunId
@@ -751,6 +927,25 @@ namespace Repositories.GraphGroups
 
                 throw;
             }
+        }
+
+        private AsyncRetryPolicy GetRetryPolicy()
+        {
+            var retryLimit = 4;
+            var retryPolicy = Policy.Handle<ServiceException>()
+                    .WaitAndRetryAsync(
+                       retryCount: retryLimit,
+                       retryAttempt => TimeSpan.FromMinutes(2),
+                       onRetry: async (ex, waitTime, currentRetry, context) =>
+                       {
+                           await _loggingRepository.LogMessageAsync(new LogMessage
+                           {
+                               Message = $"Got a transient exception. Retrying. This was try {currentRetry} out of {retryLimit}.\n{ex}"
+                           });
+                       }
+                    );
+
+            return retryPolicy;
         }
     }
 
@@ -761,3 +956,4 @@ namespace Repositories.GraphGroups
         public string AzureObjectId { get; set; }
     }
 }
+

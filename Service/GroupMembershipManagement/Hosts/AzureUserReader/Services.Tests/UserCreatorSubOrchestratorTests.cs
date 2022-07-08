@@ -42,7 +42,7 @@ namespace Services.Tests
                 }
             };
 
-            loggingRepository.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<string>(), It.IsAny<string>()));
+            loggingRepository.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()));
             context.Setup(x => x.GetInput<AzureUserCreatorRequest>()).Returns(request);
 
             var currentProfilePage = default(List<GraphProfileInformation>);

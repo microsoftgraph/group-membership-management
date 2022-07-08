@@ -1,0 +1,61 @@
+parameters:
+- name: solutionAbbreviation
+  type: string
+- name: tenantId
+  type: string
+- name: subscriptionId
+  type: string
+- name: keyVaultReaders
+  type: object
+- name: environmentAbbreviation
+  type: string
+- name: location
+  type: string
+- name: serviceConnection
+  type: string
+- name: dependsOn
+  type: object
+- name: stageName
+  type: string
+- name: condition
+  type: object
+
+stages:
+  - stage: ${{ parameters.stageName }}
+    dependsOn: ${{ parameters.dependsOn }}
+    condition: ${{ parameters.condition }}
+
+    jobs:
+    - deployment: ${{ parameters.stageName }}_DeployWebApp
+      displayName: ${{ parameters.stageName }}_DeployWebApp
+      pool:
+        vmImage: "Ubuntu-latest"
+      # creates an environment if it doesn't exist
+      variables:
+        data_storageAccountName: $[ dependencies.${{ parameters.stageName }}_DeployResources.outputs['${{ parameters.stageName }}_DeployResources.dataVariables.data_storageAccountName'] ]
+        ${{ if in(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
+          buildType: 'release'
+        ${{ if notIn(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
+          buildType: 'debug'
+      environment: ${{ parameters.solutionAbbreviation }}-${{ parameters.environmentAbbreviation }}
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+
+            - task: DownloadBuildArtifacts@0
+              inputs:
+                buildType: 'current'
+                downloadType: 'single'
+                artifactName: $(Build.BuildNumber)_$(buildType)
+
+            - template: deploy-webapp.yml
+              parameters:
+                solutionAbbreviation: ${{ parameters.solutionAbbreviation }}
+                environmentAbbreviation: ${{ parameters.environmentAbbreviation }}
+                serviceConnection: ${{ parameters.serviceConnection }}
+                root: $(System.ArtifactsDirectory)/$(Build.BuildNumber)_$(buildType)
+                subscriptionId: ${{ parameters.subscriptionId }}
+                location: ${{ parameters.location }}
+                tenantId: ${{ parameters.tenantId }}
+                name: 'GroupTableManager'

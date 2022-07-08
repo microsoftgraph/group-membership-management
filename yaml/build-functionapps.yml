@@ -41,6 +41,7 @@ stages:
 
         - task: DotNetCoreCLI@2
           displayName: 'dotnet build ${{ app.function.name }} function'
+          retryCountOnTaskFailure: 3
           inputs:
             command: build
             projects: 'Service/GroupMembershipManagement/Hosts/${{ app.function.name }}/Function/*.csproj'
@@ -48,6 +49,7 @@ stages:
 
         - task: DotNetCoreCLI@2
           displayName: 'dotnet test ${{ app.function.name }} function'
+          retryCountOnTaskFailure: 3
           inputs:
             command: test
             projects: 'Service/GroupMembershipManagement/Hosts/${{ app.function.name }}/Services.Tests'
@@ -58,7 +60,7 @@ stages:
                         /p:thresholdType=line
                         /p:thresholdStat=total
                         /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\${{ app.function.name }}\
-                        /p:Exclude=[Repositories.*]*%2c[Entities]*%2c[*.Entities]*%2c[*.Tests]*%2c[*.Mocks]*%2c[Common.DependencyInjection]*%2c[Hosts.FunctionBase]*'
+                        /p:Exclude=[Repositories.*]*%2c[Entities]*%2c[*.Entities]*%2c[*.Tests]*%2c[*.Mocks]*%2c[Common.DependencyInjection]*%2c[Hosts.FunctionBase]*%2c[DIConcreteTypes]*'
           condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
         - task: PublishCodeCoverageResults@1
@@ -93,14 +95,6 @@ stages:
             SourceFolder: $(System.DefaultWorkingDirectory)/functions
             Contents: ${{ app.function.name }}.zip
             TargetFolder: '$(build.artifactstagingdirectory)/function_packages/'
-
-        - powershell: |
-                  $bicepTemplates = Get-ChildItem -Filter "template.bicep" -Recurse
-                  foreach($template in $bicepTemplates)
-                  {
-                    az bicep build --file $template.FullName
-                  }
-          displayName: 'Compile Bicep templates'
 
         - task: CopyFiles@2
           displayName: 'copy ${{ app.function.name }} function arm templates'

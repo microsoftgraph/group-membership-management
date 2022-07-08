@@ -3,7 +3,6 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
@@ -22,14 +21,14 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName(nameof(GroupVerifierFunction))]
-        public async Task<bool> VerifyGroup([ActivityTrigger] SyncJob syncJob, ILogger log)
+        public async Task<bool> VerifyGroupAsync([ActivityTrigger] SyncJob syncJob)
         {
             var canWriteToGroup = false;
             if (syncJob != null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupVerifierFunction)} function started", RunId = syncJob.RunId });
-                canWriteToGroup = await _jobTriggerService.CanWriteToGroup(syncJob);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupVerifierFunction)} function completed", RunId = syncJob.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupVerifierFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+                canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(syncJob);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupVerifierFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
             }
             return canWriteToGroup;
         }

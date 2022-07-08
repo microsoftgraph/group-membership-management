@@ -27,11 +27,6 @@ namespace Entities
         public string Requestor { get; set; }
 
         /// <summary>
-        /// Synchronization type
-        /// </summary>
-        public string Type { get; set; }
-
-        /// <summary>
         /// Office group AD id
         /// </summary>
         public Guid TargetOfficeGroupId { get; set; }
@@ -59,9 +54,6 @@ namespace Entities
         [IgnoreLogging]
         public DateTime StartDate { get; set; }
 
-        [IgnoreLogging]
-        public bool Enabled { get; set; }
-
         /// <summary>
         /// Threshold percentage for users being added
         /// </summary>
@@ -87,9 +79,9 @@ namespace Entities
         [IgnoreLogging]
         public DateTime DryRunTimeStamp
         {
-            get 
-            { 
-                return _dryRunTimeStamp;  
+            get
+            {
+                return _dryRunTimeStamp;
             }
             set
             {

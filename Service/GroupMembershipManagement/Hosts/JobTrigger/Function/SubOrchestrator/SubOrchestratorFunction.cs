@@ -3,9 +3,9 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
-using Services.Contracts;
 using System;
 using System.Threading.Tasks;
 
@@ -20,21 +20,57 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName(nameof(SubOrchestratorFunction))]
-        public async Task RunSubOrchestrator(
-            [OrchestrationTrigger] IDurableOrchestrationContext context,
-            ILogger log)
+        public async Task RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
+
             var syncJob = context.GetInput<SyncJob>();
-            _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = syncJob.RunId });
-            var groupName = await context.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), syncJob);
-            await context.CallActivityAsync(nameof(EmailSenderFunction), groupName);
+
+            if (!context.IsReplaying)
+                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(syncJob.Query))
+                {
+                    var query = JToken.Parse(syncJob.Query);
+                }
+                else
+                {
+                    if (!context.IsReplaying)
+                        _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Job query is empty for job RowKey:{syncJob.RowKey}", RunId = syncJob.RunId });
+
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
+                    return;
+                }
+            }
+            catch (JsonReaderException)
+            {
+                if (!context.IsReplaying)
+                    _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"JSON query is not valid for job RowKey:{syncJob.RowKey}", RunId = syncJob.RunId });
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
+                return;
+            }
+
+            var groupInformation = await context.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), syncJob);
+            if (string.IsNullOrEmpty(groupInformation.Name))
+            {
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                new JobStatusUpdaterRequest { Status = SyncStatus.DestinationGroupNotFound, SyncJob = syncJob });
+                return;
+            }
+
+            await context.CallActivityAsync(nameof(EmailSenderFunction), groupInformation);
             var canWriteToGroup = await context.CallActivityAsync<bool>(nameof(GroupVerifierFunction), syncJob);
-            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { CanWriteToGroup = canWriteToGroup, SyncJob = syncJob });
+            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                            new JobStatusUpdaterRequest { Status = canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, SyncJob = syncJob });
+
             if (canWriteToGroup)
             {
                 await context.CallActivityAsync(nameof(TopicMessageSenderFunction), syncJob);
             }
-            _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = syncJob.RunId });
+
+            if (!context.IsReplaying)
+                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
         }
     }
 }

@@ -22,7 +22,7 @@ namespace Hosts.GraphUpdater
         public async Task LogMessageAsync([ActivityTrigger] LoggerRequest request)
         {
             _loggingRepository.SyncJobProperties = request.SyncJob?.ToDictionary();
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = request.Message, RunId = request.SyncJob?.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = request.Message, RunId = request.SyncJob?.RunId }, request.Verbosity);
         }
     }
 }

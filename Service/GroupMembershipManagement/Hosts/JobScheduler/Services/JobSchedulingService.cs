@@ -21,6 +21,7 @@ namespace Services
         public readonly int MINUTES_IN_HOUR = 60;
         public readonly int SECONDS_IN_MINUTE = 60;
 
+        private readonly IJobSchedulerConfig _jobSchedulerConfig;
         private readonly ISyncJobRepository _syncJobRepository;
         private readonly IRuntimeRetrievalService _runtimeRetrievalService;
         private readonly ILoggingRepository _loggingRepository;
@@ -33,9 +34,37 @@ namespace Services
         {
             START_TIME_DELAY_MINUTES = jobSchedulerConfig.StartTimeDelayMinutes;
             BUFFER_SECONDS = jobSchedulerConfig.DelayBetweenSyncsSeconds;
+            _jobSchedulerConfig = jobSchedulerConfig;
             _syncJobRepository = syncJobRepository;
             _runtimeRetrievalService = runtimeRetrievalService;
             _loggingRepository = loggingRepository;
+        }
+
+        public async Task<List<SchedulerSyncJob>> GetJobsToUpdateAsync()
+        {
+            var jobs = await GetAllSyncJobsAsync(_jobSchedulerConfig.IncludeFutureJobs);
+            return jobs;
+        }
+
+        public async Task ResetJobsAsync(List<SchedulerSyncJob> jobs)
+        {
+            var newStartTime = DateTime.UtcNow.AddDays(_jobSchedulerConfig.DaysToAddForReset);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Updating {jobs.Count} jobs to have StartDate of {newStartTime}" });
+
+            List<SchedulerSyncJob> updatedJobs = ResetJobStartTimes(jobs, newStartTime, _jobSchedulerConfig.IncludeFutureJobs);
+            await UpdateSyncJobsAsync(updatedJobs);
+
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Updated {jobs.Count} jobs to have StartDate of {newStartTime}" });
+        }
+
+        public async Task DistributeJobsAsync(List<SchedulerSyncJob> jobs)
+        {
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Distributing {jobs.Count} jobs" });
+
+            List<SchedulerSyncJob> updatedJobs = await DistributeJobStartTimesAsync(jobs);
+            await UpdateSyncJobsAsync(updatedJobs);
+
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Distributed {jobs.Count} jobs" });
         }
 
         public async Task<List<SchedulerSyncJob>> GetAllSyncJobsAsync(bool includeFutureStartDates = false)
@@ -44,7 +73,7 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = message });
 
             var schedulerSyncJobs = new List<SchedulerSyncJob>();
-            var jobs = _syncJobRepository.GetSyncJobsAsync(SyncStatus.All, false, false);
+            var jobs = _syncJobRepository.GetSyncJobsAsync(SyncStatus.All, false);
             await foreach (var job in jobs)
             {
                 if (includeFutureStartDates || job.StartDate.CompareTo(DateTime.UtcNow) < 0)
@@ -109,7 +138,7 @@ namespace Services
         }
 
         private async Task<List<SchedulerSyncJob>> DistributeJobStartTimesForPeriod(
-            List<SchedulerSyncJob> schedulerSyncJobs, 
+            List<SchedulerSyncJob> schedulerSyncJobs,
             int periodInHours,
             Dictionary<Guid, double> runtimeMap)
         {

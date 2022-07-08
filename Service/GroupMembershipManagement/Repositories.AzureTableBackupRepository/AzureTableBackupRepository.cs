@@ -180,10 +180,19 @@ namespace Repositories.AzureTableBackupRepository
             if (backupSettings.SourceTableName == "*")
             {
                 var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, tableName);
-                var query = table.CreateQuery<TableEntity>().AsQueryable().Where(e => e.Timestamp >= cutOffDate);
-                var results = table.ExecuteQuery(query.AsTableQuery()).ToList();
 
-                if (results.Count == 0)
+                // Do not delete empty tables
+                var takeOneQuery = table.CreateQuery<TableEntity>().AsQueryable().Take(1);
+                var takeOneResults = table.ExecuteQuery(takeOneQuery.AsTableQuery()).ToList();
+                if(takeOneResults.Count == 0)
+                {
+                    return false;
+                }
+
+                var cutoffQuery = table.CreateQuery<TableEntity>().AsQueryable().Where(e => e.Timestamp >= cutOffDate).Take(1);
+                var cutoffResults = table.ExecuteQuery(cutoffQuery.AsTableQuery()).ToList();
+
+                if (cutoffResults.Count == 0)
                 {
                     return true;
                 }
@@ -295,7 +304,7 @@ namespace Repositories.AzureTableBackupRepository
             }
 
         }
-        
+
         private async Task<CloudTable> GetCloudTableAsync(string connectionString, string tableName)
         {
             var cloudTableClient = await GetCloudTableClientAsync(connectionString);

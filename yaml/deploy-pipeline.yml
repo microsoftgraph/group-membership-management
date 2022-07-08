@@ -3,6 +3,8 @@ parameters:
   type: string
 - name: tenantId
   type: string
+- name: subscriptionId
+  type: string
 - name: keyVaultReaders
   type: object
 - name: environmentAbbreviation
@@ -49,25 +51,30 @@ stages:
                root: $(Pipeline.Workspace)/$(Build.BuildNumber)_$(buildType)
                location: ${{ parameters.location }}
                tenantId: ${{ parameters.tenantId }}
+               subscriptionId: ${{ parameters.subscriptionId }}
                keyVaultReaders: ${{ parameters.keyVaultReaders }}
 
-    - job: ${{ parameters.stageName }}_DeployFunctions
-      dependsOn: ${{ parameters.stageName }}_DeployResources
-      variables:
-        data_storageAccountName: $[ dependencies.DeployResources.outputs['DeployResources.dataVariables.data_storageAccountName'] ]
-        ${{ if in(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
-          buildType: 'release'
-        ${{ if notIn(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
-          buildType: 'debug'
-      steps:
+    - ${{ each app in parameters.functionApps }}:
+      - job: ${{ parameters.stageName }}_DeployFunction_${{ app.function.name }}
+        dependsOn:
+        - ${{ parameters.stageName }}_DeployResources
+        - ${{ if app.function.dependsOn }}:
+          - ${{ each dependency in app.function.dependsOn }}:
+            - ${{ parameters.stageName }}_DeployFunction_${{ dependency }}
+        variables:
+          data_storageAccountName: $[ dependencies.${{ parameters.stageName }}_DeployResources.outputs['${{ parameters.stageName }}_DeployResources.dataVariables.data_storageAccountName'] ]
+          ${{ if in(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
+            buildType: 'release'
+          ${{ if notIn(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
+            buildType: 'debug'
+        steps:
 
-        - task: DownloadBuildArtifacts@0
-          inputs:
-            buildType: 'current'
-            downloadType: 'single'
-            artifactName: $(Build.BuildNumber)_$(buildType)
+          - task: DownloadBuildArtifacts@0
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: $(Build.BuildNumber)_$(buildType)
 
-        - ${{ each func in parameters.functionApps }}:
           - template: deploy-functionapps.yml
             parameters:
               solutionAbbreviation: ${{ parameters.solutionAbbreviation }}
@@ -75,5 +82,6 @@ stages:
               serviceConnection: ${{ parameters.serviceConnection }}
               location: ${{ parameters.location }}
               tenantId: ${{ parameters.tenantId }}
+              subscriptionId: ${{ parameters.subscriptionId }}
               root: $(System.ArtifactsDirectory)/$(Build.BuildNumber)_$(buildType)
-              name: ${{ func.name }}
+              name: ${{ app.function.name }}

@@ -124,7 +124,7 @@ namespace Services.Tests
             {
                 Assert.AreEqual(jobs[i].TargetOfficeGroupId, updatedJobs[i].TargetOfficeGroupId);
                 Assert.IsTrue(jobs[i].StartDate < dateTimeNow);
-                Assert.IsTrue(updatedJobs[i].StartDate >= dateTimeNow.AddSeconds(60 * START_TIME_DELAY_MINUTES + 
+                Assert.IsTrue(updatedJobs[i].StartDate >= dateTimeNow.AddSeconds(60 * START_TIME_DELAY_MINUTES +
                     i * (DEFAULT_RUNTIME_SECONDS + BUFFER_SECONDS)));
             }
         }
@@ -134,7 +134,7 @@ namespace Services.Tests
         {
             int defaultTenMinuteRuntime = 600;
             var longerDefaultRuntimeService = new DefaultRuntimeRetrievalService(defaultTenMinuteRuntime);
-            
+
             JobSchedulerConfig jobSchedulerConfig = new JobSchedulerConfig(true, 0, true, false, START_TIME_DELAY_MINUTES, BUFFER_SECONDS, DEFAULT_RUNTIME_SECONDS); ;
             JobSchedulingService jobSchedulingService = new JobSchedulingService(
                 jobSchedulerConfig,
@@ -214,7 +214,6 @@ namespace Services.Tests
             {
                 var job = new SchedulerSyncJob
                 {
-                    Enabled = true,
                     Requestor = $"requestor_{i}@email.com",
                     PartitionKey = DateTime.UtcNow.ToString("MMddyyyy"),
                     RowKey = Guid.NewGuid().ToString(),
@@ -223,7 +222,6 @@ namespace Services.Tests
                     StartDate = StartDateBase.AddDays(-1 * i),
                     Status = SyncStatus.Idle.ToString(),
                     TargetOfficeGroupId = Guid.NewGuid(),
-                    Type = "Any",
                     LastRunTime = LastRunTimeBase.AddDays(-1 * i)
                 };
 

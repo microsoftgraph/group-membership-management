@@ -21,6 +21,7 @@ namespace Repositories.Logging
 {
     public class LoggingRepository : ILoggingRepository
     {
+        private readonly IAppConfigVerbosity _appConfigVerbosity;
         private readonly string _workSpaceId;
         private readonly string _sharedKey;
         private readonly string _location;
@@ -34,12 +35,14 @@ namespace Repositories.Logging
         public Dictionary<string, string> SyncJobProperties { get; set; }
         public bool DryRun { get; set; } = false;
 
-        public LoggingRepository(ILogAnalyticsSecret<LoggingRepository> logAnalytics)
+        public LoggingRepository(ILogAnalyticsSecret<LoggingRepository> logAnalytics, IAppConfigVerbosity appConfigVerbosity)
         {
             if (logAnalytics == null) throw new ArgumentNullException(nameof(logAnalytics));
             _workSpaceId = logAnalytics.WorkSpaceId ?? throw new ArgumentNullException(nameof(logAnalytics.WorkSpaceId));
             _sharedKey = logAnalytics.SharedKey ?? throw new ArgumentNullException(nameof(logAnalytics.SharedKey));
             _location = logAnalytics.Location ?? throw new ArgumentNullException(nameof(logAnalytics.Location));
+
+            _appConfigVerbosity = appConfigVerbosity ?? throw new ArgumentNullException(nameof(appConfigVerbosity));
         }
 
         private static HttpClient MakeClient(string logType)
@@ -49,9 +52,12 @@ namespace Repositories.Logging
             return client;
         }
 
-        public async Task LogMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
+        public async Task LogMessageAsync(LogMessage logMessage, VerbosityLevel verbosityLevel = VerbosityLevel.INFO, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
         {
-            await CommonLogMessageAsync(logMessage, _httpClient, caller, file);
+            if (verbosityLevel <= _appConfigVerbosity.Verbosity)
+            {
+                await CommonLogMessageAsync(logMessage, _httpClient, caller, file);
+            }
         }
 
         public async Task LogPIIMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
@@ -64,6 +70,9 @@ namespace Repositories.Logging
             var properties = CreatePropertiesDictionary(logMessage);
             properties.Add("location", _location);
             properties.Add("DryRun", DryRun.ToString());
+
+            var slot = Environment.GetEnvironmentVariable("APPSETTING_WEBSITE_SLOT_NAME", EnvironmentVariableTarget.Process);
+            properties.Add("slot", slot);
 
             if (!string.IsNullOrWhiteSpace(caller))
                 properties.Add("event", caller);

@@ -5,7 +5,9 @@ using Entities.ServiceBus;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Graph;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -13,6 +15,7 @@ using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Hosts.GraphUpdater
@@ -23,195 +26,156 @@ namespace Hosts.GraphUpdater
         private readonly TelemetryClient _telemetryClient;
         private readonly IGraphUpdaterService _graphUpdaterService = null;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
-        private readonly IThresholdConfig _thresholdConfig = null;
-        private readonly bool _isDryRunEnabled;
+        private readonly IGMMResources _gmmResources = null;
+
         enum Metric
         {
             SyncComplete,
-            SyncJobTimeElapsedSeconds,
-            ProjectedMemberCount
+            SyncJobTimeElapsedSeconds
         }
 
         public OrchestratorFunction(
-            ILoggingRepository loggingRepository,
             TelemetryClient telemetryClient,
             IGraphUpdaterService graphUpdaterService,
-            IDryRunValue dryRun,
             IEmailSenderRecipient emailSenderAndRecipients,
-            IThresholdConfig thresholdConfig)
+            IGMMResources gmmResources)
         {
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
-            _isDryRunEnabled = loggingRepository.DryRun = dryRun != null ? dryRun.DryRunEnabled : throw new ArgumentNullException(nameof(dryRun));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
-            _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
+            _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
-        public async Task<GroupMembershipMessageResponse> RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        public async Task<OrchestrationRuntimeStatus> RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             GroupMembership groupMembership = null;
-            GraphUpdaterFunctionRequest graphRequest = null;
-            GroupMembershipMessageResponse messageResponse = null;
+            MembershipHttpRequest graphRequest = null;
             SyncJob syncJob = null;
+            var syncCompleteEvent = new SyncCompleteCustomEvent();
 
-            graphRequest = context.GetInput<GraphUpdaterFunctionRequest>();
-            groupMembership = JsonConvert.DeserializeObject<GroupMembership>(graphRequest.Message);
-            graphRequest.RunId = groupMembership.RunId;
+            graphRequest = context.GetInput<MembershipHttpRequest>();
+
 
             try
             {
                 syncJob = await context.CallActivityAsync<SyncJob>(nameof(JobReaderFunction),
                                                        new JobReaderRequest
                                                        {
-                                                           JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                                                           JobRowKey = groupMembership.SyncJobRowKey,
-                                                           RunId = groupMembership.RunId
+                                                           JobPartitionKey = graphRequest.SyncJob.PartitionKey,
+                                                           JobRowKey = graphRequest.SyncJob.RowKey,
+                                                           RunId = graphRequest.SyncJob.RunId.GetValueOrDefault()
                                                        });
 
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob });
+                var queries = JArray.Parse(syncJob.Query);
+                var queryTypes = queries.SelectTokens("$..type")
+                                        .Select(x => x.Value<string>())
+                                        .ToList();
 
-                messageResponse = await context.CallActivityAsync<GroupMembershipMessageResponse>(nameof(MessageCollectorFunction), graphRequest);
+                syncCompleteEvent.Type = queryTypes.Distinct().Count() == 1 ? queryTypes[0] : "Hybrid";
+                syncCompleteEvent.TargetOfficeGroupId = syncJob.TargetOfficeGroupId.ToString();
+                syncCompleteEvent.RunId = syncJob.RunId.ToString();
+                syncCompleteEvent.IsDryRunEnabled = false.ToString();
+                syncCompleteEvent.ProjectedMemberCount = graphRequest.ProjectedMemberCount.HasValue ? graphRequest.ProjectedMemberCount.ToString() : "Not provided";
 
-                if (graphRequest.IsCancelationRequest)
+                var fileContent = await context.CallActivityAsync<string>(nameof(FileDownloaderFunction),
+                                                                            new FileDownloaderRequest
+                                                                            {
+                                                                                FilePath = graphRequest.FilePath,
+                                                                                SyncJob = syncJob
+                                                                            });
+
+                groupMembership = JsonConvert.DeserializeObject<GroupMembership>(fileContent);
+
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Canceling session {graphRequest.MessageSessionId}", SyncJob = syncJob });
+                    Message = $"Received membership from StarterFunction and will sync the obtained " +
+                                                                                              $"{groupMembership.SourceMembers.Distinct().Count()} distinct members",
+                    SyncJob = syncJob
+                });
 
+                var isValidGroup = await context.CallActivityAsync<bool>(nameof(GroupValidatorFunction),
+                                           new GroupValidatorRequest
+                                           {
+                                               RunId = groupMembership.RunId,
+                                               GroupId = groupMembership.Destination.ObjectId,
+                                               JobPartitionKey = groupMembership.SyncJobPartitionKey,
+                                               JobRowKey = groupMembership.SyncJobRowKey
+                                           });
+
+                if (!isValidGroup)
+                {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                        CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
-                                                                        SyncStatus.Error, groupMembership.MembershipObtainerDryRunEnabled, syncJob.ThresholdViolations, groupMembership.RunId));
+                                    CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
+                                                                    SyncStatus.DestinationGroupNotFound, syncJob.ThresholdViolations, groupMembership.RunId));
 
-                    return messageResponse;
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function did not complete", SyncJob = syncJob });
+
+                    return OrchestrationRuntimeStatus.Completed;
                 }
 
-                if (messageResponse.ShouldCompleteMessage)
+                var isInitialSync = syncJob.LastRunTime == DateTime.FromFileTimeUtc(0);
+                syncCompleteEvent.IsInitialSync = isInitialSync.ToString();
+                var membersToAdd = groupMembership.SourceMembers.Where(x => x.MembershipAction == MembershipAction.Add).Distinct().ToList();
+                syncCompleteEvent.MembersToAdd = membersToAdd.Count.ToString();
+                var membersToRemove = groupMembership.SourceMembers.Where(x => x.MembershipAction == MembershipAction.Remove).Distinct().ToList();
+                syncCompleteEvent.MembersToRemove = membersToRemove.Count.ToString();
+
+                await context.CallSubOrchestratorAsync(nameof(GroupUpdaterSubOrchestratorFunction),
+                                CreateGroupUpdaterRequest(syncJob, membersToAdd, RequestType.Add, isInitialSync));
+
+                await context.CallSubOrchestratorAsync(nameof(GroupUpdaterSubOrchestratorFunction),
+                                CreateGroupUpdaterRequest(syncJob, membersToRemove, RequestType.Remove, isInitialSync));
+
+                if (isInitialSync)
                 {
-                    var isValidGroup = await context.CallActivityAsync<bool>(nameof(GroupValidatorFunction),
-                                               new GroupValidatorRequest
-                                               {
-                                                   RunId = groupMembership.RunId,
-                                                   GroupId = groupMembership.Destination.ObjectId,
-                                                   JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                                                   JobRowKey = groupMembership.SyncJobRowKey
-                                               });
+                    var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
+                                                    new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
 
-                    if (!isValidGroup)
+                    var groupOwners = await context.CallActivityAsync<List<User>>(nameof(GroupOwnersReaderFunction),
+                                                    new GroupOwnersReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
+
+                    var ownerEmails = string.Join(";", groupOwners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
+
+                    var additionalContent = new[]
                     {
-                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                        CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
-                                                                        SyncStatus.Error, groupMembership.MembershipObtainerDryRunEnabled, syncJob.ThresholdViolations, groupMembership.RunId));
-
-                        await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function did not complete", SyncJob = syncJob });
-
-                        return messageResponse;
-                    }
-
-                    var destinationGroupMembers = await context.CallSubOrchestratorAsync<List<AzureADUser>>(nameof(UsersReaderSubOrchestratorFunction),
-                                                                                                            new UsersReaderRequest { SyncJob = syncJob });
-
-                    var fullMembership = new GroupMembership
-                    {
-                        Destination = groupMembership.Destination,
-                        IsLastMessage = groupMembership.IsLastMessage,
-                        RunId = groupMembership.RunId,
-                        SourceMembers = messageResponse.CompletedGroupMembershipMessages.SelectMany(x => x.Body.SourceMembers).ToList(),
-                        SyncJobPartitionKey = groupMembership.SyncJobPartitionKey,
-                        SyncJobRowKey = groupMembership.SyncJobRowKey
-                    };
-
-                    var deltaResponse = await context.CallActivityAsync<DeltaResponse>(nameof(DeltaCalculatorFunction),
-                                                    new DeltaCalculatorRequest
-                                                    {
-                                                        RunId = groupMembership.RunId,
-                                                        GroupMembership = fullMembership,
-                                                        MembersFromDestinationGroup = destinationGroupMembers,
-                                                    });
-
-                    if (deltaResponse.GraphUpdaterStatus == GraphUpdaterStatus.Error ||
-                        deltaResponse.GraphUpdaterStatus == GraphUpdaterStatus.ThresholdExceeded)
-                    {
-                        var updateRequest = CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
-                                                                        deltaResponse.SyncStatus, groupMembership.MembershipObtainerDryRunEnabled, syncJob.ThresholdViolations, groupMembership.RunId);
-
-                        if (deltaResponse.GraphUpdaterStatus == GraphUpdaterStatus.ThresholdExceeded)
-                        {
-                            updateRequest.ThresholdViolations++;
-
-                            if (updateRequest.ThresholdViolations >= _thresholdConfig.NumberOfThresholdViolationsToDisableJob)
-                                updateRequest.Status = SyncStatus.ThresholdExceeded;
-                        }
-
-                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), updateRequest);
-                    }
-
-                    if (deltaResponse.GraphUpdaterStatus != GraphUpdaterStatus.Ok)
-                    {
-                        await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function did not complete", SyncJob = syncJob });
-
-                        return messageResponse;
-                    }
-
-                    if (!deltaResponse.IsDryRunSync)
-                    {
-                        await context.CallSubOrchestratorAsync<GraphUpdaterStatus>(nameof(GroupUpdaterSubOrchestratorFunction),
-                                        CreateGroupUpdaterRequest(syncJob, deltaResponse.MembersToAdd, RequestType.Add, deltaResponse.IsInitialSync));
-
-                        await context.CallSubOrchestratorAsync<GraphUpdaterStatus>(nameof(GroupUpdaterSubOrchestratorFunction),
-                                        CreateGroupUpdaterRequest(syncJob, deltaResponse.MembersToRemove, RequestType.Remove, deltaResponse.IsInitialSync));
-
-                        if (deltaResponse.IsInitialSync)
-                        {
-                            var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
-                                                            new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
-                            var additonalContent = new[]
-                            {
                                 groupName,
                                 groupMembership.Destination.ObjectId.ToString(),
-                                deltaResponse.MembersToAdd.Count.ToString(),
-                                deltaResponse.MembersToRemove.Count.ToString(),
+                                membersToAdd.Count.ToString(),
+                                membersToRemove.Count.ToString(),
+                                syncJob.Requestor,
+                                _gmmResources.LearnMoreAboutGMMUrl,
                                 _emailSenderAndRecipients.SupportEmailAddresses
-                            };
-
-                            await context.CallActivityAsync(nameof(EmailSenderFunction),
-                                            new EmailSenderRequest
-                                            {
-                                                ToEmail = deltaResponse.Requestor,
-                                                CcEmail = _emailSenderAndRecipients.SyncCompletedCCAddresses,
-                                                ContentTemplate = SyncCompletedEmailBody,
-                                                AdditionalContentParams = additonalContent,
-                                                RunId = groupMembership.RunId
-                                            });
-                        }
-                    }
-
-                    var message = GetUsersDataMessage(groupMembership.Destination.ObjectId, deltaResponse.MembersToAdd.Count, deltaResponse.MembersToRemove.Count);
-                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = message });
-
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                        CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
-                                                                        SyncStatus.Idle, groupMembership.MembershipObtainerDryRunEnabled, 0, groupMembership.RunId));
-
-                    var timeElapsedForJob = (context.CurrentUtcDateTime - deltaResponse.Timestamp).TotalSeconds;
-                    _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
-
-                    var syncCompleteEvent = new Dictionary<string, string>
-                    {
-                        { nameof(SyncJob.TargetOfficeGroupId), groupMembership.Destination.ObjectId.ToString() },
-                        { nameof(SyncJob.Type), deltaResponse.SyncJobType },
-                        { "Result", deltaResponse.SyncStatus == SyncStatus.Idle ? "Success": "Failure" },
-                        { nameof(SyncJob.IsDryRunEnabled), deltaResponse.IsDryRunSync.ToString() },
-                        { nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob.ToString() },
-                        { nameof(DeltaResponse.MembersToAdd), deltaResponse.MembersToAdd.Count.ToString() },
-                        { nameof(DeltaResponse.MembersToRemove), deltaResponse.MembersToRemove.Count.ToString() },
-                        { nameof(Metric.ProjectedMemberCount), fullMembership.SourceMembers.Count.ToString() }
                     };
 
-                    _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteEvent);
+                    await context.CallActivityAsync(nameof(EmailSenderFunction),
+                                                    new EmailSenderRequest
+                                                    {
+                                                        ToEmail = ownerEmails,
+                                                        CcEmail = _emailSenderAndRecipients.SyncCompletedCCAddresses,
+                                                        ContentTemplate = SyncCompletedEmailBody,
+                                                        AdditionalContentParams = additionalContent,
+                                                        RunId = groupMembership.RunId
+                                                    });
                 }
 
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob });
 
-                return messageResponse;
+                var message = GetUsersDataMessage(groupMembership.Destination.ObjectId, membersToAdd.Count, membersToRemove.Count);
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = message });
+
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                    CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
+                                                                    SyncStatus.Idle, 0, groupMembership.RunId));
+
+                if (!context.IsReplaying)
+                {
+                    TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, true);
+                }
+
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
+
+                return OrchestrationRuntimeStatus.Completed;
             }
             catch (Exception ex)
             {
@@ -219,22 +183,39 @@ namespace Hosts.GraphUpdater
 
                 if (syncJob == null)
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = "SyncJob is null. Removing the message from the queue..."});
-                    return messageResponse;
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = "SyncJob is null. Removing the message from the queue..." });
+                    return OrchestrationRuntimeStatus.Failed;
                 }
 
                 if (syncJob != null && groupMembership != null && !string.IsNullOrWhiteSpace(groupMembership.SyncJobPartitionKey) && !string.IsNullOrWhiteSpace(groupMembership.SyncJobRowKey))
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                     CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
-                                                                    SyncStatus.Error, groupMembership.MembershipObtainerDryRunEnabled, syncJob.ThresholdViolations, groupMembership.RunId));
+                                                                    SyncStatus.Error, syncJob.ThresholdViolations, groupMembership.RunId));
                 }
+
+                TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, false);
 
                 throw;
             }
         }
 
-        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(string partitionKey, string rowKey, SyncStatus syncStatus, bool isDryRun, int thresholdViolations, Guid runId)
+        private void TrackSyncCompleteEvent(IDurableOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, bool success)
+        {
+            var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.Timestamp).TotalSeconds;
+            _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
+
+            syncCompleteEvent.SyncJobTimeElapsedSeconds = timeElapsedForJob.ToString();
+            syncCompleteEvent.Result = success ? "Success" : "Failure";
+
+            var syncCompleteDict = syncCompleteEvent.GetType()
+                .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                .ToDictionary(prop => prop.Name, prop => (string)prop.GetValue(syncCompleteEvent, null));
+
+            _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteDict);
+        }
+
+        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(string partitionKey, string rowKey, SyncStatus syncStatus, int thresholdViolations, Guid runId)
         {
             return new JobStatusUpdaterRequest
             {
@@ -242,7 +223,6 @@ namespace Hosts.GraphUpdater
                 JobPartitionKey = partitionKey,
                 JobRowKey = rowKey,
                 Status = syncStatus,
-                IsDryRun = isDryRun,
                 ThresholdViolations = thresholdViolations
             };
         }
@@ -260,17 +240,9 @@ namespace Hosts.GraphUpdater
 
         private string GetUsersDataMessage(Guid targetGroupId, int membersToAdd, int membersToRemove)
         {
-            string message;
-            if (_isDryRunEnabled)
-                message = $"A Dry Run Synchronization for {targetGroupId} is now complete. " +
-                          $"{membersToAdd} users would have been added. " +
-                          $"{membersToRemove} users would have been removed.";
-            else
-                message = $"Synchronization for {targetGroupId} is now complete. " +
-                          $"{membersToAdd} users have been added. " +
-                          $"{membersToRemove} users have been removed.";
-
-            return message;
+            return $"Synchronization for {targetGroupId} is now complete. " +
+                   $"{membersToAdd} users have been added. " +
+                   $"{membersToRemove} users have been removed.";
         }
     }
 }

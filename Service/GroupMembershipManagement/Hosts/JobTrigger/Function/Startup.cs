@@ -13,6 +13,8 @@ using Common.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Repositories.GraphGroups;
 using Microsoft.Graph;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Azure.ServiceBus;
 
 [assembly: FunctionsStartup(typeof(Hosts.JobTrigger.Startup))]
 
@@ -27,15 +29,31 @@ namespace Hosts.JobTrigger
         {
             base.Configure(builder);
 
+            builder.Services.AddOptions<JobTriggerConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.GMMHasGroupReadWriteAllPermissions = GetBoolSetting(configuration, "JobTrigger:IsGroupReadWriteAllGranted", false);
+            });
+
+            builder.Services.AddSingleton<IJobTriggerConfig>(services =>
+            {
+                return new JobTriggerConfig(services.GetService<IOptions<JobTriggerConfig>>().Value.GMMHasGroupReadWriteAllPermissions);
+            });
+
             builder.Services.AddSingleton<IKeyVaultSecret<IJobTriggerService>>(services => new KeyVaultSecret<IJobTriggerService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
-           .AddSingleton<IGraphServiceClient>((services) =>
-           {
-               return new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value));
-           })
+            .AddSingleton<IGraphServiceClient>((services) =>
+            {
+                return new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value));
+            })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>();
 
-            builder.Services.AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(GetValueOrThrow("serviceBusConnectionString"), GetValueOrThrow("serviceBusSyncJobTopic")));
+            builder.Services.AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(new TopicClient(GetValueOrThrow("serviceBusConnectionString"), GetValueOrThrow("serviceBusSyncJobTopic"))));
             builder.Services.AddSingleton<IJobTriggerService, JobTriggerService>();
+        }
+
+        private bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)
+        {
+            var checkParse = bool.TryParse(configuration[settingName], out bool value);
+            return checkParse ? value : defaultValue;
         }
     }
 }

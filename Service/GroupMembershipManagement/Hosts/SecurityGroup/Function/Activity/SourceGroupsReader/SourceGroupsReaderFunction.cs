@@ -3,7 +3,7 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using System.Threading.Tasks;
 
@@ -11,27 +11,41 @@ namespace Hosts.SecurityGroup
 {
     public class SourceGroupsReaderFunction
     {
-		private readonly ILoggingRepository _log;
-		private readonly SGMembershipCalculator _calculator;
+        private readonly ILoggingRepository _loggingRepository;
+        private readonly SGMembershipCalculator _membershipCalculator;
 
-		public SourceGroupsReaderFunction(ILoggingRepository loggingRepository, SGMembershipCalculator calculator)
-		{
-			_log = loggingRepository;
-			_calculator = calculator;
-		}
+        public SourceGroupsReaderFunction(ILoggingRepository loggingRepository, SGMembershipCalculator membershipCalculator)
+        {
+            _loggingRepository = loggingRepository;
+            _membershipCalculator = membershipCalculator;
+        }
 
-		[FunctionName(nameof(SourceGroupsReaderFunction))]
-		public async Task<AzureADGroup[]> GetSourceGroupsAsync([ActivityTrigger] SourceGroupsReaderRequest request, ILogger log)
-		{
-			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SourceGroupsReaderFunction)} function started", RunId = request.RunId });
-			await _log.LogMessageAsync(new LogMessage
-			{
-				RunId = request.RunId,
-				Message = $"Reading source groups {request.SyncJob.Query} to be synced into the destination group {request.SyncJob.TargetOfficeGroupId}."
-			});
-			var sourceGroups = _calculator.ReadSourceGroups(request.SyncJob);
-			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SourceGroupsReaderFunction)} function completed", RunId = request.RunId });
-			return sourceGroups;
-		}
-	}
+        [FunctionName(nameof(SourceGroupsReaderFunction))]
+        public async Task<AzureADGroup[]> GetSourceGroupsAsync([ActivityTrigger] SourceGroupsReaderRequest request)
+        {
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SourceGroupsReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                RunId = request.RunId,
+                Message = $"Getting source groups for Part# {request.CurrentPart} {request.SyncJob.Query} to be synced into the destination group {request.SyncJob.TargetOfficeGroupId}."
+            });
+
+            AzureADGroup[] sourceGroups = request.IsDestinationPart
+                                            ? sourceGroups = new [] { new AzureADGroup { ObjectId = request.SyncJob.TargetOfficeGroupId } }
+                                            : sourceGroups = GetSourceGroups(request);
+
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SourceGroupsReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            return sourceGroups;
+        }
+
+        private AzureADGroup[] GetSourceGroups(SourceGroupsReaderRequest request)
+        {
+            var queryParts = JArray.Parse(request.SyncJob.Query);
+            var currentPart = queryParts[request.CurrentPart - 1];
+            var ids = string.Join(";", currentPart.Value<JArray>("sources"));
+            var sourceGroups = _membershipCalculator.ReadSourceGroups(ids);
+
+            return sourceGroups;
+        }
+    }
 }

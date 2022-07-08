@@ -121,11 +121,5 @@ function Set-ServicePrincipal {
         Start-Sleep -Seconds 30
     }
 
-    Write-Host "Assigning service principal to resource groups..."
-    $resourceGroupTypes = "compute", "data", "prereqs"
-    foreach ($resourceGroupType in $resourceGroupTypes)
-    {
-        $resourceGroupName = "$solutionAbbreviation-$resourceGroupType-$environmentAbbreviation"
-        Set-Role -RoleDefinitionName "Contributor" -ResourceGroupName $resourceGroupName -ObjectId $servicePrincipal.Id
-    }
+    Write-Host "The service principal has propagated and is ready for use."
 }

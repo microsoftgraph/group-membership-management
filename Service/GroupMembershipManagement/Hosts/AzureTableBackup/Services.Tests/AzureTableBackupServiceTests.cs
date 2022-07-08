@@ -22,7 +22,7 @@ namespace Services.Tests
         public async Task TestMissingAzureTableBackupSettings()
         {
             var loggerMock = new Mock<ILoggingRepository>();
-            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<string>(), It.IsAny<string>()));
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
 
             var backupSettings = new List<AzureTableBackup>();
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
@@ -41,7 +41,7 @@ namespace Services.Tests
         public async Task TestFirstBackup()
         {
             var loggerMock = new Mock<ILoggingRepository>();
-            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<string>(), It.IsAny<string>()));
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
 
             var backupSettings = new List<AzureTableBackup>()
             {
@@ -84,7 +84,7 @@ namespace Services.Tests
         public async Task TestBackupWithExistingBackupTables()
         {
             var loggerMock = new Mock<ILoggingRepository>();
-            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<string>(), It.IsAny<string>()));
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
 
             var backupSettings = new List<AzureTableBackup>()
             {
@@ -127,7 +127,7 @@ namespace Services.Tests
         public async Task TestCleanupOnlyForTables()
         {
             var loggerMock = new Mock<ILoggingRepository>();
-            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<string>(), It.IsAny<string>()));
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
 
             var backupSettings = new List<AzureTableBackup>()
             {
@@ -156,7 +156,7 @@ namespace Services.Tests
         public async Task TestBackupRetrieval()
         {
             var loggerMock = new Mock<ILoggingRepository>();
-            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<string>(), It.IsAny<string>()));
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
 
             var tableSource = "backupTableName";
             var blobSource = "backupBlobName";
@@ -193,7 +193,7 @@ namespace Services.Tests
         public async Task TestReviewAndDelete()
         {
             var loggerMock = new Mock<ILoggingRepository>();
-            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<string>(), It.IsAny<string>()));
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
 
             var tableSource = "backupTableName";
             var blobSource = "backupBlobName";

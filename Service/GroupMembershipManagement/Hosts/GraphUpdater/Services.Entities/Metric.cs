@@ -13,6 +13,7 @@ namespace Services.Entities
         GraphRemoveRatePerSecond,
         MembersNotFound,
 		ResourceUnitsUsed,
-		ThrottleLimitPercentage
+		ThrottleLimitPercentage,
+        WritesUsed
 	};
 }

@@ -11,12 +11,18 @@ param location string
 ])
 param kind string = 'web'
 
+param ingestionMode string = 'LogAnalytics'
+
+param workspaceId string
+
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
   kind: kind
   name: name
   location: location
   properties: {
     Application_Type: kind
+    IngestionMode: ingestionMode
+    WorkspaceResourceId: workspaceId
   }
 }
 

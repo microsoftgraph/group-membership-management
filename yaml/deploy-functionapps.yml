@@ -6,16 +6,18 @@ parameters:
   location: ''
   root: ''
   tenantId: ''
+  subscriptionId: ''
 
 steps:
 
-- task: AzureResourceGroupDeployment@2
+- task: AzureResourceManagerTemplateDeployment@3
   displayName: 'deploy ${{ parameters.name }} data resources'
   inputs:
-    azureSubscription: ${{parameters.serviceConnection}}
+    azureResourceManagerConnection: ${{parameters.serviceConnection}}
+    subscriptionId: ${{parameters.subscriptionId}}
     resourceGroupName: ${{parameters.solutionAbbreviation}}-data-${{parameters.environmentAbbreviation}}
     location: ${{parameters.location}}
-    csmFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/data/template.json
+    csmFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/data/template.bicep
     csmParametersFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/data/parameters/parameters.${{parameters.environmentAbbreviation}}.json
     overrideParameters: -environmentAbbreviation "${{parameters.environmentAbbreviation}}"
                         -tenantId "${{parameters.tenantId}}"
@@ -23,12 +25,14 @@ steps:
                         -storageAccountName "$(data_storageAccountName)"
     deploymentMode: 'Incremental'
 
-- task: AzureResourceGroupDeployment@2
+- task: AzureResourceManagerTemplateDeployment@3
   displayName: 'deploy ${{ parameters.name }} compute resources'
   inputs:
-    azureSubscription: ${{parameters.serviceConnection}}
+    azureResourceManagerConnection: ${{parameters.serviceConnection}}
+    subscriptionId: ${{parameters.subscriptionId}}
     resourceGroupName: ${{parameters.solutionAbbreviation}}-compute-${{parameters.environmentAbbreviation}}
-    csmFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/compute/template.json
+    location: ${{parameters.location}}
+    csmFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/compute/template.bicep
     csmParametersFile: ${{ parameters.root }}/functions_arm_templates/${{ parameters.name }}/Infrastructure/compute/parameters/parameters.${{parameters.environmentAbbreviation}}.json
     overrideParameters: -environmentAbbreviation "${{parameters.environmentAbbreviation}}"
                         -tenantId "${{parameters.tenantId}}"
@@ -41,14 +45,26 @@ steps:
   displayName: 'Wait for ARM resources'
 
 - task: AzureFunctionApp@1
-  displayName: 'deploy ${{ parameters.name }} function app'
+  displayName: 'deploy ${{ parameters.name }} function app (staging)'
   inputs:
     appType: 'functionapp'
     azureSubscription: ${{parameters.serviceConnection}}
     appName: '${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}-${{ parameters.name }}'
     Package: '${{ parameters.root }}/function_packages/${{ parameters.name }}.zip'
     deploymentMethod: 'runFromPackage'
+    deployToSlotOrASE: true
+    slotName: 'staging'
     resourceGroupName: '${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}'
+
+- task: AzureAppServiceManage@0
+  displayName: 'Swap ${{ parameters.name }} function app deployment slots'
+  inputs:
+    azureSubscription: ${{parameters.serviceConnection}}
+    webAppName: '${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}-${{ parameters.name }}'
+    resourceGroupName: ${{parameters.solutionAbbreviation}}-compute-${{parameters.environmentAbbreviation}}
+    sourceSlot: staging
+    swapWithProduction: true
+  condition: notIn('${{ parameters.environmentAbbreviation }}', 'ua', 'prodv2')
 
 # This sets the "Enforce Scale Out Limit" in the function app configuration. This is apparently the only way to do it automatically. ARM templates don't support it.
 # https://docs.microsoft.com/en-us/azure/azure-functions/event-driven-scaling#limit-scale-out

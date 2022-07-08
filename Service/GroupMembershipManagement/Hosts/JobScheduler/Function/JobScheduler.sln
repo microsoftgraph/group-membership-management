@@ -27,6 +27,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Localization",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Entities", "..\..\..\Entities\Entities.csproj", "{D8414FBF-6A61-4B5D-A727-2EF82C683A2F}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.SyncJobs.Tests", "..\..\..\Repositories.SyncJobs.Tests\Repositories.SyncJobs.Tests.csproj", "{D95698EC-E7F5-4358-A187-F833431847AE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -77,6 +79,10 @@ Global
 		{D8414FBF-6A61-4B5D-A727-2EF82C683A2F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D8414FBF-6A61-4B5D-A727-2EF82C683A2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D8414FBF-6A61-4B5D-A727-2EF82C683A2F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D95698EC-E7F5-4358-A187-F833431847AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D95698EC-E7F5-4358-A187-F833431847AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D95698EC-E7F5-4358-A187-F833431847AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D95698EC-E7F5-4358-A187-F833431847AE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -68,7 +68,7 @@ var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dat
 var tablesToBackup = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'tablesToBackup')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
-  name: 'servicePlanTemplate'
+  name: 'servicePlanTemplate-AzureTableBackup'
   params: {
     name: servicePlanName
     sku: servicePlanSku
@@ -77,6 +77,127 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   }
 }
 
+var appSettings = [
+  {
+    name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
+    value: 1
+  }
+  {
+    name: 'SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT'
+    value: 0
+  }
+  {
+    name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+    value: reference(resourceId(appInsightsResourceGroup, 'microsoft.insights/components/', appInsightsName), '2015-05-01').InstrumentationKey
+  }
+  {
+    name: 'AzureWebJobsStorage'
+    value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${listKeys(resourceId(storageAccountResourceGroup, 'Microsoft.Storage/storageAccounts', storageAccountName), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value}'
+  }
+  {
+    name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
+    value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${listKeys(resourceId(storageAccountResourceGroup, 'Microsoft.Storage/storageAccounts', storageAccountName), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value}'
+  }
+  {
+    name: 'FUNCTIONS_WORKER_RUNTIME'
+    value: 'dotnet'
+  }
+  {
+    name: 'FUNCTIONS_EXTENSION_VERSION'
+    value: '~3'
+  }
+  {
+    name: 'backupTriggerSchedule'
+    value: '0 0 0 * * *'
+  }
+  {
+    name: 'logAnalyticsCustomerId'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'logAnalyticsPrimarySharedKey'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'tablesToBackup'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(tablesToBackup, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'appConfigurationEndpoint'
+    value: appConfigurationEndpoint
+  }
+]
+
+var stagingSettings = [
+  {
+    name: 'WEBSITE_CONTENTSHARE'
+    value: toLower('functionApp-AzureTableBackup-staging')
+  }
+  {
+    name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
+    value: '${solutionAbbreviation}compute${environmentAbbreviation}AzureTableBackupStaging'
+  }
+  {
+    name: 'AzureWebJobs.StarterFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.OrchestratorFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.LoggerFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.RetrieveBackupsFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.ReviewAndDeleteFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.TableBackupFunction.Disabled'
+    value: 1
+  }
+]
+
+var productionSettings = [
+  {
+    name: 'WEBSITE_CONTENTSHARE'
+    value: toLower('functionApp-AzureTableBackup')
+  }
+  {
+    name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
+    value: '${solutionAbbreviation}compute${environmentAbbreviation}AzureTableBackup'
+  }
+  {
+    name: 'AzureWebJobs.StarterFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.OrchestratorFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.LoggerFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.RetrieveBackupsFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.ReviewAndDeleteFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.TableBackupFunction.Disabled'
+    value: 0
+  }
+]
+
 module functionAppTemplate_AzureTableBackup 'functionApp.bicep' = {
   name: 'functionAppTemplate-AzureTableBackup'
   params: {
@@ -84,86 +205,29 @@ module functionAppTemplate_AzureTableBackup 'functionApp.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
-    secretSettings: [
-      {
-        name: 'WEBSITE_RUN_FROM_PACKAGE'
-        value: 1
-        slotSetting: false
-      }
-      {
-        name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
-        value: 1
-        slotSetting: false
-      }
-      {
-        name: 'SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT'
-        value: '0'
-        slotSetting: false
-      }
-      {
-        name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-        value: reference(resourceId(appInsightsResourceGroup, 'microsoft.insights/components/', appInsightsName), '2015-05-01').InstrumentationKey
-        slotSetting: false
-      }
-      {
-        name: 'AzureWebJobsStorage'
-        value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${listKeys(resourceId(storageAccountResourceGroup, 'Microsoft.Storage/storageAccounts', storageAccountName), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value}'
-        slotSetting: false
-      }
-      {
-        name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-        value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${listKeys(resourceId(storageAccountResourceGroup, 'Microsoft.Storage/storageAccounts', storageAccountName), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value}'
-        slotSetting: false
-      }
-      {
-        name: 'WEBSITE_CONTENTSHARE'
-        value: toLower('functionApp-AzureTableBackup')
-        slotSetting: false
-      }
-      {
-        name: 'FUNCTIONS_WORKER_RUNTIME'
-        value: 'dotnet'
-        slotSetting: false
-      }
-      {
-        name: 'FUNCTIONS_EXTENSION_VERSION'
-        value: '~3'
-        slotSetting: false
-      }
-      {
-        name: 'backupTriggerSchedule'
-        value: '0 0 0 * * *'
-        slotSetting: false
-      }
-      {
-        name: 'logAnalyticsCustomerId'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'logAnalyticsPrimarySharedKey'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'tablesToBackup'
-        value: '@Microsoft.KeyVault(SecretUri=${reference(tablesToBackup, '2019-09-01').secretUriWithVersion})'
-        slotSetting: false
-      }
-      {
-        name: 'appConfigurationEndpoint'
-        value: appConfigurationEndpoint
-        slotSetting: false
-      }
-    ]
+    secretSettings: union(appSettings, productionSettings)
   }
   dependsOn: [
     servicePlanTemplate
   ]
 }
 
+module functionAppSlotTemplate_AzureTableBackup 'functionAppSlot.bicep' = {
+  name: 'functionAppSlotTemplate-AzureTableBackup'
+  params: {
+    name: '${functionAppName}-AzureTableBackup/staging'
+    kind: functionAppKind
+    location: location
+    servicePlanName: servicePlanName
+    secretSettings: union(appSettings, stagingSettings)
+  }
+  dependsOn: [
+    functionAppTemplate_AzureTableBackup
+  ]
+}
+
 module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'keyVaultPoliciesTemplate'
+  name: 'keyVaultPoliciesTemplate-AzureTableBackup'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     name: dataKeyVaultName
@@ -175,10 +239,18 @@ module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
           'list'
         ]
       }
+      {
+        objectId: functionAppSlotTemplate_AzureTableBackup.outputs.msi
+        permissions: [
+          'get'
+          'list'
+        ]
+      }
     ]
     tenantId: tenantId
   }
   dependsOn: [
     functionAppTemplate_AzureTableBackup
+    functionAppSlotTemplate_AzureTableBackup
   ]
 }

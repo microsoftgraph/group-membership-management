@@ -37,6 +37,7 @@ stages:
 
     - task: DotNetCoreCLI@2
       displayName: dotnet build
+      retryCountOnTaskFailure: 3
       inputs:
         command: build
         workingDirectory: 'Service\GroupMembershipManagement'
@@ -44,6 +45,7 @@ stages:
 
     - task: DotNetCoreCLI@2
       displayName: 'dotnet test'
+      retryCountOnTaskFailure: 3
       inputs:
         command: test
         workingDirectory: 'Service\GroupMembershipManagement'
@@ -69,14 +71,6 @@ stages:
         coverageVariance: 0
         allowCoverageVariance: false
       condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
-
-    - powershell: |
-              $bicepTemplates = Get-ChildItem -Filter "template.bicep" -Recurse
-              foreach($template in $bicepTemplates)
-              {
-                az bicep build --file $template.FullName
-              }
-      displayName: 'Compile Bicep templates'
 
     - task: CopyFiles@2
       displayName: 'copy arm templates'

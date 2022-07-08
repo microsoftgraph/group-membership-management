@@ -29,11 +29,23 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
     clientAffinityEnabled: false
     httpsOnly: true
     siteConfig: {
+      use32BitWorkerProcess : false
       appSettings: secretSettings
     }
   }
   identity: {
     type: 'SystemAssigned'
+  }
+}
+
+resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
+  name: 'slotConfigNames'
+  parent: functionApp
+  properties: {
+    appSettingNames: [
+      'AzureFunctionsJobHost__extensions__durableTask__hubName'
+      'AzureWebJobs.JobSchedulerFunction.Disabled'   
+    ]
   }
 }
 

@@ -26,7 +26,7 @@ namespace Hosts.GraphUpdater
         [FunctionName(nameof(GroupUpdaterFunction))]
         public async Task<int> UpdateGroupAsync([ActivityTrigger] GroupUpdaterRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function started", RunId = request.SyncJob.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
             var successCount = 0;
 
@@ -45,7 +45,7 @@ namespace Hosts.GraphUpdater
                 successCount = removeUsersFromGraphResponse.SuccessCount;
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function completed", RunId = request.SyncJob.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
             return successCount;
         }

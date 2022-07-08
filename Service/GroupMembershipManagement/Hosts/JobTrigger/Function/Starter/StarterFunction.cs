@@ -3,9 +3,7 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
-using Services.Contracts;
 using System;
 using System.Threading.Tasks;
 
@@ -22,12 +20,11 @@ namespace Hosts.JobTrigger
         [FunctionName(nameof(StarterFunction))]
         public async Task Run(
             [TimerTrigger("%jobTriggerSchedule%")] TimerInfo myTimer,
-            [DurableClient] IDurableOrchestrationClient starter,
-            ILogger log)
+            [DurableClient] IDurableOrchestrationClient starter)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
             await starter.StartNewAsync(nameof(OrchestratorFunction), null);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
         }
     }
 }

@@ -25,11 +25,11 @@ namespace Hosts.AzureUserReader
         [FunctionName(nameof(AzureUserReaderFunction))]
         public async Task<IList<GraphProfileInformation>> GetUsersAsync([ActivityTrigger] List<string> personnelNumbers)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserReaderFunction)} function started" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserReaderFunction)} function started" }, VerbosityLevel.DEBUG);
 
             var users = await _graphUserRepository.GetAzureADObjectIdsAsync(personnelNumbers, null);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserReaderFunction)} function completed" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserReaderFunction)} function completed" }, VerbosityLevel.DEBUG);
 
             return users;
         }

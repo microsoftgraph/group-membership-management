@@ -11,7 +11,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Identity.Client" Version="4.25.0" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.44.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.8.3" />
     <PackageReference Include="Moq" Version="4.16.1" />
     <PackageReference Include="MSTest.TestAdapter" Version="2.1.2" />
@@ -23,10 +23,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\DIConcreteTypes\DIConcreteTypes.csproj" />
     <ProjectReference Include="..\..\..\Entities\Entities.csproj" />
     <ProjectReference Include="..\..\..\Repositories.ServiceBusSubscriptions.Tests\Repositories.ServiceBusSubscriptions.Tests.csproj" />
     <ProjectReference Include="..\..\..\Repositories.ServiceBusTopics.Tests\Repositories.ServiceBusTopics.Tests.csproj" />
     <ProjectReference Include="..\..\..\Repositories.SyncJobs.Tests\Repositories.SyncJobs.Tests.csproj" />
+    <ProjectReference Include="..\Function\JobTrigger.csproj" />
     <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
     <ProjectReference Include="..\Services\Services.csproj" />
   </ItemGroup>

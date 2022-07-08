@@ -22,7 +22,7 @@ namespace Repositories.LoggingRepos.Tests
         public bool PollyPolicySucceeds { get; set; } = false;
 		public bool DryRun { get; set; }
 
-		public async Task LogMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
+		public async Task LogMessageAsync(LogMessage logMessage, VerbosityLevel verbosityLevel = VerbosityLevel.INFO, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
         {
             HttpResponseMessage response = null;
 

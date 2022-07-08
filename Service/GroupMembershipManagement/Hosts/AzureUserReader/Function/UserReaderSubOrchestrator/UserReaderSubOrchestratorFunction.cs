@@ -26,7 +26,7 @@ namespace Hosts.AzureUserReader
             [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             if (!context.IsReplaying)
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UserReaderSubOrchestratorFunction)} function started" });
+                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UserReaderSubOrchestratorFunction)} function started" }, VerbosityLevel.DEBUG);
 
             var users = new List<GraphProfileInformation>();
 
@@ -66,7 +66,7 @@ namespace Hosts.AzureUserReader
             }
 
             if (!context.IsReplaying)
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UserReaderSubOrchestratorFunction)} function completed" });
+                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UserReaderSubOrchestratorFunction)} function completed" }, VerbosityLevel.DEBUG);
 
             return users;
         }

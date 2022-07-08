@@ -6,6 +6,7 @@ name: $(major).$(minor).$(Date:yyMM).$(Rev:r)
 
 trigger:
 - develop
+- main
 - master
 - users/*
 
@@ -34,14 +35,17 @@ stages:
     checkoutPath: ''
     functionApps:
     - function:
+        name: 'NonProdService'
+        coverageThreshold: 100
+    - function:
        name: 'JobTrigger'
-       coverageThreshold: 97
+       coverageThreshold: 89
     - function:
        name: 'GraphUpdater'
-       coverageThreshold: 78
+       coverageThreshold: 77
     - function:
        name: 'SecurityGroup'
-       coverageThreshold: 95
+       coverageThreshold: 94
     - function:
         name: 'AzureTableBackup'
         coverageThreshold: 95
@@ -50,25 +54,45 @@ stages:
         coverageThreshold: 45
     - function:
         name: 'JobScheduler'
-        coverageThreshold: 65
+        coverageThreshold: 60
+    - function:
+        name: 'MembershipAggregator'
+        coverageThreshold: 85
 
 - template: yaml/deploy-pipeline.yml
   parameters:
     solutionAbbreviation: '$(SolutionAbbreviation)'
     environmentAbbreviation: 'int'
     tenantId: $(tenantId)
+    subscriptionId: $(subscriptionId_nonprod)
     keyVaultReaders: $(keyVaultReaders_nonprod)
     location: $(location)
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
     dependsOn: Build_Functions
     stageName: 'NonProd_int'
-    functionApps:
-    - name: 'JobTrigger'
-    - name: 'GraphUpdater'
-    - name: 'SecurityGroup'
-    - name: 'AzureTableBackup'
-    - name: 'AzureUserReader'
-    - name: 'JobScheduler'
+    functionApps:            
+    - function:
+       name: 'NonProdService'
+    - function:
+       name: 'GraphUpdater'
+    - function:
+       name: 'MembershipAggregator'
+       dependsOn:
+       - 'GraphUpdater'
+    - function:
+       name: 'AzureUserReader'    
+    - function:
+       name: 'SecurityGroup'
+       dependsOn:
+       - 'MembershipAggregator'
+    - function:
+       name: 'AzureTableBackup'
+    - function:
+       name: 'JobScheduler'
+    - function:
+       name: 'JobTrigger'
+       dependsOn:
+       - 'SecurityGroup'
     condition: |
       and(
         succeeded('Build_Functions'),
@@ -81,22 +105,39 @@ stages:
     solutionAbbreviation: '$(SolutionAbbreviation)'
     environmentAbbreviation: 'ua'
     tenantId: $(tenantId)
+    subscriptionId: $(subscriptionId_nonprod)
     keyVaultReaders: $(keyVaultReaders_nonprod)
     location: $(location)
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-ua'
     dependsOn: Build_Functions
     stageName: 'NonProd_ua'
     functionApps:
-    - name: 'JobTrigger'
-    - name: 'GraphUpdater'
-    - name: 'SecurityGroup'
-    - name: 'AzureTableBackup'
-    - name: 'AzureUserReader'
-    - name: 'JobScheduler'
+    - function:
+       name: 'NonProdService'
+    - function:
+       name: 'GraphUpdater'
+    - function:
+       name: 'MembershipAggregator'
+       dependsOn:
+       - 'GraphUpdater'
+    - function:
+       name: 'AzureUserReader'    
+    - function:
+       name: 'SecurityGroup'
+       dependsOn:
+       - 'MembershipAggregator'
+    - function:
+       name: 'AzureTableBackup'
+    - function:
+       name: 'JobScheduler'
+    - function:
+       name: 'JobTrigger'
+       dependsOn:
+       - 'SecurityGroup'
     condition: |
       and(
           succeeded('Build_Functions'),
-          eq(variables['Build.SourceBranch'], 'refs/heads/master'),
+          in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/main'),
           in(variables['Build.Reason'], 'IndividualCI', 'Manual')
       )
 
@@ -106,22 +147,37 @@ stages:
     solutionAbbreviation: '$(SolutionAbbreviation)'
     environmentAbbreviation: 'prodv2'
     tenantId: $(tenantId)
+    subscriptionId: $(subscriptionId_prod)
     keyVaultReaders: $(keyVaultReaders_prod)
     location: $(location)
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-prodv2'
     dependsOn: NonProd_ua
     stageName: 'Prod_production'
     functionApps:
-    - name: 'JobTrigger'
-    - name: 'GraphUpdater'
-    - name: 'SecurityGroup'
-    - name: 'AzureTableBackup'
-    - name: 'AzureUserReader'
-    - name: 'JobScheduler'
+    - function:
+       name: 'GraphUpdater'
+    - function:
+       name: 'MembershipAggregator'
+       dependsOn:
+       - 'GraphUpdater'
+    - function:
+       name: 'AzureUserReader'    
+    - function:
+       name: 'SecurityGroup'
+       dependsOn:
+       - 'MembershipAggregator'
+    - function:
+       name: 'AzureTableBackup'
+    - function:
+       name: 'JobScheduler'
+    - function:
+       name: 'JobTrigger'
+       dependsOn:
+       - 'SecurityGroup'
     condition: |
       and(
         succeeded('NonProd_ua'),
         succeeded('Build_Functions'),
-        eq(variables['Build.SourceBranch'], 'refs/heads/master'),
+        in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/main'),
         in(variables['Build.Reason'], 'IndividualCI', 'Manual')
       )

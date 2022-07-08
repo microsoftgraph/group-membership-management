@@ -3,7 +3,6 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
@@ -22,13 +21,13 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName(nameof(JobStatusUpdaterFunction))]
-        public async Task UpdateJobStatus([ActivityTrigger] JobStatusUpdaterRequest request, ILogger log)
+        public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
             if (request.SyncJob != null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId });
-                await _jobTriggerService.UpdateSyncJobStatusAsync(request.CanWriteToGroup, request.SyncJob);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                await _jobTriggerService.UpdateSyncJobStatusAsync(request.Status, request.SyncJob);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
             }
         }

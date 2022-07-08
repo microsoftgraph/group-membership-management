@@ -3,7 +3,6 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
@@ -22,16 +21,16 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName(nameof(GroupNameReaderFunction))]
-        public async Task<SyncJobGroup> GetGroupName([ActivityTrigger] SyncJob syncJob, ILogger log)
+        public async Task<SyncJobGroup> GetGroupNameAsync([ActivityTrigger] SyncJob syncJob)
         {
             var group = new SyncJobGroup();
             if (syncJob != null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function started", RunId = syncJob.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
                 var groupName = await _jobTriggerService.GetGroupNameAsync(syncJob.TargetOfficeGroupId);
                 group.SyncJob = syncJob;
                 group.Name = groupName;
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function completed", RunId = syncJob.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
             }
             return group;
         }
