@@ -11,7 +11,11 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
-builder.Services.AddMicrosoftGraphClient("https://graph.microsoft.com/User.Read");
+String[] scopes = new String[2];
+
+scopes[0] = "https://graph.microsoft.com/User.Read";
+scopes[1] = "https://graph.microsoft.com/Directory.Read.All";
+builder.Services.AddMicrosoftGraphClient(scopes);
 
 builder.Services.AddMsalAuthentication(options =>
 {

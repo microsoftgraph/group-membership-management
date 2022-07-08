@@ -5,7 +5,7 @@ Licensed under the MIT license.
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">WebAppWithAuth</a>
+        <a class="navbar-brand" href="">GMM</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -22,25 +22,25 @@ Licensed under the MIT license.
                     </NavLink>
                 </div>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="counter">
-                        <span class="oi oi-plus" aria-hidden="true"></span> Counter
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="fetchdata">
-                        <span class="oi oi-list-rich" aria-hidden="true"></span> Fetch data
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
                     <NavLink class="nav-link" href="profile">
-                        <span class="oi oi-list-rich" aria-hidden="true"></span> Show profile
+                        <span class="oi oi-person" aria-hidden="true"></span> User Profile
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="groups">
+                        <span class="oi oi-people" aria-hidden="true"></span> Groups I'm In
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="ownerofgroups">
+                        <span class="oi oi-people" aria-hidden="true"></span> Groups I Own
                     </NavLink>
                 </div>
             </Authorized>
             <NotAuthorized>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="NonUser">
-                        <span class="oi oi-list-rich" aria-hidden="true"></span> Non Authorized Menu
+                        <span class="oi oi-warning" aria-hidden="true"></span> Non Authorized Menu
                     </NavLink>
                 </div>
             </NotAuthorized>

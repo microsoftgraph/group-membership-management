@@ -24,12 +24,24 @@ else
             </tr>
         </thead>
         <tr>
-            <td> DisplayName </td>
+            <td> Display Name </td>
             <td> @user.DisplayName </td>
         </tr>
         <tr>
-            <td> UserPrincipalName </td>
+            <td> User Principal Name </td>
             <td> @user.UserPrincipalName </td>
+        </tr>
+        <tr>
+            <td> User ID </td>
+            <td> @user.Id </td>
+        </tr>
+        <tr>
+            <td> Job Title </td>
+            <td> @user.JobTitle </td>
+        </tr>
+        <tr>
+            <td> Office Location </td>
+            <td> @user.OfficeLocation </td>
         </tr>
     </table>
 }
@@ -41,6 +53,7 @@ else
     {
         try
         {
+            var test = GraphServiceClient.Me.Request();
             user = await GraphServiceClient.Me.Request().GetAsync();
         }
         catch (Exception ex)

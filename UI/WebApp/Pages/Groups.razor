@@ -1,0 +1,144 @@
+﻿@* 
+Copyright (c) Microsoft Corporation.
+Licensed under the MIT license. 
+*@
+
+@page "/groups"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Graph
+@inject Microsoft.Graph.GraphServiceClient GraphServiceClient
+@attribute [Authorize]
+
+<PageTitle>Groups I'm In</PageTitle>
+
+<h1>Groups I am a member of</h1>
+<br />
+
+@if (user == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <h3>Summary </h3>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Property</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tr>
+            <td> Num Groups </td>
+            <td> @numGroups </td>
+        </tr>
+    </table>
+    <br />
+
+    <h3>Groups</h3>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Group ID</th>
+                <th>Display Name</th>
+                <th>Group Type</th>
+            </tr>
+        </thead>
+        @foreach (var group in @groupProperties)
+        {
+           <tr>
+               <td> <a href=@getGroupUrl(group) target="_blank"> @group.Id </a></td>
+               <td> @getDisplayName(group) </td>
+               <td> @getGroupType(group) </td>
+           </tr>
+        }
+    </table>
+}
+
+@code {
+    User? user;
+    List<string>? groups = new List<string>();
+    List<Group>? groupProperties = new List<Group>();
+    int numGroups = 0;
+
+    private string getGroupUrl(DirectoryObject group)
+    {
+        return "https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/" + group.Id;
+    }
+
+    private string getDisplayName(DirectoryObject obj)
+    {
+        Group group = (Group)obj;
+        return group.DisplayName;
+    }
+
+    private string getGroupType(DirectoryObject obj)
+    {
+        var group = (Group)obj;
+
+        if (group.GroupTypes != null && group.GroupTypes.Contains("Unified"))
+        {
+            return "M365";
+        } 
+        else if (group.MailEnabled == null || group.MailEnabled == false)
+        {
+            return "Security Group";
+        }
+        else if (group.SecurityEnabled == null || group.SecurityEnabled == false)
+        {
+            return "Distribution Group";
+        }
+        else
+        {
+            return "Invalid group type";
+        }
+    }
+
+    private void HandleGroupsAsDirectoryObjects(IEnumerable<DirectoryObject> groupsResponse)
+    {
+        var groups = (List<DirectoryObject>)groupsResponse;
+        foreach(var item in groups)
+        {
+            if (item.ODataType == "#microsoft.graph.group")
+            {
+                var group = (Group)item;
+                groupProperties.Add(group);
+            }
+        }
+        numGroups = groupProperties.Count;
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            user = await GraphServiceClient.Me.Request().GetAsync();
+
+            var queryOptions = new List<QueryOption>()
+            {
+	            new QueryOption("$count", "true")
+            };
+
+            var groupsResult = await GraphServiceClient.Me.TransitiveMemberOf
+                        .Request( queryOptions )
+                        .Header("ConsistencyLevel","eventual")
+                        .Select("displayName,id,groupTypes")
+                        .OrderBy("displayName")
+                        .GetAsync();
+
+            HandleGroupsAsDirectoryObjects(groupsResult.CurrentPage);
+            while(groupsResult.NextPageRequest != null)
+            {
+                groupsResult = await groupsResult.NextPageRequest.GetAsync();
+                HandleGroupsAsDirectoryObjects(groupsResult.CurrentPage);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+}
