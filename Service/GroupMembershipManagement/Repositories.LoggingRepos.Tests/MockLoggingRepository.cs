@@ -16,13 +16,13 @@ namespace Repositories.LoggingRepos.Tests
     public class MockLoggingRepository : ILoggingRepository
     {
         private int MAX_RETRY_ATTEMPTS = 4;
-        public Dictionary<string, string> SyncJobProperties { get; set; } = new Dictionary<string, string>();
+        public Dictionary<Guid, LogProperties> SyncJobProperties { get; set; } = new Dictionary<Guid, LogProperties>();
         public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
         public HttpStatusCode FinalStatusCode { get; set; } = HttpStatusCode.OK;
         public bool PollyPolicySucceeds { get; set; } = false;
 		public bool DryRun { get; set; }
 
-		public async Task LogMessageAsync(LogMessage logMessage, VerbosityLevel verbosityLevel = VerbosityLevel.INFO, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
+        public async Task LogMessageAsync(LogMessage logMessage, VerbosityLevel verbosityLevel = VerbosityLevel.INFO, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
         {
             HttpResponseMessage response = null;
 
@@ -46,7 +46,7 @@ namespace Repositories.LoggingRepos.Tests
             await retryPolicy.ExecuteAsync(async () =>
             {
                 response = await GetHttpResponseAsync();
-                
+
                 if (PollyPolicySucceeds)
                     FinalStatusCode = HttpStatusCode.OK;
                 else
@@ -82,7 +82,7 @@ namespace Repositories.LoggingRepos.Tests
             await retryPolicy.ExecuteAsync(async () =>
             {
                 response = await GetHttpResponseAsync();
-                
+
                 if (PollyPolicySucceeds)
                     FinalStatusCode = HttpStatusCode.OK;
 
