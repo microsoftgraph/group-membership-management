@@ -32,7 +32,7 @@ namespace Services.Tests
 
             context.Setup(x => x.CallSubOrchestratorAsync(It.Is<string>(x => x == nameof(SubOrchestratorFunction)), It.IsAny<SyncJob>()));
 
-            var orchestrator = new OrchestratorFunction(loggingRepository.Object, graphRespository.Object);
+            var orchestrator = new OrchestratorFunction(loggingRepository.Object);
             await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(syncJobs.All(x => x.RunId.HasValue));

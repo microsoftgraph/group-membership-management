@@ -32,7 +32,7 @@ namespace Repositories.Logging
         private static readonly HttpClient _httpClient = MakeClient("ApplicationLog");
         private static readonly HttpClient _httpPIIClient = MakeClient("PIIApplicationLog");
 
-        public Dictionary<string, string> SyncJobProperties { get; set; }
+        public Dictionary<Guid, LogProperties> SyncJobProperties { get; set; } = new Dictionary<Guid, LogProperties>();
         public bool DryRun { get; set; } = false;
 
         public LoggingRepository(ILogAnalyticsSecret<LoggingRepository> logAnalytics, IAppConfigVerbosity appConfigVerbosity)
@@ -62,7 +62,7 @@ namespace Repositories.Logging
 
         public async Task LogPIIMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
         {
-           await CommonLogMessageAsync(logMessage, _httpPIIClient, caller, file);
+            await CommonLogMessageAsync(logMessage, _httpPIIClient, caller, file);
         }
 
         private async Task CommonLogMessageAsync(LogMessage logMessage, HttpClient httpClient, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
@@ -155,21 +155,29 @@ namespace Repositories.Logging
         private Dictionary<string, string> CreatePropertiesDictionary(LogMessage logMessage)
         {
             var logMessageProperties = logMessage.ToDictionary();
-            if (SyncJobProperties?.Keys.Any() ?? false)
+
+            if (logMessage.RunId.HasValue
+                && SyncJobProperties.ContainsKey(logMessage.RunId.Value)
+                && SyncJobProperties[logMessage.RunId.Value] != null
+                && SyncJobProperties[logMessage.RunId.Value].Properties != null
+                )
             {
-                foreach (var key in SyncJobProperties.Keys)
+                var jobProperties = SyncJobProperties[logMessage.RunId.Value].Properties;
+                if (jobProperties.Any())
                 {
-                    if (!logMessageProperties.ContainsKey(key))
+                    foreach (var key in jobProperties.Keys)
                     {
-                        logMessageProperties.Add(key, SyncJobProperties[key]);
-                    }
-                    else if (string.IsNullOrWhiteSpace(logMessageProperties[key]) && !string.IsNullOrWhiteSpace(SyncJobProperties[key]))
-                    {
-                        logMessageProperties[key] = SyncJobProperties[key];
+                        if (!logMessageProperties.ContainsKey(key))
+                        {
+                            logMessageProperties.Add(key, jobProperties[key]);
+                        }
+                        else if (string.IsNullOrWhiteSpace(logMessageProperties[key]) && !string.IsNullOrWhiteSpace(jobProperties[key]))
+                        {
+                            logMessageProperties[key] = jobProperties[key];
+                        }
                     }
                 }
             }
-
             return logMessageProperties;
         }
     }

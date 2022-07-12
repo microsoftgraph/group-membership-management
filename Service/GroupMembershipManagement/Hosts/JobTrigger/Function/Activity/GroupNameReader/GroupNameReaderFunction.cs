@@ -27,6 +27,7 @@ namespace Hosts.JobTrigger
             if (syncJob != null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+                _jobTriggerService.RunId = syncJob.RunId ?? Guid.Empty;
                 var groupName = await _jobTriggerService.GetGroupNameAsync(syncJob.TargetOfficeGroupId);
                 group.SyncJob = syncJob;
                 group.Name = groupName;

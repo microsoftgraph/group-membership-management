@@ -13,18 +13,17 @@ namespace Hosts.JobTrigger
     public class OrchestratorFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IGraphGroupRepository _graphGroupRepository = null;
-        public OrchestratorFunction(ILoggingRepository loggingRepository,
-                                    IGraphGroupRepository graphGroupRepository)
+
+        public OrchestratorFunction(ILoggingRepository loggingRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started" }, VerbosityLevel.DEBUG);
+            if (!context.IsReplaying)
+                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started" }, VerbosityLevel.DEBUG);
             var syncJobs = await context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), null);
             if (syncJobs != null && syncJobs.Count > 0)
             {
@@ -32,14 +31,34 @@ namespace Hosts.JobTrigger
                 var processingTasks = new List<Task>();
                 foreach (var syncJob in syncJobs)
                 {
-                    syncJob.RunId = _graphGroupRepository.RunId = context.NewGuid();
-                    _loggingRepository.SyncJobProperties = syncJob.ToDictionary();
+                    syncJob.RunId = context.NewGuid();
+
+                    if (!_loggingRepository.SyncJobProperties.ContainsKey(syncJob.RunId.Value))
+                    {
+                        _loggingRepository.SyncJobProperties.Add(syncJob.RunId.Value,
+                                                                    new LogProperties
+                                                                    {
+                                                                        Properties = syncJob.ToDictionary()
+                                                                    });
+                    }
+
                     var processTask = context.CallSubOrchestratorAsync(nameof(SubOrchestratorFunction), syncJob);
                     processingTasks.Add(processTask);
                 }
+
                 await Task.WhenAll(processingTasks);
             }
-            _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed" }, VerbosityLevel.DEBUG);
+
+            syncJobs.ForEach(x =>
+            {
+                if (_loggingRepository.SyncJobProperties.ContainsKey(x.RunId.Value))
+                {
+                    _loggingRepository.SyncJobProperties.Remove(x.RunId.Value);
+                }
+            });
+
+            if (!context.IsReplaying)
+                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed" }, VerbosityLevel.DEBUG);
         }
     }
 }

@@ -26,6 +26,7 @@ namespace Hosts.JobTrigger
             if (request.SyncJob != null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                _jobTriggerService.RunId = request.SyncJob.RunId ?? Guid.Empty;
                 await _jobTriggerService.UpdateSyncJobStatusAsync(request.Status, request.SyncJob);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
