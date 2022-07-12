@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
 using Entities;
+using Microsoft.Azure.Cosmos.Table;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
@@ -71,6 +73,21 @@ namespace Repositories.SyncJobs.Tests
         }
 
         public Task<TableSegmentBulkResult> GetSyncJobsAsync(Expression<Func<SyncJob, bool>> jobsQueryFunc, string continuationToken, bool applyFilters = true)
+        {
+            throw new NotImplementedException();
+        }
+
+        public AsyncPageable<SyncJob> GetPageableQueryResultAsync(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<TableSegmentBulkResult> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, bool applyFilters = true)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task BatchUpdateSyncJobsAsync(IEnumerable<SyncJob> jobs)
         {
             throw new NotImplementedException();
         }

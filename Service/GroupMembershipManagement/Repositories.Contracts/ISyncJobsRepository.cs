@@ -20,5 +20,6 @@ namespace Repositories.Contracts
         IAsyncEnumerable<SyncJob> GetSyncJobsAsync(IEnumerable<(string partitionKey, string rowKey)> jobIds);
         Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status);
         Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null);
+        Task BatchUpdateSyncJobsAsync(IEnumerable<SyncJob> jobs);
     }
 }

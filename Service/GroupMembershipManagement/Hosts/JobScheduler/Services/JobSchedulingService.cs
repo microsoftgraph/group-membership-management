@@ -43,25 +43,27 @@ namespace Services
             _loggingRepository = loggingRepository;
         }
 
-        public async Task ResetJobsAsync(List<SchedulerSyncJob> jobs)
+        public async Task<List<SchedulerSyncJob>> ResetJobsAsync(List<SchedulerSyncJob> jobs)
         {
             var newStartTime = DateTime.UtcNow.AddDays(_jobSchedulerConfig.DaysToAddForReset);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Updating {jobs.Count} jobs to have StartDate of {newStartTime}" });
 
             List<SchedulerSyncJob> updatedJobs = ResetJobStartTimes(jobs, newStartTime, _jobSchedulerConfig.IncludeFutureJobs);
-            await UpdateSyncJobsAsync(updatedJobs);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Updated {jobs.Count} jobs to have StartDate of {newStartTime}" });
+
+            return updatedJobs;
         }
 
-        public async Task DistributeJobsAsync(List<SchedulerSyncJob> jobs)
+        public async Task<List<SchedulerSyncJob>> DistributeJobsAsync(List<SchedulerSyncJob> jobs)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Distributing {jobs.Count} jobs" });
 
             List<SchedulerSyncJob> updatedJobs = await DistributeJobStartTimesAsync(jobs);
-            await UpdateSyncJobsAsync(updatedJobs);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Distributed {jobs.Count} jobs" });
+
+            return updatedJobs;
         }
 
         public async Task<TableSegmentBulkResult> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken)
@@ -79,9 +81,9 @@ namespace Services
             return queryResultSegment;
         }
 
-        public async Task UpdateSyncJobsAsync(List<SchedulerSyncJob> updatedSyncJobs)
+        public async Task BatchUpdateSyncJobsAsync(IEnumerable<SyncJob> updatedSyncJobs)
         {
-            await _syncJobRepository.UpdateSyncJobsAsync(updatedSyncJobs);
+            await _syncJobRepository.BatchUpdateSyncJobsAsync(updatedSyncJobs);
         }
 
         public List<SchedulerSyncJob> ResetJobStartTimes(List<SchedulerSyncJob> schedulerSyncJobs, DateTime newStartTime, bool includeFutureStartDates = false)

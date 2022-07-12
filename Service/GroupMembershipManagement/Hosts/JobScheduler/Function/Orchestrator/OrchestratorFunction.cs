@@ -37,21 +37,53 @@ namespace Hosts.JobScheduler
 
             var jobsToUpdate = await context.CallSubOrchestratorAsync<List<SchedulerSyncJob>>(nameof(GetJobsSubOrchestratorFunction), null);
 
+            List<SchedulerSyncJob> jobsWithUpdates = null;
+
             if (_jobSchedulerConfig.ResetJobs)
             {
-                await context.CallActivityAsync(nameof(ResetJobsFunction),
+                jobsWithUpdates = await context.CallActivityAsync<List<SchedulerSyncJob>>(nameof(ResetJobsFunction),
                     new ResetJobsRequest
                     {
                         JobsToReset = jobsToUpdate
                     });
+
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        RunId = runId,
+                        Message = $"Successfully reset jobs to update."
+                    });
             }
 
-            if (_jobSchedulerConfig.DistributeJobs)
+            else if (_jobSchedulerConfig.DistributeJobs)
             {
-                await context.CallActivityAsync(nameof(DistributeJobsFunction),
+                jobsWithUpdates = await context.CallActivityAsync<List<SchedulerSyncJob>>(nameof(DistributeJobsFunction),
                     new DistributeJobsRequest
                     {
                         JobsToDistribute = jobsToUpdate
+                    });
+
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        RunId = runId,
+                        Message = $"Successfully distributed jobs to update."
+                    });
+            }
+
+            if(jobsWithUpdates != null)
+            {
+                await context.CallSubOrchestratorAsync(nameof(UpdateJobsSubOrchestratorFunction), 
+                    new UpdateJobsSubOrchestratorRequest
+                    {
+                        JobsToUpdate = jobsWithUpdates
+                    });
+
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        RunId = runId,
+                        Message = $"Successfully updated all jobs accordingly."
                     });
             }
 

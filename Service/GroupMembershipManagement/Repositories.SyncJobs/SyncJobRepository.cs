@@ -160,9 +160,9 @@ namespace Repositories.SyncJobsRepository
                         await _log.LogMessageAsync(new LogMessage { Message = $"Setting job status to {status} for job Rowkey:{job.RowKey}", RunId = job.RunId });
                     }
 
-                    job.ETag = Azure.ETag.All;
+                    job.ETag = ETag.All;
 
-					await _log.LogMessageAsync(new LogMessage { Message = string.Join('\n', job.GetType().GetProperties().Select(jobProperty => $"{jobProperty.Name} : {jobProperty.GetValue(job, null)}")), RunId = job.RunId });
+                    await _log.LogMessageAsync(new LogMessage { Message = string.Join('\n', job.GetType().GetProperties().Select(jobProperty => $"{jobProperty.Name} : {jobProperty.GetValue(job, null)}")), RunId = job.RunId });
 
 					batchOperation.Add(new TableTransactionAction(TableTransactionActionType.UpdateReplace, job));
 
@@ -179,6 +179,36 @@ namespace Repositories.SyncJobsRepository
                 }
             }
             await _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key completed", RunId = Guid.Empty });
+        }
+
+        public async Task BatchUpdateSyncJobsAsync(IEnumerable<SyncJob> jobs)
+        {
+            var batchOperation = new List<TableTransactionAction>();
+
+            if(jobs.Count() > 100)
+            {
+                jobs = jobs.Take(100).ToList();
+
+                await _log.LogMessageAsync(new LogMessage
+                {
+                    Message = $"ERROR: This batch is more than 100, which is not supported by storage tables. Only the first 100 will be updated. Please fix the logic!",
+                    RunId = Guid.Empty
+                });
+            }
+
+            foreach (var job in jobs)
+            {
+                job.ETag = ETag.All;
+
+                await _log.LogMessageAsync(new LogMessage { Message = string.Join('\n', job.GetType().GetProperties().Select(jobProperty => $"{jobProperty.Name} : {jobProperty.GetValue(job, null)}")), RunId = job.RunId }, VerbosityLevel.DEBUG);
+
+                batchOperation.Add(new TableTransactionAction(TableTransactionActionType.UpdateReplace, job));
+            }
+
+            if (batchOperation.Any())
+            {
+                await _tableClient.SubmitTransactionAsync(batchOperation);
+            }
         }
 
         private IEnumerable<SyncJob> ApplyFiltersToResults(IEnumerable<SyncJob> jobs)

@@ -2,14 +2,13 @@
 // Licensed under the MIT license.
 
 using Entities;
-using Microsoft.Azure.Cosmos.Table;
+using Services.Entities;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Hosts.JobScheduler
 {
-    public class GetJobsQueryResponse
+    public class BatchUpdateJobsRequest
     {
-        public IQueryable<SyncJob> JobsQuery;
+        public IEnumerable<SyncJob> SyncJobBatch;
     }
 }

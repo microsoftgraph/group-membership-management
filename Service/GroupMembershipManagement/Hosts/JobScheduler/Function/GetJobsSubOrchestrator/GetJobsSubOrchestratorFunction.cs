@@ -3,37 +3,44 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Repositories.Contracts;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using Microsoft.Azure.Cosmos.Table;
-using Services.Entities;
 using Newtonsoft.Json;
+using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
+using Services.Entities;
 using Azure;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Hosts.JobScheduler
 {
     public class GetJobsSubOrchestratorFunction
     {
-        private List<SyncJob> _jobs;
+        private readonly IJobSchedulerConfig _jobSchedulerConfig;
 
-        public GetJobsSubOrchestratorFunction()
+        public GetJobsSubOrchestratorFunction(IJobSchedulerConfig jobSchedulerConfig)
         {
-            _jobs = new List<SyncJob>();
+            _jobSchedulerConfig = jobSchedulerConfig;
         }
 
         [FunctionName(nameof(GetJobsSubOrchestratorFunction))]
         public async Task<List<SchedulerSyncJob>> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             await context.CallActivityAsync(nameof(LoggerFunction),
-                                                      new LoggerRequest
-                                                      {
-                                                          Message = $"{nameof(GetJobsSubOrchestratorFunction)} function started",
-                                                          Verbosity = VerbosityLevel.DEBUG
-                                                      });
+                new LoggerRequest
+                {
+                    Message = $"{nameof(GetJobsSubOrchestratorFunction)} function started",
+                    Verbosity = VerbosityLevel.DEBUG
+                });
+
+            await context.CallActivityAsync(nameof(LoggerFunction),
+                new LoggerRequest
+                {
+                    Message = "Retrieving enabled sync jobs" + (_jobSchedulerConfig.IncludeFutureJobs ? " including those with future StartDate values" : "")
+                });
 
             AsyncPageable<SyncJob> pageableQueryResult = null;
             string continuationToken = null;
+            var jobs = new List<SyncJob>();
 
             do
             {
@@ -44,27 +51,32 @@ namespace Hosts.JobScheduler
                         ContinuationToken = continuationToken
                     });
 
-                _jobs.AddRange(segmentResponse.JobsSegment);
+                jobs.AddRange(segmentResponse.JobsSegment);
 
                 pageableQueryResult = segmentResponse.PageableQueryResult;
                 continuationToken = segmentResponse.ContinuationToken;
-
             } while (continuationToken != null);
 
             await context.CallActivityAsync(nameof(LoggerFunction),
-                                                      new LoggerRequest
-                                                      {
-                                                          Message = $"{nameof(GetJobsSubOrchestratorFunction)} function completed",
-                                                          Verbosity = VerbosityLevel.DEBUG
-                                                      });
+                new LoggerRequest
+                {
+                    Message = $"Retrieved {jobs.Count} enabled sync jobs" + (_jobSchedulerConfig.IncludeFutureJobs ? " including those with future StartDate values" : "")
+                });
 
             var schedulerSyncJobs = new List<SchedulerSyncJob>();
-            foreach (var job in _jobs)
+            foreach (var job in jobs)
             {
                 var serializedJob = JsonConvert.SerializeObject(job);
                 SchedulerSyncJob schedulerJob = JsonConvert.DeserializeObject<SchedulerSyncJob>(serializedJob);
                 schedulerSyncJobs.Add(schedulerJob);
             }
+
+            await context.CallActivityAsync(nameof(LoggerFunction),
+                new LoggerRequest
+                {
+                    Message = $"{nameof(GetJobsSubOrchestratorFunction)} function completed",
+                    Verbosity = VerbosityLevel.DEBUG
+                });
 
             return schedulerSyncJobs;
         }

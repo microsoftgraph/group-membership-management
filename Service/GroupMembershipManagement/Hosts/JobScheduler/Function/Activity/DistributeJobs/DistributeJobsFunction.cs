@@ -8,6 +8,8 @@ using System;
 using System.Threading.Tasks;
 using Services.Contracts;
 using Repositories.Contracts;
+using Services.Entities;
+using System.Collections.Generic;
 
 namespace Hosts.JobScheduler
 {
@@ -22,11 +24,13 @@ namespace Hosts.JobScheduler
         }
 
         [FunctionName(nameof(DistributeJobsFunction))]
-        public async Task DistributeJobsAsync([ActivityTrigger] DistributeJobsRequest request)
+        public async Task<List<SchedulerSyncJob>> DistributeJobsAsync([ActivityTrigger] DistributeJobsRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DistributeJobsFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            await _jobSchedulingService.DistributeJobsAsync(request.JobsToDistribute);
+            var updatedJobs = await _jobSchedulingService.DistributeJobsAsync(request.JobsToDistribute);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DistributeJobsFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
+
+            return updatedJobs;
         }
     }
 }

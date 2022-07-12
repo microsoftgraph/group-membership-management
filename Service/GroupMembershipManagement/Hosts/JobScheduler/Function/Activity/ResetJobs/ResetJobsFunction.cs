@@ -8,6 +8,8 @@ using System;
 using System.Threading.Tasks;
 using Services.Contracts;
 using Repositories.Contracts;
+using Services.Entities;
+using System.Collections.Generic;
 
 namespace Hosts.JobScheduler
 {
@@ -22,11 +24,13 @@ namespace Hosts.JobScheduler
         }
 
         [FunctionName(nameof(ResetJobsFunction))]
-        public async Task ResetJobsAsync([ActivityTrigger] ResetJobsRequest request)
+        public async Task<List<SchedulerSyncJob>> ResetJobsAsync([ActivityTrigger] ResetJobsRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ResetJobsFunction)} function started at: {DateTime.UtcNow}" });
-            await _jobSchedulingService.ResetJobsAsync(request.JobsToReset);
+            var updatedJobs = await _jobSchedulingService.ResetJobsAsync(request.JobsToReset);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ResetJobsFunction)} function completed at: {DateTime.UtcNow}" });
+
+            return updatedJobs;
         }
     }
 }
