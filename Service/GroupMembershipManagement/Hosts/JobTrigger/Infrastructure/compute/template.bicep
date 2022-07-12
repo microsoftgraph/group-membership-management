@@ -144,7 +144,7 @@ var appSettings = [
   }
   {
     name: 'FUNCTIONS_EXTENSION_VERSION'
-    value: '~3'
+    value: '~4'
   }
   {
     name: 'jobTriggerSchedule'
