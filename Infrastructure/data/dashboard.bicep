@@ -3146,7 +3146,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'IsQueryContainTimeRange'
-                  value: true
+                  value: false
                   isOptional: true
                 }
               ]
