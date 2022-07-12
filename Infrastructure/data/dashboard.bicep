@@ -2692,7 +2692,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'ApplicationLog_CL\r\n| where Message has \'. Adding\'\r\n| extend MessageWords = array_reverse(split(Message, \' \'))\r\n| project usersAdded = toint(MessageWords[4]), TimeGenerated, targetOfficeGroupId_g\r\n| top 5 by usersAdded desc\r\n\n'
+                  value: 'ApplicationLog_CL\n| where (location_s == "GraphUpdater" and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress")\n| project TimeGenerated, Message, RowKey_g, TargetOfficeGroupId_g, RunId_g\n| order by TimeGenerated desc\n\n'
                   isOptional: true
                 }
                 {
