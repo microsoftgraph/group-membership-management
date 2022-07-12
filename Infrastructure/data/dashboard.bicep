@@ -2281,7 +2281,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     percentile_Minutes_99: '170px'
                     percentile_Minutes_100: '175px'
                   }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    Type = customDimensions["Type"],\n    Size = customDimensions["ProjectedMemberCount"]\n| where Result == "Success" and DryRun == "False" and Size >= 10000 and Size < 50000\n| project Minutes, tostring(Type)\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100) by Type\n| order by Type desc\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    Size = customDimensions["ProjectedMemberCount"]\n| where Result == "Success" and DryRun == "False" and Size >= 10000 and Size < 50000\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)'
                   PartTitle: 'Size 10k - 50k Sync Job Durations'
                 }
               }
@@ -2385,7 +2385,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     percentile_Minutes_99: '170px'
                     percentile_Minutes_100: '178px'
                   }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    Type = customDimensions["Type"],\n    Size = customDimensions["ProjectedMemberCount"]\n| where Result == "Success" and DryRun == "False" and Size < 100000 and Size >= 50000\n| project Minutes, tostring(Type)\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100) by Type\n| order by Type desc\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    Size = customDimensions["ProjectedMemberCount"]\n| where Result == "Success" and DryRun == "False" and Size < 100000 and Size >= 50000\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)'
                   PartTitle: 'Size 50k - 100k Sync Job Durations'
                 }
               }
