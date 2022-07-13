@@ -3,6 +3,7 @@
 using Azure;
 using Azure.Data.Tables;
 using Entities.CustomAttributes;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -107,6 +108,8 @@ namespace Entities
         [IgnoreLogging]
         public int ThresholdViolations { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
+
+        [JsonIgnore]
         public ETag ETag { get; set; }
 
         public Dictionary<string, string> ToDictionary() =>
