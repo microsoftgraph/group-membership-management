@@ -107,7 +107,7 @@ namespace Entities
         [IgnoreLogging]
         public int ThresholdViolations { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
-        public ETag? ETag { get; set; }
+        public ETag ETag { get; set; }
 
         public Dictionary<string, string> ToDictionary() =>
             DictionaryHelper.ToDictionary(this, new DictionaryHelper.Options

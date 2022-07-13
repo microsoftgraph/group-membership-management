@@ -23,6 +23,8 @@ namespace Repositories.ServiceBusTopics
 
         public async Task AddMessageAsync(SyncJob job)
         {
+            // ETag has to be set, otherwise Newtonsoft Json will refuse to deserialize the object
+            job.ETag = Azure.ETag.All;
             var index = 1;
             var queries = JArray.Parse(job.Query);
             var queryTypes = queries.SelectTokens("$..type")
