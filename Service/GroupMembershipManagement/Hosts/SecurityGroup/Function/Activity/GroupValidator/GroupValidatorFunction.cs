@@ -31,6 +31,7 @@ namespace Hosts.SecurityGroup
         {
             bool isExistingGroup = false;
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            _calculator.RunId = request.RunId;
             var groupExistsResult = await _calculator.GroupExistsAsync(request.ObjectId, request.RunId);
             if (groupExistsResult.Outcome == OutcomeType.Successful && groupExistsResult.Result)
             {
@@ -43,11 +44,11 @@ namespace Hosts.SecurityGroup
                 {
                     await _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.ObjectId} doesn't exist. Stopping sync and marking as {SyncStatus.SecurityGroupNotFound}." });
                     if (request.SyncJob != null && request.ObjectId != default(Guid))
-                        await _calculator.SendEmailAsync(request.SyncJob, 
-                                                            request.RunId, 
-                                                            SyncDisabledNoGroupEmailBody, 
-                                                            new[] 
-                                                            { 
+                        await _calculator.SendEmailAsync(request.SyncJob,
+                                                            request.RunId,
+                                                            SyncDisabledNoGroupEmailBody,
+                                                            new[]
+                                                            {
                                                                 request.ObjectId.ToString(),
                                                                 _emailSenderAndRecipients.SyncDisabledCCAddresses
                                                             });

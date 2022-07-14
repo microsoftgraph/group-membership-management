@@ -29,8 +29,8 @@ namespace Hosts.SecurityGroup
             {
                 return new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value));
             })
-            .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
-            .AddSingleton<SGMembershipCalculator>()
+            .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
+            .AddScoped<SGMembershipCalculator>()
             .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
             {
                 var configuration = s.GetService<IConfiguration>();

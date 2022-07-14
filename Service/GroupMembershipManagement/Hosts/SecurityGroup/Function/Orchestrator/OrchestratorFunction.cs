@@ -19,7 +19,6 @@ namespace Hosts.SecurityGroup
     public class OrchestratorFunction
     {
         private readonly ILoggingRepository _log;
-        private readonly IGraphGroupRepository _graphGroup;
         private readonly IConfiguration _configuration;
         private readonly SGMembershipCalculator _calculator;
         private const string SyncDisabledNoValidGroupIds = "SyncDisabledNoValidGroupIds";
@@ -31,7 +30,6 @@ namespace Hosts.SecurityGroup
             IConfiguration configuration)
         {
             _log = loggingRepository;
-            _graphGroup = graphGroupRepository;
             _calculator = calculator;
             _configuration = configuration;
         }
@@ -41,11 +39,8 @@ namespace Hosts.SecurityGroup
         {
             var mainRequest = context.GetInput<OrchestratorRequest>();
             var syncJob = mainRequest.SyncJob;
-            var runId = syncJob.RunId.GetValueOrDefault(context.NewGuid());
+            var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
             List<AzureADUser> distinctUsers = null;
-
-            _log.SyncJobProperties = syncJob.ToDictionary();
-            _graphGroup.RunId = runId;
 
             try
             {
@@ -143,6 +138,10 @@ namespace Hosts.SecurityGroup
 
                 // make sure this gets thrown to where App Insights will handle it
                 throw;
+            }
+            finally
+            {
+                _log.RemoveSyncJobProperties(runId);
             }
 
             if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);

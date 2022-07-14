@@ -32,16 +32,7 @@ namespace Hosts.JobTrigger
                 foreach (var syncJob in syncJobs)
                 {
                     syncJob.RunId = context.NewGuid();
-
-                    if (!_loggingRepository.SyncJobProperties.ContainsKey(syncJob.RunId.Value))
-                    {
-                        _loggingRepository.SyncJobProperties.Add(syncJob.RunId.Value,
-                                                                    new LogProperties
-                                                                    {
-                                                                        Properties = syncJob.ToDictionary()
-                                                                    });
-                    }
-
+                    _loggingRepository.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
                     var processTask = context.CallSubOrchestratorAsync(nameof(SubOrchestratorFunction), syncJob);
                     processingTasks.Add(processTask);
                 }
@@ -51,10 +42,8 @@ namespace Hosts.JobTrigger
 
             syncJobs.ForEach(x =>
             {
-                if (_loggingRepository.SyncJobProperties.ContainsKey(x.RunId.Value))
-                {
-                    _loggingRepository.SyncJobProperties.Remove(x.RunId.Value);
-                }
+                if (x.RunId.HasValue)
+                    _loggingRepository.RemoveSyncJobProperties(x.RunId.Value);
             });
 
             if (!context.IsReplaying)

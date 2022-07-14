@@ -47,6 +47,16 @@ namespace Hosts.SecurityGroup
         private const int NumberOfGraphRetries = 5;
         private AsyncRetryPolicy _graphRetryPolicy;
         private const string EmailSubject = "EmailSubject";
+        private Guid _runId;
+        public Guid RunId
+        {
+            get { return _runId; }
+            set
+            {
+                _runId = value;
+                _graphGroupRepository.RunId = value;
+            }
+        }
 
         public AzureADGroup[] ReadSourceGroups(string ids)
         {

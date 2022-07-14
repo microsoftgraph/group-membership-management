@@ -15,6 +15,7 @@ using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Repositories.Logging
@@ -31,8 +32,9 @@ namespace Repositories.Logging
         // see https://aspnetmonsters.com/2016/08/2016-08-27-httpclientwrong/?fbclid=IwAR2aNRweTjGdx5Foev4XvHj2Xldeg_UAb6xW3eLTFQDB7Xghv65LvrVa5wA
         private static readonly HttpClient _httpClient = MakeClient("ApplicationLog");
         private static readonly HttpClient _httpPIIClient = MakeClient("PIIApplicationLog");
+        private readonly SemaphoreSlim _logPropertiesSemaphore = new SemaphoreSlim(1, 1);
 
-        public Dictionary<Guid, LogProperties> SyncJobProperties { get; set; } = new Dictionary<Guid, LogProperties>();
+        public Dictionary<Guid, LogProperties> SyncJobProperties { get; private set; } = new Dictionary<Guid, LogProperties>();
         public bool DryRun { get; set; } = false;
 
         public LoggingRepository(ILogAnalyticsSecret<LoggingRepository> logAnalytics, IAppConfigVerbosity appConfigVerbosity)
@@ -50,6 +52,38 @@ namespace Repositories.Logging
             var client = new HttpClient();
             client.DefaultRequestHeaders.Add("Log-Type", logType);
             return client;
+        }
+
+        public void SetSyncJobProperties(Guid key, Dictionary<string, string> properties)
+        {
+            _logPropertiesSemaphore.Wait();
+
+            if (SyncJobProperties.ContainsKey(key))
+            {
+                SyncJobProperties[key].Properties = properties;
+                SyncJobProperties[key].ConcurrentParts += 1;
+            }
+            else
+            {
+                SyncJobProperties.Add(key, new LogProperties { Properties = properties, ConcurrentParts = 1 });
+            }
+
+            _logPropertiesSemaphore.Release();
+        }
+
+        public void RemoveSyncJobProperties(Guid key)
+        {
+            _logPropertiesSemaphore.Wait();
+
+            if (SyncJobProperties.ContainsKey(key))
+            {
+                if ((SyncJobProperties[key].ConcurrentParts - 1) <= 0)
+                    SyncJobProperties.Remove(key);
+                else
+                    SyncJobProperties[key].ConcurrentParts -= 1;
+            }
+
+            _logPropertiesSemaphore.Release();
         }
 
         public async Task LogMessageAsync(LogMessage logMessage, VerbosityLevel verbosityLevel = VerbosityLevel.INFO, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")

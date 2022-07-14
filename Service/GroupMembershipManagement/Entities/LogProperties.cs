@@ -7,5 +7,6 @@ namespace Entities
     public class LogProperties
     {
         public Dictionary<string, string> Properties { get; set; } = new Dictionary<string, string>();
+        public int ConcurrentParts { get; set; }
     }
 }
