@@ -37,10 +37,11 @@ steps:
       Contents: groupTableManager.zip
       TargetFolder: '$(build.artifactstagingdirectory)/function_packages/'
   
-  - task: DotNetCoreInstaller@0
-    displayName: 'Installing .NET Core SDK...'
+  - task: UseDotNet@2
     inputs:
-      version: 6.0.300
+      packageType: 'sdk'
+      useGlobalJson: true
+      workingDirectory: 'Service\GroupMembershipManagement'
 
   - script: dotnet build --configuration $(buildConfiguration) public\UI\WebApp\WebAppWithAuth.csproj
     displayName: 'Building $(buildConfiguration)...'
