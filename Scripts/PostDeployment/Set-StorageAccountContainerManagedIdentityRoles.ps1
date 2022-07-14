@@ -25,6 +25,7 @@ Set-StorageAccountContainerManagedIdentityRoles	-SolutionAbbreviation "gmm" `
 												-StorageAccountName "<name>" `
 												-Verbose
 #>
+
 function Set-StorageAccountContainerManagedIdentityRoles
 {
 	[CmdletBinding()]

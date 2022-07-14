@@ -3,7 +3,7 @@
 Adds an Azure active directory group as a writer on each service bus queue / topic.
 
 .DESCRIPTION
-Adds an Azure active directory group as a writer on each service bus queue / topic so we don't need connection strings as much. 
+Adds an Azure active directory group as a writer on each service bus queue / topic so we don't need connection strings as much.
 This should be run by an owner on the subscription after the service bus queues and app service have been set up.
 This should only have to be run once.
 
@@ -28,14 +28,14 @@ Parameter description
 QueueName and TopicName are optionals but one must be provided.
 
 .EXAMPLE
-Set-Set-ServiceBusManagedIdentityRolesToADGroup  	-SolutionAbbreviation "gmm" `
+Set-ServiceBusManagedIdentityRolesToADGroup  	-SolutionAbbreviation "gmm" `
                                     				-EnvironmentAbbreviation "<env>" `
                                     				-GroupName "<group name>" `
                                     				-QueueName "<queue name>" `
                                     				-TopicName "<topic name>" `
                                     				-Verbose
 #>
-function Set-Set-ServiceBusManagedIdentityRolesToADGroup 
+function Set-ServiceBusManagedIdentityRolesToADGroup
 {
 	[CmdletBinding()]
 	param(
@@ -44,11 +44,11 @@ function Set-Set-ServiceBusManagedIdentityRolesToADGroup
 		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation,
 		[Parameter(Mandatory = $True)]
-		[string] $GroupName,        
+		[string] $GroupName,
 		[Parameter(Mandatory = $False)]
 		[string] $QueueName,
 		[Parameter(Mandatory = $False)]
-		[string] $TopicName,        
+		[string] $TopicName,
 		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
 	)
@@ -57,46 +57,46 @@ function Set-Set-ServiceBusManagedIdentityRolesToADGroup
 
 	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
 	$ownerGroup = Get-AzADGroup -DisplayName $GroupName;
-	
-	if ($null -eq $ownerGroup) 
+
+	if ($null -eq $ownerGroup)
 	{
 		Write-Host "Group $GroupName was not found.";
 		return;
 	}
 
 	# Grant the group access to the queue
-	if (![string]::IsNullOrEmpty($QueueName)) 
+	if (![string]::IsNullOrEmpty($QueueName))
 	{
 		$queueObject = Get-AzServiceBusQueue -ResourceGroupName $resourceGroupName -Namespace $resourceGroupName -Name $QueueName;
 
-		if ($null -eq (Get-AzRoleAssignment -ObjectId $ownerGroup.Id -Scope $queueObject.Id)) 
+		if ($null -eq (Get-AzRoleAssignment -ObjectId $ownerGroup.Id -Scope $queueObject.Id))
 		{
 			New-AzRoleAssignment -ObjectId $ownerGroup.Id -Scope $queueObject.Id -RoleDefinitionName "Azure Service Bus Data Sender";
 			Write-Host "Added role assignment to allow ${ownerGroup.DisplayName} to send on the $QueueName queue.";
 		}
-		else 
+		else
 		{
-			Write-Host "$($ownerGroup.DisplayName) can already send on the $QueueName queue.";    
+			Write-Host "$($ownerGroup.DisplayName) can already send on the $QueueName queue.";
 		}
-	}    
-    
-	# Grant the group access to the topic    
-	if (![string]::IsNullOrEmpty($TopicName)) 
+	}
+
+	# Grant the group access to the topic
+	if (![string]::IsNullOrEmpty($TopicName))
 	{
 		$topicObject = Get-AzServiceBusTopic -ResourceGroupName $resourceGroupName -Namespace $resourceGroupName -Name $TopicName;
 
-		if ($null -eq (Get-AzRoleAssignment -ObjectId $ownerGroup.Id -Scope $topicObject.Id)) 
+		if ($null -eq (Get-AzRoleAssignment -ObjectId $ownerGroup.Id -Scope $topicObject.Id))
 		{
 			New-AzRoleAssignment -ObjectId $ownerGroup.Id -Scope $topicObject.Id -RoleDefinitionName "Azure Service Bus Data Sender";
 			Write-Host "Added role assignment to allow ${ownerGroup.DisplayName} to send on the $TopicName topic.";
 		}
-		else 
+		else
 		{
-			Write-Host "$($ownerGroup.DisplayName) can already send on the $TopicName topic.";    
+			Write-Host "$($ownerGroup.DisplayName) can already send on the $TopicName topic.";
 		}
 	}
 
-	if ([string]::IsNullOrEmpty($QueueName) -And [string]::IsNullOrEmpty($TopicName)) 
+	if ([string]::IsNullOrEmpty($QueueName) -And [string]::IsNullOrEmpty($TopicName))
 	{
 		Write-Host "No queue or topic was provided."
 	}
