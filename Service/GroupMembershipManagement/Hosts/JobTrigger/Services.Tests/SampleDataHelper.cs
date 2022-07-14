@@ -25,7 +25,8 @@ namespace Services.Tests
                     StartDate = startDateBase ?? DateTime.UtcNow.AddDays(-1),
                     Status = SyncStatus.Idle.ToString(),
                     TargetOfficeGroupId = Guid.NewGuid(),
-                    LastRunTime = lastRunTime ?? DateTime.FromFileTimeUtc(0)
+                    LastRunTime = lastRunTime ?? DateTime.FromFileTimeUtc(0),
+                    RunId = Guid.NewGuid()
                 };
 
                 jobs.Add(job);
