@@ -131,7 +131,7 @@ namespace Repositories.AzureBlobBackupRepository
 					CreatedDate = blobProperties.Value.CreatedOn.UtcDateTime;
 				}
 
-				if (CreatedDate != null && CreatedDate < cutOffDate)
+				if (CreatedDate != default(DateTime) && CreatedDate < cutOffDate)
 				{
 					return true;
 				}

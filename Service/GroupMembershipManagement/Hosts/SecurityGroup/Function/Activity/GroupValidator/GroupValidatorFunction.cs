@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using System;
 using System.Threading.Tasks;
 
 namespace Hosts.SecurityGroup
@@ -41,7 +42,7 @@ namespace Hosts.SecurityGroup
                 if (groupExistsResult.Outcome == OutcomeType.Successful)
                 {
                     await _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.ObjectId} doesn't exist. Stopping sync and marking as {SyncStatus.SecurityGroupNotFound}." });
-                    if (request.SyncJob != null && request.ObjectId != null)
+                    if (request.SyncJob != null && request.ObjectId != default(Guid))
                         await _calculator.SendEmailAsync(request.SyncJob, 
                                                             request.RunId, 
                                                             SyncDisabledNoGroupEmailBody, 
