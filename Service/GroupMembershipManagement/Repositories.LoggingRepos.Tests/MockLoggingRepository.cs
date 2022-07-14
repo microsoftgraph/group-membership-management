@@ -102,5 +102,15 @@ namespace Repositories.LoggingRepos.Tests
 
             return await Task.FromResult(mockHttpResponse);
         }
+
+        public void SetSyncJobProperties(Guid key, Dictionary<string, string> properties)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveSyncJobProperties(Guid key)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
