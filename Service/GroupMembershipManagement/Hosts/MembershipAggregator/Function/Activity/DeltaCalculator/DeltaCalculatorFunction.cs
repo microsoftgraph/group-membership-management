@@ -38,6 +38,8 @@ namespace Hosts.MembershipAggregator
             GroupMembership sourceMembership;
             GroupMembership destinationMembership;
 
+            _deltaCalculatorService.RunId = request.RunId.GetValueOrDefault(Guid.Empty);
+
             if (request.ReadFromBlobs)
             {
                 var sourceBlobResult = await _blobStorageRepository.DownloadFileAsync(request.SourceMembershipFilePath);

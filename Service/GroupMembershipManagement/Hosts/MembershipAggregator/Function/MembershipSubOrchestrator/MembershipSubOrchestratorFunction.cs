@@ -28,10 +28,10 @@ namespace Hosts.MembershipAggregator
         public async Task<MembershipSubOrchestratorResponse> RunMembershipSubOrchestratorFunctionAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var request = context.GetInput<MembershipSubOrchestratorRequest>();
+            var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
             var proxy = context.CreateEntityProxy<IJobTracker>(request.EntityId);
             var state = await proxy.GetState();
             var downloadFileTasks = new List<Task<(string FilePath, string Content)>>();
-            var dynamicProperties = request.SyncJob.ToDictionary();
 
             foreach (var part in state.CompletedParts)
             {
@@ -83,7 +83,7 @@ namespace Hosts.MembershipAggregator
                         Message = new LogMessage
                         {
                             Message = $"Uploaded membership file {uploadRequest.FilePath} with {SourceMembership.SourceMembers.Count} unique members",
-                            DynamicProperties = dynamicProperties
+                            RunId = runId
                         }
                     });
 
@@ -118,7 +118,7 @@ namespace Hosts.MembershipAggregator
                 await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
                     {
-                        Message = new LogMessage { Message = message, DynamicProperties = dynamicProperties }
+                        Message = new LogMessage { Message = message, RunId = runId }
                     });
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest

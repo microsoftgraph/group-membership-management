@@ -40,10 +40,9 @@ namespace Hosts.MembershipAggregator
             {
                 return new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value));
             })
-            .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
-            .AddSingleton<IDeltaCalculatorService, DeltaCalculatorService>()
-            .AddSingleton<IGraphAPIService, GraphAPIService>()
-            .AddSingleton<IDeltaCalculatorService, DeltaCalculatorService>()
+            .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
+            .AddScoped<IGraphAPIService, GraphAPIService>()
+            .AddScoped<IDeltaCalculatorService, DeltaCalculatorService>()
             .AddSingleton<IThresholdConfig>(services =>
             {
                 return new ThresholdConfig

@@ -22,6 +22,17 @@ namespace Services
         private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
 
+        private Guid _runId;
+        public Guid RunId
+        {
+            get { return _runId; }
+            set
+            {
+                _runId = value;
+                _graphGroupRepository.RunId = value;
+            }
+        }
+
         public GraphAPIService(
                 ILoggingRepository loggingRepository,
                 IGraphGroupRepository graphGroupRepository,
