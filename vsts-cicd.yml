@@ -34,9 +34,9 @@ stages:
     repoToCheckout: ''
     checkoutPath: ''
     functionApps:
-    - function:
-        name: 'NonProdService'
-        coverageThreshold: 100
+   #  - function:
+   #      name: 'NonProdService'
+   #      coverageThreshold: 100
     - function:
        name: 'JobTrigger'
        coverageThreshold: 89
@@ -46,18 +46,18 @@ stages:
     - function:
        name: 'SecurityGroup'
        coverageThreshold: 94
-    - function:
-        name: 'AzureTableBackup'
-        coverageThreshold: 95
-    - function:
-        name: 'AzureUserReader'
-        coverageThreshold: 45
-    - function:
-        name: 'JobScheduler'
-        coverageThreshold: 60
-    - function:
-        name: 'MembershipAggregator'
-        coverageThreshold: 85
+   #  - function:
+   #      name: 'AzureTableBackup'
+   #      coverageThreshold: 95
+   #  - function:
+   #      name: 'AzureUserReader'
+   #      coverageThreshold: 45
+   #  - function:
+   #      name: 'JobScheduler'
+   #      coverageThreshold: 60
+   #  - function:
+   #      name: 'MembershipAggregator'
+   #      coverageThreshold: 85
 
 - template: yaml/deploy-pipeline.yml
   parameters:
