@@ -31,8 +31,9 @@ namespace Hosts.GraphUpdater
             {
                 return new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value));
             })
-            .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
-            .AddSingleton<IGraphUpdaterService, GraphUpdaterService>()
+
+            .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
+            .AddScoped<IGraphUpdaterService, GraphUpdaterService>()
             .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
             {
                 var configuration = s.GetService<IConfiguration>();

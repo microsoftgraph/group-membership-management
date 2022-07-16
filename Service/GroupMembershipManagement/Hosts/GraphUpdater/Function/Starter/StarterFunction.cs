@@ -40,16 +40,19 @@ namespace Hosts.GraphUpdater
             }
 
             var request = JsonConvert.DeserializeObject<MembershipHttpRequest>(content);
+            var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+
+            _loggingRepository.SetSyncJobProperties(runId, request.SyncJob.ToDictionary());
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"{nameof(StarterFunction)} function started",
-                RunId = request.SyncJob.RunId
+                RunId = runId
             }, VerbosityLevel.DEBUG);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = content,
-                RunId = request.SyncJob.RunId
+                RunId = runId
             });
 
             var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
@@ -57,13 +60,13 @@ namespace Hosts.GraphUpdater
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"InstanceId: {instanceId}",
-                RunId = request.SyncJob.RunId
+                RunId = runId
             }, VerbosityLevel.DEBUG);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"{nameof(StarterFunction)} function completed",
-                RunId = request.SyncJob.RunId
+                RunId = runId
             }, VerbosityLevel.DEBUG);
 
             return validationInfo.Response;

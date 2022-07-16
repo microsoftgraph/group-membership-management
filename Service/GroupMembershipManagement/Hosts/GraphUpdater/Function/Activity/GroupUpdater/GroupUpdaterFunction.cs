@@ -28,6 +28,8 @@ namespace Hosts.GraphUpdater
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
+            _graphUpdaterService.RunId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+
             var successCount = 0;
 
             if (request.Type == RequestType.Add)

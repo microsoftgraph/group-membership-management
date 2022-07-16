@@ -20,6 +20,7 @@ namespace Repositories.Mocks
         public Dictionary<Guid, Group> Groups { get; set; } = new Dictionary<Guid, Group>();
         public Dictionary<Guid, List<AzureADUser>> GroupsToUsers { get; set; } = new Dictionary<Guid, List<AzureADUser>>();
         public Dictionary<(string, string), SyncJob> Jobs { get; set; } = new Dictionary<(string, string), SyncJob>();
+        public Guid RunId { get; set; }
 
         public MockGraphUpdaterService(IMailRepository mailRepository)
         {

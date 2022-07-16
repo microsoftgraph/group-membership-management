@@ -438,7 +438,7 @@ namespace Repositories.Integration.Tests
 
 		private class MockLogger : ILoggingRepository
 		{
-            public Dictionary<string, string> SyncJobProperties { get; set; }
+            public Dictionary<Guid, LogProperties> SyncJobProperties { get; set; }
 			public bool DryRun { get; set; }
 
             public Task LogMessageAsync(LogMessage logMessage, VerbosityLevel verbosityLevel = VerbosityLevel.INFO, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
@@ -450,7 +450,17 @@ namespace Repositories.Integration.Tests
 			{
 				return Task.CompletedTask;
 			}
-		}
+
+            public void RemoveSyncJobProperties(Guid key)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void SetSyncJobProperties(Guid key, Dictionary<string, string> properties)
+            {
+                throw new NotImplementedException();
+            }
+        }
 
 	}
 }

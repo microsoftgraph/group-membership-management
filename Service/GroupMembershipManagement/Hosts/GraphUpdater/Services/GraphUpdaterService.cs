@@ -28,6 +28,17 @@ namespace Services
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly ISyncJobRepository _syncJobRepository;
 
+        private Guid _runId;
+        public Guid RunId
+        {
+            get { return _runId; }
+            set
+            {
+                _runId = value;
+                _graphGroupRepository.RunId = value;
+            }
+        }
+
         public GraphUpdaterService(
                 ILoggingRepository loggingRepository,
                 TelemetryClient telemetryClient,

@@ -75,6 +75,8 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
+            mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
+
             var input = new MembershipHttpRequest
             {
                 FilePath = "/file/path/name.json",
@@ -109,17 +111,20 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
                     .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
 
             context.Verify(x => x.CallSubOrchestratorAsync(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()), Times.Exactly(2));
+
+            var logProperties = mockLoggingRepo.SyncJobPropertiesHistory[syncJob.RunId.Value].Properties;
+
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
-            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
-            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
-            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RowKey"], syncJob.RowKey);
+            Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
+            Assert.AreEqual(logProperties["PartitionKey"], syncJob.PartitionKey);
+            Assert.AreEqual(logProperties["RowKey"], syncJob.RowKey);
         }
 
         [TestMethod]
@@ -164,6 +169,8 @@ namespace Services.Tests
                 Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = Guid.NewGuid()
             };
+
+            mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
 
             var input = new MembershipHttpRequest
             {
@@ -218,15 +225,18 @@ namespace Services.Tests
                         await emailSenderFunction.SendEmailAsync((EmailSenderRequest)request);
                     });
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
+
+            var logProperties = mockLoggingRepo.SyncJobPropertiesHistory[syncJob.RunId.Value].Properties;
+
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
-            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
-            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
-            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RowKey"], syncJob.RowKey);
+            Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
+            Assert.AreEqual(logProperties["PartitionKey"], syncJob.PartitionKey);
+            Assert.AreEqual(logProperties["RowKey"], syncJob.RowKey);
             Assert.AreEqual(1, mockMailRepo.SentEmails.Count);
             Assert.AreEqual(7, mockMailRepo.SentEmails[0].AdditionalContentParams.Length);
             Assert.AreEqual(ownerEmails, mockMailRepo.SentEmails[0].ToEmailAddresses);
@@ -279,6 +289,8 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
+            mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
+
             var input = new MembershipHttpRequest
             {
                 FilePath = "/file/path/name.json",
@@ -312,16 +324,19 @@ namespace Services.Tests
 
             context.Setup(x => x.CallSubOrchestratorAsync(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>())).Throws<Exception>();
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
             await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
 
             Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Caught unexpected exception, marking sync job as errored.")));
             Assert.AreEqual(SyncStatus.Error, updateJobRequest.Status);
+
+            var logProperties = mockLoggingRepo.SyncJobPropertiesHistory[syncJob.RunId.Value].Properties;
+
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
-            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
-            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
-            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RowKey"], syncJob.RowKey);
+            Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
+            Assert.AreEqual(logProperties["PartitionKey"], syncJob.PartitionKey);
+            Assert.AreEqual(logProperties["RowKey"], syncJob.RowKey);
         }
 
         [TestMethod]
@@ -372,7 +387,7 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
             await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
@@ -454,7 +469,7 @@ namespace Services.Tests
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
             await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
         }
 
@@ -501,7 +516,9 @@ namespace Services.Tests
                 Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = Guid.NewGuid()
             };
-                        
+
+            mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
+
             var input = new MembershipHttpRequest
             {
                 FilePath = "/file/path/name.json",
@@ -524,17 +541,20 @@ namespace Services.Tests
                         updateJobRequest = request as JobStatusUpdaterRequest;
                     });
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.AreEqual(SyncStatus.DestinationGroupNotFound, updateJobRequest.Status);
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains($"Group with ID {groupMembership.Destination.ObjectId} doesn't exist.")));
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function did not complete"));
+
+            var logProperties = mockLoggingRepo.SyncJobPropertiesHistory[syncJob.RunId.Value].Properties;
+
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
-            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RunId"], syncJob.RunId.ToString());
-            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["PartitionKey"], syncJob.PartitionKey);
-            Assert.AreEqual(mockLoggingRepo.SyncJobProperties["RowKey"], syncJob.RowKey);
+            Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
+            Assert.AreEqual(logProperties["PartitionKey"], syncJob.PartitionKey);
+            Assert.AreEqual(logProperties["RowKey"], syncJob.RowKey);
         }
 
         private async Task<SyncJob> RunJobReaderFunctionAsync(MockLoggingRepository loggingRepository, MockGraphUpdaterService graphUpdaterService, JobReaderRequest request)

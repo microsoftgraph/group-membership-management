@@ -12,6 +12,7 @@ namespace Services.Contracts
 {
 	public interface IGraphUpdaterService
 	{
+		public Guid RunId { get; set; }
 		public Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId);
 		public Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage membersPage, Guid runId);
 		public Task<PolicyResult<bool>> GroupExistsAsync(Guid groupId, Guid runId);

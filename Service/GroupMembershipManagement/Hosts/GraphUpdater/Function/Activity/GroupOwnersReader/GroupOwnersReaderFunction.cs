@@ -27,6 +27,7 @@ namespace Hosts.GraphUpdater
         public async Task<List<User>> GetGroupOwnersAsync([ActivityTrigger] GroupOwnersReaderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupOwnersReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            _graphUpdaterService.RunId = request.RunId;
             var owners = await _graphUpdaterService.GetGroupOwnersAsync(request.GroupId);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupOwnersReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 

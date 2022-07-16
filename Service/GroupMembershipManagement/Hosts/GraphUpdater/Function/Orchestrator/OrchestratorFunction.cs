@@ -27,6 +27,7 @@ namespace Hosts.GraphUpdater
         private readonly IGraphUpdaterService _graphUpdaterService = null;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
         private readonly IGMMResources _gmmResources = null;
+        private readonly ILoggingRepository _loggingRepository = null;
 
         enum Metric
         {
@@ -38,12 +39,14 @@ namespace Hosts.GraphUpdater
             TelemetryClient telemetryClient,
             IGraphUpdaterService graphUpdaterService,
             IEmailSenderRecipient emailSenderAndRecipients,
-            IGMMResources gmmResources)
+            IGMMResources gmmResources,
+            ILoggingRepository loggingRepository)
         {
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
+            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
@@ -162,7 +165,7 @@ namespace Hosts.GraphUpdater
 
 
                 var message = GetUsersDataMessage(groupMembership.Destination.ObjectId, membersToAdd.Count, membersToRemove.Count);
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = message });
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = message, SyncJob = syncJob });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                     CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
@@ -197,6 +200,11 @@ namespace Hosts.GraphUpdater
                 TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, false);
 
                 throw;
+            }
+            finally
+            {
+                if (syncJob?.RunId.HasValue ?? false)
+                    _loggingRepository.RemoveSyncJobProperties(syncJob.RunId.Value);
             }
         }
 
