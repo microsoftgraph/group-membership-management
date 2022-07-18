@@ -41,6 +41,12 @@ namespace Entities
         public DateTime LastRunTime { get; set; }
 
         /// <summary>
+        /// Last Successful Run Time (UTC)
+        /// </summary>
+        [IgnoreLogging]
+        public DateTime LastSuccessfulRunTime { get; set; }
+
+        /// <summary>
         /// Period (hours)
         /// </summary>
         [IgnoreLogging]

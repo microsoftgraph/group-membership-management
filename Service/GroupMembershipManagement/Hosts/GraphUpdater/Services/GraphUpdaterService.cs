@@ -111,7 +111,12 @@ namespace Services
             if (isDryRunSync)
                 job.DryRunTimeStamp = DateTime.UtcNow;
             else
+            {
+                if (status == SyncStatus.Idle)
+                    job.LastSuccessfulRunTime = DateTime.UtcNow;
+
                 job.LastRunTime = DateTime.UtcNow;
+            }
 
             job.RunId = runId;
 
