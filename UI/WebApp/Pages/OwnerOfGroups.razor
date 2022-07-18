@@ -6,6 +6,7 @@ Licensed under the MIT license.
 @page "/ownerofgroups"
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.Graph
+@using Microsoft.AspNetCore.Components.QuickGrid
 @inject Microsoft.Graph.GraphServiceClient GraphServiceClient
 @attribute [Authorize]
 
@@ -36,26 +37,31 @@ else
     </table>
     <br />
 
-
     <h3>Groups</h3>
 
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Group ID</th>
-                <th>Display Name</th>
-                <th>Group Type</th>
-            </tr>
-        </thead>
-        @foreach (var group in @groupProperties)
-        {
-            <tr>
-                <td> <a href=@getGroupUrl(group) target="_blank"> @group.Id </a></td>
-                <td> @getDisplayName(group) </td>
-                <td> @getGroupType(group) </td>
-            </tr>
-        }
-    </table>
+    <div class="page-size-chooser">
+        Items per page:
+        <select @bind="@pagination.ItemsPerPage">
+            <option>5</option>
+            <option>10</option>
+            <option>25</option>
+            <option>50</option>
+            <option>100</option>
+        </select>
+        <input type="search" autofocus @bind="nameFilter" @bind:event="oninput" placeholder="Group display name..." style="margin-left: 100px" class="search-box"/>
+    </div>
+    <br />
+
+    <div class="grid">
+        <QuickGrid Items=@filteredItems Pagination="@pagination">
+            <PropertyColumn Property="@(group => group.Id)" Sortable="true" Title="ID" />
+            <PropertyColumn Property="@(group => getDisplayName(group))" Sortable="true" Title="Display Name" Class="group-name"/>
+            <PropertyColumn Property="@(group => getGroupType(group))" Sortable="true" Title="Group Type"/>
+            <PropertyColumn Property="@(group => getGroupUrl(group))" Sortable="true" Title="Azure Portal URL"/>
+        </QuickGrid>
+    </div>
+
+    <Paginator Value="@pagination" />
 }
 
 
@@ -64,6 +70,11 @@ else
     List<string>? groups = new List<string>();
     List<Group>? groupProperties = new List<Group>();
     int numGroups = 0;
+
+    PaginationState pagination = new PaginationState { ItemsPerPage = 5 };
+    string nameFilter = string.Empty;
+    IQueryable<Group>? filteredItems => groupProperties.AsQueryable()?.Where(x => x.DisplayName.Contains(nameFilter, StringComparison.CurrentCultureIgnoreCase));
+
 
     private string getGroupUrl(Group group)
     {
