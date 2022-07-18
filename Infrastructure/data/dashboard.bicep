@@ -2669,7 +2669,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartId'
-                  value: '122f4d44-1313-4d7c-80f2-322d8d47c9d1'
+                  value: '61e7acff-f2c8-48ab-b116-39bf0f60e2f3'
                   isOptional: true
                 }
                 {
@@ -2720,17 +2720,13 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'IsQueryContainTimeRange'
-                  isOptional: false
+                  value: false
+                  isOptional: true
                 }
               ]
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  GridColumnsWidth: {
-                    targetOfficeGroupId_g: '276px'
-                    usersAdded: '127px'
-                    DestinationGroupObjectId: '260px'
-                  }
                   Query: 'ApplicationLog_CL\n| where (location_s == "GraphUpdater" and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress")\n| project TimeGenerated, Message, RowKey_g, TargetOfficeGroupId_g, RunId_g\n| order by TimeGenerated desc\n\n'
                   PartTitle: 'Jobs marked as Error'
                   PartSubTitle: 'ApplicationLog_CL'
@@ -2770,7 +2766,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartId'
-                  value: '122f4d44-1313-4d7c-80f2-322d8d47c9d1'
+                  value: '61e7acff-f2c8-48ab-b116-39bf0f60e2f3'
                   isOptional: true
                 }
                 {
@@ -2793,7 +2789,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'ApplicationLog_CL\r\n| where Message has \'. Adding\'\r\n| extend MessageWords = array_reverse(split(Message, \' \'))\r\n| project usersAdded = toint(MessageWords[4]), TimeGenerated, targetOfficeGroupId_g\r\n| top 5 by usersAdded desc\r\n\n'
+                  value: 'ApplicationLog_CL\n| project TimeGenerated, Message, location_s\n| where location_s in ("JobTrigger", "GraphUpdater") and not(Message has_any("Email", "FilePath")) and Message has "RunId"\n| extend RunId = tostring(split(Message, \' \')[2])\n| extend TargetOfficeGroupId = tostring(split(Message, \' \')[6])\n| order by RunId desc, TimeGenerated asc\n| where location_s == "JobTrigger" and RunId == next(RunId) and next(location_s) <> "GraphUpdater"\n| project TimeGenerated,\n    TargetOfficeGroupId = split(TargetOfficeGroupId, \'\\n\')[0],\n    RunId = split(RunId, \'\\n\')[0]   \n| where TimeGenerated <= now(-24h)\n| order by TimeGenerated desc'
                   isOptional: true
                 }
                 {
@@ -2821,20 +2817,15 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'IsQueryContainTimeRange'
-                  isOptional: false
+                  value: false
+                  isOptional: true
                 }
               ]
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  GridColumnsWidth: {
-                    targetOfficeGroupId_g: '276px'
-                    usersAdded: '127px'
-                    DestinationGroupObjectId: '260px'
-                    TimeGenerated: '127px'
-                  }
-                  Query: 'ApplicationLog_CL\n| project TimeGenerated, Message, location_s\n| where (location_s == "JobTrigger" and Message has "RunId" and Message !has "FilePath") or (location_s == "GraphUpdater" and Message has "RunId" and Message !has "FilePath")\n| extend RunId = tostring(split(Message, \' \')[2])\n| extend TargetOfficeGroupId = tostring(split(Message, \' \')[6])\n| order by RunId desc, TimeGenerated asc\n| where location_s == "JobTrigger" and RunId == next(RunId) and next(location_s) <> "GraphUpdater"\n| project TimeGenerated,\n    TargetOfficeGroupId = split(TargetOfficeGroupId, \'\\n\')[0],\n    RunId = split(RunId, \'\\n\')[0]\n| where TimeGenerated <= now(-24h)\n| order by TimeGenerated desc'
-                  PartTitle: 'Jobs stuck as InProgress'
+                  Query: 'ApplicationLog_CL\n| project TimeGenerated, Message, location_s\n| where location_s in ("JobTrigger", "GraphUpdater") and not(Message has_any("Email", "FilePath")) and Message has "RunId"\n| extend RunId = tostring(split(Message, \' \')[2])\n| extend TargetOfficeGroupId = tostring(split(Message, \' \')[6])\n| order by RunId desc, TimeGenerated asc\n| where location_s == "JobTrigger" and RunId == next(RunId) and next(location_s) <> "GraphUpdater"\n| project TimeGenerated,\n    TargetOfficeGroupId = split(TargetOfficeGroupId, \'\\n\')[0],\n    RunId = split(RunId, \'\\n\')[0]   \n| where TimeGenerated <= now(-24h)\n| order by TimeGenerated desc'
+		              PartTitle: 'Jobs stuck as InProgress'
                   PartSubTitle: 'ApplicationLog_CL'
                   IsQueryContainTimeRange: false
                 }
