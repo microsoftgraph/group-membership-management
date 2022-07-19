@@ -45,6 +45,15 @@ Licensed under the MIT license.
                 </div>
             </NotAuthorized>
         </AuthorizeView>
+        <AuthorizeView Policy="MemberOfGmmAdminGroup">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="gmmonly">
+                        <span class="oi oi-people" aria-hidden="true"></span> GMM Groups I Own
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
     </nav>
 </div>
 

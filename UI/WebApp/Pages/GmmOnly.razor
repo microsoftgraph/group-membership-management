@@ -1,0 +1,26 @@
+﻿@* 
+Copyright (c) Microsoft Corporation.
+Licensed under the MIT license. 
+*@
+
+@page "/gmmonly"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Graph
+@inject Microsoft.Graph.GraphServiceClient GraphServiceClient
+@attribute [Authorize]
+
+<h3>GmmOnly</h3>
+
+@if (user == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <p> hello you have reached the Gmm only page! you must be a gmm admin :) </p>
+}
+
+@code {
+    User? user;
+
+}
