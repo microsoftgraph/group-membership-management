@@ -2616,6 +2616,125 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '29': {
             position: {
+              x: 7
+              y: 37
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '83401f0d-35f2-4e13-b135-6b19fc882574'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'let start = now(-7d);\nrequests\n| where timestamp > start\n| project-rename Location=operation_Name, FunctionName=name, DurationInMilliseconds=duration\n| project timestamp, FunctionName, Location, DurationInMilliseconds\n| order by DurationInMilliseconds desc \n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customMetrics\n| where name == "WritesUsed"\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/WritesUsed_sum\'] = sum(customMetric_valueSum) by bin(timestamp, 150s)\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'WritesUsed'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'timestamp'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'customMetrics/WritesUsed_sum'
+                        type: 'real'
+                      }
+                    ]
+                    splitBy: []
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+              partHeader: {
+                title: 'WritesUsed'
+                subtitle: ''
+              }
+            }
+          }
+          '30': {
+            position: {
               x: 1
               y: 42
               colSpan: 9
@@ -2637,7 +2756,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '30': {
+          '31': {
             position: {
               x: 1
               y: 44
@@ -2727,14 +2846,12 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'ApplicationLog_CL\n| where (location_s == "GraphUpdater" and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress")\n| project TimeGenerated, Message, RowKey_g, TargetOfficeGroupId_g, RunId_g\n| order by TimeGenerated desc\n\n'
                   PartTitle: 'Jobs marked as Error'
-                  PartSubTitle: 'ApplicationLog_CL'
                 }
               }
             }
           }
-          '31': {
+          '32': {
             position: {
               x: 6
               y: 44
@@ -2824,15 +2941,12 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'ApplicationLog_CL\n| project TimeGenerated, Message, location_s\n| where location_s in ("JobTrigger", "GraphUpdater") and not(Message has_any("Email", "FilePath")) and Message has "RunId"\n| extend RunId = tostring(split(Message, \' \')[2])\n| extend TargetOfficeGroupId = tostring(split(Message, \' \')[6])\n| order by RunId desc, TimeGenerated asc\n| where location_s == "JobTrigger" and RunId == next(RunId) and next(location_s) <> "GraphUpdater"\n| project TimeGenerated,\n    TargetOfficeGroupId = split(TargetOfficeGroupId, \'\\n\')[0],\n    RunId = split(RunId, \'\\n\')[0]   \n| where TimeGenerated <= now(-24h)\n| order by TimeGenerated desc'
-		              PartTitle: 'Jobs stuck as InProgress'
-                  PartSubTitle: 'ApplicationLog_CL'
-                  IsQueryContainTimeRange: false
+                  PartTitle: 'Jobs stuck as InProgress'
                 }
               }
             }
           }
-          '32': {
+          '33': {
             position: {
               x: 11
               y: 44
@@ -2929,7 +3043,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '33': {
+          '34': {
             position: {
               x: 1
               y: 48
@@ -3054,126 +3168,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 subtitle: 'Descending order'
               }
             }
-          }
-          '34': {
-            position: {
-              x: 7
-              y: 37
-              colSpan: 6
-              rowSpan: 4
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'resourceTypeMode'
-                  isOptional: true
-                }
-                {
-                  name: 'ComponentId'
-                  isOptional: true
-                }
-                {
-                  name: 'Scope'
-                  value: {
-                    resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
-                    ]
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'PartId'
-                  value: '83401f0d-35f2-4e13-b135-6b19fc882574'
-                  isOptional: true
-                }
-                {
-                  name: 'Version'
-                  value: '2.0'
-                  isOptional: true
-                }
-                {
-                  name: 'TimeRange'
-                  isOptional: true
-                }
-                {
-                  name: 'DashboardId'
-                  isOptional: true
-                }
-                {
-                  name: 'DraftRequestParameters'
-                  isOptional: true
-                }
-                {
-                  name: 'Query'
-                  value: 'let start = now(-7d);\nrequests\n| where timestamp > start\n| project-rename Location=operation_Name, FunctionName=name, DurationInMilliseconds=duration\n| project timestamp, FunctionName, Location, DurationInMilliseconds\n| order by DurationInMilliseconds desc \n'
-                  isOptional: true
-                }
-                {
-                  name: 'ControlType'
-                  value: 'AnalyticsGrid'
-                  isOptional: true
-                }
-                {
-                  name: 'SpecificChart'
-                  isOptional: true
-                }
-                {
-                  name: 'PartTitle'
-                  value: 'Analytics'
-                  isOptional: true
-                }
-                {
-                  name: 'PartSubTitle'
-                  value: resourceGroup
-                  isOptional: true
-                }
-                {
-                  name: 'Dimensions'
-                  isOptional: true
-                }
-                {
-                  name: 'LegendOptions'
-                  isOptional: true
-                }
-                {
-                  name: 'IsQueryContainTimeRange'
-                  value: false
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
-              settings: {
-                content: {
-                  Query: 'customMetrics\n| where name == "WritesUsed"\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/WritesUsed_sum\'] = sum(customMetric_valueSum) by bin(timestamp, 150s)\n'
-                  ControlType: 'FrameControlChart'
-                  SpecificChart: 'StackedColumn'
-                  PartTitle: 'WritesUsed'
-                  Dimensions: {
-                    xAxis: {
-                      name: 'timestamp'
-                      type: 'datetime'
-                    }
-                    yAxis: [
-                      {
-                        name: 'customMetrics/WritesUsed_sum'
-                        type: 'real'
-                      }
-                    ]
-                    splitBy: []
-                    aggregation: 'Sum'
-                  }
-                  LegendOptions: {
-                    isEnabled: true
-                    position: 'Bottom'
-                  }
-                }
-              }
-              partHeader: {
-                title: 'WritesUsed'
-                subtitle: ''
-              }
-            }
-          }
+          }          
           '35': {
             position: {
               x: 9
