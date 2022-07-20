@@ -1,0 +1,303 @@
+﻿@* 
+Copyright (c) Microsoft Corporation.
+Licensed under the MIT license. 
+*@
+
+@page "/belongtogroups"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Graph
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using System.Text.Json
+@inject Microsoft.Graph.GraphServiceClient GraphServiceClient
+@attribute [Authorize]
+
+<PageTitle>Groups I'm In</PageTitle>
+
+<h1>Groups I am a member of</h1>
+<br />
+
+@if (user == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <h3>Summary </h3>
+    <table class="table">
+        <FluentDataGridRow TItem="string" RowType="DataGridRowType.StickyHeader">
+            <FluentDataGridCell GridColumn="1" CellType="DataGridCellType.ColumnHeader">Property</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2" CellType="DataGridCellType.ColumnHeader">Value</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string">
+            <FluentDataGridCell GridColumn="1">Num Groups</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@((numGroups == null) ? "Loading..." : @numGroups)</FluentDataGridCell>
+        </FluentDataGridRow>
+    </table>
+    <br />
+
+
+    <h3>Fluent UI Groups</h3>
+    <table class="table">
+        <FluentDataGridRow TItem="string" RowType="DataGridRowType.StickyHeader">
+            <FluentDataGridCell GridColumn="1" CellType="DataGridCellType.ColumnHeader">ID</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2" CellType="DataGridCellType.ColumnHeader">Display Name</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="3" CellType="DataGridCellType.ColumnHeader">Group Type</FluentDataGridCell>
+        </FluentDataGridRow>
+        <Virtualize Context="group" ItemsProvider="@LoadGroups">
+            <FluentDataGridRow TItem="Group">
+                <FluentDataGridCell GridColumn="1" style=""><a href=@getGroupUrl(group) target="_blank">@group.Id</a></FluentDataGridCell>
+                <FluentDataGridCell GridColumn="2" style="">@getDisplayName(group)</FluentDataGridCell>
+                <FluentDataGridCell GridColumn="3" style="">@getGroupType(group)</FluentDataGridCell>
+            </FluentDataGridRow>
+        </Virtualize>
+    </table>
+
+   @* <FluentDataGrid TItem="string">
+        <FluentDataGridRow TItem="string">
+            <FluentDataGridCell GridColumn="0" CellType="DataGridCellType.ColumnHeader">Property</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="1" CellType="DataGridCellType.ColumnHeader">Value</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string">
+            <FluentDataGridCell>Num Groups</FluentDataGridCell>
+            <FluentDataGridCell>@((numGroups == null) ? "Loading..." : numGroups)</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow RowData="@groupProps">
+        </FluentDataGridRow>
+    </FluentDataGrid>*@
+
+    @*<div class="grid">
+        <QuickGrid Items="@summaryData">
+            <PropertyColumn Property="@numGroups" Sortable="true" Title="Num Groups" />
+        </QuickGrid>
+    </div>*@
+
+    @*<FluentDataGrid class="table">
+        <FluentDataRow>
+            <tr>
+                <th>Property</th>
+                <th>Value</th>
+            </tr>
+        </FluentDataRow>
+        <tr>
+            <td> Num Groups </td>
+            <td> @((numGroups == null) ? "Loading..." : numGroups) </td>
+        </tr>
+    </FluentDataGrid>*@
+    <br />
+
+
+
+ @*   <h3> Working Virtualization Table for Groups</h3>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Group ID</th>
+                <th>Display Name</th>
+                <th>Group Type</th>
+            </tr>
+        </thead>
+        <Virtualize Context="group" ItemsProvider="@LoadGroups">
+            <tr>
+                <td> <a href=@getGroupUrl(group) target="_blank"> @group.Id </a></td>
+                <td> @getDisplayName(group) </td>
+                <td> @getGroupType(group) </td>
+            </tr>
+        </Virtualize>
+    </table>
+    <br />*@
+}
+
+@code {
+    User? user;
+    List<string>? groups = new List<string>();
+    //List<Group>? groupProperties = new List<Group>();
+    List<Group> groupProps = new List<Group>();
+    int? numGroups;
+
+    //SummaryData numGroup = new SummaryData("Num Groups", numGroups);
+    //List<SummaryData> summaryData = new List<SummaryData>();
+    //summaryData.Add(numGroup);
+
+    //static ColumnDefinition<string> groupDisplayName = new ColumnDefinition<string>("Display Name", funcGetDisplayName);
+    //static ColumnDefinition<string> groupID = new ColumnDefinition<string>("URL", funcGetURL);
+    //static ColumnDefinition<string> groupType = new ColumnDefinition<string>("Group Type", funcGetGroupType);
+    //IEnumerable<ColumnDefinition<string>> columns = new List<ColumnDefinition<string>> { groupDisplayName, groupID, groupType };
+
+
+    IUserTransitiveMemberOfCollectionWithReferencesPage? groupsResult = null;
+
+    class SummaryData
+    {
+        string key;
+        string value;
+
+        public SummaryData(string k, string val)
+        {
+            key = k;
+            value = val;
+        }
+    }
+
+    private static string getGroupUrl(DirectoryObject group)
+    {
+        return "https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/" + group.Id;
+    }
+
+    private static string getDisplayName(DirectoryObject obj)
+    {
+        Group group = (Group)obj;
+        return group.DisplayName;
+    }
+
+    private static string getGroupType(DirectoryObject obj)
+    {
+        var group = (Group)obj;
+
+        if (group.GroupTypes != null && group.GroupTypes.Contains("Unified"))
+        {
+            return "M365";
+        } 
+        else if (group.MailEnabled == null || group.MailEnabled == false)
+        {
+            return "Security Group";
+        }
+        else if (group.SecurityEnabled == null || group.SecurityEnabled == false)
+        {
+            return "Distribution Group";
+        }
+        else
+        {
+            return "Invalid group type";
+        }
+    }
+
+    //private void HandleGroupsAsDirectoryObjects(IEnumerable<DirectoryObject> groupsResponse)
+    //{
+    //    var groups = (List<DirectoryObject>)groupsResponse;
+    //    foreach(var item in groups)
+    //    {
+    //        if (item.ODataType == "#microsoft.graph.group")
+    //        {
+    //            var group = (Group)item;
+    //            groupProperties.Add(group);
+    //        }
+    //    }
+    //    numGroups = groupProperties.Count;
+    //}
+
+    private List<Group> HandleGroupsAsDirectoryObjects(IEnumerable<DirectoryObject> groupsResponse)
+    {
+        var groupProperties = new List<Group>();
+        var groups = (List<DirectoryObject>)groupsResponse;
+        foreach(var item in groups)
+        {
+            if (item.ODataType == "#microsoft.graph.group")
+            {
+                var group = (Group)item;
+                groupProperties.Add(group);
+            }
+        }
+        //numGroups = groupProperties.Count;
+        return groupProperties;
+    }
+
+    private async Task<List<Group>> GetGroupsAsync(int startIndex, int numGroups)
+    {
+
+
+        var cachedMembers = groupProps.Count;
+
+        if (groupsResult == null)
+        {
+            var queryOptions = new List<QueryOption>()
+            {
+	            new QueryOption("$count", "true")
+            };
+
+            groupsResult = await GraphServiceClient.Me.TransitiveMemberOf
+                        .Request( queryOptions )
+                        .Header("ConsistencyLevel","eventual")
+                        .Select("displayName,id,groupTypes")
+                        .OrderBy("displayName")
+                        .GetAsync();
+
+            groupProps = HandleGroupsAsDirectoryObjects(groupsResult.CurrentPage);
+
+            if (groupsResult.AdditionalData["@odata.count"] != null)
+            {
+                var elem = (JsonElement)groupsResult.AdditionalData["@odata.count"];
+                elem.TryGetInt32(out numGroups);
+            }
+        }
+
+        while ((startIndex + numGroups >= cachedMembers) && (groupsResult.NextPageRequest != null))
+        {
+            groupsResult = await groupsResult.NextPageRequest.GetAsync();
+            var newGroups = HandleGroupsAsDirectoryObjects(groupsResult.CurrentPage);
+            groupProps.AddRange(newGroups);
+            cachedMembers = groupProps.Count;
+        }
+
+        int totalGroups = 271;
+        return groupProps.GetRange(startIndex, Math.Min(numGroups, (totalGroups - startIndex)));
+
+    }
+
+
+
+    private async ValueTask<ItemsProviderResult<Group>> LoadGroups(ItemsProviderRequest request)
+    {
+
+        var numGroups = Math.Min(request.Count, 271 - request.StartIndex);
+        var groups = await GetGroupsAsync(request.StartIndex, numGroups);
+
+        return new ItemsProviderResult<Group>(groups, 271);
+
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            user = await GraphServiceClient.Me.Request().GetAsync();
+
+            
+            //FluentDataGrid<string> testGrid = document.getElementById('testGrid');
+            //testGrid.ColumnDefinitions = [
+            //    "Property",
+            //    "Value"
+            //]
+
+            //testGrid.RowsData = [
+            //    "Num Groups",
+            //    (numGroups == null) ? "Loading ..." : numGroups
+            //]
+
+
+            //var queryOptions = new List<QueryOption>()
+            //{
+	           // new QueryOption("$count", "true")
+            //};
+
+            //var groupsResult = await GraphServiceClient.Me.TransitiveMemberOf
+            //            .Request( queryOptions )
+            //            .Header("ConsistencyLevel","eventual")
+            //            .Select("displayName,id,groupTypes")
+            //            .OrderBy("displayName")
+            //            .GetAsync();
+
+            //HandleGroupsAsDirectoryObjects(groupsResult.CurrentPage);
+            //while(groupsResult.NextPageRequest != null)
+            //{
+            //    groupsResult = await groupsResult.NextPageRequest.GetAsync();
+            //    HandleGroupsAsDirectoryObjects(groupsResult.CurrentPage);
+            //}
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+}
