@@ -9,7 +9,9 @@ Licensed under the MIT license.
 @inject Microsoft.Graph.GraphServiceClient GraphServiceClient
 @attribute [Authorize]
 
-<h3>User Profile</h3>
+<h1>User Profile</h1>
+<br />
+
 @if (user == null)
 {
     <p><em>Loading...</em></p>
@@ -17,32 +19,30 @@ Licensed under the MIT license.
 else
 {
     <table class="table">
-        <thead>
-            <tr>
-                <th>Property</th>
-                <th>Value</th>
-            </tr>
-        </thead>
-        <tr>
-            <td> Display Name </td>
-            <td> @user.DisplayName </td>
-        </tr>
-        <tr>
-            <td> User Principal Name </td>
-            <td> @user.UserPrincipalName </td>
-        </tr>
-        <tr>
-            <td> User ID </td>
-            <td> @user.Id </td>
-        </tr>
-        <tr>
-            <td> Job Title </td>
-            <td> @user.JobTitle </td>
-        </tr>
-        <tr>
-            <td> Office Location </td>
-            <td> @user.OfficeLocation </td>
-        </tr>
+        <FluentDataGridRow TItem="string" RowType="DataGridRowType.StickyHeader" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1" CellType="DataGridCellType.ColumnHeader">Property</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2" CellType="DataGridCellType.ColumnHeader">Value</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1">Display Name</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@user.DisplayName</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1">User Principal Name</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@user.UserPrincipalName</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1">User ID</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@user.Id</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1">Job Title</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@user.JobTitle</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1">Office Location</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@user.OfficeLocation</FluentDataGridCell>
+        </FluentDataGridRow>
     </table>
 }
 

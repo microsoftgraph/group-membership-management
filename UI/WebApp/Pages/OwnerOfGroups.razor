@@ -7,6 +7,8 @@ Licensed under the MIT license.
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.Graph
 @using Microsoft.AspNetCore.Components.QuickGrid
+@using System.Text.Json
+@using System.Timers
 @inject Microsoft.Graph.GraphServiceClient GraphServiceClient
 @attribute [Authorize]
 
@@ -22,61 +24,64 @@ Licensed under the MIT license.
 else
 {
     <h3>Summary </h3>
-
     <table class="table">
-        <thead>
-            <tr>
-                <th>Property</th>
-                <th>Value</th>
-            </tr>
-        </thead>
-        <tr>
-            <td> Num Groups </td>
-            <td> @numGroups </td>
-        </tr>
+        <FluentDataGridRow TItem="string" RowType="DataGridRowType.StickyHeader" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1" CellType="DataGridCellType.ColumnHeader">Property</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2" CellType="DataGridCellType.ColumnHeader">Value</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1">Num Groups</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@numGroups</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1">User query input value</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@nameFilter</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1">Filter query (i.e. string passed to request as filter params)</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@filterQuery</FluentDataGridCell>
+        </FluentDataGridRow>
     </table>
     <br />
 
     <h3>Groups</h3>
 
-    <div class="page-size-chooser">
-        Items per page:
-        <select @bind="@pagination.ItemsPerPage">
-            <option>5</option>
-            <option>10</option>
-            <option>25</option>
-            <option>50</option>
-            <option>100</option>
-        </select>
-        <input type="search" autofocus @bind="nameFilter" @bind:event="oninput" placeholder="Group display name..." style="margin-left: 100px" class="search-box"/>
-    </div>
-    <br />
-
-    <div class="grid">
-        <QuickGrid Items=@filteredItems Pagination="@pagination">
-            <PropertyColumn Property="@(group => group.Id)" Sortable="true" Title="ID" />
-            <PropertyColumn Property="@(group => getDisplayName(group))" Sortable="true" Title="Display Name" Class="group-name"/>
-            <PropertyColumn Property="@(group => getGroupType(group))" Sortable="true" Title="Group Type"/>
-            <PropertyColumn Property="@(group => getGroupUrl(group))" Sortable="true" Title="Azure Portal URL"/>
-        </QuickGrid>
+    <div class="search">
+        <input type="search" @bind="@nameFilter" @bind:event="oninput" @onkeyup="@HandleKeyUp" placeholder="Group display name..." class="search-box"/>
     </div>
 
-    <Paginator Value="@pagination" />
+    <table class="table">
+        <FluentDataGridRow TItem="string" RowType="DataGridRowType.StickyHeader" style="grid-template-columns: 40% 30% 30%;">
+            <FluentDataGridCell GridColumn="1" CellType="DataGridCellType.ColumnHeader">ID</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2" CellType="DataGridCellType.ColumnHeader">Display Name</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="3" CellType="DataGridCellType.ColumnHeader">Group Type</FluentDataGridCell>
+        </FluentDataGridRow>
+        <Virtualize Context="group" ItemsProvider="@LoadGroups" @ref="@virtualizedTable">
+            <FluentDataGridRow TItem="Group" style="grid-template-columns: 40% 30% 30%;">
+                <FluentDataGridCell GridColumn="1"><a href=@getGroupUrl(group) target="_blank">@group.Id</a></FluentDataGridCell>
+                <FluentDataGridCell GridColumn="2">@getDisplayName(group)</FluentDataGridCell>
+                <FluentDataGridCell GridColumn="3">@getGroupType(group)</FluentDataGridCell>
+            </FluentDataGridRow>
+        </Virtualize>
+    </table>
 }
-
 
 @code {
     User? user;
     List<string>? groups = new List<string>();
     List<Group>? groupProperties = new List<Group>();
-    int numGroups = 0;
+    int numGroups;
+    Virtualize<Group> virtualizedTable;
+
+    private System.Timers.Timer aTimer;
+    IUserOwnedObjectsCollectionWithReferencesPage? groupsResult = null;    
+    public EventCallback<ChangeEventArgs> OnInput;
 
     PaginationState pagination = new PaginationState { ItemsPerPage = 5 };
     string nameFilter = string.Empty;
-    IQueryable<Group>? filteredItems => groupProperties.AsQueryable()?.Where(x => x.DisplayName.Contains(nameFilter, StringComparison.CurrentCultureIgnoreCase));
+    string filterQuery => "$search=\"displayName:" + nameFilter + "\"";
 
-
-    private string getGroupUrl(Group group)
+    private string getGroupUrl(DirectoryObject group)
     {
         return "https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/" + group.Id;
     }
@@ -109,18 +114,93 @@ else
         }
     }
 
-    private void HandleGroupsAsDirectoryObjects(IEnumerable<DirectoryObject> groupsResponse)
+    private List<Group> HandleGroupsAsDirectoryObjects(IEnumerable<DirectoryObject> groupsResponse)
     {
-        var groups = (List<DirectoryObject>)groupsResponse;
-        foreach(var item in groups)
+        var groupProps = new List<Group>();
+        var allGroups = (List<DirectoryObject>)groupsResponse;
+        foreach(var item in allGroups)
         {
             if (item.ODataType == "#microsoft.graph.group")
             {
                 var group = (Group)item;
-                groupProperties.Add(group);
+                groupProps.Add(group);
             }
         }
-        numGroups = groupProperties.Count;
+        return groupProps;
+    }
+
+    private async Task<List<Group>> GetGroupsAsync(int startIndex, int numToRetrieve)
+    {
+        var cachedMembers = groupProperties.Count;
+
+        if (cachedMembers == 0)
+        {
+            var queryOptions = new List<QueryOption>()
+            {
+	            new QueryOption("$count", "true")
+            };
+
+            if (nameFilter != string.Empty)
+            {
+                string searchQuery = $"\"displayName:{nameFilter}\"";
+                queryOptions.Add(new QueryOption("$search", searchQuery));
+            }
+
+            groupsResult = await GraphServiceClient.Me.OwnedObjects
+                .Request(queryOptions)
+                .Header("ConsistencyLevel","eventual")
+                .Select("displayName,id,groupTypes")
+                .OrderBy("displayName")
+                .GetAsync();
+
+            groupProperties = HandleGroupsAsDirectoryObjects(groupsResult.CurrentPage);
+
+            if (groupsResult.AdditionalData["@odata.count"] != null)
+            {
+                var elem = (JsonElement)groupsResult.AdditionalData["@odata.count"];
+                int totalNumGroups;
+                elem.TryGetInt32(out totalNumGroups);
+                numGroups = totalNumGroups;
+                StateHasChanged();
+            }
+        }
+
+        while ((startIndex + numToRetrieve >= cachedMembers) && (groupsResult.NextPageRequest != null) && (cachedMembers <= numGroups))
+        {
+            groupsResult = await groupsResult.NextPageRequest.GetAsync();
+            var newGroups = HandleGroupsAsDirectoryObjects(groupsResult.CurrentPage);
+            groupProperties.AddRange(newGroups);
+            cachedMembers = groupProperties.Count;
+        }
+
+        return groupProperties.GetRange(startIndex, Math.Min(numToRetrieve, (numGroups - startIndex)));
+    }
+
+    private async ValueTask<ItemsProviderResult<Group>> LoadGroups(ItemsProviderRequest request)
+    {
+        var loadedGroups = await GetGroupsAsync(request.StartIndex, request.Count);
+        return new ItemsProviderResult<Group>(loadedGroups, numGroups);
+
+    }
+
+    void HandleKeyUp(KeyboardEventArgs e)
+    {
+        // remove previous one
+        aTimer.Stop();
+
+        // new timer
+        aTimer.Start();        
+    }  
+
+    private void OnUserFinish(Object source, ElapsedEventArgs e)
+    {
+        InvokeAsync( async () =>
+        {
+            groupProperties = new List<Group>();
+            await virtualizedTable.RefreshDataAsync();
+            StateHasChanged();
+        });
+
     }
 
     protected override async Task OnInitializedAsync()
@@ -129,14 +209,9 @@ else
         {
             user = await GraphServiceClient.Me.Request().GetAsync();
 
-            var groupsResult = await GraphServiceClient.Me.OwnedObjects.Request().GetAsync();
-
-            HandleGroupsAsDirectoryObjects(groupsResult.CurrentPage);
-            while(groupsResult.NextPageRequest != null)
-            {
-                groupsResult = await groupsResult.NextPageRequest.GetAsync();
-                HandleGroupsAsDirectoryObjects(groupsResult.CurrentPage);
-            }
+            aTimer = new System.Timers.Timer(1000);
+            aTimer.Elapsed += OnUserFinish;
+            aTimer.AutoReset = false;
         }
         catch (Exception ex)
         {

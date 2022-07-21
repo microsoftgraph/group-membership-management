@@ -8,6 +8,7 @@ Licensed under the MIT license.
 @using Microsoft.Graph
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using System.Text.Json
+@using System.Timers
 @inject Microsoft.Graph.GraphServiceClient GraphServiceClient
 @attribute [Authorize]
 
@@ -29,7 +30,7 @@ else
             <FluentDataGridCell GridColumn="2" CellType="DataGridCellType.ColumnHeader">Value</FluentDataGridCell>
         </FluentDataGridRow>
         <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
-            <FluentDataGridCell GridColumn="1">Total Num Groups</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="1">Num Groups</FluentDataGridCell>
             <FluentDataGridCell GridColumn="2">@numGroups</FluentDataGridCell>
         </FluentDataGridRow>
         <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
@@ -47,7 +48,7 @@ else
     <h3>Groups</h3>
 
     <div class="search">
-        <input type="search" @bind="@nameFilter" @oninput="@onInput" placeholder="Group display name..." class="search-box"/>
+        <input type="search" @bind="@nameFilter" @bind:event="oninput" @onkeyup="@HandleKeyUp" placeholder="Group display name..." class="search-box"/>
     </div>
 
     <table class="table">
@@ -73,28 +74,14 @@ else
     int numGroups;
     Virtualize<Group> virtualizedTable;
 
+    private System.Timers.Timer aTimer;
     IUserTransitiveMemberOfCollectionWithReferencesPage? groupsResult = null;
 
     string nameFilter = string.Empty;
-    string filterQuery => "startsWith(displayName,'" + nameFilter + "')";
+    string filterQuery => "$search=\"displayName:" + nameFilter + "\"";
 
 
     public EventCallback<ChangeEventArgs> OnInput;
-
-
-    public async Task onInput(ChangeEventArgs changeEvent)
-    {
-        string inputValue = (string)changeEvent.Value;
-        string message = "Hit event callback ";
-        Console.WriteLine(message);
-        nameFilter = inputValue;
-        Console.WriteLine("inputValue inside event callback: " + inputValue);
-        Console.WriteLine("nameFilter inside event callback: " + nameFilter);
-
-        groupProps = new List<Group>();
-        StateHasChanged();
-        await virtualizedTable.RefreshDataAsync();
-    }
 
 
     private static string getGroupUrl(DirectoryObject group)
@@ -145,7 +132,6 @@ else
         return groupProperties;
     }
 
-
     private async Task<List<Group>> GetGroupsAsync(int startIndex, int numToRetrieve)
     {
         var cachedMembers = groupProps.Count;
@@ -157,32 +143,19 @@ else
 	            new QueryOption("$count", "true")
             };
 
-            if (nameFilter == string.Empty)
-            {
-                groupsResult = await GraphServiceClient.Me.TransitiveMemberOf
-                        .Request( queryOptions )
-                        .Header("ConsistencyLevel","eventual")
-                        .Select("displayName,id,groupTypes")
-                        .OrderBy("displayName")
-                        .GetAsync();
-            }
-            else
+            if (nameFilter != string.Empty)
             {
                 string searchQuery = $"\"displayName:{nameFilter}\"";
                 queryOptions.Add(new QueryOption("$search", searchQuery));
-
-                groupsResult = await GraphServiceClient.Me.TransitiveMemberOf
-                        .Request( queryOptions )
-                        .Header("ConsistencyLevel","eventual")
-                        .Select("displayName,id,groupTypes")
-                        .OrderBy("displayName")
-                        .GetAsync();
             }
-
+            groupsResult = await GraphServiceClient.Me.TransitiveMemberOf
+                .Request( queryOptions )
+                .Header("ConsistencyLevel","eventual")
+                .Select("displayName,id,groupTypes")
+                .OrderBy("displayName")
+                .GetAsync();
 
             groupProps = HandleGroupsAsDirectoryObjects(groupsResult.CurrentPage);
-            Console.WriteLine("nameFilter: " + nameFilter);
-            Console.WriteLine("newly found groups: " + groupProps.Count);
 
             if (groupsResult.AdditionalData["@odata.count"] != null)
             {
@@ -196,8 +169,6 @@ else
 
         while ((startIndex + numToRetrieve >= cachedMembers) && (groupsResult.NextPageRequest != null) && (cachedMembers <= numGroups))
         {
-            Console.WriteLine("numToRetrieve: " + numToRetrieve);
-            Console.WriteLine("filler");
             groupsResult = await groupsResult.NextPageRequest.GetAsync();
             var newGroups = HandleGroupsAsDirectoryObjects(groupsResult.CurrentPage);
             groupProps.AddRange(newGroups);
@@ -207,8 +178,6 @@ else
         return groupProps.GetRange(startIndex, Math.Min(numToRetrieve, (numGroups - startIndex)));
     }
 
-
-
     private async ValueTask<ItemsProviderResult<Group>> LoadGroups(ItemsProviderRequest request)
     {
         var loadedGroups = await GetGroupsAsync(request.StartIndex, request.Count);
@@ -216,6 +185,25 @@ else
 
     }
 
+    void HandleKeyUp(KeyboardEventArgs e)
+    {
+        // remove previous one
+        aTimer.Stop();
+
+        // new timer
+        aTimer.Start();        
+    }    
+
+    private void OnUserFinish(Object source, ElapsedEventArgs e)
+    {
+        InvokeAsync( async () =>
+        {
+            groupProps = new List<Group>();
+            await virtualizedTable.RefreshDataAsync();
+            StateHasChanged();
+        });
+
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -223,7 +211,9 @@ else
         {
             user = await GraphServiceClient.Me.Request().GetAsync();
 
-             OnInput = EventCallback.Factory.Create<ChangeEventArgs>(this, onInput);
+            aTimer = new System.Timers.Timer(1000);
+            aTimer.Elapsed += OnUserFinish;
+            aTimer.AutoReset = false;
         }
         catch (Exception ex)
         {
