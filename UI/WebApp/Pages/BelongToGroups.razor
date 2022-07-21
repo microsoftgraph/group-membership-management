@@ -32,6 +32,14 @@ else
             <FluentDataGridCell GridColumn="1">Total Num Groups</FluentDataGridCell>
             <FluentDataGridCell GridColumn="2">@numGroups</FluentDataGridCell>
         </FluentDataGridRow>
+        <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1">User query input value</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@nameFilter</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1">Filter query (i.e. string passed to request as filter params)</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@filterQuery</FluentDataGridCell>
+        </FluentDataGridRow>
         @*<FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
             <FluentDataGridCell GridColumn="1">Num Groups after Filter</FluentDataGridCell>
             <FluentDataGridCell GridColumn="2">@filteredNumGroups</FluentDataGridCell>
@@ -43,7 +51,8 @@ else
     <h3>Groups</h3>
 
     <div class="search">
-        <input type="search" autofocus @bind="nameFilter" @bind:event="oninput" placeholder="Group display name..." class="search-box"/>
+        @*<input type="search" @bind="nameFilter" @bind:event="oninput" placeholder="Group display name..." class="search-box"/>*@
+        <input type="search" @bind="@nameFilter" @oninput="@onInput" placeholder="Group display name..." class="search-box"/>
     </div>
 
     <table class="table">
@@ -52,7 +61,7 @@ else
             <FluentDataGridCell GridColumn="2" CellType="DataGridCellType.ColumnHeader">Display Name</FluentDataGridCell>
             <FluentDataGridCell GridColumn="3" CellType="DataGridCellType.ColumnHeader">Group Type</FluentDataGridCell>
         </FluentDataGridRow>
-        <Virtualize Context="group" ItemsProvider="@LoadGroups">
+        <Virtualize Context="group" ItemsProvider="@LoadGroups" @ref="@virtualizedTable">
             <FluentDataGridRow TItem="Group" style="grid-template-columns: 40% 30% 30%;">
                 <FluentDataGridCell GridColumn="1"><a href=@getGroupUrl(group) target="_blank">@group.Id</a></FluentDataGridCell>
                 <FluentDataGridCell GridColumn="2">@getDisplayName(group)</FluentDataGridCell>
@@ -67,13 +76,36 @@ else
     List<string>? groups = new List<string>();
     List<Group> groupProps = new List<Group>();
     int numGroups;
+    Virtualize<Group> virtualizedTable;
     //int filteredNumGroups;
 
     IUserTransitiveMemberOfCollectionWithReferencesPage? groupsResult = null;
 
     string nameFilter = string.Empty;
+    string filterQuery => "startsWith(displayName,'" + nameFilter + "')";
     //string nameFilter = string.Empty;
     //IQueryable<Group>? filteredItems => groupProps.AsQueryable()?.Where(x => x.DisplayName.Contains(nameFilter, StringComparison.CurrentCultureIgnoreCase));
+
+
+    public EventCallback<ChangeEventArgs> OnInput;
+
+    // input callback method
+    public async Task onInput(ChangeEventArgs changeEvent)
+    {
+        string inputValue = (string)changeEvent.Value;
+        string message = "Hit event callback ";
+        Console.WriteLine(message);
+        nameFilter = inputValue;
+        Console.WriteLine("inputValue inside event callback: " + inputValue);
+        Console.WriteLine("nameFilter inside event callback: " + nameFilter);
+
+        //await LoadGroups(new ItemsProviderRequest(0, numGroups, new CancellationToken(false)));
+
+        groupProps = new List<Group>();
+        StateHasChanged();
+        await virtualizedTable.RefreshDataAsync();
+    }
+
 
     private static string getGroupUrl(DirectoryObject group)
     {
@@ -128,24 +160,40 @@ else
     {
         var cachedMembers = groupProps.Count;
 
-        if (groupsResult == null)
+        //if (groupsResult == null)
+        if (cachedMembers == 0) // TODO: remove outer if, IF this works
         {
             var queryOptions = new List<QueryOption>()
             {
 	            new QueryOption("$count", "true"),
-                new QueryOption("$search", nameFilter)
+                //new QueryOption("$search", nameFilter)
             };
 
-            groupsResult = await GraphServiceClient.Me.TransitiveMemberOf
+            if (nameFilter == string.Empty)
+            {
+                groupsResult = await GraphServiceClient.Me.TransitiveMemberOf
                         .Request( queryOptions )
                         .Header("ConsistencyLevel","eventual")
-                        //.Filter("startsWith(displayName,'" + nameFilter + "')")
+                        .Select("displayName,id,groupTypes")
+                        .OrderBy("displayName")
+                        .GetAsync();
+            }
+            else
+            {
+                groupsResult = await GraphServiceClient.Me.TransitiveMemberOf
+                        .Request( queryOptions )
+                        .Header("ConsistencyLevel","eventual")
+                        .Filter(filterQuery)
                         //.Search("displayName:" + nameFilter)
                         .Select("displayName,id,groupTypes")
                         .OrderBy("displayName")
                         .GetAsync();
+            }
+
 
             groupProps = HandleGroupsAsDirectoryObjects(groupsResult.CurrentPage);
+            Console.WriteLine("nameFilter: " + nameFilter);
+            Console.WriteLine("newly found groups: " + groupProps.Count);
 
             if (groupsResult.AdditionalData["@odata.count"] != null)
             {
@@ -157,8 +205,11 @@ else
             }
         }
 
-        while ((startIndex + numGroups >= cachedMembers) && (groupsResult.NextPageRequest != null))
+        // TODO: double check logic here for this while loop for virtualization!
+        while ((startIndex + numToRetrieve >= cachedMembers) && (groupsResult.NextPageRequest != null) && (cachedMembers <= numGroups))
         {
+            Console.WriteLine("numToRetrieve: " + numToRetrieve);
+            Console.WriteLine("filler");
             groupsResult = await groupsResult.NextPageRequest.GetAsync();
             var newGroups = HandleGroupsAsDirectoryObjects(groupsResult.CurrentPage);
             groupProps.AddRange(newGroups);
@@ -175,8 +226,8 @@ else
     {
         //groupsResult = null;
         //groupProps = new List<Group>();
-        var numToRetrieve = Math.Min(request.Count, numGroups - request.StartIndex);
-        var loadedGroups = await GetGroupsAsync(request.StartIndex, numToRetrieve);
+
+        var loadedGroups = await GetGroupsAsync(request.StartIndex, request.Count);
         //var filteredGroups = groups.Where(x => x.DisplayName.Contains(nameFilter, StringComparison.CurrentCultureIgnoreCase));
      
         //filteredNumGroups = filteredGroups.Count<Group>();
@@ -193,6 +244,8 @@ else
         try
         {
             user = await GraphServiceClient.Me.Request().GetAsync();
+
+             OnInput = EventCallback.Factory.Create<ChangeEventArgs>(this, onInput);
         }
         catch (Exception ex)
         {
