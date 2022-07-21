@@ -40,10 +40,6 @@ else
             <FluentDataGridCell GridColumn="1">Filter query (i.e. string passed to request as filter params)</FluentDataGridCell>
             <FluentDataGridCell GridColumn="2">@filterQuery</FluentDataGridCell>
         </FluentDataGridRow>
-        @*<FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
-            <FluentDataGridCell GridColumn="1">Num Groups after Filter</FluentDataGridCell>
-            <FluentDataGridCell GridColumn="2">@filteredNumGroups</FluentDataGridCell>
-        </FluentDataGridRow>*@
     </table>
     <br />
 
@@ -51,7 +47,6 @@ else
     <h3>Groups</h3>
 
     <div class="search">
-        @*<input type="search" @bind="nameFilter" @bind:event="oninput" placeholder="Group display name..." class="search-box"/>*@
         <input type="search" @bind="@nameFilter" @oninput="@onInput" placeholder="Group display name..." class="search-box"/>
     </div>
 
@@ -77,19 +72,16 @@ else
     List<Group> groupProps = new List<Group>();
     int numGroups;
     Virtualize<Group> virtualizedTable;
-    //int filteredNumGroups;
 
     IUserTransitiveMemberOfCollectionWithReferencesPage? groupsResult = null;
 
     string nameFilter = string.Empty;
     string filterQuery => "startsWith(displayName,'" + nameFilter + "')";
-    //string nameFilter = string.Empty;
-    //IQueryable<Group>? filteredItems => groupProps.AsQueryable()?.Where(x => x.DisplayName.Contains(nameFilter, StringComparison.CurrentCultureIgnoreCase));
 
 
     public EventCallback<ChangeEventArgs> OnInput;
 
-    // input callback method
+
     public async Task onInput(ChangeEventArgs changeEvent)
     {
         string inputValue = (string)changeEvent.Value;
@@ -98,8 +90,6 @@ else
         nameFilter = inputValue;
         Console.WriteLine("inputValue inside event callback: " + inputValue);
         Console.WriteLine("nameFilter inside event callback: " + nameFilter);
-
-        //await LoadGroups(new ItemsProviderRequest(0, numGroups, new CancellationToken(false)));
 
         groupProps = new List<Group>();
         StateHasChanged();
@@ -155,18 +145,16 @@ else
         return groupProperties;
     }
 
-    //private async Task<IQueryable<Group>> GetGroupsAsync(int startIndex, int numToRetrieve)
+
     private async Task<List<Group>> GetGroupsAsync(int startIndex, int numToRetrieve)
     {
         var cachedMembers = groupProps.Count;
 
-        //if (groupsResult == null)
-        if (cachedMembers == 0) // TODO: remove outer if, IF this works
+        if (cachedMembers == 0)
         {
             var queryOptions = new List<QueryOption>()
             {
-	            new QueryOption("$count", "true"),
-                //new QueryOption("$search", nameFilter)
+	            new QueryOption("$count", "true")
             };
 
             if (nameFilter == string.Empty)
@@ -180,11 +168,12 @@ else
             }
             else
             {
+                string searchQuery = $"\"displayName:{nameFilter}\"";
+                queryOptions.Add(new QueryOption("$search", searchQuery));
+
                 groupsResult = await GraphServiceClient.Me.TransitiveMemberOf
                         .Request( queryOptions )
                         .Header("ConsistencyLevel","eventual")
-                        .Filter(filterQuery)
-                        //.Search("displayName:" + nameFilter)
                         .Select("displayName,id,groupTypes")
                         .OrderBy("displayName")
                         .GetAsync();
@@ -205,7 +194,6 @@ else
             }
         }
 
-        // TODO: double check logic here for this while loop for virtualization!
         while ((startIndex + numToRetrieve >= cachedMembers) && (groupsResult.NextPageRequest != null) && (cachedMembers <= numGroups))
         {
             Console.WriteLine("numToRetrieve: " + numToRetrieve);
@@ -217,23 +205,13 @@ else
         }
 
         return groupProps.GetRange(startIndex, Math.Min(numToRetrieve, (numGroups - startIndex)));
-        //return groupProps.GetRange(startIndex, Math.Min(numToRetrieve, (numGroups - startIndex))).AsQueryable();
     }
 
 
 
     private async ValueTask<ItemsProviderResult<Group>> LoadGroups(ItemsProviderRequest request)
     {
-        //groupsResult = null;
-        //groupProps = new List<Group>();
-
         var loadedGroups = await GetGroupsAsync(request.StartIndex, request.Count);
-        //var filteredGroups = groups.Where(x => x.DisplayName.Contains(nameFilter, StringComparison.CurrentCultureIgnoreCase));
-     
-        //filteredNumGroups = filteredGroups.Count<Group>();
-        //StateHasChanged();
-
-        //return new ItemsProviderResult<Group>(filteredGroups.ToList<Group>(), numGroups);
         return new ItemsProviderResult<Group>(loadedGroups, numGroups);
 
     }
