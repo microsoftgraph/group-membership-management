@@ -5,6 +5,7 @@ using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 
 namespace Repositories.SyncJobs.Tests
@@ -62,6 +63,16 @@ namespace Repositories.SyncJobs.Tests
         public async Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null)
         {
             await Task.CompletedTask;
+        }
+
+        public Expression<Func<SyncJob, bool>> GetJobsQueryFunc(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<TableSegmentBulkResult> GetSyncJobsAsync(Expression<Func<SyncJob, bool>> jobsQueryFunc, string continuationToken, bool applyFilters = true)
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -11,6 +11,9 @@ using System.Linq;
 using Services.Entities;
 using Newtonsoft.Json;
 using Repositories.Contracts.InjectConfig;
+using Microsoft.Azure.Cosmos.Table;
+using System.Linq.Expressions;
+using Azure;
 
 namespace Services
 {
@@ -40,12 +43,6 @@ namespace Services
             _loggingRepository = loggingRepository;
         }
 
-        public async Task<List<SchedulerSyncJob>> GetJobsToUpdateAsync()
-        {
-            var jobs = await GetAllSyncJobsAsync(_jobSchedulerConfig.IncludeFutureJobs);
-            return jobs;
-        }
-
         public async Task ResetJobsAsync(List<SchedulerSyncJob> jobs)
         {
             var newStartTime = DateTime.UtcNow.AddDays(_jobSchedulerConfig.DaysToAddForReset);
@@ -67,25 +64,19 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Distributed {jobs.Count} jobs" });
         }
 
-        public async Task<List<SchedulerSyncJob>> GetAllSyncJobsAsync(bool includeFutureStartDates = false)
+        public async Task<TableSegmentBulkResult> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken)
         {
-            var message = "Getting enabled sync jobs" + (includeFutureStartDates ? " including those with future StartDate values" : "");
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = message });
-
-            var schedulerSyncJobs = new List<SchedulerSyncJob>();
-            var jobs = _syncJobRepository.GetSyncJobsAsync(SyncStatus.All, false);
-            await foreach (var job in jobs)
+            if (pageableQueryResult == null)
             {
-                if (includeFutureStartDates || job.StartDate.CompareTo(DateTime.UtcNow) < 0)
-                {
-                    var serializedJob = JsonConvert.SerializeObject(job);
-                    SchedulerSyncJob schedulerJob = JsonConvert.DeserializeObject<SchedulerSyncJob>(serializedJob);
-                    schedulerSyncJobs.Add(schedulerJob);
-                }
+                var message = "Getting enabled sync jobs" + (_jobSchedulerConfig.IncludeFutureJobs ? " including those with future StartDate values" : "");
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = message });
+
+                pageableQueryResult = _syncJobRepository.GetPageableQueryResultAsync(SyncStatus.All, _jobSchedulerConfig.IncludeFutureJobs);
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Found {schedulerSyncJobs.Count} jobs to update" });
-            return schedulerSyncJobs;
+            var queryResultSegment = await _syncJobRepository.GetSyncJobsSegmentAsync(pageableQueryResult, continuationToken, false);
+ 
+            return queryResultSegment;
         }
 
         public async Task UpdateSyncJobsAsync(List<SchedulerSyncJob> updatedSyncJobs)

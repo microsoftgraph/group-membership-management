@@ -56,11 +56,6 @@ namespace Hosts.JobScheduler
                         services.GetService<ILoggingRepository>()
                     );
             });
-
-            builder.Services.AddScoped<IApplicationService>(services =>
-            {
-                return new ApplicationService(services.GetService<IJobSchedulingService>(), services.GetService<IJobSchedulerConfig>(), services.GetService<ILoggingRepository>());
-            });
         }
     }
 }

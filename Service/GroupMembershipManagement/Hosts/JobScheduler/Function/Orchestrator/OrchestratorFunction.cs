@@ -35,7 +35,7 @@ namespace Hosts.JobScheduler
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
-            var jobsToUpdate = await context.CallActivityAsync<List<SchedulerSyncJob>>(nameof(GetJobsToUpdateFunction), null);
+            var jobsToUpdate = await context.CallSubOrchestratorAsync<List<SchedulerSyncJob>>(nameof(GetJobsSubOrchestratorFunction), null);
 
             if (_jobSchedulerConfig.ResetJobs)
             {
