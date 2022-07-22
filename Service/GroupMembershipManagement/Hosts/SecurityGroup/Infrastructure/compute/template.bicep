@@ -240,7 +240,23 @@ var stagingSettings = [
     value: 1
   }
   {
+    name: 'AzureWebJobs.DeltaUsersReaderFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.DeltaUsersSenderFunction.Disabled'
+    value: 1
+  }
+  {
     name: 'AzureWebJobs.EmailSenderFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.FileDownloaderFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.GroupsReaderFunction.Disabled'
     value: 1
   }
   {
@@ -252,7 +268,19 @@ var stagingSettings = [
     value: 1
   }
   {
+    name: 'AzureWebJobs.MembersReaderFunction.Disabled'
+    value: 1
+  }
+  {
     name: 'AzureWebJobs.SourceGroupsReaderFunction.Disabled'
+    value: 1
+  }
+  {
+    name: 'AzureWebJobs.SubsequentDeltaUsersReaderFunction.Disabled'
+    value: 1
+  }  
+  {
+    name: 'AzureWebJobs.SubsequentMembersReaderFunction.Disabled'
     value: 1
   }
   {
@@ -299,7 +327,23 @@ var productionSettings = [
     value: 0
   }
   {
+    name: 'AzureWebJobs.DeltaUsersReaderFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.DeltaUsersSenderFunction.Disabled'
+    value: 0
+  }
+  {
     name: 'AzureWebJobs.EmailSenderFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.FileDownloaderFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.GroupsReaderFunction.Disabled'
     value: 0
   }
   {
@@ -311,7 +355,19 @@ var productionSettings = [
     value: 0
   }
   {
+    name: 'AzureWebJobs.MembersReaderFunction.Disabled'
+    value: 0
+  }
+  {
     name: 'AzureWebJobs.SourceGroupsReaderFunction.Disabled'
+    value: 0
+  }
+  {
+    name: 'AzureWebJobs.SubsequentDeltaUsersReaderFunction.Disabled'
+    value: 0
+  }  
+  {
+    name: 'AzureWebJobs.SubsequentMembersReaderFunction.Disabled'
     value: 0
   }
   {
