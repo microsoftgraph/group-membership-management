@@ -7,6 +7,7 @@ using Entities;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Repositories.BlobStorage
@@ -29,6 +30,27 @@ namespace Repositories.BlobStorage
         public async Task<BlobResult> DownloadFileAsync(string path)
         {
             var blobClient = _containerClient.GetBlobClient(path);
+            var blobExists = await blobClient.ExistsAsync();
+            if (blobExists)
+            {
+                var content = await blobClient.DownloadContentAsync();
+                return new BlobResult
+                {
+                    Content = content.Value.Content,
+                    Metadata = content.Value.Details.Metadata,
+                    BlobStatus = BlobStatus.Found
+                };
+            }
+
+            return new BlobResult { BlobStatus = BlobStatus.NotFound };
+        }
+
+        public async Task<BlobResult> DownloadCacheFileAsync(string path)
+        {
+            var latest = _containerClient.GetBlobs(prefix: path).OrderByDescending(m => m.Properties.LastModified).FirstOrDefault();
+            if (latest == null ) return new BlobResult { BlobStatus = BlobStatus.NotFound };
+            var name = latest.Name;
+            var blobClient = _containerClient.GetBlobClient(name);
             var blobExists = await blobClient.ExistsAsync();
             if (blobExists)
             {

@@ -326,7 +326,7 @@ namespace Repositories.GraphGroups
                                 .Top(MaxResultCount)
                                 .GetAsync();
             });
-        }
+        }        
 
         /// <summary>
         /// get group members page by next page url.
@@ -346,12 +346,12 @@ namespace Repositories.GraphGroups
                                 .NextPageRequest
                                 .GetAsync();
             });
-        }
+        }        
 
         public async Task<(List<AzureADUser> users,
                            Dictionary<string, int> nonUserGraphObjects,
                            string nextPageUrl,
-                           IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetFirstUsersPageAsync(Guid objectId)
+                           IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetFirstTransitiveMembersPageAsync(Guid objectId)
         {
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
@@ -360,14 +360,14 @@ namespace Repositories.GraphGroups
             TrackMetrics(usersFromGroup.AdditionalData);
             usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
-            users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
+            users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));           
             return (users, nonUserGraphObjects, nextPageUrl, usersFromGroup);
         }
 
         public async Task<(List<AzureADUser> users,
                            Dictionary<string, int> nonUserGraphObjects,
                            string nextPageUrl,
-                           IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetNextUsersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)
+                           IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetNextTransitiveMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)
         {
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
@@ -379,6 +379,178 @@ namespace Repositories.GraphGroups
             users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
             return (users, nonUserGraphObjects, nextPageUrl, usersFromGroup);
         }
+
+        public async Task<IGroupDeltaCollectionPage> GetGroupUsersPageByLinkAsync(string deltaLink)
+        {
+            var groupCollectionPage = new GroupDeltaCollectionPage();
+            groupCollectionPage.InitializeNextPageRequest(_graphServiceClient, deltaLink);
+            return await groupCollectionPage.NextPageRequest.GetAsync();
+        }
+
+        public async Task<IGroupDeltaCollectionPage> GetGroupUsersPageByIdAsync(string groupId)
+        {
+            var retryPolicy = GetRetryPolicy();
+            return await retryPolicy.ExecuteAsync(async () =>
+            {
+                return await _graphServiceClient
+                                    .Groups
+                                    .Delta()
+                                    .Request()
+                                    .Filter($"id  eq '{groupId}'")
+                                    .Top(MaxResultCount)
+                                    .GetAsync();
+            });
+        }
+        public async Task<IGroupDeltaCollectionPage> GetGroupUsersNextPageAsnyc(IGroupDeltaCollectionPage groupMembersRef, string nextPageUrl)
+        {
+            var retryPolicy = GetRetryPolicy();
+            return await retryPolicy.ExecuteAsync(async () =>
+            {
+                groupMembersRef.InitializeNextPageRequest(_graphServiceClient, nextPageUrl);
+                return await groupMembersRef
+                                .NextPageRequest
+                                .GetAsync();
+            });
+        }
+        public async Task<int> GetGroupsCountAsync(Guid objectId)
+        {
+            var requestUrl = _graphServiceClient.Groups[objectId.ToString()].TransitiveMembers.Request().RequestUrl;
+
+            // add casting and count query
+            requestUrl = $"{requestUrl}/microsoft.graph.group/$count";
+
+            // Create the request message
+            var hrm = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+
+            // $count requires header ConsistencyLevel
+            hrm.Headers.Add("ConsistencyLevel", "eventual");
+
+            // Authenticate (add access token) our HttpRequestMessage
+            await _graphServiceClient.AuthenticationProvider.AuthenticateRequestAsync(hrm);
+
+            // Send the request and get the response.
+            var r = await _graphServiceClient.HttpProvider.SendAsync(hrm);
+
+            // read the content and parse it as an integer
+            var content = await r.Content.ReadAsStringAsync();
+            var groupCount = int.Parse(content);
+
+            return groupCount;
+        }
+
+        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetFirstUsersPageAsync(Guid objectId)
+        {
+            var users = new List<AzureADUser>();
+            var response = await GetGroupUsersPageByIdAsync(objectId.ToString());
+            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null)
+            {
+                var deltaMembers = response.CurrentPage[0].AdditionalData["members@delta"].ToString();
+                var json = JObject.Parse("{\"deltaMembers\":" + deltaMembers + "}");
+                var groupDeltaUsers = (JArray)json["deltaMembers"];
+                foreach (JObject user in groupDeltaUsers)
+                {
+                    if (user["@odata.type"].ToString().Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase) &&
+                        user["@removed"] == null)
+                    {
+                        users.Add(new AzureADUser { ObjectId = Guid.Parse((string)user["id"]) });
+                    }
+                }
+            }
+            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
+            var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
+            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
+            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+            return (users, nextPageUrl, deltaUrl, response);
+        }
+
+        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetNextUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage response)
+        {
+            var users = new List<AzureADUser>();
+            response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
+            if (response.CurrentPage.Count > 0)
+            {
+                var deltaMembers = response.CurrentPage[0].AdditionalData["members@delta"].ToString();
+                var json = JObject.Parse("{\"deltaMembers\":" + deltaMembers + "}");
+                var groupDeltaUsers = (JArray)json["deltaMembers"];
+                foreach (JObject user in groupDeltaUsers)
+                {
+                    if (user["@odata.type"].ToString().Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase) &&
+                        user["@removed"] == null)
+                    {
+                        users.Add(new AzureADUser { ObjectId = Guid.Parse((string)user["id"]) });
+                    }
+                }
+            }
+            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
+            nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
+            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
+            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+            return (users, nextPageUrl, deltaUrl, response);
+        }
+
+        public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetFirstDeltaUsersPageAsync(string deltaLink)
+        {
+            var usersToAdd = new List<AzureADUser>();
+            var usersToRemove = new List<AzureADUser>();
+            var response = await GetGroupUsersPageByLinkAsync(deltaLink);
+            if (response.CurrentPage.Count > 0)
+            {
+                var deltaMembers = response.CurrentPage[0].AdditionalData["members@delta"].ToString();
+                var json = JObject.Parse("{\"deltaMembers\":" + deltaMembers + "}");
+                var groupDeltaUsers = (JArray)json["deltaMembers"];
+                foreach (JObject user in groupDeltaUsers)
+                {
+                    if (user["@odata.type"].ToString().Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        if (user["@removed"] == null)
+                        {
+                            usersToAdd.Add(new AzureADUser { ObjectId = Guid.Parse((string)user["id"]) });
+                        }
+                        else
+                        {
+                            usersToRemove.Add(new AzureADUser { ObjectId = Guid.Parse((string)user["id"]) });
+                        }
+                    }
+                }
+            }
+            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
+            var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
+            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
+            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+            return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl, response);
+        }
+
+        public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetNextDeltaUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage response)
+        {
+            var usersToAdd = new List<AzureADUser>();
+            var usersToRemove = new List<AzureADUser>();
+            response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
+            if (response.CurrentPage.Count > 0)
+            {
+                var deltaMembers = response.CurrentPage[0].AdditionalData["members@delta"].ToString();
+                var json = JObject.Parse("{\"deltaMembers\":" + deltaMembers + "}");
+                var groupDeltaUsers = (JArray)json["deltaMembers"];
+                foreach (JObject user in groupDeltaUsers)
+                {
+                    if (user["@odata.type"].ToString().Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        if (user["@removed"] == null)
+                        {
+                            usersToAdd.Add(new AzureADUser { ObjectId = Guid.Parse((string)user["id"]) });
+                        }
+                        else
+                        {
+                            usersToRemove.Add(new AzureADUser { ObjectId = Guid.Parse((string)user["id"]) });
+                        }
+                    }
+                }
+            }
+            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
+            nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
+            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
+            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+            return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl, response);
+        }  
 
         public async Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid objectId)
         {
@@ -882,7 +1054,7 @@ namespace Repositories.GraphGroups
                         break;
                 }
             }
-        }
+        }       
 
         private IEnumerable<AzureADUser> ToUsers(IEnumerable<DirectoryObject> fromGraph, Dictionary<string, int> nonUserGraphObjects)
         {
@@ -966,7 +1138,7 @@ namespace Repositories.GraphGroups
                     );
 
             return retryPolicy;
-        }
+        }        
     }
 
     internal class RetryResponse

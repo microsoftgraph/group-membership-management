@@ -5,7 +5,7 @@ using System;
 
 namespace Hosts.SecurityGroup
 {
-    public class SubsequentUsersReaderRequest
+    public class SubsequentDeltaUsersReaderRequest
     {
         public Guid RunId { get; set; }
         public string NextPageUrl { get; set; }
