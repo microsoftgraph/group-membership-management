@@ -32,8 +32,7 @@ namespace Services.Tests
             var mockSynJobs = new MockSyncJobRepository();
             var samplePageResponse = GetPageSampleResponse(100, true);
             var userCount = 100;
-            mockGraphGroup.Setup(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>())).ReturnsAsync(samplePageResponse);
-            mockGraphGroup.SetupAllProperties();
+            mockGraphGroup.Setup(x => x.GetFirstTransitiveMembersPageAsync(It.IsAny<Guid>())).ReturnsAsync(samplePageResponse);
 
             var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs);
 
@@ -61,7 +60,7 @@ namespace Services.Tests
             var mockSynJobs = new MockSyncJobRepository();
             var samplePageResponse = GetPageSampleResponse(100, true);
             var userCount = 100;
-            mockGraphGroup.Setup(x => x.GetNextUsersPageAsync(It.IsAny<string>(), It.IsAny<IGroupTransitiveMembersCollectionWithReferencesPage>()))
+            mockGraphGroup.Setup(x => x.GetNextTransitiveMembersPageAsync(It.IsAny<string>(), It.IsAny<IGroupTransitiveMembersCollectionWithReferencesPage>()))
                             .ReturnsAsync(samplePageResponse);
 
             var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs);

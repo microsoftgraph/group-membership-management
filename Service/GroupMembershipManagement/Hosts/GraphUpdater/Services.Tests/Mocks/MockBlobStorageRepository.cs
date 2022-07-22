@@ -34,6 +34,10 @@ namespace Services.Tests.Mocks
             return Task.FromResult(result);
         }
 
+        public Task<BlobResult> DownloadCacheFileAsync(string path)
+        {
+            throw new NotImplementedException();
+        }
         public Task<BlobMetadataResult> GetBlobMetadataAsync(string path)
         {
             throw new NotImplementedException();
