@@ -161,9 +161,9 @@ namespace Hosts.SecurityGroup
             return fileName;
         }
 
-        public async Task<string> SaveDeltaUsersAsync(SyncJob syncJob, Guid id,  List<AzureADUser> users, string deltaLink)
-        {                 
-            var timeStamp = syncJob.Timestamp.ToString("MMddyyyy-HHmmss");
+        public async Task SaveDeltaUsersAsync(SyncJob syncJob, Guid id,  List<AzureADUser> users, string deltaLink)
+        {
+            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
             var fileName = $"/cache/delta_{id}_{timeStamp}.json";            
             await _blobStorageRepository.UploadFileAsync(fileName, deltaLink);
             var groupMembership = new GroupMembership
@@ -172,7 +172,6 @@ namespace Hosts.SecurityGroup
             };            
             var datafileName = $"/cache/{id}_{timeStamp}.json";
             await _blobStorageRepository.UploadFileAsync(datafileName, JsonConvert.SerializeObject(groupMembership));
-            return fileName;
         }
 
         public async Task SendEmailAsync(SyncJob job, Guid runId, string content, string[] additionalContentParams)
