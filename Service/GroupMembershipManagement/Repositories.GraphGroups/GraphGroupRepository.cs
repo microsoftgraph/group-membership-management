@@ -932,15 +932,35 @@ namespace Repositories.GraphGroups
         private AsyncRetryPolicy GetRetryPolicy()
         {
             var retryLimit = 4;
-            var retryPolicy = Policy.Handle<ServiceException>()
+            var timeOutRetryLimit = 2;
+            var currentRetryIndex = 0;
+            var retryPolicy = Policy.Handle<ServiceException>(ex =>
+            {
+                if (ex.Message != null
+                    && ex.Message.Contains("The request timed out")
+                    && currentRetryIndex >= timeOutRetryLimit)
+                {
+                    return false;
+                }
+
+                return true;
+            })
                     .WaitAndRetryAsync(
                        retryCount: retryLimit,
                        retryAttempt => TimeSpan.FromMinutes(2),
-                       onRetry: async (ex, waitTime, currentRetry, context) =>
+                       onRetry: async (ex, waitTime, retryIndex, context) =>
                        {
+                           currentRetryIndex = retryIndex;
+
+                           var currentLimit = retryLimit;
+                           if (ex.Message != null && ex.Message.Contains("The request timed out"))
+                           {
+                               currentLimit = timeOutRetryLimit;
+                           }
+
                            await _loggingRepository.LogMessageAsync(new LogMessage
                            {
-                               Message = $"Got a transient exception. Retrying. This was try {currentRetry} out of {retryLimit}.\n{ex}"
+                               Message = $"Got a transient exception. Retrying. This was try {retryIndex} out of {currentLimit}.\n{ex}"
                            });
                        }
                     );

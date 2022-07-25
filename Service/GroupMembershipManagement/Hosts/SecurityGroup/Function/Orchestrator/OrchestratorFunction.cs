@@ -129,6 +129,14 @@ namespace Hosts.SecurityGroup
             }
             catch (Exception ex)
             {
+                if (ex.Message != null && ex.Message.Contains("The request timed out"))
+                {
+                    syncJob.StartDate = context.CurrentUtcDateTime.AddMinutes(30);
+                    _ = _log.LogMessageAsync(new LogMessage { Message = $"Rescheduling job at {syncJob.StartDate} due to Graph API timeout.", RunId = runId });
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Idle });
+                    return;
+                }
+
                 _ = _log.LogMessageAsync(new LogMessage { Message = $"Caught unexpected exception in Part# {mainRequest.CurrentPart}, marking sync job as errored. Exception:\n{ex}", RunId = runId });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });

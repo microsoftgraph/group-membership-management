@@ -4,12 +4,14 @@ using Entities;
 using Hosts.SecurityGroup;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Tests.Services
@@ -82,6 +84,8 @@ namespace Tests.Services
 
             _durableOrchestrationContext.Setup(x => x.GetInput<OrchestratorRequest>())
                                         .Returns(() => _orchestratorRequest);
+
+            _durableOrchestrationContext.Setup(x => x.CurrentUtcDateTime).Returns(DateTime.UtcNow);
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()))
                                         .Callback<string, object>(async (name, request) =>
@@ -222,7 +226,7 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.StartsWith("Caught unexpected exception")),
-                        It.IsAny<VerbosityLevel>(), 
+                        It.IsAny<VerbosityLevel>(),
                         It.IsAny<string>(),
                         It.IsAny<string>()
                     ), Times.Once);
@@ -230,6 +234,43 @@ namespace Tests.Services
             _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
                                                 It.IsAny<IEnumerable<SyncJob>>(),
                                                 It.Is<SyncStatus>(s => s == SyncStatus.Error)
+                                            ), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task TestGraphAPITimeoutExceptionAsync()
+        {
+            var error = new Error
+            {
+                Code = "timeout",
+                Message = "The request timed out"
+            };
+
+            var serviceException = new ServiceException(error);
+
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
+                                        .Throws(serviceException);
+
+            var orchestratorFunction = new OrchestratorFunction(
+                                            _loggingRepository.Object,
+                                            _graphGroupRepository.Object,
+                                            _membershipCalculator,
+                                            _configuration.Object
+                                            );
+
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                        It.Is<LogMessage>(m => m.Message.StartsWith("Rescheduling job at")),
+                        It.IsAny<VerbosityLevel>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>()
+                    ), Times.Once);
+
+            var currentUtcDate = _durableOrchestrationContext.Object.CurrentUtcDateTime;
+            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
+                                                It.Is<IEnumerable<SyncJob>>(x => x.All(y => y.StartDate == currentUtcDate.AddMinutes(30))),
+                                                It.Is<SyncStatus>(s => s == SyncStatus.Idle)
                                             ), Times.Once);
         }
 
@@ -270,7 +311,7 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message == $"{nameof(OrchestratorFunction)} function completed"),
-                                                It.IsAny<VerbosityLevel>(), 
+                                                It.IsAny<VerbosityLevel>(),
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
                                             ), Times.Once);
