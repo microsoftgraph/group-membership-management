@@ -2788,7 +2788,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartId'
-                  value: '61e7acff-f2c8-48ab-b116-39bf0f60e2f3'
+                  value: '1592d33b-1422-45a4-92b6-b23302415882'
                   isOptional: true
                 }
                 {
@@ -2883,7 +2883,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartId'
-                  value: '61e7acff-f2c8-48ab-b116-39bf0f60e2f3'
+                  value: '64de05b8-0ff7-46ae-9a21-4efac2046dd5'
                   isOptional: true
                 }
                 {
@@ -3303,29 +3303,30 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 value: 'Past 7 days'
               }
               filteredPartIds: [
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed3d5'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed3d7'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed3dd'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed3df'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed3e3'
-                'StartboardPart-MonitorChartPart-32ac7bd3-43f2-42f6-9451-917dec8ed3e5'
-                'StartboardPart-MonitorChartPart-32ac7bd3-43f2-42f6-9451-917dec8ed3e7'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed3e9'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed3eb'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed3ed'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed3f1'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed3f5'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed3f7'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed3fb'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed3fd'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed3ff'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed401'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed403'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed407'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed409'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed40b'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed40d'
-                'StartboardPart-LogsDashboardPart-32ac7bd3-43f2-42f6-9451-917dec8ed40f'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373bd'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373bf'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373c5'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373c7'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373cb'
+                'StartboardPart-MonitorChartPart-ba28fad7-c89a-4556-aaa0-18b0f89373cd'
+                'StartboardPart-MonitorChartPart-ba28fad7-c89a-4556-aaa0-18b0f89373cf'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373d1'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373d3'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373db'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373df'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373e3'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373e5'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373e9'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373eb'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373ed'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373ef'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373f1'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373f3'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373f7'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373f9'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373fb'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373fd'
+                'StartboardPart-LogsDashboardPart-ba28fad7-c89a-4556-aaa0-18b0f89373ff'
               ]
             }
           }
