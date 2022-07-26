@@ -9,23 +9,25 @@ using System.Linq;
 using System.Collections.Generic;
 using System;
 using Microsoft.ApplicationInsights;
+using GraphUpdater.Entities;
 
 namespace Hosts.GraphUpdater
 {
     public class GroupUpdaterSubOrchestratorFunction
     {
         private readonly TelemetryClient _telemetryClient;
+        private readonly int _batchSize = 100;
 
-        public GroupUpdaterSubOrchestratorFunction(TelemetryClient telemetryClient)
+        public GroupUpdaterSubOrchestratorFunction(TelemetryClient telemetryClient, GraphUpdaterBatchSize batchSize)
         {
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
+            _batchSize = batchSize.BatchSize;
         }
 
         [FunctionName(nameof(GroupUpdaterSubOrchestratorFunction))]
         public async Task RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var skip = 0;
-            const int batchSize = 100;
             var request = context.GetInput<GroupUpdaterRequest>();
             var totalSuccessCount = 0;
 
@@ -35,9 +37,9 @@ namespace Hosts.GraphUpdater
             }
 
             await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LoggerRequest { Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function started", SyncJob = request.SyncJob, Verbosity = VerbosityLevel.DEBUG });
+                                                new LoggerRequest { Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function started with batch size {_batchSize}", SyncJob = request.SyncJob, Verbosity = VerbosityLevel.DEBUG });
 
-            var batch = request.Members?.Skip(skip).Take(batchSize).ToList() ?? new List<AzureADUser>();
+            var batch = request.Members?.Skip(skip).Take(_batchSize).ToList() ?? new List<AzureADUser>();
 
             while (batch.Count > 0)
             {
@@ -58,8 +60,8 @@ namespace Hosts.GraphUpdater
                                                 });
 
 
-                skip += batchSize;
-                batch = request.Members.Skip(skip).Take(batchSize).ToList();
+                skip += _batchSize;
+                batch = request.Members.Skip(skip).Take(_batchSize).ToList();
             }
 
             _telemetryClient.TrackMetric(nameof(Services.Entities.Metric.MembersNotFound), request.Members.Count - totalSuccessCount);

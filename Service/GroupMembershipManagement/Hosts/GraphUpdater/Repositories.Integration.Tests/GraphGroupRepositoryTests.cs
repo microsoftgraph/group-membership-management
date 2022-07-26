@@ -449,7 +449,7 @@ namespace Repositories.Integration.Tests
             public Task LogPIIMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
 			{
 				return Task.CompletedTask;
-			}
+            }
 
             public void RemoveSyncJobProperties(Guid key)
             {

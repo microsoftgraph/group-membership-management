@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Common.DependencyInjection;
+using GraphUpdater.Entities;
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
@@ -41,6 +42,11 @@ namespace Hosts.GraphUpdater
                 var containerName = configuration["membershipContainerName"];
 
                 return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
+            })
+            .AddSingleton((s) =>
+            {
+                var configuration = s.GetService<IConfiguration>();
+                return new GraphUpdaterBatchSize { BatchSize = GetIntSetting(configuration, "GraphUpdater:UpdateBatchSize", 100) };
             });
         }
 
