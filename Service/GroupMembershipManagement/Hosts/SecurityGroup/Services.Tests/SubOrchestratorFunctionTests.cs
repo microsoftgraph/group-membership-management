@@ -40,19 +40,9 @@ namespace Tests.Services
         private string _deltaUrl;        
         private SecurityGroupRequest _securityGroupRequest;
         private SGMembershipCalculator _membershipCalculator;
-        private (List<AzureADUser> users,
-                 Dictionary<string, int> nonUserGraphObjects,
-                 string nextPageUrl,
-                 IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup) _membersReaderResponse;
-        private (List<AzureADUser> users,                 
-                 string nextPageUrl,
-                 string deltaUrl,
-                 IGroupDeltaCollectionPage usersFromGroup) _usersReaderResponse;
-        private (List<AzureADUser> usersToAdd,
-                 List<AzureADUser> usersToRemove,
-                 string nextPageUrl,
-                 string deltaUrl,
-                 IGroupDeltaCollectionPage usersFromGroup) _deltaUsersReaderResponse;
+        private GroupInformation _membersReaderResponse;
+        private DeltaGroupInformation _usersReaderResponse;
+        private DeltaGroupInformation _deltaUsersReaderResponse;
 
         [TestInitialize]
         public void Setup()
@@ -129,11 +119,7 @@ namespace Tests.Services
                                            await CallDeltaUsersSenderFunctionAsync(request as DeltaUsersSenderRequest);
                                        });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(List<AzureADUser> usersToAdd,
-                                                               List<AzureADUser> usersToRemove,
-                                                               string nextPageUrl,
-                                                               string deltaUrl,
-                                                               IGroupDeltaCollectionPage usersFromGroup)>(It.IsAny<string>(),
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(),
                                                                                                                                     It.IsAny<DeltaUsersReaderRequest>()))
                                        .Callback<string, object>(async (name, request) =>
                                        {
@@ -141,11 +127,7 @@ namespace Tests.Services
                                        })
                                        .ReturnsAsync(() => _deltaUsersReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(List<AzureADUser> usersToAdd,
-                                                               List<AzureADUser> usersToRemove,
-                                                               string nextPageUrl,
-                                                               string deltaUrl,
-                                                               IGroupDeltaCollectionPage usersFromGroup)>(It.IsAny<string>(),
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(),
                                                                                                                                     It.IsAny<SubsequentDeltaUsersReaderRequest>()))
                                        .Callback<string, object>(async (name, request) =>
                                        {
@@ -154,10 +136,7 @@ namespace Tests.Services
                                        .ReturnsAsync(() => _deltaUsersReaderResponse);
 
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(List<AzureADUser> users,
-                                                                Dictionary<string, int> nonUserGraphObjects,
-                                                                string nextPageUrl,
-                                                                IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)>(It.IsAny<string>(),
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupInformation>(It.IsAny<string>(),
                                                                                                                                      It.IsAny<MembersReaderRequest>()))
                                         .Callback<string, object>(async (name, request) =>
                                         {
@@ -165,10 +144,7 @@ namespace Tests.Services
                                         })
                                         .ReturnsAsync(() => _membersReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(List<AzureADUser> users,
-                                                    Dictionary<string, int> nonUserGraphObjects,
-                                                    string nextPageUrl,
-                                                    IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)>(It.IsAny<string>(),
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupInformation>(It.IsAny<string>(),
                                                                                                                          It.IsAny<SubsequentMembersReaderRequest>()))
                                         .Callback<string, object>(async (name, request) =>
                                         {
@@ -176,10 +152,7 @@ namespace Tests.Services
                                         })
                                         .ReturnsAsync(() => _membersReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(List<AzureADUser> users,
-                                                               string nextPageUrl,
-                                                               string deltaUrl,
-                                                               IGroupDeltaCollectionPage usersFromGroup)>(It.IsAny<string>(),
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(),
                                                                                                                                     It.IsAny<UsersReaderRequest>()))
                                        .Callback<string, object>(async (name, request) =>
                                        {
@@ -187,10 +160,7 @@ namespace Tests.Services
                                        })
                                        .ReturnsAsync(() => _usersReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(List<AzureADUser> users,                                                   
-                                                    string nextPageUrl,
-                                                    string deltaUrl,
-                                                    IGroupDeltaCollectionPage usersFromGroup)>(It.IsAny<string>(),
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(),
                                                                                                                          It.IsAny<SubsequentUsersReaderRequest>()))
                                         .Callback<string, object>(async (name, request) =>
                                         {
@@ -251,7 +221,7 @@ namespace Tests.Services
             _graphGroupRepository.Setup(x => x.GetNextUsersPageAsync(It.IsAny<string>(), It.IsAny<IGroupDeltaCollectionPage>()))
                                  .ReturnsAsync(() =>
                                  {
-                                     var users = new List<AzureADUser>();                                     
+                                     var users = new List<AzureADUser>();
                                      var usersPage = new Mock<IGroupDeltaCollectionPage>();
 
                                      for (var i = 0; i < _userCount; i++)
@@ -786,57 +756,37 @@ namespace Tests.Services
             return await function.GetGroupsAsync(request);
         }
 
-        private async Task<(List<AzureADUser> users,
-                            Dictionary<string, int> nonUserGraphObjects,
-                            string nextPageUrl,
-                            IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> CallMembersReaderFunctionAsync(MembersReaderRequest request)
+        private async Task<GroupInformation> CallMembersReaderFunctionAsync(MembersReaderRequest request)
         {
             var function = new MembersReaderFunction(_loggingRepository.Object, _membershipCalculator);
             return await function.GetMembersAsync(request);
         }
 
-        private async Task<(List<AzureADUser> users,
-                    Dictionary<string, int> nonUserGraphObjects,
-                    string nextPageUrl,
-                    IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> CallSubsequentMembersReaderFunctionAsync(SubsequentMembersReaderRequest request)
+        private async Task<GroupInformation> CallSubsequentMembersReaderFunctionAsync(SubsequentMembersReaderRequest request)
         {
             var function = new SubsequentMembersReaderFunction(_loggingRepository.Object, _membershipCalculator);
             return await function.GetMembersAsync(request);
         }
 
-        private async Task<(List<AzureADUser> users,                            
-                            string nextPageUrl,
-                            string deltaUrl,
-                            IGroupDeltaCollectionPage usersFromGroup)> CallUsersReaderFunctionAsync(UsersReaderRequest request)
+        private async Task<DeltaGroupInformation> CallUsersReaderFunctionAsync(UsersReaderRequest request)
         {
             var function = new UsersReaderFunction(_loggingRepository.Object, _membershipCalculator);
             return await function.GetUsersAsync(request);
         }
 
-        private async Task<(List<AzureADUser> users,                    
-                    string nextPageUrl,
-                    string deltaUrl,
-                    IGroupDeltaCollectionPage usersFromGroup)> CallSubsequentUsersReaderFunctionAsync(SubsequentUsersReaderRequest request)
+        private async Task<DeltaGroupInformation> CallSubsequentUsersReaderFunctionAsync(SubsequentUsersReaderRequest request)
         {
             var function = new SubsequentUsersReaderFunction(_loggingRepository.Object, _membershipCalculator);
             return await function.GetUsersAsync(request);
         }
 
-        private async Task<(List<AzureADUser> usersToAdd,
-                            List<AzureADUser> usersToRemove,
-                            string nextPageUrl,
-                            string deltaUrl,
-                            IGroupDeltaCollectionPage usersFromGroup)> CallDeltaUsersReaderFunctionAsync(DeltaUsersReaderRequest request)
+        private async Task<DeltaGroupInformation> CallDeltaUsersReaderFunctionAsync(DeltaUsersReaderRequest request)
         {
             var function = new DeltaUsersReaderFunction(_loggingRepository.Object, _membershipCalculator);
             return await function.GetDeltaUsersAsync(request);
         }
 
-        private async Task<(List<AzureADUser> usersToAdd,
-                            List<AzureADUser> usersToRemove,
-                            string nextPageUrl,
-                            string deltaUrl,
-                            IGroupDeltaCollectionPage usersFromGroup)> CallSubsequentDeltaUsersReaderFunctionAsync(SubsequentDeltaUsersReaderRequest request)
+        private async Task<DeltaGroupInformation> CallSubsequentDeltaUsersReaderFunctionAsync(SubsequentDeltaUsersReaderRequest request)
 {
             var function = new SubsequentDeltaUsersReaderFunction(_loggingRepository.Object, _membershipCalculator);
             return await function.GetDeltaUsersAsync(request);

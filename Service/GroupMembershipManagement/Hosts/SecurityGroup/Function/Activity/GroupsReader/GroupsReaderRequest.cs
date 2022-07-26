@@ -7,6 +7,6 @@ namespace Hosts.SecurityGroup
     public class GroupsReaderRequest
     {
         public Guid RunId { get; set; }
-        public Guid ObjectId { get; set; }
+        public Guid GroupId { get; set; }
     }
 }

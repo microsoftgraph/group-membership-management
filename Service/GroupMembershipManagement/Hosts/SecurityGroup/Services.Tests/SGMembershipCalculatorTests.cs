@@ -202,9 +202,9 @@ namespace Tests.FunctionApps
             {
                 var groupExistsResult = await calc.GroupExistsAsync(group.ObjectId, Guid.NewGuid());
                 var response = await calc.GetFirstTransitiveMembersPageAsync(group.ObjectId, Guid.NewGuid());
-                Assert.IsNotNull(response.nextPageUrl);
-                response = await calc.GetNextTransitiveMembersPageAsync("nextPageLink", response.usersFromGroup);
-                Assert.AreEqual("", response.nextPageUrl);
+                Assert.IsNotNull(response.NextPageUrl);
+                response = await calc.GetNextTransitiveMembersPageAsync("nextPageLink", response.UsersFromGroup);
+                Assert.AreEqual("", response.NextPageUrl);
                 Assert.AreEqual(OutcomeType.Successful, groupExistsResult.Outcome);
                 Assert.AreEqual(true, groupExistsResult.Result);
             }

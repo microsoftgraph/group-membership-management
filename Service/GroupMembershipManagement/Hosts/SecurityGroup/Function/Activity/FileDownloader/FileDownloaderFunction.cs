@@ -13,7 +13,7 @@ namespace Hosts.SecurityGroup
     public class FileDownloaderFunction
     {
         private readonly ILoggingRepository _loggingRepository;
-        private readonly IBlobStorageRepository _blobStorageRepository = null;
+        private readonly IBlobStorageRepository _blobStorageRepository;
 
         public FileDownloaderFunction(ILoggingRepository loggingRepository, IBlobStorageRepository blobStorageRepository)
         {
@@ -30,7 +30,7 @@ namespace Hosts.SecurityGroup
             var blobResult = await _blobStorageRepository.DownloadCacheFileAsync(request.FilePath);
             if (blobResult.BlobStatus == BlobStatus.NotFound)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"File {request.FilePath} does not exist", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"File {request.FilePath} does not exist", RunId = request.SyncJob.RunId }, VerbosityLevel.INFO);
                 return string.Empty;
             }
 

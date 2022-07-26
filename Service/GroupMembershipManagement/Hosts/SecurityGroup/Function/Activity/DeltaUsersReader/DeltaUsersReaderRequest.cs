@@ -6,9 +6,9 @@ using System.Collections.Generic;
 
 namespace Hosts.SecurityGroup
 {
-    public class DeltaUsersReaderRequest
-    {
-        public Guid RunId { get; set; }
-        public string DeltaLink { get; set; }        
-    }
+	public class DeltaUsersReaderRequest
+	{
+		public Guid RunId { get; set; }
+		public string DeltaLink { get; set; }
+	}
 }

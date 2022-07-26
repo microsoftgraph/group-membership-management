@@ -12,6 +12,6 @@ namespace Hosts.SecurityGroup
         public SyncJob SyncJob { get; set; }
         public Guid ObjectId { get; set; }
         public List<AzureADUser> Users { get; set; }
-        public string DeltaLink { get; set; }        
+        public string DeltaLink { get; set; }
     }
 }

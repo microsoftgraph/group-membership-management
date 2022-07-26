@@ -5,6 +5,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
 using Repositories.Contracts;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -17,15 +18,15 @@ namespace Hosts.SecurityGroup
 
 		public MembersReaderFunction(ILoggingRepository loggingRepository, SGMembershipCalculator calculator)
 		{
-			_log = loggingRepository;
-			_calculator = calculator;
+			_log = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+			_calculator = calculator ?? throw new ArgumentNullException(nameof(calculator));
 		}
 
 		[FunctionName(nameof(MembersReaderFunction))]
-		public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetMembersAsync([ActivityTrigger] MembersReaderRequest request)
+		public async Task<GroupInformation> GetMembersAsync([ActivityTrigger] MembersReaderRequest request)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(MembersReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-			var response = await _calculator.GetFirstTransitiveMembersPageAsync(request.ObjectId, request.RunId);
+			var response = await _calculator.GetFirstTransitiveMembersPageAsync(request.GroupId, request.RunId);
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(MembersReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 			return response;
 		}
