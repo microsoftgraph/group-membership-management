@@ -13,12 +13,10 @@ namespace Repositories.SyncJobsRepository
     public class SyncJobRepository : ISyncJobRepository
     {
         private readonly TableClient _tableClient = null;
-        private readonly string _syncJobsTableName = null;
         private readonly ILoggingRepository _log;
 
         public SyncJobRepository(string connectionString, string syncJobTableName, ILoggingRepository logger)
         {
-            _syncJobsTableName = syncJobTableName;
             _log = logger;
             _tableClient = new TableClient(connectionString, syncJobTableName);
         }

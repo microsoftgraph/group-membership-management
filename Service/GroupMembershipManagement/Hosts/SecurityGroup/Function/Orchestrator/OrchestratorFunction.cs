@@ -25,7 +25,6 @@ namespace Hosts.SecurityGroup
 
         public OrchestratorFunction(
             ILoggingRepository loggingRepository,
-            IGraphGroupRepository graphGroupRepository,
             SGMembershipCalculator calculator,
             IConfiguration configuration)
         {
