@@ -42,7 +42,7 @@ stages:
        coverageThreshold: 89
     - function:
        name: 'GraphUpdater'
-       coverageThreshold: 77
+       coverageThreshold: 76
     - function:
        name: 'SecurityGroup'
        coverageThreshold: 94
