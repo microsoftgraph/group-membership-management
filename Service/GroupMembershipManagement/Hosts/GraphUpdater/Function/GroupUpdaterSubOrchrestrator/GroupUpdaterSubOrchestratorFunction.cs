@@ -37,7 +37,7 @@ namespace Hosts.GraphUpdater
             }
 
             await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LoggerRequest { Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function started with batch size {_batchSize}", SyncJob = request.SyncJob, Verbosity = VerbosityLevel.DEBUG });
+                                                new LoggerRequest { Message = $"{nameof(GroupUpdaterSubOrchestratorFunction)} function started with batch size {_batchSize}", SyncJob = request.SyncJob, Verbosity = VerbosityLevel.INFO });
 
             var batch = request.Members?.Skip(skip).Take(_batchSize).ToList() ?? new List<AzureADUser>();
 
