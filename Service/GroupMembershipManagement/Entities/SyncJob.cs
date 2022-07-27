@@ -42,13 +42,13 @@ namespace Entities
         /// Last Run Time (UTC)
         /// </summary>
         [IgnoreLogging]
-        public DateTime LastRunTime { get; set; }
+        public DateTime LastRunTime { get; set; } = DateTime.FromFileTimeUtc(0); //azure table storage rejects default(DateTime), so set them to this on construction.
 
         /// <summary>
         /// Last Successful Run Time (UTC)
         /// </summary>
         [IgnoreLogging]
-        public DateTime LastSuccessfulRunTime { get; set; }
+        public DateTime LastSuccessfulRunTime { get; set; } = DateTime.FromFileTimeUtc(0);
 
         /// <summary>
         /// Period (hours)
@@ -62,7 +62,7 @@ namespace Entities
         /// Start Date (UTC)
         /// </summary>
         [IgnoreLogging]
-        public DateTime StartDate { get; set; }
+        public DateTime StartDate { get; set; } = DateTime.FromFileTimeUtc(0);
 
         /// <summary>
         /// Threshold percentage for users being added
