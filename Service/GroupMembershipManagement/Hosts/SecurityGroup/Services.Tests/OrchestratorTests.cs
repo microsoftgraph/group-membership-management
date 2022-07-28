@@ -249,7 +249,6 @@ namespace Tests.Services
 
             var orchestratorFunction = new OrchestratorFunction(
                                             _loggingRepository.Object,
-                                            _graphGroupRepository.Object,
                                             _membershipCalculator,
                                             _configuration.Object
                                             );
