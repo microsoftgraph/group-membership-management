@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
 using Entities;
-using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Newtonsoft.Json;

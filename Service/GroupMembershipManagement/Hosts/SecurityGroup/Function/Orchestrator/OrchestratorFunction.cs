@@ -21,7 +21,6 @@ namespace Hosts.SecurityGroup
         private readonly ILoggingRepository _log;
         private readonly IConfiguration _configuration;
         private readonly SGMembershipCalculator _calculator;
-        private const string SyncDisabledNoValidGroupIds = "SyncDisabledNoValidGroupIds";
 
         public OrchestratorFunction(
             ILoggingRepository loggingRepository,

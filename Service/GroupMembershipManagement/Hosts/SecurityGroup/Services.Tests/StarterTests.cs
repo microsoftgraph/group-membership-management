@@ -3,7 +3,6 @@
 using Azure.Messaging.ServiceBus;
 using Entities;
 using Hosts.SecurityGroup;
-using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
