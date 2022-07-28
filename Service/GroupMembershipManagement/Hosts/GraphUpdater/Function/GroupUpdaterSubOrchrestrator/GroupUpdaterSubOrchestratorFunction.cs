@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System;
 using Microsoft.ApplicationInsights;
 using GraphUpdater.Entities;
+using System.Diagnostics;
 
 namespace Hosts.GraphUpdater
 {
@@ -41,8 +42,11 @@ namespace Hosts.GraphUpdater
 
             var batch = request.Members?.Skip(skip).Take(_batchSize).ToList() ?? new List<AzureADUser>();
 
+            Stopwatch totalTime = Stopwatch.StartNew();
+
             while (batch.Count > 0)
             {
+                Stopwatch batchTime = Stopwatch.StartNew();
                 totalSuccessCount += await context.CallActivityAsync<int>(nameof(GroupUpdaterFunction),
                                            new GroupUpdaterRequest
                                            {
@@ -51,11 +55,12 @@ namespace Hosts.GraphUpdater
                                                Type = request.Type,
                                                IsInitialSync = request.IsInitialSync
                                            });
+                batchTime.Stop();
 
                 await context.CallActivityAsync(nameof(LoggerFunction),
                                                 new LoggerRequest
                                                 {
-                                                    Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount}/{request.Members.Count} users so far.",
+                                                    Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount}/{request.Members.Count} users so far. This batch took {batchTime.Elapsed}. This batch did {batch.Count} writes. This batch did {CalculateWritesPerSecond(batch.Count, batchTime.ElapsedMilliseconds)} writes per second.",
                                                     SyncJob = request.SyncJob
                                                 });
 
@@ -64,12 +69,14 @@ namespace Hosts.GraphUpdater
                 batch = request.Members.Skip(skip).Take(_batchSize).ToList();
             }
 
+            totalTime.Stop();
+
             _telemetryClient.TrackMetric(nameof(Services.Entities.Metric.MembersNotFound), request.Members.Count - totalSuccessCount);
 
             await context.CallActivityAsync(nameof(LoggerFunction),
                                                      new LoggerRequest
                                                      {
-                                                         Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount} users.",
+                                                         Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount} users in {totalTime}. {CalculateWritesPerSecond(totalSuccessCount, totalTime.ElapsedMilliseconds)} writes per second.",
                                                          SyncJob = request.SyncJob
                                                      });
 
@@ -80,6 +87,11 @@ namespace Hosts.GraphUpdater
                                                           SyncJob = request.SyncJob,
                                                           Verbosity = VerbosityLevel.DEBUG
                                                       });
+        }
+
+        private static long CalculateWritesPerSecond(int writes, long milliseconds)
+        {
+            return (writes * 1000L) / milliseconds;
         }
     }
 }
