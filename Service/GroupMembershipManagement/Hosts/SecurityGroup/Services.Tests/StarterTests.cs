@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Messaging.ServiceBus;
 using Entities;
 using Hosts.SecurityGroup;
 using Microsoft.Azure.ServiceBus;
@@ -47,10 +48,14 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestRegularSyncJobRun()
         {
-            var message = new Message(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_syncJob)));
-            message.UserProperties.Add("CurrentPart", 1);
-            message.UserProperties.Add("TotalParts", 3);
+            var syncJobBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_syncJob));
+            var properties = new Dictionary<string, object>
+            {
+                { "CurrentPart", 1},
+                { "TotalParts", 3 }
+            };
 
+            var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(syncJobBytes), properties: properties);
             var starterFunction = new StarterFunction(_loggingRepository.Object, _syncJobRepository.Object, _dryRunValue.Object);
             await starterFunction.RunAsync(message, _durableOrchestrationClient.Object);
 
@@ -68,7 +73,7 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                     It.Is<LogMessage>(m => m.Message.Contains("function completed")),
-                                                    It.IsAny<VerbosityLevel>(), 
+                                                    It.IsAny<VerbosityLevel>(),
                                                     It.IsAny<string>(),
                                                     It.IsAny<string>()
                                                 ), Times.Once);
@@ -80,9 +85,14 @@ namespace Tests.Services
             _dryRunValue.SetupGet(x => x.DryRunEnabled).Returns(true);
             _syncJob.DryRunTimeStamp = DateTime.UtcNow.AddHours(-1);
 
-            var message = new Message(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_syncJob)));
-            message.UserProperties.Add("CurrentPart", 1);
-            message.UserProperties.Add("TotalParts", 3);
+            var syncJobBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_syncJob));
+            var properties = new Dictionary<string, object>
+            {
+                { "CurrentPart", 1},
+                { "TotalParts", 3 }
+            };
+
+            var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(syncJobBytes), properties: properties);
 
             var starterFunction = new StarterFunction(_loggingRepository.Object, _syncJobRepository.Object, _dryRunValue.Object);
             await starterFunction.RunAsync(message, _durableOrchestrationClient.Object);
@@ -99,7 +109,7 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.StartsWith("InstanceId")),
-                                                It.IsAny<VerbosityLevel>(), 
+                                                It.IsAny<VerbosityLevel>(),
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
                                                 ), Times.Never);

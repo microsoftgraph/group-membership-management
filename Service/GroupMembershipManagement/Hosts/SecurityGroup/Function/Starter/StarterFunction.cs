@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Messaging.ServiceBus;
 using Entities;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.WebJobs;
@@ -28,7 +29,7 @@ namespace Hosts.SecurityGroup
 
         [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
-            [ServiceBusTrigger("%serviceBusSyncJobTopic%", "SecurityGroup", Connection = "serviceBusTopicConnection")] Message message,
+            [ServiceBusTrigger("%serviceBusSyncJobTopic%", "SecurityGroup", Connection = "serviceBusTopicConnection")] ServiceBusReceivedMessage message,
             [DurableClient] IDurableOrchestrationClient starter)
         {
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));
@@ -47,9 +48,9 @@ namespace Hosts.SecurityGroup
                 var request = new OrchestratorRequest
                 {
                     SyncJob = syncJob,
-                    CurrentPart = message.UserProperties.ContainsKey("CurrentPart") ? Convert.ToInt32(message.UserProperties["CurrentPart"]) : 0,
-                    TotalParts = message.UserProperties.ContainsKey("TotalParts") ? Convert.ToInt32(message.UserProperties["TotalParts"]) : 0,
-                    IsDestinationPart = message.UserProperties.ContainsKey("IsDestinationPart") ? Convert.ToBoolean(message.UserProperties["IsDestinationPart"]) : false,
+                    CurrentPart = message.ApplicationProperties.ContainsKey("CurrentPart") ? Convert.ToInt32(message.ApplicationProperties["CurrentPart"]) : 0,
+                    TotalParts = message.ApplicationProperties.ContainsKey("TotalParts") ? Convert.ToInt32(message.ApplicationProperties["TotalParts"]) : 0,
+                    IsDestinationPart = message.ApplicationProperties.ContainsKey("IsDestinationPart") ? Convert.ToBoolean(message.ApplicationProperties["IsDestinationPart"]) : false,
                 };
 
                 var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
