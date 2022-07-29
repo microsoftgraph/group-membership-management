@@ -3,6 +3,8 @@
 using Entities;
 using Entities.ServiceBus;
 using Hosts.SecurityGroup;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -264,15 +266,15 @@ namespace Tests.Services
         [TestMethod]
         public async Task ProcessDeltaSinglePageRequestTestAsync()
         {
-            _groupCount = 0;
+            _groupCount = 0;            
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GroupsReaderRequest>()))
                                        .Callback<string, object>(async (name, request) =>
                                        {
                                            _groupCount = await CallGroupsReaderFunctionAsync(request as GroupsReaderRequest);
                                        })
                                        .ReturnsAsync(() => _groupCount);
-
-            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object);
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
             var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
@@ -331,7 +333,8 @@ namespace Tests.Services
                                        })
                                        .ReturnsAsync(() => _deltaUrl);
 
-            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object);
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
             var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
@@ -382,7 +385,8 @@ namespace Tests.Services
                                        })
                                        .ReturnsAsync(() => _groupCount);
 
-            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object);
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
             var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
@@ -435,7 +439,8 @@ namespace Tests.Services
                                       })
                                       .ReturnsAsync(() => _groupCount);
 
-            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object);
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
             var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
@@ -502,7 +507,8 @@ namespace Tests.Services
                                        })
                                        .ReturnsAsync(() => _deltaUrl);
 
-            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object);
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
             var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
@@ -547,7 +553,8 @@ namespace Tests.Services
                                       })
                                       .ReturnsAsync(() => _groupCount);
 
-            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object);
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
             var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
@@ -615,7 +622,8 @@ namespace Tests.Services
                                     return (users, _usersReaderNextPageUrl, _deltaUrl, usersPage.Object);
                                 });
 
-            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object);
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
             var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
             _graphGroupRepository.Verify(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GetNextUsersPageAsync(It.IsAny<string>(), It.IsAny<IGroupDeltaCollectionPage>()), Times.Once);
@@ -656,7 +664,8 @@ namespace Tests.Services
                                        .ReturnsAsync(() => _deltaUrl);
 
 
-            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object);
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
             var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
             _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<string>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GetNextDeltaUsersPageAsync(It.IsAny<string>(), It.IsAny<IGroupDeltaCollectionPage>()), Times.Once);
@@ -691,7 +700,8 @@ namespace Tests.Services
                                      return (users, nonUserGraphObjects, _usersReaderNextPageUrl, usersPage.Object);
                                  });
 
-            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object);
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
             var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
             _graphGroupRepository.Verify(x => x.GetFirstTransitiveMembersPageAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GetNextTransitiveMembersPageAsync(It.IsAny<string>(), It.IsAny<IGroupTransitiveMembersCollectionWithReferencesPage>()), Times.Once);
@@ -702,7 +712,8 @@ namespace Tests.Services
         {
             _groupExists = false;
 
-            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object);
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
             var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(

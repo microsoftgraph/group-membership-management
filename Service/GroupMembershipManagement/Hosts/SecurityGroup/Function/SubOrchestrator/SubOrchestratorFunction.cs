@@ -11,16 +11,19 @@ using System;
 using System.Linq;
 using Newtonsoft.Json;
 using Entities.ServiceBus;
+using Microsoft.ApplicationInsights;
 
 namespace Hosts.SecurityGroup
 {
     public class SubOrchestratorFunction
     {
         private readonly ILoggingRepository _log;
+        private readonly TelemetryClient _telemetryClient;
 
-        public SubOrchestratorFunction(ILoggingRepository loggingRepository)
+        public SubOrchestratorFunction(ILoggingRepository loggingRepository, TelemetryClient telemetryClient)
         {
             _log = loggingRepository;
+            _telemetryClient = telemetryClient;
         }
 
         [FunctionName(nameof(SubOrchestratorFunction))]
@@ -44,6 +47,16 @@ namespace Hosts.SecurityGroup
                                                             });
 
                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"{request.SourceGroup.ObjectId} has {count} nested groups" });
+                if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+                {
+                    var nestedGroupEvent = new Dictionary<string, string>
+                    {
+                        { "SourceGroupObjectId", request.SourceGroup.ObjectId.ToString() },
+                        { "DestinationGroupObjectId", request.SyncJob.TargetOfficeGroupId.ToString() },
+                        { "NestedGroupCount", count.ToString() }
+                    };
+                    _telemetryClient.TrackEvent("NestedGroupCount", nestedGroupEvent);
+                }
 
                 if (count > 0)
                 {
