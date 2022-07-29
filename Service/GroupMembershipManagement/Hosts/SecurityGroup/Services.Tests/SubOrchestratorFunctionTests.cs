@@ -267,10 +267,10 @@ namespace Tests.Services
         public async Task ProcessDeltaSinglePageRequestTestAsync()
         {
             _groupCount = 0;            
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GroupsReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
                                        .Callback<string, object>(async (name, request) =>
                                        {
-                                           _groupCount = await CallGroupsReaderFunctionAsync(request as GroupsReaderRequest);
+                                           _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                        })
                                        .ReturnsAsync(() => _groupCount);
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -318,10 +318,10 @@ namespace Tests.Services
         public async Task ProcessDeltaLinkSinglePageRequestTestAsync()
         {
             _groupCount = 0;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GroupsReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
                                        .Callback<string, object>(async (name, request) =>
                                        {
-                                           _groupCount = await CallGroupsReaderFunctionAsync(request as GroupsReaderRequest);
+                                           _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                        })
                                        .ReturnsAsync(() => _groupCount);
 
@@ -378,10 +378,10 @@ namespace Tests.Services
         public async Task ProcessTMSinglePageRequestTestAsync()
         {
             _groupCount = 2;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GroupsReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
                                        .Callback<string, object>(async (name, request) =>
                                        {
-                                           _groupCount = await CallGroupsReaderFunctionAsync(request as GroupsReaderRequest);
+                                           _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                        })
                                        .ReturnsAsync(() => _groupCount);
 
@@ -432,10 +432,10 @@ namespace Tests.Services
             _usersReaderNextPageUrl = "http://next-page-url";
             _deltaUrl = "http://delta-url";
             _groupCount = 0;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GroupsReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
                                       .Callback<string, object>(async (name, request) =>
                                       {
-                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GroupsReaderRequest);
+                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                       })
                                       .ReturnsAsync(() => _groupCount);
 
@@ -484,10 +484,10 @@ namespace Tests.Services
         public async Task ProcessDeltaLinkMultiplePageRequestTestAsync()
         {
             _groupCount = 0;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GroupsReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
                                       .Callback<string, object>(async (name, request) =>
                                       {
-                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GroupsReaderRequest);
+                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                       })
                                       .ReturnsAsync(() => _groupCount);
 
@@ -546,10 +546,10 @@ namespace Tests.Services
             _usersReaderNextPageUrl = "http://next-page-url";
             _deltaUrl = "http://delta-url";
             _groupCount = 2;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GroupsReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
                                       .Callback<string, object>(async (name, request) =>
                                       {
-                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GroupsReaderRequest);
+                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                       })
                                       .ReturnsAsync(() => _groupCount);
 
@@ -600,10 +600,10 @@ namespace Tests.Services
             _usersReaderNextPageUrl = "http://next-page-url";
             _deltaUrl = "http://delta-url";
             _groupCount = 0;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GroupsReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
                                       .Callback<string, object>(async (name, request) =>
                                       {
-                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GroupsReaderRequest);
+                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                       })
                                       .ReturnsAsync(() => _groupCount);
 
@@ -633,10 +633,10 @@ namespace Tests.Services
         public async Task ProcessDeltaLinkMultiplePagesRequestTestAsync()
         {
             _groupCount = 0;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GroupsReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
                                       .Callback<string, object>(async (name, request) =>
                                       {
-                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GroupsReaderRequest);
+                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                       })
                                       .ReturnsAsync(() => _groupCount);
 
@@ -677,10 +677,10 @@ namespace Tests.Services
             _usersReaderNextPageUrl = "http://next-page-url";
             _deltaUrl = "http://delta-url";
             _groupCount = 2;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GroupsReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
                                       .Callback<string, object>(async (name, request) =>
                                       {
-                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GroupsReaderRequest);
+                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                       })
                                       .ReturnsAsync(() => _groupCount);
 
@@ -761,9 +761,9 @@ namespace Tests.Services
             return await function.DownloadFileAsync(request);
         }
 
-        private async Task<int> CallGroupsReaderFunctionAsync(GroupsReaderRequest request)
+        private async Task<int> CallGroupsReaderFunctionAsync(GetTransitiveGroupCountRequest request)
         {
-            var function = new GroupsReaderFunction(_loggingRepository.Object, _membershipCalculator);
+            var function = new GetTransitiveGroupCountFunction(_loggingRepository.Object, _membershipCalculator);
             return await function.GetGroupsAsync(request);
         }
 

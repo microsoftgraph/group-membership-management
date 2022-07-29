@@ -4,7 +4,7 @@ using System;
 
 namespace Hosts.SecurityGroup
 {
-    public class GroupsReaderRequest
+    public class GetTransitiveGroupCountRequest
     {
         public Guid RunId { get; set; }
         public Guid GroupId { get; set; }

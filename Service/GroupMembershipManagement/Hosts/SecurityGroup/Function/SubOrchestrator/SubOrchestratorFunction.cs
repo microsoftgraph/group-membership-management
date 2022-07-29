@@ -40,25 +40,25 @@ namespace Hosts.SecurityGroup
                 _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
                 var isExistingGroup = await context.CallActivityAsync<bool>(nameof(GroupValidatorFunction), new GroupValidatorRequest { SyncJob = request.SyncJob, RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId });
                 if (!isExistingGroup) { return (null, SyncStatus.SecurityGroupNotFound); }
-                var count = await context.CallActivityAsync<int>(nameof(GroupsReaderFunction),
-                                                            new GroupsReaderRequest {
+                var transitiveGroupCount = await context.CallActivityAsync<int>(nameof(GetTransitiveGroupCountFunction),
+                                                            new GetTransitiveGroupCountRequest
+                                                            {
                                                                 RunId = request.RunId,
                                                                 GroupId = request.SourceGroup.ObjectId
                                                             });
 
-                if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"{request.SourceGroup.ObjectId} has {count} nested groups" });
                 if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
                 {
                     var nestedGroupEvent = new Dictionary<string, string>
                     {
                         { "SourceGroupObjectId", request.SourceGroup.ObjectId.ToString() },
                         { "DestinationGroupObjectId", request.SyncJob.TargetOfficeGroupId.ToString() },
-                        { "NestedGroupCount", count.ToString() }
+                        { "NestedGroupCount", transitiveGroupCount.ToString() }
                     };
                     _telemetryClient.TrackEvent("NestedGroupCount", nestedGroupEvent);
                 }
 
-                if (count > 0)
+                if (transitiveGroupCount > 0)
                 {
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });
                     // run exisiting code
@@ -69,7 +69,7 @@ namespace Hosts.SecurityGroup
                     _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
                 }
                 else {
-                    if (count <= 0)
+                    if (transitiveGroupCount <= 0)
                     {
                         if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
                         // first check if delta file exists in cache folder

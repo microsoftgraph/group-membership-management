@@ -11,23 +11,23 @@ using System.Threading.Tasks;
 
 namespace Hosts.SecurityGroup
 {
-    public class GroupsReaderFunction
+    public class GetTransitiveGroupCountFunction
     {
 		private readonly ILoggingRepository _log;
 		private readonly SGMembershipCalculator _calculator;
 
-		public GroupsReaderFunction(ILoggingRepository loggingRepository, SGMembershipCalculator calculator)
+		public GetTransitiveGroupCountFunction(ILoggingRepository loggingRepository, SGMembershipCalculator calculator)
 		{
 			_log = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
 			_calculator = calculator ?? throw new ArgumentNullException(nameof(calculator));
 		}
 
-		[FunctionName(nameof(GroupsReaderFunction))]
-		public async Task<int> GetGroupsAsync([ActivityTrigger] GroupsReaderRequest request)
+		[FunctionName(nameof(GetTransitiveGroupCountFunction))]
+		public async Task<int> GetGroupsAsync([ActivityTrigger] GetTransitiveGroupCountRequest request)
 		{
-			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupsReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
+			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GetTransitiveGroupCountFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 			var response = await _calculator.GetGroupsCountAsync(request.GroupId, request.RunId);
-			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupsReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GetTransitiveGroupCountFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 			return response;
 		}
 	}
