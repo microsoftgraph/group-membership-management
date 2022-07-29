@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Tests.FunctionApps.Mocks
 {
-    class MockGraphGroupRepository : IGraphGroupRepository
+	class MockGraphGroupRepository : IGraphGroupRepository
 	{
 		public Dictionary<Guid, List<AzureADUser>> GroupsToUsers { get; set; }
 		public Dictionary<string, int> nonUserGraphObjects { get; set; }
@@ -112,49 +112,49 @@ namespace Tests.FunctionApps.Mocks
 
 		public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetFirstTransitiveMembersPageAsync(Guid objectId)
 		{
-            var users = new List<AzureADUser>();
-            var nonUserGraphObjects = new Dictionary<string, int>();
-            return Task.FromResult((users, nonUserGraphObjects, "", (IGroupTransitiveMembersCollectionWithReferencesPage)null));
+			var users = new List<AzureADUser>();
+			var nonUserGraphObjects = new Dictionary<string, int>();
+			return Task.FromResult((users, nonUserGraphObjects, "", (IGroupTransitiveMembersCollectionWithReferencesPage)null));
 
 		}
 
 		public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetNextTransitiveMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)
 		{
-            var users = new List<AzureADUser>();
-            var nonUserGraphObjects = new Dictionary<string, int>();
-            return Task.FromResult((users, nonUserGraphObjects, "", (IGroupTransitiveMembersCollectionWithReferencesPage)null));
+			var users = new List<AzureADUser>();
+			var nonUserGraphObjects = new Dictionary<string, int>();
+			return Task.FromResult((users, nonUserGraphObjects, "", (IGroupTransitiveMembersCollectionWithReferencesPage)null));
 		}
 
-        public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
-        {
-            throw new NotImplementedException();
-        }
+		public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
+		{
+			throw new NotImplementedException();
+		}
 
-        public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
-        {
-            throw new NotImplementedException();
-        }
+		public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+		{
+			throw new NotImplementedException();
+		}
 
-        public Task<bool> GroupExists(string groupName)
-        {
-            throw new NotImplementedException();
-        }
+		public Task<bool> GroupExists(string groupName)
+		{
+			throw new NotImplementedException();
+		}
 
-        public Task<AzureADGroup> GetGroup(string groupName)
-        {
-            throw new NotImplementedException();
-        }
+		public Task<AzureADGroup> GetGroup(string groupName)
+		{
+			throw new NotImplementedException();
+		}
 
-        public Task CreateGroup(string newGroupName)
-        {
-            throw new NotImplementedException();
-        }
+		public Task CreateGroup(string newGroupName)
+		{
+			throw new NotImplementedException();
+		}
 
-        public Task<List<AzureADUser>> GetTenantUsers(int userCount)
-        {
-            throw new NotImplementedException();
-        }
-    }
+		public Task<List<AzureADUser>> GetTenantUsers(int userCount)
+		{
+			throw new NotImplementedException();
+		}
+	}
 
 	public class MockException : Exception { }
 

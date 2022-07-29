@@ -119,7 +119,7 @@ namespace Hosts.SecurityGroup
             var result = await _graphGroupRepository.GetFirstUsersPageAsync(objectId);
             return new DeltaGroupInformation
             {
-                UsersToAdd = result.users,                
+                UsersToAdd = result.users,
                 NextPageUrl = result.nextPageUrl,
                 DeltaUrl = result.deltaUrl,
                 UsersFromGroup = result.usersFromGroup

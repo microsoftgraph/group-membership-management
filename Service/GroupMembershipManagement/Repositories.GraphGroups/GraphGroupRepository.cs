@@ -326,7 +326,7 @@ namespace Repositories.GraphGroups
                                 .Top(MaxResultCount)
                                 .GetAsync();
             });
-        }        
+        }
 
         /// <summary>
         /// get group members page by next page url.
@@ -346,7 +346,7 @@ namespace Repositories.GraphGroups
                                 .NextPageRequest
                                 .GetAsync();
             });
-        }        
+        }
 
         public async Task<(List<AzureADUser> users,
                            Dictionary<string, int> nonUserGraphObjects,
@@ -360,7 +360,7 @@ namespace Repositories.GraphGroups
             TrackMetrics(usersFromGroup.AdditionalData);
             usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
-            users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));           
+            users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
             return (users, nonUserGraphObjects, nextPageUrl, usersFromGroup);
         }
 
@@ -550,7 +550,7 @@ namespace Repositories.GraphGroups
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
             var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
             return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl, response);
-        }  
+        }
 
         public async Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid objectId)
         {
@@ -1054,7 +1054,7 @@ namespace Repositories.GraphGroups
                         break;
                 }
             }
-        }       
+        }
 
         private IEnumerable<AzureADUser> ToUsers(IEnumerable<DirectoryObject> fromGraph, Dictionary<string, int> nonUserGraphObjects)
         {
@@ -1138,7 +1138,7 @@ namespace Repositories.GraphGroups
                     );
 
             return retryPolicy;
-        }        
+        }
     }
 
     internal class RetryResponse

@@ -35,9 +35,9 @@ namespace Tests.Services
         private bool _groupExists;
         private int _groupCount;
         private string _fileContent;
-        private BlobResult _blobResult;        
+        private BlobResult _blobResult;
         private string _usersReaderNextPageUrl;
-        private string _deltaUrl;        
+        private string _deltaUrl;
         private SecurityGroupRequest _securityGroupRequest;
         private SGMembershipCalculator _membershipCalculator;
         private GroupInformation _membersReaderResponse;
@@ -76,7 +76,7 @@ namespace Tests.Services
                 })
             };
             _groupExists = true;
-            
+
             var syncJob = new SyncJob
             {
                 RowKey = Guid.NewGuid().ToString(),
@@ -173,7 +173,7 @@ namespace Tests.Services
 
             _blobStorageRepository.Setup(x => x.DownloadCacheFileAsync(It.IsAny<string>())).ReturnsAsync(() => _blobResult);
 
-            
+
             _graphGroupRepository.Setup(x => x.GetFirstTransitiveMembersPageAsync(It.IsAny<Guid>()))
                                  .ReturnsAsync(() =>
                                  {
@@ -207,7 +207,7 @@ namespace Tests.Services
             _graphGroupRepository.Setup(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()))
                                  .ReturnsAsync(() =>
                                  {
-                                     var users = new List<AzureADUser>();                                     
+                                     var users = new List<AzureADUser>();
                                      var usersPage = new Mock<IGroupDeltaCollectionPage>();
 
                                      for (var i = 0; i < _userCount; i++)
@@ -270,7 +270,7 @@ namespace Tests.Services
                                        {
                                            _groupCount = await CallGroupsReaderFunctionAsync(request as GroupsReaderRequest);
                                        })
-                                       .ReturnsAsync(() => _groupCount);            
+                                       .ReturnsAsync(() => _groupCount);
 
             var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object);
             var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
@@ -302,7 +302,7 @@ namespace Tests.Services
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
-                        It.IsAny<VerbosityLevel>(), 
+                        It.IsAny<VerbosityLevel>(),
                         It.IsAny<string>(),
                         It.IsAny<string>()
                     ), Times.Once);
@@ -380,7 +380,7 @@ namespace Tests.Services
                                        {
                                            _groupCount = await CallGroupsReaderFunctionAsync(request as GroupsReaderRequest);
                                        })
-                                       .ReturnsAsync(() => _groupCount);            
+                                       .ReturnsAsync(() => _groupCount);
 
             var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object);
             var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
@@ -402,7 +402,7 @@ namespace Tests.Services
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GetFirstTransitiveMembersPageAsync(It.IsAny<Guid>()), Times.Once);
-           
+
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.Contains($"read {_userCount} users")),
                         It.IsAny<VerbosityLevel>(),
@@ -477,7 +477,7 @@ namespace Tests.Services
 
         [TestMethod]
         public async Task ProcessDeltaLinkMultiplePageRequestTestAsync()
-        {            
+        {
             _groupCount = 0;
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GroupsReaderRequest>()))
                                       .Callback<string, object>(async (name, request) =>
@@ -521,7 +521,7 @@ namespace Tests.Services
 
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<string>()), Times.Once);           
+            _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<string>()), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
@@ -530,7 +530,7 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);            
+            Assert.IsNotNull(Users);
             Assert.AreEqual(SyncStatus.InProgress, Status);
         }
 
@@ -586,7 +586,7 @@ namespace Tests.Services
             Assert.AreEqual(_userCount * Number_Of_Pages, Users.Count);
             Assert.AreEqual(SyncStatus.InProgress, Status);
         }
-      
+
         [TestMethod]
         public async Task ProcessDeltaMultiplePagesRequestTestAsync()
         {
@@ -623,7 +623,7 @@ namespace Tests.Services
 
         [TestMethod]
         public async Task ProcessDeltaLinkMultiplePagesRequestTestAsync()
-        {              
+        {
             _groupCount = 0;
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GroupsReaderRequest>()))
                                       .Callback<string, object>(async (name, request) =>
