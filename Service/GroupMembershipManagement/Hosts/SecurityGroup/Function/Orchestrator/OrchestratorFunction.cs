@@ -143,7 +143,8 @@ namespace Hosts.SecurityGroup
                 _log.RemoveSyncJobProperties(runId);
             }
 
-            if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
+            if (!context.IsReplaying)
+                _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed", RunId = runId, DynamicProperties = syncJob.ToDictionary() }, VerbosityLevel.DEBUG);
         }
     }
 }

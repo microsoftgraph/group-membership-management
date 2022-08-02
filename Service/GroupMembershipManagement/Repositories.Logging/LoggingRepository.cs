@@ -54,33 +54,33 @@ namespace Repositories.Logging
             return client;
         }
 
-        public void SetSyncJobProperties(Guid key, Dictionary<string, string> properties)
+        public void SetSyncJobProperties(Guid runId, Dictionary<string, string> properties)
         {
             _logPropertiesSemaphore.Wait();
 
-            if (SyncJobProperties.ContainsKey(key))
+            if (SyncJobProperties.ContainsKey(runId))
             {
-                SyncJobProperties[key].Properties = properties;
-                SyncJobProperties[key].ConcurrentParts += 1;
+                SyncJobProperties[runId].Properties = properties;
+                SyncJobProperties[runId].ConcurrentParts += 1;
             }
             else
             {
-                SyncJobProperties.Add(key, new LogProperties { Properties = properties, ConcurrentParts = 1 });
+                SyncJobProperties.Add(runId, new LogProperties { Properties = properties, ConcurrentParts = 1 });
             }
 
             _logPropertiesSemaphore.Release();
         }
 
-        public void RemoveSyncJobProperties(Guid key)
+        public void RemoveSyncJobProperties(Guid runId)
         {
             _logPropertiesSemaphore.Wait();
 
-            if (SyncJobProperties.ContainsKey(key))
+            if (SyncJobProperties.ContainsKey(runId))
             {
-                if ((SyncJobProperties[key].ConcurrentParts - 1) <= 0)
-                    SyncJobProperties.Remove(key);
+                if ((SyncJobProperties[runId].ConcurrentParts - 1) <= 0)
+                    SyncJobProperties.Remove(runId);
                 else
-                    SyncJobProperties[key].ConcurrentParts -= 1;
+                    SyncJobProperties[runId].ConcurrentParts -= 1;
             }
 
             _logPropertiesSemaphore.Release();
