@@ -134,7 +134,7 @@ namespace Services.Tests
                                                 SyncJobRowKey = _syncJob?.RowKey,
                                                 MembershipObtainerDryRunEnabled = false,
                                                 RunId = _syncJob?.RunId.Value ?? Guid.Empty,
-                                                Exclusionary = true,
+                                                Exclusionary = false,
                                                 SourceMembers = Enumerable.Range(0, userCount)
                                                                          .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
                                                                          .ToList(),
@@ -163,7 +163,7 @@ namespace Services.Tests
                                     SyncJobRowKey = _syncJob?.RowKey,
                                     MembershipObtainerDryRunEnabled = false,
                                     RunId = _syncJob?.RunId.Value ?? Guid.Empty,
-                                    Exclusionary = true,
+                                    Exclusionary = false,
                                     SourceMembers = Enumerable.Range(0, userCount)
                                                              .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
                                                              .ToList(),
