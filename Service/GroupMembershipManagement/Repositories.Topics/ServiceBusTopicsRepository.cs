@@ -25,9 +25,11 @@ namespace Repositories.ServiceBusTopics
         {
             var index = 1;
             var queries = JArray.Parse(job.Query);
-            var queryTypes = queries.SelectTokens("$..type")
-                                    .Select(x => x.Value<string>())
-                                    .ToList();
+            var queryTypes = queries.Select(x => new
+            {
+                type = (string)x["type"],
+                exclusionary = x["exclusionary"] != null ? (bool)x["exclusionary"] : false
+            }).ToList();
 
             // + 1 to include destination group
             var totalParts = queryTypes.Count + 1;
@@ -35,7 +37,8 @@ namespace Repositories.ServiceBusTopics
             foreach (var type in queryTypes)
             {
                 var sourceGroupMessage = CreateMessage(job);
-                sourceGroupMessage.UserProperties.Add("Type", type);
+                sourceGroupMessage.UserProperties.Add("Type", type.type);
+                sourceGroupMessage.UserProperties.Add("Exclusionary", type.exclusionary);
                 sourceGroupMessage.UserProperties.Add("TotalParts", totalParts);
                 sourceGroupMessage.UserProperties.Add("CurrentPart", index);
                 sourceGroupMessage.MessageId += $"_{index++}";
