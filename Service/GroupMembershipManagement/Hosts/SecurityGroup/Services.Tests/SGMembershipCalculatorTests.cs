@@ -60,7 +60,7 @@ namespace Tests.FunctionApps
 
             var partOneSources = sampleQuery.GetSourceIds(partIndex);
             var groups = calc.ReadSourceGroups(partOneSources);
-            await calc.SendMembershipAsync(testJob, allUsers, partIndex);
+            await calc.SendMembershipAsync(testJob, allUsers, partIndex, true);
             foreach (var group in groups)
             {
                 var groupExistsResult = await calc.GroupExistsAsync(group.ObjectId, Guid.NewGuid());
@@ -129,7 +129,7 @@ namespace Tests.FunctionApps
 
             var partOneSources = sampleQuery.GetSourceIds(partIndex);
             var groups = calc.ReadSourceGroups(partOneSources);
-            await calc.SendMembershipAsync(testJob, allUsers, partIndex);
+            await calc.SendMembershipAsync(testJob, allUsers, partIndex, true);
 
             foreach (var group in groups)
             {
