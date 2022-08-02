@@ -93,7 +93,7 @@ namespace Hosts.SecurityGroup
                     });
 
                     var filePath = await context.CallActivityAsync<string>(nameof(UsersSenderFunction),
-                                                                            new UsersSenderRequest { SyncJob = syncJob, RunId = runId, Users = distinctUsers, CurrentPart = mainRequest.CurrentPart });
+                                                                            new UsersSenderRequest { SyncJob = syncJob, RunId = runId, Users = distinctUsers, CurrentPart = mainRequest.CurrentPart, Exclusionary = mainRequest.Exclusionary });
 
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = "Calling MembershipAggregator", RunId = runId });
                     var content = new MembershipAggregatorHttpRequest

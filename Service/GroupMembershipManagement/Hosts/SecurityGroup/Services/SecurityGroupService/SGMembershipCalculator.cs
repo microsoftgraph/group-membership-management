@@ -163,7 +163,7 @@ namespace Hosts.SecurityGroup
             };
         }
 
-        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<AzureADUser> allusers, int currentPart)
+        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<AzureADUser> allusers, int currentPart, bool exclusionary)
         {
             var runId = syncJob.RunId.GetValueOrDefault();
             var groupMembership = new GroupMembership
@@ -171,6 +171,7 @@ namespace Hosts.SecurityGroup
                 SourceMembers = allusers ?? new List<AzureADUser>(),
                 Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
                 RunId = runId,
+                Exclusionary = exclusionary,
                 SyncJobRowKey = syncJob.RowKey,
                 SyncJobPartitionKey = syncJob.PartitionKey,
                 MembershipObtainerDryRunEnabled = _isSecurityGroupDryRunEnabled

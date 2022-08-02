@@ -12,5 +12,6 @@ namespace Hosts.SecurityGroup
         public Guid RunId { get; set; }
         public List<AzureADUser> Users { get; set; }
         public int CurrentPart { get; set; }
+        public bool Exclusionary { get; set; }
     }
 }

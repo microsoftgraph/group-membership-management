@@ -16,6 +16,7 @@ namespace Entities.ServiceBus
         public string SyncJobRowKey { get; set; }
         public string SyncJobPartitionKey { get; set; }
         public bool MembershipObtainerDryRunEnabled { get; set; }
+        public bool Exclusionary { get; set; }
 
         /// <summary>
         /// Don't worry about setting this yourself, this is for Split and the serializer to set.
@@ -41,6 +42,7 @@ namespace Entities.ServiceBus
                     SourceMembers = x,
                     RunId = RunId,
                     MembershipObtainerDryRunEnabled = MembershipObtainerDryRunEnabled,
+                    Exclusionary = Exclusionary,
                     IsLastMessage = false,
                     TotalMessageCount = chunkCount
                 }).ToArray();

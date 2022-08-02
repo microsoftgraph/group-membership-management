@@ -26,7 +26,7 @@ namespace Hosts.SecurityGroup
 
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
-            filePath = await _calculator.SendMembershipAsync(request.SyncJob, request.Users, request.CurrentPart);
+            filePath = await _calculator.SendMembershipAsync(request.SyncJob, request.Users, request.CurrentPart, request.Exclusionary);
 
             await _log.LogMessageAsync(new LogMessage
             {
