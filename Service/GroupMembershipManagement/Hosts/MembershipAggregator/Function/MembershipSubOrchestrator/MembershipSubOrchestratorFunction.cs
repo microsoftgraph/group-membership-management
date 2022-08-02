@@ -154,7 +154,9 @@ namespace Hosts.MembershipAggregator
                                             .ToList();
 
             var sourceGroupMembership = sourceGroupsMemberships[0];
-            sourceGroupMembership.SourceMembers = sourceGroupsMemberships.SelectMany(x => x.SourceMembers).Distinct().ToList();
+            var toInclude = sourceGroupsMemberships.Where(g => g.Exclusionary == true).SelectMany(x => x.SourceMembers).Distinct().ToList();
+            var toExclude = sourceGroupsMemberships.Where(g => g.Exclusionary == false).SelectMany(x => x.SourceMembers).Distinct().ToList();
+            sourceGroupMembership.SourceMembers = toInclude.Except(toExclude).ToList();
 
             var destinationGroupMembership = JsonConvert.DeserializeObject<GroupMembership>(allGroupMemberships.First(x => x.FilePath == destinationPath).Content);
 
