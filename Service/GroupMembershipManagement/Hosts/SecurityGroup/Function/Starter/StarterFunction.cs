@@ -47,10 +47,10 @@ namespace Hosts.SecurityGroup
                 var request = new OrchestratorRequest
                 {
                     SyncJob = syncJob,
-                    Exclusionary = message.UserProperties.ContainsKey("Exclusionary") ? Convert.ToBoolean(message.UserProperties["Exclusionary"]) : false,
-                    CurrentPart = message.UserProperties.ContainsKey("CurrentPart") ? Convert.ToInt32(message.UserProperties["CurrentPart"]) : 0,
-                    TotalParts = message.UserProperties.ContainsKey("TotalParts") ? Convert.ToInt32(message.UserProperties["TotalParts"]) : 0,
-                    IsDestinationPart = message.UserProperties.ContainsKey("IsDestinationPart") ? Convert.ToBoolean(message.UserProperties["IsDestinationPart"]) : false,
+                    Exclusionary = message.ApplicationProperties.ContainsKey("Exclusionary") ? Convert.ToBoolean(message.ApplicationProperties["Exclusionary"]) : false,
+                    CurrentPart = message.ApplicationProperties.ContainsKey("CurrentPart") ? Convert.ToInt32(message.ApplicationProperties["CurrentPart"]) : 0,
+                    TotalParts = message.ApplicationProperties.ContainsKey("TotalParts") ? Convert.ToInt32(message.ApplicationProperties["TotalParts"]) : 0,
+                    IsDestinationPart = message.ApplicationProperties.ContainsKey("IsDestinationPart") ? Convert.ToBoolean(message.ApplicationProperties["IsDestinationPart"]) : false,
                 };
 
                 var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
