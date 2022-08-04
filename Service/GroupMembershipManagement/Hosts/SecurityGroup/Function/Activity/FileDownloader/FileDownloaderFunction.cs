@@ -23,8 +23,7 @@ namespace Hosts.SecurityGroup
 
         [FunctionName(nameof(FileDownloaderFunction))]
         public async Task<string> DownloadFileAsync([ActivityTrigger] FileDownloaderRequest request)
-        {
-            _loggingRepository.SyncJobProperties = request.SyncJob?.ToDictionary();
+        {            
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloading file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
             var blobResult = await _blobStorageRepository.DownloadCacheFileAsync(request.FilePath);
