@@ -40,8 +40,28 @@ else
             <FluentDataGridCell GridColumn="2">@user.JobTitle</FluentDataGridCell>
         </FluentDataGridRow>
         <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1">Department</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@user.Department</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
             <FluentDataGridCell GridColumn="1">Office Location</FluentDataGridCell>
             <FluentDataGridCell GridColumn="2">@user.OfficeLocation</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1">Age Group</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@user.AgeGroup</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1">Birthday</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@user.Birthday</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1">User Creation Date/Time</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@user.CreatedDateTime</FluentDataGridCell>
+        </FluentDataGridRow>
+        <FluentDataGridRow TItem="string" style="grid-template-columns: 50% 50%;">
+            <FluentDataGridCell GridColumn="1">Country</FluentDataGridCell>
+            <FluentDataGridCell GridColumn="2">@user.Country</FluentDataGridCell>
         </FluentDataGridRow>
     </table>
 }
