@@ -29,6 +29,8 @@ namespace Services.Tests
         private DeltaResponse _deltaResponse;
         private PolicyResult<bool> _groupExists;
         private int _numberOfUsersForSourcePart;
+        private int _numberOfUsersForSourcePartOne;
+        private int _numberOfUsersForSourcePartTwo;
         private JobTrackerEntity _jobTrackerEntity;
         private int _numberOfUsersForDestinationPart;
         private Dictionary<string, int> _membersPerFile;
@@ -76,6 +78,8 @@ namespace Services.Tests
 
             _deltaResponse = null;
             _numberOfUsersForSourcePart = 10;
+            _numberOfUsersForSourcePartOne = 10;
+            _numberOfUsersForSourcePartTwo = 10;
             _numberOfUsersForDestinationPart = 10;
             _membersPerFile = new Dictionary<string, int>();
             _groupExists = PolicyResult<bool>.Successful(true, new Context());
@@ -565,6 +569,124 @@ namespace Services.Tests
 
             Assert.IsNotNull(response.FilePath);
             Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
+        }
+
+        [TestMethod]
+        public async Task ProcessExclusionaryMembershipAsync()
+        {
+            _syncJob.ThresholdPercentageForAdditions = -1;
+            _syncJob.ThresholdPercentageForRemovals = -1;
+            _numberOfUsersForSourcePart = 50000;
+                      
+            _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path"))))
+                                    .Callback<string>(path =>
+                                    {
+                                        var userCount = path == _jobState.DestinationPart
+                                                                ? _numberOfUsersForDestinationPart
+                                                                : _numberOfUsersForSourcePart;
+
+                                        _blobResult = new BlobResult
+                                        {
+                                            BlobStatus = BlobStatus.Found,
+                                            Content = new BinaryData(new GroupMembership
+                                            {
+                                                SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                                SyncJobRowKey = _syncJob?.RowKey,
+                                                MembershipObtainerDryRunEnabled = false,
+                                                RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                                Exclusionary = true,
+                                                SourceMembers = Enumerable.Range(0, userCount)
+                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                                         .ToList(),
+                                                Destination = new AzureADGroup
+                                                {
+                                                    ObjectId = _syncJob != null
+                                                                ? _syncJob.TargetOfficeGroupId
+                                                                : Guid.Empty
+                                                }
+                                            })
+                                        };
+                                    })
+                                    .ReturnsAsync(() => _blobResult);           
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);            
+            Assert.AreEqual(0, response.ProjectedMemberCount);
+        }
+
+        [TestMethod]
+        public async Task ProcessExclusionaryAndInclusionaryMembershipAsync()
+        {
+            _syncJob.ThresholdPercentageForAdditions = -1;
+            _syncJob.ThresholdPercentageForRemovals = -1;
+            _numberOfUsersForSourcePartOne = 50000;
+            _numberOfUsersForSourcePartTwo = 25000;
+                      
+            _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path-1"))))
+                                    .Callback<string>(path =>
+                                    {
+                                        var userCount = path == _jobState.DestinationPart
+                                                                ? _numberOfUsersForDestinationPart
+                                                                : _numberOfUsersForSourcePartOne;
+
+                                        _blobResult = new BlobResult
+                                        {
+                                            BlobStatus = BlobStatus.Found,
+                                            Content = new BinaryData(new GroupMembership
+                                            {
+                                                SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                                SyncJobRowKey = _syncJob?.RowKey,
+                                                MembershipObtainerDryRunEnabled = false,
+                                                RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                                Exclusionary = false,
+                                                SourceMembers = Enumerable.Range(0, userCount)
+                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                                         .ToList(),
+                                                Destination = new AzureADGroup
+                                                {
+                                                    ObjectId = _syncJob != null
+                                                                ? _syncJob.TargetOfficeGroupId
+                                                                : Guid.Empty
+                                                }
+                                            })
+                                        };
+                                    })
+                                    .ReturnsAsync(() => _blobResult);
+
+            _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path-2"))))
+                                   .Callback<string>(path =>
+                                   {
+                                       var userCount = path == _jobState.DestinationPart
+                                                               ? _numberOfUsersForDestinationPart
+                                                               : _numberOfUsersForSourcePartTwo;
+
+                                       _blobResult = new BlobResult
+                                       {
+                                           BlobStatus = BlobStatus.Found,
+                                           Content = new BinaryData(new GroupMembership
+                                           {
+                                               SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                               SyncJobRowKey = _syncJob?.RowKey,
+                                               MembershipObtainerDryRunEnabled = false,
+                                               RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                               Exclusionary = true,
+                                               SourceMembers = Enumerable.Range(0, userCount)
+                                                                        .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                                        .ToList(),
+                                               Destination = new AzureADGroup
+                                               {
+                                                   ObjectId = _syncJob != null
+                                                               ? _syncJob.TargetOfficeGroupId
+                                                               : Guid.Empty
+                                               }
+                                           })
+                                       };
+                                   })
+                                   .ReturnsAsync(() => _blobResult);
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+            Assert.AreEqual(50000, response.ProjectedMemberCount);
         }
 
         private async Task<(string FilePath, string Content)> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)
