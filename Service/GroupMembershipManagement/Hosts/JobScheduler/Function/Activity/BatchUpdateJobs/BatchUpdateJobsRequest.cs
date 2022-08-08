@@ -9,6 +9,6 @@ namespace Hosts.JobScheduler
 {
     public class BatchUpdateJobsRequest
     {
-        public IEnumerable<SyncJob> SyncJobBatch;
+        public IEnumerable<DistributionSyncJob> SyncJobBatch;
     }
 }

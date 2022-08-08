@@ -5,6 +5,7 @@ using Azure.Data.Tables;
 using Entities;
 using Microsoft.Graph;
 using Repositories.Contracts;
+using Services.Entities;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -57,14 +58,14 @@ namespace Repositories.SyncJobsRepository
             }
         }
 
-        public async Task<TableSegmentBulkResult> GetSyncJobsSegmentAsync(
+        public async Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(
             AsyncPageable<SyncJob> pageableQueryResult,
             string continuationToken,
             bool applyFilters = true)
         {
-            var bulkSegment = new TableSegmentBulkResult
+            var bulkSegment = new TableSegmentBulkResult<DistributionSyncJob>
             {
-                Results = new List<SyncJob>()
+                Results = new List<DistributionSyncJob>()
             };
 
             var index = 0;
@@ -81,7 +82,8 @@ namespace Repositories.SyncJobsRepository
                 {
                     var segmentResult = pageEnumerator.Current;
                     var filteredResults = applyFilters ? ApplyFiltersToResults(segmentResult.Values) : segmentResult.Values;
-                    bulkSegment.Results.AddRange(filteredResults);
+                    var filteredDistributionSyncJobs = filteredResults.Select(job => new DistributionSyncJob(job));
+                    bulkSegment.Results.AddRange(filteredDistributionSyncJobs);
                     continuationToken = segmentResult.ContinuationToken;
 
                     await pageEnumerator.MoveNextAsync();
@@ -181,7 +183,7 @@ namespace Repositories.SyncJobsRepository
             await _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key completed", RunId = Guid.Empty });
         }
 
-        public async Task BatchUpdateSyncJobsAsync(IEnumerable<SyncJob> jobs)
+        public async Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> jobs)
         {
             var batchOperation = new List<TableTransactionAction>();
 
@@ -200,9 +202,9 @@ namespace Repositories.SyncJobsRepository
             {
                 job.ETag = ETag.All;
 
-                await _log.LogMessageAsync(new LogMessage { Message = string.Join('\n', job.GetType().GetProperties().Select(jobProperty => $"{jobProperty.Name} : {jobProperty.GetValue(job, null)}")), RunId = job.RunId }, VerbosityLevel.DEBUG);
+                await _log.LogMessageAsync(new LogMessage { Message = string.Join('\n', job.GetType().GetProperties().Select(jobProperty => $"{jobProperty.Name} : {jobProperty.GetValue(job, null)}")) }, VerbosityLevel.DEBUG);
 
-                batchOperation.Add(new TableTransactionAction(TableTransactionActionType.UpdateReplace, job));
+                batchOperation.Add(new TableTransactionAction(TableTransactionActionType.UpdateMerge, job));
             }
 
             if (batchOperation.Any())

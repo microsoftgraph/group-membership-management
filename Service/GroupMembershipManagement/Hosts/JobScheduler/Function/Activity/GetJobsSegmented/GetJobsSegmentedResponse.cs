@@ -3,7 +3,7 @@
 
 using Azure;
 using Entities;
-using Microsoft.Azure.Cosmos.Table;
+using Services.Entities;
 using System.Collections.Generic;
 
 namespace Hosts.JobScheduler
@@ -11,7 +11,7 @@ namespace Hosts.JobScheduler
     public class GetJobsSegmentedResponse
     {
         public AsyncPageable<SyncJob> PageableQueryResult { get; set; }
-        public List<SyncJob> JobsSegment;
+        public List<DistributionSyncJob> JobsSegment;
         public string ContinuationToken;
     }
 }

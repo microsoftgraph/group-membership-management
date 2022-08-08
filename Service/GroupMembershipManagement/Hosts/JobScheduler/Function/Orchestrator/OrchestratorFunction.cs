@@ -35,13 +35,13 @@ namespace Hosts.JobScheduler
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
-            var jobsToUpdate = await context.CallSubOrchestratorAsync<List<SchedulerSyncJob>>(nameof(GetJobsSubOrchestratorFunction), null);
+            var jobsToUpdate = await context.CallSubOrchestratorAsync<List<DistributionSyncJob>>(nameof(GetJobsSubOrchestratorFunction), null);
 
-            List<SchedulerSyncJob> jobsWithUpdates = null;
+            List<DistributionSyncJob> jobsWithUpdates = null;
 
             if (_jobSchedulerConfig.ResetJobs)
             {
-                jobsWithUpdates = await context.CallActivityAsync<List<SchedulerSyncJob>>(nameof(ResetJobsFunction),
+                jobsWithUpdates = await context.CallActivityAsync<List<DistributionSyncJob>>(nameof(ResetJobsFunction),
                     new ResetJobsRequest
                     {
                         JobsToReset = jobsToUpdate
@@ -57,7 +57,7 @@ namespace Hosts.JobScheduler
 
             else if (_jobSchedulerConfig.DistributeJobs)
             {
-                jobsWithUpdates = await context.CallActivityAsync<List<SchedulerSyncJob>>(nameof(DistributeJobsFunction),
+                jobsWithUpdates = await context.CallActivityAsync<List<DistributionSyncJob>>(nameof(DistributeJobsFunction),
                     new DistributeJobsRequest
                     {
                         JobsToDistribute = jobsToUpdate

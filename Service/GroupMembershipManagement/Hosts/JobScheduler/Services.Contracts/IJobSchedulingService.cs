@@ -13,9 +13,9 @@ namespace Services.Contracts
 {
     public interface IJobSchedulingService
     {
-        public Task<TableSegmentBulkResult> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken);
-        public Task<List<SchedulerSyncJob>> ResetJobsAsync(List<SchedulerSyncJob> jobs);
-        public Task<List<SchedulerSyncJob>> DistributeJobsAsync(List<SchedulerSyncJob> jobs);
-        public Task BatchUpdateSyncJobsAsync(IEnumerable<SyncJob> updatedSyncJobs);
+        public Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken);
+        public Task<List<DistributionSyncJob>> ResetJobsAsync(List<DistributionSyncJob> jobs);
+        public Task<List<DistributionSyncJob>> DistributeJobsAsync(List<DistributionSyncJob> jobs);
+        public Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> updatedSyncJobs);
     }
 }

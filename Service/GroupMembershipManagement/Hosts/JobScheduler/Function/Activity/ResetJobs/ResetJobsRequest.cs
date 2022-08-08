@@ -8,6 +8,6 @@ namespace Hosts.JobScheduler
 {
     public class ResetJobsRequest
     {
-        public List<SchedulerSyncJob> JobsToReset;
+        public List<DistributionSyncJob> JobsToReset;
     }
 }

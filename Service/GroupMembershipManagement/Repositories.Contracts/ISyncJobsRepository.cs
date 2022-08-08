@@ -3,6 +3,7 @@
 using Azure;
 using Entities;
 using Microsoft.Azure.Cosmos.Table;
+using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,12 +15,12 @@ namespace Repositories.Contracts
     public interface ISyncJobRepository
     {
         AsyncPageable<SyncJob> GetPageableQueryResultAsync(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false);
-        Task<TableSegmentBulkResult> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, bool applyFilters = true);
+        Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, bool applyFilters = true);
         Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey);
         IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool applyFilters = true);
         IAsyncEnumerable<SyncJob> GetSyncJobsAsync(IEnumerable<(string partitionKey, string rowKey)> jobIds);
         Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status);
         Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null);
-        Task BatchUpdateSyncJobsAsync(IEnumerable<SyncJob> jobs);
+        Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> jobs);
     }
 }

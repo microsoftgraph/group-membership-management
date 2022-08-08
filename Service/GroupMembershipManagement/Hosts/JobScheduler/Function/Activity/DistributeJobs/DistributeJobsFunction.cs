@@ -24,7 +24,7 @@ namespace Hosts.JobScheduler
         }
 
         [FunctionName(nameof(DistributeJobsFunction))]
-        public async Task<List<SchedulerSyncJob>> DistributeJobsAsync([ActivityTrigger] DistributeJobsRequest request)
+        public async Task<List<DistributionSyncJob>> DistributeJobsAsync([ActivityTrigger] DistributeJobsRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DistributeJobsFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
             var updatedJobs = await _jobSchedulingService.DistributeJobsAsync(request.JobsToDistribute);

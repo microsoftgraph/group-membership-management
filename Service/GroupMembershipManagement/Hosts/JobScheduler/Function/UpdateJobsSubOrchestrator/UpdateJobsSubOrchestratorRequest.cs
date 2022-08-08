@@ -8,6 +8,6 @@ namespace Hosts.JobScheduler
 {
     public class UpdateJobsSubOrchestratorRequest
     {
-        public List<SchedulerSyncJob> JobsToUpdate;
+        public List<DistributionSyncJob> JobsToUpdate;
     }
 }

@@ -23,7 +23,7 @@ namespace Hosts.JobScheduler
         }
 
         [FunctionName(nameof(GetJobsSubOrchestratorFunction))]
-        public async Task<List<SchedulerSyncJob>> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        public async Task<List<DistributionSyncJob>> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             await context.CallActivityAsync(nameof(LoggerFunction),
                 new LoggerRequest
@@ -40,7 +40,7 @@ namespace Hosts.JobScheduler
 
             AsyncPageable<SyncJob> pageableQueryResult = null;
             string continuationToken = null;
-            var jobs = new List<SyncJob>();
+            var jobs = new List<DistributionSyncJob>();
 
             do
             {
@@ -63,14 +63,6 @@ namespace Hosts.JobScheduler
                     Message = $"Retrieved {jobs.Count} enabled sync jobs" + (_jobSchedulerConfig.IncludeFutureJobs ? " including those with future StartDate values" : "")
                 });
 
-            var schedulerSyncJobs = new List<SchedulerSyncJob>();
-            foreach (var job in jobs)
-            {
-                var serializedJob = JsonConvert.SerializeObject(job);
-                SchedulerSyncJob schedulerJob = JsonConvert.DeserializeObject<SchedulerSyncJob>(serializedJob);
-                schedulerSyncJobs.Add(schedulerJob);
-            }
-
             await context.CallActivityAsync(nameof(LoggerFunction),
                 new LoggerRequest
                 {
@@ -78,7 +70,7 @@ namespace Hosts.JobScheduler
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
-            return schedulerSyncJobs;
+            return jobs;
         }
     }
 }
