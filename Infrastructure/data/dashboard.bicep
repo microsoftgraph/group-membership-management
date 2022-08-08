@@ -1581,6 +1581,126 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
             position: {
               x: 1
               y: 18
+              colSpan: 19
+              rowSpan: 2
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '9f2f9f83-cec3-41fd-b120-f3fb165905c5'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\nTargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\nType = tostring(customDimensions["Type"]),\nResult = tostring(customDimensions["Result"]),\nMemberCount = toint(customDimensions["ProjectedMemberCount"])\n| where Result == "Success"\n| summarize MaxMemberCount = max(MemberCount) by TargetOfficeGroupId, Type\n| summarize Groups10kPlus = countif(MaxMemberCount > 10000), Groups25kPlus = countif(MaxMemberCount > 25000), Groups50kPlus = countif(MaxMemberCount > 50000), Groups75kPlus = countif(MaxMemberCount > 75000), Groups100kPlus = countif(MaxMemberCount > 100000) by Type\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  GridColumnsWidth: {
+                    Type: '98px'
+                    GroupsLessThan1k: '144px'
+                    Groups1kTo5k: '118px'
+                    Groups5kTo10k: '126px'
+                    Groups10kTo25k: '138px'
+                    Groups25kTo50k: '137px'
+                    Groups50kTo75k: '135px'
+                    Groups75kTo100k: '142px'
+                    Groups100kTo200k: '148px'
+                    Groups200kTo300k: '150px'
+                    LessThan1k: '106px'
+                    From1kTo5k: '114px'
+                    From5kTo10k: '117px'
+                    From10kTo25k: '124px'
+                    From25kTo50k: '125px'
+                    From50kTo75k: '124px'
+                    From75kTo100k: '129px'
+                    From100kTo200k: '135px'
+                    From200kTo300k: '139px'
+                    From300kTo400k: '137px'
+                    MoreThan400k: '126px'
+                  }
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),    \n    Result = tostring(customDimensions["Result"]),\n    MemberCount = toint(customDimensions["ProjectedMemberCount"])\n| where Result == "Success"\n| summarize MaxMemberCount = max(MemberCount) by TargetOfficeGroupId\n| summarize All = countif(MaxMemberCount >= 0), MoreThan1k = countif(MaxMemberCount >= 1000), MoreThan5k = countif(MaxMemberCount >= 5000), MoreThan10k = countif(MaxMemberCount >= 10000), MoreThan25k = countif(MaxMemberCount >= 25000), MoreThan50k = countif(MaxMemberCount >= 50000), MoreThan75k = countif(MaxMemberCount >= 75000), MoreThan100k = countif(MaxMemberCount >= 100000), MoreThan200k = countif(MaxMemberCount >= 200000), MoreThan300k = countif(MaxMemberCount >= 300000), MoreThan400k = countif(MaxMemberCount >= 400000)\n'
+                  PartTitle: 'Group Counts based on Size Buckets'
+                  PartSubTitle: resourceGroup
+                }
+              }
+            }
+          }
+          '18': {
+            position: {
+              x: 1
+              y: 20
               colSpan: 17
               rowSpan: 2
             }
@@ -1697,10 +1817,142 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '18': {
+          '19': {
             position: {
               x: 1
-              y: 21
+              y: 22
+              colSpan: 11
+              rowSpan: 3
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'customEvents\n| where name == "SyncComplete"\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  GridColumnsWidth: {
+                    Count: '81px'
+                    timestamp: '169px'
+                    TargetOfficeGroupId: '274px'
+                    SourceGroupObjectId: '295px'
+                    NestedGroupCount: '167px'
+                  }
+                  Query: 'customEvents\n| where name == "NestedGroupCount"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["DestinationGroupObjectId"]),\n    SourceGroupObjectId = tostring(customDimensions["SourceGroupObjectId"]),\n    NestedGroupCount = toint(customDimensions["NestedGroupCount"])    \n| order by NestedGroupCount desc\n'
+                  ControlType: 'AnalyticsGrid'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'NestedGroupCount'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'timestamp'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'count_'
+                        type: 'long'
+                      }
+                    ]
+                    splitBy: [
+                      {
+                        name: 'Type'
+                        type: 'string'
+                      }
+                    ]
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+              partHeader: {
+                title: 'NestedGroupCount'
+                subtitle: resourceGroup
+              }
+            }
+          }
+          '20': {
+            position: {
+              x: 1
+              y: 26
               colSpan: 7
               rowSpan: 2
             }
@@ -1720,10 +1972,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '19': {
+          '21': {
             position: {
               x: 1
-              y: 23
+              y: 28
               colSpan: 14
               rowSpan: 2
             }
@@ -1825,10 +2077,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '20': {
+          '22': {
             position: {
               x: 1
-              y: 25
+              y: 30
               colSpan: 3
               rowSpan: 4
             }
@@ -1848,10 +2100,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '21': {
+          '23': {
             position: {
               x: 4
-              y: 25
+              y: 30
               colSpan: 11
               rowSpan: 2
             }
@@ -1952,10 +2204,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '22': {
+          '24': {
             position: {
               x: 4
-              y: 27
+              y: 32
               colSpan: 11
               rowSpan: 2
             }
@@ -2056,10 +2308,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '23': {
+          '25': {
             position: {
               x: 1
-              y: 29
+              y: 34
               colSpan: 3
               rowSpan: 8
             }
@@ -2079,10 +2331,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '24': {
+          '26': {
             position: {
               x: 4
-              y: 29
+              y: 34
               colSpan: 11
               rowSpan: 2
             }
@@ -2183,10 +2435,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '25': {
+          '27': {
             position: {
               x: 4
-              y: 31
+              y: 36
               colSpan: 11
               rowSpan: 2
             }
@@ -2287,10 +2539,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '26': {
+          '28': {
             position: {
               x: 4
-              y: 33
+              y: 38
               colSpan: 11
               rowSpan: 2
             }
@@ -2391,10 +2643,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '27': {
+          '29': {
             position: {
               x: 4
-              y: 35
+              y: 40
               colSpan: 11
               rowSpan: 2
             }
@@ -2494,10 +2746,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '28': {
+          '30': {
             position: {
               x: 1
-              y: 37
+              y: 42
               colSpan: 6
               rowSpan: 4
             }
@@ -2614,10 +2866,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '29': {
+          '31': {
             position: {
               x: 7
-              y: 37
+              y: 42
               colSpan: 6
               rowSpan: 4
             }
@@ -2733,10 +2985,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '30': {
+          '32': {
             position: {
               x: 1
-              y: 42
+              y: 47
               colSpan: 9
               rowSpan: 2
             }
@@ -2756,10 +3008,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '31': {
+          '33': {
             position: {
               x: 1
-              y: 44
+              y: 49
               colSpan: 5
               rowSpan: 4
             }
@@ -2851,10 +3103,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '32': {
+          '34': {
             position: {
               x: 6
-              y: 44
+              y: 49
               colSpan: 5
               rowSpan: 4
             }
@@ -2946,10 +3198,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '33': {
+          '35': {
             position: {
               x: 11
-              y: 44
+              y: 49
               colSpan: 5
               rowSpan: 4
             }
@@ -3043,10 +3295,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '34': {
+          '36': {
             position: {
               x: 1
-              y: 48
+              y: 53
               colSpan: 8
               rowSpan: 4
             }
@@ -3168,11 +3420,11 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 subtitle: 'Descending order'
               }
             }
-          }          
-          '35': {
+          }
+          '37': {
             position: {
               x: 9
-              y: 48
+              y: 53
               colSpan: 8
               rowSpan: 4
             }

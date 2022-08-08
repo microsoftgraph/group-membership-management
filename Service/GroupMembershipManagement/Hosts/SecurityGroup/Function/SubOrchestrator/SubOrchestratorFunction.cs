@@ -47,15 +47,18 @@ namespace Hosts.SecurityGroup
                                                                 GroupId = request.SourceGroup.ObjectId
                                                             });
 
-                if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+                if (!context.IsReplaying)
                 {
-                    var nestedGroupEvent = new Dictionary<string, string>
+                    if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
                     {
-                        { "SourceGroupObjectId", request.SourceGroup.ObjectId.ToString() },
-                        { "DestinationGroupObjectId", request.SyncJob.TargetOfficeGroupId.ToString() },
-                        { "NestedGroupCount", transitiveGroupCount.ToString() }
-                    };
-                    _telemetryClient.TrackEvent("NestedGroupCount", nestedGroupEvent);
+                        var nestedGroupEvent = new Dictionary<string, string>
+                        {
+                            { "SourceGroupObjectId", request.SourceGroup.ObjectId.ToString() },
+                            { "DestinationGroupObjectId", request.SyncJob.TargetOfficeGroupId.ToString() },
+                            { "NestedGroupCount", transitiveGroupCount.ToString() }
+                        };
+                        _telemetryClient.TrackEvent("NestedGroupCount", nestedGroupEvent);
+                    }
                 }
 
                 if (transitiveGroupCount > 0)
