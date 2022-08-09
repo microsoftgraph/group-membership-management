@@ -2,12 +2,11 @@
 // Licensed under the MIT license.
 using Azure;
 using Entities;
-using Microsoft.Azure.Cosmos.Table;
 using Repositories.Contracts;
+using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Threading.Tasks;
 
 namespace Repositories.SyncJobs.Tests
@@ -67,27 +66,17 @@ namespace Repositories.SyncJobs.Tests
             await Task.CompletedTask;
         }
 
-        public Expression<Func<SyncJob, bool>> GetJobsQueryFunc(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<TableSegmentBulkResult> GetSyncJobsAsync(Expression<Func<SyncJob, bool>> jobsQueryFunc, string continuationToken, bool applyFilters = true)
-        {
-            throw new NotImplementedException();
-        }
-
         public AsyncPageable<SyncJob> GetPageableQueryResultAsync(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false)
         {
             throw new NotImplementedException();
         }
 
-        public Task<TableSegmentBulkResult> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, bool applyFilters = true)
+        public Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, bool applyFilters = true)
         {
             throw new NotImplementedException();
         }
 
-        public Task BatchUpdateSyncJobsAsync(IEnumerable<SyncJob> jobs)
+        public Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> jobs)
         {
             throw new NotImplementedException();
         }

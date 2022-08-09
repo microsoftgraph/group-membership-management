@@ -156,20 +156,24 @@ namespace Services
                 jobThreads.Add(startTime);
             }
 
-            foreach(DistributionSyncJob job in jobsToDistribute)
+            List<DistributionSyncJob> updatedSyncJobs = new List<DistributionSyncJob>();
+            foreach (DistributionSyncJob job in jobsToDistribute)
             {
                 DateTime earliestTime = jobThreads.Min();
 
                 var serializedJob = JsonConvert.SerializeObject(job);
+                var updatedJob = JsonConvert.DeserializeObject<DistributionSyncJob>(serializedJob);
 
-                job.StartDate = earliestTime;
+                updatedJob.StartDate = earliestTime;
                 var groupRuntime = runtimeMap.ContainsKey(job.TargetOfficeGroupId) ? runtimeMap[job.TargetOfficeGroupId] : runtimeMap[Guid.Empty];
                 DateTime updatedTime = earliestTime.AddSeconds(groupRuntime + BUFFER_SECONDS);
                 int index = jobThreads.IndexOf(earliestTime);
                 jobThreads[index] = updatedTime;
+
+                updatedSyncJobs.Add(updatedJob);
             }
 
-            return jobsToDistribute;
+            return updatedSyncJobs;
         }
     }
 }
