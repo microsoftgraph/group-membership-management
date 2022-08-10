@@ -11,7 +11,7 @@ To run your own instance of the GMM UI with working authentication features, you
 5. The redirect URI can be configured later, so we will skip this step for now.
 6. Click "Register".
 7. Once you have the base url for your application, you will need to enter the redirect URI for your app. This can be done in the "Authentication" tab under the "Manage" heading for your app (still under App registrations from earlier).
-8. Select "Add a platform" if "Single-page application" does not yet exist, and then add the following redirect URIs: ```https://{base uri}/login-callback``` and ```https://{base uri}/logout-callback```.
+8. Select "Add a platform" if "Single-page application" does not yet exist, and then add the following redirect URIs: ```https://{base uri}/authentication/login-callback``` and ```https://{base uri}/authentication/logout-callback```.
 9. Add API permissions: click 'Add a permission', and select Microsoft Graph (under the Microsoft APIs tab). Then select 'Delegated Permissions', and search for User.Read and Directory.Read.All. Ensure both are checked, then click 'Add permissions' at the bottom of this panel.
 10. Populate the {tenant id} and {client id} portions of ```UI\WebApp\wwwroot\appsettings.json``` with the values from your new app registration. This can be found in the "Overview" tab. If you are editing with a private repository, add a new folder in ```UI\WebApp\wwwroot\parameters``` with your environment abbreviation, and copy over the ```appsettings.json``` file. Populate the missing values.
 11. Create a group in Azure AAD called "GMM Admins". Add relevant users as members of this group, then add this group's Object ID to the appsettings.json file.
