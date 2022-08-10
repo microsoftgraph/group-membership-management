@@ -12,6 +12,28 @@ Please read before proceeding
 Limitations:
 - Note that this tool can not use on-premise mastered SGs as destination groups since we are not able to add GMM Graph application (see "Create `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` Azure Application" section.) as owner to such groups as the owner does not sync to AAD.
 
+<br>
+
+# Table of Contents
+1. [GMM Setup](#gmm-setup)
+
+    a) [Prerequisites](#prerequisites)
+    
+    b) [Create Resource Groups and prereqs keyvault](#create-resource-groups-and-prereqs-keyvault)
+    
+    c) [Populate prereqs keyvault](#populate-prereqs-keyvault)
+    
+    d) [Configure Azure Devops](#configure-azure-devops)
+
+2. [Post-Deployment Tasks](#post-deployment-tasks)
+3. [Setting up AzureTableBackup function](#setting-azuretablebackup-function)
+4. [Setting up GMM in a demo tenant](#setting-gmm-in-a-demo-tenant)
+5. [Setting up GMM UI](#setting-up-gmm-ui)
+6. [Steps to debug and troubleshoot a failing sync](#steps-to-debug-and-troubleshoot-a-failing-sync)
+7. [Breaking changes](#breaking-changes)
+
+<br>
+
 ## GMM Setup
 
 ### This document will provide guidance on how to setup GMM.
@@ -661,6 +683,10 @@ The run frequency is set to every day at midnight, it is defined as a NCRONTAB e
 # Setting GMM in a demo tenant
 
 In the event that you are setting up GMM in a demo tenant refer to [Setting GMM in a demo tenant](/Documentation/DemoTenant.md) for additional guidance.
+
+# Setting up GMM UI
+
+To set up the GMM UI web app, please refer to [GMM UI](UI/WebApp/README.md) for additional guidance.
 
 # Steps to debug and troubleshoot a failing sync
 
