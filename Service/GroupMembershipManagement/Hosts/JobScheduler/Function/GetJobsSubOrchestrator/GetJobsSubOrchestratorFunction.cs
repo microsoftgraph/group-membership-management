@@ -1,12 +1,12 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Services.Entities;
 using Azure;
 using System.Collections.Generic;
 using System.Threading.Tasks;

@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Services.Contracts;
-using Services.Entities;
 using Services.Tests.Mocks;
 using System;
 using System.Collections.Generic;

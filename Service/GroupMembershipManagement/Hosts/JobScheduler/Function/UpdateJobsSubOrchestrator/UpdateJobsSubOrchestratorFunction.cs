@@ -1,16 +1,11 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
+
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using Microsoft.Azure.Cosmos.Table;
-using Services.Entities;
-using Newtonsoft.Json;
-using System;
-using Microsoft.Azure.Amqp.Framing;
 using System.Linq;
 
 namespace Hosts.JobScheduler

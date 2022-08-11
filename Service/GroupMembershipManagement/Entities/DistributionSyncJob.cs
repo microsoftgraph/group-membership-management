@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
+
 using System;
 
-namespace Services.Entities
+namespace Entities
 {
     public class DistributionSyncJob : UpdateMergeSyncJob, IComparable<DistributionSyncJob>
     {

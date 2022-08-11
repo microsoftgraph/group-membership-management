@@ -1,13 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using Azure;
 using Entities;
-using Microsoft.Azure.Cosmos.Table;
-using Services.Entities;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
 using System.Threading.Tasks;
 
 namespace Repositories.Contracts

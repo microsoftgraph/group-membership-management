@@ -5,11 +5,9 @@ using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Services.Contracts;
 using Repositories.Contracts;
-using Services.Entities;
 
 namespace Hosts.JobScheduler
 {

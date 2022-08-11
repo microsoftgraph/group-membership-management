@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Services.Entities;
+using Entities;
 using System.Collections.Generic;
 
 namespace Hosts.JobScheduler

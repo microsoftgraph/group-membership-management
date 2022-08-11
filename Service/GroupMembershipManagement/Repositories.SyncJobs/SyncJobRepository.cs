@@ -1,16 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using Azure;
 using Azure.Data.Tables;
 using Entities;
-using Microsoft.Graph;
 using Repositories.Contracts;
-using Services.Entities;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Threading.Tasks;
 
 namespace Repositories.SyncJobsRepository

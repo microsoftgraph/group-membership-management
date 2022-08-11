@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using Azure;
 using Azure.Data.Tables;
 using Entities.CustomAttributes;

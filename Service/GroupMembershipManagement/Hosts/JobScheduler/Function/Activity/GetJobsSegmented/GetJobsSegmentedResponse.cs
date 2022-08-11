@@ -3,7 +3,6 @@
 
 using Azure;
 using Entities;
-using Services.Entities;
 using System.Collections.Generic;
 
 namespace Hosts.JobScheduler

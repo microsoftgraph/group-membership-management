@@ -1,18 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using Entities;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Repositories.Contracts;
-using Microsoft.ApplicationInsights;
 using Services.Contracts;
 using System;
 using System.Linq;
-using Services.Entities;
 using Newtonsoft.Json;
 using Repositories.Contracts.InjectConfig;
-using Microsoft.Azure.Cosmos.Table;
-using System.Linq.Expressions;
 using Azure;
 
 namespace Services

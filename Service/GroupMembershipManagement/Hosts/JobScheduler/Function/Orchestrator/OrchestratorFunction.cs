@@ -5,7 +5,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Services.Entities;
+using Entities;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;

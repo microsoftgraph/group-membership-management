@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using Azure;
 using Azure.Data.Tables;
 using Entities;
@@ -7,7 +8,7 @@ using Entities.CustomAttributes;
 using Newtonsoft.Json;
 using System;
 
-namespace Services.Entities
+namespace Entities
 {
     public class UpdateMergeSyncJob : ITableEntity
     {
