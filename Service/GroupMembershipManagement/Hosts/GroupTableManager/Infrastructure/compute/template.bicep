@@ -28,9 +28,6 @@ param servicePlanSku string = 'Y1'
 @description('Resource location.')
 param location string
 
-@description('Function resource location.')
-param functionLocation string = 'westus'
-
 @description('Name of the public source branch where webapp repo exists.')
 param branch string
 
@@ -80,7 +77,7 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   params: {
     name: servicePlanName
     sku: servicePlanSku
-    location: functionLocation
+    location: location
     maximumElasticWorkerCount: maximumElasticWorkerCount
   }
 }
@@ -230,7 +227,7 @@ module functionAppTemplate_GroupTableManager 'functionApp.bicep' = {
   params: {
     name: '${functionAppName}-GroupTableManager'
     kind: functionAppKind
-    location: functionLocation
+    location: location
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
@@ -246,7 +243,7 @@ module functionAppSlotTemplate_GroupTableManager 'functionAppSlot.bicep' = {
   params: {
     name: '${functionAppName}-GroupTableManager/staging'
     kind: functionAppKind
-    location: functionLocation
+    location: location
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup

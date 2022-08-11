@@ -125,6 +125,16 @@ else
                 var group = (Group)item;
                 groupProps.Add(group);
             }
+            else // TODO: change else condition
+            // this is a temporary fix to resolve a bug with admins: where the directory role causes an index out of bounds error
+            // the error stems from the logic behind the while loop condition in GetGroupAsync: 
+            //      - this condition depends on numGroups to be accurate
+            //      - however, admins have an extra directoryRole object that is returned from GraphServiceClient.OwnedObjects -> which results in an off-by-one error for the value of numGroups (again, this is for admins only)
+            //      - as a result, the "group I am an owner of" page will have this index out of bounds exception for admins only
+            //      - this temporary fix (else) ensures that even if the group contains a directoryRole object, the final count for numGroups is still correct 
+            {
+                groupProps.Add(new Group());
+            }
         }
         return groupProps;
     }
