@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 using Entities;
 using Hosts.JobTrigger;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -26,6 +28,7 @@ namespace Services.Tests
         bool _canWriteToGroups;
         SyncJob _syncJob;
         SyncJobGroup _syncJobGroup;
+        TelemetryClient _telemetryClient;
 
         [TestInitialize]
         public void Setup()
@@ -35,6 +38,7 @@ namespace Services.Tests
             _jobTriggerService = new Mock<IJobTriggerService>();
             _loggingRespository = new Mock<ILoggingRepository>();
             _context = new Mock<IDurableOrchestrationContext>();
+            _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
 
             _jobTriggerService.Setup(x => x.GroupExistsAndGMMCanWriteToGroupAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => _canWriteToGroups);
             _jobTriggerService.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>())).ReturnsAsync(() => "Test Group");
@@ -76,7 +80,7 @@ namespace Services.Tests
             _syncJob.Query = "{invalid json query}";
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
 
-            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object);
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object, _telemetryClient);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
@@ -95,7 +99,7 @@ namespace Services.Tests
             _syncJob.Query = null;
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
 
-            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object);
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object, _telemetryClient);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
@@ -113,7 +117,7 @@ namespace Services.Tests
         {
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
 
-            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object);
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object, _telemetryClient);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
@@ -166,12 +170,12 @@ namespace Services.Tests
                         await CallTopicMessageSenderFunctionAsync(jobTriggerService: jobTriggerService);
                     });
 
-            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object);
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object, _telemetryClient);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => !m.Message.Contains("JSON query is not valid") && !m.Message.Contains("Job query is empty for job")),
-                It.IsAny<VerbosityLevel>(), 
+                It.IsAny<VerbosityLevel>(),
                 It.IsAny<string>(),
                 It.IsAny<string>()));
 
@@ -199,7 +203,7 @@ namespace Services.Tests
             _context.Setup(x => x.CallActivityAsync<SyncJobGroup>(It.Is<string>(x => x == nameof(GroupNameReaderFunction)), It.IsAny<SyncJob>()))
                     .ReturnsAsync(new SyncJobGroup { Name = null, SyncJob = _syncJob });
 
-            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object);
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object, _telemetryClient);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             Assert.AreEqual(SyncStatus.DestinationGroupNotFound, _syncStatus);
