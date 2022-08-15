@@ -467,7 +467,7 @@ namespace Repositories.GraphGroups
         {
             var users = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
-            if (response.CurrentPage.Count > 0)
+            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null)
             {
                 var deltaMembers = response.CurrentPage[0].AdditionalData["members@delta"].ToString();
                 var json = JObject.Parse("{\"deltaMembers\":" + deltaMembers + "}");
@@ -525,7 +525,7 @@ namespace Repositories.GraphGroups
             var usersToAdd = new List<AzureADUser>();
             var usersToRemove = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
-            if (response.CurrentPage.Count > 0)
+            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null)
             {
                 var deltaMembers = response.CurrentPage[0].AdditionalData["members@delta"].ToString();
                 var json = JObject.Parse("{\"deltaMembers\":" + deltaMembers + "}");
