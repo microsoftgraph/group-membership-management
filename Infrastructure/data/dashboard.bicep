@@ -1914,7 +1914,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     SourceGroupObjectId: '295px'
                     NestedGroupCount: '167px'
                   }
-                  Query: 'customEvents\n| where name == "NestedGroupCount"\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["DestinationGroupObjectId"]),\n    SourceGroupObjectId = tostring(customDimensions["SourceGroupObjectId"]),\n    NestedGroupCount = toint(customDimensions["NestedGroupCount"])    \n| order by timestamp desc\n| distinct TargetOfficeGroupId, SourceGroupObjectId, NestedGroupCount'
+                  Query: 'customEvents\n| where name == "NestedGroupCount"\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["DestinationGroupObjectId"]),\n    SourceGroupObjectId = tostring(customDimensions["SourceGroupObjectId"]),\n    NestedGroupCount = toint(customDimensions["NestedGroupCount"])    \n| distinct TargetOfficeGroupId, SourceGroupObjectId, NestedGroupCount\n| order by NestedGroupCount desc'
                   ControlType: 'AnalyticsGrid'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'NestedGroupCount'
