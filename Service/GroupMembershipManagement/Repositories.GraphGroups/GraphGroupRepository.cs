@@ -442,7 +442,7 @@ namespace Repositories.GraphGroups
         {
             var users = new List<AzureADUser>();
             var response = await GetGroupUsersPageByIdAsync(objectId.ToString());
-            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null)
+            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null && response.CurrentPage[0].AdditionalData["members@delta"] != null)
             {
                 var deltaMembers = response.CurrentPage[0].AdditionalData["members@delta"].ToString();
                 var json = JObject.Parse("{\"deltaMembers\":" + deltaMembers + "}");
@@ -467,7 +467,7 @@ namespace Repositories.GraphGroups
         {
             var users = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
-            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null)
+            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null && response.CurrentPage[0].AdditionalData["members@delta"] != null)
             {
                 var deltaMembers = response.CurrentPage[0].AdditionalData["members@delta"].ToString();
                 var json = JObject.Parse("{\"deltaMembers\":" + deltaMembers + "}");
@@ -493,7 +493,7 @@ namespace Repositories.GraphGroups
             var usersToAdd = new List<AzureADUser>();
             var usersToRemove = new List<AzureADUser>();
             var response = await GetGroupUsersPageByLinkAsync(deltaLink);
-            if (response.CurrentPage.Count > 0)
+            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null && response.CurrentPage[0].AdditionalData["members@delta"] != null)
             {
                 var deltaMembers = response.CurrentPage[0].AdditionalData["members@delta"].ToString();
                 var json = JObject.Parse("{\"deltaMembers\":" + deltaMembers + "}");
@@ -525,7 +525,7 @@ namespace Repositories.GraphGroups
             var usersToAdd = new List<AzureADUser>();
             var usersToRemove = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
-            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null)
+            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null && response.CurrentPage[0].AdditionalData["members@delta"] != null)
             {
                 var deltaMembers = response.CurrentPage[0].AdditionalData["members@delta"].ToString();
                 var json = JObject.Parse("{\"deltaMembers\":" + deltaMembers + "}");
