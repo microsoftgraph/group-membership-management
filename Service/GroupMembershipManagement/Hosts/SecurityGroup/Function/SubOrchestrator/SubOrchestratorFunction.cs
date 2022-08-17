@@ -61,7 +61,7 @@ namespace Hosts.SecurityGroup
                     }
                 }
 
-                if (transitiveGroupCount > 0)
+                if (transitiveGroupCount >= 0)
                 {
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });
                     // run exisiting code
@@ -72,7 +72,7 @@ namespace Hosts.SecurityGroup
                     _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
                 }
                 else {
-                    if (transitiveGroupCount <= 0)
+                    if (transitiveGroupCount < 0)
                     {
                         if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
                         // first check if delta file exists in cache folder
