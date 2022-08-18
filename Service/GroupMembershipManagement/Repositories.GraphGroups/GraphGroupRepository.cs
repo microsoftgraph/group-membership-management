@@ -442,12 +442,18 @@ namespace Repositories.GraphGroups
         {
             var users = new List<AzureADUser>();
             var response = await GetGroupUsersPageByIdAsync(objectId.ToString());
-            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null && response.CurrentPage[0].AdditionalData["members@delta"] != null)
+            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
+            var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
+            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
+            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+
+            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null)
             {
-                var deltaMembers = response.CurrentPage[0].AdditionalData["members@delta"].ToString();
-                var json = JObject.Parse("{\"deltaMembers\":" + deltaMembers + "}");
-                var groupDeltaUsers = (JArray)json["deltaMembers"];
-                foreach (JObject user in groupDeltaUsers)
+                if (!response.CurrentPage[0].AdditionalData.TryGetValue("members@delta", out object members))
+                {
+                    return (users, nextPageUrl, deltaUrl, response);
+                }
+                foreach (JObject user in (JArray)members)
                 {
                     if (user["@odata.type"].ToString().Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase) &&
                         user["@removed"] == null)
@@ -456,10 +462,7 @@ namespace Repositories.GraphGroups
                     }
                 }
             }
-            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
-            var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
-            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
-            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+
             return (users, nextPageUrl, deltaUrl, response);
         }
 
@@ -467,12 +470,19 @@ namespace Repositories.GraphGroups
         {
             var users = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
-            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null && response.CurrentPage[0].AdditionalData["members@delta"] != null)
+            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
+            nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
+            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
+            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+
+            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null)
             {
-                var deltaMembers = response.CurrentPage[0].AdditionalData["members@delta"].ToString();
-                var json = JObject.Parse("{\"deltaMembers\":" + deltaMembers + "}");
-                var groupDeltaUsers = (JArray)json["deltaMembers"];
-                foreach (JObject user in groupDeltaUsers)
+                if (!response.CurrentPage[0].AdditionalData.TryGetValue("members@delta", out object members))
+                {
+                    return (users, nextPageUrl, deltaUrl, response);
+                }
+
+                foreach (JObject user in (JArray)members)
                 {
                     if (user["@odata.type"].ToString().Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase) &&
                         user["@removed"] == null)
@@ -481,10 +491,7 @@ namespace Repositories.GraphGroups
                     }
                 }
             }
-            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
-            nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
-            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
-            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+
             return (users, nextPageUrl, deltaUrl, response);
         }
 
@@ -493,12 +500,20 @@ namespace Repositories.GraphGroups
             var usersToAdd = new List<AzureADUser>();
             var usersToRemove = new List<AzureADUser>();
             var response = await GetGroupUsersPageByLinkAsync(deltaLink);
-            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null && response.CurrentPage[0].AdditionalData["members@delta"] != null)
+
+            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
+            var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
+            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
+            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+
+            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null)
             {
-                var deltaMembers = response.CurrentPage[0].AdditionalData["members@delta"].ToString();
-                var json = JObject.Parse("{\"deltaMembers\":" + deltaMembers + "}");
-                var groupDeltaUsers = (JArray)json["deltaMembers"];
-                foreach (JObject user in groupDeltaUsers)
+                if (!response.CurrentPage[0].AdditionalData.TryGetValue("members@delta", out object members))
+                {
+                    return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl, response);
+                }
+
+                foreach (JObject user in (JArray)members)
                 {
                     if (user["@odata.type"].ToString().Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase))
                     {
@@ -513,10 +528,7 @@ namespace Repositories.GraphGroups
                     }
                 }
             }
-            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
-            var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
-            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
-            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+
             return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl, response);
         }
 
@@ -525,12 +537,19 @@ namespace Repositories.GraphGroups
             var usersToAdd = new List<AzureADUser>();
             var usersToRemove = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
-            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null && response.CurrentPage[0].AdditionalData["members@delta"] != null)
+
+            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
+            nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
+            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
+            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+
+            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null)
             {
-                var deltaMembers = response.CurrentPage[0].AdditionalData["members@delta"].ToString();
-                var json = JObject.Parse("{\"deltaMembers\":" + deltaMembers + "}");
-                var groupDeltaUsers = (JArray)json["deltaMembers"];
-                foreach (JObject user in groupDeltaUsers)
+                if (!response.CurrentPage[0].AdditionalData.TryGetValue("members@delta", out object members))
+                {
+                    return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl, response);
+                }
+                foreach (JObject user in (JArray)members)
                 {
                     if (user["@odata.type"].ToString().Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase))
                     {
@@ -545,10 +564,7 @@ namespace Repositories.GraphGroups
                     }
                 }
             }
-            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
-            nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
-            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
-            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+
             return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl, response);
         }
 
