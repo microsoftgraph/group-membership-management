@@ -4,10 +4,8 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
-using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -17,10 +15,12 @@ namespace Hosts.JobScheduler
 {
     public class PostCallbackFunction
     {
+        private readonly HttpClient _httpClient;
         private readonly ILoggingRepository _loggingRepository;
 
-        public PostCallbackFunction(ILoggingRepository loggingRepository)
+        public PostCallbackFunction(IHttpClientFactory httpClientFactory, ILoggingRepository loggingRepository)
         {
+            _httpClient = httpClientFactory.CreateClient();
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
@@ -29,27 +29,16 @@ namespace Hosts.JobScheduler
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PostCallbackFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
-            var client = new HttpClient();
-            try
-            {
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", request.AuthToken);
-                var requestContent = new StringContent(request.SuccessBody, Encoding.UTF8, "application/json");
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", request.AuthToken);
+            var requestContent = new StringContent(request.SuccessBody, Encoding.UTF8, "application/json");
 
-                await client.PostAsync(new Uri(request.CallbackUrl), requestContent);
+            await _httpClient.PostAsync(new Uri(request.CallbackUrl), requestContent);
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                    { 
-                        Message = $"Successfully posted to url '{request.CallbackUrl}' with following body: {request.SuccessBody}"  
-                    }, VerbosityLevel.INFO);
-            }
-            catch (Exception ex)
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = ex.Message }, VerbosityLevel.INFO);
-            }
-            finally
-            {
-                client.Dispose();
-            }
+            await _loggingRepository.LogMessageAsync(new LogMessage
+                { 
+                    Message = $"Successfully posted to url '{request.CallbackUrl}' with following body: {request.SuccessBody}"  
+                }, VerbosityLevel.INFO);
+           
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PostCallbackFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
         }

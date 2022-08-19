@@ -15,10 +15,12 @@ namespace Hosts.JobScheduler
 {
     public class CheckJobSchedulerStatusFunction
     {
+        private readonly HttpClient _httpClient;
         private readonly ILoggingRepository _loggingRepository;
 
-        public CheckJobSchedulerStatusFunction(ILoggingRepository loggingRepository)
+        public CheckJobSchedulerStatusFunction(IHttpClientFactory httpClientFactory, ILoggingRepository loggingRepository)
         {
+            _httpClient = httpClientFactory.CreateClient();
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
@@ -28,30 +30,18 @@ namespace Hosts.JobScheduler
             var completed = false;
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CheckJobSchedulerStatusFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
             
-            var client = new HttpClient();
-            try
-            {
-                var response = await client.GetAsync(new Uri(request.StatusUrl));
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                { 
-                    Message = $"Response content for status check is: {await response.Content.ReadAsStringAsync()}" 
-                }, VerbosityLevel.DEBUG);
+            var response = await _httpClient.GetAsync(new Uri(request.StatusUrl));
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            { 
+                Message = $"Response content for status check is: {await response.Content.ReadAsStringAsync()}" 
+            }, VerbosityLevel.INFO);
             
-                var responseDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(await response.Content.ReadAsStringAsync());
+            var responseDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(await response.Content.ReadAsStringAsync());
 
-                var status = responseDict.GetValueOrDefault("runtimeStatus");
+            var status = responseDict.GetValueOrDefault("runtimeStatus");
 
                 
-                completed = status == OrchestrationRuntimeStatus.Completed.ToString();
-            }
-            catch (Exception ex)
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = ex.Message }, VerbosityLevel.INFO);
-            }
-            finally
-            {
-                client.Dispose();
-            }
+            completed = status == OrchestrationRuntimeStatus.Completed.ToString();
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CheckJobSchedulerStatusFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
@@ -61,7 +51,7 @@ namespace Hosts.JobScheduler
             }
             else
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Status is still pending at {DateTime.UtcNow}" }, VerbosityLevel.INFO);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Status of JobScheduler is still pending at {DateTime.UtcNow}" }, VerbosityLevel.INFO);
             }
 
             return completed;

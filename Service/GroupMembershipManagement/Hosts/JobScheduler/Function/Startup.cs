@@ -56,6 +56,8 @@ namespace Hosts.JobScheduler
                         services.GetService<ILoggingRepository>()
                     );
             });
+
+            builder.Services.AddHttpClient();
         }
     }
 }
