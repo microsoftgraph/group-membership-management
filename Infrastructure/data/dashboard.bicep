@@ -1821,7 +1821,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
             position: {
               x: 1
               y: 22
-              colSpan: 11
+              colSpan: 7
               rowSpan: 3
             }
             metadata: {
@@ -1908,10 +1908,8 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               settings: {
                 content: {
                   GridColumnsWidth: {
-                    Count: '81px'
-                    timestamp: '169px'
-                    TargetOfficeGroupId: '274px'
-                    SourceGroupObjectId: '295px'
+                    TargetOfficeGroupId: '248px'
+                    SourceGroupObjectId: '259px'
                     NestedGroupCount: '167px'
                   }
                   Query: 'customEvents\n| where name == "NestedGroupCount"\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["DestinationGroupObjectId"]),\n    SourceGroupObjectId = tostring(customDimensions["SourceGroupObjectId"]),\n    NestedGroupCount = toint(customDimensions["NestedGroupCount"])    \n| distinct TargetOfficeGroupId, SourceGroupObjectId, NestedGroupCount\n| order by NestedGroupCount desc'
@@ -1951,7 +1949,138 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '20': {
             position: {
-              x: 12
+              x: 8
+              y: 22
+              colSpan: 7
+              rowSpan: 3
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'customEvents\n| where name == "UsersInCacheCount"\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  GridColumnsWidth: {
+                    timestamp: '101px'
+                    GroupObjectId: '209px'
+                    UsersInCache: '70px'
+                    RunId: '209px'
+                  }
+                  Query: 'customEvents\n| where name == "UsersInCacheCount"\n| project timestamp,    \n    RunId = tostring(customDimensions["RunId"]),\n    GroupObjectId = tostring(customDimensions["GroupObjectId"]),\n    UsersInCache = toint(customDimensions["UsersInCache"])    \n| distinct timestamp, GroupObjectId, UsersInCache, RunId\n| order by timestamp desc\n\n'
+                  ControlType: 'AnalyticsGrid'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'UsersInCacheCount'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'timestamp'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'count_'
+                        type: 'long'
+                      }
+                    ]
+                    splitBy: [
+                      {
+                        name: 'Type'
+                        type: 'string'
+                      }
+                    ]
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+              partHeader: {
+                title: 'UsersInCacheCount'
+                subtitle: resourceGroup
+              }
+            }
+          }
+          '21': {
+            position: {
+              x: 15
               y: 22
               colSpan: 6
               rowSpan: 3
@@ -2040,11 +2169,9 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               settings: {
                 content: {
                   GridColumnsWidth: {
-                    Count: '81px'
-                    timestamp: '169px'
                     TargetOfficeGroupId: '274px'
-                    SourceGroupObjectId: '295px'
-                    NestedGroupCount: '167px'
+                    TotalNumberOfSourceParts: '295px'
+                    NumberOfExclusionarySourceParts: '167px'
                   }
                   Query: 'customEvents\n| where name == "ExclusionarySourcePartsCount"\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["DestinationGroupObjectId"]),\n    TotalNumberOfSourceParts = tostring(customDimensions["TotalNumberOfSourceParts"]),\n    NumberOfExclusionarySourceParts = toint(customDimensions["NumberOfExclusionarySourceParts"])    \n| order by timestamp desc\n| distinct TargetOfficeGroupId, TotalNumberOfSourceParts, NumberOfExclusionarySourceParts\n\n'
                   ControlType: 'AnalyticsGrid'
@@ -2081,7 +2208,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '21': {
+          '22': {
             position: {
               x: 1
               y: 26
@@ -2104,7 +2231,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '22': {
+          '23': {
             position: {
               x: 1
               y: 28
@@ -2209,7 +2336,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '23': {
+          '24': {
             position: {
               x: 1
               y: 30
@@ -2232,7 +2359,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '24': {
+          '25': {
             position: {
               x: 4
               y: 30
@@ -2336,7 +2463,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '25': {
+          '26': {
             position: {
               x: 4
               y: 32
@@ -2440,7 +2567,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '26': {
+          '27': {
             position: {
               x: 1
               y: 34
@@ -2463,7 +2590,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '27': {
+          '28': {
             position: {
               x: 4
               y: 34
@@ -2567,7 +2694,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '28': {
+          '29': {
             position: {
               x: 4
               y: 36
@@ -2671,7 +2798,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '29': {
+          '30': {
             position: {
               x: 4
               y: 38
@@ -2775,7 +2902,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '30': {
+          '31': {
             position: {
               x: 4
               y: 40
@@ -2878,7 +3005,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '31': {
+          '32': {
             position: {
               x: 1
               y: 42
@@ -2998,7 +3125,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '32': {
+          '33': {
             position: {
               x: 7
               y: 42
@@ -3117,7 +3244,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '33': {
+          '34': {
             position: {
               x: 1
               y: 47
@@ -3140,7 +3267,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '34': {
+          '35': {
             position: {
               x: 1
               y: 49
@@ -3235,7 +3362,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '35': {
+          '36': {
             position: {
               x: 6
               y: 49
@@ -3330,7 +3457,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '36': {
+          '37': {
             position: {
               x: 11
               y: 49
@@ -3427,7 +3554,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '37': {
+          '38': {
             position: {
               x: 1
               y: 53
@@ -3553,7 +3680,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '38': {
+          '39': {
             position: {
               x: 9
               y: 53
