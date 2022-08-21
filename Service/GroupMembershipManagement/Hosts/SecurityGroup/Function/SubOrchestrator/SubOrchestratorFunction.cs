@@ -96,6 +96,7 @@ namespace Hosts.SecurityGroup
                                 fileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
                                 var json = JsonConvert.DeserializeObject<GroupMembership>(fileContent);
                                 var sourceMembers = json.SourceMembers.Distinct().ToList();
+                                if (!context.IsReplaying) { TrackCachedUsersEvent(request.RunId, sourceMembers.Count, request.SourceGroup.ObjectId); }
                                 sourceMembers.AddRange(deltaUsersToAdd);
                                 var newUsers = sourceMembers.Except(deltaUsersToRemove).ToList();
                                 allUsers.AddRange(newUsers);
@@ -119,6 +120,17 @@ namespace Hosts.SecurityGroup
             }
             _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             return (allUsers, SyncStatus.InProgress);
+        }
+
+        private void TrackCachedUsersEvent(Guid runId, int cachedUsersCount, Guid groupId)
+        {
+            var cachedUsersEvent = new Dictionary<string, string>
+            {
+                { "RunId", runId.ToString() },
+                { "GroupObjectId", groupId.ToString() },
+                { "UsersInCache", cachedUsersCount.ToString() }
+            };
+            _telemetryClient.TrackEvent("UsersInCacheCount", cachedUsersEvent);
         }
 
         public async Task<string> GetFileDownloaderFunction(IDurableOrchestrationContext context, string filePath, SyncJob syncJob)
