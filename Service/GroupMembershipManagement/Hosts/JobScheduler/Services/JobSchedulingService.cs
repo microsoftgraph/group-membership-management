@@ -16,61 +16,54 @@ namespace Services
 {
     public class JobSchedulingService : IJobSchedulingService {
 
-        public readonly int START_TIME_DELAY_MINUTES;
-        public readonly int BUFFER_SECONDS;
         public readonly int MINUTES_IN_HOUR = 60;
         public readonly int SECONDS_IN_MINUTE = 60;
 
-        private readonly IJobSchedulerConfig _jobSchedulerConfig;
         private readonly ISyncJobRepository _syncJobRepository;
         private readonly IRuntimeRetrievalService _runtimeRetrievalService;
         private readonly ILoggingRepository _loggingRepository;
 
         public JobSchedulingService(
-            IJobSchedulerConfig jobSchedulerConfig,
             ISyncJobRepository syncJobRepository,
             IRuntimeRetrievalService runtimeRetrievalService,
             ILoggingRepository loggingRepository)
         {
-            START_TIME_DELAY_MINUTES = jobSchedulerConfig.StartTimeDelayMinutes;
-            BUFFER_SECONDS = jobSchedulerConfig.DelayBetweenSyncsSeconds;
-            _jobSchedulerConfig = jobSchedulerConfig;
             _syncJobRepository = syncJobRepository;
             _runtimeRetrievalService = runtimeRetrievalService;
             _loggingRepository = loggingRepository;
         }
 
-        public async Task<List<DistributionSyncJob>> ResetJobsAsync(List<DistributionSyncJob> jobs)
+        public async Task<List<DistributionSyncJob>> ResetJobsAsync(List<DistributionSyncJob> jobs, int daysToAddForReset, bool includeFutureJobs)
         {
-            var newStartTime = DateTime.UtcNow.AddDays(_jobSchedulerConfig.DaysToAddForReset);
+            var newStartTime = DateTime.UtcNow.AddDays(daysToAddForReset);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Updating {jobs.Count} jobs to have StartDate of {newStartTime}" });
 
-            List<DistributionSyncJob> updatedJobs = ResetJobStartTimes(jobs, newStartTime, _jobSchedulerConfig.IncludeFutureJobs);
+            List<DistributionSyncJob> updatedJobs = ResetJobStartTimes(jobs, newStartTime, includeFutureJobs);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Updated {jobs.Count} jobs to have StartDate of {newStartTime}" });
 
             return updatedJobs;
         }
 
-        public async Task<List<DistributionSyncJob>> DistributeJobsAsync(List<DistributionSyncJob> jobs)
+        public async Task<List<DistributionSyncJob>> DistributeJobsAsync(List<DistributionSyncJob> jobs, int startTimeDelayMinutes, int delayBetweenSyncsSeconds)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Distributing {jobs.Count} jobs" });
 
-            List<DistributionSyncJob> updatedJobs = await DistributeJobStartTimesAsync(jobs);
+            List<DistributionSyncJob> updatedJobs = await DistributeJobStartTimesAsync(jobs, startTimeDelayMinutes, delayBetweenSyncsSeconds);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Distributed {jobs.Count} jobs" });
 
             return updatedJobs;
         }
 
-        public async Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken)
+        public async Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(
+            AsyncPageable<SyncJob> pageableQueryResult,
+            string continuationToken,
+            bool includeFutureJobs)
         {
             if (pageableQueryResult == null)
             {
-                var message = "Getting enabled sync jobs" + (_jobSchedulerConfig.IncludeFutureJobs ? " including those with future StartDate values" : "");
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = message });
-
-                pageableQueryResult = _syncJobRepository.GetPageableQueryResultAsync(SyncStatus.All, _jobSchedulerConfig.IncludeFutureJobs);
+                pageableQueryResult = _syncJobRepository.GetPageableQueryResult(SyncStatus.All, includeFutureJobs);
             }
 
             var queryResultSegment = await _syncJobRepository.GetSyncJobsSegmentAsync(pageableQueryResult, continuationToken, false);
@@ -94,7 +87,10 @@ namespace Services
             return updatedSyncJobs;
         }
 
-        public async Task<List<DistributionSyncJob>> DistributeJobStartTimesAsync(List<DistributionSyncJob> syncJobsToDistribute)
+        public async Task<List<DistributionSyncJob>> DistributeJobStartTimesAsync(
+            List<DistributionSyncJob> syncJobsToDistribute,
+            int startTimeDelayMinutes,
+            int bufferBetweenSyncsSeconds)
         {
             // Get all runtimes for destination groups
             List<Guid> groupIds = syncJobsToDistribute.Select(job => job.TargetOfficeGroupId).ToList();
@@ -120,7 +116,7 @@ namespace Services
             {
                 var jobsForPeriod = periodToJobs[period];
 
-                List<DistributionSyncJob> updatedJobsForPeriod = await DistributeJobStartTimesForPeriod(jobsForPeriod, period, runtimeMap);
+                List<DistributionSyncJob> updatedJobsForPeriod = await DistributeJobStartTimesForPeriod(jobsForPeriod, period, startTimeDelayMinutes, bufferBetweenSyncsSeconds, runtimeMap);
                 updatedJobs.AddRange(updatedJobsForPeriod);
             }
 
@@ -130,6 +126,8 @@ namespace Services
         private async Task<List<DistributionSyncJob>> DistributeJobStartTimesForPeriod(
             List<DistributionSyncJob> jobsToDistribute,
             int periodInHours,
+            int startTimeDelayMinutes,
+            int bufferBetweenSyncsSeconds,
             Dictionary<Guid, double> runtimeMap)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Calculating distribution for jobs with period {periodInHours}" });
@@ -147,7 +145,7 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Calculated {concurrencyNumber} thread count for jobs with period {periodInHours}" });
 
             List<DateTime> jobThreads = new List<DateTime>(concurrencyNumber);
-            DateTime startTime = DateTime.UtcNow.AddMinutes(START_TIME_DELAY_MINUTES);
+            DateTime startTime = DateTime.UtcNow.AddMinutes(startTimeDelayMinutes);
             for(int index = 0; index < concurrencyNumber; index++)
             {
                 jobThreads.Add(startTime);
@@ -163,7 +161,7 @@ namespace Services
 
                 updatedJob.StartDate = earliestTime;
                 var groupRuntime = runtimeMap.ContainsKey(job.TargetOfficeGroupId) ? runtimeMap[job.TargetOfficeGroupId] : runtimeMap[Guid.Empty];
-                DateTime updatedTime = earliestTime.AddSeconds(groupRuntime + BUFFER_SECONDS);
+                DateTime updatedTime = earliestTime.AddSeconds(groupRuntime + bufferBetweenSyncsSeconds);
                 int index = jobThreads.IndexOf(earliestTime);
                 jobThreads[index] = updatedTime;
 

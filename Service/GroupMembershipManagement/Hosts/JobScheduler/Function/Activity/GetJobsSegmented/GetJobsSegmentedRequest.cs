@@ -8,7 +8,8 @@ namespace Hosts.JobScheduler
 {
     public class GetJobsSegmentedRequest
     {
-        public AsyncPageable<SyncJob> PageableQueryResult { get; set; }
+        public AsyncPageable<SyncJob> PageableQueryResult;
         public string ContinuationToken;
+        public bool IncludeFutureJobs;
     }
 }

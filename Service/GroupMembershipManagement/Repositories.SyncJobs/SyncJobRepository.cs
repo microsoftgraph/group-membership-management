@@ -33,7 +33,7 @@ namespace Repositories.SyncJobsRepository
             return null;
         }
 
-        public AsyncPageable<SyncJob> GetPageableQueryResultAsync(
+        public AsyncPageable<SyncJob> GetPageableQueryResult(
             SyncStatus status = SyncStatus.All,
             bool includeFutureJobs = false)
         {

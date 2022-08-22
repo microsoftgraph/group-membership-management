@@ -50,7 +50,6 @@ namespace Hosts.JobScheduler
             builder.Services.AddScoped<IJobSchedulingService>(services =>
             {
                 return new JobSchedulingService(
-                        services.GetService<IJobSchedulerConfig>(),
                         services.GetService<ISyncJobRepository>(),
                         services.GetService<IRuntimeRetrievalService>(),
                         services.GetService<ILoggingRepository>()

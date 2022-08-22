@@ -35,6 +35,25 @@ namespace Hosts.JobScheduler
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
+            var orchestratorRequest = context.GetInput<OrchestratorRequest>();
+            if(orchestratorRequest != null)
+            {
+                _jobSchedulerConfig.StartTimeDelayMinutes = orchestratorRequest.StartTimeDelayMinutes;
+            }
+
+            if(!_jobSchedulerConfig.ResetJobs && !_jobSchedulerConfig.DistributeJobs)
+            {
+
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        RunId = runId,
+                        Message = $"{nameof(OrchestratorFunction)} function completed immediately at: {context.CurrentUtcDateTime} due to Reset and Distribute set to false"
+                    });
+
+                return;
+            }
+
             var jobsToUpdate = await context.CallSubOrchestratorAsync<List<DistributionSyncJob>>(nameof(GetJobsSubOrchestratorFunction), null);
 
             List<DistributionSyncJob> jobsWithUpdates = null;
@@ -44,7 +63,9 @@ namespace Hosts.JobScheduler
                 jobsWithUpdates = await context.CallActivityAsync<List<DistributionSyncJob>>(nameof(ResetJobsFunction),
                     new ResetJobsRequest
                     {
-                        JobsToReset = jobsToUpdate
+                        JobsToReset = jobsToUpdate,
+                        DaysToAddForReset = _jobSchedulerConfig.DaysToAddForReset,
+                        IncludeFutureJobs = _jobSchedulerConfig.IncludeFutureJobs
                     });
 
                 await context.CallActivityAsync(nameof(LoggerFunction),
@@ -60,7 +81,9 @@ namespace Hosts.JobScheduler
                 jobsWithUpdates = await context.CallActivityAsync<List<DistributionSyncJob>>(nameof(DistributeJobsFunction),
                     new DistributeJobsRequest
                     {
-                        JobsToDistribute = jobsToUpdate
+                        JobsToDistribute = jobsToUpdate,
+                        StartTimeDelayMinutes = _jobSchedulerConfig.StartTimeDelayMinutes,
+                        DelayBetweenSyncsSeconds = _jobSchedulerConfig.DelayBetweenSyncsSeconds
                     });
 
                 await context.CallActivityAsync(nameof(LoggerFunction),
@@ -71,9 +94,9 @@ namespace Hosts.JobScheduler
                     });
             }
 
-            if(jobsWithUpdates != null)
+            if (jobsWithUpdates != null && jobsWithUpdates.Count > 0)
             {
-                await context.CallSubOrchestratorAsync(nameof(UpdateJobsSubOrchestratorFunction), 
+                await context.CallSubOrchestratorAsync(nameof(UpdateJobsSubOrchestratorFunction),
                     new UpdateJobsSubOrchestratorRequest
                     {
                         JobsToUpdate = jobsWithUpdates

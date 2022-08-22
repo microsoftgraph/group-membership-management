@@ -12,46 +12,57 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Newtonsoft.Json;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
+using Services.Contracts;
 
 namespace Hosts.JobScheduler
 {
-    public class HttpStarterFunction
+    public class PipelineInvocationStarterFunction
     {
+        private IJobSchedulerConfig _jobSchedulerConfig;
         private readonly ILoggingRepository _loggingRepository = null;
 
-        public HttpStarterFunction(ILoggingRepository loggingRepository)
+        public PipelineInvocationStarterFunction(IJobSchedulerConfig jobSchedulerConfig, ILoggingRepository loggingRepository)
         {
+            _jobSchedulerConfig = jobSchedulerConfig;
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [FunctionName(nameof(HttpStarterFunction))]
+        [FunctionName(nameof(PipelineInvocationStarterFunction))]
         public async Task<HttpResponseMessage> HttpStart(
             [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestMessage req,
             [DurableClient] IDurableOrchestrationClient starter)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(HttpStarterFunction)} function started" }, VerbosityLevel.DEBUG);
-   
-            var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), null);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PipelineInvocationStarterFunction)} function started" }, VerbosityLevel.DEBUG);
+
+            var requestBody = JsonConvert.DeserializeObject<Dictionary<string, string>>(await req.Content.ReadAsStringAsync());
+            var delayForDeploymentInMinutes = int.Parse(requestBody.GetValueOrDefault("DelayForDeploymentInMinutes"));
+
+            var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction),
+                new OrchestratorRequest
+                {
+                    StartTimeDelayMinutes = delayForDeploymentInMinutes
+                });
             var response = starter.CreateCheckStatusResponse(req, instanceId);
 
             var responseDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(await response.Content.ReadAsStringAsync());
             var statusQueryGetUri = responseDict.GetValueOrDefault("statusQueryGetUri");
-           
+
             await starter.StartNewAsync(nameof(StatusCallbackOrchestratorFunction), GetCallbackRequest(req, statusQueryGetUri));
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(HttpStarterFunction)} function completed" }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PipelineInvocationStarterFunction)} function completed" }, VerbosityLevel.DEBUG);
 
             return response;
         }
 
         private StatusCallbackOrchestratorRequest GetCallbackRequest(HttpRequestMessage req, string statusUrl) {
-            var url = req.Headers.GetValues("PlanUrl").First();
-            var projectId = req.Headers.GetValues("ProjectId").First();
-            var hubName = req.Headers.GetValues("HubName").First();
-            var planId = req.Headers.GetValues("PlanId").First();
-            var jobId = req.Headers.GetValues("JobId").First();
-            var taskInstanceId = req.Headers.GetValues("TaskinstanceId").First();
-            var authToken = req.Headers.GetValues("AuthToken").First();
+            var url = req.Headers.GetValues("PlanUrl").FirstOrDefault("NULL");
+            var projectId = req.Headers.GetValues("ProjectId").FirstOrDefault("NULL");
+            var hubName = req.Headers.GetValues("HubName").FirstOrDefault("NULL");
+            var planId = req.Headers.GetValues("PlanId").FirstOrDefault("NULL");
+            var jobId = req.Headers.GetValues("JobId").FirstOrDefault("NULL");
+            var taskInstanceId = req.Headers.GetValues("TaskinstanceId").FirstOrDefault("NULL");
+            var authToken = req.Headers.GetValues("AuthToken").FirstOrDefault("NULL");
 
             var successBody = JsonConvert.SerializeObject(new
             {

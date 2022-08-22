@@ -1,13 +1,13 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure;
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Azure;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -15,10 +15,12 @@ namespace Hosts.JobScheduler
 {
     public class GetJobsSubOrchestratorFunction
     {
+        private readonly ISyncJobRepository _syncJobRepository;
         private readonly IJobSchedulerConfig _jobSchedulerConfig;
 
-        public GetJobsSubOrchestratorFunction(IJobSchedulerConfig jobSchedulerConfig)
+        public GetJobsSubOrchestratorFunction(ISyncJobRepository syncJobRepository, IJobSchedulerConfig jobSchedulerConfig)
         {
+            _syncJobRepository = syncJobRepository;
             _jobSchedulerConfig = jobSchedulerConfig;
         }
 
@@ -40,15 +42,16 @@ namespace Hosts.JobScheduler
 
             AsyncPageable<SyncJob> pageableQueryResult = null;
             string continuationToken = null;
-            var jobs = new List<DistributionSyncJob>();
 
+            var jobs = new List<DistributionSyncJob>();
             do
             {
                 var segmentResponse = await context.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction),
                     new GetJobsSegmentedRequest
                     {
                         PageableQueryResult = pageableQueryResult,
-                        ContinuationToken = continuationToken
+                        ContinuationToken = continuationToken,
+                        IncludeFutureJobs = _jobSchedulerConfig.IncludeFutureJobs
                     });
 
                 jobs.AddRange(segmentResponse.JobsSegment);

@@ -7,6 +7,7 @@ using System;
 using System.Threading.Tasks;
 using Repositories.Contracts;
 using System.Threading;
+using Repositories.Contracts.InjectConfig;
 
 namespace Hosts.JobScheduler
 {
@@ -14,8 +15,9 @@ namespace Hosts.JobScheduler
     {
         private int INITIAL_DELAY_SECONDS = 20;
         private int WAIT_TIME_BETWEEN_STATUSCHECK_MINUTES = 1;
-        public StatusCallbackOrchestratorFunction()
-        {
+
+        public StatusCallbackOrchestratorFunction() 
+        { 
         }
 
         [FunctionName(nameof(StatusCallbackOrchestratorFunction))]

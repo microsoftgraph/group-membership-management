@@ -10,7 +10,7 @@ namespace Repositories.Contracts
 {
     public interface ISyncJobRepository
     {
-        AsyncPageable<SyncJob> GetPageableQueryResultAsync(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false);
+        AsyncPageable<SyncJob> GetPageableQueryResult(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false);
         Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, bool applyFilters = true);
         Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey);
         IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool applyFilters = true);
