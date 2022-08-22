@@ -20,7 +20,6 @@ namespace Services.Tests
         public int BUFFER_SECONDS = 10;
 
         private JobSchedulingService _jobSchedulingService = null;
-        private JobSchedulerConfig _jobSchedulerConfig = null;
         private MockSyncJobRepository _mockSyncJobRepository = null;
         private DefaultRuntimeRetrievalService _defaultRuntimeRetrievalService = null;
         private MockLoggingRepository _mockLoggingRepository = null;
@@ -32,9 +31,7 @@ namespace Services.Tests
             _defaultRuntimeRetrievalService = new DefaultRuntimeRetrievalService(DEFAULT_RUNTIME_SECONDS);
             _mockLoggingRepository = new MockLoggingRepository();
 
-            _jobSchedulerConfig = new JobSchedulerConfig(true, 0, true, false, START_TIME_DELAY_MINUTES, BUFFER_SECONDS, DEFAULT_RUNTIME_SECONDS); ;
             _jobSchedulingService = new JobSchedulingService(
-                _jobSchedulerConfig,
                 _mockSyncJobRepository,
                 _defaultRuntimeRetrievalService,
                 _mockLoggingRepository
@@ -91,7 +88,7 @@ namespace Services.Tests
         {
             List<DistributionSyncJob> jobs = new List<DistributionSyncJob>();
 
-            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs);
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
 
             Assert.AreEqual(updatedJobs.Count, 0);
         }
@@ -101,7 +98,7 @@ namespace Services.Tests
         {
             DateTime dateTimeNow = DateTime.UtcNow;
             List<DistributionSyncJob> jobs = CreateSampleSyncJobs(1, 1);
-            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs);
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
 
             Assert.AreEqual(updatedJobs.Count, 1);
             Assert.IsTrue(updatedJobs[0].StartDate > dateTimeNow);
@@ -113,7 +110,7 @@ namespace Services.Tests
             DateTime dateTimeNow = DateTime.UtcNow;
             List<DistributionSyncJob> jobs = CreateSampleSyncJobs(10, 1, dateTimeNow.Date.AddDays(-20), dateTimeNow.Date);
 
-            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs);
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
 
             jobs.Sort();
             updatedJobs.Sort();
@@ -137,7 +134,6 @@ namespace Services.Tests
 
             JobSchedulerConfig jobSchedulerConfig = new JobSchedulerConfig(true, 0, true, false, START_TIME_DELAY_MINUTES, BUFFER_SECONDS, DEFAULT_RUNTIME_SECONDS); ;
             JobSchedulingService jobSchedulingService = new JobSchedulingService(
-                jobSchedulerConfig,
                 _mockSyncJobRepository,
                 longerDefaultRuntimeService,
                 _mockLoggingRepository
@@ -146,7 +142,7 @@ namespace Services.Tests
             DateTime dateTimeNow = DateTime.UtcNow.Date;
             List<DistributionSyncJob> jobs = CreateSampleSyncJobs(10, 1, dateTimeNow.Date.AddDays(-20), dateTimeNow.Date);
 
-            List<DistributionSyncJob> updatedJobs = await jobSchedulingService.DistributeJobStartTimesAsync(jobs);
+            List<DistributionSyncJob> updatedJobs = await jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
 
             jobs.Sort();
             updatedJobs.Sort();
@@ -181,7 +177,7 @@ namespace Services.Tests
             List<DistributionSyncJob> jobs = CreateSampleSyncJobs(3, 1, dateTimeNow.Date.AddDays(-20), dateTimeNow.Date);
             jobs.AddRange(CreateSampleSyncJobs(3, 24, dateTimeNow.Date.AddDays(-20), dateTimeNow.Date));
 
-            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs);
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
 
             jobs.Sort(new PeriodComparer());
             updatedJobs.Sort(new PeriodComparer());

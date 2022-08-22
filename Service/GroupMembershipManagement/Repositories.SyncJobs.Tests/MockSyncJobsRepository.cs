@@ -60,22 +60,22 @@ namespace Repositories.SyncJobs.Tests
             await Task.CompletedTask;
         }
 
-        public async Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null)
-        {
-            await Task.CompletedTask;
-        }
-
-        public AsyncPageable<SyncJob> GetPageableQueryResult(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false)
-        {
-            throw new NotImplementedException();
-        }
-
         public Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, bool applyFilters = true)
         {
             throw new NotImplementedException();
         }
 
+        public Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> jobs)
+        {
+            throw new NotImplementedException();
+        }
+
+        public AsyncPageable<SyncJob> GetPageableQueryResult(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false)
         {
             throw new NotImplementedException();
         }

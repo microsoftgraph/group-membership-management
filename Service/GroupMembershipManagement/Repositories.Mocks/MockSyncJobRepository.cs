@@ -46,7 +46,7 @@ namespace Repositories.Mocks
             return Task.CompletedTask;
         }
 
-        public AsyncPageable<SyncJob> GetPageableQueryResultAsync(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false)
+        public AsyncPageable<SyncJob> GetPageableQueryResult(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false)
         {
             throw new NotImplementedException();
         }

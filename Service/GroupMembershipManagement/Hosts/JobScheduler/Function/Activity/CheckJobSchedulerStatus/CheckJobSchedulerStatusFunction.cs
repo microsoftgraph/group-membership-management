@@ -36,9 +36,9 @@ namespace Hosts.JobScheduler
                 Message = $"Response content for status check is: {await response.Content.ReadAsStringAsync()}" 
             }, VerbosityLevel.INFO);
             
-            var responseDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(await response.Content.ReadAsStringAsync());
+            var responseDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(await response.Content.ReadAsStringAsync());
 
-            var status = responseDict.GetValueOrDefault("runtimeStatus");
+            var status = responseDict.GetValueOrDefault("runtimeStatus").ToString();
 
                 
             completed = status == OrchestrationRuntimeStatus.Completed.ToString();
