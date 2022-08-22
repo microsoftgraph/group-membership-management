@@ -204,11 +204,11 @@ This is a default-on feature for all the groups, but you may request to update t
 
 Actions needed - Please 'Reply All' indicating what GMM should do about the threshold by highlighting one of the following options.
 
-The membership change looks right.  Please allow the threshold to be exceeded this time only.
-The membership change looks right.  Please allow the threshold to be exceeded, and update the default threshold to X%
-The membership change looks right.  I don’t need the threshold check in the future so please disable this feature. (Not recommended)
-The projected increase or decrease does not look right to me. Please do not allow the sync to exceed the threshold. I will contact GMMSupport to follow up.
- 
+1. The membership change looks right.  Please allow the threshold to be exceeded this time only.
+2. The membership change looks right.  Please allow the threshold to be exceeded, and update the default threshold to X%.
+3. The membership change looks right.  I don’t need the threshold check in the future so please disable this feature. (Not recommended)
+4. The projected increase or decrease does not look right to me. Please do not allow the sync to exceed the threshold. I will contact GMMSupport to follow up.
+
 The group sync will be PAUSED until your response is received.
  
 Regards,
