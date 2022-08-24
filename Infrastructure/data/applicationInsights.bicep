@@ -15,6 +15,9 @@ param ingestionMode string = 'LogAnalytics'
 
 param workspaceId string
 
+@description('Key vault name.')
+param keyVaultName string
+
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
   kind: kind
   name: name
@@ -26,5 +29,15 @@ resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
+module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
+  name: 'secureSecretsTemplate'
+  params: {
+    keyVaultName: keyVaultName
+    keyVaultSecret: {
+        name: 'appInsightsInstrumentationKey'
+        value: reference(applicationInsights.id, '2015-05-01').InstrumentationKey
+      }
+  }
+}
+
 output appId string = reference(applicationInsights.id, '2015-05-01').AppId
-output instrumentationKey string = reference(applicationInsights.id, '2015-05-01').InstrumentationKey
