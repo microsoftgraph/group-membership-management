@@ -55,11 +55,19 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         name: 'nonProdServiceStagingUrl'
         value: 'https://${functionAppSlot.properties.defaultHostName}/api/StarterFunction'
       }
-      {
+    ]
+  }
+}
+
+module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
+  name: 'secureSecretsTemplate-NonProdServiceStaging'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultSecret: {
         name: 'nonProdServiceStagingKey'
         value: listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default
       }
-    ]
   }
 }
 

@@ -53,11 +53,19 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         name: 'nonProdServiceUrl'
         value: 'https://${functionApp.properties.defaultHostName}'
       }
-      {
+    ]
+  }
+}
+
+module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
+  name: 'secureSecretsTemplate-NonProdService'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultSecret: {
         name: 'nonProdServiceKey'
         value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
       }
-    ]
   }
 }
 
@@ -68,12 +76,12 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
     appSettingNames: [
       'AzureFunctionsJobHost__extensions__durableTask__hubName'
       'AzureWebJobs.StarterFunction.Disabled'
-      'AzureWebJobs.OrchestratorFunction.Disabled'  
-      'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled'     
+      'AzureWebJobs.OrchestratorFunction.Disabled'
+      'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled'
       'AzureWebJobs.GroupCreatorAndRetrieverFunction.Disabled'
       'AzureWebJobs.GroupUpdaterFunction.Disabled'
       'AzureWebJobs.LoggerFunction.Disabled'
-      'AzureWebJobs.TenantUserReaderFunction.Disabled'          
+      'AzureWebJobs.TenantUserReaderFunction.Disabled'
     ]
   }
 }
