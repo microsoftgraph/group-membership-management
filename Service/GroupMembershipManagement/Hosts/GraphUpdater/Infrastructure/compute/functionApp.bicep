@@ -55,14 +55,22 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: 'https://${functionApp.properties.defaultHostName}/api/StarterFunction'
       }
       {
+        name: 'graphUpdaterFunctionName'
+        value: '${name}-GraphUpdater'
+      }
+    ]
+  }
+}
+
+module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
+  name: 'secureSecretsTemplate-GraphUpdater'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultSecret: {
         name: 'graphUpdaterFunctionKey'
         value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
       }
-      {
-        name: 'graphUpdaterFunctionName'
-        value: '${name}-GraphUpdater'
-      }      
-    ]
   }
 }
 
