@@ -82,29 +82,6 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   }
 }
 
-resource staticWebApp 'Microsoft.Web/staticSites@2021-03-01' = {
-  name: '${solutionAbbreviation}-ui'
-  location: location
-  sku: {
-    name: 'Free'
-    tier: 'Free'
-  }
-  properties: {
-    allowConfigFileUpdates: true
-    branch: branch
-    buildProperties: {
-      appBuildCommand: 'dotnet run'
-      appLocation: 'UI/WebApp'
-      outputLocation: 'UI/WebApp/wwwroot'
-      skipGithubActionWorkflowGeneration: true
-    }
-    enterpriseGradeCdnStatus: 'Disabled'
-    provider: 'DevOps'
-    repositoryUrl: 'https://microsoftit.visualstudio.com/OneITVSO/_git/STW-Sol-GrpMM-public'
-    stagingEnvironmentPolicy: 'Disabled'
-  }
-}
-
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountConnectionString')
@@ -112,6 +89,8 @@ var jobsTableName = resourceId(subscription().subscriptionId, dataKeyVaultResour
 var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
 var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientSecret')
 var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppTenantId')
+var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
+var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 
 var appSettings = [
   {
@@ -128,15 +107,15 @@ var appSettings = [
   }
   {
     name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-    value: reference(resourceId(appInsightsResourceGroup, 'microsoft.insights/components/', appInsightsName), '2015-05-01').InstrumentationKey
+    value: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   }
   {
     name: 'AzureWebJobsStorage'
-    value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${listKeys(resourceId(storageAccountResourceGroup, 'Microsoft.Storage/storageAccounts', storageAccountName), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value}'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   }
   {
     name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-    value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${listKeys(resourceId(storageAccountResourceGroup, 'Microsoft.Storage/storageAccounts', storageAccountName), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value}'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   }
   {
     name: 'FUNCTIONS_WORKER_RUNTIME'
@@ -254,6 +233,29 @@ module functionAppSlotTemplate_GroupTableManager 'functionAppSlot.bicep' = {
   ]
 }
 
+resource staticWebApp 'Microsoft.Web/staticSites@2021-03-01' = {
+  name: '${solutionAbbreviation}-ui'
+  location: location
+  sku: {
+    name: 'Free'
+    tier: 'Free'
+  }
+  properties: {
+    allowConfigFileUpdates: true
+    branch: branch
+    buildProperties: {
+      appBuildCommand: 'dotnet run'
+      appLocation: 'UI/WebApp'
+      outputLocation: 'UI/WebApp/wwwroot'
+      skipGithubActionWorkflowGeneration: true
+    }
+    enterpriseGradeCdnStatus: 'Disabled'
+    provider: 'DevOps'
+    repositoryUrl: 'https://microsoftit.visualstudio.com/OneITVSO/_git/STW-Sol-GrpMM-public'
+    stagingEnvironmentPolicy: 'Disabled'
+  }
+}
+
 module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   name: 'dataKeyVaultPoliciesTemplate'
   scope: resourceGroup(dataKeyVaultResourceGroup)
@@ -285,4 +287,5 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   ]
 }
 
+// Check on if this API Key is acceptable for deployment purposes of front end
 output deployment_token string = listSecrets(staticWebApp.id, staticWebApp.apiVersion).properties.apiKey
