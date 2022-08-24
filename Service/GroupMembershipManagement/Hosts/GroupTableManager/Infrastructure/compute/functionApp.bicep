@@ -45,7 +45,7 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
 }
 
 module secretsTemplate 'keyVaultSecrets.bicep' = {
-  name: 'secretsTemplate'
+  name: 'secretsTemplate-GroupTableManager'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     keyVaultName: dataKeyVaultName
@@ -55,14 +55,22 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: 'https://${functionApp.properties.defaultHostName}/api/StarterFunction'
       }
       {
+        name: 'groupTableManagerName'
+        value: '${name}-GroupTableManager'
+      }
+    ]
+  }
+}
+
+module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
+  name: 'secureSecretsTemplate-GroupTableManager'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultSecret: {
         name: 'groupTableManagerKey'
         value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
       }
-      {
-        name: 'groupTableManagerName'
-        value: '${name}-GroupTableManager'
-      }      
-    ]
   }
 }
 
