@@ -56,14 +56,22 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: 'https://${functionAppSlot.properties.defaultHostName}'
       }
       {
-        name: 'azureUserReaderStagingKey'
-        value: listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default
-      }
-      {
         name: 'azureUserReaderStagingFunctionName'
         value: '${name}-AzureUserReader/staging'
       }
     ]
+  }
+}
+
+module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
+  name: 'secureSecretsTemplate-AzureUserReaderStaging'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultSecret: {
+      name: 'azureUserReaderStagingKey'
+      value: listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default
+    }
   }
 }
 

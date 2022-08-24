@@ -55,14 +55,22 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: 'https://${functionApp.properties.defaultHostName}'
       }
       {
-        name: 'azureUserReaderKey'
-        value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
-      }
-      {
         name: 'azureUserReaderFunctionName'
         value: '${name}-AzureUserReader'
       }
     ]
+  }
+}
+
+module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
+  name: 'secureSecretsTemplate-AzureUserReader'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultSecret: {
+        name: 'azureUserReaderKey'
+        value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
+      }
   }
 }
 
