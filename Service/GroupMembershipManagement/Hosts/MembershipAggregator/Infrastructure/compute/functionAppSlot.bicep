@@ -59,14 +59,22 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: 'https://${functionAppSlot.properties.defaultHostName}/api/StarterFunction'
       }
       {
-        name: 'membershipAggregatorStagingFunctionKey'
-        value: listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default
-      }
-      {
         name: 'membershipAggregatorStagingFunctionName'
         value: '${name}-MembershipAggregator/staging'
       }
     ]
+  }
+}
+
+module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
+  name: 'secureSecretsTemplate-MembershipAggregatorStaging'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultSecret: {
+        name: 'membershipAggregatorStagingFunctionKey'
+        value: listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default
+      }
   }
 }
 
