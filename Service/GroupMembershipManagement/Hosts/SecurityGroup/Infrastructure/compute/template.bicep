@@ -101,290 +101,83 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   }
 }
 
-var appSettings = [
-  {
-    name: 'AzureFunctionsJobHost:extensions:durableTask:extendedSessionsEnabled'
-    value: toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
-  }
-  {
-    name: 'WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG'
-    value: 1
-  }
-  {
-    name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
-    value: 1
-  }
-  {
-    name: 'SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT'
-    value: 0
-  }
-  {
-    name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'AzureWebJobsStorage'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'FUNCTIONS_WORKER_RUNTIME'
-    value: 'dotnet'
-  }
-  {
-    name: 'FUNCTIONS_EXTENSION_VERSION'
-    value: '~4'
-  }
-  {
-    name: 'serviceBusSyncJobTopic'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobTopic, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'serviceBusTopicConnection'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusConnectionString, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'graphCredentials:ClientSecret'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'graphCredentials:ClientId'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'graphCredentials:TenantId'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'graphCredentials:KeyVaultName'
-    value: prereqsKeyVaultName
-  }
-  {
-    name: 'graphCredentials:KeyVaultTenantId'
-    value: tenantId
-  }
-  {
-    name: 'logAnalyticsCustomerId'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'logAnalyticsPrimarySharedKey'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'jobsStorageAccountConnectionString'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'jobsTableName'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'senderAddress'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(senderUsername, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'senderPassword'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(senderPassword, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'syncDisabledCCEmailAddresses'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(syncDisabledCCEmailAddresses, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'supportEmailAddresses'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(supportEmailAddresses, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'membershipStorageAccountName'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(membershipStorageAccountName, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'membershipContainerName'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(membershipContainerName, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'appConfigurationEndpoint'
-    value: appConfigurationEndpoint
-  }
-]
+var appSettings = {
+  'AzureFunctionsJobHost:extensions:durableTask:extendedSessionsEnabled': toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
+  WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
+  WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
+  SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
+  APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
+  FUNCTIONS_EXTENSION_VERSION: '~4'
+  serviceBusSyncJobTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobTopic, '2019-09-01').secretUriWithVersion})'
+  serviceBusTopicConnection: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusConnectionString, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:KeyVaultName': prereqsKeyVaultName
+  'graphCredentials:KeyVaultTenantId': tenantId
+  logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
+  logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
+  jobsStorageAccountConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  jobsTableName: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
+  senderAddress: '@Microsoft.KeyVault(SecretUri=${reference(senderUsername, '2019-09-01').secretUriWithVersion})'
+  senderPassword: '@Microsoft.KeyVault(SecretUri=${reference(senderPassword, '2019-09-01').secretUriWithVersion})'
+  syncDisabledCCEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(syncDisabledCCEmailAddresses, '2019-09-01').secretUriWithVersion})'
+  supportEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(supportEmailAddresses, '2019-09-01').secretUriWithVersion})'
+  membershipStorageAccountName: '@Microsoft.KeyVault(SecretUri=${reference(membershipStorageAccountName, '2019-09-01').secretUriWithVersion})'
+  membershipContainerName: '@Microsoft.KeyVault(SecretUri=${reference(membershipContainerName, '2019-09-01').secretUriWithVersion})'
+  appConfigurationEndpoint: appConfigurationEndpoint
+}
 
-var stagingSettings = [
-  {
-    name: 'WEBSITE_CONTENTSHARE'
-    value: toLower('functionApp-SecurityGroup-staging')
-  }
-  {
-    name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
-    value: '${solutionAbbreviation}compute${environmentAbbreviation}SecurityGroupStaging'
-  }
-  {
-    name: 'membershipAggregatorUrl'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorStagingUrl, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'membershipAggregatorFunctionKey'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorStagingFunctionKey, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'AzureWebJobs.StarterFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.OrchestratorFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.SubOrchestratorFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.DeltaUsersReaderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.DeltaUsersSenderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.EmailSenderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.FileDownloaderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.GroupsReaderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.GroupValidatorFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.MembersReaderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.SourceGroupsReaderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.SubsequentDeltaUsersReaderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.SubsequentMembersReaderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.SubsequentUsersReaderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.UsersReaderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.UsersSenderFunction.Disabled'
-    value: 1
-  }
-]
+var stagingSettings = {
+  WEBSITE_CONTENTSHARE: toLower('functionApp-SecurityGroup-staging')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}SecurityGroupStaging'
+  membershipAggregatorUrl: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorStagingUrl, '2019-09-01').secretUriWithVersion})'
+  membershipAggregatorFunctionKey: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorStagingFunctionKey, '2019-09-01').secretUriWithVersion})'
+  'AzureWebJobs.StarterFunction.Disabled': 1
+  'AzureWebJobs.OrchestratorFunction.Disabled': 1
+  'AzureWebJobs.SubOrchestratorFunction.Disabled': 1
+  'AzureWebJobs.DeltaUsersReaderFunction.Disabled': 1
+  'AzureWebJobs.DeltaUsersSenderFunction.Disabled': 1
+  'AzureWebJobs.EmailSenderFunction.Disabled': 1
+  'AzureWebJobs.FileDownloaderFunction.Disabled': 1
+  'AzureWebJobs.GroupsReaderFunction.Disabled': 1
+  'AzureWebJobs.GroupValidatorFunction.Disabled': 1
+  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 1
+  'AzureWebJobs.MembersReaderFunction.Disabled': 1
+  'AzureWebJobs.SourceGroupsReaderFunction.Disabled': 1
+  'AzureWebJobs.SubsequentDeltaUsersReaderFunction.Disabled': 1
+  'AzureWebJobs.SubsequentMembersReaderFunction.Disabled': 1
+  'AzureWebJobs.SubsequentUsersReaderFunction.Disabled': 1
+  'AzureWebJobs.UsersReaderFunction.Disabled': 1
+  'AzureWebJobs.UsersSenderFunction.Disabled': 1
+}
 
-var productionSettings = [
-  {
-    name: 'WEBSITE_CONTENTSHARE'
-    value: toLower('functionApp-SecurityGroup')
-  }
-  {
-    name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
-    value: '${solutionAbbreviation}compute${environmentAbbreviation}SecurityGroup'
-  }
-  {
-    name: 'membershipAggregatorUrl'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorUrl, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'membershipAggregatorFunctionKey'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorFunctionKey, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'AzureWebJobs.StarterFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.OrchestratorFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.SubOrchestratorFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.DeltaUsersReaderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.DeltaUsersSenderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.EmailSenderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.FileDownloaderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.GroupsReaderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.GroupValidatorFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.MembersReaderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.SourceGroupsReaderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.SubsequentDeltaUsersReaderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.SubsequentMembersReaderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.SubsequentUsersReaderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.UsersReaderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.UsersSenderFunction.Disabled'
-    value: 0
-  }
-]
+var productionSettings = {
+  WEBSITE_CONTENTSHARE: toLower('functionApp-SecurityGroup')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}SecurityGroup'
+  membershipAggregatorUrl: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorUrl, '2019-09-01').secretUriWithVersion})'
+  membershipAggregatorFunctionKey: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorFunctionKey, '2019-09-01').secretUriWithVersion})'
+  'AzureWebJobs.StarterFunction.Disabled': 0
+  'AzureWebJobs.OrchestratorFunction.Disabled': 0
+  'AzureWebJobs.SubOrchestratorFunction.Disabled': 0
+  'AzureWebJobs.DeltaUsersReaderFunction.Disabled': 0
+  'AzureWebJobs.DeltaUsersSenderFunction.Disabled': 0
+  'AzureWebJobs.EmailSenderFunction.Disabled': 0
+  'AzureWebJobs.FileDownloaderFunction.Disabled': 0
+  'AzureWebJobs.GroupsReaderFunction.Disabled': 0
+  'AzureWebJobs.GroupValidatorFunction.Disabled': 0
+  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 0
+  'AzureWebJobs.MembersReaderFunction.Disabled': 0
+  'AzureWebJobs.SourceGroupsReaderFunction.Disabled': 0
+  'AzureWebJobs.SubsequentDeltaUsersReaderFunction.Disabled': 0
+  'AzureWebJobs.SubsequentMembersReaderFunction.Disabled': 0
+  'AzureWebJobs.SubsequentUsersReaderFunction.Disabled': 0
+  'AzureWebJobs.UsersReaderFunction.Disabled': 0
+  'AzureWebJobs.UsersSenderFunction.Disabled': 0
+}
 
 module functionAppTemplate_SecurityGroup 'functionApp.bicep' = {
   name: 'functionAppTemplate-SecurityGroup'

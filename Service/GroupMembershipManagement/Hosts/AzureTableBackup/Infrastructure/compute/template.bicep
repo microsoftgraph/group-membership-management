@@ -79,126 +79,42 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   }
 }
 
-var appSettings = [
-  {
-    name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
-    value: 1
-  }
-  {
-    name: 'SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT'
-    value: 0
-  }
-  {
-    name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'AzureWebJobsStorage'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'FUNCTIONS_WORKER_RUNTIME'
-    value: 'dotnet'
-  }
-  {
-    name: 'FUNCTIONS_EXTENSION_VERSION'
-    value: '~4'
-  }
-  {
-    name: 'backupTriggerSchedule'
-    value: '0 0 0 * * *'
-  }
-  {
-    name: 'logAnalyticsCustomerId'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'logAnalyticsPrimarySharedKey'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'tablesToBackup'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(tablesToBackup, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'appConfigurationEndpoint'
-    value: appConfigurationEndpoint
-  }
-]
+var appSettings = {
+  WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
+  SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
+  APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
+  FUNCTIONS_EXTENSION_VERSION: '~4'
+  backupTriggerSchedule: '0 0 0 * * *'
+  logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
+  logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
+  tablesToBackup: '@Microsoft.KeyVault(SecretUri=${reference(tablesToBackup, '2019-09-01').secretUriWithVersion})'
+  appConfigurationEndpoint: appConfigurationEndpoint
+}
 
-var stagingSettings = [
-  {
-    name: 'WEBSITE_CONTENTSHARE'
-    value: toLower('functionApp-AzureTableBackup-staging')
-  }
-  {
-    name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
-    value: '${solutionAbbreviation}compute${environmentAbbreviation}AzureTableBackupStaging'
-  }
-  {
-    name: 'AzureWebJobs.StarterFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.OrchestratorFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.LoggerFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.RetrieveBackupsFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.ReviewAndDeleteFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.TableBackupFunction.Disabled'
-    value: 1
-  }
-]
+var stagingSettings = {
+  WEBSITE_CONTENTSHARE: toLower('functionApp-AzureTableBackup-staging')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureTableBackupStaging'
+  'AzureWebJobs.StarterFunction.Disabled': 1
+  'AzureWebJobs.OrchestratorFunction.Disabled': 1
+  'AzureWebJobs.LoggerFunction.Disabled': 1
+  'AzureWebJobs.RetrieveBackupsFunction.Disabled': 1
+  'AzureWebJobs.ReviewAndDeleteFunction.Disabled': 1
+  'AzureWebJobs.TableBackupFunction.Disabled': 1
+}
 
-var productionSettings = [
-  {
-    name: 'WEBSITE_CONTENTSHARE'
-    value: toLower('functionApp-AzureTableBackup')
-  }
-  {
-    name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
-    value: '${solutionAbbreviation}compute${environmentAbbreviation}AzureTableBackup'
-  }
-  {
-    name: 'AzureWebJobs.StarterFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.OrchestratorFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.LoggerFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.RetrieveBackupsFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.ReviewAndDeleteFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.TableBackupFunction.Disabled'
-    value: 0
-  }
-]
+var productionSettings = {
+  WEBSITE_CONTENTSHARE: toLower('functionApp-AzureTableBackup')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureTableBackup'
+  'AzureWebJobs.StarterFunction.Disabled': 0
+  'AzureWebJobs.OrchestratorFunction.Disabled': 0
+  'AzureWebJobs.LoggerFunction.Disabled': 0
+  'AzureWebJobs.RetrieveBackupsFunction.Disabled': 0
+  'AzureWebJobs.ReviewAndDeleteFunction.Disabled': 0
+  'AzureWebJobs.TableBackupFunction.Disabled': 0
+}
 
 module functionAppTemplate_AzureTableBackup 'functionApp.bicep' = {
   name: 'functionAppTemplate-AzureTableBackup'

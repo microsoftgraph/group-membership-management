@@ -92,114 +92,39 @@ var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVault
 var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 
-var appSettings = [
-  {
-    name: 'WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG'
-    value: 1
-  }
-  {
-    name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
-    value: 1
-  }
-  {
-    name: 'SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT'
-    value: 0
-  }
-  {
-    name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'AzureWebJobsStorage'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'FUNCTIONS_WORKER_RUNTIME'
-    value: 'dotnet'
-  }
-  {
-    name: 'FUNCTIONS_EXTENSION_VERSION'
-    value: '~3'
-  }
-  {
-    name: 'jobsStorageAccountConnectionString'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'jobsTableName'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'graphCredentials:ClientSecret'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'graphCredentials:ClientId'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'graphCredentials:TenantId'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'graphCredentials:KeyVaultName'
-    value: prereqsKeyVaultName
-  }
-  {
-    name: 'graphCredentials:KeyVaultTenantId'
-    value: tenantId
-  }
-  {
-    name: 'logAnalyticsCustomerId'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'logAnalyticsPrimarySharedKey'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'WEBSITE_MAX_DYNAMIC_APPLICATION_SCALE_OUT'
-    value: maximumElasticWorkerCount
-  }
-  {
-    name: 'appConfigurationEndpoint'
-    value: appConfigurationEndpoint
-  }
-]
+var appSettings = {
+  WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
+  WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
+  SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
+  APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
+  FUNCTIONS_EXTENSION_VERSION: '~3'
+  jobsStorageAccountConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  jobsTableName: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:KeyVaultName': prereqsKeyVaultName
+  'graphCredentials:KeyVaultTenantId': tenantId
+  logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
+  logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_MAX_DYNAMIC_APPLICATION_SCALE_OUT: maximumElasticWorkerCount
+  appConfigurationEndpoint: appConfigurationEndpoint
+}
 
-var stagingSettings = [
-  {
-    name: 'WEBSITE_CONTENTSHARE'
-    value: toLower('functionApp-GroupTableManager-staging')
-  }
-  {
-    name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
-    value: '${solutionAbbreviation}compute${environmentAbbreviation}GroupTableManagerStaging'
-  }
-  {
-    name: 'AzureWebJobs.GroupTableManager.Disabled'
-    value: 0
-  }
-]
+var stagingSettings = {
+  WEBSITE_CONTENTSHARE: toLower('functionApp-GroupTableManager-staging')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GroupTableManagerStaging'
+  'AzureWebJobs.GroupTableManager.Disabled': 0
+}
 
-var productionSettings = [
-  {
-    name: 'WEBSITE_CONTENTSHARE'
-    value: toLower('functionApp-GroupTableManager')
-  }
-  {
-    name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
-    value: '${solutionAbbreviation}compute${environmentAbbreviation}GroupTableManager'
-  }
-  {
-    name: 'AzureWebJobs.GroupTableManager.Disabled'
-    value: 1
-  }
-]
+var productionSettings = {
+  WEBSITE_CONTENTSHARE: toLower('functionApp-GroupTableManager')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GroupTableManager'
+  'AzureWebJobs.GroupTableManager.Disabled': 1
+}
 
 module functionAppTemplate_GroupTableManager 'functionApp.bicep' = {
   name: 'functionAppTemplate-GroupTableManager'

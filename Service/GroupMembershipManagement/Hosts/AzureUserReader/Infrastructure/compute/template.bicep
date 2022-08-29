@@ -91,171 +91,53 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   }
 }
 
-var appSettings =  [
-  {
-    name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
-    value: 1
-  }
-  {
-    name: 'SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT'
-    value: 0
-  }
-  {
-    name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'AzureWebJobsStorage'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'FUNCTIONS_WORKER_RUNTIME'
-    value: 'dotnet'
-  }
-  {
-    name: 'FUNCTIONS_EXTENSION_VERSION'
-    value: '~4'
-  }
-  {
-    name: 'storageAccountConnectionString'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(azureUserReaderStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'graphCredentials:ClientSecret'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'graphCredentials:ClientId'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'graphCredentials:TenantId'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'graphCredentials:KeyVaultName'
-    value: prereqsKeyVaultName
-  }
-  {
-    name: 'graphCredentials:KeyVaultTenantId'
-    value: tenantId
-  }
-  {
-    name: 'logAnalyticsCustomerId'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'logAnalyticsPrimarySharedKey'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'WEBSITE_MAX_DYNAMIC_APPLICATION_SCALE_OUT'
-    value: maximumElasticWorkerCount
-  }
-  {
-    name: 'maxRetryAfterAttempts'
-    value: '4'
-  }
-  {
-    name: 'maxExceptionHandlingAttempts'
-    value: '2'
-  }
-  {
-    name: 'appConfigurationEndpoint'
-    value: appConfigurationEndpoint
-  }
-]
+var appSettings =  {
+  WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
+  SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
+  APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
+  FUNCTIONS_EXTENSION_VERSION: '~4'
+  storageAccountConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(azureUserReaderStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:KeyVaultName': prereqsKeyVaultName
+  'graphCredentials:KeyVaultTenantId': tenantId
+  logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
+  logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_MAX_DYNAMIC_APPLICATION_SCALE_OUT: maximumElasticWorkerCount
+  maxRetryAfterAttempts: '4'
+  maxExceptionHandlingAttempts: '2'
+  appConfigurationEndpoint: appConfigurationEndpoint
+}
 
-var stagingSettings = [
-  {
-    name: 'WEBSITE_CONTENTSHARE'
-    value: toLower('functionApp-AzureUserReader-staging')
-  }
-  {
-    name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
-    value: '${solutionAbbreviation}compute${environmentAbbreviation}AzureUserReaderStaging'
-  }
-  {
-    name: 'AzureWebJobs.StarterFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.OrchestratorFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.UserCreatorSubOrchestratorFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.UserReaderSubOrchestratorFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.AzureUserCreatorFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.AzureUserReaderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.PersonnelNumberReaderFunction.Disabled'
-    value: 1
-  }
-  {
-    name: 'AzureWebJobs.UploadUsersFunction.Disabled'
-    value: 1
-  }
-]
+var stagingSettings = {
+  WEBSITE_CONTENTSHARE: toLower('functionApp-AzureUserReader-staging')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureUserReaderStaging'
+  'AzureWebJobs.StarterFunction.Disabled': 1
+  'AzureWebJobs.OrchestratorFunction.Disabled': 1
+  'AzureWebJobs.UserCreatorSubOrchestratorFunction.Disabled': 1
+  'AzureWebJobs.UserReaderSubOrchestratorFunction.Disabled': 1
+  'AzureWebJobs.AzureUserCreatorFunction.Disabled': 1
+  'AzureWebJobs.AzureUserReaderFunction.Disabled': 1
+  'AzureWebJobs.PersonnelNumberReaderFunction.Disabled': 1
+  'AzureWebJobs.UploadUsersFunction.Disabled': 1
+}
 
-var productionSettings = [
-  {
-    name: 'WEBSITE_CONTENTSHARE'
-    value: toLower('functionApp-AzureUserReader')
-  }
-  {
-    name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
-    value: '${solutionAbbreviation}compute${environmentAbbreviation}AzureUserReader'
-  }
-  {
-    name: 'AzureWebJobs.StarterFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.OrchestratorFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.UserCreatorSubOrchestratorFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.UserReaderSubOrchestratorFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.AzureUserCreatorFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.AzureUserReaderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.PersonnelNumberReaderFunction.Disabled'
-    value: 0
-  }
-  {
-    name: 'AzureWebJobs.UploadUsersFunction.Disabled'
-    value: 0
-  }
-]
-
+var productionSettings = {
+  WEBSITE_CONTENTSHARE: toLower('functionApp-AzureUserReader')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureUserReader'
+  'AzureWebJobs.StarterFunction.Disabled': 0
+  'AzureWebJobs.OrchestratorFunction.Disabled': 0
+  'AzureWebJobs.UserCreatorSubOrchestratorFunction.Disabled': 0
+  'AzureWebJobs.UserReaderSubOrchestratorFunction.Disabled': 0
+  'AzureWebJobs.AzureUserCreatorFunction.Disabled': 0
+  'AzureWebJobs.AzureUserReaderFunction.Disabled': 0
+  'AzureWebJobs.PersonnelNumberReaderFunction.Disabled': 0
+  'AzureWebJobs.UploadUsersFunction.Disabled': 0
+}
 
 module functionAppTemplate_AzureUserReader 'functionApp.bicep' = {
   name: 'functionAppTemplate-AzureUserReader'
