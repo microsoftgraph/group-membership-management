@@ -330,7 +330,6 @@ module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    secretSettings: union(appSettings, productionSettings)
   }
   dependsOn: [
     servicePlanTemplate
@@ -346,7 +345,6 @@ module functionAppSlotTemplate_GraphUpdater 'functionAppSlot.bicep' = {
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    secretSettings: union(appSettings, stagingSettings)
   }
   dependsOn: [
     functionAppTemplate_GraphUpdater
@@ -410,5 +408,25 @@ module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   dependsOn: [
     functionAppTemplate_GraphUpdater
     functionAppSlotTemplate_GraphUpdater
+  ]
+}
+
+resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
+  name: '${functionAppName}-GraphUpdater/appsettings'
+  kind: 'string'
+  properties: union(appSettings, productionSettings)
+  dependsOn: [
+    functionAppTemplate_GraphUpdater
+    dataKeyVaultPoliciesTemplate
+  ]
+}
+
+resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
+  name: '${functionAppName}-GraphUpdater/staging/appsettings'
+  kind: 'string'
+  properties: union(appSettings, stagingSettings)
+  dependsOn: [
+    functionAppSlotTemplate_GraphUpdater
+    dataKeyVaultPoliciesTemplate
   ]
 }

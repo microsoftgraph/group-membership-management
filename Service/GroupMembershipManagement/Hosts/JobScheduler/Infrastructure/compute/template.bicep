@@ -198,7 +198,6 @@ module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
-    secretSettings: union(appSettings, productionSettings)
   }
   dependsOn: [
     servicePlanTemplate
@@ -212,7 +211,6 @@ module functionAppSlotTemplate_JobScheduler 'functionAppSlot.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
-    secretSettings: union(appSettings, stagingSettings)
   }
   dependsOn: [
     functionAppTemplate_JobScheduler
@@ -274,5 +272,25 @@ module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   dependsOn: [
     functionAppTemplate_JobScheduler
     functionAppSlotTemplate_JobScheduler
+  ]
+}
+
+resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
+  name: '${functionAppName}-JobScheduler/appsettings'
+  kind: 'string'
+  properties: union(appSettings, productionSettings)
+  dependsOn: [
+    functionAppTemplate_JobScheduler
+    keyVaultPoliciesTemplate
+  ]
+}
+
+resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
+  name: '${functionAppName}-JobScheduler/staging/appsettings'
+  kind: 'string'
+  properties: union(appSettings, stagingSettings)
+  dependsOn: [
+    functionAppSlotTemplate_JobScheduler
+    keyVaultPoliciesTemplate
   ]
 }

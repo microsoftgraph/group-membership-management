@@ -210,7 +210,6 @@ module functionAppTemplate_GroupTableManager 'functionApp.bicep' = {
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    secretSettings: union(appSettings, productionSettings)
   }
   dependsOn: [
     servicePlanTemplate
@@ -226,7 +225,6 @@ module functionAppSlotTemplate_GroupTableManager 'functionAppSlot.bicep' = {
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    secretSettings: union(appSettings, stagingSettings)
   }
   dependsOn: [
     functionAppTemplate_GroupTableManager
@@ -286,6 +284,27 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
     functionAppSlotTemplate_GroupTableManager
   ]
 }
+
+resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
+  name: '${functionAppName}-GroupTableManager/appsettings'
+  kind: 'string'
+  properties: union(appSettings, productionSettings)
+  dependsOn: [
+    functionAppTemplate_GroupTableManager
+    dataKeyVaultPoliciesTemplate
+  ]
+}
+
+resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
+  name: '${functionAppName}-GroupTableManager/staging/appsettings'
+  kind: 'string'
+  properties: union(appSettings, stagingSettings)
+  dependsOn: [
+    functionAppSlotTemplate_GroupTableManager
+    dataKeyVaultPoliciesTemplate
+  ]
+}
+
 
 // Check on if this API Key is acceptable for deployment purposes of front end
 output deployment_token string = listSecrets(staticWebApp.id, staticWebApp.apiVersion).properties.apiKey

@@ -17,9 +17,6 @@ param location string
 @minLength(1)
 param servicePlanName string
 
-@description('Array of key vault references to be set in app settings')
-param secretSettings array
-
 resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
   name: name
   kind: kind
@@ -31,7 +28,6 @@ resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
     serverFarmId: resourceId('Microsoft.Web/serverfarms', servicePlanName)
     siteConfig: {
       use32BitWorkerProcess : false
-      appSettings: secretSettings
     }
   }
   identity: {

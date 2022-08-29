@@ -257,7 +257,6 @@ module functionAppTemplate_NonProdService 'functionApp.bicep' = {
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    secretSettings: union(appSettings, productionSettings)
   }
   dependsOn: [
     servicePlanTemplate
@@ -273,7 +272,6 @@ module functionAppSlotTemplate_NonProdService 'functionAppSlot.bicep' = {
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    secretSettings: union(appSettings, stagingSettings)
   }
   dependsOn: [
     functionAppTemplate_NonProdService
@@ -337,5 +335,25 @@ module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   dependsOn: [
     functionAppTemplate_NonProdService
     functionAppSlotTemplate_NonProdService
+  ]
+}
+
+resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
+  name: '${functionAppName}-NonProdService/appsettings'
+  kind: 'string'
+  properties: union(appSettings, productionSettings)
+  dependsOn: [
+    functionAppTemplate_NonProdService
+    dataKeyVaultPoliciesTemplate
+  ]
+}
+
+resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
+  name: '${functionAppName}-NonProdService/staging/appsettings'
+  kind: 'string'
+  properties: union(appSettings, stagingSettings)
+  dependsOn: [
+    functionAppSlotTemplate_NonProdService
+    dataKeyVaultPoliciesTemplate
   ]
 }

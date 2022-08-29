@@ -334,7 +334,6 @@ module functionAppTemplate_MembershipAggregator 'functionApp.bicep' = {
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     tenantId: tenantId
-    secretSettings: union(appSettings, productionSettings)
   }
   dependsOn: [
     servicePlanTemplate
@@ -351,7 +350,6 @@ module functionAppSlotTemplate_MembershipAggregator 'functionAppSlot.bicep' = {
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     tenantId: tenantId
-    secretSettings: union(appSettings, stagingSettings)
   }
   dependsOn: [
     functionAppTemplate_MembershipAggregator
@@ -413,5 +411,25 @@ module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   dependsOn: [
     functionAppTemplate_MembershipAggregator
     functionAppSlotTemplate_MembershipAggregator
+  ]
+}
+
+resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
+  name: '${functionAppName}-MembershipAggregator/appsettings'
+  kind: 'string'
+  properties: union(appSettings, productionSettings)
+  dependsOn: [
+    functionAppTemplate_MembershipAggregator
+    dataKeyVaultPoliciesTemplate
+  ]
+}
+
+resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
+  name: '${functionAppName}-MembershipAggregator/staging/appsettings'
+  kind: 'string'
+  properties: union(appSettings, stagingSettings)
+  dependsOn: [
+    functionAppSlotTemplate_MembershipAggregator
+    dataKeyVaultPoliciesTemplate
   ]
 }

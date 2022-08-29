@@ -17,9 +17,6 @@ param location string
 @minLength(1)
 param servicePlanName string
 
-@description('Array of key vault references to be set in app settings')
-param secretSettings array
-
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string
 
@@ -35,7 +32,7 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
     clientAffinityEnabled: false
     httpsOnly: true
     siteConfig: {
-      appSettings: secretSettings
+      use32BitWorkerProcess : false
     }
   }
   identity: {
