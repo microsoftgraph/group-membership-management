@@ -462,42 +462,29 @@ Once your application is created we need to grant the requested permissions to u
 
 # Post-Deployment Tasks
 
-Once the pipeline has completed building and deploying GMM code and resources to your Azure resource groups, we need to make some final configuration changes.
+### Grant functions access to required resources
 
-### Grant SecurityGroup, MembershipAggregator, GraphUpdater function access to storage account
+* Once the pipeline has completed building and deploying GMM code and resources to your Azure resource groups, we need to make some final configuration changes.
+* The following script grants SecurityGroup, MembershipAggregator, and GraphUpdater function access to storage account and all functions access to App Configuration.
 
-These functions need MSI access to the storage account where the membership blobs are going to be temporary stored.
+1. Open [Set-PostDeploymentRoles.ps1](https://microsoftit.visualstudio.com/OneITVSO/_git/STW-Sol-GrpMM-public?anchor=creating-synchronization-jobs-for-source-groups&path=/Scripts/PostDeployment/Set-PostDeploymentRoles.ps1) in Visual Studio Code. 
 
-Once your Function Apps:
-- `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-SecurityGroup`
-- `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-MembershipAggregator`
-- `<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-GraphUpdater`
+2. Copy the example function call from the comments and paste it after the function declaration. The example function call should look like this:
 
-have been created we need to grant them access to the storage account containers.
+       Set-PostDeploymentRoles  -SolutionAbbreviation "<solutionAbbreviation>" `
+                                -EnvironmentAbbreviation "<environmentAbbreviation>" `
+                                -StorageAccountName "<storageAccountName>" `
+                                -AppConfigName "<appConfigName>"
 
-From your `PowerShell Core 7.2.x` command prompt run this script:
+    Where:
+    * `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` are as before.
+    * `<storageAccountName>` - can be found in the data key vault secrets under 'jobsStorageAccountName'. It will have the form of: "jobs<environmentAbbreviation><randomId>".
+    * `<appConfigName>` - "`<SolutionAbbreviation>`-appConfig-`<EnvironmentAbbreviation>`"
 
-    By default GMM uses the same account that was automatically created to store the sync job's information.
-    The naming convention  for the table that contains job information is jobs<environmentAbbreviation><randomId>.  
-    The exact name can be found in the data key vault secrets under 'jobsStorageAccountName'.      
+    <br/>
+       
+3. Run [Set-PostDeploymentRoles.ps1](https://microsoftit.visualstudio.com/OneITVSO/_git/STW-Sol-GrpMM-public?anchor=creating-synchronization-jobs-for-source-groups&path=/Scripts/PostDeployment/Set-PostDeploymentRoles.ps1)  with the required parameters from your `PowerShell Core 7.2.x` command prompt. 
 
-    1. . ./Set-StorageAccountContainerManagedIdentityRoles.ps1
-    2. Set-StorageAccountContainerManagedIdentityRoles -SolutionAbbreviation "<SolutionAbbreviation>" `
-                                                       -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-                                                       -StorageAccountName "<StorageAccountName>
-                                                       -Verbose
-
-    By default, the script will run for each of the three function app names: SecurityGroup, MembershipAggregator and GraphUpdater.
-
-### Grant access to App Configuration
-
-Grant all the functions access to the AppConfiguration by running the following script from your `PowerShell Core 7.2.x` command prompt:
-
-    1. . ./Set-AppConfigurationManagedIdentityRoles.ps1
-    2. Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "<SolutionAbbreviation>" `
-                                                -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-                                                -AppConfigName "<SolutionAbbreviation>-appConfig-<EnvironmentAbbreviation>" `
-                                                -Verbose
 
 ### Creating synchronization jobs for source groups
 
