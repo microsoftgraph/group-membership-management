@@ -904,14 +904,14 @@ namespace Repositories.GraphGroups
                         yield return new RetryResponse
                         {
                             RequestId = kvp.Key,
-                            ResponseCode = ResponseCode.Ok
+                            ResponseCode = ResponseCode.IndividualRetry
                         };
                     }
 
                     yield return new RetryResponse
                     {
                         RequestId = kvp.Key,
-                        ResponseCode = ResponseCode.Ok,
+                        ResponseCode = ResponseCode.IndividualRetry,
                         AzureObjectId = userId
                     };
 
