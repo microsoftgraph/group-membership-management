@@ -18,7 +18,7 @@ param dataKeyVaultResourceGroup string
 var backupSetting = '[ { "SourceTableName":"${jobsTableNameSecret}", "SourceConnectionString":"${jobsSourceTableConnectionStringSecret}", "DestinationConnectionString":"${jobsDestinationTableConnectionStringSecret}", "BackupType":"${backupType}", "CleanupOnly":false, "DeleteAfterDays":30 }]'
 
 module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
-  name: 'secureSecretsTemplate-GraphUpdater'
+  name: 'secureSecretsTemplate-AzureTableBackupSetting'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     keyVaultName: dataKeyVaultName
