@@ -41,6 +41,5 @@ module settingBuilder 'settingsBuilder.bicep' = {
     jobsSourceTableConnectionStringSecret:dataKeyVault.getSecret('jobsStorageAccountConnectionString')
     jobsTableNameSecret: dataKeyVault.getSecret('jobsTableName')
     dataKeyVaultName: dataKeyVaultName
-    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
   }
 }

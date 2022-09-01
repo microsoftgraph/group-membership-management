@@ -12,19 +12,11 @@ param backupType string
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string
 
-@description('Name of the resource group where the \'data\' key vault is located.')
-param dataKeyVaultResourceGroup string
-
 var backupSetting = '[ { "SourceTableName":"${jobsTableNameSecret}", "SourceConnectionString":"${jobsSourceTableConnectionStringSecret}", "DestinationConnectionString":"${jobsDestinationTableConnectionStringSecret}", "BackupType":"${backupType}", "CleanupOnly":false, "DeleteAfterDays":30 }]'
 
-module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
-  name: 'secureSecretsTemplate-AzureTableBackupSetting'
-  scope: resourceGroup(dataKeyVaultResourceGroup)
-  params: {
-    keyVaultName: dataKeyVaultName
-    keyVaultSecret: {
-      name: 'tablesToBackup'
-      value: backupSetting
-    }
+resource secret 'Microsoft.KeyVault/vaults/secrets@2021-06-01-preview' = {
+  name: '${dataKeyVaultName}/tablesToBackup'
+  properties: {
+    value: backupSetting
   }
 }
