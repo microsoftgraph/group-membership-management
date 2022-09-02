@@ -728,23 +728,17 @@ namespace Repositories.GraphGroups
                     if (chunkToRetry.ShouldRetry)
                     {
                         // Not found
-                        if (chunkToRetry.ToSend.Count > 1
-                            && !string.IsNullOrWhiteSpace(idToRetry.AzureObjectId))
+                        if (!string.IsNullOrWhiteSpace(idToRetry.AzureObjectId))
                         {
                             var notFoundUser = chunkToRetry.ToSend.FirstOrDefault(x => x.ObjectId.ToString().Equals(idToRetry.AzureObjectId, StringComparison.InvariantCultureIgnoreCase));
                             if (notFoundUser != null)
                             {
                                 chunkToRetry.ToSend.Remove(notFoundUser);
+                            }
 
-                                var notFoundChunk = new ChunkOfUsers
-                                {
-                                    Id = GetNewChunkId(),
-                                    ToSend = new List<AzureADUser> { notFoundUser }
-                                };
-
-                                requeued++;
-                                queue.Enqueue(notFoundChunk.UpdateIdForRetry(threadNumber));
-                                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Queued {notFoundChunk.Id} from {chunkToRetry.Id}", RunId = RunId });
+                            if (chunkToRetry.ToSend.Count == 1 && chunkToRetry.ToSend[0].MembershipAction == MembershipAction.Remove)
+                            {
+                                continue;
                             }
                         }
 
