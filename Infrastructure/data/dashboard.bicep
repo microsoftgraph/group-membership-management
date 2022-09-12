@@ -2173,7 +2173,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     TotalNumberOfSourceParts: '295px'
                     NumberOfExclusionarySourceParts: '167px'
                   }
-                  Query: 'customEvents\n| where name == "ExclusionarySourcePartsCount"\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["DestinationGroupObjectId"]),\n    TotalNumberOfSourceParts = tostring(customDimensions["TotalNumberOfSourceParts"]),\n    NumberOfExclusionarySourceParts = toint(customDimensions["NumberOfExclusionarySourceParts"])    \n| order by timestamp desc\n| distinct TargetOfficeGroupId, TotalNumberOfSourceParts, NumberOfExclusionarySourceParts\n\n'
+                  Query: 'customEvents\n| where name == "ExclusionarySourcePartsCount"\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["DestinationGroupObjectId"]),\n    TotalNumberOfSourceParts = toint(customDimensions["TotalNumberOfSourceParts"]),\n    NumberOfExclusionarySourceParts = toint(customDimensions["NumberOfExclusionarySourceParts"])    \n| distinct TargetOfficeGroupId, TotalNumberOfSourceParts, NumberOfExclusionarySourceParts\n| order by TotalNumberOfSourceParts desc'
                   ControlType: 'AnalyticsGrid'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'ExclusionarySourcePartsCount'
