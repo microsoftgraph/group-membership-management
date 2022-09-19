@@ -163,6 +163,8 @@ module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
   }
   dependsOn: [
     servicePlanTemplate
