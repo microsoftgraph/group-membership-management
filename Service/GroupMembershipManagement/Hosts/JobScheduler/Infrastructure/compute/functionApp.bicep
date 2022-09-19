@@ -41,7 +41,7 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
 }
 
 module secretsTemplate 'keyVaultSecrets.bicep' = {
-  name: 'secretsTemplate-GraphUpdater'
+  name: 'secretsTemplate-JobScheduler'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     keyVaultName: dataKeyVaultName
@@ -55,7 +55,7 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
 }
 
 module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
-  name: 'secureSecretsTemplate-GraphUpdater'
+  name: 'secureSecretsTemplate-JobScheduler'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     keyVaultName: dataKeyVaultName
@@ -72,7 +72,18 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
   properties: {
     appSettingNames: [
       'AzureFunctionsJobHost__extensions__durableTask__hubName'
-      'AzureWebJobs.JobSchedulerFunction.Disabled'
+      'AzureWebJobs.StarterFunction.Disabled'
+      'AzureWebJobs.OrchestratorFunction.Disabled'
+      'AzureWebJobs.LoggerFunction.Disabled'
+      'AzureWebJobs.GetJobsSubOrchestratorFunction.Disabled'
+      'AzureWebJobs.GetJobsSegmentedFunction.Disabled'
+      'AzureWebJobs.ResetJobsFunction.Disabled'
+      'AzureWebJobs.DistributeJobsFunction.Disabled'
+      'AzureWebJobs.UpdateJobsSubOrchestratorFunction.Disabled'
+      'AzureWebJobs.BatchUpdateJobsFunction.Disabled'
+      'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled'
+      'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled'
+      'AzureWebJobs.PostCallbackFunction.Disabled'
     ]
   }
 }
