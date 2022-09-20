@@ -5,6 +5,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
+using System;
 using System.Threading.Tasks;
 
 namespace Hosts.SecurityGroup
@@ -21,7 +22,7 @@ namespace Hosts.SecurityGroup
         }
 
         [FunctionName(nameof(SourceGroupsReaderFunction))]
-        public async Task<AzureADGroup[]> GetSourceGroupsAsync([ActivityTrigger] SourceGroupsReaderRequest request)
+        public async Task<AzureADGroup> GetSourceGroupsAsync([ActivityTrigger] SourceGroupsReaderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SourceGroupsReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             await _loggingRepository.LogMessageAsync(new LogMessage
@@ -30,22 +31,21 @@ namespace Hosts.SecurityGroup
                 Message = $"Getting source groups for Part# {request.CurrentPart} {request.SyncJob.Query} to be synced into the destination group {request.SyncJob.TargetOfficeGroupId}."
             });
 
-            AzureADGroup[] sourceGroups = request.IsDestinationPart
-                                            ? sourceGroups = new [] { new AzureADGroup { ObjectId = request.SyncJob.TargetOfficeGroupId } }
-                                            : sourceGroups = GetSourceGroups(request);
+            AzureADGroup sourceGroup = request.IsDestinationPart
+                                            ? sourceGroup = new AzureADGroup { ObjectId = request.SyncJob.TargetOfficeGroupId }
+                                            : sourceGroup = GetSourceGroup(request);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SourceGroupsReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return sourceGroups;
+            return sourceGroup;
         }
 
-        private AzureADGroup[] GetSourceGroups(SourceGroupsReaderRequest request)
+        private AzureADGroup GetSourceGroup(SourceGroupsReaderRequest request)
         {
             var queryParts = JArray.Parse(request.SyncJob.Query);
             var currentPart = queryParts[request.CurrentPart - 1];
-            var ids = string.Join(";", currentPart.Value<JArray>("sources"));
-            var sourceGroups = _membershipCalculator.ReadSourceGroups(ids);
-
-            return sourceGroups;
+            var id = currentPart.Value<string>("source");
+            Guid.TryParse(id, out var parsed);
+            return new AzureADGroup { ObjectId = parsed };
         }
     }
 }

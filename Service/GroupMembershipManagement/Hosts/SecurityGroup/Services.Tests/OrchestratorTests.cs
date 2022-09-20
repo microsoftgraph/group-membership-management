@@ -56,7 +56,7 @@ namespace Tests.Services
                 RowKey = Guid.NewGuid().ToString(),
                 PartitionKey = "00-00-0000",
                 TargetOfficeGroupId = Guid.NewGuid(),
-                Query = _querySample.GetQuery(),
+                Query = _querySample.GetQuery(0),
                 Status = "InProgress",
                 Period = 6
             };
@@ -93,13 +93,13 @@ namespace Tests.Services
                                             await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
                                         });
 
-            AzureADGroup[] sourceGroups = null;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<AzureADGroup[]>(It.IsAny<string>(), It.IsAny<SourceGroupsReaderRequest>()))
+            AzureADGroup sourceGroup = null;
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<AzureADGroup>(It.IsAny<string>(), It.IsAny<SourceGroupsReaderRequest>()))
                                         .Callback<string, object>(async (name, request) =>
                                         {
-                                            sourceGroups = await CallSourceGroupsReaderFunctionAsync(request as SourceGroupsReaderRequest);
+                                            sourceGroup = await CallSourceGroupsReaderFunctionAsync(request as SourceGroupsReaderRequest);
                                         })
-                                        .ReturnsAsync(() => sourceGroups);
+                                        .ReturnsAsync(() => sourceGroup);
 
             _subOrchestratorResponseStatus = SyncStatus.InProgress;
             _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))

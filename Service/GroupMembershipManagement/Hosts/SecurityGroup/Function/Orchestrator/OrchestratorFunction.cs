@@ -50,7 +50,7 @@ namespace Hosts.SecurityGroup
                 }
 
                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-                var sourceGroups = await context.CallActivityAsync<AzureADGroup[]>(nameof(SourceGroupsReaderFunction),
+                var sourceGroup = await context.CallActivityAsync<AzureADGroup>(nameof(SourceGroupsReaderFunction),
                                                                                     new SourceGroupsReaderRequest
                                                                                     {
                                                                                         SyncJob = syncJob,
@@ -59,30 +59,30 @@ namespace Hosts.SecurityGroup
                                                                                         RunId = runId
                                                                                     });
 
-                if (sourceGroups.Length == 0)
+                if (sourceGroup.ObjectId == Guid.Empty)
                 {
-                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"None of the source groups in Part# {mainRequest.CurrentPart} {syncJob.Query} were valid guids. Marking job as errored." });
+                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Source group id in Part# {mainRequest.CurrentPart} {syncJob.Query} is not a valid guid. Marking job as errored." });
                     await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest { SyncJob = syncJob, RunId = runId });
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
                     return;
                 }
                 else
                 {
-                    // Run multiple source group processing flows in parallel
-                    var processingTasks = new List<Task<(List<AzureADUser> Users, SyncStatus Status)>>();
-                    foreach (var sourceGroup in sourceGroups)
-                    {
-                        var processTask = context.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(nameof(SubOrchestratorFunction), new SecurityGroupRequest { SyncJob = syncJob, SourceGroup = sourceGroup, RunId = runId });
-                        processingTasks.Add(processTask);
-                    }
-                    var tasks = await Task.WhenAll(processingTasks);
-                    if (tasks.Any(x => x.Status == SyncStatus.SecurityGroupNotFound))
+                    var sgResponse = await context.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(nameof(SubOrchestratorFunction),
+                                                                                                                    new SecurityGroupRequest
+                                                                                                                    {
+                                                                                                                        SyncJob = syncJob,
+                                                                                                                        SourceGroup = sourceGroup,
+                                                                                                                        RunId = runId
+                                                                                                                    });
+
+                    if (sgResponse.Status == SyncStatus.SecurityGroupNotFound)
                     {
                         await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.SecurityGroupNotFound });
                         return;
                     }
 
-                    var users = new List<AzureADUser>(tasks.SelectMany(x => x.Users));
+                    var users = sgResponse.Users;
                     distinctUsers = users.GroupBy(user => user.ObjectId).Select(userGrp => userGrp.First()).ToList();
 
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage
@@ -93,7 +93,14 @@ namespace Hosts.SecurityGroup
                     });
 
                     var filePath = await context.CallActivityAsync<string>(nameof(UsersSenderFunction),
-                                                                            new UsersSenderRequest { SyncJob = syncJob, RunId = runId, Users = distinctUsers, CurrentPart = mainRequest.CurrentPart, Exclusionary = mainRequest.Exclusionary });
+                                                                            new UsersSenderRequest
+                                                                            {
+                                                                                SyncJob = syncJob,
+                                                                                RunId = runId,
+                                                                                Users = distinctUsers,
+                                                                                CurrentPart = mainRequest.CurrentPart,
+                                                                                Exclusionary = mainRequest.Exclusionary
+                                                                            });
 
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = "Calling MembershipAggregator", RunId = runId });
                     var content = new MembershipAggregatorHttpRequest
