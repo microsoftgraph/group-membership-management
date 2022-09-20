@@ -134,6 +134,7 @@ var stagingSettings = {
   'AzureWebJobs.DistributeJobsFunction.Disabled': 1
   'AzureWebJobs.UpdateJobsSubOrchestratorFunction.Disabled': 1
   'AzureWebJobs.BatchUpdateJobsFunction.Disabled': 1
+  'AzureWebJobs.PipelineInvocationStarterFunction.Disabled': 1
   'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 1
   'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled': 1
   'AzureWebJobs.PostCallbackFunction.Disabled': 1
@@ -151,6 +152,7 @@ var productionSettings = {
   'AzureWebJobs.DistributeJobsFunction.Disabled': 0
   'AzureWebJobs.UpdateJobsSubOrchestratorFunction.Disabled': 0
   'AzureWebJobs.BatchUpdateJobsFunction.Disabled': 0
+  'AzureWebJobs.PipelineInvocationStarterFunction.Disabled': 0
   'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 0
   'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled': 0
   'AzureWebJobs.PostCallbackFunction.Disabled': 0

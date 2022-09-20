@@ -81,6 +81,7 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.DistributeJobsFunction.Disabled'
       'AzureWebJobs.UpdateJobsSubOrchestratorFunction.Disabled'
       'AzureWebJobs.BatchUpdateJobsFunction.Disabled'
+      'AzureWebJobs.PipelineInvocationStarterFunction.Disabled'
       'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled'
       'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled'
       'AzureWebJobs.PostCallbackFunction.Disabled'
