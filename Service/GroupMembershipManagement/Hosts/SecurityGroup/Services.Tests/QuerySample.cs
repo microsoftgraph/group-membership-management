@@ -10,15 +10,21 @@ namespace Tests.Services
     {
         public List<QueryPart> QueryParts { get; set; } = new List<QueryPart>();
 
-        public string GetQuery(int partIndex)
+        public string GetQuery()
+        {
+            var parts = string.Join(",", QueryParts.OrderBy(x => x.Index).Select(x => GetPartQuery(x.Index)));
+            return $"[{parts}]";
+        }
+
+        private string GetPartQuery(int partIndex)
         {
             var queryPart = QueryParts.First(x => x.Index == partIndex);
             return $"{{'type':'{queryPart.Type}','source': '{queryPart.SourceId}'}}";
         }
 
-        public string GetSourceIds(int partIndex)
+        public Guid GetSourceId(int partIndex)
         {
-            return string.Join(";", QueryParts[partIndex].SourceId);
+            return QueryParts.First(x => x.Index == partIndex).SourceId;
         }
 
         public static QuerySample GenerateQuerySample(string syncType, int numberOfParts = 2)
@@ -43,5 +49,6 @@ namespace Tests.Services
         public int Index { get; set; }
         public string Type { get; set; }
         public Guid SourceId { get; set; }
+        public bool IsDestinationPart { get; set; }
     }
 }

@@ -58,13 +58,6 @@ namespace Hosts.SecurityGroup
             }
         }
 
-        public AzureADGroup[] ReadSourceGroups(string ids)
-        {
-            return ids.Split(';').Select(x => Guid.TryParse(x, out var parsed) ? parsed : Guid.Empty)
-                                           .Where(x => x != Guid.Empty)
-                                           .Select(x => new AzureADGroup { ObjectId = x }).ToArray();
-        }
-
         public async Task<PolicyResult<bool>> GroupExistsAsync(Guid objectId, Guid runId)
         {
             // make this fresh every time because the lambda has to capture the run ID

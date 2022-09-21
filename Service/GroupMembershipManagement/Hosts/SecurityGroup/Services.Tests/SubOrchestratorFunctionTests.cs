@@ -14,7 +14,6 @@ using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Tests.Services
@@ -36,7 +35,6 @@ namespace Tests.Services
         private int _userCount;
         private bool _groupExists;
         private int _groupCount;
-        private string _fileContent;
         private BlobResult _blobResult;
         private string _usersReaderNextPageUrl;
         private string _deltaUrl;
@@ -73,7 +71,7 @@ namespace Tests.Services
                                             .ToList(),
                     Destination = new AzureADGroup
                     {
-                    ObjectId = Guid.Empty
+                        ObjectId = Guid.Empty
                     }
                 })
             };
@@ -266,7 +264,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task ProcessDeltaSinglePageRequestTestAsync()
         {
-            _groupCount = 0;            
+            _groupCount = 0;
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
                                        .Callback<string, object>(async (name, request) =>
                                        {
@@ -798,7 +796,7 @@ namespace Tests.Services
         }
 
         private async Task<DeltaGroupInformation> CallSubsequentDeltaUsersReaderFunctionAsync(SubsequentDeltaUsersReaderRequest request)
-{
+        {
             var function = new SubsequentDeltaUsersReaderFunction(_loggingRepository.Object, _membershipCalculator);
             return await function.GetDeltaUsersAsync(request);
         }

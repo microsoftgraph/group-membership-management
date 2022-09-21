@@ -56,7 +56,7 @@ namespace Tests.Services
                 RowKey = Guid.NewGuid().ToString(),
                 PartitionKey = "00-00-0000",
                 TargetOfficeGroupId = Guid.NewGuid(),
-                Query = _querySample.GetQuery(0),
+                Query = _querySample.GetQuery(),
                 Status = "InProgress",
                 Period = 6
             };
@@ -159,9 +159,38 @@ namespace Tests.Services
         }
 
         [TestMethod]
+        public async Task TestOldSourceGroupsQueryFormatAsync()
+        {
+            var oldQueryFormat = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"0fab28de-4d33-4bb7-be1f-17e46cf75200\",\"ab7b7af7-fa0f-4874-bb03-15d435506595\"]}]";
+            _orchestratorRequest.SyncJob.Query = oldQueryFormat;
+
+            var orchestratorFunction = new OrchestratorFunction(
+                                           _loggingRepository.Object,
+                                           _membershipCalculator,
+                                           _configuration.Object
+                                           );
+
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                                It.Is<LogMessage>(m => m.Message.Contains($"Marking job as {SyncStatus.QueryNotValid}")),
+                                                It.IsAny<VerbosityLevel>(),
+                                                It.IsAny<string>(),
+                                                It.IsAny<string>()
+                                            ), Times.Once);
+
+            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
+                                                It.IsAny<IEnumerable<SyncJob>>(),
+                                                It.Is<SyncStatus>(s => s == SyncStatus.Error)
+                                            ), Times.Once);
+
+            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once);
+        }
+
+        [TestMethod]
         public async Task TestEmptySourceGroupsAsync()
         {
-            _querySample.QueryParts[_orchestratorRequest.CurrentPart - 1].SourceIds.Clear();
+            _querySample.QueryParts.ForEach(x => x.SourceId = Guid.Empty);
             _orchestratorRequest.SyncJob.Query = _querySample.GetQuery();
 
             var orchestratorFunction = new OrchestratorFunction(
@@ -173,7 +202,7 @@ namespace Tests.Services
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message.Contains($"None of the source groups in Part#")),
+                                                It.Is<LogMessage>(m => m.Message.Contains($"Marking job as {SyncStatus.QueryNotValid}")),
                                                 It.IsAny<VerbosityLevel>(),
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
@@ -282,9 +311,8 @@ namespace Tests.Services
 
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            var totalUsersFound = _querySample.QueryParts[_orchestratorRequest.CurrentPart - 1].SourceIds.Count * _usersToReturn;
             _loggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message.Contains($"Read {totalUsersFound} users from source groups")),
+                                                It.Is<LogMessage>(m => m.Message.Contains($"Read {_usersToReturn} users from source groups")),
                                                 It.IsAny<VerbosityLevel>(),
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
@@ -327,9 +355,8 @@ namespace Tests.Services
 
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            var totalUsersFound = _querySample.QueryParts[_orchestratorRequest.CurrentPart - 1].SourceIds.Count * _usersToReturn;
             _loggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message.Contains($"Read {totalUsersFound} users from source groups")),
+                                                It.Is<LogMessage>(m => m.Message.Contains($"Read {_usersToReturn} users from source groups")),
                                                 It.IsAny<VerbosityLevel>(),
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
@@ -362,7 +389,7 @@ namespace Tests.Services
             await function.UpdateJobStatusAsync(request);
         }
 
-        private async Task<AzureADGroup[]> CallSourceGroupsReaderFunctionAsync(SourceGroupsReaderRequest request)
+        private async Task<AzureADGroup> CallSourceGroupsReaderFunctionAsync(SourceGroupsReaderRequest request)
         {
             var function = new SourceGroupsReaderFunction(_loggingRepository.Object, _membershipCalculator);
             return await function.GetSourceGroupsAsync(request);

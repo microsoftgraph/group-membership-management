@@ -61,7 +61,7 @@ namespace Hosts.SecurityGroup
 
                 if (sourceGroup.ObjectId == Guid.Empty)
                 {
-                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Source group id in Part# {mainRequest.CurrentPart} {syncJob.Query} is not a valid guid. Marking job as errored." });
+                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Source group id in Part# {mainRequest.CurrentPart} {syncJob.Query} is not a valid guid. Marking job as {SyncStatus.QueryNotValid}." });
                     await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest { SyncJob = syncJob, RunId = runId });
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
                     return;
