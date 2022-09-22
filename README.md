@@ -193,7 +193,7 @@ Once your application is created we need to grant the requested permissions to u
             git push --set-upstream origin <name-of-your-branch-in-public-repo> -f
             ```
         - another repository (let's call it `private`) that refers to `public` repository as a submodule:
-            - copy the files from [Private](/Private) folder to your `private` repository
+            - copy the files from [group-membership-management-tenant ](https://github.com/microsoftgraph/group-membership-management-tenant) to your `private` repository
             - rename the file `parameters.env.json` to `parameters.<your-environment-abbreviation>.json`
             - replace `<ProjectName>/<RepositoryName>` in vsts-cicd.yml with your project name & repository name
             - replace `env` in vsts-cicd.yml with your environment abbreviation
@@ -587,12 +587,15 @@ The Query field requires a JSON object that must follow this format:
 [
     {
         "type": "SecurityGroup",
-        "sources":
-        [
-            "id 1",
-            "id 2",
-            "id n"
-        ]
+        "source": "<guid-group-objet-id-1>"
+    },
+    {
+        "type": "SecurityGroup",
+        "source": "<guid-group-objet-id-2>"
+    },
+    {
+        "type": "SecurityGroup",
+        "source": "<guid-group-objet-id-n>"
     }
 ]
 ```

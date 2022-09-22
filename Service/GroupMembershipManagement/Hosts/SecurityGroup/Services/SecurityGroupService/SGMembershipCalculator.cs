@@ -167,7 +167,8 @@ namespace Hosts.SecurityGroup
                 Exclusionary = exclusionary,
                 SyncJobRowKey = syncJob.RowKey,
                 SyncJobPartitionKey = syncJob.PartitionKey,
-                MembershipObtainerDryRunEnabled = _isSecurityGroupDryRunEnabled
+                MembershipObtainerDryRunEnabled = _isSecurityGroupDryRunEnabled,
+                Query = syncJob.Query
             };
 
             var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");

@@ -37,7 +37,7 @@ namespace Services.Tests
 
         public static string GetJobQuery(string syncType, string[] groupIds)
         {
-            var individualQueries = groupIds.Select(x => $"{{\"type\":\"{syncType}\",\"source\": [\"{x}\"]}}");
+            var individualQueries = groupIds.Select(x => $"{{\"type\":\"{syncType}\",\"source\": \"{x}\"}}");
             var query = $"[{string.Join(",", individualQueries)}]";
             return query;
         }

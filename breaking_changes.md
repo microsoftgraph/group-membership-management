@@ -1,5 +1,48 @@
 # Breaking Changes
 
+## 09/22/2022
+
+### - SecurityGroup query format has changed to JSON
+SecurityGroup query format has been updated to provide a single way to specify hybrid sync jobs.
+
+Previous query format sample.
+```
+[
+    {
+        "type": "SecurityGroup",
+        "sources":
+        [
+            "a167b6c1-a2b3-4e16-aa8b-0ad0de5f44d9",
+            "04a8c19e-96a4-4570-b946-befd5bedca0e"
+        ]
+    }
+]
+```
+New query format sample:
+```
+[
+    {
+        "type": "SecurityGroup",
+        "source": "a167b6c1-a2b3-4e16-aa8b-0ad0de5f44d9"
+    },
+    {
+        "type": "SecurityGroup",
+        "source": "04a8c19e-96a4-4570-b946-befd5bedca0e"
+    }
+]
+```
+
+A powershell script has been added to help convert all existing SecurityGroup jobs to the new format.
+Script can be found here [Set-UpdateSecurityGroupQuery.ps1](
+Service\GroupMembershipManagement\Hosts\SecurityGroup\Scripts\Set-UpdateSecurityGroupQuery.ps1).
+
+    1. . ./Set-UpdateSecurityGroupQuery.ps1
+    2. Set-UpdateSecurityGroupQuery	-SubscriptionName "<SubscriptionName>" `
+                                    -SolutionAbbreviation "<SolutionAbbreviation>" `
+							        -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
+							        -Verbose
+
+
 ## 05/02/2022
 
 ### - SecurityGroup query format has changed to JSON
