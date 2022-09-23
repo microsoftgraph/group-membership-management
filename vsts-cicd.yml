@@ -45,7 +45,7 @@ stages:
        coverageThreshold: 76
     - function:
        name: 'SecurityGroup'
-       coverageThreshold: 91
+       coverageThreshold: 89
     - function:
         name: 'AzureTableBackup'
         coverageThreshold: 95
