@@ -181,7 +181,7 @@ namespace Tests.Services
 
             _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
                                                 It.IsAny<IEnumerable<SyncJob>>(),
-                                                It.Is<SyncStatus>(s => s == SyncStatus.Error)
+                                                It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid)
                                             ), Times.Once);
 
             _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once);
@@ -210,7 +210,7 @@ namespace Tests.Services
 
             _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
                                                 It.IsAny<IEnumerable<SyncJob>>(),
-                                                It.Is<SyncStatus>(s => s == SyncStatus.Error)
+                                                It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid)
                                             ), Times.Once);
 
             _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once);
