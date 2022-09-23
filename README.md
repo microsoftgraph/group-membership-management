@@ -1,12 +1,12 @@
 # Group Membership Management (GMM) tool Overview
 
-This tool enables admins to sync the membership of Microsoft 365 Groups using one or more security groups that may or may not be nested, and keep the memberships current by syncing with the source groups at regular intervals.
+This tool enables admins to sync the membership of Microsoft 365 Groups using one or more security groups that may or may not be nested, and keep the memberships up to date by syncing with the source groups at regular intervals.
 
-Please read before proceeding
+Please read before proceeding:
 
--   The tool is based on .Net, Azure Functions and Azure Table Storage. All of these are requirements and must be deployed by the customer onto their Azure subscription.
--   The tool interacts with Microsoft cloud using Graph APIs as data source. The app needs to be onboarded and granted permissions by the customer tenant admin.
--   The tool allows specifying the source security groups, destination Microsoft 365 Group, frequency of sync, start date of sync.
+-   The tool is based on .Net, Azure Functions, and Azure Table Storage. All of these are requirements and must be deployed by the customer onto their Azure subscription.
+-   The tool interacts with Microsoft cloud using Graph APIs as a data source. The app needs to be onboarded and granted permissions by the customer tenant admin.
+-   The tool allows the user to specify: source security groups, the destination Microsoft 365 Group, frequency of syncs, and start date of sync.
 -   Microsoft is releasing the tool without support, other than answering questions about how we use it internally. Link to the demo video: [Making IT more efficient with improvements to Microsoft 365 Groups](https://aka.ms/Admin1011).
 
 Limitations:
@@ -26,7 +26,7 @@ Limitations:
     d) [Configure Azure Devops](#configure-azure-devops)
 
 2. [Post-Deployment Tasks](#post-deployment-tasks)
-3. [Setting up AzureMaintenance function](#setting-azuretablebackup-function)
+3. [Setting up AzureMaintenance function](#Setting-AzureMaintenance-function)
 4. [Setting up GMM in a demo tenant](#setting-gmm-in-a-demo-tenant)
 5. [Setting up GMM UI](#setting-up-gmm-ui)
 6. [Steps to debug and troubleshoot a failing sync](#steps-to-debug-and-troubleshoot-a-failing-sync)
@@ -55,16 +55,57 @@ If you would like to customize GMM code, you could do so by using any of the fol
 
 You can download Visual Studio or Visual Studio Code from here [Download](https://visualstudio.microsoft.com/downloads/).
 
-Currently GMM is targeting .NET SDK version 3.1.417, this is being set in [global.json](/Service/GroupMembershipManagement/global.json), you can download this specific version from [Download .NET Core 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1) or alternatively download the latest version and update the global.json file.
+Currently GMM is targeting .NET SDK version 6, this is being set in [global.json](/Service/GroupMembershipManagement/global.json), you can download this specific version from [Download .NET Core 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1) or alternatively download the latest version and update the global.json file.
 
 To find out what .NET SDK versions you currently have installed run this command from the command line:
 
     dotnet --list-sdks
 
 
+
+
+
+
+# Create Azure Devops Repositories:
+
+1. ### Sign in to [Azure DevOps](https://azure.microsoft.com/en-us/services/devops/)
+
+2. ### Create a private project:
+
+    -   You can create a new project by following these instructions: [Create a project in AzureDevOps](https://docs.microsoft.com/en-us/azure/devops/organizations/projects/create-project?view=azure-devops&tabs=preview-page)
+    -   You can also use an existing project in your organization.
+
+3. ### Create two new repositories:
+
+    - `Public` repository:
+        - Your `Public` repo will mimic this GitHub repository.
+        - Create the `Public` repo based off this GitHub repo by following the [Manually Importing a Repo](https://docs.microsoft.com/en-us/azure/devops/repos/git/import-git-repository?view=azure-devops#manually-import-a-repo) documentation.
+        - Keep the commit history of your `Public` repo in sync with this GitHub repo by running the following commands from your `Public` repo:
+       
+                git remote add upstream https://github.com/microsoftgraph/group-membership-management.git
+                git fetch upstream
+                git checkout upstream/main -b main
+                git merge upstream/main
+                git push --set-upstream origin main -f
+        
+    - `Private` repository:
+        - Your `Private` repo will refer to your `Public` repo as a submodule.
+        - Create your `Private` repo based off the [group-membership-management-tenant ](https://github.com/microsoftgraph/group-membership-management-tenant) repo by following the [Manually Importing a Repo](https://docs.microsoft.com/en-us/azure/devops/repos/git/import-git-repository?view=azure-devops#manually-import-a-repo) documentation.
+        - Replace `<ProjectName>/<RepositoryName>` in vsts-cicd.yml with your project name & your `Public` repository name.
+        - Create the `Public` submodule by running the following command from your `Private` repo:
+        
+                git submodule add <url-of-public-repo> <name-of-public-repo>
+        
+        - Let’s say that a new commit is added to the main branch of your `Public` repository. To add that new commit to the submodule in the `Private` repository, run the following commands:
+        
+                git submodule update --remote --merge
+                git add *
+                git commit -m “updated public submodule”
+                git push
+
 # Create Resource Groups and prereqs keyvault
 
-## Resource groups
+## Resource groups overview
 
 GMM logically separates the resources it uses into three [resource groups](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/manage-resource-groups-portal#what-is-a-resource-group).
 
@@ -72,11 +113,11 @@ GMM logically separates the resources it uses into three [resource groups](https
 -   data
 -   compute
 
-Throughout this document we will use these tokens `<SolutionAbbreviation>`, `<ResourceGroupName>`, `<EnvironmentAbbreviation>`as place holders, when setting up GMM you will need to provide the value for each one of them as they will be used to name the Azure resources. Some Azure resources require to have a unique name across all tenants globally. So please avoid using the names used on this document as they are already in use.
+Throughout this document we will use the following tokens as place holders: `<SolutionAbbreviation>`, `<ResourceGroupName>`, `<EnvironmentAbbreviation>`. When setting up GMM you will need to provide the value for each one of them as they will be used to name the Azure resources. Some Azure resources are required to have a unique name across all tenants globally. For this reason, please avoid using the names used on this document as they are already in use.
 
-- `<SolutionAbbreviation>` - This is a name prefix (2 to 3 characters long) the current default value is 'gmm'. To change this value see the Notes section below for more information on how to do that.
-- `<ResourceGroupName>` - This is the name of the resource group, the current values supported are prereqs, data, and compute.
-- `<EnvironmentAbbreviation>` - This the name of your environment (2 to 6 characters long), use a unique value here to prevent name collisions. See the Notes section below for more information on how to set the value for this setting.
+- `<SolutionAbbreviation>` - This is a name prefix (2 to 3 characters long) the current default value is '`gmm`'. To change this value see the Notes section below for more information on how to do that.
+- `<ResourceGroupName>` - This is the name of the resource group, the current values supported are `prereqs`, `data`, and `compute`.
+- `<EnvironmentAbbreviation>` - This is the name of your environment (2 to 6 characters long), use a unique value here to prevent name collisions. See the Notes section below for more information on how to set the value for this setting.
 
 The naming convention for the resource groups and other resources is `<SolutionAbbreviation>`-`<ResourceGroupName>`-`<EnvironmentAbbreviation>`, i.e gmm-data-ua, gmm-data-prod, gmm-compute-prod.
 
@@ -94,7 +135,7 @@ Currently `<SolutionAbbreviation>` default value is 'gmm'. To change this value,
 
 We recommend trying to use unique `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` names, since some resources in Azure require to have unique names globally so it is possible to have name collisions.
 
-Both `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` must be all numbers and lowercase letters! Using capital letters in either will cause problems later down the line!
+Both `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` must only contain numbers and/or lowercase letters! Using capital letters in either will cause problems later down the line!
 
 The changes required are:
 - Rename the parameter files provided (parameters.int.json, parameters.ua.json and parameters.prodv2.json) updating the environment part. parameters.`<EnvironmentAbbreviation>`.json.
@@ -109,10 +150,10 @@ The files are located in these folders:
    - dependsOn (update for prodv2)
    - condition (update for prodv2)
 
-## Prereqs keyvault
+## Prereqs keyvault overview
 
 Each resource group will have a corresponding keyvault; The naming convention for the keyvault is the same as the resource groups.
-In this step we are going to create only the `<SolutionAbbreviation>`-prereqs-`<EnvironmentAbbreviation>` keyvault since it needs to be populated before deploying the ARM templates. The keyvault must be created under the corresponding resource group, in this case `<SolutionAbbreviation>`-prereqs-`<EnvironmentAbbreviation>` resource group.
+In this step we are going to create only the `<SolutionAbbreviation>`-prereqs-`<EnvironmentAbbreviation>` keyvault since it needs to be populated before deploying the ARM templates. The keyvault must be created under the corresponding resource group, in this case the `<SolutionAbbreviation>`-prereqs-`<EnvironmentAbbreviation>` resource group.
 
 These two keyvaults are created by the ARM templates, so no action is needed for these two.
 
@@ -131,10 +172,11 @@ From your `PowerShell Core 7.2.x` command prompt navigate to the Scripts folder 
                         -resourceGroupLocation "<resourceGroupLocation>" `
                         -overwrite $true
 
-`<objectId>` is the Azure Object Id of the user, group or service principal to which access to the prereqs keyvault is going to be granted. This object Id must be located in the same Azure tenant where the keyvault is going to be created.
-`<resourceGroupLocation>` is the Azure location where the resources are going to be created. Please refer to [this](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/resource-location?tabs=azure-powershell) documentation to know the available resource locations.
+Where:
+* `<objectId>` - the Azure Object Id of the user, group or service principal to which access to the prereqs keyvault is going to be granted. This object Id must be located in the same Azure tenant where the keyvault is going to be created.
+* `<resourceGroupLocation>` - the Azure location where the resources are going to be created. Please refer to [this](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/resource-location?tabs=azure-powershell) documentation to know the available resource locations.
 
-If you get an error stating "script is not digitally signed" when running any of the provided PowerShell scripts, try running this cmdlet
+<b>Note:</b> If you get an error stating "script is not digitally signed" when running any of the provided PowerShell scripts, try running this cmdlet and rerunning the script:
 
     Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
@@ -170,52 +212,16 @@ Once your application is created we need to grant the requested permissions to u
 5. Click on the 'Grant admin consent for `<YourOrganizationName>`' button.
 6. You might need to refresh the page to see the permissions status updated.
 
-## Configure Azure Devops
 
--   ### Sign in to [Azure DevOps](https://azure.microsoft.com/en-us/services/devops/)
+# Setting up GMM's Infrastructure as Code
 
--   ### Create a private project
+## ARM templates and parameter files overview:
 
-    -   You can use an existing project in your organization.
-    -   To create a new project see [Create a project in AzureDevOps](https://docs.microsoft.com/en-us/azure/devops/organizations/projects/create-project?view=azure-devops&tabs=preview-page) documentation.
+GMM uses ARM templates to create all the resources it needs. It requires you to provide information specific to your Azure Subscription in order to create these resources.
 
--   ### Create repositories
+Before being able to deploy GMM code to your environment you will need to provide several parameters to the ARM templates responsible of creating the resources.
 
-    -   Create two new repositories:
-        - one repository (let's call it `public`) that mimics this GitHub repository.
-            - see [Manually import a repo](https://docs.microsoft.com/en-us/azure/devops/repos/git/import-git-repository?view=azure-devops#manually-import-a-repo) documentation to push the code from this GitHub repo to `public` repo
-            - keep the commit history of `public` repo in sync with this GitHub repo by running the following commands from `public` repo:
-            ```
-            git remote add upstream https://github.com/microsoftgraph/group-membership-management.git
-            git fetch upstream
-            git checkout upstream/master -b `<name-of-your-branch-in-public-repo>`
-            git merge upstream/master
-            git push --set-upstream origin <name-of-your-branch-in-public-repo> -f
-            ```
-        - another repository (let's call it `private`) that refers to `public` repository as a submodule:
-            - copy the files from [group-membership-management-tenant ](https://github.com/microsoftgraph/group-membership-management-tenant) to your `private` repository
-            - rename the file `parameters.env.json` to `parameters.<your-environment-abbreviation>.json`
-            - replace `<ProjectName>/<RepositoryName>` in vsts-cicd.yml with your project name & repository name
-            - replace `env` in vsts-cicd.yml with your environment abbreviation
-            - create `public` submodule by running the following command:
-            ```
-            git submodule add <url-of-public-repo> <name-of-public-repo>
-            ```
-            - Let’s say a new commit is added to the main branch in `public` repository. To add that new commit to the submodule in `private` repository, run the following commands:
-            ```
-            git submodule update --remote --merge
-            git add *
-            git commit -m “updated public submodule”
-            git push
-            ```
-     *Follow [Create a new Git repo in your project](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-new-repo?toc=%2Fazure%2Fdevops%2Forganizations%2Ftoc.json&bc=%2Fazure%2Fdevops%2Forganizations%2Fbreadcrumb%2Ftoc.json&view=azure-devops) to create this repository.*
--   ### Getting GMM code ready
-
-    GMM uses ARM templates to create all the resources it needs. It requires you to provide information specific to your Azure Subscription in order to create these resources.
-
-    Before being able to deploy GMM code to your environment you will need to provide several parameters to the ARM templates responsible of creating the resources.
-
-    Locate GMM code, it has the following structure.
+Locate GMM code, it has the following structure.
 
     -   Documentation
     -   Infrastructure
@@ -227,102 +233,116 @@ Once your application is created we need to grant the requested permissions to u
             -   JobTrigger
     -   yaml
 
-    Under Service folder, locate Hosts folder, this folder may contain one or more folders each representing a function, all of them will follow the same folder structure, open a function folder (i.e. JobTrigger) and locate the Infrastructure folder, this folder might contain a compute and data folder, similar to what we just did, review the parameters files on both compute and data folders, and provide the required values specific to your environment. This needs to be done to all the functions that may be present under Hosts folder.
+Under Service folder, locate Hosts folder, this folder may contain one or more folders each representing a function, all of them will follow the same folder structure, open a function folder (i.e. JobTrigger) and locate the Infrastructure folder, this folder might contain a compute and data folder, similar to what we just did, review the parameters files on both compute and data folders, and provide the required values specific to your environment. This needs to be done to all the functions that may be present under Hosts folder. A script is provided that can duplicate and rename parameter files for you. 
 
-    Infrastructure folder contains all the ARM templates, it has separate folders for data and compute resources, which in turn have a parameters folder.
+Infrastructure folder contains all the ARM templates, it has separate folders for data and compute resources, which in turn have a parameters folder.
 
-    Note:
-    Currently `<SolutionAbbreviation>` default value is 'gmm'. To change this value, update the `solutionAbbreviation` variable in vsts-cicd.yml file.
+Note:
+Currently `<SolutionAbbreviation>` default value is 'gmm'. To change this value, update the `solutionAbbreviation` variable in vsts-cicd.yml file.
 
--   ### GMM Environments
+## GMM Environments
 
-    The code is provided with three sample environments:
+### Overview
 
-     * int - integration
-     * ua - user acceptance
-     * prodv2 - production
+The code is provided with three sample environments:
 
-    These names must not be reused, see [`'Resource groups'`](#resource-groups) for more details.
+* int - integration
+* ua - user acceptance
+* prodv2 - production
 
-    The steps in this document will setup a single environment i.e. prodv2, if you would like to setup other environments i.e. int and ua, you     will need to go through these steps again replacing `<EnvironmentAbbreviation>` accordingly.
+These names must not be reused, see [`'Resource groups'`](#resource-groups) for more details.
 
-    Both `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` must be all numbers and lowercase letters! Using capital letters in either     will cause problems later down the line!
+The steps in this document will setup a single environment i.e. prodv2, if you would like to setup other environments i.e. int and ua, you will need to go through these steps again replacing `<EnvironmentAbbreviation>` accordingly.
 
-    ### Add new environments
-    If you would like to add additional environments, follow these steps:
+Both `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` must be all numbers and lowercase letters! Using capital letters in either     will cause problems later down the line!
 
-    1. Locate and open file [vsts-cicd.yml](/vsts-cicd.yml)
-    2. Locate `int` environment `yaml/deploy-pipeline.yml` template.
+### Adding new environments
+If you would like to add additional environments, follow these steps:
 
-            - template: yaml/deploy-pipeline.yml
-            parameters:
-                solutionAbbreviation: '$(SolutionAbbreviation)'
-                environmentAbbreviation: '<env>'
-                location: 'westus2'
-                serviceConnection: '$(SolutionAbbreviation)-serviceconnection-<env>'
-                dependsOn: Build_Functions
-                stageName: 'NonProd_<env>'
-                functionApps:
-                - name: 'GraphUpdater'
-                - name: 'MembershipAggregator'
-                - name: 'SecurityGroup'
-                - name: 'AzureMaintenance'
-                - name: 'AzureUserReader'
-                - name: 'JobScheduler'
-                - name: 'JobTrigger'
-                condition: |
-                and(
-                    succeeded('Build_Functions'),
-                    eq(variables['Build.SourceBranch'], 'refs/heads/develop'),
-                    in(variables['Build.Reason'], 'IndividualCI', 'Manual')
-                )
-    3. Copy and paste the template located in step two, then replace the values for these settings accordingly using the name of your new     environment.
-       - environmentAbbreviation
-       - serviceConnection
-       - stageName
+1. Locate and open file [vsts-cicd.yml](/vsts-cicd.yml)
+2. Locate `int` environment `yaml/deploy-pipeline.yml` template.
 
-       Save your changes.
-    4. Search for the file `parameters.int.json`. Repeat the following steps for all the files:
-            * Copy and paste the same file at the same location
-            * Change the name to `parameters.<your-new-environment-name>.json`
+        - template: yaml/deploy-pipeline.yml
+        parameters:
+            solutionAbbreviation: '$(SolutionAbbreviation)'
+            environmentAbbreviation: '<env>'
+            location: 'westus2'
+            serviceConnection: '$(SolutionAbbreviation)-serviceconnection-<env>'
+            dependsOn: Build_Functions
+            stageName: 'NonProd_<env>'
+            functionApps:
+            - name: 'GraphUpdater'
+            - name: 'MembershipAggregator'
+            - name: 'SecurityGroup'
+            - name: 'AzureMaintenance'
+            - name: 'AzureUserReader'
+            - name: 'JobScheduler'
+            - name: 'JobTrigger'
+            condition: |
+            and(
+                succeeded('Build_Functions'),
+                eq(variables['Build.SourceBranch'], 'refs/heads/develop'),
+                in(variables['Build.Reason'], 'IndividualCI', 'Manual')
+            )
+3. Copy and paste the template located in step two, then replace the values for these settings accordingly using the name of your new     environment.
+    - environmentAbbreviation
+    - serviceConnection
+    - stageName
+
+    Save your changes.
+4. Create parameter files based off `parameters.int.json` by using the [Add-ParamFiles.ps1](/scripts/Add-ParamFiles.ps1) script:
+    * From your PowerShell command prompt navigate to the Scripts folder then type these commands.
+    
+            1. . ./Add-ParamFiles.ps1
+            2. Add-ParamFiles   -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
+                                -SourceEnvironmentAbbreviation "<SourceEnvironmentAbbreviation>" `
+                                -RepoPath "<RepoPath>"
+    * Use `"int"` for `<SourceEnvironmentAbbreviation>` and the path to your private repositoty for `<RepoPath>`.
+
+Note: The order in which some of the functions are deployed is really important, make sure these functions are defined in your YAML in this order:
+- GraphUpdater
+- MembershipAggregator
+- SecurityGroup
 
 
-    Note: The order in which some of the functions are deployed is really important, make sure these functions are defined in your YAML in this     order:
-    - GraphUpdater
-    - MembershipAggregator
-    - SecurityGroup
+### Removing existing environments
+If you would like to remove environments, follow these steps:
 
+1. Locate and open file [vsts-cicd.yml](/vsts-cicd.yml)
+2. Locate the `yaml/deploy-pipeline.yml` template for the environment you would like to delete.
 
-    ### Remove existing environments
-    If you would like to remove environments, follow these steps:
+        - template: yaml/deploy-pipeline.yml
+        parameters:
+            solutionAbbreviation: '$(SolutionAbbreviation)'
+            environmentAbbreviation: '<env>'
+            location: 'westus2'
+            serviceConnection: '$(SolutionAbbreviation)-serviceconnection-<env>'
+            dependsOn: Build_Functions
+            stageName: 'NonProd_<env>'
+            functionApps:
+            - name: 'GraphUpdater'
+            - name: 'MembershipAggregator'
+            - name: 'SecurityGroup'
+            - name: 'AzureMaintenance'
+            - name: 'AzureUserReader'
+            - name: 'JobScheduler'
+            - name: 'JobTrigger'
+            condition: |
+            and(
+                succeeded('Build_Functions'),
+                eq(variables['Build.SourceBranch'], 'refs/heads/develop'),
+                in(variables['Build.Reason'], 'IndividualCI', 'Manual')
+            )
+3. Delete the template and save your changes. You might need to update any templates that had a dependency on the deleted template. For     instance `dependsOn` and `condition` settings in `prodv2` template reference `ua`, so these would need to be updated in case `ua` was     removed.
+4. Use the [Remove-ParamFiles.ps1](/scripts/Remove-ParamFiles.ps1) script to remove the parameter files of the given environment: 
+    * From your PowerShell command prompt navigate to the Scripts folder then type these commands.
+    
+            1. . ./Remove-ParamFiles.ps1
+            2. Remove-ParamFiles    -TargetEnvironmentAbbreviation "<TargetEnvironmentAbbreviation>" `
+                                    -RepoPath "<RepoPath>"
+    * Use the `<EnvironmentAbbreviation>` of the environment you want to remove for `<TargetEnvironmentAbbreviation>` and the path to your private repositoty for `<RepoPath>`.
 
-    1. Locate and open file [vsts-cicd.yml](/vsts-cicd.yml)
-    2. Locate the `yaml/deploy-pipeline.yml` template for the environment you would like to delete.
-
-            - template: yaml/deploy-pipeline.yml
-            parameters:
-                solutionAbbreviation: '$(SolutionAbbreviation)'
-                environmentAbbreviation: '<env>'
-                location: 'westus2'
-                serviceConnection: '$(SolutionAbbreviation)-serviceconnection-<env>'
-                dependsOn: Build_Functions
-                stageName: 'NonProd_<env>'
-                functionApps:
-                - name: 'GraphUpdater'
-                - name: 'MembershipAggregator'
-                - name: 'SecurityGroup'
-                - name: 'AzureMaintenance'
-                - name: 'AzureUserReader'
-                - name: 'JobScheduler'
-                - name: 'JobTrigger'
-                condition: |
-                and(
-                    succeeded('Build_Functions'),
-                    eq(variables['Build.SourceBranch'], 'refs/heads/develop'),
-                    in(variables['Build.Reason'], 'IndividualCI', 'Manual')
-                )
-    3. Delete the template and save your changes. You might need to update any templates that had a dependency on the deleted template. For     instance `dependsOn` and `condition` settings in `prodv2` template reference `ua`, so these would need to be updated in case `ua` was     removed.
-    4. Search for the file `parameters.<environment-you-want-to-delete>.json` and delete the file.
+# ADO Pipeline Setup
 -   ### Create a Service Connection
 
     In order to deploy GMM resources through a pipeline we need to create a [Service Connection](https://docs.microsoft.com/en-us/azure/devops/pipelines/library/service-endpoints?view=azure-devops&tabs=yaml) and grant permissions to it.
