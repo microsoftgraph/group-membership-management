@@ -6,22 +6,27 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using Microsoft.Graph;
 using System;
 using System.Linq;
 using Newtonsoft.Json;
 using Entities.ServiceBus;
 using Microsoft.ApplicationInsights;
+using Repositories.Contracts.InjectConfig;
 
 namespace Hosts.SecurityGroup
 {
     public class SubOrchestratorFunction
     {
+        private readonly IDeltaCachingConfig _deltaCachingConfig;
         private readonly ILoggingRepository _log;
         private readonly TelemetryClient _telemetryClient;
 
-        public SubOrchestratorFunction(ILoggingRepository loggingRepository, TelemetryClient telemetryClient)
+        public SubOrchestratorFunction(
+            IDeltaCachingConfig deltaCachingConfig,
+            ILoggingRepository loggingRepository, 
+            TelemetryClient telemetryClient)
         {
+            _deltaCachingConfig = deltaCachingConfig;
             _log = loggingRepository;
             _telemetryClient = telemetryClient;
         }
@@ -61,7 +66,7 @@ namespace Hosts.SecurityGroup
                     }
                 }
 
-                if (transitiveGroupCount > 0)
+                if (transitiveGroupCount > 0 || !_deltaCachingConfig.DeltaCacheEnabled)
                 {
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });
                     // run exisiting code
@@ -72,49 +77,46 @@ namespace Hosts.SecurityGroup
                     _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
                 }
                 else {
-                    if (transitiveGroupCount <= 0)
+                    try
                     {
-                        try
+                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
+                        // first check if delta file exists in cache folder
+                        var filePath = $"cache/delta_{request.SourceGroup.ObjectId}";
+                        var fileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
+                        if (string.IsNullOrEmpty(fileContent))
                         {
-                            if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
-                            // first check if delta file exists in cache folder
-                            var filePath = $"cache/delta_{request.SourceGroup.ObjectId}";
-                            var fileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
-                            if (string.IsNullOrEmpty(fileContent))
-                            {
-                                var response = await GetUsersReaderFunction(context, allUsers, request);
-                                allUsers = response.allUsers;
-                                await GetDeltaUsersSenderFunction(context, request, allUsers, response.deltaUrl);
-                            }
-                            else
-                            {
-                                if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query using delta link for group {request.SourceGroup.ObjectId}" });
-                                var deltaResponse = await GetDeltaUsersReaderFunction(context, fileContent, deltaUsersToAdd, deltaUsersToRemove, request);
-                                deltaUsersToAdd = deltaResponse.deltaUsersToAdd;
-                                deltaUsersToRemove = deltaResponse.deltaUsersToRemove;
-                                filePath = $"cache/{request.SourceGroup.ObjectId}";
-                                fileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
-                                var json = JsonConvert.DeserializeObject<GroupMembership>(fileContent);
-                                var sourceMembers = json.SourceMembers.Distinct().ToList();
-                                if (!context.IsReplaying) { TrackCachedUsersEvent(request.RunId, sourceMembers.Count, request.SourceGroup.ObjectId); }
-                                sourceMembers.AddRange(deltaUsersToAdd);
-                                var newUsers = sourceMembers.Except(deltaUsersToRemove).ToList();
-                                allUsers.AddRange(newUsers);
-                                await GetDeltaUsersSenderFunction(context, request, allUsers, deltaResponse.deltaUrl);
-                            }
-                            _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users" });
-                        }
-                        catch (Exception e)
-                        {
-                            _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"delta query failed for group {request.SourceGroup.ObjectId}: {e.Message}" });
-                            if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });
-                            // run exisiting code
-                            var response = await GetMembersReaderFunction(context, allUsers, allNonUserGraphObjects, request);
+                            var response = await GetUsersReaderFunction(context, allUsers, request);
                             allUsers = response.allUsers;
-                            allNonUserGraphObjects = response.allNonUserGraphObjects;
-                            var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, allNonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
-                            _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
+                            await GetDeltaUsersSenderFunction(context, request, allUsers, response.deltaUrl);
                         }
+                        else
+                        {
+                            if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query using delta link for group {request.SourceGroup.ObjectId}" });
+                            var deltaResponse = await GetDeltaUsersReaderFunction(context, fileContent, deltaUsersToAdd, deltaUsersToRemove, request);
+                            deltaUsersToAdd = deltaResponse.deltaUsersToAdd;
+                            deltaUsersToRemove = deltaResponse.deltaUsersToRemove;
+                            filePath = $"cache/{request.SourceGroup.ObjectId}";
+                            fileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
+                            var json = JsonConvert.DeserializeObject<GroupMembership>(fileContent);
+                            var sourceMembers = json.SourceMembers.Distinct().ToList();
+                            if (!context.IsReplaying) { TrackCachedUsersEvent(request.RunId, sourceMembers.Count, request.SourceGroup.ObjectId); }
+                            sourceMembers.AddRange(deltaUsersToAdd);
+                            var newUsers = sourceMembers.Except(deltaUsersToRemove).ToList();
+                            allUsers.AddRange(newUsers);
+                            await GetDeltaUsersSenderFunction(context, request, allUsers, deltaResponse.deltaUrl);
+                        }
+                        _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users" });
+                    }
+                    catch (Exception e)
+                    {
+                        _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"delta query failed for group {request.SourceGroup.ObjectId}: {e.Message}" });
+                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });
+                        // run exisiting code
+                        var response = await GetMembersReaderFunction(context, allUsers, allNonUserGraphObjects, request);
+                        allUsers = response.allUsers;
+                        allNonUserGraphObjects = response.allNonUserGraphObjects;
+                        var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, allNonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
+                        _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
                     }
                 }
             }
