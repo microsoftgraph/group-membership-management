@@ -9,13 +9,13 @@ using Services.Contracts;
 using Repositories.Contracts;
 using Services.Entities;
 
-namespace Hosts.AzureTableBackup
+namespace Hosts.AzureBackup
 {
     public class ReviewAndDeleteFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IAzureTableBackupService _azureTableBackupService = null;
-        public ReviewAndDeleteFunction(IAzureTableBackupService azureTableBackupService, ILoggingRepository loggingRepository)
+        private readonly IAzureBackupService _azureTableBackupService = null;
+        public ReviewAndDeleteFunction(IAzureBackupService azureTableBackupService, ILoggingRepository loggingRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _azureTableBackupService = azureTableBackupService ?? throw new ArgumentNullException(nameof(azureTableBackupService));

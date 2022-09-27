@@ -9,7 +9,7 @@ using Services.Entities;
 using System.Linq;
 using Repositories.Contracts;
 
-namespace Hosts.AzureTableBackup
+namespace Hosts.AzureBackup
 {
     public class OrchestratorFunction
     {

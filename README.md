@@ -18,15 +18,15 @@ Limitations:
 1. [GMM Setup](#gmm-setup)
 
     a) [Prerequisites](#prerequisites)
-    
+
     b) [Create Resource Groups and prereqs keyvault](#create-resource-groups-and-prereqs-keyvault)
-    
+
     c) [Populate prereqs keyvault](#populate-prereqs-keyvault)
-    
+
     d) [Configure Azure Devops](#configure-azure-devops)
 
 2. [Post-Deployment Tasks](#post-deployment-tasks)
-3. [Setting up AzureTableBackup function](#setting-azuretablebackup-function)
+3. [Setting up AzureBackup function](#setting-azuretablebackup-function)
 4. [Setting up GMM in a demo tenant](#setting-gmm-in-a-demo-tenant)
 5. [Setting up GMM UI](#setting-up-gmm-ui)
 6. [Steps to debug and troubleshoot a failing sync](#steps-to-debug-and-troubleshoot-a-failing-sync)
@@ -266,7 +266,7 @@ Once your application is created we need to grant the requested permissions to u
                 - name: 'GraphUpdater'
                 - name: 'MembershipAggregator'
                 - name: 'SecurityGroup'
-                - name: 'AzureTableBackup'
+                - name: 'AzureBackup'
                 - name: 'AzureUserReader'
                 - name: 'JobScheduler'
                 - name: 'JobTrigger'
@@ -311,7 +311,7 @@ Once your application is created we need to grant the requested permissions to u
                 - name: 'GraphUpdater'
                 - name: 'MembershipAggregator'
                 - name: 'SecurityGroup'
-                - name: 'AzureTableBackup'
+                - name: 'AzureBackup'
                 - name: 'AzureUserReader'
                 - name: 'JobScheduler'
                 - name: 'JobTrigger'
@@ -327,7 +327,7 @@ Once your application is created we need to grant the requested permissions to u
 
     In order to deploy GMM resources through a pipeline we need to create a [Service Connection](https://docs.microsoft.com/en-us/azure/devops/pipelines/library/service-endpoints?view=azure-devops&tabs=yaml) and grant permissions to it.
 
-    GMM provides a PowerShell script to accomplish this.  
+    GMM provides a PowerShell script to accomplish this.
     From you `PowerShell 5.x` command prompt run the following scripts.
 
     1.  Set-ServicePrincipal.ps1
@@ -362,7 +362,7 @@ Once your application is created we need to grant the requested permissions to u
 
         This script sets up the service connection. Ensure that you're an owner of the service connection you created in step 1. Then, run the following command. `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` are as before, plus two new ones.
 
-        `<OrganizationName>` - This is the name of your organization used in Azure DevOps.  
+        `<OrganizationName>` - This is the name of your organization used in Azure DevOps.
         `<ProjectName>` - This is the name of the project in Azure DevOps we just created in a previous step.
 
             1. . ./Set-ServiceConnection.ps1
@@ -467,7 +467,7 @@ Once your application is created we need to grant the requested permissions to u
 * Once the pipeline has completed building and deploying GMM code and resources to your Azure resource groups, we need to make some final configuration changes.
 * The following script grants SecurityGroup, MembershipAggregator, and GraphUpdater function access to storage account and all functions access to App Configuration.
 
-1. Open [Set-PostDeploymentRoles.ps1](https://microsoftit.visualstudio.com/OneITVSO/_git/STW-Sol-GrpMM-public?anchor=creating-synchronization-jobs-for-source-groups&path=/Scripts/PostDeployment/Set-PostDeploymentRoles.ps1) in Visual Studio Code. 
+1. Open [Set-PostDeploymentRoles.ps1](https://microsoftit.visualstudio.com/OneITVSO/_git/STW-Sol-GrpMM-public?anchor=creating-synchronization-jobs-for-source-groups&path=/Scripts/PostDeployment/Set-PostDeploymentRoles.ps1) in Visual Studio Code.
 
 2. Copy the example function call from the comments and paste it after the function declaration. The example function call should look like this:
 
@@ -482,8 +482,8 @@ Once your application is created we need to grant the requested permissions to u
     * `<appConfigName>` - "`<SolutionAbbreviation>`-appConfig-`<EnvironmentAbbreviation>`"
 
     <br/>
-       
-3. Run [Set-PostDeploymentRoles.ps1](https://microsoftit.visualstudio.com/OneITVSO/_git/STW-Sol-GrpMM-public?anchor=creating-synchronization-jobs-for-source-groups&path=/Scripts/PostDeployment/Set-PostDeploymentRoles.ps1)  with the required parameters from your `PowerShell Core 7.2.x` command prompt. 
+
+3. Run [Set-PostDeploymentRoles.ps1](https://microsoftit.visualstudio.com/OneITVSO/_git/STW-Sol-GrpMM-public?anchor=creating-synchronization-jobs-for-source-groups&path=/Scripts/PostDeployment/Set-PostDeploymentRoles.ps1)  with the required parameters from your `PowerShell Core 7.2.x` command prompt.
 
 
 ### Creating synchronization jobs for source groups
@@ -651,9 +651,9 @@ There are 3 Dry Run flags in GMM. If any of these Dry run flags are set, the syn
 2. IsSecurityGroupDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all Security Group syncs in dry run.
 3. IsMembershipAggregatorDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all syncs in dry run.
 
-# Setting AzureTableBackup function
-`<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureTableBackup function can create backups for Azure Storage Tables and delete older backups automatically.
-Out of the box, the AzureTableBackup function will backup the 'syncJobs' table; where all the groups' sync parameters are defined. The function is set to run every day at midnight and will delete backups older than 30 days.
+# Setting AzureBackup function
+`<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureBackup function can create backups for Azure Storage Tables and delete older backups automatically.
+Out of the box, the AzureBackup function will backup the 'syncJobs' table; where all the groups' sync parameters are defined. The function is set to run every day at midnight and will delete backups older than 30 days.
 
 The function reads the backup configuration settings from the data keyvault (`<SolutionAbbreviation>`-data-`<EnvironmentAbbreviation>`), specifically from a secret named 'tablesToBackup' which is a string that represents a json array of backup configurations.
 
@@ -666,9 +666,9 @@ The function reads the backup configuration settings from the data keyvault (`<S
         }
     ]
 
-The default configuration for the 'syncJobs' table is generated via an ARM template. For more details see the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureTableBackup\Infrastructure\data\template.bicep
+The default configuration for the 'syncJobs' table is generated via an ARM template. For more details see the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureBackup\Infrastructure\data\template.bicep
 
-The run frequency is set to every day at midnight, it is defined as a NCRONTAB expression in the application setting named 'backupTriggerSchedule' which can be updated on the Azure Portal, it's located under the Configuration blade for `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureTableBackup Function App, additionally it can be updated directly in the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureTableBackup\Infrastructure\compute\template.bicep
+The run frequency is set to every day at midnight, it is defined as a NCRONTAB expression in the application setting named 'backupTriggerSchedule' which can be updated on the Azure Portal, it's located under the Configuration blade for `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureBackup Function App, additionally it can be updated directly in the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureBackup\Infrastructure\compute\template.bicep
 
 # Setting GMM in a demo tenant
 

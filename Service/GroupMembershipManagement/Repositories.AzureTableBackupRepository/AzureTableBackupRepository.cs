@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
-using Entities.AzureTableBackup;
+using Entities.AzureBackup;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.Cosmos.Table.Queryable;
 using Repositories.Contracts;
@@ -12,21 +12,21 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Repositories.AzureTableBackupRepository
+namespace Repositories.AzureBackupRepository
 {
-    public class AzureTableBackupRepository : IAzureTableBackupRepository
+    public class AzureBackupRepository : IAzureBackupRepository
     {
         private const string BACKUP_PREFIX = "zzBackup";
         private const string BACKUP_TABLE_NAME_SUFFIX = "BackupTracker";
         private const string BACKUP_DATE_FORMAT = "yyyyMMddHHmmss";
         private readonly ILoggingRepository _loggingRepository = null;
 
-        public AzureTableBackupRepository(ILoggingRepository loggingRepository)
+        public AzureBackupRepository(ILoggingRepository loggingRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        public async Task<List<BackupEntity>> GetBackupsAsync(IAzureTableBackup backupSettings)
+        public async Task<List<BackupEntity>> GetBackupsAsync(IAzureBackup backupSettings)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Getting backup tables for table {backupSettings.SourceTableName}" });
 
@@ -49,7 +49,7 @@ namespace Repositories.AzureTableBackupRepository
             return tables.Select(table => new BackupEntity(table.Name, "table")).ToList();
         }
 
-        public async Task<List<DynamicTableEntity>> GetEntitiesAsync(IAzureTableBackup backupSettings)
+        public async Task<List<DynamicTableEntity>> GetEntitiesAsync(IAzureBackup backupSettings)
         {
             var table = await GetCloudTableAsync(backupSettings.SourceConnectionString, backupSettings.SourceTableName);
             var entities = new List<DynamicTableEntity>();
@@ -73,7 +73,7 @@ namespace Repositories.AzureTableBackupRepository
             return entities;
         }
 
-        public async Task DeleteBackupTrackersAsync(IAzureTableBackup backupSettings, List<(string PartitionKey, string RowKey)> entities)
+        public async Task DeleteBackupTrackersAsync(IAzureBackup backupSettings, List<(string PartitionKey, string RowKey)> entities)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleting old backup trackers from {backupSettings.SourceTableName}" });
 
@@ -113,7 +113,7 @@ namespace Repositories.AzureTableBackupRepository
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleted {deletedEntitiesCount} old backup trackers from {backupSettings.SourceTableName}" });
         }
 
-        public async Task<BackupResult> BackupEntitiesAsync(IAzureTableBackup backupSettings, List<DynamicTableEntity> entities)
+        public async Task<BackupResult> BackupEntitiesAsync(IAzureBackup backupSettings, List<DynamicTableEntity> entities)
         {
             var tableName = $"{BACKUP_PREFIX}{backupSettings.SourceTableName}{DateTime.UtcNow.ToString(BACKUP_DATE_FORMAT)}";
             var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, tableName);
@@ -173,7 +173,7 @@ namespace Repositories.AzureTableBackupRepository
             return new BackupResult(tableName, "table", backupCount);
         }
 
-        public async Task<bool> VerifyDeleteBackupAsync(IAzureTableBackup backupSettings, string tableName)
+        public async Task<bool> VerifyDeleteBackupAsync(IAzureBackup backupSettings, string tableName)
         {
             var cutOffDate = DateTime.UtcNow.AddDays(-backupSettings.DeleteAfterDays);
 
@@ -214,7 +214,7 @@ namespace Repositories.AzureTableBackupRepository
             return false;
         }
 
-        public async Task DeleteBackupAsync(IAzureTableBackup backupSettings, string tableName)
+        public async Task DeleteBackupAsync(IAzureBackup backupSettings, string tableName)
         {
             await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Deleting backup table: {tableName}" });
 
@@ -233,7 +233,7 @@ namespace Repositories.AzureTableBackupRepository
 
         private bool IsSuccessStatusCode(int statusCode) => statusCode >= 200 && statusCode <= 299;
 
-        public async Task AddBackupResultTrackerAsync(IAzureTableBackup backupSettings, BackupResult backupResult)
+        public async Task AddBackupResultTrackerAsync(IAzureBackup backupSettings, BackupResult backupResult)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Creating backup tracker for {backupSettings.SourceTableName}" });
 
@@ -252,7 +252,7 @@ namespace Repositories.AzureTableBackupRepository
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Created backup tracker ({backupResult.RowKey}) for {backupSettings.SourceTableName}" });
         }
 
-        public async Task<BackupResult> GetLastestBackupResultTrackerAsync(IAzureTableBackup backupSettings)
+        public async Task<BackupResult> GetLastestBackupResultTrackerAsync(IAzureBackup backupSettings)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Getting latest backup tracker for {backupSettings.SourceTableName}" });
 

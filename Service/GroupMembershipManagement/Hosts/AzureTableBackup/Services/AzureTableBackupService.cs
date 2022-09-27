@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
-using Entities.AzureTableBackup;
+using Entities.AzureBackup;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -13,17 +13,17 @@ using System.Threading.Tasks;
 
 namespace Services
 {
-	public class AzureTableBackupService : IAzureTableBackupService
+	public class AzureBackupService : IAzureBackupService
 	{
-		private readonly List<AzureTableBackup> _tablesToBackup = null;
+		private readonly List<AzureBackup> _tablesToBackup = null;
 		private readonly ILoggingRepository _loggingRepository = null;
-		private readonly IAzureTableBackupRepository _azureTableBackupRepository = null;
+		private readonly IAzureBackupRepository _azureTableBackupRepository = null;
 		private readonly IAzureStorageBackupRepository _azureBlobBackupRepository = null;
 
-		public AzureTableBackupService(
-			List<AzureTableBackup> tablesToBackup,
+		public AzureBackupService(
+			List<AzureBackup> tablesToBackup,
 			ILoggingRepository loggingRepository,
-			IAzureTableBackupRepository azureTableBackupRepository,
+			IAzureBackupRepository azureTableBackupRepository,
 			IAzureStorageBackupRepository azureBlobBackupRepository)
 		{
 			_tablesToBackup = tablesToBackup;
@@ -70,7 +70,7 @@ namespace Services
 			return requests;
 		}
 
-		public async Task<bool> ReviewAndDeleteAsync(IAzureTableBackup backupSetting, string tableName)
+		public async Task<bool> ReviewAndDeleteAsync(IAzureBackup backupSetting, string tableName)
 		{
 			var backupStorage = DetermineBackupStorage(backupSetting.BackupType);
 			var shouldDelete = await backupStorage.VerifyDeleteBackupAsync(backupSetting, tableName);
@@ -87,7 +87,7 @@ namespace Services
 			return shouldDelete;
 		}
 
-		private async Task BackupTableAsync(IAzureTableBackup table)
+		private async Task BackupTableAsync(IAzureBackup table)
 		{
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Starting backup maintenance for table: {table.SourceTableName}" });
 			var entities = await _azureTableBackupRepository.GetEntitiesAsync(table);
@@ -125,7 +125,7 @@ namespace Services
 
 		}
 
-		private async Task CompareBackupResults(IAzureTableBackup backupSettings, BackupResult currentBackup)
+		private async Task CompareBackupResults(IAzureBackup backupSettings, BackupResult currentBackup)
 		{
 			var previousBackupTracker = await _azureTableBackupRepository.GetLastestBackupResultTrackerAsync(backupSettings);
 			await _azureTableBackupRepository.AddBackupResultTrackerAsync(backupSettings, currentBackup);
@@ -149,7 +149,7 @@ namespace Services
 				});
 		}
 
-		private async Task DeleteOldBackupTrackersAsync(IAzureTableBackup backupSettings, List<string> deletedTables)
+		private async Task DeleteOldBackupTrackersAsync(IAzureBackup backupSettings, List<string> deletedTables)
 		{
 			var keys = deletedTables.Select(x => (backupSettings.SourceTableName, x)).ToList();
 			await _azureTableBackupRepository.DeleteBackupTrackersAsync(backupSettings, keys);

@@ -7,7 +7,7 @@ using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
 
-namespace Hosts.AzureTableBackup
+namespace Hosts.AzureBackup
 {
     public class LoggerFunction
     {

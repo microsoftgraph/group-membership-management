@@ -1,12 +1,12 @@
 # Azure Table Backup Function App
-This guide will explain how to use the AzureBackupTable function, found in AzureTableBackup/Function
+This guide will explain how to use the AzureBackupTable function, found in AzureBackup/Function
 
 ## Prerequisites
 * Visual Studio (tested in VS 2019, but likely works with other versions as well)
 * Download the latest version of the public Github repository from: https://github.com/microsoftgraph/group-membership-management
 * Ensure that GMM is already set up in your environment, as you will need some of the values from your gmm-data-\<env> keyvault
 
-## AzureTableBackup Configuration
+## AzureBackup Configuration
 Format:
 ```
 {
@@ -33,5 +33,5 @@ to indicate the desire to clean all tables in the storage account
 * DeleteAfterDays: The number of days a table exists before it should be deleted
 
 ## Running the function
-1. Update the json for the AzureTableBackup config in the "tablesToBackup" secret in the gmm-data-\<env> keyvault
+1. Update the json for the AzureBackup config in the "tablesToBackup" secret in the gmm-data-\<env> keyvault
 2. Run the function in Azure

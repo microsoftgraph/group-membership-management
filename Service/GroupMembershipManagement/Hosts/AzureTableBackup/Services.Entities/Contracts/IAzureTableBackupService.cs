@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace Services.Contracts
 {
-    public interface IAzureTableBackupService
+    public interface IAzureBackupService
     {
         Task RunBackupServiceAsync();
         Task<List<IReviewAndDeleteRequest>> RetrieveBackupsAsync();
-        Task<bool> ReviewAndDeleteAsync(IAzureTableBackup backupSetting, string tableName);
+        Task<bool> ReviewAndDeleteAsync(IAzureBackup backupSetting, string tableName);
     }
 }

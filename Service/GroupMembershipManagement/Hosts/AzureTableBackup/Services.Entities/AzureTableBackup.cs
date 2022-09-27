@@ -4,7 +4,7 @@ using Repositories.Contracts.InjectConfig;
 
 namespace Services.Entities
 {
-    public class AzureTableBackup : IAzureTableBackup
+    public class AzureBackup : IAzureBackup
     {
         public string SourceTableName { get; }
         public string SourceConnectionString { get; }
@@ -13,7 +13,7 @@ namespace Services.Entities
         public bool CleanupOnly { get; }
         public int DeleteAfterDays { get; }
 
-        public AzureTableBackup(string sourceTableName, string sourceConnectionString, string destinationConnectionString, string backupType, bool cleanupOnly, int deleteAfterDays)
+        public AzureBackup(string sourceTableName, string sourceConnectionString, string destinationConnectionString, string backupType, bool cleanupOnly, int deleteAfterDays)
         {
             SourceTableName = sourceTableName;
             SourceConnectionString = sourceConnectionString;
@@ -30,7 +30,7 @@ namespace Services.Entities
                 return false;
             }
 
-            var otherBackup = other as AzureTableBackup;
+            var otherBackup = other as AzureBackup;
 
             return SourceTableName == otherBackup.SourceTableName
                 && SourceConnectionString == otherBackup.SourceConnectionString
@@ -42,7 +42,7 @@ namespace Services.Entities
 
         public override int GetHashCode()
         {
-            return SourceTableName.GetHashCode() 
+            return SourceTableName.GetHashCode()
                 ^ SourceConnectionString.GetHashCode()
                 ^ DestinationConnectionString.GetHashCode()
                 ^ BackupType.GetHashCode()

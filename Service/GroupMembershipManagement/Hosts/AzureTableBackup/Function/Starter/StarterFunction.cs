@@ -8,7 +8,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
 
-namespace Hosts.AzureTableBackup
+namespace Hosts.AzureBackup
 {
     public class StarterFunction
     {

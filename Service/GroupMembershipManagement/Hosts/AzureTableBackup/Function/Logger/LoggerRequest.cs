@@ -3,7 +3,7 @@
 using Repositories.Contracts;
 using System;
 
-namespace Hosts.AzureTableBackup
+namespace Hosts.AzureBackup
 {
     public class LoggerRequest
     {

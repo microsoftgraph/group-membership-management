@@ -11,13 +11,13 @@ using Services.Contracts;
 using Repositories.Contracts;
 using Services.Entities;
 
-namespace Hosts.AzureTableBackup
+namespace Hosts.AzureBackup
 {
     public class RetrieveBackupsFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IAzureTableBackupService _azureTableBackupService = null;
-        public RetrieveBackupsFunction(IAzureTableBackupService azureTableBackupService, ILoggingRepository loggingRepository)
+        private readonly IAzureBackupService _azureTableBackupService = null;
+        public RetrieveBackupsFunction(IAzureBackupService azureTableBackupService, ILoggingRepository loggingRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _azureTableBackupService = azureTableBackupService ?? throw new ArgumentNullException(nameof(azureTableBackupService));

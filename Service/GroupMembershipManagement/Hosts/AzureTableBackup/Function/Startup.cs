@@ -4,39 +4,38 @@ using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
-using Hosts.AzureTableBackup;
+using Hosts.AzureBackup;
 using Services;
 using Services.Contracts;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Linq;
-using Repositories.AzureTableBackupRepository;
+using Repositories.AzureBackupRepository;
 using Repositories.AzureBlobBackupRepository;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 
-namespace Hosts.AzureTableBackup
+namespace Hosts.AzureBackup
 {
     public class Startup : CommonStartup
     {
-        protected override string FunctionName => nameof(AzureTableBackup);
+        protected override string FunctionName => nameof(AzureBackup);
         protected override string DryRunSettingName => string.Empty;
 
         public override void Configure(IFunctionsHostBuilder builder)
         {
             base.Configure(builder);
 
-            builder.Services.AddScoped<IAzureTableBackupRepository, AzureTableBackupRepository>();
+            builder.Services.AddScoped<IAzureBackupRepository, AzureBackupRepository>();
             builder.Services.AddScoped<IAzureStorageBackupRepository, AzureBlobBackupRepository>();
-            builder.Services.AddScoped<IAzureTableBackupService>(services =>
+            builder.Services.AddScoped<IAzureBackupService>(services =>
             {
                 var tablesToBackupSetting = GetValueOrDefault("tablesToBackup");
                 var tablesToBackup = string.IsNullOrWhiteSpace(tablesToBackupSetting)
-                                    ? new List<Services.Entities.AzureTableBackup>()
-                                    : JsonConvert.DeserializeObject<List<Services.Entities.AzureTableBackup>>(tablesToBackupSetting);
+                                    ? new List<Services.Entities.AzureBackup>()
+                                    : JsonConvert.DeserializeObject<List<Services.Entities.AzureBackup>>(tablesToBackupSetting);
 
-                return new AzureTableBackupService(tablesToBackup, services.GetService<ILoggingRepository>(), services.GetService<IAzureTableBackupRepository>(), services.GetService<IAzureStorageBackupRepository>());
+                return new AzureBackupService(tablesToBackup, services.GetService<ILoggingRepository>(), services.GetService<IAzureBackupRepository>(), services.GetService<IAzureStorageBackupRepository>());
             });
         }
     }
