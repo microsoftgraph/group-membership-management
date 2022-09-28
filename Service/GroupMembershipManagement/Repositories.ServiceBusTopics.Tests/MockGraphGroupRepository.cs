@@ -16,7 +16,7 @@ namespace Repositories.ServiceBusTopics.Tests
 		public HashSet<Guid> GroupsThatExist = new HashSet<Guid>();
 		public HashSet<Guid> GroupsGMMOwns = new HashSet<Guid>();
 
-		public Task<(ResponseCode ResponseCode, int SuccessCount)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+		public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
 		{
 			throw new NotImplementedException();
 		}
@@ -41,7 +41,7 @@ namespace Repositories.ServiceBusTopics.Tests
 			return Task.FromResult(GroupsThatExist.Contains(objectId));
 		}
 
-		public Task<(ResponseCode ResponseCode, int SuccessCount)> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+		public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
 		{
 			throw new NotImplementedException();
 		}

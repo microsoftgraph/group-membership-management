@@ -30,6 +30,7 @@ namespace Hosts.GraphUpdater
             var skip = 0;
             var request = context.GetInput<GroupUpdaterRequest>();
             var totalSuccessCount = 0;
+            var allUsersNotFound = new List<AzureADUser>();
 
             if (request == null)
             {
@@ -43,7 +44,7 @@ namespace Hosts.GraphUpdater
 
             while (batch.Count > 0)
             {
-                totalSuccessCount += await context.CallActivityAsync<int>(nameof(GroupUpdaterFunction),
+                var response = await context.CallActivityAsync<(int successCount, List<AzureADUser> usersNotFound)>(nameof(GroupUpdaterFunction),
                                            new GroupUpdaterRequest
                                            {
                                                SyncJob = request.SyncJob,
@@ -51,6 +52,8 @@ namespace Hosts.GraphUpdater
                                                Type = request.Type,
                                                IsInitialSync = request.IsInitialSync
                                            });
+                totalSuccessCount += response.successCount;
+                allUsersNotFound.AddRange(response.usersNotFound);
 
                 await context.CallActivityAsync(nameof(LoggerFunction),
                                                 new LoggerRequest
@@ -63,6 +66,8 @@ namespace Hosts.GraphUpdater
                 skip += _batchSize;
                 batch = request.Members.Skip(skip).Take(_batchSize).ToList();
             }
+
+            if (!context.IsReplaying & allUsersNotFound.Count > 0) { TrackUsersNotFoundEvent(request.SyncJob.RunId, allUsersNotFound.Count, request.SyncJob.TargetOfficeGroupId); }
 
             _telemetryClient.TrackMetric(nameof(Services.Entities.Metric.MembersNotFound), request.Members.Count - totalSuccessCount);
 
@@ -80,6 +85,17 @@ namespace Hosts.GraphUpdater
                                                           SyncJob = request.SyncJob,
                                                           Verbosity = VerbosityLevel.DEBUG
                                                       });
+        }
+
+        private void TrackUsersNotFoundEvent(Guid? runId, int usersNotFoundCount, Guid groupId)
+        {
+            var usersNotFoundEvent = new Dictionary<string, string>
+            {
+                { "RunId", runId.ToString() },
+                { "TargetGroupId", groupId.ToString() },
+                { "UsersNotFound", usersNotFoundCount.ToString() }
+            };
+            _telemetryClient.TrackEvent("UsersNotFoundCount", usersNotFoundEvent);
         }
     }
 }

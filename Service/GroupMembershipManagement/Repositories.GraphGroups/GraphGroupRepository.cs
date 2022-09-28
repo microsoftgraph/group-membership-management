@@ -620,7 +620,7 @@ namespace Repositories.GraphGroups
 
         const int GraphBatchLimit = 20;
         const int ConcurrentRequests = 10;
-        public Task<(ResponseCode ResponseCode, int SuccessCount)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+        public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
             //You can, in theory, send batches of 20 requests of 20 group adds each
             // but Graph starts saying "Service Unavailable" for a bunch of them if you do that, so only send so many at once
@@ -628,7 +628,7 @@ namespace Repositories.GraphGroups
             return BatchAndSend(users, b => MakeBulkAddRequest(b, targetGroup.ObjectId), GraphBatchLimit, 5);
         }
 
-        public Task<(ResponseCode ResponseCode, int SuccessCount)> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+        public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
             // This, however, is the most we can send per delete batch, and it works pretty well.
             return BatchAndSend(users, b => MakeBulkRemoveRequest(b, targetGroup.ObjectId), 1, GraphBatchLimit);
@@ -653,9 +653,9 @@ namespace Repositories.GraphGroups
 
         private string GetNewChunkId() => $"{Guid.NewGuid().ToString().Replace("-", string.Empty)}-";
 
-        private async Task<(ResponseCode ResponseCode, int SuccessCount)> BatchAndSend(IEnumerable<AzureADUser> users, MakeBulkRequest makeRequest, int requestMax, int batchSize)
+        private async Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)> BatchAndSend(IEnumerable<AzureADUser> users, MakeBulkRequest makeRequest, int requestMax, int batchSize)
         {
-            if (!users.Any()) { return (ResponseCode.Ok, 0); }
+            if (!users.Any()) { return (ResponseCode.Ok, 0, new List<AzureADUser>()); }
 
             var queuedBatches = new ConcurrentQueue<ChunkOfUsers>(
                     ChunksOfSize(users, requestMax) // Chop up the users into chunks of how many per graph request (20 for add, 1 for remove)
@@ -664,7 +664,7 @@ namespace Repositories.GraphGroups
             var responses = await Task.WhenAll(Enumerable.Range(0, ConcurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize)));
 
             var status = responses.Any(x => x.ResponseCode == ResponseCode.Error) ? ResponseCode.Error : ResponseCode.Ok;
-            return (status, responses.Sum(x => x.SuccessCount));
+            return (status, responses.Sum(x => x.SuccessCount), usersNotFound);
         }
 
         private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessQueue(ConcurrentQueue<ChunkOfUsers> queue, MakeBulkRequest makeRequest, int threadNumber, int batchSize)
@@ -835,6 +835,7 @@ namespace Repositories.GraphGroups
             };
 
         private static readonly Regex _userNotFound = new Regex(@"Resource '(?<id>[({]?[a-fA-F0-9]{8}[-]?([a-fA-F0-9]{4}[-]?){3}[a-fA-F0-9]{12}[})]?)' does not exist", RegexOptions.IgnoreCase);
+        private List<AzureADUser> usersNotFound = new List<AzureADUser>();
 
         private async IAsyncEnumerable<RetryResponse> GetStepIdsToRetry(Dictionary<string, HttpResponseMessage> responses)
         {
@@ -885,6 +886,7 @@ namespace Repositories.GraphGroups
                             Message = $"User ID is found",
                             RunId = RunId
                         });
+                        usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(userId) });
                     }
 
                     else
