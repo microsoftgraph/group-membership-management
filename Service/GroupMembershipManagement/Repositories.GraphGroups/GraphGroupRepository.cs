@@ -142,7 +142,7 @@ namespace Repositories.GraphGroups
             var userResponse = await _graphServiceClient.Users.Request().GetAsync();
             tenantUsers.UnionWith(userResponse.CurrentPage.Select(graphUser => new AzureADUser { ObjectId = new Guid(graphUser.Id) }));
 
-            while (tenantUsers.Count < userCount)
+            while (tenantUsers.Count < userCount && userResponse.NextPageRequest != null)
             {
                 userResponse = await userResponse.NextPageRequest.GetAsync();
                 tenantUsers.UnionWith(userResponse.CurrentPage.Select(graphUser => new AzureADUser { ObjectId = new Guid(graphUser.Id) }));
