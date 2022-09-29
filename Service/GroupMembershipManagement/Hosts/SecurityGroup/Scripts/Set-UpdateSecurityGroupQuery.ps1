@@ -41,10 +41,16 @@ function Set-UpdateSecurityGroupQuery {
                 continue
             }
 
-            foreach($id in $part.sources) {
-                $newQueryPart = '{"type":"SecurityGroup","source":"' + $id + '"}'
-                $newQueryParts += $newQueryPart
+            if($part.sources) {
+                foreach($id in $part.sources) {
+                    $newQueryPart = '{"type":"SecurityGroup","source":"' + $id + '"}'
+                    $newQueryParts += $newQueryPart
+                }
             }
+            else {
+                $newQueryParts +=  ConvertTo-Json -InputObject $part -Compress -Depth 100
+            }
+
         }
 
         $newQuery = "[" + ($newQueryParts -join ",") + "]"
