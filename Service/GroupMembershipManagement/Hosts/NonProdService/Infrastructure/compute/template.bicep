@@ -107,14 +107,18 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   }
 }
 
-var appSettings =  {
+var commonSettings = {
+  WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
   WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
   SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
+  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
+  FUNCTIONS_EXTENSION_VERSION: '~4'
+}
+
+var appSettings =  {
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
-  FUNCTIONS_EXTENSION_VERSION: '~4'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
@@ -158,6 +162,7 @@ module functionAppTemplate_NonProdService 'functionApp.bicep' = {
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
+    secretSettings: commonSettings
   }
   dependsOn: [
     servicePlanTemplate
@@ -173,6 +178,7 @@ module functionAppSlotTemplate_NonProdService 'functionAppSlot.bicep' = {
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
+    secretSettings: commonSettings
   }
   dependsOn: [
     functionAppTemplate_NonProdService
@@ -242,7 +248,7 @@ module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   name: '${functionAppName}-NonProdService/appsettings'
   kind: 'string'
-  properties: union(appSettings, productionSettings)
+  properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppTemplate_NonProdService
     dataKeyVaultPoliciesTemplate
@@ -252,7 +258,7 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
 resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
   name: '${functionAppName}-NonProdService/staging/appsettings'
   kind: 'string'
-  properties: union(appSettings, stagingSettings)
+  properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
     functionAppSlotTemplate_NonProdService
     dataKeyVaultPoliciesTemplate

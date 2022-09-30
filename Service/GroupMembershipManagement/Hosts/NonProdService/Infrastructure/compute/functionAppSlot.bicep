@@ -17,6 +17,9 @@ param location string
 @minLength(1)
 param servicePlanName string
 
+@description('app settings')
+param secretSettings object
+
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string
 
@@ -34,6 +37,7 @@ resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
     serverFarmId: resourceId('Microsoft.Web/serverfarms', servicePlanName)
     siteConfig: {
       use32BitWorkerProcess : false
+      appSettings: secretSettings
     }
   }
   identity: {

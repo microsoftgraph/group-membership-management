@@ -92,15 +92,18 @@ var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVault
 var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 
-var appSettings = {
+var commonSettings = {
   WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
   WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
   SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
+  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
+  FUNCTIONS_EXTENSION_VERSION: '~4'
+}
+
+var appSettings = {
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
-  FUNCTIONS_EXTENSION_VERSION: '~3'
   jobsStorageAccountConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   jobsTableName: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
@@ -135,6 +138,7 @@ module functionAppTemplate_GroupTableManager 'functionApp.bicep' = {
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
+    secretSettings: commonSettings
   }
   dependsOn: [
     servicePlanTemplate
@@ -150,6 +154,7 @@ module functionAppSlotTemplate_GroupTableManager 'functionAppSlot.bicep' = {
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
+    secretSettings: commonSettings
   }
   dependsOn: [
     functionAppTemplate_GroupTableManager
@@ -213,7 +218,7 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   name: '${functionAppName}-GroupTableManager/appsettings'
   kind: 'string'
-  properties: union(appSettings, productionSettings)
+  properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppTemplate_GroupTableManager
     dataKeyVaultPoliciesTemplate
@@ -223,7 +228,7 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
 resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
   name: '${functionAppName}-GroupTableManager/staging/appsettings'
   kind: 'string'
-  properties: union(appSettings, stagingSettings)
+  properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
     functionAppSlotTemplate_GroupTableManager
     dataKeyVaultPoliciesTemplate

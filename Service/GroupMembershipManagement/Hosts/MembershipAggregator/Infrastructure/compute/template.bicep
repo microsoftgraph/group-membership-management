@@ -97,6 +97,8 @@ var membershipStorageAccountName = resourceId(subscription().subscriptionId, dat
 var membershipContainerName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipContainerName')
 var graphUpdaterUrl = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUpdaterUrl')
 var graphUpdaterFunctionKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUpdaterFunctionKey')
+var graphUpdaterStagingUrl = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUpdaterStagingUrl')
+var graphUpdaterStagingFunctionKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUpdaterStagingFunctionKey')
 var functionAppFullName = '${functionAppName}-MembershipAggregator'
 var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
 var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientSecret')
@@ -119,21 +121,22 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   }
 }
 
-var appSettings = {
+var commonSettings = {
   WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
   WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
   SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
+  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
+  FUNCTIONS_EXTENSION_VERSION: '~4'
+}
+
+var appSettings = {
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
-  FUNCTIONS_EXTENSION_VERSION: '~4'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
   jobsStorageAccountConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   jobsTableName: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
-  graphUpdaterUrl: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterUrl, '2019-09-01').secretUriWithVersion})'
-  graphUpdaterFunctionKey: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterFunctionKey, '2019-09-01').secretUriWithVersion})'
   membershipStorageAccountName: '@Microsoft.KeyVault(SecretUri=${reference(membershipStorageAccountName, '2019-09-01').secretUriWithVersion})'
   membershipContainerName: '@Microsoft.KeyVault(SecretUri=${reference(membershipContainerName, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
@@ -152,6 +155,8 @@ var appSettings = {
 var stagingSettings = {
   WEBSITE_CONTENTSHARE: toLower('functionApp-MembershipAggregator-staging')
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}MembershipAggregatorStaging'
+  graphUpdaterUrl: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStagingUrl, '2019-09-01').secretUriWithVersion})'
+  graphUpdaterFunctionKey: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStagingFunctionKey, '2019-09-01').secretUriWithVersion})'
   'AzureWebJobs.StarterFunction.Disabled': 1
   'AzureWebJobs.OrchestratorFunction.Disabled': 1
   'AzureWebJobs.MembershipSubOrchestratorFunction.Disabled': 1
@@ -166,6 +171,8 @@ var stagingSettings = {
 var productionSettings = {
   WEBSITE_CONTENTSHARE: toLower('functionApp-MembershipAggregator')
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}MembershipAggregator'
+  graphUpdaterUrl: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterUrl, '2019-09-01').secretUriWithVersion})'
+  graphUpdaterFunctionKey: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterFunctionKey, '2019-09-01').secretUriWithVersion})'
   'AzureWebJobs.StarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
   'AzureWebJobs.MembershipSubOrchestratorFunction.Disabled': 0
@@ -187,6 +194,7 @@ module functionAppTemplate_MembershipAggregator 'functionApp.bicep' = {
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     tenantId: tenantId
+    secretSettings: commonSettings
   }
   dependsOn: [
     servicePlanTemplate
@@ -203,6 +211,7 @@ module functionAppSlotTemplate_MembershipAggregator 'functionAppSlot.bicep' = {
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     tenantId: tenantId
+    secretSettings: commonSettings
   }
   dependsOn: [
     functionAppTemplate_MembershipAggregator
@@ -270,7 +279,7 @@ module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   name: '${functionAppName}-MembershipAggregator/appsettings'
   kind: 'string'
-  properties: union(appSettings, productionSettings)
+  properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppTemplate_MembershipAggregator
     dataKeyVaultPoliciesTemplate
@@ -280,7 +289,7 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
 resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
   name: '${functionAppName}-MembershipAggregator/staging/appsettings'
   kind: 'string'
-  properties: union(appSettings, stagingSettings)
+  properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
     functionAppSlotTemplate_MembershipAggregator
     dataKeyVaultPoliciesTemplate

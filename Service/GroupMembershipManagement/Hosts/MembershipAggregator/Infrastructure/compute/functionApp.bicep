@@ -17,6 +17,9 @@ param location string
 @minLength(1)
 param servicePlanName string
 
+@description('app settings')
+param secretSettings object
+
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string
 
@@ -36,6 +39,7 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
     httpsOnly: true
     siteConfig: {
       use32BitWorkerProcess : false
+      appSettings: secretSettings
     }
   }
   identity: {
@@ -78,6 +82,8 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
   parent: functionApp
   properties: {
     appSettingNames: [
+      'graphUpdaterUrl'
+      'graphUpdaterFunctionKey'
       'AzureFunctionsJobHost__extensions__durableTask__hubName'
       'AzureWebJobs.StarterFunction.Disabled'
       'AzureWebJobs.OrchestratorFunction.Disabled'
