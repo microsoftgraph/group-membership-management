@@ -659,7 +659,10 @@ namespace Repositories.GraphGroups
 
             var queuedBatches = new ConcurrentQueue<ChunkOfUsers>(
                     ChunksOfSize(users, requestMax) // Chop up the users into chunks of how many per graph request (20 for add, 1 for remove)
-                    .Select(x => new ChunkOfUsers { ToSend = x, Id = GetNewChunkId() }));
+                    .Select(x => new ChunkOfUsers {
+                        ToSend = x,
+                        Id = x[0].MembershipAction == MembershipAction.Add ? GetNewChunkId() : x[0].ObjectId.ToString()
+                    }));
 
             var responses = await Task.WhenAll(Enumerable.Range(0, ConcurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize)));
 
@@ -809,7 +812,7 @@ namespace Repositories.GraphGroups
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sending requests {string.Join(",", tosend.BatchRequestSteps.Keys)}.", RunId = RunId });
 
                 var response = await _graphServiceClient.Batch.Request().PostAsync(tosend);
-                return GetStepIdsToRetry(await response.GetResponsesAsync());
+                return GetStepIdsToRetry(await response.GetResponsesAsync(), (Dictionary<string, BatchRequestStep>)tosend.BatchRequestSteps);
             }
             catch (ServiceException ex)
             {
@@ -837,7 +840,7 @@ namespace Repositories.GraphGroups
         private static readonly Regex _userNotFound = new Regex(@"Resource '(?<id>[({]?[a-fA-F0-9]{8}[-]?([a-fA-F0-9]{4}[-]?){3}[a-fA-F0-9]{12}[})]?)' does not exist", RegexOptions.IgnoreCase);
         private List<AzureADUser> usersNotFound = new List<AzureADUser>();
 
-        private async IAsyncEnumerable<RetryResponse> GetStepIdsToRetry(Dictionary<string, HttpResponseMessage> responses)
+        private async IAsyncEnumerable<RetryResponse> GetStepIdsToRetry(Dictionary<string, HttpResponseMessage> responses, Dictionary<string, BatchRequestStep> requests)
         {
             bool beenThrottled = false;
 
@@ -869,12 +872,6 @@ namespace Repositories.GraphGroups
                 if (status == HttpStatusCode.BadRequest && IsOkayError(content)) { }
                 else if (status == HttpStatusCode.NotFound && (content).Contains("does not exist or one of its queried reference-property objects are not present."))
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Regex Expression: {_userNotFound} and Content: {content}",
-                        RunId = RunId
-                    });
-
                     var match = _userNotFound.Match(content);
                     var userId = default(string);
 
@@ -886,7 +883,29 @@ namespace Repositories.GraphGroups
                             Message = $"User ID is found",
                             RunId = RunId
                         });
-                        usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(userId) });
+
+                        var requestStep = requests[kvp.Key];
+
+                        if (requestStep.Request.Method == HttpMethod.Delete)
+                        {
+                            await _loggingRepository.LogMessageAsync(new LogMessage
+                            {
+                                Message = $"Removing {requestStep.RequestId} failed as this resource does not exit",
+                                RunId = RunId
+                            });
+
+                            usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(requestStep.RequestId) });
+                        }
+                        else
+                        {
+                            await _loggingRepository.LogMessageAsync(new LogMessage
+                            {
+                                Message = $"Adding {userId} failed as this resource does not exit",
+                                RunId = RunId
+                            });
+
+                            usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(userId) });
+                        }
                     }
 
                     else

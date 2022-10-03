@@ -120,7 +120,8 @@ namespace Services.Tests
             var usersNotFound = 0;
             var usersNotFoundLimit = 5;
 
-            var usersNotFoundIds = new List<string>();
+            var usersNotFoundIds1 = new List<string>();
+            var usersNotFoundIds2 = new List<string>();
             var allRequestedIds = new Dictionary<string, int>();
 
             batchRequest.Setup(x => x.PostAsync(It.IsAny<BatchRequestContent>()))
@@ -144,10 +145,13 @@ namespace Services.Tests
                                 // for DELETE the group id is returned
                                 requests.Add(requestId, targetGroup.ObjectId.ToString());
 
-                                usersNotFoundIds.Add(userId);
+                                usersNotFoundIds1.Add(userId);
+                                usersNotFoundIds2.Add(step.Key);
                             }
                         }
                     }
+
+                    CollectionAssert.AreEquivalent(usersNotFoundIds1, usersNotFoundIds2);
 
                     var content = GenerateNotFoundBatchResponse(requests);
                     batchResponseContent = GenerateBatchResponseContent(content);
@@ -156,7 +160,7 @@ namespace Services.Tests
 
 
             var response = await graphGroupRepository.RemoveUsersFromGroup(users, targetGroup);
-            var userNotFoundRequestCount = allRequestedIds.Where(x => usersNotFoundIds.Contains(x.Key)).ToList();
+            var userNotFoundRequestCount = allRequestedIds.Where(x => usersNotFoundIds1.Contains(x.Key)).ToList();
 
             Assert.IsTrue(userNotFoundRequestCount.All(x => x.Value == 1));
         }
