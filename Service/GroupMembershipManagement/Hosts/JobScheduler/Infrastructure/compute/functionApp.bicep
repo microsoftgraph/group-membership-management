@@ -63,10 +63,14 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     keyVaultName: dataKeyVaultName
-    keyVaultSecret: {
-        name: 'jobSchedulerFunctionKey'
-        value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
-      }
+    keyVaultSecrets: {
+      secrets: [
+        { 
+          name: 'jobSchedulerFunctionKey'
+          value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
+        }
+      ]
+    }
   }
 }
 

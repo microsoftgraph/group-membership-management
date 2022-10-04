@@ -33,9 +33,15 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
   name: 'secureSecretsTemplate${name}'
   params: {
     keyVaultName: keyVaultName
-    keyVaultSecret: {
-      name: startsWith(name, 'jobs') ? 'jobsStorageAccountConnectionString' : 'storageAccountConnectionString'
-      value: 'DefaultEndpointsProtocol=https;AccountName=${name};AccountKey=${listkeys(resourceId(resourceGroup().name, 'Microsoft.Storage/storageAccounts', name), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value}'
+    keyVaultSecrets: {
+      secrets: [
+        { 
+          name: startsWith(name, 'jobs') ? 'jobsStorageAccountConnectionString' : 'storageAccountConnectionString'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${name};AccountKey=${listkeys(resourceId(resourceGroup().name, 'Microsoft.Storage/storageAccounts', name), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value}'
+        }
+      ]
     }
   }
 }
+
+

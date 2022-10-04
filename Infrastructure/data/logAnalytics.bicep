@@ -34,10 +34,14 @@ module secureSecretsTemplatePrimaryKey 'keyVaultSecretsSecure.bicep' = {
   name: 'secureSecretsTemplatePrimaryKey'
   params: {
     keyVaultName: keyVaultName
-    keyVaultSecret: {
-        name: 'logAnalyticsPrimarySharedKey'
-        value: listKeys(logAnalyticsWorkspace.id, '2021-06-01').primarySharedKey
-      }
+    keyVaultSecrets: {
+      secrets: [
+        { 
+          name: 'logAnalyticsPrimarySharedKey'
+          value: listKeys(logAnalyticsWorkspace.id, '2021-06-01').primarySharedKey
+        }
+      ]
+    }
   }
 }
 

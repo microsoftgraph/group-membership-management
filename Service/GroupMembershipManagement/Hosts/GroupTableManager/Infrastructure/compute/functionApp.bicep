@@ -67,12 +67,17 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     keyVaultName: dataKeyVaultName
-    keyVaultSecret: {
-        name: 'groupTableManagerKey'
-        value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
-      }
+    keyVaultSecrets: {
+      secrets: [
+        { 
+          name: 'groupTableManagerKey'
+          value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
+        }
+      ]
+    }
   }
 }
+
 
 resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
   name: 'slotConfigNames'

@@ -71,10 +71,14 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     keyVaultName: dataKeyVaultName
-    keyVaultSecret: {
-        name: 'membershipAggregatorStagingFunctionKey'
-        value: listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default
-      }
+    keyVaultSecrets: {
+      secrets: [
+        { 
+          name: 'membershipAggregatorStagingFunctionKey'
+          value: listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default
+        }
+      ]
+    }
   }
 }
 

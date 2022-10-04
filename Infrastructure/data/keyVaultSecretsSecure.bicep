@@ -1,10 +1,12 @@
 param keyVaultName string
 @secure()
-param keyVaultSecret object
+param keyVaultSecrets object
 
-resource secret 'Microsoft.KeyVault/vaults/secrets@2021-06-01-preview' = {
-  name: '${keyVaultName}/${keyVaultSecret.name}'
+resource secrets 'Microsoft.KeyVault/vaults/secrets@2021-06-01-preview' = [for secret in keyVaultSecrets.secrets: {
+  name: '${keyVaultName}/${secret.name}'
   properties: {
-    value: keyVaultSecret.value
+    value: secret.value
   }
-}
+}]
+
+

@@ -28,9 +28,13 @@ module secureSecretsTemplatePrimaryKey 'keyVaultSecretsSecure.bicep' = {
   name: 'secureSecretsTemplatePrimaryKey'
   params: {
     keyVaultName: keyVaultName
-    keyVaultSecret: {
-      name: 'serviceBusPrimaryKey'
-      value: listkeys(authRuleResourceId, '2017-04-01').primaryKey
+    keyVaultSecrets: {
+      secrets: [
+        { 
+          name: 'serviceBusPrimaryKey'
+          value: listkeys(authRuleResourceId, '2017-04-01').primaryKey
+        }
+      ]
     }
   }
 }
@@ -39,9 +43,14 @@ module secureSecretsTemplateConnectionString 'keyVaultSecretsSecure.bicep' = {
   name: 'secureSecretsTemplateConnectionString'
   params: {
     keyVaultName: keyVaultName
-    keyVaultSecret: {
-      name: 'serviceBusConnectionString'
-      value: listkeys(authRuleResourceId, '2017-04-01').primaryConnectionString
+    keyVaultSecrets: {
+      secrets: [
+        { 
+          name: 'serviceBusConnectionString'
+          value: listkeys(authRuleResourceId, '2017-04-01').primaryConnectionString
+        }
+      ]
     }
   }
 }
+

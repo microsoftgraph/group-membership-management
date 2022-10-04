@@ -33,11 +33,16 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
   name: 'secureSecretsTemplate'
   params: {
     keyVaultName: keyVaultName
-    keyVaultSecret: {
-        name: 'appInsightsInstrumentationKey'
-        value: reference(applicationInsights.id, '2015-05-01').InstrumentationKey
-      }
+    keyVaultSecrets: {
+      secrets: [
+        { 
+          name: 'appInsightsInstrumentationKey'
+          value: reference(applicationInsights.id, '2015-05-01').InstrumentationKey
+        }
+      ]
+    }
   }
 }
+
 
 output appId string = reference(applicationInsights.id, '2015-05-01').AppId
