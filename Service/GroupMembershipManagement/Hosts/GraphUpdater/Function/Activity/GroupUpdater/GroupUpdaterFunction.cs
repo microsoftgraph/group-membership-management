@@ -25,7 +25,7 @@ namespace Hosts.GraphUpdater
         }
 
         [FunctionName(nameof(GroupUpdaterFunction))]
-        public async Task<(int SuccessCount, List<AzureADUser> UsersNotFound)> UpdateGroupAsync([ActivityTrigger] GroupUpdaterRequest request)
+        public async Task<GroupUpdaterResponse> UpdateGroupAsync([ActivityTrigger] GroupUpdaterRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
@@ -54,7 +54,11 @@ namespace Hosts.GraphUpdater
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
-            return (successCount, usersNotFound);
+            return new GroupUpdaterResponse()
+                {
+                    SuccessCount = successCount,
+                    UsersNotFound = usersNotFound
+                };
         }
     }
 }

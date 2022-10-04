@@ -25,7 +25,7 @@ namespace Hosts.GraphUpdater
         }
 
         [FunctionName(nameof(GroupUpdaterSubOrchestratorFunction))]
-        public async Task<List<AzureADUser>> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        public async Task<GroupUpdaterSubOrchestratorResponse> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var skip = 0;
             var request = context.GetInput<GroupUpdaterRequest>();
@@ -34,7 +34,7 @@ namespace Hosts.GraphUpdater
 
             if (request == null)
             {
-                return new List<AzureADUser>();
+                return new GroupUpdaterSubOrchestratorResponse();
             }
 
             await context.CallActivityAsync(nameof(LoggerFunction),
@@ -44,7 +44,7 @@ namespace Hosts.GraphUpdater
 
             while (batch.Count > 0)
             {
-                var response = await context.CallActivityAsync<(int successCount, List<AzureADUser> usersNotFound)>(nameof(GroupUpdaterFunction),
+                var response = await context.CallActivityAsync<GroupUpdaterResponse>(nameof(GroupUpdaterFunction),
                                            new GroupUpdaterRequest
                                            {
                                                SyncJob = request.SyncJob,
@@ -52,8 +52,8 @@ namespace Hosts.GraphUpdater
                                                Type = request.Type,
                                                IsInitialSync = request.IsInitialSync
                                            });
-                totalSuccessCount += response.successCount;
-                allUsersNotFound.AddRange(response.usersNotFound);
+                totalSuccessCount += response.SuccessCount;
+                allUsersNotFound.AddRange(response.UsersNotFound);
 
                 await context.CallActivityAsync(nameof(LoggerFunction),
                                                 new LoggerRequest
@@ -82,7 +82,12 @@ namespace Hosts.GraphUpdater
                                                           SyncJob = request.SyncJob,
                                                           Verbosity = VerbosityLevel.DEBUG
                                                       });
-            return allUsersNotFound;
+
+            return new GroupUpdaterSubOrchestratorResponse()
+            {
+                Type = request.Type,
+                SuccessCount = totalSuccessCount
+            };
         }
     }
 }

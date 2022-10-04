@@ -130,11 +130,13 @@ namespace Hosts.GraphUpdater
 				var membersToRemove = groupMembership.SourceMembers.Where(x => x.MembershipAction == MembershipAction.Remove).Distinct().ToList();
 				syncCompleteEvent.MembersToRemove = membersToRemove.Count.ToString();
 
-				sourceUsersNotFound = await context.CallSubOrchestratorAsync<List<AzureADUser>>(nameof(GroupUpdaterSubOrchestratorFunction),
-								CreateGroupUpdaterRequest(syncJob, membersToAdd, RequestType.Add, isInitialSync));
+                var membersAddedResponse = await context.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(nameof(GroupUpdaterSubOrchestratorFunction),
+                                CreateGroupUpdaterRequest(syncJob, membersToAdd, RequestType.Add, isInitialSync));
+                syncCompleteEvent.MembersAdded = membersAddedResponse.SuccessCount.ToString();
 
-				destinationUsersNotFound = await context.CallSubOrchestratorAsync<List<AzureADUser>>(nameof(GroupUpdaterSubOrchestratorFunction),
-								CreateGroupUpdaterRequest(syncJob, membersToRemove, RequestType.Remove, isInitialSync));
+                var membersRemovedResponse = await context.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(nameof(GroupUpdaterSubOrchestratorFunction),
+                                CreateGroupUpdaterRequest(syncJob, membersToRemove, RequestType.Remove, isInitialSync));
+                syncCompleteEvent.MembersRemoved = membersRemovedResponse.SuccessCount.ToString();
 
 
 				if (isInitialSync)
@@ -177,12 +179,17 @@ namespace Hosts.GraphUpdater
 									CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
 																	SyncStatus.Idle, 0, groupMembership.RunId));
 
-				await UpdateCacheAsyc(context, sourceUsersNotFound, destinationUsersNotFound, syncJob, groupMembership.SourceMembers);
-
-				if (!context.IsReplaying)
-				{
-					TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, true);
-				}
+                if (!context.IsReplaying)
+                {
+                    if (membersAddedResponse.SuccessCount == membersToAdd.Count && membersRemovedResponse.SuccessCount == membersToRemove.Count)
+                    {
+                        TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Success");
+                    }
+                    else
+                    {
+                        TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "PartialSuccess");
+                    }
+                }
 
 				await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
 
@@ -205,7 +212,7 @@ namespace Hosts.GraphUpdater
 																	SyncStatus.Error, syncJob.ThresholdViolations, groupMembership.RunId));
 				}
 
-				TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, false);
+                TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Failure");
 
 				throw;
 			}
@@ -289,13 +296,13 @@ namespace Hosts.GraphUpdater
 			_telemetryClient.TrackEvent("UsersNotFoundCount", usersNotFoundEvent);
 		}
 
-		private void TrackSyncCompleteEvent(IDurableOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, bool success)
+		private void TrackSyncCompleteEvent(IDurableOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
 		{
 			var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.Timestamp.GetValueOrDefault()).TotalSeconds;
 			_telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
 
-			syncCompleteEvent.SyncJobTimeElapsedSeconds = timeElapsedForJob.ToString();
-			syncCompleteEvent.Result = success ? "Success" : "Failure";
+            syncCompleteEvent.SyncJobTimeElapsedSeconds = timeElapsedForJob.ToString();
+            syncCompleteEvent.Result = successStatus;
 
 			var syncCompleteDict = syncCompleteEvent.GetType()
 				.GetProperties(BindingFlags.Instance | BindingFlags.Public)
