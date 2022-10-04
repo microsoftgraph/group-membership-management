@@ -154,9 +154,19 @@ namespace Hosts.MembershipAggregator
                                             .ToList();
 
             var sourceGroupMembership = sourceGroupsMemberships[0];
-            var toInclude = sourceGroupsMemberships.Where(g => !g.Exclusionary).SelectMany(x => x.SourceMembers).Distinct().ToList();
-            var toExclude = sourceGroupsMemberships.Where(g => g.Exclusionary).SelectMany(x => x.SourceMembers).Distinct().ToList();
-            sourceGroupMembership.SourceMembers = toInclude.Except(toExclude).ToList();
+            var toInclude = sourceGroupsMemberships.Where(g => !g.Exclusionary).SelectMany(x => x.SourceMembers).ToList();
+            var toExclude = sourceGroupsMemberships.Where(g => g.Exclusionary).SelectMany(x => x.SourceMembers).ToList();
+            var diff = toInclude.Except(toExclude).ToList();
+
+            var source = sourceGroupsMemberships.SelectMany(x => x.SourceMembers).ToList();
+            var listGrouped = source.GroupBy(u => u.ObjectId)
+                               .Select(u => new AzureADUser() { ObjectId = u.Key, SourceGroups = u.Select(y => y.SourceGroup).Distinct().ToList() })
+                               .ToList();
+
+            var objectIds = new HashSet<Guid>(diff.Select(u => u.ObjectId));
+            var sourceMembers = listGrouped.Where(u => objectIds.Contains(u.ObjectId)).ToList();
+
+            sourceGroupMembership.SourceMembers = sourceMembers;
 
             var destinationGroupMembership = JsonConvert.DeserializeObject<GroupMembership>(allGroupMemberships.First(x => x.FilePath == destinationPath).Content);
 
