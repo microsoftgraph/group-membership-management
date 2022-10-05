@@ -72,6 +72,10 @@ namespace Hosts.SecurityGroup
                     // run exisiting code
                     var response = await GetMembersReaderFunction(context, allUsers, allNonUserGraphObjects, request);
                     allUsers = response.allUsers;
+                    if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+                    {
+                        allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
+                    }
                     allNonUserGraphObjects = response.allNonUserGraphObjects;
                     var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, allNonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
                     _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
@@ -87,6 +91,10 @@ namespace Hosts.SecurityGroup
                         {
                             var response = await GetUsersReaderFunction(context, allUsers, request);
                             allUsers = response.allUsers;
+                            if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+                            {
+                                allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
+                            }
                             await GetDeltaUsersSenderFunction(context, request, allUsers, response.deltaUrl);
                         }
                         else
@@ -103,6 +111,10 @@ namespace Hosts.SecurityGroup
                             sourceMembers.AddRange(deltaUsersToAdd);
                             var newUsers = sourceMembers.Except(deltaUsersToRemove).ToList();
                             allUsers.AddRange(newUsers);
+                            if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+                            {
+                                allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
+                            }
                             await GetDeltaUsersSenderFunction(context, request, allUsers, deltaResponse.deltaUrl);
                         }
                         _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users" });
@@ -114,6 +126,10 @@ namespace Hosts.SecurityGroup
                         // run exisiting code
                         var response = await GetMembersReaderFunction(context, allUsers, allNonUserGraphObjects, request);
                         allUsers = response.allUsers;
+                        if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+                        {
+                            allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
+                        }
                         allNonUserGraphObjects = response.allNonUserGraphObjects;
                         var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, allNonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
                         _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
@@ -121,6 +137,10 @@ namespace Hosts.SecurityGroup
                 }
             }
             _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            //if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+            //{
+            //    allUsers.ForEach(x => x.SourceGroups = new List<Guid>() { request.SourceGroup.ObjectId });
+            //}
             return (allUsers, SyncStatus.InProgress);
         }
 
