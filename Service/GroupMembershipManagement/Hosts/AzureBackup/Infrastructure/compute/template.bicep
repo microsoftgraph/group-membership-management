@@ -70,7 +70,7 @@ var storageAccountConnectionString = resourceId(subscription().subscriptionId, d
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
-  name: 'servicePlanTemplate-AzureTableBackup'
+  name: 'servicePlanTemplate-AzureBackup'
   params: {
     name: servicePlanName
     sku: servicePlanSku
@@ -99,8 +99,8 @@ var appSettings = {
 }
 
 var stagingSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-AzureTableBackup-staging')
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureTableBackupStaging'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-AzureBackup-staging')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureBackupStaging'
   'AzureWebJobs.StarterFunction.Disabled': 1
   'AzureWebJobs.OrchestratorFunction.Disabled': 1
   'AzureWebJobs.LoggerFunction.Disabled': 1
@@ -110,8 +110,8 @@ var stagingSettings = {
 }
 
 var productionSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-AzureTableBackup')
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureTableBackup'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-AzureBackup')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureBackup'
   'AzureWebJobs.StarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
   'AzureWebJobs.LoggerFunction.Disabled': 0
@@ -120,10 +120,10 @@ var productionSettings = {
   'AzureWebJobs.TableBackupFunction.Disabled': 0
 }
 
-module functionAppTemplate_AzureTableBackup 'functionApp.bicep' = {
-  name: 'functionAppTemplate-AzureTableBackup'
+module functionAppTemplate_AzureBackup 'functionApp.bicep' = {
+  name: 'functionAppTemplate-AzureBackup'
   params: {
-    name: '${functionAppName}-AzureTableBackup'
+    name: '${functionAppName}-AzureBackup'
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
@@ -134,35 +134,35 @@ module functionAppTemplate_AzureTableBackup 'functionApp.bicep' = {
   ]
 }
 
-module functionAppSlotTemplate_AzureTableBackup 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-AzureTableBackup'
+module functionAppSlotTemplate_AzureBackup 'functionAppSlot.bicep' = {
+  name: 'functionAppSlotTemplate-AzureBackup'
   params: {
-    name: '${functionAppName}-AzureTableBackup/staging'
+    name: '${functionAppName}-AzureBackup/staging'
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
     secretSettings: commonSettings
   }
   dependsOn: [
-    functionAppTemplate_AzureTableBackup
+    functionAppTemplate_AzureBackup
   ]
 }
 
 module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'keyVaultPoliciesTemplate-AzureTableBackup'
+  name: 'keyVaultPoliciesTemplate-AzureBackup'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     name: dataKeyVaultName
     policies: [
       {
-        objectId: functionAppTemplate_AzureTableBackup.outputs.msi
+        objectId: functionAppTemplate_AzureBackup.outputs.msi
         permissions: [
           'get'
           'list'
         ]
       }
       {
-        objectId: functionAppSlotTemplate_AzureTableBackup.outputs.msi
+        objectId: functionAppSlotTemplate_AzureBackup.outputs.msi
         permissions: [
           'get'
           'list'
@@ -172,27 +172,27 @@ module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
     tenantId: tenantId
   }
   dependsOn: [
-    functionAppTemplate_AzureTableBackup
-    functionAppSlotTemplate_AzureTableBackup
+    functionAppTemplate_AzureBackup
+    functionAppSlotTemplate_AzureBackup
   ]
 }
 
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
-  name: '${functionAppName}-AzureTableBackup/appsettings'
+  name: '${functionAppName}-AzureBackup/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
-    functionAppTemplate_AzureTableBackup
+    functionAppTemplate_AzureBackup
     keyVaultPoliciesTemplate
   ]
 }
 
 resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
-  name: '${functionAppName}-AzureTableBackup/staging/appsettings'
+  name: '${functionAppName}-AzureBackup/staging/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
-    functionAppSlotTemplate_AzureTableBackup
+    functionAppSlotTemplate_AzureBackup
     keyVaultPoliciesTemplate
   ]
 }
