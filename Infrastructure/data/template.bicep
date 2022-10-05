@@ -138,6 +138,14 @@ param appConfigurationKeyData array = [
     }
   }
   {
+    key: 'SecurityGroup:IsDeltaCacheEnabled'
+    value: 'false'
+    contentType: 'boolean'
+    tag: {
+      tag1: 'SecurityGroup'
+    }
+  }
+  {
     key: 'SecurityGroup:IsSecurityGroupDryRunEnabled'
     value: 'false'
     contentType: 'boolean'
