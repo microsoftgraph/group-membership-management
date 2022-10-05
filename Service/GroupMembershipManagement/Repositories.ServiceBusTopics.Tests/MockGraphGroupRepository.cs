@@ -103,6 +103,10 @@ namespace Repositories.ServiceBusTopics.Tests
 		{
 			throw new NotImplementedException();
 		}
+		public Task<int> GetUsersCountAsync(Guid objectId)
+		{
+			throw new NotImplementedException();
+		}
 
 		public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
         {

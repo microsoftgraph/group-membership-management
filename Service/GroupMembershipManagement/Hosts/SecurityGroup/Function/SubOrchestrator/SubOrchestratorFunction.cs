@@ -23,7 +23,7 @@ namespace Hosts.SecurityGroup
 
         public SubOrchestratorFunction(
             IDeltaCachingConfig deltaCachingConfig,
-            ILoggingRepository loggingRepository, 
+            ILoggingRepository loggingRepository,
             TelemetryClient telemetryClient)
         {
             _deltaCachingConfig = deltaCachingConfig;
@@ -83,12 +83,12 @@ namespace Hosts.SecurityGroup
                 else {
                     try
                     {
-                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
                         // first check if delta file exists in cache folder
                         var filePath = $"cache/delta_{request.SourceGroup.ObjectId}";
                         var fileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
                         if (string.IsNullOrEmpty(fileContent))
                         {
+                            if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
                             var response = await GetUsersReaderFunction(context, allUsers, request);
                             allUsers = response.allUsers;
                             if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
@@ -111,6 +111,22 @@ namespace Hosts.SecurityGroup
                             sourceMembers.AddRange(deltaUsersToAdd);
                             var newUsers = sourceMembers.Except(deltaUsersToRemove).ToList();
                             allUsers.AddRange(newUsers);
+
+                            // verify the user count from group & cache
+                            var countOfUsersFromAADGroup = await GetUsersCountFunction(context, request.SourceGroup.ObjectId, request.RunId);
+                            var countOfUsersFromCache = allUsers.Count;
+
+                            if (countOfUsersFromAADGroup != countOfUsersFromCache)
+                            {
+                                if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"{request.SourceGroup.ObjectId} has {countOfUsersFromAADGroup} users but cache has {countOfUsersFromCache} users. Running delta query..." });
+                                var response = await GetUsersReaderFunction(context, allUsers, request);
+                                allUsers = response.allUsers;
+                            }
+                            else if (countOfUsersFromAADGroup == countOfUsersFromCache)
+                            {
+                                if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Number of users from {request.SourceGroup.ObjectId} ({countOfUsersFromAADGroup}) and cache ({countOfUsersFromCache}) are equal" });
+                            }
+
                             if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
                             {
                                 allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
@@ -137,10 +153,6 @@ namespace Hosts.SecurityGroup
                 }
             }
             _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            //if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
-            //{
-            //    allUsers.ForEach(x => x.SourceGroups = new List<Guid>() { request.SourceGroup.ObjectId });
-            //}
             return (allUsers, SyncStatus.InProgress);
         }
 
@@ -163,6 +175,16 @@ namespace Hosts.SecurityGroup
                                                                 FilePath = filePath,
                                                                 SyncJob = syncJob
                                                             });
+        }
+
+        public async Task<int> GetUsersCountFunction(IDurableOrchestrationContext context, Guid groupId, Guid runId)
+        {
+            return await context.CallActivityAsync<int>(nameof(GetUserCountFunction),
+                                            new GetUserCountRequest
+                                            {
+                                                RunId = runId,
+                                                GroupId = groupId
+                                            });
         }
 
         public async Task GetDeltaUsersSenderFunction(IDurableOrchestrationContext context, SecurityGroupRequest request, List<AzureADUser> allUsers, string deltaUrl)
@@ -208,6 +230,7 @@ namespace Hosts.SecurityGroup
                                                     List<AzureADUser> allUsers,
                                                     SecurityGroupRequest request)
         {
+            allUsers.Clear();
             var response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(UsersReaderFunction), new UsersReaderRequest { RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId });
             allUsers.AddRange(response.UsersToAdd);
             while (!string.IsNullOrEmpty(response.NextPageUrl))

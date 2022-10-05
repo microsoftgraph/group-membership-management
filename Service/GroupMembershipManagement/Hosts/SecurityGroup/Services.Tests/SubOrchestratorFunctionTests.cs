@@ -316,6 +316,73 @@ namespace Tests.Services
         }
 
         [TestMethod]
+        public async Task VerifyCountTestAsync()
+        {
+            _groupCount = 0;
+            _userCount = 0;
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
+                                       .Callback<string, object>(async (name, request) =>
+                                       {
+                                           _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
+                                       })
+                                       .ReturnsAsync(() => _groupCount);
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetUserCountRequest>()))
+                                       .Callback<string, object>(async (name, request) =>
+                                       {
+                                           _userCount = await CallUsersReaderFunctionAsync(request as GetUserCountRequest);
+                                       })
+                                       .ReturnsAsync(() => _userCount);
+            _deltaUrl = "http://delta-url";
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
+                                       .Callback<string, object>(async (name, request) =>
+                                       {
+                                           _deltaUrl = await CallFileDownloaderFunctionAsync(request as FileDownloaderRequest);
+                                       })
+                                       .ReturnsAsync(() => _deltaUrl);
+
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                   It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_securityGroupRequest.SourceGroup.ObjectId} exists.")),
+                                   It.IsAny<VerbosityLevel>(),
+                                   It.IsAny<string>(),
+                                   It.IsAny<string>()
+                               ), Times.Once);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                    It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
+                                    It.IsAny<VerbosityLevel>(),
+                                    It.IsAny<string>(),
+                                    It.IsAny<string>()
+                                ), Times.Once);
+
+            _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<string>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()), Times.Once);
+            Assert.AreEqual(_userCount, Users.Count);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                        It.Is<LogMessage>(m => m.Message.Contains($"read {_userCount} users")),
+                        It.IsAny<VerbosityLevel>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>()
+                    ), Times.Once);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                        It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
+                        It.IsAny<VerbosityLevel>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>()
+                    ), Times.Once);
+
+            Assert.IsNotNull(Users);
+            Assert.AreEqual(SyncStatus.InProgress, Status);
+        }
+
+        [TestMethod]
         public async Task ProcessDeltaLinkSinglePageRequestTestAsync()
         {
             _groupCount = 0;
@@ -766,6 +833,12 @@ namespace Tests.Services
         {
             var function = new GetTransitiveGroupCountFunction(_loggingRepository.Object, _membershipCalculator);
             return await function.GetGroupsAsync(request);
+        }
+
+        private async Task<int> CallUsersReaderFunctionAsync(GetUserCountRequest request)
+        {
+            var function = new GetUserCountFunction(_loggingRepository.Object, _membershipCalculator);
+            return await function.GetUserCountAsync(request);
         }
 
         private async Task<GroupInformation> CallMembersReaderFunctionAsync(MembersReaderRequest request)

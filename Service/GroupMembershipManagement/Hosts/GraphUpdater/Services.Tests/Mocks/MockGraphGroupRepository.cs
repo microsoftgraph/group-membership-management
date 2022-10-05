@@ -133,5 +133,9 @@ namespace Services.Tests.Mocks
 		{
 			throw new NotImplementedException();
 		}
+		public Task<int> GetUsersCountAsync(Guid objectId)
+		{
+			throw new NotImplementedException();
+		}
 	}
 }

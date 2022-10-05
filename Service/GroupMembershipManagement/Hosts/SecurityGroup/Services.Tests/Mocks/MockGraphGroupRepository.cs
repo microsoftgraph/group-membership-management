@@ -109,6 +109,10 @@ namespace Tests.FunctionApps.Mocks
 		{
 			throw new NotImplementedException();
 		}
+		public Task<int> GetUsersCountAsync(Guid objectId)
+		{
+			throw new NotImplementedException();
+		}
 
 		public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetFirstTransitiveMembersPageAsync(Guid objectId)
 		{

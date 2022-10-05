@@ -106,6 +106,11 @@ namespace Hosts.SecurityGroup
             return await _graphGroupRepository.GetGroupsCountAsync(objectId);
         }
 
+        public async Task<int> GetUsersCountAsync(Guid objectId)
+        {
+            return await _graphGroupRepository.GetUsersCountAsync(objectId);
+        }
+
         public async Task<DeltaGroupInformation> GetFirstUsersPageAsync(Guid objectId, Guid runId)
         {
             await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {objectId}." });

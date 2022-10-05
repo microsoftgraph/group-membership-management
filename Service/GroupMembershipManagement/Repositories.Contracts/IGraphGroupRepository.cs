@@ -38,5 +38,6 @@ namespace Repositories.Contracts
 		Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetFirstUsersPageAsync(Guid objectId);
 		Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetNextUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage usersFromGroup);
 		Task<int> GetGroupsCountAsync(Guid objectId);
-	}
+		Task<int> GetUsersCountAsync(Guid objectId);
+    }
 }

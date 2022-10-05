@@ -618,6 +618,32 @@ namespace Repositories.GraphGroups
                 _telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage)).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
         }
 
+        public async Task<int> GetUsersCountAsync(Guid objectId)
+        {
+            var requestUrl = _graphServiceClient.Groups[objectId.ToString()].TransitiveMembers.Request().RequestUrl;
+
+            // add casting and count query
+            requestUrl = $"{requestUrl}/microsoft.graph.user/$count";
+
+            // Create the request message
+            var hrm = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+
+            // $count requires header ConsistencyLevel
+            hrm.Headers.Add("ConsistencyLevel", "eventual");
+
+            // Authenticate (add access token) our HttpRequestMessage
+            await _graphServiceClient.AuthenticationProvider.AuthenticateRequestAsync(hrm);
+
+            // Send the request and get the response.
+            var r = await _graphServiceClient.HttpProvider.SendAsync(hrm);
+
+            // read the content and parse it as an integer
+            var content = await r.Content.ReadAsStringAsync();
+            var userCount = int.Parse(content);
+
+            return userCount;
+        }
+
         const int GraphBatchLimit = 20;
         const int ConcurrentRequests = 10;
         public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
