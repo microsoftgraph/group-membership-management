@@ -14,9 +14,11 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection.Metadata;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using static System.Net.WebRequestMethods;
 using Group = Microsoft.Graph.Group;
 using Metric = Services.Entities.Metric;
 
@@ -108,6 +110,41 @@ namespace Repositories.GraphGroups
                 });
 
                 return null;
+            }
+        }
+
+        public async Task<List<string>> GetGroupEndpointsAsync(Guid groupId)
+        {
+            try
+            {
+                var endpoints = new List<string>();
+                var endpointsUrl = $"https://graph.microsoft.com/beta/groups/{groupId}/endpoints";
+                var httpRequest = new HttpRequestMessage(HttpMethod.Get, endpointsUrl);
+                await _graphServiceClient.AuthenticationProvider.AuthenticateRequestAsync(httpRequest);
+                var httpResponse = await _graphServiceClient.HttpProvider.SendAsync(httpRequest);
+
+                if (httpResponse.Content == null)
+                    return endpoints;
+
+                var content = await httpResponse.Content.ReadAsStringAsync();
+
+                if (string.IsNullOrWhiteSpace(content))
+                    return endpoints;
+
+                var endpointArray = JArray.Parse(content);
+                var queryTypes = endpointArray.Values<string>("providerName").ToList();
+
+                return endpoints;
+            }
+            catch (ServiceException ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = RunId
+                });
+
+                throw;
             }
         }
 

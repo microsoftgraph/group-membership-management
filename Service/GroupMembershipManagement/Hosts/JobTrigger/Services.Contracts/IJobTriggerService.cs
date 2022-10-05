@@ -16,5 +16,6 @@ namespace Services.Contracts
         Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job);
         Task UpdateSyncJobStatusAsync(SyncStatus status, SyncJob job);
         Task SendMessageAsync(SyncJob job);
+        Task<List<string>> GetGroupEndpointsAsync(Guid groupId);
     }
 }

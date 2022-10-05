@@ -15,7 +15,8 @@ namespace Repositories.Contracts
 		// Only the circular reference checker uses this, it can be removed when we get rid of the circular reference checker.
 		Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid objectId);
 		Task<string> GetGroupNameAsync(Guid objectId);
-		Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId);
+        Task<List<string>> GetGroupEndpointsAsync(Guid groupId);
+        Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId);
 		Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId);
 		Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0);
 		Task<bool> GroupExists(Guid objectId);

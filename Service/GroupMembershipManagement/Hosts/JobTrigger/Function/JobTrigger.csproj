@@ -35,4 +35,7 @@
       <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Activity\GroupEndpointsReader\" />
+  </ItemGroup>
 </Project>
