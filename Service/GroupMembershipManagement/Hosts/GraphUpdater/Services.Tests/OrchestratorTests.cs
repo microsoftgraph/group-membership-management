@@ -117,8 +117,6 @@ namespace Services.Tests
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
 
-            context.Verify(x => x.CallSubOrchestratorAsync(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()), Times.Exactly(2));
-
             var logProperties = mockLoggingRepo.SyncJobPropertiesHistory[syncJob.RunId.Value].Properties;
 
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
@@ -240,8 +238,6 @@ namespace Services.Tests
             Assert.AreEqual(1, mockMailRepo.SentEmails.Count);
             Assert.AreEqual(7, mockMailRepo.SentEmails[0].AdditionalContentParams.Length);
             Assert.AreEqual(ownerEmails, mockMailRepo.SentEmails[0].ToEmailAddresses);
-
-            context.Verify(x => x.CallSubOrchestratorAsync(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()), Times.Exactly(2));
         }
 
         [TestMethod]
@@ -325,7 +321,7 @@ namespace Services.Tests
             context.Setup(x => x.CallSubOrchestratorAsync(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>())).Throws<Exception>();
 
             var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
-            await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
+            await Assert.ThrowsExceptionAsync<ArgumentNullException>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
 
             Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Caught unexpected exception, marking sync job as errored.")));
@@ -555,6 +551,120 @@ namespace Services.Tests
             Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
             Assert.AreEqual(logProperties["PartitionKey"], syncJob.PartitionKey);
             Assert.AreEqual(logProperties["RowKey"], syncJob.RowKey);
+        }
+
+        [TestMethod]
+        public async Task RunCacheUserUpdaterSubOrchestratorFunctionTest()
+        {
+            MockLoggingRepository mockLoggingRepo;
+            TelemetryClient mockTelemetryClient;
+            MockMailRepository mockMailRepo;
+            MockGraphUpdaterService mockGraphUpdaterService;
+            DryRunValue dryRun;
+            EmailSenderRecipient mailSenders;
+            MockSyncJobRepository mockSyncJobRepo;
+            MockGraphGroupRepository mockGroupRepo;
+            ThresholdConfig thresholdConfig;
+            MockLocalizationRepository localizationRepository;
+            MockBlobStorageRepository blobStorageRepository;
+
+            mockLoggingRepo = new MockLoggingRepository();
+            mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            mockMailRepo = new MockMailRepository();
+            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
+            dryRun = new DryRunValue(false);
+            thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
+            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
+                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+
+            mockGroupRepo = new MockGraphGroupRepository();
+            mockSyncJobRepo = new MockSyncJobRepository();
+            localizationRepository = new MockLocalizationRepository();
+            blobStorageRepository = new MockBlobStorageRepository();
+
+            var groupIds = new List<Guid>();
+            for (int i = 0; i < 2; i++)
+            {
+                groupIds.Add(Guid.NewGuid());
+            }
+
+            var users = new List<AzureADUser>();
+            for (int i = 0; i < 10; i++)
+            {
+                users.Add(new AzureADUser
+                {
+                    ObjectId = Guid.NewGuid(),
+                    SourceGroups = groupIds
+                });
+            }
+
+            var groupMembership = GetGroupMembership();
+            groupMembership.SourceMembers = users;
+            var destinationMembers = GetGroupMembership();
+            var syncJob = new SyncJob
+            {
+                PartitionKey = groupMembership.SyncJobPartitionKey,
+                RowKey = groupMembership.SyncJobRowKey,
+                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
+                ThresholdPercentageForAdditions = -1,
+                ThresholdPercentageForRemovals = -1,
+                LastRunTime = DateTime.UtcNow.AddDays(-1),
+                Requestor = "user@domail.com",
+                Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
+                RunId = Guid.NewGuid()
+            };
+
+            mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
+
+            var input = new MembershipHttpRequest
+            {
+                FilePath = "/file/path/name.json",
+                SyncJob = syncJob
+            };
+
+            var fileDownloaderRequest = new FileDownloaderRequest
+            {
+                FilePath = input.FilePath,
+                SyncJob = syncJob
+            };
+
+            var jobReaderRequest = new JobReaderRequest
+            {
+                JobPartitionKey = syncJob.PartitionKey,
+                JobRowKey = syncJob.RowKey,
+                RunId = syncJob.RunId.Value
+            };
+
+            mockGraphUpdaterService.Jobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
+            mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
+            blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
+
+            var context = new Mock<IDurableOrchestrationContext>();
+            context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
+            context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>()))
+                    .Returns(async () => await RunJobReaderFunctionAsync(mockLoggingRepo, mockGraphUpdaterService, jobReaderRequest));
+            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
+                    .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
+                    .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
+            context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
+                    .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
+
+            var usersToAdd = new List<AzureADUser>();
+            usersToAdd.Add(new AzureADUser { ObjectId = users[0].ObjectId, MembershipAction = MembershipAction.Add });
+            context.Setup(x => x.CallSubOrchestratorAsync<List<AzureADUser>>(It.Is<string>(x => x == nameof(GroupUpdaterSubOrchestratorFunction)),
+                                                                             It.IsAny<GroupUpdaterRequest>())).ReturnsAsync(() => usersToAdd);
+
+            var usersToRemove = new List<AzureADUser>();
+            usersToRemove.Add(new AzureADUser { ObjectId = users[0].ObjectId, MembershipAction = MembershipAction.Remove });
+            context.Setup(x => x.CallSubOrchestratorAsync<List<AzureADUser>>(It.Is<string>(x => x == nameof(GroupUpdaterSubOrchestratorFunction)),
+                                                                             It.IsAny<GroupUpdaterRequest>())).ReturnsAsync(() => usersToRemove);
+
+
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
+            await orchestrator.RunOrchestratorAsync(context.Object);
+
+            context.Verify(x => x.CallSubOrchestratorAsync(nameof(CacheUserUpdaterSubOrchestratorFunction), It.IsAny<CacheUserUpdaterRequest>()), Times.Exactly(3));
         }
 
         private async Task<SyncJob> RunJobReaderFunctionAsync(MockLoggingRepository loggingRepository, MockGraphUpdaterService graphUpdaterService, JobReaderRequest request)
