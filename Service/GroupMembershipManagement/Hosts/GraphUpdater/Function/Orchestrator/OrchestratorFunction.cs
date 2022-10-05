@@ -1,7 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Core;
 using Entities;
 using Entities.ServiceBus;
+using GraphUpdater.Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -16,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Hosts.GraphUpdater
@@ -55,6 +58,8 @@ namespace Hosts.GraphUpdater
             GroupMembership groupMembership = null;
             MembershipHttpRequest graphRequest = null;
             SyncJob syncJob = null;
+            var sourceUsersNotFound = new List<AzureADUser>();
+            var destinationUsersNotFound = new List<AzureADUser>();
             var syncCompleteEvent = new SyncCompleteCustomEvent();
 
             graphRequest = context.GetInput<MembershipHttpRequest>();
@@ -125,11 +130,12 @@ namespace Hosts.GraphUpdater
                 var membersToRemove = groupMembership.SourceMembers.Where(x => x.MembershipAction == MembershipAction.Remove).Distinct().ToList();
                 syncCompleteEvent.MembersToRemove = membersToRemove.Count.ToString();
 
-                await context.CallSubOrchestratorAsync(nameof(GroupUpdaterSubOrchestratorFunction),
+                sourceUsersNotFound = await context.CallSubOrchestratorAsync<List<AzureADUser>>(nameof(GroupUpdaterSubOrchestratorFunction),
                                 CreateGroupUpdaterRequest(syncJob, membersToAdd, RequestType.Add, isInitialSync));
 
-                await context.CallSubOrchestratorAsync(nameof(GroupUpdaterSubOrchestratorFunction),
+                destinationUsersNotFound = await context.CallSubOrchestratorAsync<List<AzureADUser>>(nameof(GroupUpdaterSubOrchestratorFunction),
                                 CreateGroupUpdaterRequest(syncJob, membersToRemove, RequestType.Remove, isInitialSync));
+
 
                 if (isInitialSync)
                 {
@@ -171,6 +177,59 @@ namespace Hosts.GraphUpdater
                                     CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
                                                                     SyncStatus.Idle, 0, groupMembership.RunId));
 
+                if (sourceUsersNotFound != null && destinationUsersNotFound!= null)
+                {
+                    var totalUsersNotFound = sourceUsersNotFound.Union(destinationUsersNotFound).ToList();
+
+                    if (!context.IsReplaying & totalUsersNotFound.Count > 0) { TrackUsersNotFoundEvent(syncJob.RunId, totalUsersNotFound.Count, syncJob.TargetOfficeGroupId); }
+
+                    var sourceObjectIds = new HashSet<Guid>(sourceUsersNotFound.Select(emp => emp.ObjectId));
+                    var sourceUsers = groupMembership.SourceMembers.Where(product => sourceObjectIds.Contains(product.ObjectId)).ToList();
+                    var destinationObjectIds = new HashSet<Guid>(destinationUsersNotFound.Select(emp => emp.ObjectId));
+                    var destinationUsers = groupMembership.SourceMembers.Where(product => destinationObjectIds.Contains(product.ObjectId)).ToList();
+
+                    if (sourceUsers.Count > 0)
+                    {
+                        var sourceGroups = sourceUsers
+                                        .SelectMany(u => u.SourceGroups.Select(c => (ObjectId: u, SourceGroup: c)))
+                                        .GroupBy(x => x.SourceGroup)
+                                        .Select(g => new GroupInfo { GroupId = g.Key, UserIds = g.Select(x => x.ObjectId).Distinct().ToList() }).ToList();
+
+                        if (sourceGroups != null && sourceGroups.Count > 0)
+                        {
+                            // multiple source group processing flows in parallel
+                            var processingTasks = new List<Task>();
+                            foreach (var sourceGroup in sourceGroups)
+                            {
+                                var processTask = context.CallSubOrchestratorAsync(nameof(CacheUserUpdaterSubOrchestratorFunction),
+                                    new CacheUserUpdaterRequest
+                                    {
+                                        GroupId = sourceGroup.GroupId,
+                                        UserIds = sourceGroup.UserIds,
+                                        RunId = syncJob.RunId,
+                                        SyncJob = syncJob
+                                    });
+                                processingTasks.Add(processTask);
+                            }
+
+                            await Task.WhenAll(processingTasks);
+                        }
+                    }
+
+                    if (destinationUsers.Count > 0)
+                    {
+                        await context.CallSubOrchestratorAsync(
+                            nameof(CacheUserUpdaterSubOrchestratorFunction),
+                            new CacheUserUpdaterRequest
+                            {
+                                GroupId = syncJob.TargetOfficeGroupId,
+                                UserIds = destinationUsers,
+                                RunId = syncJob.RunId,
+                                SyncJob = syncJob
+                            });
+                    }
+                }
+
                 if (!context.IsReplaying)
                 {
                     TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, true);
@@ -206,6 +265,17 @@ namespace Hosts.GraphUpdater
                 if (syncJob?.RunId.HasValue ?? false)
                     _loggingRepository.RemoveSyncJobProperties(syncJob.RunId.Value);
             }
+        }
+
+        private void TrackUsersNotFoundEvent(Guid? runId, int usersNotFoundCount, Guid groupId)
+        {
+            var usersNotFoundEvent = new Dictionary<string, string>
+            {
+                { "RunId", runId.ToString() },
+                { "TargetGroupId", groupId.ToString() },
+                { "UsersNotFound", usersNotFoundCount.ToString() }
+            };
+            _telemetryClient.TrackEvent("UsersNotFoundCount", usersNotFoundEvent);
         }
 
         private void TrackSyncCompleteEvent(IDurableOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, bool success)

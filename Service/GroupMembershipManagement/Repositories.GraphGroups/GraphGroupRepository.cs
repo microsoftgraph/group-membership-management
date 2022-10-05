@@ -659,7 +659,8 @@ namespace Repositories.GraphGroups
 
             var queuedBatches = new ConcurrentQueue<ChunkOfUsers>(
                     ChunksOfSize(users, requestMax) // Chop up the users into chunks of how many per graph request (20 for add, 1 for remove)
-                    .Select(x => new ChunkOfUsers {
+                    .Select(x => new ChunkOfUsers
+                    {
                         ToSend = x,
                         Id = x[0].MembershipAction == MembershipAction.Add ? GetNewChunkId() : x[0].ObjectId.ToString()
                     }));

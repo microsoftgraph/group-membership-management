@@ -25,7 +25,7 @@ namespace Hosts.GraphUpdater
         }
 
         [FunctionName(nameof(GroupUpdaterSubOrchestratorFunction))]
-        public async Task RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        public async Task<List<AzureADUser>> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var skip = 0;
             var request = context.GetInput<GroupUpdaterRequest>();
@@ -34,7 +34,7 @@ namespace Hosts.GraphUpdater
 
             if (request == null)
             {
-                return;
+                return new List<AzureADUser>();
             }
 
             await context.CallActivityAsync(nameof(LoggerFunction),
@@ -66,9 +66,6 @@ namespace Hosts.GraphUpdater
                 skip += _batchSize;
                 batch = request.Members.Skip(skip).Take(_batchSize).ToList();
             }
-
-            if (!context.IsReplaying & allUsersNotFound.Count > 0) { TrackUsersNotFoundEvent(request.SyncJob.RunId, allUsersNotFound.Count, request.SyncJob.TargetOfficeGroupId); }
-
             _telemetryClient.TrackMetric(nameof(Services.Entities.Metric.MembersNotFound), request.Members.Count - totalSuccessCount);
 
             await context.CallActivityAsync(nameof(LoggerFunction),
@@ -85,17 +82,7 @@ namespace Hosts.GraphUpdater
                                                           SyncJob = request.SyncJob,
                                                           Verbosity = VerbosityLevel.DEBUG
                                                       });
-        }
-
-        private void TrackUsersNotFoundEvent(Guid? runId, int usersNotFoundCount, Guid groupId)
-        {
-            var usersNotFoundEvent = new Dictionary<string, string>
-            {
-                { "RunId", runId.ToString() },
-                { "TargetGroupId", groupId.ToString() },
-                { "UsersNotFound", usersNotFoundCount.ToString() }
-            };
-            _telemetryClient.TrackEvent("UsersNotFoundCount", usersNotFoundEvent);
+            return allUsersNotFound;
         }
     }
 }
