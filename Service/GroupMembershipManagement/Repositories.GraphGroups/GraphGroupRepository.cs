@@ -414,6 +414,9 @@ namespace Repositories.GraphGroups
         }
         public async Task<int> GetGroupsCountAsync(Guid objectId)
         {
+            var resourceUnitsUsed = _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed));
+            var throttleLimitPercentage = _telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage));
+
             var requestUrl = _graphServiceClient.Groups[objectId.ToString()].TransitiveMembers.Request().RequestUrl;
 
             // add casting and count query
@@ -431,6 +434,12 @@ namespace Repositories.GraphGroups
             // Send the request and get the response.
             var r = await _graphServiceClient.HttpProvider.SendAsync(hrm);
 
+            if (r.Headers.TryGetValues(ResourceUnitHeader, out var resourceValues))
+                resourceUnitsUsed.TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
+
+            if (r.Headers.TryGetValues(ThrottlePercentageHeader, out var throttleValues))
+                throttleLimitPercentage.TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
+
             // read the content and parse it as an integer
             var content = await r.Content.ReadAsStringAsync();
             var groupCount = int.Parse(content);
@@ -442,6 +451,7 @@ namespace Repositories.GraphGroups
         {
             var users = new List<AzureADUser>();
             var response = await GetGroupUsersPageByIdAsync(objectId.ToString());
+            TrackMetrics(response.AdditionalData);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -470,6 +480,7 @@ namespace Repositories.GraphGroups
         {
             var users = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
+            TrackMetrics(response.AdditionalData);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -500,7 +511,7 @@ namespace Repositories.GraphGroups
             var usersToAdd = new List<AzureADUser>();
             var usersToRemove = new List<AzureADUser>();
             var response = await GetGroupUsersPageByLinkAsync(deltaLink);
-
+            TrackMetrics(response.AdditionalData);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -537,7 +548,7 @@ namespace Repositories.GraphGroups
             var usersToAdd = new List<AzureADUser>();
             var usersToRemove = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
-
+            TrackMetrics(response.AdditionalData);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -620,27 +631,20 @@ namespace Repositories.GraphGroups
 
         public async Task<int> GetUsersCountAsync(Guid objectId)
         {
+            var resourceUnitsUsed = _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed));
+            var throttleLimitPercentage = _telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage));
             var requestUrl = _graphServiceClient.Groups[objectId.ToString()].TransitiveMembers.Request().RequestUrl;
-
-            // add casting and count query
             requestUrl = $"{requestUrl}/microsoft.graph.user/$count";
-
-            // Create the request message
             var hrm = new HttpRequestMessage(HttpMethod.Get, requestUrl);
-
-            // $count requires header ConsistencyLevel
             hrm.Headers.Add("ConsistencyLevel", "eventual");
-
-            // Authenticate (add access token) our HttpRequestMessage
             await _graphServiceClient.AuthenticationProvider.AuthenticateRequestAsync(hrm);
-
-            // Send the request and get the response.
             var r = await _graphServiceClient.HttpProvider.SendAsync(hrm);
-
-            // read the content and parse it as an integer
+            if (r.Headers.TryGetValues(ResourceUnitHeader, out var resourceValues))
+                resourceUnitsUsed.TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
+            if (r.Headers.TryGetValues(ThrottlePercentageHeader, out var throttleValues))
+                throttleLimitPercentage.TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
             var content = await r.Content.ReadAsStringAsync();
             var userCount = int.Parse(content);
-
             return userCount;
         }
 
