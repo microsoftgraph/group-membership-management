@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
 using Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
@@ -131,10 +132,8 @@ namespace Repositories.GraphGroups
                 if (string.IsNullOrWhiteSpace(content))
                     return endpoints;
 
-                var endpointArray = JArray.Parse(content);
-                var queryTypes = endpointArray.Values<string>("providerName").ToList();
+                return JObject.Parse(content).Value<JArray>("value").Values<string>("providerName").ToList();
 
-                return endpoints;
             }
             catch (ServiceException ex)
             {

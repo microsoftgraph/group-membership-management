@@ -13,6 +13,7 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.ServiceBusTopics;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -29,6 +30,7 @@ namespace Services.Tests
         SyncJob _syncJob;
         SyncJobGroup _syncJobGroup;
         TelemetryClient _telemetryClient;
+        List<string> _endpoints;
 
         [TestInitialize]
         public void Setup()
@@ -39,9 +41,11 @@ namespace Services.Tests
             _loggingRespository = new Mock<ILoggingRepository>();
             _context = new Mock<IDurableOrchestrationContext>();
             _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            _endpoints = new List<string> { "Yammer", "Teams" };
 
             _jobTriggerService.Setup(x => x.GroupExistsAndGMMCanWriteToGroupAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => _canWriteToGroups);
             _jobTriggerService.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>())).ReturnsAsync(() => "Test Group");
+            _jobTriggerService.Setup(x => x.GetGroupEndpointsAsync(It.IsAny<Guid>())).ReturnsAsync(() => _endpoints);
 
             _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(JobStatusUpdaterFunction)), It.IsAny<JobStatusUpdaterRequest>()))
                     .Callback<string, object>(async (name, request) =>
@@ -217,7 +221,7 @@ namespace Services.Tests
 
         private async Task<bool> CallGroupVerifierFunctionAsync()
         {
-            var groupVerifierFunction = new GroupVerifierFunction(_loggingRespository.Object, _jobTriggerService.Object);
+            var groupVerifierFunction = new GroupVerifierFunction(_loggingRespository.Object, _jobTriggerService.Object, _telemetryClient);
             return await groupVerifierFunction.VerifyGroupAsync(_syncJob);
         }
 

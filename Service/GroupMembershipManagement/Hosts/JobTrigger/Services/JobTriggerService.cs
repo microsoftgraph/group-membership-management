@@ -165,6 +165,11 @@ namespace Services
             return isAppIdOwner;
         }
 
+        public async Task<List<string>> GetGroupEndpointsAsync(Guid groupId)
+        {
+            return await _graphGroupRepository.GetGroupEndpointsAsync(groupId);
+        }
+
         private class JobVerificationStrategy
         {
             public delegate Task<bool> CanWriteToGroup(Guid groupId);
