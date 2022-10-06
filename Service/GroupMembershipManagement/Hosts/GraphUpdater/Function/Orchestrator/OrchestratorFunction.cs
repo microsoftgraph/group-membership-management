@@ -240,7 +240,9 @@ namespace Hosts.GraphUpdater
 									.GroupBy(x => x.SourceGroup)
 									.Select(g => new GroupInfo { GroupId = g.Key, UserIds = g.Select(x => x.ObjectId).Distinct().ToList() }).ToList();
 
-					if (sourceGroups != null && sourceGroups.Count > 0)
+                    sourceGroups.RemoveAll(g => g.GroupId == Guid.Empty);
+
+                    if (sourceGroups != null && sourceGroups.Count > 0)
 					{
 						// multiple source group processing flows in parallel
 						var processingTasks = new List<Task>();
