@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Cosmos.Table;
 
-namespace Entities.AzureBackup
+namespace Entities.AzureMaintenance
 {
     public class BackupResult : TableEntity
     {

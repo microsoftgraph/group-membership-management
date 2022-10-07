@@ -1,4 +1,4 @@
-using Entities.AzureBackup;
+using Entities.AzureMaintenance;
 using Microsoft.Azure.Cosmos.Table;
 using Repositories.Contracts.InjectConfig;
 using System;
@@ -10,9 +10,9 @@ namespace Repositories.Contracts
 {
 	public interface IAzureStorageBackupRepository
 	{
-        Task<BackupResult> BackupEntitiesAsync(IAzureBackup backupSettings, List<DynamicTableEntity> entities);
-        Task<List<BackupEntity>> GetBackupsAsync(IAzureBackup backupSettings);
-		Task<bool> VerifyDeleteBackupAsync(IAzureBackup backupSettings, string tableName);
-		Task DeleteBackupAsync(IAzureBackup backupSettings, string tableName);
+        Task<BackupResult> BackupEntitiesAsync(IAzureMaintenance backupSettings, List<DynamicTableEntity> entities);
+        Task<List<BackupEntity>> GetBackupsAsync(IAzureMaintenance backupSettings);
+		Task<bool> VerifyDeleteBackupAsync(IAzureMaintenance backupSettings, string tableName);
+		Task DeleteBackupAsync(IAzureMaintenance backupSettings, string tableName);
 	}
 }

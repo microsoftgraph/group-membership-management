@@ -47,7 +47,7 @@ stages:
        name: 'SecurityGroup'
        coverageThreshold: 89
     - function:
-        name: 'AzureBackup'
+        name: 'AzureMaintenance'
         coverageThreshold: 95
     - function:
         name: 'AzureUserReader'
@@ -86,7 +86,7 @@ stages:
        dependsOn:
        - 'MembershipAggregator'
     - function:
-       name: 'AzureBackup'
+       name: 'AzureMaintenance'
     - function:
        name: 'JobScheduler'
     - function:
@@ -127,7 +127,7 @@ stages:
        dependsOn:
        - 'MembershipAggregator'
     - function:
-       name: 'AzureBackup'
+       name: 'AzureMaintenance'
     - function:
        name: 'JobScheduler'
     - function:
@@ -167,7 +167,7 @@ stages:
        dependsOn:
        - 'MembershipAggregator'
     - function:
-       name: 'AzureBackup'
+       name: 'AzureMaintenance'
     - function:
        name: 'JobScheduler'
     - function:

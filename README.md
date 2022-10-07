@@ -26,7 +26,7 @@ Limitations:
     d) [Configure Azure Devops](#configure-azure-devops)
 
 2. [Post-Deployment Tasks](#post-deployment-tasks)
-3. [Setting up AzureBackup function](#setting-azuretablebackup-function)
+3. [Setting up AzureMaintenance function](#setting-azuretablebackup-function)
 4. [Setting up GMM in a demo tenant](#setting-gmm-in-a-demo-tenant)
 5. [Setting up GMM UI](#setting-up-gmm-ui)
 6. [Steps to debug and troubleshoot a failing sync](#steps-to-debug-and-troubleshoot-a-failing-sync)
@@ -266,7 +266,7 @@ Once your application is created we need to grant the requested permissions to u
                 - name: 'GraphUpdater'
                 - name: 'MembershipAggregator'
                 - name: 'SecurityGroup'
-                - name: 'AzureBackup'
+                - name: 'AzureMaintenance'
                 - name: 'AzureUserReader'
                 - name: 'JobScheduler'
                 - name: 'JobTrigger'
@@ -311,7 +311,7 @@ Once your application is created we need to grant the requested permissions to u
                 - name: 'GraphUpdater'
                 - name: 'MembershipAggregator'
                 - name: 'SecurityGroup'
-                - name: 'AzureBackup'
+                - name: 'AzureMaintenance'
                 - name: 'AzureUserReader'
                 - name: 'JobScheduler'
                 - name: 'JobTrigger'
@@ -651,9 +651,9 @@ There are 3 Dry Run flags in GMM. If any of these Dry run flags are set, the syn
 2. IsSecurityGroupDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all Security Group syncs in dry run.
 3. IsMembershipAggregatorDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all syncs in dry run.
 
-# Setting AzureBackup function
-`<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureBackup function can create backups for Azure Storage Tables and delete older backups automatically.
-Out of the box, the AzureBackup function will backup the 'syncJobs' table; where all the groups' sync parameters are defined. The function is set to run every day at midnight and will delete backups older than 30 days.
+# Setting AzureMaintenance function
+`<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureMaintenance function can create backups for Azure Storage Tables and delete older backups automatically.
+Out of the box, the AzureMaintenance function will backup the 'syncJobs' table; where all the groups' sync parameters are defined. The function is set to run every day at midnight and will delete backups older than 30 days.
 
 The function reads the backup configuration settings from the data keyvault (`<SolutionAbbreviation>`-data-`<EnvironmentAbbreviation>`), specifically from a secret named 'tablesToBackup' which is a string that represents a json array of backup configurations.
 
@@ -666,9 +666,9 @@ The function reads the backup configuration settings from the data keyvault (`<S
         }
     ]
 
-The default configuration for the 'syncJobs' table is generated via an ARM template. For more details see the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureBackup\Infrastructure\data\template.bicep
+The default configuration for the 'syncJobs' table is generated via an ARM template. For more details see the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureMaintenance\Infrastructure\data\template.bicep
 
-The run frequency is set to every day at midnight, it is defined as a NCRONTAB expression in the application setting named 'backupTriggerSchedule' which can be updated on the Azure Portal, it's located under the Configuration blade for `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureBackup Function App, additionally it can be updated directly in the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureBackup\Infrastructure\compute\template.bicep
+The run frequency is set to every day at midnight, it is defined as a NCRONTAB expression in the application setting named 'backupTriggerSchedule' which can be updated on the Azure Portal, it's located under the Configuration blade for `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureMaintenance Function App, additionally it can be updated directly in the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureMaintenance\Infrastructure\compute\template.bicep
 
 # Setting GMM in a demo tenant
 

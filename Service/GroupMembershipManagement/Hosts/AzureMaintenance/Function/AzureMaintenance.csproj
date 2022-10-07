@@ -12,6 +12,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.AzureBlobBackupRepository\Repositories.AzureBlobBackupRepository.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.AzureTableBackupRepository\Repositories.AzureTableBackupRepository.csproj" />
     <ProjectReference Include="..\Services.Entities\Services.Entities.csproj" />
     <ProjectReference Include="..\Services\Services.csproj" />
   </ItemGroup>

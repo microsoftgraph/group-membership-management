@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 namespace Repositories.Contracts.InjectConfig
 {
-    public interface IAzureBackup
+    public interface IAzureMaintenance
     {
         string SourceTableName { get; }
         string SourceConnectionString { get; }
