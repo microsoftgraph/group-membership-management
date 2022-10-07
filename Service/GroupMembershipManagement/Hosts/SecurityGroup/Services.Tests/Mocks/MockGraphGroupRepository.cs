@@ -158,6 +158,11 @@ namespace Tests.FunctionApps.Mocks
 		{
 			throw new NotImplementedException();
 		}
+
+		public Task<List<string>> GetGroupEndpointsAsync(Guid groupId)
+		{
+			throw new NotImplementedException();
+		}
 	}
 
 	public class MockException : Exception { }
