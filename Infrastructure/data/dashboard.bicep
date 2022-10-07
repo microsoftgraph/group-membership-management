@@ -198,7 +198,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '3': {
             position: {
-              x: 10
+              x: 13
               y: 0
               colSpan: 3
               rowSpan: 2
@@ -384,9 +384,9 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '6': {
             position: {
-              x: 1
-              y: 2
-              colSpan: 6
+              x: 10
+              y: 0
+              colSpan: 3
               rowSpan: 2
             }
             metadata: {
@@ -657,7 +657,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '9': {
             position: {
               x: 1
-              y: 4
+              y: 2
               colSpan: 6
               rowSpan: 4
             }
@@ -1036,7 +1036,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '12': {
             position: {
               x: 1
-              y: 8
+              y: 6
               colSpan: 6
               rowSpan: 4
             }
@@ -1275,7 +1275,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '14': {
             position: {
               x: 1
-              y: 12
+              y: 10
               colSpan: 6
               rowSpan: 4
             }
@@ -1393,7 +1393,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '15': {
             position: {
-              x: 7
+              x: 1
               y: 14
               colSpan: 6
               rowSpan: 4
@@ -1491,7 +1491,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '16': {
             position: {
-              x: 13
+              x: 7
               y: 14
               colSpan: 6
               rowSpan: 4
@@ -1589,8 +1589,8 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '17': {
             position: {
-              x: 1
-              y: 16
+              x: 13
+              y: 14
               colSpan: 6
               rowSpan: 4
             }
@@ -1688,7 +1688,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '18': {
             position: {
               x: 1
-              y: 20
+              y: 18
               colSpan: 19
               rowSpan: 2
             }
@@ -1808,7 +1808,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '19': {
             position: {
               x: 1
-              y: 22
+              y: 20
               colSpan: 17
               rowSpan: 2
             }
@@ -1928,7 +1928,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '20': {
             position: {
               x: 1
-              y: 24
+              y: 22
               colSpan: 7
               rowSpan: 3
             }
@@ -2058,7 +2058,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '21': {
             position: {
               x: 8
-              y: 24
+              y: 22
               colSpan: 7
               rowSpan: 3
             }
@@ -2189,7 +2189,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '22': {
             position: {
               x: 15
-              y: 24
+              y: 22
               colSpan: 6
               rowSpan: 3
             }
@@ -2319,7 +2319,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '23': {
             position: {
               x: 1
-              y: 27
+              y: 26
               colSpan: 7
               rowSpan: 2
             }
@@ -2342,7 +2342,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '24': {
             position: {
               x: 1
-              y: 29
+              y: 28
               colSpan: 14
               rowSpan: 2
             }
@@ -2447,7 +2447,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '25': {
             position: {
               x: 1
-              y: 31
+              y: 30
               colSpan: 3
               rowSpan: 4
             }
@@ -2470,7 +2470,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '26': {
             position: {
               x: 4
-              y: 31
+              y: 30
               colSpan: 11
               rowSpan: 2
             }
@@ -2574,7 +2574,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '27': {
             position: {
               x: 4
-              y: 33
+              y: 32
               colSpan: 11
               rowSpan: 2
             }
@@ -2678,7 +2678,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '28': {
             position: {
               x: 1
-              y: 35
+              y: 34
               colSpan: 3
               rowSpan: 8
             }
@@ -2701,7 +2701,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '29': {
             position: {
               x: 4
-              y: 35
+              y: 34
               colSpan: 11
               rowSpan: 2
             }
@@ -2805,7 +2805,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '30': {
             position: {
               x: 4
-              y: 37
+              y: 36
               colSpan: 11
               rowSpan: 2
             }
@@ -2909,7 +2909,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '31': {
             position: {
               x: 4
-              y: 39
+              y: 38
               colSpan: 11
               rowSpan: 2
             }
@@ -3013,7 +3013,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '32': {
             position: {
               x: 4
-              y: 41
+              y: 40
               colSpan: 11
               rowSpan: 2
             }
@@ -3116,7 +3116,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '33': {
             position: {
               x: 1
-              y: 43
+              y: 42
               colSpan: 6
               rowSpan: 4
             }
@@ -3236,7 +3236,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '34': {
             position: {
               x: 7
-              y: 43
+              y: 42
               colSpan: 6
               rowSpan: 4
             }
