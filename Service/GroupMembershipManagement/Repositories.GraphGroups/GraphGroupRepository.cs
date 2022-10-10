@@ -116,10 +116,52 @@ namespace Repositories.GraphGroups
 
         public async Task<List<string>> GetGroupEndpointsAsync(Guid groupId)
         {
+            var endpoints = new List<string>();
+            var baseUrl = "https://graph.microsoft.com";
+
             try
             {
-                var endpoints = new List<string>();
-                var endpointsUrl = $"https://graph.microsoft.com/beta/groups/{groupId}/endpoints";
+                var batchRequest = new BatchRequestContent();
+                var outlookRequest = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/v1.0/groups/{groupId}?$select=mailEnabled,groupTypes");
+                var outlookStep = new BatchRequestStep("outlook", outlookRequest);
+                var sharepointRequest = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/beta/groups/{groupId}/sites/root");
+                var sharepointStep = new BatchRequestStep("sharepoint", sharepointRequest);
+
+                batchRequest.AddBatchRequestStep(outlookStep);
+                batchRequest.AddBatchRequestStep(sharepointStep);
+
+                var batchResponse = await _graphServiceClient.Batch.Request().PostAsync(batchRequest);
+                var individualResponses = await batchResponse.GetResponsesAsync();
+
+                if (individualResponses.ContainsKey("outlook") && individualResponses["outlook"].IsSuccessStatusCode)
+                {
+                    var content = await individualResponses["outlook"].Content.ReadAsStringAsync();
+                    var jObject = JObject.Parse(content);
+                    var isMailEnabled = jObject.Value<bool>("mailEnabled");
+                    var groupTypes = jObject.Value<JArray>("groupTypes").Values<string>().ToList();
+
+                    if (isMailEnabled && groupTypes.Contains("Unified"))
+                        endpoints.Add("Outlook");
+                }
+
+                if (individualResponses.ContainsKey("sharepoint") && individualResponses["sharepoint"].IsSuccessStatusCode)
+                {
+                    endpoints.Add("SharePoint");
+                }
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = RunId
+                });
+            }
+
+            try
+            {
+
+                var endpointsUrl = $"{baseUrl}/beta/groups/{groupId}/endpoints";
                 var httpRequest = new HttpRequestMessage(HttpMethod.Get, endpointsUrl);
                 await _graphServiceClient.AuthenticationProvider.AuthenticateRequestAsync(httpRequest);
                 var httpResponse = await _graphServiceClient.HttpProvider.SendAsync(httpRequest);
@@ -132,7 +174,7 @@ namespace Repositories.GraphGroups
                 if (string.IsNullOrWhiteSpace(content))
                     return endpoints;
 
-                return JObject.Parse(content).Value<JArray>("value").Values<string>("providerName").ToList();
+                endpoints.AddRange(JObject.Parse(content).Value<JArray>("value").Values<string>("providerName").ToList());
 
             }
             catch (ServiceException ex)
@@ -142,9 +184,9 @@ namespace Repositories.GraphGroups
                     Message = ex.GetBaseException().ToString(),
                     RunId = RunId
                 });
-
-                throw;
             }
+
+            return endpoints;
         }
 
         public async Task CreateGroup(string newGroupName)
