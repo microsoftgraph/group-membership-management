@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Entities
 {
     [ExcludeFromCodeCoverage]
-    public class GroupInformation
+    public class UserInformation
     {
         public List<AzureADUser> Users { get; set; }
         public Dictionary<string, int> NonUserGraphObjects { get; set; }
