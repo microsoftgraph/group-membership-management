@@ -100,6 +100,38 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+		public Task<IGraphServiceUsersCollectionPage> GetFirstMembersAsync(string url)
+		{
+			throw new NotImplementedException();
+		}
+        public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGraphServiceUsersCollectionPage usersFromGroup)> GetFirstMembersPageAsync(string url)
+		{
+			throw new NotImplementedException();
+		}
+        public Task<IGraphServiceUsersCollectionPage> GetNextMembersAsync(IGraphServiceUsersCollectionPage groupMembersRef, string nextPageUrl)
+		{
+			throw new NotImplementedException();
+		}
+        public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGraphServiceUsersCollectionPage usersFromGroup)> GetNextMembersPageAsync(string nextPageUrl, IGraphServiceUsersCollectionPage usersFromGroup)
+		{
+			throw new NotImplementedException();
+		}
+		public Task<IGraphServicePlacesCollectionPage> GetRoomsAsync(string url, int top, int skip)
+		{
+			throw new NotImplementedException();
+		}
+		public Task<(List<AzureADUser> users, IGraphServicePlacesCollectionPage usersFromGroup)> GetRoomsPageAsync(string url, int top, int skip)
+		{
+			throw new NotImplementedException();
+		}
+        public Task<IGraphServicePlacesCollectionPage> GetWorkSpacesAsync(string url, int top, int skip)
+		{
+			throw new NotImplementedException();
+		}
+        public Task<(List<AzureADUser> users, IGraphServicePlacesCollectionPage usersFromGroup)> GetWorkSpacesPageAsync(string url, int top, int skip)
+		{
+			throw new NotImplementedException();
+		}
 
 		public Task<IGroupDeltaCollectionPage> GetGroupUsersPageByIdAsync(string groupId)
 		{
@@ -126,6 +158,10 @@ namespace Services.Tests.Mocks
 			throw new NotImplementedException();
 		}
 		public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetNextUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage usersFromGroup)
+		{
+			throw new NotImplementedException();
+		}
+		public Task<User> GetUserByEmail(string emailAddress)
 		{
 			throw new NotImplementedException();
 		}
