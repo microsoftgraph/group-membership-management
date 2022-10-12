@@ -10,6 +10,6 @@ namespace Services.Entities
     public class ReviewAndDeleteRequest : IReviewAndDeleteRequest
     {
         public string TableName { get; set; }
-        public AzureMaintenance BackupSetting { get; set; }
+        public AzureMaintenance MaintenanceSetting { get; set; }
     }
 }

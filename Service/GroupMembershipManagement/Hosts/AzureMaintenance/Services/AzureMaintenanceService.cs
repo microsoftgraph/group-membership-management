@@ -15,34 +15,34 @@ namespace Services
 {
 	public class AzureMaintenanceService : IAzureMaintenanceService
 	{
-		private readonly List<AzureMaintenance> _tablesToBackup = null;
+		private readonly List<AzureMaintenance> _maintenanceSettings = null;
 		private readonly ILoggingRepository _loggingRepository = null;
 		private readonly IAzureTableBackupRepository _azureTableBackupRepository = null;
 		private readonly IAzureStorageBackupRepository _azureBlobBackupRepository = null;
 
 		public AzureMaintenanceService(
-			List<AzureMaintenance> tablesToBackup,
+			List<AzureMaintenance> maintenanceSettings,
 			ILoggingRepository loggingRepository,
 			IAzureTableBackupRepository azureTableBackupRepository,
 			IAzureStorageBackupRepository azureBlobBackupRepository)
 		{
-			_tablesToBackup = tablesToBackup;
+			_maintenanceSettings = maintenanceSettings;
 			_loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
 			_azureTableBackupRepository = azureTableBackupRepository ?? throw new ArgumentNullException(nameof(azureTableBackupRepository));
 			_azureBlobBackupRepository = azureBlobBackupRepository ?? throw new ArgumentNullException(nameof(azureBlobBackupRepository));
 		}
 
-		public async Task RunBackupServiceAsync()
+		public async Task RunTableBackupServiceAsync()
 		{
-			if (!_tablesToBackup.Any())
+			if (!_maintenanceSettings.Any())
 			{
 				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"No backup settings have been found." });
 				return;
 			}
 
-			foreach (var table in _tablesToBackup)
+			foreach (var table in _maintenanceSettings)
 			{
-				if (!table.CleanupOnly)
+				if (!table.CleanupOnly) // TODO: Update this check
 				{
 					await BackupTableAsync(table);
 				}
@@ -53,7 +53,7 @@ namespace Services
 		{
 			var requests = new List<IReviewAndDeleteRequest>();
 
-			foreach (var table in _tablesToBackup)
+			foreach (var table in _maintenanceSettings)
 			{
 				var backupStorage = DetermineBackupStorage(table.BackupType);
 				var backupEntities = await backupStorage.GetBackupsAsync(table);
@@ -62,7 +62,7 @@ namespace Services
 					requests.Add(new ReviewAndDeleteRequest
 					{
 						TableName = backupEntity.Name,
-						BackupSetting = table
+						MaintenanceSetting = table
 					});
                 }
 			}

@@ -14,18 +14,18 @@ namespace Hosts.AzureMaintenance
     public class ReviewAndDeleteFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IAzureMaintenanceService _azureTableBackupService = null;
-        public ReviewAndDeleteFunction(IAzureMaintenanceService azureTableBackupService, ILoggingRepository loggingRepository)
+        private readonly IAzureMaintenanceService _azureMaintenanceService = null;
+        public ReviewAndDeleteFunction(IAzureMaintenanceService azureMaintenanceService, ILoggingRepository loggingRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _azureTableBackupService = azureTableBackupService ?? throw new ArgumentNullException(nameof(azureTableBackupService));
+            _azureMaintenanceService = azureMaintenanceService ?? throw new ArgumentNullException(nameof(azureMaintenanceService));
         }
 
         [FunctionName(nameof(ReviewAndDeleteFunction))]
         public async Task<bool> ReviewAndDelete([ActivityTrigger] ReviewAndDeleteRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ReviewAndDeleteFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            var entityDeleted = await _azureTableBackupService.ReviewAndDeleteAsync(request.BackupSetting, request.TableName);
+            var entityDeleted = await _azureMaintenanceService.ReviewAndDeleteAsync(request.MaintenanceSetting, request.TableName);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ReviewAndDeleteFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
             return entityDeleted;

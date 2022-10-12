@@ -29,7 +29,7 @@ namespace Services.Tests
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
 
             var azureTableBackupService = new AzureMaintenanceService(backupSettings, loggerMock.Object, azureTableBackupRepository.Object, azureBlobBackupRepository.Object);
-            await azureTableBackupService.RunBackupServiceAsync();
+            await azureTableBackupService.RunTableBackupServiceAsync();
 
             azureTableBackupRepository.Verify(x => x.GetEntitiesAsync(It.IsAny<IAzureMaintenance>()), Times.Never());
             azureTableBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureMaintenance>(), It.IsAny<List<DynamicTableEntity>>()), Times.Never());
@@ -73,7 +73,7 @@ namespace Services.Tests
                                         .ReturnsAsync(new BackupResult("backupTableName", "blob", entities.Count));
 
             var azureTableBackupService = new AzureMaintenanceService(backupSettings, loggerMock.Object, azureTableBackupRepository.Object, azureBlobBackupRepository.Object);
-            await azureTableBackupService.RunBackupServiceAsync();
+            await azureTableBackupService.RunTableBackupServiceAsync();
 
             azureTableBackupRepository.Verify(x => x.GetEntitiesAsync(It.IsAny<IAzureMaintenance>()), Times.Exactly(2));
             azureTableBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureMaintenance>(), It.IsAny<List<DynamicTableEntity>>()), Times.Once());
@@ -116,7 +116,7 @@ namespace Services.Tests
                                         .ReturnsAsync(backups);
 
             var azureTableBackupService = new AzureMaintenanceService(backupSettings, loggerMock.Object, azureTableBackupRepository.Object, azureBlobBackupRepository.Object);
-            await azureTableBackupService.RunBackupServiceAsync();
+            await azureTableBackupService.RunTableBackupServiceAsync();
 
             azureTableBackupRepository.Verify(x => x.GetEntitiesAsync(It.IsAny<IAzureMaintenance>()), Times.Exactly(2));
             azureTableBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureMaintenance>(), It.IsAny<List<DynamicTableEntity>>()), Times.Once());
@@ -147,7 +147,7 @@ namespace Services.Tests
                                         .ReturnsAsync(backups);
 
             var azureTableBackupService = new AzureMaintenanceService(backupSettings, loggerMock.Object, azureTableBackupRepository.Object, azureBlobBackupRepository.Object);
-            await azureTableBackupService.RunBackupServiceAsync();
+            await azureTableBackupService.RunTableBackupServiceAsync();
 
             azureTableBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureMaintenance>(), It.IsAny<List<DynamicTableEntity>>()), Times.Exactly(0));
         }
@@ -223,8 +223,8 @@ namespace Services.Tests
             var tableRequest = requests[0];
             var blobRequest = requests[1];
 
-            var tableResponse = await azureTableBackupService.ReviewAndDeleteAsync(tableRequest.BackupSetting, tableRequest.TableName);
-            var blobResponse = await azureTableBackupService.ReviewAndDeleteAsync(blobRequest.BackupSetting, blobRequest.TableName);
+            var tableResponse = await azureTableBackupService.ReviewAndDeleteAsync(tableRequest.MaintenanceSetting, tableRequest.TableName);
+            var blobResponse = await azureTableBackupService.ReviewAndDeleteAsync(blobRequest.MaintenanceSetting, blobRequest.TableName);
 
             Assert.IsTrue(tableResponse);
             Assert.IsFalse(blobResponse);

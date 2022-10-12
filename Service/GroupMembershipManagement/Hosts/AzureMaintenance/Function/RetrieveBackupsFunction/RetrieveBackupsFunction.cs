@@ -16,21 +16,21 @@ namespace Hosts.AzureMaintenance
     public class RetrieveBackupsFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IAzureMaintenanceService _azureTableBackupService = null;
-        public RetrieveBackupsFunction(IAzureMaintenanceService azureTableBackupService, ILoggingRepository loggingRepository)
+        private readonly IAzureMaintenanceService _azureMaintenanceService = null;
+        public RetrieveBackupsFunction(IAzureMaintenanceService azureMaintenanceService, ILoggingRepository loggingRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _azureTableBackupService = azureTableBackupService ?? throw new ArgumentNullException(nameof(azureTableBackupService));
+            _azureMaintenanceService = azureMaintenanceService ?? throw new ArgumentNullException(nameof(azureMaintenanceService));
         }
 
         [FunctionName(nameof(RetrieveBackupsFunction))]
         public async Task<List<ReviewAndDeleteRequest>> RetrieveBackups([ActivityTrigger] object request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RetrieveBackupsFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            var backups = await _azureTableBackupService.RetrieveBackupsAsync();
+            var backups = await _azureMaintenanceService.RetrieveBackupsAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RetrieveBackupsFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
-            return backups.Select(e => new ReviewAndDeleteRequest() { TableName = e.TableName, BackupSetting = e.BackupSetting }).ToList();
+            return backups.Select(e => new ReviewAndDeleteRequest() { TableName = e.TableName, MaintenanceSetting = e.MaintenanceSetting }).ToList();
         }
     }
 }

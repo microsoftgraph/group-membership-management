@@ -37,17 +37,17 @@ namespace Hosts.AzureMaintenance
 
             var reviewAndDeleteRequests = await context.CallActivityAsync<List<ReviewAndDeleteRequest>>(nameof(RetrieveBackupsFunction), null);
 
-            var backupSettings = reviewAndDeleteRequests.Select(e => e.BackupSetting).Distinct();
+            var maintenanceSettings = reviewAndDeleteRequests.Select(e => e.MaintenanceSetting).Distinct();
 
-            foreach (var backupSetting in backupSettings)
+            foreach (var maintenanceSetting in maintenanceSettings)
             {
-                var reviewAndDeleteRequestsForSetting = reviewAndDeleteRequests.Where(e => e.BackupSetting.Equals(backupSetting)).ToList();
+                var reviewAndDeleteRequestsForSetting = reviewAndDeleteRequests.Where(e => e.MaintenanceSetting.Equals(maintenanceSetting)).ToList();
 
                 var tasks = new List<Task<bool>>();
 
-                foreach(var backupToReview in reviewAndDeleteRequestsForSetting)
+                foreach(var requestToReview in reviewAndDeleteRequestsForSetting)
                 {
-                    var task = context.CallActivityAsync<bool>(nameof(ReviewAndDeleteFunction), backupToReview);
+                    var task = context.CallActivityAsync<bool>(nameof(ReviewAndDeleteFunction), requestToReview);
                     tasks.Add(task);
                 }
 
@@ -60,7 +60,7 @@ namespace Hosts.AzureMaintenance
                                    new LoggerRequest
                                    {
                                        RunId = runId,
-                                       Message = $"Deleted {backupsDeleted} old backups for table: {backupSetting.SourceTableName}"
+                                       Message = $"Deleted {backupsDeleted} old backups for table: {maintenanceSetting.SourceTableName}"
                                    });
             }
 

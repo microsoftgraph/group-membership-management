@@ -8,6 +8,6 @@ namespace Services.Contracts
     public interface IReviewAndDeleteRequest
     {
         string TableName { get; set; }
-        AzureMaintenance BackupSetting { get; set; }
+        AzureMaintenance MaintenanceSetting { get; set; }
     }
 }

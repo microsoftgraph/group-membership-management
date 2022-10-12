@@ -8,7 +8,7 @@ namespace Services.Contracts
 {
     public interface IAzureMaintenanceService
     {
-        Task RunBackupServiceAsync();
+        Task RunTableBackupServiceAsync();
         Task<List<IReviewAndDeleteRequest>> RetrieveBackupsAsync();
         Task<bool> ReviewAndDeleteAsync(IAzureMaintenance backupSetting, string tableName);
     }
