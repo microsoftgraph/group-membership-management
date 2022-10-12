@@ -31,17 +31,15 @@ namespace Repositories.Contracts
 		Task<IGroupTransitiveMembersCollectionWithReferencesPage> GetGroupMembersNextPageAsnyc(IGroupTransitiveMembersCollectionWithReferencesPage groupMembersRef, string nextPageUrl);
 		Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetFirstTransitiveMembersPageAsync(Guid objectId);
 		Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetNextTransitiveMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup);
-
+		Task<User> GetUserByEmail(string emailAddress);
         Task<IGraphServiceUsersCollectionPage> GetFirstMembersAsync(string url);
         Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGraphServiceUsersCollectionPage usersFromGroup)> GetFirstMembersPageAsync(string url);
         Task<IGraphServiceUsersCollectionPage> GetNextMembersAsync(IGraphServiceUsersCollectionPage groupMembersRef, string nextPageUrl);
         Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl, IGraphServiceUsersCollectionPage usersFromGroup)> GetNextMembersPageAsync(string nextPageUrl, IGraphServiceUsersCollectionPage usersFromGroup);
-
 		Task<IGraphServicePlacesCollectionPage> GetRoomsAsync(string url, int top, int skip);
 		Task<(List<AzureADUser> users, IGraphServicePlacesCollectionPage usersFromGroup)> GetRoomsPageAsync(string url, int top, int skip);
         Task<IGraphServicePlacesCollectionPage> GetWorkSpacesAsync(string url, int top, int skip);
         Task<(List<AzureADUser> users, IGraphServicePlacesCollectionPage usersFromGroup)> GetWorkSpacesPageAsync(string url, int top, int skip);
-        
         Task<IGroupDeltaCollectionPage> GetGroupUsersPageByIdAsync(string groupId);
 		Task<IGroupDeltaCollectionPage> GetGroupUsersNextPageAsnyc(IGroupDeltaCollectionPage groupMembersRef, string nextPageUrl);
 		Task<IGroupDeltaCollectionPage> GetGroupUsersPageByLinkAsync(string deltaLink);

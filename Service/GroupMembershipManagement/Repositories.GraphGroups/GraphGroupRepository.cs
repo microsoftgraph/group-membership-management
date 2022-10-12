@@ -536,13 +536,10 @@ namespace Repositories.GraphGroups
                 foreach (var room in response.CurrentPage)
                 {
                     var emailAddress = (string)room.AdditionalData["emailAddress"];
-                    var roomUser = await _graphServiceClient.Users[emailAddress].Request()
-                                                                                .Select(u => u.Id)
-                                                                                .GetAsync();
-                    users.Add(new AzureADUser { ObjectId = Guid.Parse((string)roomUser.Id) });
+                    var user = await GetUserByEmail(emailAddress);
+                    if (user != null) users.Add(new AzureADUser { ObjectId = Guid.Parse((string)user.Id) });
                 }
             }
-
 
             var total = response.AdditionalData.TryGetValue("@odata.count", out object count) ? (int)(long)count : 0;
 
@@ -558,15 +555,35 @@ namespace Repositories.GraphGroups
                         foreach (var room in response.CurrentPage)
                         {
                             var emailAddress = (string)room.AdditionalData["emailAddress"];
-                            var roomUser = await _graphServiceClient.Users[emailAddress].Request()
-                                                                                        .Select(u => u.Id)
-                                                                                        .GetAsync();
-                            users.Add(new AzureADUser { ObjectId = Guid.Parse((string)roomUser.Id) });
+                            var user = await GetUserByEmail(emailAddress);
+                            if (user != null) users.Add(new AzureADUser { ObjectId = Guid.Parse((string)user.Id) });
                         }
                     }
                 }
             }
             return (users, response);
+        }
+
+        public async Task<User> GetUserByEmail(string emailAddress)
+        {
+            User userDetails = null;
+
+            try
+            {
+                var user = await _graphServiceClient.Users[emailAddress].Request().Select(u => u.Id).GetAsync();
+                if (user != null) userDetails = user;
+            }
+
+            catch (Exception exception)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = RunId,
+                    Message = $"Exception: {exception}, FailedMethod: {nameof(GetUserByEmail)}, UserEmail: {emailAddress}"
+                });
+            }
+
+            return userDetails;
         }
 
         public async Task<(List<AzureADUser> users,
@@ -579,10 +596,8 @@ namespace Repositories.GraphGroups
                 foreach (var room in response.CurrentPage)
                 {
                     var emailAddress = (string)room.AdditionalData["emailAddress"];
-                    var roomUser = await _graphServiceClient.Users[emailAddress].Request()
-                                                                                .Select(u => u.Id)
-                                                                                .GetAsync();
-                    users.Add(new AzureADUser { ObjectId = Guid.Parse((string)roomUser.Id) });
+                    var user = await GetUserByEmail(emailAddress);
+                    if (user != null) users.Add(new AzureADUser { ObjectId = Guid.Parse((string)user.Id) });
                 }
             }
 
@@ -601,10 +616,8 @@ namespace Repositories.GraphGroups
                         foreach (var room in response.CurrentPage)
                         {
                             var emailAddress = (string)room.AdditionalData["emailAddress"];
-                            var roomUser = await _graphServiceClient.Users[emailAddress].Request()
-                                                                                        .Select(u => u.Id)
-                                                                                        .GetAsync();
-                            users.Add(new AzureADUser { ObjectId = Guid.Parse((string)roomUser.Id) });
+                            var user = await GetUserByEmail(emailAddress);
+                            if (user != null) users.Add(new AzureADUser { ObjectId = Guid.Parse((string)user.Id) });
                         }
                     }
                 }
