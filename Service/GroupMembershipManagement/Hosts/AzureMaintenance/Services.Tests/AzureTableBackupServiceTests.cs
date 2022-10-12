@@ -25,7 +25,7 @@ namespace Services.Tests
             loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
 
             var backupSettings = new List<AzureMaintenance>();
-            var azureTableBackupRepository = new Mock<IAzureMaintenanceRepository>();
+            var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
 
             var azureTableBackupService = new AzureMaintenanceService(backupSettings, loggerMock.Object, azureTableBackupRepository.Object, azureBlobBackupRepository.Object);
@@ -49,7 +49,7 @@ namespace Services.Tests
                 new AzureMaintenance("tableOne", "sourceConnection", "destinationConnection", "Blob", false, 7)
             };
 
-            var azureTableBackupRepository = new Mock<IAzureMaintenanceRepository>();
+            var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
             var entities = new List<DynamicTableEntity>();
             for (int i = 0; i < 5; i++)
@@ -92,7 +92,7 @@ namespace Services.Tests
                 new AzureMaintenance("tableOne", "sourceConnection", "destinationConnection", "Blob", false, 7)
             };
 
-            var azureTableBackupRepository = new Mock<IAzureMaintenanceRepository>();
+            var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
             var entities = new List<DynamicTableEntity>();
             for (int i = 0; i < 5; i++)
@@ -135,7 +135,7 @@ namespace Services.Tests
                 new AzureMaintenance("*", "otherSourceConnection", "otherDestinationConnection", "Table", true, 30)
             };
 
-            var azureTableBackupRepository = new Mock<IAzureMaintenanceRepository>();
+            var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
             var backups = new List<BackupEntity> { new BackupEntity("backupTableName", "blob") };
 
@@ -166,7 +166,7 @@ namespace Services.Tests
                 new AzureMaintenance(blobSource, "otherSourceConnection", "otherDestinationConnection", "Blob", true, 30)
             };
 
-            var azureTableBackupRepository = new Mock<IAzureMaintenanceRepository>();
+            var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
             var backupsTable = new List<BackupEntity> { new BackupEntity(tableSource, "table") };
             var backupsBlob = new List<BackupEntity> { new BackupEntity(blobSource, "blob") };
@@ -203,7 +203,7 @@ namespace Services.Tests
                 new AzureMaintenance(blobSource, "otherSourceConnection", "otherDestinationConnection", "Blob", true, 30)
             };
 
-            var azureTableBackupRepository = new Mock<IAzureMaintenanceRepository>();
+            var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
             var backupsTable = new List<BackupEntity> { new BackupEntity(tableSource, "table") };
             var backupsBlob = new List<BackupEntity> { new BackupEntity(blobSource, "blob") };

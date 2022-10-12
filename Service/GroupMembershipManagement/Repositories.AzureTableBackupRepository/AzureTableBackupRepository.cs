@@ -14,14 +14,14 @@ using System.Threading.Tasks;
 
 namespace Repositories.AzureMaintenanceRepository
 {
-    public class AzureMaintenanceRepository : IAzureMaintenanceRepository
+    public class AzureTableBackupRepository : IAzureTableBackupRepository
     {
         private const string BACKUP_PREFIX = "zzBackup";
         private const string BACKUP_TABLE_NAME_SUFFIX = "BackupTracker";
         private const string BACKUP_DATE_FORMAT = "yyyyMMddHHmmss";
         private readonly ILoggingRepository _loggingRepository = null;
 
-        public AzureMaintenanceRepository(ILoggingRepository loggingRepository)
+        public AzureTableBackupRepository(ILoggingRepository loggingRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }

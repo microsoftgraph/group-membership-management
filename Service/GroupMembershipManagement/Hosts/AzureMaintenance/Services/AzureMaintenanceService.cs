@@ -17,13 +17,13 @@ namespace Services
 	{
 		private readonly List<AzureMaintenance> _tablesToBackup = null;
 		private readonly ILoggingRepository _loggingRepository = null;
-		private readonly IAzureMaintenanceRepository _azureTableBackupRepository = null;
+		private readonly IAzureTableBackupRepository _azureTableBackupRepository = null;
 		private readonly IAzureStorageBackupRepository _azureBlobBackupRepository = null;
 
 		public AzureMaintenanceService(
 			List<AzureMaintenance> tablesToBackup,
 			ILoggingRepository loggingRepository,
-			IAzureMaintenanceRepository azureTableBackupRepository,
+			IAzureTableBackupRepository azureTableBackupRepository,
 			IAzureStorageBackupRepository azureBlobBackupRepository)
 		{
 			_tablesToBackup = tablesToBackup;

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Repositories.Contracts
 {
-    public interface IAzureMaintenanceRepository : IAzureStorageBackupRepository
+    public interface IAzureTableBackupRepository : IAzureStorageBackupRepository
     {
         Task<List<DynamicTableEntity>> GetEntitiesAsync(IAzureMaintenance backupSettings);
         Task AddBackupResultTrackerAsync(IAzureMaintenance backupSettings, BackupResult backupResult);

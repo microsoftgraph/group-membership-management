@@ -26,7 +26,7 @@ namespace Hosts.AzureMaintenance
         {
             base.Configure(builder);
 
-            builder.Services.AddScoped<IAzureMaintenanceRepository, AzureMaintenanceRepository>();
+            builder.Services.AddScoped<IAzureTableBackupRepository, AzureTableBackupRepository>();
             builder.Services.AddScoped<IAzureStorageBackupRepository, AzureBlobBackupRepository>();
             builder.Services.AddScoped<IAzureMaintenanceService>(services =>
             {
@@ -35,7 +35,7 @@ namespace Hosts.AzureMaintenance
                                     ? new List<Services.Entities.AzureMaintenance>()
                                     : JsonConvert.DeserializeObject<List<Services.Entities.AzureMaintenance>>(tablesToBackupSetting);
 
-                return new AzureMaintenanceService(tablesToBackup, services.GetService<ILoggingRepository>(), services.GetService<IAzureMaintenanceRepository>(), services.GetService<IAzureStorageBackupRepository>());
+                return new AzureMaintenanceService(tablesToBackup, services.GetService<ILoggingRepository>(), services.GetService<IAzureTableBackupRepository>(), services.GetService<IAzureStorageBackupRepository>());
             });
         }
     }
