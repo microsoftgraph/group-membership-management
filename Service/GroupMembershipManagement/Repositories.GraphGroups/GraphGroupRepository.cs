@@ -410,11 +410,11 @@ namespace Repositories.GraphGroups
 
         public async Task<IGraphServicePlacesCollectionPage> GetRoomsAsync(string url, int top, int skip)
         {
-            var queryParamValues = HttpUtility.ParseQueryString(url, Encoding.UTF8);            
-            var filterValue = queryParamValues["$filter"];      
+            var queryParamValues = HttpUtility.ParseQueryString(url, Encoding.UTF8);
+            var filterValue = queryParamValues["$filter"];
             var selectValue = queryParamValues["$select"];
 
-            var queryOptions = new List<QueryOption>() { new QueryOption("$count", "true") };         
+            var queryOptions = new List<QueryOption>() { new QueryOption("$count", "true") };
             var roomUrl = _graphServiceClient.Places.AppendSegmentToRequestUrl("microsoft.graph.room");
             var request = new GraphServicePlacesCollectionRequest(roomUrl, _graphServiceClient, queryOptions);
             if (!string.IsNullOrEmpty(filterValue)) { request = (GraphServicePlacesCollectionRequest)request.Filter(filterValue); }
@@ -451,7 +451,7 @@ namespace Repositories.GraphGroups
             var filterValue = queryParamValues["$filter"];
             var orderValue = queryParamValues["$orderBy"];
             var selectValue = queryParamValues["$select"];
-                      
+
             var queryOptions = new List<QueryOption>()
             {
                 new QueryOption("$count", "true")
@@ -524,12 +524,12 @@ namespace Repositories.GraphGroups
                                 .NextPageRequest
                                 .GetAsync();
             });
-        }     
+        }
 
         public async Task<(List<AzureADUser> users,
                            IGraphServicePlacesCollectionPage usersFromGroup)> GetRoomsPageAsync(string url, int top, int skip)
         {
-            var users = new List<AzureADUser>();            
+            var users = new List<AzureADUser>();
             var response = await GetRoomsAsync(url, top, skip);
             if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null)
             {
@@ -545,7 +545,7 @@ namespace Repositories.GraphGroups
 
 
             var total = response.AdditionalData.TryGetValue("@odata.count", out object count) ? (int)(long)count : 0;
-                       
+
             if (total > 0)
             {
                 var numberOfRequests = total / 100;
@@ -570,7 +570,7 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<(List<AzureADUser> users,
-                          IGraphServicePlacesCollectionPage usersFromGroup)> GetWorkSpacesPageAsync(string url, int top, int skip)
+                           IGraphServicePlacesCollectionPage usersFromGroup)> GetWorkSpacesPageAsync(string url, int top, int skip)
         {
             var users = new List<AzureADUser>();
             var response = await GetWorkSpacesAsync(url, top, skip);
@@ -578,7 +578,11 @@ namespace Repositories.GraphGroups
             {
                 foreach (var room in response.CurrentPage)
                 {
-                    users.Add(new AzureADUser { ObjectId = Guid.Parse((string)room.Id) });
+                    var emailAddress = (string)room.AdditionalData["emailAddress"];
+                    var roomUser = await _graphServiceClient.Users[emailAddress].Request()
+                                                                                .Select(u => u.Id)
+                                                                                .GetAsync();
+                    users.Add(new AzureADUser { ObjectId = Guid.Parse((string)roomUser.Id) });
                 }
             }
 
@@ -596,7 +600,11 @@ namespace Repositories.GraphGroups
                     {
                         foreach (var room in response.CurrentPage)
                         {
-                            users.Add(new AzureADUser { ObjectId = Guid.Parse((string)room.Id) });
+                            var emailAddress = (string)room.AdditionalData["emailAddress"];
+                            var roomUser = await _graphServiceClient.Users[emailAddress].Request()
+                                                                                        .Select(u => u.Id)
+                                                                                        .GetAsync();
+                            users.Add(new AzureADUser { ObjectId = Guid.Parse((string)roomUser.Id) });
                         }
                     }
                 }
@@ -608,12 +616,12 @@ namespace Repositories.GraphGroups
                            Dictionary<string, int> nonUserGraphObjects,
                            string nextPageUrl,
                            IGraphServiceUsersCollectionPage usersFromGroup)> GetFirstMembersPageAsync(string url)
-        {          
+        {
 
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
             var response = await GetFirstMembersAsync(url);
-            TrackMetrics(response.AdditionalData);           
+            TrackMetrics(response.AdditionalData);
             var nextPageUrl = response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1) ? nextLink1.ToString() : string.Empty;
             users.AddRange(ToUsers(response, nonUserGraphObjects));
             return (users, nonUserGraphObjects, nextPageUrl, response);
@@ -627,8 +635,8 @@ namespace Repositories.GraphGroups
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
             usersFromGroup = await GetNextMembersAsync(usersFromGroup, nextPageUrl);
-            TrackMetrics(usersFromGroup.AdditionalData);           
-            nextPageUrl = usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink2) ? nextLink2.ToString() : string.Empty;            
+            TrackMetrics(usersFromGroup.AdditionalData);
+            nextPageUrl = usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink2) ? nextLink2.ToString() : string.Empty;
             users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
             return (users, nonUserGraphObjects, nextPageUrl, usersFromGroup);
         }
