@@ -1,5 +1,5 @@
-# Azure Table Backup Function App
-This guide will explain how to use the AzureMaintenanceTable function, found in AzureMaintenance/Function
+# Azure Maintenance Function App
+This guide will explain how to use the AzureMaintenance function, found in AzureMaintenance/Function
 
 ## Prerequisites
 * Visual Studio (tested in VS 2019, but likely works with other versions as well)
