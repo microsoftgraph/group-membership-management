@@ -26,7 +26,6 @@ namespace Services.Tests
         private SyncJob _syncJob;
         private JobState _jobState;
         private BlobResult _blobResult;
-        private DeltaResponse _deltaResponse;
         private PolicyResult<bool> _groupExists;
         private int _numberOfUsersForSourcePart;
         private int _numberOfUsersForSourcePartOne;
@@ -35,6 +34,7 @@ namespace Services.Tests
         private int _numberOfUsersForDestinationPart;
         private Dictionary<string, int> _membersPerFile;
         private DeltaCalculatorService _deltaCalculatorService;
+        private DeltaCalculatorResponse _deltaCalculatorResponse;
         private (string FilePath, string Content) _downloaderResponse;
         private MembershipSubOrchestratorRequest _membershipSubOrchestratorRequest;
 
@@ -76,7 +76,7 @@ namespace Services.Tests
                                             );
 
 
-            _deltaResponse = null;
+            _deltaCalculatorResponse = null;
             _numberOfUsersForSourcePart = 10;
             _numberOfUsersForSourcePartOne = 10;
             _numberOfUsersForSourcePartTwo = 10;
@@ -214,12 +214,12 @@ namespace Services.Tests
                             })
                             .ReturnsAsync(() => _downloaderResponse);
 
-            _durableContext.Setup(x => x.CallActivityAsync<DeltaResponse>(It.Is<string>(x => x == nameof(DeltaCalculatorFunction)), It.IsAny<DeltaCalculatorRequest>()))
+            _durableContext.Setup(x => x.CallActivityAsync<DeltaCalculatorResponse>(It.Is<string>(x => x == nameof(DeltaCalculatorFunction)), It.IsAny<DeltaCalculatorRequest>()))
                             .Callback<string, object>(async (name, request) =>
                             {
-                                _deltaResponse = await CallDeltaCalculatorFunctionAsync(request as DeltaCalculatorRequest);
+                                _deltaCalculatorResponse = await CallDeltaCalculatorFunctionAsync(request as DeltaCalculatorRequest);
                             })
-                            .ReturnsAsync(() => _deltaResponse);
+                            .ReturnsAsync(() => _deltaCalculatorResponse);
 
             _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(FileUploaderFunction)), It.IsAny<FileUploaderRequest>()))
                             .Callback<string, object>(async (name, request) =>
@@ -577,7 +577,7 @@ namespace Services.Tests
             _syncJob.ThresholdPercentageForAdditions = -1;
             _syncJob.ThresholdPercentageForRemovals = -1;
             _numberOfUsersForSourcePart = 50000;
-                      
+
             _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path"))))
                                     .Callback<string>(path =>
                                     {
@@ -607,10 +607,10 @@ namespace Services.Tests
                                             })
                                         };
                                     })
-                                    .ReturnsAsync(() => _blobResult);           
+                                    .ReturnsAsync(() => _blobResult);
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
-            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);            
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
             Assert.AreEqual(0, response.ProjectedMemberCount);
         }
 
@@ -621,7 +621,7 @@ namespace Services.Tests
             _syncJob.ThresholdPercentageForRemovals = -1;
             _numberOfUsersForSourcePartOne = 50000;
             _numberOfUsersForSourcePartTwo = 25000;
-                      
+
             _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path-1"))))
                                     .Callback<string>(path =>
                                     {
@@ -713,7 +713,7 @@ namespace Services.Tests
             await function.UpdateJobStatusAsync(request);
         }
 
-        private async Task<DeltaResponse> CallDeltaCalculatorFunctionAsync(DeltaCalculatorRequest request)
+        private async Task<DeltaCalculatorResponse> CallDeltaCalculatorFunctionAsync(DeltaCalculatorRequest request)
         {
             var function = new DeltaCalculatorFunction(_loggingRepository.Object, _blobStorageRepository.Object, _deltaCalculatorService);
             return await function.CalculateDeltaAsync(request);

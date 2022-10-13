@@ -1,13 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
+using Entities.Helpers;
 using Entities.ServiceBus;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Services.Contracts;
-using Services.Entities;
 using System;
 using System.Threading.Tasks;
 
@@ -31,7 +31,7 @@ namespace Hosts.MembershipAggregator
         }
 
         [FunctionName(nameof(DeltaCalculatorFunction))]
-        public async Task<DeltaResponse> CalculateDeltaAsync([ActivityTrigger] DeltaCalculatorRequest request)
+        public async Task<DeltaCalculatorResponse> CalculateDeltaAsync([ActivityTrigger] DeltaCalculatorRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DeltaCalculatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
@@ -53,14 +53,21 @@ namespace Hosts.MembershipAggregator
             }
             else
             {
-                sourceMembership = request.SourceGroupMembership;
-                destinationMembership = request.DestinationGroupMembership;
+                sourceMembership = JsonConvert.DeserializeObject<GroupMembership>(TextCompressor.Decompress(request.SourceGroupMembership));
+                destinationMembership = JsonConvert.DeserializeObject<GroupMembership>(TextCompressor.Decompress(request.DestinationGroupMembership));
             }
 
             var response = await _deltaCalculatorService.CalculateDifferenceAsync(sourceMembership, destinationMembership);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DeltaCalculatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return response;
+            return new DeltaCalculatorResponse
+            {
+                MembersToAddCount = response.MembersToAdd?.Count ?? 0,
+                MembersToRemoveCount = response.MembersToRemove?.Count ?? 0,
+                MembershipDeltaStatus = response.MembershipDeltaStatus,
+                CompressedMembersToAddJSON = TextCompressor.Compress(JsonConvert.SerializeObject(response.MembersToAdd)),
+                CompressedMembersToRemoveJSON = TextCompressor.Compress(JsonConvert.SerializeObject(response.MembersToRemove)),
+            };
         }
     }
 }
