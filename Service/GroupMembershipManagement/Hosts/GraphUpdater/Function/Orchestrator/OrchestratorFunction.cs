@@ -133,13 +133,15 @@ namespace Hosts.GraphUpdater
                 var membersAddedResponse = await context.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(nameof(GroupUpdaterSubOrchestratorFunction),
                                 CreateGroupUpdaterRequest(syncJob, membersToAdd, RequestType.Add, isInitialSync));
                 syncCompleteEvent.MembersAdded = membersAddedResponse.SuccessCount.ToString();
+				sourceUsersNotFound = membersAddedResponse.UsersNotFound;
 
                 var membersRemovedResponse = await context.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(nameof(GroupUpdaterSubOrchestratorFunction),
                                 CreateGroupUpdaterRequest(syncJob, membersToRemove, RequestType.Remove, isInitialSync));
                 syncCompleteEvent.MembersRemoved = membersRemovedResponse.SuccessCount.ToString();
+                destinationUsersNotFound = membersRemovedResponse.UsersNotFound;
 
 
-				if (isInitialSync)
+                if (isInitialSync)
 				{
 					var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
 													new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
@@ -178,6 +180,8 @@ namespace Hosts.GraphUpdater
 				await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
 									CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
 																	SyncStatus.Idle, 0, groupMembership.RunId));
+
+                await UpdateCacheAsyc(context, sourceUsersNotFound, destinationUsersNotFound, syncJob, groupMembership.SourceMembers);
 
                 if (!context.IsReplaying)
                 {

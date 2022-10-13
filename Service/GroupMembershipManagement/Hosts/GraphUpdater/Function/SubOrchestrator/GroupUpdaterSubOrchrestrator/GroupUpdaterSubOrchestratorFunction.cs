@@ -86,7 +86,8 @@ namespace Hosts.GraphUpdater
             return new GroupUpdaterSubOrchestratorResponse()
             {
                 Type = request.Type,
-                SuccessCount = totalSuccessCount
+                SuccessCount = totalSuccessCount,
+                UsersNotFound = allUsersNotFound
             };
         }
     }

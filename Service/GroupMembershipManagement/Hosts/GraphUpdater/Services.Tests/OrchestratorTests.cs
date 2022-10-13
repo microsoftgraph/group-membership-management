@@ -326,8 +326,9 @@ namespace Services.Tests
                     {
                         updateJobRequest = request as JobStatusUpdaterRequest;
                     });
-
-            context.Setup(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>())).Throws<Exception>();
+            
+            context.Setup(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()))
+                .Returns(() => Task.FromResult(new GroupUpdaterSubOrchestratorResponse() { SuccessCount = 1 }));
 
             var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
             await Assert.ThrowsExceptionAsync<ArgumentNullException>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
@@ -659,16 +660,29 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
                     .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
 
-            var usersToAdd = new List<AzureADUser>();
-            usersToAdd.Add(new AzureADUser { ObjectId = users[0].ObjectId, MembershipAction = MembershipAction.Add });
-            context.Setup(x => x.CallSubOrchestratorAsync<List<AzureADUser>>(It.Is<string>(x => x == nameof(GroupUpdaterSubOrchestratorFunction)),
-                                                                             It.IsAny<GroupUpdaterRequest>())).ReturnsAsync(() => usersToAdd);
+            var usersToAdd = new List<AzureADUser>
+            {
+                new AzureADUser { ObjectId = users[0].ObjectId, MembershipAction = MembershipAction.Add }
+            };
+            context.Setup(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.Is<string>(x => x == nameof(GroupUpdaterSubOrchestratorFunction)),
+                                                                             It.IsAny<GroupUpdaterRequest>())).ReturnsAsync(() => new GroupUpdaterSubOrchestratorResponse
+                                                                             {
+                                                                                 Type = RequestType.Add,
+                                                                                 SuccessCount = 1,
+                                                                                 UsersNotFound = usersToAdd
+                                                                             });
 
-            var usersToRemove = new List<AzureADUser>();
-            usersToRemove.Add(new AzureADUser { ObjectId = users[0].ObjectId, MembershipAction = MembershipAction.Remove });
-            context.Setup(x => x.CallSubOrchestratorAsync<List<AzureADUser>>(It.Is<string>(x => x == nameof(GroupUpdaterSubOrchestratorFunction)),
-                                                                             It.IsAny<GroupUpdaterRequest>())).ReturnsAsync(() => usersToRemove);
-
+            var usersToRemove = new List<AzureADUser>
+            {
+                new AzureADUser { ObjectId = users[0].ObjectId, MembershipAction = MembershipAction.Remove }
+            };
+            context.Setup(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.Is<string>(x => x == nameof(GroupUpdaterSubOrchestratorFunction)),
+                                                                             It.IsAny<GroupUpdaterRequest>())).ReturnsAsync(() => new GroupUpdaterSubOrchestratorResponse
+                                                                             {
+                                                                                 Type = RequestType.Add,
+                                                                                 SuccessCount = 1,
+                                                                                 UsersNotFound = usersToRemove
+                                                                             });
 
             var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
             await orchestrator.RunOrchestratorAsync(context.Object);
