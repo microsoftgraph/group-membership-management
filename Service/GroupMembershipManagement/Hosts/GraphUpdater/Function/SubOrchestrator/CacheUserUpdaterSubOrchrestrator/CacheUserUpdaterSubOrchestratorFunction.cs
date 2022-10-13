@@ -54,30 +54,34 @@ namespace Hosts.GraphUpdater
 
                 if (!string.IsNullOrEmpty(fileContent))
                 {
+                    _ = _loggingRepository.LogMessageAsync(
+                       new LogMessage
+                       {
+                           Message = $"{request.UserIds.Count} users to remove from cache/{request.GroupId}",
+                           RunId = request.SyncJob.RunId
+                       }, VerbosityLevel.DEBUG);
                     var json = JsonConvert.DeserializeObject<GroupMembership>(fileContent);
                     var cacheMembers = json.SourceMembers.Distinct().ToList();
                     _ = _loggingRepository.LogMessageAsync(
                        new LogMessage
                        {
-                           Message = $"Earlier Count in Cache: {cacheMembers.Count}",
+                           Message = $"Earlier count in cache/{request.GroupId}: {cacheMembers.Count}",
                            RunId = request.SyncJob.RunId
                        }, VerbosityLevel.DEBUG);
-
                     var newUsers = cacheMembers.Except(request.UserIds).ToList();
+                    await context.CallActivityAsync(nameof(FileUploaderFunction),
+                                                            new FileUploaderRequest
+                                                            {
+                                                                SyncJob = request.SyncJob,
+                                                                ObjectId = request.GroupId,
+                                                                Users = newUsers
+                                                            });
                     _ = _loggingRepository.LogMessageAsync(
                         new LogMessage
                         {
-                            Message = $"New Count in Cache: {newUsers.Count}",
+                            Message = $"New count in cache/{request.GroupId}: {newUsers.Count}",
                             RunId = request.SyncJob.RunId
                         }, VerbosityLevel.DEBUG);
-
-                await context.CallActivityAsync(nameof(FileUploaderFunction),
-                                                        new FileUploaderRequest
-                                                        {
-                                                            SyncJob = request.SyncJob,
-                                                            ObjectId = request.GroupId,
-                                                            Users = newUsers
-                                                        });
                 }
 
                 if (!context.IsReplaying) _ = _loggingRepository.LogMessageAsync(
