@@ -11,6 +11,7 @@ using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Newtonsoft.Json;
+using Repositories.Contracts.InjectConfig;
 using Repositories.Mocks;
 using Services.Contracts;
 using Services.Entities;
@@ -36,6 +37,7 @@ namespace Services.Tests
         {
             MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
+            MockDeltaCachingConfig mockDeltaCachingConfig;
             MockMailRepository mockMailRepo;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
@@ -46,6 +48,7 @@ namespace Services.Tests
             MockLocalizationRepository localizationRepository;
             MockBlobStorageRepository blobStorageRepository;
 
+            mockDeltaCachingConfig = new MockDeltaCachingConfig();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
@@ -113,7 +116,7 @@ namespace Services.Tests
             context.Setup(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()))
                 .Returns(() => Task.FromResult(new GroupUpdaterSubOrchestratorResponse() { SuccessCount = 1 }));
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
@@ -132,6 +135,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task RunOrchestratorInitialSyncTest()
         {
+            MockDeltaCachingConfig mockDeltaCachingConfig;
             MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
             MockMailRepository mockMailRepo;
@@ -143,6 +147,7 @@ namespace Services.Tests
             ThresholdConfig thresholdConfig;
             MockLocalizationRepository localizationRepository;
 
+            mockDeltaCachingConfig = new MockDeltaCachingConfig();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
@@ -230,7 +235,7 @@ namespace Services.Tests
                         await emailSenderFunction.SendEmailAsync((EmailSenderRequest)request);
                     });
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
@@ -263,7 +268,9 @@ namespace Services.Tests
             ThresholdConfig thresholdConfig;
             MockLocalizationRepository localizationRepository;
             MockBlobStorageRepository blobStorageRepository;
+            MockDeltaCachingConfig mockDeltaCachingConfig;
 
+            mockDeltaCachingConfig = new MockDeltaCachingConfig();
             blobStorageRepository = new MockBlobStorageRepository();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -330,7 +337,7 @@ namespace Services.Tests
             context.Setup(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()))
                 .Returns(() => Task.FromResult(new GroupUpdaterSubOrchestratorResponse() { SuccessCount = 1 }));
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
             await Assert.ThrowsExceptionAsync<ArgumentNullException>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
 
             Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
@@ -359,7 +366,9 @@ namespace Services.Tests
             ThresholdConfig thresholdConfig;
             MockLocalizationRepository localizationRepository;
             MockBlobStorageRepository blobStorageRepository;
+            MockDeltaCachingConfig mockDeltaCachingConfig;
 
+            mockDeltaCachingConfig = new MockDeltaCachingConfig();
             blobStorageRepository = new MockBlobStorageRepository();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -393,7 +402,7 @@ namespace Services.Tests
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
             await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
@@ -417,7 +426,9 @@ namespace Services.Tests
             ThresholdConfig thresholdConfig;
             MockLocalizationRepository localizationRepository;
             MockBlobStorageRepository blobStorageRepository;
+            MockDeltaCachingConfig mockDeltaCachingConfig;
 
+            mockDeltaCachingConfig = new MockDeltaCachingConfig();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
@@ -475,7 +486,7 @@ namespace Services.Tests
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
             await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
         }
 
@@ -494,7 +505,9 @@ namespace Services.Tests
 
             ThresholdConfig thresholdConfig;
             MockLocalizationRepository localizationRepository;
+            MockDeltaCachingConfig mockDeltaCachingConfig;
 
+            mockDeltaCachingConfig = new MockDeltaCachingConfig();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
@@ -547,7 +560,7 @@ namespace Services.Tests
                         updateJobRequest = request as JobStatusUpdaterRequest;
                     });
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object);
 
             Assert.AreEqual(SyncStatus.DestinationGroupNotFound, updateJobRequest.Status);
@@ -577,7 +590,9 @@ namespace Services.Tests
             ThresholdConfig thresholdConfig;
             MockLocalizationRepository localizationRepository;
             MockBlobStorageRepository blobStorageRepository;
+            MockDeltaCachingConfig mockDeltaCachingConfig;
 
+            mockDeltaCachingConfig = new MockDeltaCachingConfig();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             mockMailRepo = new MockMailRepository();
@@ -684,7 +699,7 @@ namespace Services.Tests
                                                                                  UsersNotFound = usersToRemove
                                                                              });
 
-            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo);
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
             await orchestrator.RunOrchestratorAsync(context.Object);
 
             context.Verify(x => x.CallSubOrchestratorAsync(nameof(CacheUserUpdaterSubOrchestratorFunction), It.IsAny<CacheUserUpdaterRequest>()), Times.Exactly(3));

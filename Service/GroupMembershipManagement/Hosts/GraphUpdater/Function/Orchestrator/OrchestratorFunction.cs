@@ -31,6 +31,7 @@ namespace Hosts.GraphUpdater
 		private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
 		private readonly IGMMResources _gmmResources = null;
 		private readonly ILoggingRepository _loggingRepository = null;
+		private readonly IDeltaCachingConfig _deltaCachingConfig = null;
 
 		enum Metric
 		{
@@ -43,13 +44,15 @@ namespace Hosts.GraphUpdater
 			IGraphUpdaterService graphUpdaterService,
 			IEmailSenderRecipient emailSenderAndRecipients,
 			IGMMResources gmmResources,
-			ILoggingRepository loggingRepository)
+			ILoggingRepository loggingRepository,
+            IDeltaCachingConfig deltaCachingConfig)
 		{
 			_telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
 			_graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
 			_emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
 			_gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
 			_loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _deltaCachingConfig = deltaCachingConfig ?? throw new ArgumentNullException(nameof(deltaCachingConfig));
 		}
 
 		[FunctionName(nameof(OrchestratorFunction))]
@@ -181,7 +184,7 @@ namespace Hosts.GraphUpdater
 									CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
 																	SyncStatus.Idle, 0, groupMembership.RunId));
 
-                await UpdateCacheAsyc(context, sourceUsersNotFound, destinationUsersNotFound, syncJob, groupMembership.SourceMembers);
+				if (_deltaCachingConfig.DeltaCacheEnabled) await UpdateCacheAsyc(context, sourceUsersNotFound, destinationUsersNotFound, syncJob, groupMembership.SourceMembers);
 
                 if (!context.IsReplaying)
                 {
