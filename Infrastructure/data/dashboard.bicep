@@ -475,7 +475,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   GridColumnsWidth: {
                     Count: '81px'
                   }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| distinct TargetOfficeGroupId, Type\n| summarize Count = count() by Type'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| order by TargetOfficeGroupId, timestamp\n| where TargetOfficeGroupId != prev(TargetOfficeGroupId)\n| summarize Count = count() by Type\n'
                   ControlType: 'AnalyticsGrid'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Syncs By Type'
@@ -3525,7 +3525,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'ApplicationLog_CL\n| project TimeGenerated, Message, location_s\n| where location_s in ("JobTrigger", "GraphUpdater") and not(Message has_any("Email", "FilePath")) and Message has "RunId"\n| extend RunId = tostring(split(Message, \' \')[2])\n| extend TargetOfficeGroupId = tostring(split(Message, \' \')[6])\n| order by RunId desc, TimeGenerated asc\n| where location_s == "JobTrigger" and RunId == next(RunId) and next(location_s) <> "GraphUpdater"\n| project TimeGenerated,\n    TargetOfficeGroupId = split(TargetOfficeGroupId, \'\\n\')[0],\n    RunId = split(RunId, \'\\n\')[0]   \n| where TimeGenerated <= now(-24h)\n| order by TimeGenerated desc'
+                  value: 'ApplicationLog_CL\n| project TimeGenerated, Message, location_s\n| where location_s in ("JobTrigger", "GraphUpdater") and not(Message has_any("Email", "FilePath")) and Message has "RunId"\n| extend RunId = tostring(split(split(Message, " ")[6], "\n")[0])\n| extend TargetOfficeGroupId = tostring(split(split(Message, " ")[6], "\n")[0])\n| order by RunId desc, TimeGenerated asc\n| where location_s == "JobTrigger" and RunId == next(RunId) and next(location_s) <> "GraphUpdater"\n| project TimeGenerated, TargetOfficeGroupId, RunId\n| where TimeGenerated > ago(30d) and TimeGenerated < ago(1d) and TargetOfficeGroupId  != RunId\n| order by TimeGenerated desc'
                   isOptional: true
                 }
                 {
