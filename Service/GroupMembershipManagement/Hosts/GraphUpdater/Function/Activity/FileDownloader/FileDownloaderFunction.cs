@@ -33,7 +33,7 @@ namespace Hosts.GraphUpdater
                 blobResult = await _blobStorageRepository.DownloadCacheFileAsync(request.FilePath);
                 if (blobResult.BlobStatus == BlobStatus.NotFound)
                 {
-                    _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Cache File {request.FilePath} was not found", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Cache File {request.FilePath} was not found", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
                     return string.Empty;
                 }
             }

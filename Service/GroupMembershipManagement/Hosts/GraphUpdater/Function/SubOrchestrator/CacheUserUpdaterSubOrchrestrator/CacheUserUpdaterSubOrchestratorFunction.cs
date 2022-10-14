@@ -54,20 +54,22 @@ namespace Hosts.GraphUpdater
 
                 if (!string.IsNullOrEmpty(fileContent))
                 {
-                    _ = _loggingRepository.LogMessageAsync(
-                       new LogMessage
-                       {
-                           Message = $"{request.UserIds.Count} users to remove from cache/{request.GroupId}",
-                           RunId = request.SyncJob.RunId
-                       }, VerbosityLevel.DEBUG);
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                                                       new LoggerRequest
+                                                       {
+                                                           Message = $"{request.UserIds.Count} users to remove from cache/{request.GroupId}",
+                                                           SyncJob = request.SyncJob,
+                                                           Verbosity = VerbosityLevel.DEBUG
+                                                       });
                     var json = JsonConvert.DeserializeObject<GroupMembership>(fileContent);
                     var cacheMembers = json.SourceMembers.Distinct().ToList();
-                    _ = _loggingRepository.LogMessageAsync(
-                       new LogMessage
-                       {
-                           Message = $"Earlier count in cache/{request.GroupId}: {cacheMembers.Count}",
-                           RunId = request.SyncJob.RunId
-                       }, VerbosityLevel.DEBUG);
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                                                       new LoggerRequest
+                                                       {
+                                                           Message = $"Earlier count in cache/{request.GroupId}: {cacheMembers.Count}",
+                                                           SyncJob = request.SyncJob,
+                                                           Verbosity = VerbosityLevel.DEBUG
+                                                       });
                     var newUsers = cacheMembers.Except(request.UserIds).ToList();
                     await context.CallActivityAsync(nameof(FileUploaderFunction),
                                                             new FileUploaderRequest
@@ -76,12 +78,13 @@ namespace Hosts.GraphUpdater
                                                                 ObjectId = request.GroupId,
                                                                 Users = newUsers
                                                             });
-                    _ = _loggingRepository.LogMessageAsync(
-                        new LogMessage
-                        {
-                            Message = $"New count in cache/{request.GroupId}: {newUsers.Count}",
-                            RunId = request.SyncJob.RunId
-                        }, VerbosityLevel.DEBUG);
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                                                       new LoggerRequest
+                                                       {
+                                                           Message = $"New count in cache/{request.GroupId}: {newUsers.Count}",
+                                                           SyncJob = request.SyncJob,
+                                                           Verbosity = VerbosityLevel.DEBUG
+                                                       });
                 }
 
                 if (!context.IsReplaying) _ = _loggingRepository.LogMessageAsync(

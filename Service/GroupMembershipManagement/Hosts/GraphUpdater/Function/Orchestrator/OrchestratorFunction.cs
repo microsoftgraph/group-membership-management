@@ -184,7 +184,7 @@ namespace Hosts.GraphUpdater
 									CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
 																	SyncStatus.Idle, 0, groupMembership.RunId));
 
-				if (_deltaCachingConfig.DeltaCacheEnabled) await UpdateCacheAsyc(context, sourceUsersNotFound, destinationUsersNotFound, syncJob, groupMembership.SourceMembers);
+				if (_deltaCachingConfig.DeltaCacheEnabled) await UpdateCacheAsync(context, sourceUsersNotFound, destinationUsersNotFound, syncJob, groupMembership.SourceMembers);
 
                 if (!context.IsReplaying)
                 {
@@ -230,7 +230,7 @@ namespace Hosts.GraphUpdater
 			}
 		}
 
-		public async Task UpdateCacheAsyc(IDurableOrchestrationContext context,
+		public async Task UpdateCacheAsync(IDurableOrchestrationContext context,
 												List<AzureADUser> sourceUsersNotFound,
 												List<AzureADUser> destinationUsersNotFound,
 												SyncJob syncJob,
