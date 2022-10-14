@@ -157,9 +157,9 @@ namespace Services
             stopwatch.Stop();
 
             if (isInitialSync)
-                _telemetryClient.TrackMetric(nameof(Metric.MembersAddedFromOnboarding), members.Count);
+                _telemetryClient.TrackMetric(nameof(Metric.MembersAddedFromOnboarding), graphResponse.SuccessCount);
             else
-                _telemetryClient.TrackMetric(nameof(Metric.MembersAdded), members.Count);
+                _telemetryClient.TrackMetric(nameof(Metric.MembersAdded), graphResponse.SuccessCount);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
@@ -180,9 +180,9 @@ namespace Services
             stopwatch.Stop();
 
             if (isInitialSync)
-                _telemetryClient.TrackMetric(nameof(Metric.MembersRemovedFromOnboarding), members.Count);
+                _telemetryClient.TrackMetric(nameof(Metric.MembersRemovedFromOnboarding), graphResponse.SuccessCount);
             else
-                _telemetryClient.TrackMetric(nameof(Metric.MembersRemoved), members.Count);
+                _telemetryClient.TrackMetric(nameof(Metric.MembersRemoved), graphResponse.SuccessCount);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
