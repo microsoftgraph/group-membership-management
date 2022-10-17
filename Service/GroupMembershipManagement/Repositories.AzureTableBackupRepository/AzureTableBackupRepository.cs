@@ -1,18 +1,20 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using Entities;
 using Entities.AzureMaintenance;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.Cosmos.Table.Queryable;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
+using Repositories.Contracts.AzureMaintenance;
+using Services.Entities.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Repositories.AzureMaintenanceRepository
+namespace Repositories.AzureTableBackupRepository
 {
     public class AzureTableBackupRepository : IAzureTableBackupRepository
     {
@@ -26,38 +28,38 @@ namespace Repositories.AzureMaintenanceRepository
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        public async Task<List<BackupEntity>> GetBackupsAsync(IAzureMaintenance backupSettings)
+        public async Task<List<BackupEntity>> GetBackupsAsync(IAzureMaintenanceJob maintenanceJob)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Getting backup tables for table {backupSettings.SourceTableName}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Getting backup tables for table {maintenanceJob.SourceStorageSetting.TargetName}" });
 
-            var storageAccount = CloudStorageAccount.Parse(backupSettings.DestinationConnectionString);
+            var storageAccount = CloudStorageAccount.Parse(maintenanceJob.DestinationStorageSetting.StorageConnectionString);
             var tableClient = storageAccount.CreateCloudTableClient();
 
             List<CloudTable> tables;
 
-            if (backupSettings.SourceTableName == "*")
+            if (maintenanceJob.SourceStorageSetting.TargetName == "*")
             {
                 tables = tableClient.ListTables().ToList();
             }
             else
             {
-                tables = tableClient.ListTables(prefix: BACKUP_PREFIX + backupSettings.SourceTableName).ToList();
+                tables = tableClient.ListTables(prefix: BACKUP_PREFIX + maintenanceJob.DestinationStorageSetting.TargetName).ToList();
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Found {tables.Count} backup tables for table {backupSettings.SourceTableName}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Found {tables.Count} backup tables for table {maintenanceJob.SourceStorageSetting.TargetName}" });
 
             return tables.Select(table => new BackupEntity(table.Name, "table")).ToList();
         }
 
-        public async Task<List<DynamicTableEntity>> GetEntitiesAsync(IAzureMaintenance backupSettings)
+        public async Task<List<DynamicTableEntity>> GetEntitiesAsync(IAzureMaintenanceJob backupSettings)
         {
-            var table = await GetCloudTableAsync(backupSettings.SourceConnectionString, backupSettings.SourceTableName);
+            var table = await GetCloudTableAsync(backupSettings.SourceStorageSetting.StorageConnectionString, backupSettings.SourceStorageSetting.TargetName);
             var entities = new List<DynamicTableEntity>();
             var query = table.CreateQuery<DynamicTableEntity>().AsTableQuery();
 
             if (!(await table.ExistsAsync()))
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Source table {backupSettings.SourceTableName} was not found!" });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Source table {backupSettings.SourceStorageSetting.TargetName} was not found!" });
                 return null;
             }
 
@@ -73,13 +75,13 @@ namespace Repositories.AzureMaintenanceRepository
             return entities;
         }
 
-        public async Task DeleteBackupTrackersAsync(IAzureMaintenance backupSettings, List<(string PartitionKey, string RowKey)> entities)
+        public async Task DeleteBackupTrackersAsync(IAzureMaintenanceJob backupSettings, List<(string PartitionKey, string RowKey)> entities)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleting old backup trackers from {backupSettings.SourceTableName}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleting old backup trackers from {backupSettings.SourceStorageSetting.TargetName}" });
 
             var batchSize = 100;
             var currentSize = 0;
-            var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, backupSettings.SourceTableName + BACKUP_TABLE_NAME_SUFFIX);
+            var table = await GetCloudTableAsync(backupSettings.DestinationStorageSetting.StorageConnectionString, backupSettings.SourceStorageSetting.TargetName + BACKUP_TABLE_NAME_SUFFIX);
             var groupedEntities = entities.GroupBy(x => x.PartitionKey);
             var deletedEntitiesCount = 0;
 
@@ -110,13 +112,13 @@ namespace Repositories.AzureMaintenanceRepository
                 }
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleted {deletedEntitiesCount} old backup trackers from {backupSettings.SourceTableName}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleted {deletedEntitiesCount} old backup trackers from {backupSettings.SourceStorageSetting.TargetName}" });
         }
 
-        public async Task<BackupResult> BackupEntitiesAsync(IAzureMaintenance backupSettings, List<DynamicTableEntity> entities)
+        public async Task<BackupResult> BackupEntitiesAsync(IAzureMaintenanceJob maintenanceJob, List<DynamicTableEntity> entities)
         {
-            var tableName = $"{BACKUP_PREFIX}{backupSettings.SourceTableName}{DateTime.UtcNow.ToString(BACKUP_DATE_FORMAT)}";
-            var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, tableName);
+            var tableName = $"{BACKUP_PREFIX}{maintenanceJob.DestinationStorageSetting.TargetName}{DateTime.UtcNow.ToString(BACKUP_DATE_FORMAT)}";
+            var table = await GetCloudTableAsync(maintenanceJob.DestinationStorageSetting.StorageConnectionString, tableName);
 
             if (!await table.ExistsAsync())
             {
@@ -173,13 +175,13 @@ namespace Repositories.AzureMaintenanceRepository
             return new BackupResult(tableName, "table", backupCount);
         }
 
-        public async Task<bool> VerifyDeleteBackupAsync(IAzureMaintenance backupSettings, string tableName)
+        public async Task<bool> VerifyCleanupAsync(IAzureMaintenanceJob maintenanceJob, string tableName)
         {
-            var cutOffDate = DateTime.UtcNow.AddDays(-backupSettings.DeleteAfterDays);
+            var cutOffDate = DateTime.UtcNow.AddDays(-maintenanceJob.DeleteAfterDays);
 
-            if (backupSettings.SourceTableName == "*")
+            if (maintenanceJob.SourceStorageSetting.TargetName == "*")
             {
-                var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, tableName);
+                var table = await GetCloudTableAsync(maintenanceJob.DestinationStorageSetting.StorageConnectionString, tableName);
 
                 // Do not delete empty tables
                 var takeOneQuery = table.CreateQuery<TableEntity>().AsQueryable().Take(1);
@@ -200,7 +202,7 @@ namespace Repositories.AzureMaintenanceRepository
             else
             {
                 var CreatedDate = DateTime.SpecifyKind(
-                    DateTime.ParseExact(tableName.Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
+                    DateTime.ParseExact(tableName.Replace(BACKUP_PREFIX + maintenanceJob.DestinationStorageSetting.TargetName, string.Empty),
                         BACKUP_DATE_FORMAT,
                         CultureInfo.InvariantCulture,
                         DateTimeStyles.AssumeUniversal),
@@ -214,58 +216,58 @@ namespace Repositories.AzureMaintenanceRepository
             return false;
         }
 
-        public async Task DeleteBackupAsync(IAzureMaintenance backupSettings, string tableName)
+        public async Task CleanupAsync(IAzureMaintenanceJob maintenanceJob, string tableName)
         {
-            await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Deleting backup table: {tableName}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleting backup table: {tableName}" });
 
-            var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, tableName);
+            var table = await GetCloudTableAsync(maintenanceJob.DestinationStorageSetting.StorageConnectionString, tableName);
 
             if (!await table.ExistsAsync())
             {
-                await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Table not found : {tableName}" });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Table not found : {tableName}" });
                 return;
             }
 
             await table.DeleteIfExistsAsync();
 
-            await _loggingRepository.LogMessageAsync(new Entities.LogMessage { Message = $"Deleted backup table: {tableName}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleted backup table: {tableName}" });
         }
 
         private bool IsSuccessStatusCode(int statusCode) => statusCode >= 200 && statusCode <= 299;
 
-        public async Task AddBackupResultTrackerAsync(IAzureMaintenance backupSettings, BackupResult backupResult)
+        public async Task AddBackupResultTrackerAsync(IAzureMaintenanceJob backupSettings, BackupResult backupResult)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Creating backup tracker for {backupSettings.SourceTableName}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Creating backup tracker for {backupSettings.SourceStorageSetting.TargetName}" });
 
-            var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, backupSettings.SourceTableName + BACKUP_TABLE_NAME_SUFFIX);
+            var table = await GetCloudTableAsync(backupSettings.DestinationStorageSetting.StorageConnectionString, backupSettings.SourceStorageSetting.TargetName + BACKUP_TABLE_NAME_SUFFIX);
 
             if (!await table.ExistsAsync())
             {
                 await table.CreateIfNotExistsAsync();
             }
 
-            backupResult.PartitionKey = backupSettings.SourceTableName;
+            backupResult.PartitionKey = backupSettings.SourceStorageSetting.TargetName;
             backupResult.RowKey = backupResult.BackupTableName;
 
             await table.ExecuteAsync(TableOperation.Insert(backupResult));
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Created backup tracker ({backupResult.RowKey}) for {backupSettings.SourceTableName}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Created backup tracker ({backupResult.RowKey}) for {backupSettings.SourceStorageSetting.TargetName}" });
         }
 
-        public async Task<BackupResult> GetLastestBackupResultTrackerAsync(IAzureMaintenance backupSettings)
+        public async Task<BackupResult> GetLastestBackupResultTrackerAsync(IAzureMaintenanceJob backupSettings)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Getting latest backup tracker for {backupSettings.SourceTableName}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Getting latest backup tracker for {backupSettings.SourceStorageSetting.TargetName}" });
 
-            var table = await GetCloudTableAsync(backupSettings.DestinationConnectionString, backupSettings.SourceTableName + BACKUP_TABLE_NAME_SUFFIX);
+            var table = await GetCloudTableAsync(backupSettings.DestinationStorageSetting.StorageConnectionString, backupSettings.SourceStorageSetting.TargetName + BACKUP_TABLE_NAME_SUFFIX);
 
             if (!await table.ExistsAsync())
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"No backup tracker found for {backupSettings.SourceTableName}" });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"No backup tracker found for {backupSettings.SourceStorageSetting.TargetName}" });
                 return null;
             }
 
             var results = new List<BackupResult>();
-            var query = table.CreateQuery<BackupResult>().Where(x => x.PartitionKey == backupSettings.SourceTableName).AsTableQuery();
+            var query = table.CreateQuery<BackupResult>().Where(x => x.PartitionKey == backupSettings.SourceStorageSetting.TargetName).AsTableQuery();
 
             TableContinuationToken continuationToken = null;
             do
@@ -281,7 +283,7 @@ namespace Repositories.AzureMaintenanceRepository
             // if this is null (because the record predates table and blob backup) assume table
             backupResult.BackedUpTo = backupResult.BackedUpTo ?? "table";
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Found latest backup tracker ([{backupResult.Timestamp.UtcDateTime}] - {backupResult.RowKey}) for {backupSettings.SourceTableName}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Found latest backup tracker ([{backupResult.Timestamp.UtcDateTime}] - {backupResult.RowKey}) for {backupSettings.SourceStorageSetting.TargetName}" });
 
             return backupResult;
         }

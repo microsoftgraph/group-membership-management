@@ -7,9 +7,8 @@ using Services.Entities;
 namespace Services.Entities
 {
     [JsonObject]
-    public class ReviewAndDeleteRequest : IReviewAndDeleteRequest
+    public class BackupRequest
     {
-        public string TargetName { get; set; }
-        public AzureMaintenanceJob MaintenanceSetting { get; set; }
+        public AzureMaintenanceJob BackupMaintenanceJob { get; set; }
     }
 }

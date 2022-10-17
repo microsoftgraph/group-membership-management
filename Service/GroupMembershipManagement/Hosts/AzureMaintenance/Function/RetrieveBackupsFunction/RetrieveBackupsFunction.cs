@@ -24,13 +24,13 @@ namespace Hosts.AzureMaintenance
         }
 
         [FunctionName(nameof(RetrieveBackupsFunction))]
-        public async Task<List<ReviewAndDeleteRequest>> RetrieveBackups([ActivityTrigger] object request)
+        public async Task<List<ReviewAndDeleteRequest>> RetrieveBackups([ActivityTrigger] AzureMaintenanceJob maintenanceJob)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RetrieveBackupsFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            var backups = await _azureMaintenanceService.RetrieveBackupsAsync();
+            var backups = await _azureMaintenanceService.RetrieveBackupsAsync(maintenanceJob);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RetrieveBackupsFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
-            return backups.Select(e => new ReviewAndDeleteRequest() { TableName = e.TableName, MaintenanceSetting = e.MaintenanceSetting }).ToList();
+            return backups.Select(e => new ReviewAndDeleteRequest() { TargetName = e.TargetName, MaintenanceSetting = e.MaintenanceSetting }).ToList();
         }
     }
 }

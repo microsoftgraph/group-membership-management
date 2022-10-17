@@ -7,25 +7,26 @@ using System;
 using System.Threading.Tasks;
 using Services.Contracts;
 using Repositories.Contracts;
+using Services.Entities;
 
 namespace Hosts.AzureMaintenance
 {
-    public class TableBackupFunction
+    public class BackupFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly IAzureMaintenanceService _azureMaintenanceService = null;
-        public TableBackupFunction(IAzureMaintenanceService azureMaintenanceService, ILoggingRepository loggingRepository)
+        public BackupFunction(IAzureMaintenanceService azureMaintenanceService, ILoggingRepository loggingRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _azureMaintenanceService = azureMaintenanceService ?? throw new ArgumentNullException(nameof(azureMaintenanceService));
         }
 
-        [FunctionName(nameof(TableBackupFunction))]
-        public async Task BackupTables([ActivityTrigger] object request)
+        [FunctionName(nameof(BackupFunction))]
+        public async Task BackupTables([ActivityTrigger] AzureMaintenanceJob maintenanceJob)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableBackupFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            await _azureMaintenanceService.RunTableBackupServiceAsync();
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableBackupFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(BackupFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
+            await _azureMaintenanceService.RunBackupServiceAsync(maintenanceJob);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(BackupFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
         }
     }
 }

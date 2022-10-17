@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,8 +11,11 @@ using Services.Contracts;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Linq;
-using Repositories.AzureMaintenanceRepository;
+using Repositories.AzureTableBackupRepository;
 using Repositories.AzureBlobBackupRepository;
+using Repositories.Contracts.AzureMaintenance;
+using Repositories.Contracts.InjectConfig;
+using Services.Entities;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 
@@ -28,14 +32,18 @@ namespace Hosts.AzureMaintenance
 
             builder.Services.AddScoped<IAzureTableBackupRepository, AzureTableBackupRepository>();
             builder.Services.AddScoped<IAzureStorageBackupRepository, AzureBlobBackupRepository>();
-            builder.Services.AddScoped<IAzureMaintenanceService>(services =>
+            builder.Services.AddScoped(services =>
             {
                 var tablesToBackupSetting = GetValueOrDefault("maintenanceJobs");
                 var tablesToBackup = string.IsNullOrWhiteSpace(tablesToBackupSetting)
-                                    ? new List<Services.Entities.AzureMaintenance>()
-                                    : JsonConvert.DeserializeObject<List<Services.Entities.AzureMaintenance>>(tablesToBackupSetting);
+                                    ? new List<AzureMaintenanceJob>()
+                                    : JsonConvert.DeserializeObject<List<AzureMaintenanceJob>>(tablesToBackupSetting);
 
-                return new AzureMaintenanceService(tablesToBackup, services.GetService<ILoggingRepository>(), services.GetService<IAzureTableBackupRepository>(), services.GetService<IAzureStorageBackupRepository>());
+                return tablesToBackup;
+            });
+            builder.Services.AddScoped<IAzureMaintenanceService>(services =>
+            {
+                return new AzureMaintenanceService(services.GetService<ILoggingRepository>(), services.GetService<IAzureTableBackupRepository>(), services.GetService<IAzureStorageBackupRepository>());
             });
         }
     }

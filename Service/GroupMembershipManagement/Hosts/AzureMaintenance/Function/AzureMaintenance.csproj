@@ -7,16 +7,18 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.21.9" />
+    <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" Version="2.8.1" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.1.3" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
     <ProjectReference Include="..\..\..\Repositories.AzureBlobBackupRepository\Repositories.AzureBlobBackupRepository.csproj" />
     <ProjectReference Include="..\..\..\Repositories.AzureTableBackupRepository\Repositories.AzureTableBackupRepository.csproj" />
     <ProjectReference Include="..\Services.Entities\Services.Entities.csproj" />
-    <ProjectReference Include="..\Services\Services.csproj" />
+	<ProjectReference Include="..\Services\Services.csproj" />
+	<ProjectReference Include="..\..\..\Repositories.Logging\Repositories.Logging.csproj" />
+	<ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">

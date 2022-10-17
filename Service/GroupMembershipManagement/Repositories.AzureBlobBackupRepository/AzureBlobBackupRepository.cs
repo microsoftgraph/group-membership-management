@@ -1,10 +1,14 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 using Azure.Storage.Blobs;
 using CsvHelper;
 using Entities;
 using Entities.AzureMaintenance;
 using Microsoft.Azure.Cosmos.Table;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
+using Repositories.Contracts.AzureMaintenance;
+using Services.Entities.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
@@ -27,15 +31,17 @@ namespace Repositories.AzureBlobBackupRepository
 			_loggingRepository = loggingRepository;
 		}
 
-		public async Task<BackupResult> BackupEntitiesAsync(IAzureMaintenance backupSettings, List<DynamicTableEntity> entities)
-		{
-			if (!entities.Any())
+		public async Task<BackupResult> BackupEntitiesAsync(IAzureMaintenanceJob maintenanceJob, List<DynamicTableEntity> entities)
+        {
+
+            if (!entities.Any())
 			{
-				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Nothing to back up for {backupSettings.SourceTableName}. Skipping." });
+				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Nothing to back up for {maintenanceJob.SourceStorageSetting.TargetName}. Skipping." });
 			}
-			BlobServiceClient blobServiceClient = new BlobServiceClient(backupSettings.DestinationConnectionString);
-			string containerName = GetContainerName(backupSettings);
-			var blobName = $"{BACKUP_PREFIX}{backupSettings.SourceTableName}{DateTime.UtcNow.ToString(BACKUP_DATE_FORMAT)}.csv";
+
+            BlobServiceClient blobServiceClient = new BlobServiceClient(maintenanceJob.DestinationStorageSetting.StorageConnectionString);
+			string containerName = GetContainerName(maintenanceJob);
+			var blobName = $"{BACKUP_PREFIX}{maintenanceJob.DestinationStorageSetting.TargetName}{DateTime.UtcNow.ToString(BACKUP_DATE_FORMAT)}.csv";
 
             await _loggingRepository.LogMessageAsync(
                 new LogMessage
@@ -49,7 +55,7 @@ namespace Repositories.AzureBlobBackupRepository
 			var blobClient = blobServiceClient.GetBlobContainerClient(containerName);
 			await blobClient.CreateIfNotExistsAsync();
 
-			var result = await blobClient.UploadBlobAsync(blobName, new BinaryData(SerializeEntities(entities)));
+			await blobClient.UploadBlobAsync(blobName, new BinaryData(SerializeEntities(entities)));
 
             await _loggingRepository.LogMessageAsync(
                 new LogMessage
@@ -63,16 +69,16 @@ namespace Repositories.AzureBlobBackupRepository
 			return new BackupResult(blobName, "blob", entities.Count);
 		}
 
-		private static string GetContainerName(IAzureMaintenance backupSettings)
+		private static string GetContainerName(IAzureMaintenanceJob backupSettings)
 		{
-			return $"{BACKUP_PREFIX}{backupSettings.SourceTableName}".ToLowerInvariant();
+			return $"{BACKUP_PREFIX}{backupSettings.DestinationStorageSetting.TargetName}".ToLowerInvariant();
 		}
 
 		private string SerializeEntities(List<DynamicTableEntity> entities)
 		{
 			var keys = entities[0].Properties.Keys;
 			using var writer = new StringWriter();
-			using (var csv = new CsvWriter(writer, System.Globalization.CultureInfo.InvariantCulture))
+			using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
 			{
 				csv.WriteRecords(entities.Select(TableEntityToDynamic));
 				return writer.ToString();
@@ -95,30 +101,33 @@ namespace Repositories.AzureBlobBackupRepository
 
 			return toReturn;
 		}
-
-		public async Task<List<BackupEntity>> GetBackupsAsync(IAzureMaintenance backupSettings)
+		
+		public async Task<List<BackupEntity>> GetBackupsAsync(IAzureMaintenanceJob maintenanceJob)
 		{
-			var blobContainerClient = await GetContainerClient(backupSettings);
+            var blobContainerClient = await GetContainerClient(maintenanceJob);
 			if(blobContainerClient == null)
             {
 				return new List<BackupEntity>();
             }
 
+			var allBlobs = blobContainerClient.GetBlobsAsync().AsPages();
+
+			// Will create a list of BackupEntity instances where each one has different blob file path name
 			var backupEntities = new List<BackupEntity>();
-			backupEntities.Add(new BackupEntity(GetContainerName(backupSettings), "blob"));
+			backupEntities.Add(new BackupEntity(GetContainerName(maintenanceJob), "blob"));
 			return backupEntities;
 		}
 
-		public async Task<bool> VerifyDeleteBackupAsync(IAzureMaintenance backupSettings, string blobName)
+		public async Task<bool> VerifyCleanupAsync(IAzureMaintenanceJob maintenanceJob, string blobName)
 		{
-			var cutOffDate = DateTime.UtcNow.AddDays(-backupSettings.DeleteAfterDays);
+            var cutOffDate = DateTime.UtcNow.AddDays(-maintenanceJob.DeleteAfterDays);
 
-			var blobContainerClient = await GetContainerClient(backupSettings);
+			var blobContainerClient = await GetContainerClient(maintenanceJob);
 			var blobClient = blobContainerClient.GetBlobClient(blobName);
 
 			try
 			{
-				var parsedDateTimeOffset = DateTimeOffset.ParseExact(blobName.Replace(".csv", string.Empty).Replace(BACKUP_PREFIX + backupSettings.SourceTableName, string.Empty),
+				var parsedDateTimeOffset = DateTimeOffset.ParseExact(blobName.Replace(".csv", string.Empty).Replace(BACKUP_PREFIX + maintenanceJob.DestinationStorageSetting.TargetName, string.Empty),
 					BACKUP_DATE_FORMAT,
 					null,
 					DateTimeStyles.AssumeUniversal);
@@ -144,12 +153,12 @@ namespace Repositories.AzureBlobBackupRepository
 			return false;
 		}
 
-		public async Task DeleteBackupAsync(IAzureMaintenance backupSettings, string backupName)
+		public async Task CleanupAsync(IAzureMaintenanceJob maintenanceJob, string backupName)
 		{
-			var blobContainerClient = await GetContainerClient(backupSettings);
+            var blobContainerClient = await GetContainerClient(maintenanceJob);
 			if (blobContainerClient == null)
 			{
-				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"The blob container {GetContainerName(backupSettings)} did not exist when trying to delete blob {backupName}." });
+				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"The blob container {GetContainerName(maintenanceJob)} did not exist when trying to delete blob {backupName}." });
 				return;
 			}
 
@@ -160,10 +169,10 @@ namespace Repositories.AzureBlobBackupRepository
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Got {response.Value} when deleting blob {backupName}." });
 		}
 
-		private async Task<BlobContainerClient> GetContainerClient(IAzureMaintenance backupSettings)
+		private async Task<BlobContainerClient> GetContainerClient(IAzureMaintenanceJob maintenanceJob)
         {
-			BlobServiceClient blobServiceClient = new BlobServiceClient(backupSettings.DestinationConnectionString);
-			var containerName = GetContainerName(backupSettings);
+			BlobServiceClient blobServiceClient = new BlobServiceClient(maintenanceJob.DestinationStorageSetting.StorageConnectionString);
+			var containerName = GetContainerName(maintenanceJob);
 			var blobClient = blobServiceClient.GetBlobContainerClient(containerName);
 			if (!await blobClient.ExistsAsync())
 			{

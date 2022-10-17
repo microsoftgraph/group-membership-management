@@ -25,7 +25,7 @@ namespace Hosts.AzureMaintenance
         public async Task<bool> ReviewAndDelete([ActivityTrigger] ReviewAndDeleteRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ReviewAndDeleteFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            var entityDeleted = await _azureMaintenanceService.ReviewAndDeleteAsync(request.MaintenanceSetting, request.TableName);
+            var entityDeleted = await _azureMaintenanceService.ReviewAndDeleteAsync(request.MaintenanceSetting, request.TargetName);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ReviewAndDeleteFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
             return entityDeleted;

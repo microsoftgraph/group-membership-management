@@ -3,9 +3,10 @@
 using Entities;
 using Entities.AzureMaintenance;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
+using Repositories.Contracts.AzureMaintenance;
 using Services.Contracts;
 using Services.Entities;
+using Services.Entities.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,102 +14,83 @@ using System.Threading.Tasks;
 
 namespace Services
 {
-	public class AzureMaintenanceService : IAzureMaintenanceService
+    public class AzureMaintenanceService : IAzureMaintenanceService
 	{
-		private readonly List<AzureMaintenance> _maintenanceSettings = null;
 		private readonly ILoggingRepository _loggingRepository = null;
 		private readonly IAzureTableBackupRepository _azureTableBackupRepository = null;
 		private readonly IAzureStorageBackupRepository _azureBlobBackupRepository = null;
 
 		public AzureMaintenanceService(
-			List<AzureMaintenance> maintenanceSettings,
 			ILoggingRepository loggingRepository,
 			IAzureTableBackupRepository azureTableBackupRepository,
 			IAzureStorageBackupRepository azureBlobBackupRepository)
 		{
-			_maintenanceSettings = maintenanceSettings;
 			_loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
 			_azureTableBackupRepository = azureTableBackupRepository ?? throw new ArgumentNullException(nameof(azureTableBackupRepository));
 			_azureBlobBackupRepository = azureBlobBackupRepository ?? throw new ArgumentNullException(nameof(azureBlobBackupRepository));
 		}
 
-		public async Task RunTableBackupServiceAsync()
-		{
-			if (!_maintenanceSettings.Any())
-			{
-				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"No backup settings have been found." });
-				return;
-			}
+		public async Task RunBackupServiceAsync(IAzureMaintenanceJob maintenanceJob)
+        {
+			if (maintenanceJob.SourceStorageSetting.StorageType == "table")
+		        await BackupTableAsync(maintenanceJob);
+        }
 
-			foreach (var table in _maintenanceSettings)
-			{
-				if (!table.CleanupOnly) // TODO: Update this check
-				{
-					await BackupTableAsync(table);
-				}
-			}
-		}
-
-		public async Task<List<IReviewAndDeleteRequest>> RetrieveBackupsAsync()
+		public async Task<List<IReviewAndDeleteRequest>> RetrieveBackupsAsync(IAzureMaintenanceJob maintenanceJob)
 		{
 			var requests = new List<IReviewAndDeleteRequest>();
 
-			foreach (var table in _maintenanceSettings)
-			{
-				var backupStorage = DetermineBackupStorage(table.BackupType);
-				var backupEntities = await backupStorage.GetBackupsAsync(table);
-				foreach(var backupEntity in backupEntities)
-                {
-					requests.Add(new ReviewAndDeleteRequest
-					{
-						TableName = backupEntity.Name,
-						MaintenanceSetting = table
-					});
-                }
+			var backupStorage = DetermineBackupStorage(maintenanceJob.SourceStorageSetting.StorageType);
+			var backupEntities = await backupStorage.GetBackupsAsync(maintenanceJob);
+			foreach(var backupEntity in backupEntities)
+            {
+				requests.Add(new ReviewAndDeleteRequest
+				{
+					TargetName = backupEntity.Name,
+					MaintenanceSetting = new AzureMaintenanceJob(maintenanceJob),
+				});
 			}
 
 			return requests;
 		}
 
-		public async Task<bool> ReviewAndDeleteAsync(IAzureMaintenance backupSetting, string tableName)
+		public async Task<bool> ReviewAndDeleteAsync(IAzureMaintenanceJob maintenanceJob, string targetName)
 		{
-			var backupStorage = DetermineBackupStorage(backupSetting.BackupType);
-			var shouldDelete = await backupStorage.VerifyDeleteBackupAsync(backupSetting, tableName);
+			var backupStorage = DetermineBackupStorage(maintenanceJob.SourceStorageSetting.StorageType);
+			var shouldDelete = await backupStorage.VerifyCleanupAsync(maintenanceJob, targetName);
 			if (shouldDelete)
 			{
-				await backupStorage.DeleteBackupAsync(backupSetting, tableName);
+				await backupStorage.CleanupAsync(maintenanceJob, targetName);
 
-				if (!backupSetting.CleanupOnly && backupSetting.BackupType.ToLowerInvariant() == "table")
+				if (maintenanceJob.Backup && maintenanceJob.SourceStorageSetting.StorageType.ToLowerInvariant() == "table")
 				{
-					await DeleteOldBackupTrackersAsync(backupSetting, new List<string> { tableName });
+					await DeleteOldBackupTrackersAsync(new AzureMaintenanceJob(maintenanceJob), new List<string> { targetName });
 				}
 			}
 
 			return shouldDelete;
 		}
 
-		private async Task BackupTableAsync(IAzureMaintenance table)
+		private async Task BackupTableAsync(IAzureMaintenanceJob maintenanceJob)
 		{
-			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Starting backup maintenance for table: {table.SourceTableName}" });
-			var entities = await _azureTableBackupRepository.GetEntitiesAsync(table);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Starting backup maintenance for table: {maintenanceJob.SourceStorageSetting.TargetName}" });
+			var entities = await _azureTableBackupRepository.GetEntitiesAsync(maintenanceJob);
 
 			if (entities == null)
 				return;
 
-			// basically, the table storage gets used regardless, to read the source table
-			// and to maintain the tracking table. this determines whether the backup data
-			// is stored in table or blob storage.
-			IAzureStorageBackupRepository backUpTo = DetermineBackupStorage(table.BackupType);
+			// Currently, this will only support backups to the same storage type as the source, so table to table right now
+			IAzureStorageBackupRepository backUpTo = DetermineBackupStorage(maintenanceJob.DestinationStorageSetting.StorageType);
 			if (backUpTo == null)
 			{
-				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"BackupType must be 'table' or 'blob'. Was {table.BackupType}. Not backing up {table.SourceTableName}." });
+				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"BackupType must be 'table' or 'blob'. Was {maintenanceJob.SourceStorageSetting.StorageType}. Not backing up {maintenanceJob.SourceStorageSetting.TargetName}." });
 				return;
 			}
 
-			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Backing up {entities.Count} entites from table {table.SourceTableName} to {table.BackupType} storage." });
-			var backupResult = await backUpTo.BackupEntitiesAsync(table, entities);
+			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Backing up {entities.Count} entites from table {maintenanceJob.SourceStorageSetting.TargetName} to {maintenanceJob.SourceStorageSetting.StorageType} storage." });
+			var backupResult = await backUpTo.BackupEntitiesAsync(maintenanceJob, entities);
 
-			await CompareBackupResults(table, backupResult);
+			await CompareBackupResults(maintenanceJob, backupResult);
 		}
 
 		private IAzureStorageBackupRepository DetermineBackupStorage(string backUpTo)
@@ -125,7 +107,7 @@ namespace Services
 
 		}
 
-		private async Task CompareBackupResults(IAzureMaintenance backupSettings, BackupResult currentBackup)
+		private async Task CompareBackupResults(IAzureMaintenanceJob backupSettings, BackupResult currentBackup)
 		{
 			var previousBackupTracker = await _azureTableBackupRepository.GetLastestBackupResultTrackerAsync(backupSettings);
 			await _azureTableBackupRepository.AddBackupResultTrackerAsync(backupSettings, currentBackup);
@@ -140,7 +122,7 @@ namespace Services
 			await _loggingRepository.LogMessageAsync(
 				new LogMessage
 				{
-					Message = $"Current backup for {backupSettings.SourceTableName} has {delta}{message} rows than previous backup",
+					Message = $"Current backup for {backupSettings.SourceStorageSetting.TargetName} has {delta}{message} rows than previous backup",
 					DynamicProperties =
 					{
 						{ "status", "Delta" },
@@ -149,9 +131,9 @@ namespace Services
 				});
 		}
 
-		private async Task DeleteOldBackupTrackersAsync(IAzureMaintenance backupSettings, List<string> deletedTables)
+		private async Task DeleteOldBackupTrackersAsync(IAzureMaintenanceJob backupSettings, List<string> deletedTables)
 		{
-			var keys = deletedTables.Select(x => (backupSettings.SourceTableName, x)).ToList();
+			var keys = deletedTables.Select(x => (backupSettings.SourceStorageSetting.TargetName, x)).ToList();
 			await _azureTableBackupRepository.DeleteBackupTrackersAsync(backupSettings, keys);
 		}
 	}
