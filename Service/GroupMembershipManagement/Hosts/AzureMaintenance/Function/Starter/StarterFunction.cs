@@ -21,7 +21,7 @@ namespace Hosts.AzureMaintenance
 
         [FunctionName(nameof(StarterFunction))]
         public async Task Run(
-            [TimerTrigger("%backupTriggerSchedule%")] TimerInfo myTimer,
+            [TimerTrigger("%maintenanceTriggerSchedule%")] TimerInfo myTimer,
             [DurableClient] IDurableOrchestrationClient starter,
             ILogger log)
         {
