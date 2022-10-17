@@ -30,7 +30,7 @@ namespace Hosts.AzureMaintenance
             builder.Services.AddScoped<IAzureStorageBackupRepository, AzureBlobBackupRepository>();
             builder.Services.AddScoped<IAzureMaintenanceService>(services =>
             {
-                var tablesToBackupSetting = GetValueOrDefault("tablesToBackup");
+                var tablesToBackupSetting = GetValueOrDefault("maintenanceJobs");
                 var tablesToBackup = string.IsNullOrWhiteSpace(tablesToBackupSetting)
                                     ? new List<Services.Entities.AzureMaintenance>()
                                     : JsonConvert.DeserializeObject<List<Services.Entities.AzureMaintenance>>(tablesToBackupSetting);

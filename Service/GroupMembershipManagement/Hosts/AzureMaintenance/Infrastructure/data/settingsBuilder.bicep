@@ -12,11 +12,11 @@ param backupType string
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string
 
-var backupSetting = '[ { "SourceTableName":"${jobsTableNameSecret}", "SourceConnectionString":"${jobsSourceTableConnectionStringSecret}", "DestinationConnectionString":"${jobsDestinationTableConnectionStringSecret}", "BackupType":"${backupType}", "CleanupOnly":false, "DeleteAfterDays":30 }]'
+var maintenanceSettings = '[ { "SourceTableName":"${jobsTableNameSecret}", "SourceConnectionString":"${jobsSourceTableConnectionStringSecret}", "DestinationConnectionString":"${jobsDestinationTableConnectionStringSecret}", "BackupType":"${backupType}", "CleanupOnly":false, "DeleteAfterDays":30 }]'
 
 resource secret 'Microsoft.KeyVault/vaults/secrets@2021-06-01-preview' = {
-  name: '${dataKeyVaultName}/tablesToBackup'
+  name: '${dataKeyVaultName}/maintenanceJobs'
   properties: {
-    value: backupSetting
+    value: maintenanceSettings
   }
 }
