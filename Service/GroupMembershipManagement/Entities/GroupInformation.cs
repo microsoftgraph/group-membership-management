@@ -13,6 +13,5 @@ namespace Entities
         public Dictionary<string, int> NonUserGraphObjects { get; set; }
         public string NextPageUrl { get; set; }
         public IGroupTransitiveMembersCollectionWithReferencesPage UsersFromGroup { get; set; }
-        public IGraphServiceUsersCollectionPage UsersFromPage { get; set; }
     }
 }
