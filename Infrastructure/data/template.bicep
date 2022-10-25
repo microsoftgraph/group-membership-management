@@ -78,6 +78,11 @@ param serviceBusTopicSubscriptions array = [
     ruleName: 'syncType'
     ruleSqlExpression: 'Type = \'SecurityGroup\''
   }
+  {
+    name: 'AzureMembershipProvider'
+    ruleName: 'syncType'
+    ruleSqlExpression: 'Type = \'AzureMembershipProvider\''
+  }
 ]
 
 @description('Enter storage account name.')
