@@ -527,9 +527,10 @@ namespace Repositories.GraphGroups
 
         public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetFirstUsersPageAsync(Guid objectId)
         {
+            var resourceUnitsUsed = _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed));
             var users = new List<AzureADUser>();
             var response = await GetGroupUsersPageByIdAsync(objectId.ToString());
-            TrackMetrics(response.AdditionalData);
+            resourceUnitsUsed.TrackValue(5);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -556,9 +557,10 @@ namespace Repositories.GraphGroups
 
         public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetNextUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage response)
         {
+            var resourceUnitsUsed = _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed));
             var users = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
-            TrackMetrics(response.AdditionalData);
+            resourceUnitsUsed.TrackValue(5);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -586,10 +588,11 @@ namespace Repositories.GraphGroups
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetFirstDeltaUsersPageAsync(string deltaLink)
         {
+            var resourceUnitsUsed = _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed));
             var usersToAdd = new List<AzureADUser>();
             var usersToRemove = new List<AzureADUser>();
             var response = await GetGroupUsersPageByLinkAsync(deltaLink);
-            TrackMetrics(response.AdditionalData);
+            resourceUnitsUsed.TrackValue(5);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -623,10 +626,11 @@ namespace Repositories.GraphGroups
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetNextDeltaUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage response)
         {
+            var resourceUnitsUsed = _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed));
             var usersToAdd = new List<AzureADUser>();
             var usersToRemove = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
-            TrackMetrics(response.AdditionalData);
+            resourceUnitsUsed.TrackValue(5);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
