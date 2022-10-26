@@ -8,8 +8,9 @@ using Repositories.SyncJobsRepository;
 using Repositories.Logging;
 using DIConcreteTypes;
 using Services.Contracts;
-using Repositories.Contracts.InjectConfig;
 using Repositories.Contracts;
+using Azure.Identity;
+using Azure.Monitor.Query;
 
 namespace JobScheduler
 {
@@ -30,18 +31,24 @@ namespace JobScheduler
             telemetryConfiguration.InstrumentationKey = appSettings.APPINSIGHTS_INSTRUMENTATIONKEY;
             telemetryConfiguration.TelemetryInitializers.Add(new OperationCorrelationTelemetryInitializer());
 
-            IJobSchedulerConfig jobSchedulerConfig = new JobSchedulerConfig(
+            var jobSchedulerConfig = new JobSchedulerConfig(
                 appSettings.ResetJobs,
                 appSettings.DaysToAddForReset,
                 appSettings.DistributeJobs,
                 appSettings.IncludeFutureJobs,
                 appSettings.StartTimeDelayMinutes,
                 appSettings.DelayBetweenSyncsSeconds,
-                appSettings.DefaultRuntime);
+                appSettings.DefaultRuntimeSeconds,
+                appSettings.GetRunTimeFromLogs,
+                appSettings.RunTimeMetric,
+                appSettings.RunTimeQuery,
+                appSettings.RunTimeRangeInDays,
+                appSettings.WorkspaceId
+                );
 
-            var runtimeRetrievalService = new DefaultRuntimeRetrievalService(jobSchedulerConfig.DefaultRuntimeSeconds);
-
-            IJobSchedulingService jobSchedulingService = new JobSchedulingService(
+            var logsQueryClient = new LogsQueryClient(new DefaultAzureCredential());
+            var runtimeRetrievalService = new DefaultRuntimeRetrievalService(jobSchedulerConfig, logsQueryClient);
+            var jobSchedulingService = new JobSchedulingService(
                 syncJobRepository,
                 runtimeRetrievalService,
                 loggingRepository

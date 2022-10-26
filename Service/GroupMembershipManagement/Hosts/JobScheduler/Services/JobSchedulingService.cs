@@ -94,7 +94,7 @@ namespace Services
         {
             // Get all runtimes for destination groups
             List<Guid> groupIds = syncJobsToDistribute.Select(job => job.TargetOfficeGroupId).ToList();
-            Dictionary<Guid, double> runtimeMap = await _runtimeRetrievalService.GetRuntimesInSeconds(groupIds);
+            Dictionary<Guid, double> runtimeMap = await _runtimeRetrievalService.GetRunTimesInSecondsAsync(groupIds);
 
             // Get a period to syncs mapping
             Dictionary<int, List<DistributionSyncJob>> periodToJobs = new Dictionary<int, List<DistributionSyncJob>>();

@@ -7,7 +7,7 @@ This guide will explain how to use the JobScheduler console app, found in JobSch
 * Ensure that GMM is already set up in your environment, as you will need some of the values from your gmm-data- keyvault for the console app
 
 ## Setup
-1. Open the JobSchedulerConsoleApp.sln (Found in ../Hosts.Console/JobSchedulerConsoleApp.sln) in Visual Studio
+1. Open the JobSchedulerConsoleApp.sln (Found in ../Hosts/JobScheduler/Console/JobSchedulerConsoleApp.sln) in Visual Studio
 2. Edit the Settings.json file within the Hosts.Console directory with the corresponding values:
 ```
     logAnalyticsCustomerId          | Found in data keyvault, same name
@@ -21,6 +21,11 @@ This guide will explain how to use the JobScheduler console app, found in JobSch
     defaultRuntime                  | Custom input, the approximate runtime in seconds of each job (the app will base its scheduling on this runtime so choose carefully)
     startTimeDelayMinutes           | Custom input, the delay in minutes to wait before running the first of the scheduled / distributed jobs
     delayBetweenSyncsSeconds        | Custom input, the delay in seconds to wait between each scheduled / distributed job
+    getRunTimeFromLogs              | Custom input, true to calculate runtimes based off log analytics logs.
+    runTimeMetric                   | Custom input, metric to use, avg or max, average or maximum runtimes from the logs.
+    runTimeQuery                    | Custom input, query used to retrieve runtimes.
+    runTimeRangeInDays              | Custom input, positive number which defines the number of past days to query.
+    workspaceId                     | Custom input, log analytics workspace id to query.
     APPINSIGHTS_INSTRUMENTATIONKEY  | Found in data keyvault, under "appInsightsInstrumentationKey"
 ```
 <i>Note: If ResetJobs and DistributeJobs are both true, then jobs will be reset and then distributed</i>
