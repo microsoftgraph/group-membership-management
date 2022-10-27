@@ -78,7 +78,7 @@ namespace Repositories.SyncJobsRepository
                 do
                 {
                     var segmentResult = pageEnumerator.Current;
-                    var filteredResults = applyFilters ? ApplyFiltersToResults(segmentResult.Values) : segmentResult.Values;
+                    var filteredResults = applyFilters ? ApplyDryRunFiltersToResults(segmentResult.Values) : segmentResult.Values;
                     var filteredDistributionSyncJobs = filteredResults.Select(job => new DistributionSyncJob(job));
                     bulkSegment.Results.AddRange(filteredDistributionSyncJobs);
                     continuationToken = segmentResult.ContinuationToken;
@@ -109,7 +109,7 @@ namespace Repositories.SyncJobsRepository
                 if (segmentResult.Values.Count == 0)
                     await _log.LogMessageAsync(new LogMessage { Message = $"Warning: Number of enabled jobs in your sync jobs table is: {segmentResult.Values.Count}. Please confirm this is the case.", RunId = Guid.Empty });
 
-                var results = applyFilters ? ApplyFiltersToResults(segmentResult.Values) : segmentResult.Values;
+                var results = applyFilters ? ApplyDryRunFiltersToResults(ExcludeFutureStartDatesFromResults(segmentResult.Values)) : segmentResult.Values;
 
                 foreach (var job in results)
                 {
@@ -210,11 +210,17 @@ namespace Repositories.SyncJobsRepository
             }
         }
 
-        private IEnumerable<SyncJob> ApplyFiltersToResults(IEnumerable<SyncJob> jobs)
+        private IEnumerable<SyncJob> ApplyDryRunFiltersToResults(IEnumerable<SyncJob> jobs)
         {
             var allNonDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == false);
             var allDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.DryRunTimeStamp) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == true);
             return allNonDryRunSyncJobs.Concat(allDryRunSyncJobs);
+        }
+
+        private IEnumerable<SyncJob> ExcludeFutureStartDatesFromResults(IEnumerable<SyncJob> jobs)
+        {
+            var jobsWithPastStartDate = jobs.Where(x => x.StartDate <= DateTime.UtcNow);
+            return jobsWithPastStartDate;
         }
     }
 }
