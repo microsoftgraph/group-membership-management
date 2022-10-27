@@ -271,10 +271,10 @@ namespace Tests.Services
                 Message = "The request timed out"
             };
 
-            var serviceException = new ServiceException(error);
+            var exception = new Exception(error.Message);
 
             _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
-                                        .Throws(serviceException);
+                                        .Throws(exception);
 
             var orchestratorFunction = new OrchestratorFunction(
                                             _loggingRepository.Object,

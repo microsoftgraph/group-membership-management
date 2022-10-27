@@ -5,6 +5,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
+using Microsoft.Graph;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
@@ -125,6 +126,20 @@ namespace Hosts.SecurityGroup
                     {
                         await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
                     }
+                }
+            }
+            catch (ServiceException ex)
+            {
+                if ((ex.StatusCode == HttpStatusCode.ServiceUnavailable || ex.StatusCode == HttpStatusCode.BadGateway)
+                    && ((context.CurrentUtcDateTime - syncJob.LastSuccessfulRunTime).TotalHours < syncJob.Period + 2))
+                {
+                    syncJob.StartDate = context.CurrentUtcDateTime.AddMinutes(30);
+                    var httpStatus = Enum.GetName(ex.StatusCode);
+
+                    _ = _log.LogMessageAsync(new LogMessage { Message = $"Rescheduling job at {syncJob.StartDate} due to {httpStatus} exception", RunId = runId });
+
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Idle });
+                    return;
                 }
             }
             catch (Exception ex)
