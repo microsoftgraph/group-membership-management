@@ -53,7 +53,7 @@ namespace Repositories.GraphGroups
             try
             {
                 var group = await _graphServiceClient.Groups[objectId.ToString()].Request().WithMaxRetry(MaxRetries).GetAsync();
-                TrackMetrics(group.AdditionalData);
+                await TrackMetrics(group.AdditionalData, QueryType.Other);
                 return group != null;
             }
             catch (ServiceException ex)
@@ -235,7 +235,7 @@ namespace Repositories.GraphGroups
 
             // get the service principal ID by its app ID
             var servicePrincipal = (await _graphServiceClient.ServicePrincipals.Request().WithMaxRetry(MaxRetries).Filter($"appId eq '{appId}'").GetAsync()).Single();
-            TrackMetrics(servicePrincipal.AdditionalData);
+            await TrackMetrics(servicePrincipal.AdditionalData, QueryType.Other);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
@@ -298,12 +298,12 @@ namespace Repositories.GraphGroups
 
                 var groupOwners = await request.GetAsync();
                 owners.AddRange(groupOwners.CurrentPage.OfType<User>());
-                TrackMetrics(groupOwners.AdditionalData);
+                await TrackMetrics(groupOwners.AdditionalData, QueryType.Other);
 
                 while (groupOwners.NextPageRequest != null)
                 {
                     groupOwners = await groupOwners.NextPageRequest.WithMaxRetry(MaxRetries).GetAsync();
-                    TrackMetrics(groupOwners.AdditionalData);
+                    await TrackMetrics(groupOwners.AdditionalData, QueryType.Other);
                     owners.AddRange(groupOwners.CurrentPage.OfType<User>());
                 }
 
@@ -332,7 +332,7 @@ namespace Repositories.GraphGroups
             try
             {
                 var group = await _graphServiceClient.Groups[objectId.ToString()].Request().WithMaxRetry(MaxRetries).GetAsync();
-                TrackMetrics(group.AdditionalData);
+                await TrackMetrics(group.AdditionalData, QueryType.Other);
                 return group != null ? group.DisplayName : string.Empty;
             }
             catch (ServiceException ex)
@@ -361,13 +361,13 @@ namespace Repositories.GraphGroups
                             .WithMaxRetry(MaxRetries)
                             .Select("id")
                             .GetAsync();
-                TrackMetrics(members.AdditionalData);
+                await TrackMetrics(members.AdditionalData, QueryType.Other);
 
                 var toReturn = new List<AzureADUser>(ToUsers(members.CurrentPage, nonUserGraphObjects));
                 while (members.NextPageRequest != null)
                 {
                     members = await members.NextPageRequest.WithMaxRetry(MaxRetries).GetAsync();
-                    TrackMetrics(members.AdditionalData);
+                    await TrackMetrics(members.AdditionalData, QueryType.Other);
                     toReturn.AddRange(ToUsers(members.CurrentPage, nonUserGraphObjects));
                 }
 
@@ -435,7 +435,7 @@ namespace Repositories.GraphGroups
             var nonUserGraphObjects = new Dictionary<string, int>();
 
             var usersFromGroup = await GetGroupMembersPageByIdAsync(objectId.ToString());
-            TrackMetrics(usersFromGroup.AdditionalData);
+            await TrackMetrics(usersFromGroup.AdditionalData, QueryType.Transitive);
             usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
@@ -451,7 +451,7 @@ namespace Repositories.GraphGroups
             var nonUserGraphObjects = new Dictionary<string, int>();
 
             usersFromGroup = await GetGroupMembersNextPageAsnyc(usersFromGroup, nextPageUrl);
-            TrackMetrics(usersFromGroup.AdditionalData);
+            await TrackMetrics(usersFromGroup.AdditionalData, QueryType.Transitive);
             usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink2);
             nextPageUrl = (nextLink2 == null) ? string.Empty : nextLink2.ToString();
             users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
@@ -526,11 +526,10 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetFirstUsersPageAsync(Guid objectId)
-        {
-            var resourceUnitsUsed = _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed));
+        {            
             var users = new List<AzureADUser>();
             var response = await GetGroupUsersPageByIdAsync(objectId.ToString());
-            resourceUnitsUsed.TrackValue(5);
+            await TrackMetrics(response.AdditionalData, QueryType.Delta);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -556,11 +555,10 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetNextUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage response)
-        {
-            var resourceUnitsUsed = _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed));
+        {            
             var users = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
-            resourceUnitsUsed.TrackValue(5);
+            await TrackMetrics(response.AdditionalData, QueryType.Delta);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -587,12 +585,11 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetFirstDeltaUsersPageAsync(string deltaLink)
-        {
-            var resourceUnitsUsed = _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed));
+        {           
             var usersToAdd = new List<AzureADUser>();
             var usersToRemove = new List<AzureADUser>();
             var response = await GetGroupUsersPageByLinkAsync(deltaLink);
-            resourceUnitsUsed.TrackValue(5);
+            await TrackMetrics(response.AdditionalData, QueryType.DeltaLink);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -625,12 +622,11 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetNextDeltaUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage response)
-        {
-            var resourceUnitsUsed = _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed));
+        {           
             var usersToAdd = new List<AzureADUser>();
             var usersToRemove = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
-            resourceUnitsUsed.TrackValue(5);
+            await TrackMetrics(response.AdditionalData, QueryType.DeltaLink);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -672,7 +668,7 @@ namespace Repositories.GraphGroups
                 .Select("id")
                 .GetAsync();
 
-                TrackMetrics(members.AdditionalData);
+                await TrackMetrics(members.AdditionalData, QueryType.Other);
 
                 var toReturn = new List<IAzureADObject>(ToEntities(members.CurrentPage));
                 while (members.NextPageRequest != null)
@@ -694,8 +690,15 @@ namespace Repositories.GraphGroups
             }
         }
 
-        void TrackMetrics(IDictionary<string, object> additionalData)
+        public async Task TrackMetrics(IDictionary<string, object> additionalData, QueryType queryType)
         {
+            if (queryType == QueryType.Delta || queryType == QueryType.DeltaLink)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of delta related queries: {Enum.GetName(typeof(QueryType), queryType)}", RunId = RunId }, VerbosityLevel.DEBUG);
+                _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(5);
+                return;
+            }
+
             // some replies just don't have the response headers
             // i suspect those either aren't throttled the same way or it's a different kind of call
             if (!additionalData.TryGetValue("responseHeaders", out var headers))
@@ -705,6 +708,7 @@ namespace Repositories.GraphGroups
             var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
 
             if (responseHeaders.TryGetValue(ResourceUnitHeader, out var resourceValues))
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of delta unrelated queries: {Enum.GetName(typeof(QueryType), queryType)}", RunId = RunId }, VerbosityLevel.DEBUG);
                 _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
 
             if (responseHeaders.TryGetValue(ThrottlePercentageHeader, out var throttleValues))
@@ -1227,7 +1231,7 @@ namespace Repositories.GraphGroups
             try
             {
                 var groupOwners = await _graphServiceClient.Groups[groupObjectId.ToString()].Owners.Request().WithMaxRetry(MaxRetries).Filter(query).GetAsync();
-                TrackMetrics(groupOwners.AdditionalData);
+                await TrackMetrics(groupOwners.AdditionalData, QueryType.Other);
                 return groupOwners.Any();
             }
             catch (ServiceException ex)

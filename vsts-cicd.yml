@@ -45,7 +45,7 @@ stages:
        coverageThreshold: 75
     - function:
        name: 'SecurityGroup'
-       coverageThreshold: 89
+       coverageThreshold: 87
     - function:
         name: 'AzureMaintenance'
         coverageThreshold: 95
