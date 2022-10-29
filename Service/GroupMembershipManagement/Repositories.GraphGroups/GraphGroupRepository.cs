@@ -15,6 +15,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Reflection.Metadata;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -31,7 +32,7 @@ namespace Repositories.GraphGroups
         private readonly TelemetryClient _telemetryClient;
         private readonly ILoggingRepository _loggingRepository;
 
-        public Guid RunId { get; set; }
+        public Guid RunId { get; set; }        
 
         public GraphGroupRepository(IGraphServiceClient graphServiceClient, TelemetryClient telemetryClient, ILoggingRepository logger)
         {
@@ -692,10 +693,18 @@ namespace Repositories.GraphGroups
 
         public async Task TrackMetrics(IDictionary<string, object> additionalData, QueryType queryType)
         {
+            int ruu = 0;
+            var ruuCustomEvent = new ResourceUnitCustomEvent();
+            ruuCustomEvent.RunId = RunId.ToString();
+            ruuCustomEvent.QueryType = Enum.GetName(typeof(QueryType), queryType);
+
             if (queryType == QueryType.Delta || queryType == QueryType.DeltaLink)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of delta related queries: {Enum.GetName(typeof(QueryType), queryType)}", RunId = RunId }, VerbosityLevel.DEBUG);
-                _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(5);
+                ruu = 5;
+                ruuCustomEvent.ResourceUnit = ruu.ToString();                
+                TrackRUUEvent(ruuCustomEvent);
+                _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ruu);
                 return;
             }
 
@@ -708,11 +717,25 @@ namespace Repositories.GraphGroups
             var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
 
             if (responseHeaders.TryGetValue(ResourceUnitHeader, out var resourceValues))
+            {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of delta unrelated queries: {Enum.GetName(typeof(QueryType), queryType)}", RunId = RunId }, VerbosityLevel.DEBUG);
-                _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
+                ruu = ParseFirst<int>(resourceValues, int.TryParse);
+                ruuCustomEvent.ResourceUnit = ruu.ToString();
+                TrackRUUEvent(ruuCustomEvent);
+                _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ruu);
+            }
 
             if (responseHeaders.TryGetValue(ThrottlePercentageHeader, out var throttleValues))
                 _telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage)).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
+        }
+
+        private void TrackRUUEvent(ResourceUnitCustomEvent ruuCustomEvent)
+        {        
+            var ruuDict = ruuCustomEvent.GetType()
+                .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                .ToDictionary(prop => prop.Name, prop => (string)prop.GetValue(ruuCustomEvent, null));
+
+            _telemetryClient.TrackEvent(nameof(Metric.ResourceUnitsUsed), ruuDict);
         }
 
         public async Task<int> GetUsersCountAsync(Guid objectId)
@@ -1294,6 +1317,14 @@ namespace Repositories.GraphGroups
         public string RequestId { get; set; }
         public ResponseCode ResponseCode { get; set; }
         public string AzureObjectId { get; set; }
+    }
+
+    public class ResourceUnitCustomEvent
+    {
+        public string TargetOfficeGroupId { get; set; } = "N/A";
+        public string RunId { get; set; } = "N/A";
+        public string ResourceUnit { get; set; } = "N/A";   
+        public string QueryType { get; set; } = "N/A";
     }
 }
 
