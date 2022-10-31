@@ -6,6 +6,7 @@ A synchronization job must have the following properties populated:
 - TargetOfficeGroupId
 - Status
 - LastRunTime
+- LastSuccessfulRunTime 
 - Period
 - Query
 - StartDate
@@ -18,7 +19,7 @@ A synchronization job must have the following properties populated:
 ### PartitionKey
 Partition key, the value added here represents the date the job was added to the table.
 - DataType: string
-- Format: YYYY-M-D
+- Format: YYYY-MM-DD
 
 ### RowKey
 Unique key of the synchronization job.
@@ -41,6 +42,11 @@ Current synchronization job status; Set to Idle for new synchronization jobs.
 
 ### LastRunTime
 Last date time the synchronization job ran. Set to 1601-01-01T00:00:00.000Z for new synchronization jobs.
+- DataType: DateTime
+- Format: YYYY-MM-DDThh:mm:ss.zzzZ
+
+### LastSuccessfulRunTime
+Last date time the synchronization job ran successfully. Set to 1601-01-01T00:00:00.000Z for new synchronization jobs.
 - DataType: DateTime
 - Format: YYYY-MM-DDThh:mm:ss.zzzZ
 
