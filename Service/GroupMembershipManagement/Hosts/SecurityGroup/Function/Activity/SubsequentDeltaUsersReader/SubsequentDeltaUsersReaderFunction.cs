@@ -26,7 +26,8 @@ namespace Hosts.SecurityGroup
 		public async Task<DeltaGroupInformation> GetDeltaUsersAsync([ActivityTrigger] SubsequentDeltaUsersReaderRequest request)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentDeltaUsersReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-			var response = await _calculator.GetNextDeltaUsersPageAsync(request.NextPageUrl, request.GroupUsersPage);
+            _calculator.RunId = request.RunId;
+            var response = await _calculator.GetNextDeltaUsersPageAsync(request.NextPageUrl, request.GroupUsersPage);
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentDeltaUsersReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 			return response;
 		}

@@ -26,7 +26,8 @@ namespace Hosts.SecurityGroup
 		public async Task<GroupInformation> GetMembersAsync([ActivityTrigger] MembersReaderRequest request)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(MembersReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-			var response = await _calculator.GetFirstTransitiveMembersPageAsync(request.GroupId, request.RunId);
+			_calculator.RunId = request.RunId;
+            var response = await _calculator.GetFirstTransitiveMembersPageAsync(request.GroupId, request.RunId);
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(MembersReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 			return response;
 		}
