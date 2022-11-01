@@ -464,7 +464,7 @@ namespace Tests.Services
                                        {
                                            _deltaUsersReaderResponse = await CallDeltaUsersReaderFunctionAsync(request as DeltaUsersReaderRequest);
                                        })
-                                       .Throws<Exception>();
+                                       .Throws<KeyNotFoundException>();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
             var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);

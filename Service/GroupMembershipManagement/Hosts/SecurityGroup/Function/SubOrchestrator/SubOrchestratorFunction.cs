@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using Entities.ServiceBus;
 using Microsoft.ApplicationInsights;
 using Repositories.Contracts.InjectConfig;
+using Microsoft.Graph;
 
 namespace Hosts.SecurityGroup
 {
@@ -98,7 +99,7 @@ namespace Hosts.SecurityGroup
                             }
                             await GetDeltaUsersSenderFunction(context, request, allUsers, response.deltaUrl);
                         }
-                        catch (Exception e)
+                        catch (Exception e) when (e is KeyNotFoundException || e is ServiceException)
                         {
                             _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"delta query failed for group {request.SourceGroup.ObjectId}: {e.Message}" });
                             allUsers.Clear();
@@ -155,7 +156,7 @@ namespace Hosts.SecurityGroup
                             }
                             await GetDeltaUsersSenderFunction(context, request, allUsers, deltaResponse.deltaUrl);
                         }
-                        catch (Exception e)
+                        catch (Exception e) when (e is KeyNotFoundException || e is ServiceException)
                         {
                             _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"delta query using delta link failed for group {request.SourceGroup.ObjectId}: {e.Message}" });
                             allUsers.Clear();
