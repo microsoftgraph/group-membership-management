@@ -3473,6 +3473,131 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '36': {
             position: {
+              x: 13
+              y: 42
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '12cc1eac-14d0-40b2-ad53-080950912b2f'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'customMetrics\n| where name == "ResourceUnitsUsed"\n| project timestamp, valueSum, operation_Name\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "ResourceUnitsUsed"\n| order by timestamp desc\n| project timestamp,\n    QueryType = tostring(customDimensions["QueryType"]),\n    ResourceUnit = toint(customDimensions["ResourceUnit"])\n| summarize sum(ResourceUnit) by bin(timestamp, 10s), QueryType\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'ResourceUnitsUsedByType'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'timestamp'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'sum_RUU'
+                        type: 'long'
+                      }
+                    ]
+                    splitBy: [
+                      {
+                        name: 'QueryType'
+                        type: 'string'
+                      }
+                    ]
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+              partHeader: {
+                title: 'ResourceUnitsUsedByType'
+                subtitle: ''
+              }
+            }
+          }
+          '37': {
+            position: {
               x: 1
               y: 47
               colSpan: 9
@@ -3494,7 +3619,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '37': {
+          '38': {
             position: {
               x: 1
               y: 49
@@ -3589,7 +3714,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '38': {
+          '39': {
             position: {
               x: 6
               y: 49
@@ -3684,7 +3809,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '39': {
+          '40': {
             position: {
               x: 11
               y: 49
@@ -3781,7 +3906,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '40': {
+          '41': {
             position: {
               x: 1
               y: 53
@@ -3907,7 +4032,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '41': {
+          '42': {
             position: {
               x: 9
               y: 53
