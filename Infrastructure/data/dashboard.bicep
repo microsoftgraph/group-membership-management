@@ -3572,7 +3572,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     }
                     yAxis: [
                       {
-                        name: 'sum_RUU'
+                        name: 'sum_ResourceUnit'
                         type: 'long'
                       }
                     ]
