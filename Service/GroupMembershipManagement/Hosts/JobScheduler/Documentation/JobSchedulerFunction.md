@@ -55,4 +55,13 @@ Note: If ResetJobs and DistributeJobs are both true, then jobs will be reset and
 * Select "Log Analytics Reader" role, then click "Next"
 * Click on "Select members" and search for your `<solution>-compute-<environment>-JobScheduler` function, then click on "Select".
 
+Alternatively you can grant the permission by running this PowerShell cmdlet
 
+```
+New-AzRoleAssignment -ObjectId <object-id> `
+-RoleDefinitionName "Log Analytics Reader" `
+-Scope /subscriptions/<subscriptionId>/resourcegroups/<resourceGroupName>/providers/<providerName>/<resourceType>/<resourceSubType>/<resourceName>
+```
+
+ObjectId: This is JobScheduler function identity id.  
+Scope: This is Log Analytics Workspace resource id.
