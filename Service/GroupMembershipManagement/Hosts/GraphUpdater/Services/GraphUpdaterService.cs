@@ -28,6 +28,17 @@ namespace Services
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly ISyncJobRepository _syncJobRepository;
 
+        private Guid _runId;
+        public Guid RunId
+        {
+            get { return _runId; }
+            set
+            {
+                _runId = value;
+                _graphGroupRepository.RunId = value;
+            }
+        }
+
         public GraphUpdaterService(
                 ILoggingRepository loggingRepository,
                 TelemetryClient telemetryClient,
@@ -48,7 +59,7 @@ namespace Services
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {groupId}." });
             _graphGroupRepository.RunId = runId;
-            var result = await _graphGroupRepository.GetFirstUsersPageAsync(groupId);
+            var result = await _graphGroupRepository.GetFirstTransitiveMembersPageAsync(groupId);
             return new UsersPageResponse
             {
                 NextPageUrl = result.nextPageUrl,
@@ -61,7 +72,7 @@ namespace Services
         public async Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup, Guid runId)
         {
             _graphGroupRepository.RunId = runId;
-            var result = await _graphGroupRepository.GetNextUsersPageAsync(nextPageUrl, usersFromGroup);
+            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(nextPageUrl, usersFromGroup);
             return new UsersPageResponse
             {
                 NextPageUrl = result.nextPageUrl,
@@ -111,7 +122,12 @@ namespace Services
             if (isDryRunSync)
                 job.DryRunTimeStamp = DateTime.UtcNow;
             else
+            {
+                if (status == SyncStatus.Idle)
+                    job.LastSuccessfulRunTime = DateTime.UtcNow;
+
                 job.LastRunTime = DateTime.UtcNow;
+            }
 
             job.RunId = runId;
 
@@ -134,16 +150,16 @@ namespace Services
             return await _graphGroupRepository.GetGroupNameAsync(groupId);
         }
 
-        public async Task<(GraphUpdaterStatus Status, int SuccessCount)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
+        public async Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
         {
             var stopwatch = Stopwatch.StartNew();
             var graphResponse = await _graphGroupRepository.AddUsersToGroup(members, new AzureADGroup { ObjectId = targetGroupId });
             stopwatch.Stop();
 
             if (isInitialSync)
-                _telemetryClient.TrackMetric(nameof(Metric.MembersAddedFromOnboarding), members.Count);
+                _telemetryClient.TrackMetric(nameof(Metric.MembersAddedFromOnboarding), graphResponse.SuccessCount);
             else
-                _telemetryClient.TrackMetric(nameof(Metric.MembersAdded), members.Count);
+                _telemetryClient.TrackMetric(nameof(Metric.MembersAdded), graphResponse.SuccessCount);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
@@ -154,19 +170,19 @@ namespace Services
             _telemetryClient.TrackMetric(nameof(Metric.GraphAddRatePerSecond), members.Count / stopwatch.Elapsed.TotalSeconds);
 
             var status = graphResponse.ResponseCode == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
-            return (status, graphResponse.SuccessCount);
+            return (status, graphResponse.SuccessCount, graphResponse.UsersNotFound);
         }
 
-        public async Task<(GraphUpdaterStatus Status, int SuccessCount)> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
+        public async Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound)> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
         {
             var stopwatch = Stopwatch.StartNew();
             var graphResponse = await _graphGroupRepository.RemoveUsersFromGroup(members, new AzureADGroup { ObjectId = targetGroupId });
             stopwatch.Stop();
 
             if (isInitialSync)
-                _telemetryClient.TrackMetric(nameof(Metric.MembersRemovedFromOnboarding), members.Count);
+                _telemetryClient.TrackMetric(nameof(Metric.MembersRemovedFromOnboarding), graphResponse.SuccessCount);
             else
-                _telemetryClient.TrackMetric(nameof(Metric.MembersRemoved), members.Count);
+                _telemetryClient.TrackMetric(nameof(Metric.MembersRemoved), graphResponse.SuccessCount);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
@@ -177,7 +193,7 @@ namespace Services
             _telemetryClient.TrackMetric(nameof(Metric.GraphRemoveRatePerSecond), members.Count / stopwatch.Elapsed.TotalSeconds);
 
             var status = graphResponse.ResponseCode == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
-            return (status, graphResponse.SuccessCount);
+            return (status, graphResponse.SuccessCount, graphResponse.UsersNotFound);
         }
 
         public async Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)

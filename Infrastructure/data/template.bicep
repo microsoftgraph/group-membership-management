@@ -138,6 +138,14 @@ param appConfigurationKeyData array = [
     }
   }
   {
+    key: 'SecurityGroup:IsDeltaCacheEnabled'
+    value: 'false'
+    contentType: 'boolean'
+    tag: {
+      tag1: 'SecurityGroup'
+    }
+  }
+  {
     key: 'SecurityGroup:IsSecurityGroupDryRunEnabled'
     value: 'false'
     contentType: 'boolean'
@@ -183,6 +191,14 @@ param appConfigurationKeyData array = [
     contentType: 'integer'
     tag: {
       tag1: 'MembershipAggregator'
+    }
+  }
+  {
+    key: 'GraphUpdater:IsDeltaCacheEnabled'
+    value: 'false'
+    contentType: 'boolean'
+    tag: {
+      tag1: 'GraphUpdater'
     }
   }
   {
@@ -247,6 +263,7 @@ module serviceBusTemplate 'serviceBus.bicep' = {
     name: serviceBusName
     sku: serviceBusSku
     location: location
+    keyVaultName: keyVaultName
   }
 }
 
@@ -278,6 +295,7 @@ module storageAccountTemplate 'storageAccount.bicep' = {
   params: {
     name: storageAccountName
     sku: storageAccountSku
+    keyVaultName: keyVaultName
   }
 }
 
@@ -286,6 +304,7 @@ module jobsStorageAccountTemplate 'storageAccount.bicep' = {
   params: {
     name: jobsStorageAccountName
     sku: storageAccountSku
+    keyVaultName: keyVaultName
   }
 }
 
@@ -295,6 +314,7 @@ module logAnalyticsTemplate 'logAnalytics.bicep' = {
     name: logAnalyticsName
     sku: logAnalyticsSku
     location: location
+    keyVaultName: keyVaultName
   }
 }
 
@@ -305,6 +325,7 @@ module appInsightsTemplate 'applicationInsights.bicep' = {
     location: location
     kind: appInsightsKind
     workspaceId: logAnalyticsTemplate.outputs.resourceId
+    keyVaultName: keyVaultName
   }
   dependsOn: [
     logAnalyticsTemplate
@@ -353,20 +374,12 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: storageAccountName
       }
       {
-        name: 'storageAccountConnectionString'
-        value: storageAccountTemplate.outputs.connectionString
-      }
-      {
         name: 'jobsStorageAccountName'
         value: jobsStorageAccountName
       }
       {
         name: 'membershipContainerName'
         value: membershipContainerName
-      }
-      {
-        name: 'jobsStorageAccountConnectionString'
-        value: jobsStorageAccountTemplate.outputs.connectionString
       }
       {
         name: 'jobsTableName'
@@ -377,20 +390,8 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: appInsightsTemplate.outputs.appId
       }
       {
-        name: 'appInsightsInstrumentationKey'
-        value: appInsightsTemplate.outputs.instrumentationKey
-      }
-      {
         name: 'serviceBusNamespace'
         value: serviceBusName
-      }
-      {
-        name: 'serviceBusPrimaryKey'
-        value: serviceBusTemplate.outputs.rootManageSharedAccessKeyPrimaryKey
-      }
-      {
-        name: 'serviceBusConnectionString'
-        value: serviceBusTemplate.outputs.rootManageSharedAccessKeyConnectionString
       }
       {
         name: 'serviceBusSyncJobTopic'
@@ -399,10 +400,6 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'logAnalyticsCustomerId'
         value: logAnalyticsTemplate.outputs.customerId
-      }
-      {
-        name: 'logAnalyticsPrimarySharedKey'
-        value: logAnalyticsTemplate.outputs.primarySharedKey
       }
     ]
   }

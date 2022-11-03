@@ -23,31 +23,37 @@ function Set-UpdateSecurityGroupQuery {
 	$cloudTable = (Get-AzStorageTable -Name $tableName -Context $jobStorageAccount.Context).CloudTable
 
     # see https://docs.microsoft.com/en-us/rest/api/storageservices/querying-tables-and-entities#filtering-on-guid-properties
-	$sgJobs = Get-AzTableRow -Table $cloudTable  -CustomFilter "(Type eq 'SecurityGroup')"
+	$sgJobs = Get-AzTableRow -Table $cloudTable
 
     foreach($job in $sgJobs)
     {
-        $currentQuery = $job.Query
-        if ($currentQuery.StartsWith('['))
-        {
-            continue;
+        if(-not ($job.Query.Contains("SecurityGroup"))) {
+            continue
         }
 
-        $newQuery = '[{ "type": "SecurityGroup", "sources": ['
+        $newQueryParts = @()
+        $currentQuery = ConvertFrom-Json -InputObject $job.Query
 
-        if (![string]::IsNullOrEmpty($currentQuery))
-        {
-            $groupIds = $currentQuery.Split(";")
-            for ($i=0; $i -lt $groupIds.Length; $i++)
-            {
-                $groupIds[$i] = """$($groupIds[$i])"""
+        foreach($part in $currentQuery) {
+
+            if($part.type -ne "SecurityGroup") {
+                $newQueryParts +=  ConvertTo-Json -InputObject $part -Compress -Depth 100
+                continue
             }
 
-            $newQuery += [string]::Join(",", $groupIds)
+            if($part.sources) {
+                foreach($id in $part.sources) {
+                    $newQueryPart = '{"type":"SecurityGroup","source":"' + $id + '"}'
+                    $newQueryParts += $newQueryPart
+                }
+            }
+            else {
+                $newQueryParts +=  ConvertTo-Json -InputObject $part -Compress -Depth 100
+            }
+
         }
 
-        $newQuery += ']}]'
-
+        $newQuery = "[" + ($newQueryParts -join ",") + "]"
         $job.Query = $newQuery
         $job | Update-AzTableRow -table $cloudTable
     }

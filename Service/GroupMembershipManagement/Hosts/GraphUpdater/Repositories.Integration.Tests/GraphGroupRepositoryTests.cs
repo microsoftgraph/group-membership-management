@@ -26,7 +26,7 @@ namespace Repositories.Integration.Tests
 		// and the following delegated permissions:
 		// - GroupMember.ReadWrite.All to add users to groups and clean out old ones
 		// - Group.ReadWrite.All to make the groups
-		// - User.ReadWrite.All to clean up deleted users 
+		// - User.ReadWrite.All to clean up deleted users
 		// When you run this, sign in with your demo tenant administrator credentials.
 
 		const string ClientId = "2ac03521-fa6c-48c4-bf03-033eb930df5e";
@@ -438,19 +438,29 @@ namespace Repositories.Integration.Tests
 
 		private class MockLogger : ILoggingRepository
 		{
-            public Dictionary<string, string> SyncJobProperties { get; set; }
+            public Dictionary<Guid, LogProperties> SyncJobProperties { get; set; }
 			public bool DryRun { get; set; }
 
-			public Task LogMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
-			{
-				return Task.CompletedTask;
-			}
+            public Task LogMessageAsync(LogMessage logMessage, VerbosityLevel verbosityLevel = VerbosityLevel.INFO, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
+            {
+                return Task.CompletedTask;
+            }
 
-			public Task LogPIIMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
+            public Task LogPIIMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
 			{
 				return Task.CompletedTask;
-			}
-		}
+            }
+
+            public void RemoveSyncJobProperties(Guid key)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void SetSyncJobProperties(Guid key, Dictionary<string, string> properties)
+            {
+                throw new NotImplementedException();
+            }
+        }
 
 	}
 }

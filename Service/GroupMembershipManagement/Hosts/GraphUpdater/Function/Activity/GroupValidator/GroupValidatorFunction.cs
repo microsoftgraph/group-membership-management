@@ -31,6 +31,7 @@ namespace Hosts.GraphUpdater
         public async Task<bool> ValidateGroupAsync([ActivityTrigger] GroupValidatorRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            _graphUpdaterService.RunId = request.RunId;
 
             bool isExistingGroup = false;
             var groupExistsResult = await _graphUpdaterService.GroupExistsAsync(request.GroupId, request.RunId);

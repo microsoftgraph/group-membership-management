@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
 using Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
@@ -14,9 +15,11 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection.Metadata;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using static System.Net.WebRequestMethods;
 using Group = Microsoft.Graph.Group;
 using Metric = Services.Entities.Metric;
 
@@ -111,6 +114,81 @@ namespace Repositories.GraphGroups
             }
         }
 
+        public async Task<List<string>> GetGroupEndpointsAsync(Guid groupId)
+        {
+            var endpoints = new List<string>();
+            var baseUrl = "https://graph.microsoft.com";
+
+            try
+            {
+                var batchRequest = new BatchRequestContent();
+                var outlookRequest = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/v1.0/groups/{groupId}?$select=mailEnabled,groupTypes");
+                var outlookStep = new BatchRequestStep("outlook", outlookRequest);
+                var sharepointRequest = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/beta/groups/{groupId}/sites/root");
+                var sharepointStep = new BatchRequestStep("sharepoint", sharepointRequest);
+
+                batchRequest.AddBatchRequestStep(outlookStep);
+                batchRequest.AddBatchRequestStep(sharepointStep);
+
+                var batchResponse = await _graphServiceClient.Batch.Request().PostAsync(batchRequest);
+                var individualResponses = await batchResponse.GetResponsesAsync();
+
+                if (individualResponses.ContainsKey("outlook") && individualResponses["outlook"].IsSuccessStatusCode)
+                {
+                    var content = await individualResponses["outlook"].Content.ReadAsStringAsync();
+                    var jObject = JObject.Parse(content);
+                    var isMailEnabled = jObject.Value<bool>("mailEnabled");
+                    var groupTypes = jObject.Value<JArray>("groupTypes").Values<string>().ToList();
+
+                    if (isMailEnabled && groupTypes.Contains("Unified"))
+                        endpoints.Add("Outlook");
+                }
+
+                if (individualResponses.ContainsKey("sharepoint") && individualResponses["sharepoint"].IsSuccessStatusCode)
+                {
+                    endpoints.Add("SharePoint");
+                }
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = RunId
+                });
+            }
+
+            try
+            {
+
+                var endpointsUrl = $"{baseUrl}/beta/groups/{groupId}/endpoints";
+                var httpRequest = new HttpRequestMessage(HttpMethod.Get, endpointsUrl);
+                await _graphServiceClient.AuthenticationProvider.AuthenticateRequestAsync(httpRequest);
+                var httpResponse = await _graphServiceClient.HttpProvider.SendAsync(httpRequest);
+
+                if (httpResponse.Content == null)
+                    return endpoints;
+
+                var content = await httpResponse.Content.ReadAsStringAsync();
+
+                if (string.IsNullOrWhiteSpace(content))
+                    return endpoints;
+
+                endpoints.AddRange(JObject.Parse(content).Value<JArray>("value").Values<string>("providerName").ToList());
+
+            }
+            catch (ServiceException ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = RunId
+                });
+            }
+
+            return endpoints;
+        }
+
         public async Task CreateGroup(string newGroupName)
         {
             try
@@ -142,7 +220,7 @@ namespace Repositories.GraphGroups
             var userResponse = await _graphServiceClient.Users.Request().GetAsync();
             tenantUsers.UnionWith(userResponse.CurrentPage.Select(graphUser => new AzureADUser { ObjectId = new Guid(graphUser.Id) }));
 
-            while (tenantUsers.Count < userCount)
+            while (tenantUsers.Count < userCount && userResponse.NextPageRequest != null)
             {
                 userResponse = await userResponse.NextPageRequest.GetAsync();
                 tenantUsers.UnionWith(userResponse.CurrentPage.Select(graphUser => new AzureADUser { ObjectId = new Guid(graphUser.Id) }));
@@ -351,7 +429,7 @@ namespace Repositories.GraphGroups
         public async Task<(List<AzureADUser> users,
                            Dictionary<string, int> nonUserGraphObjects,
                            string nextPageUrl,
-                           IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetFirstUsersPageAsync(Guid objectId)
+                           IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetFirstTransitiveMembersPageAsync(Guid objectId)
         {
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
@@ -367,7 +445,7 @@ namespace Repositories.GraphGroups
         public async Task<(List<AzureADUser> users,
                            Dictionary<string, int> nonUserGraphObjects,
                            string nextPageUrl,
-                           IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetNextUsersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)
+                           IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetNextTransitiveMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)
         {
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
@@ -378,6 +456,205 @@ namespace Repositories.GraphGroups
             nextPageUrl = (nextLink2 == null) ? string.Empty : nextLink2.ToString();
             users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
             return (users, nonUserGraphObjects, nextPageUrl, usersFromGroup);
+        }
+
+        public async Task<IGroupDeltaCollectionPage> GetGroupUsersPageByLinkAsync(string deltaLink)
+        {
+            var groupCollectionPage = new GroupDeltaCollectionPage();
+            groupCollectionPage.InitializeNextPageRequest(_graphServiceClient, deltaLink);
+            return await groupCollectionPage.NextPageRequest.GetAsync();
+        }
+
+        public async Task<IGroupDeltaCollectionPage> GetGroupUsersPageByIdAsync(string groupId)
+        {
+            var retryPolicy = GetRetryPolicy();
+            return await retryPolicy.ExecuteAsync(async () =>
+            {
+                return await _graphServiceClient
+                                    .Groups
+                                    .Delta()
+                                    .Request()
+                                    .Filter($"id  eq '{groupId}'")
+                                    .Top(MaxResultCount)
+                                    .GetAsync();
+            });
+        }
+        public async Task<IGroupDeltaCollectionPage> GetGroupUsersNextPageAsnyc(IGroupDeltaCollectionPage groupMembersRef, string nextPageUrl)
+        {
+            var retryPolicy = GetRetryPolicy();
+            return await retryPolicy.ExecuteAsync(async () =>
+            {
+                groupMembersRef.InitializeNextPageRequest(_graphServiceClient, nextPageUrl);
+                return await groupMembersRef
+                                .NextPageRequest
+                                .GetAsync();
+            });
+        }
+        public async Task<int> GetGroupsCountAsync(Guid objectId)
+        {
+            var resourceUnitsUsed = _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed));
+            var throttleLimitPercentage = _telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage));
+
+            var requestUrl = _graphServiceClient.Groups[objectId.ToString()].TransitiveMembers.Request().RequestUrl;
+
+            // add casting and count query
+            requestUrl = $"{requestUrl}/microsoft.graph.group/$count";
+
+            // Create the request message
+            var hrm = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+
+            // $count requires header ConsistencyLevel
+            hrm.Headers.Add("ConsistencyLevel", "eventual");
+
+            // Authenticate (add access token) our HttpRequestMessage
+            await _graphServiceClient.AuthenticationProvider.AuthenticateRequestAsync(hrm);
+
+            // Send the request and get the response.
+            var r = await _graphServiceClient.HttpProvider.SendAsync(hrm);
+
+            if (r.Headers.TryGetValues(ResourceUnitHeader, out var resourceValues))
+                resourceUnitsUsed.TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
+
+            if (r.Headers.TryGetValues(ThrottlePercentageHeader, out var throttleValues))
+                throttleLimitPercentage.TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
+
+            // read the content and parse it as an integer
+            var content = await r.Content.ReadAsStringAsync();
+            var groupCount = int.Parse(content);
+
+            return groupCount;
+        }
+
+        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetFirstUsersPageAsync(Guid objectId)
+        {
+            var users = new List<AzureADUser>();
+            var response = await GetGroupUsersPageByIdAsync(objectId.ToString());
+            TrackMetrics(response.AdditionalData);
+            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
+            var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
+            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
+            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+
+            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null)
+            {
+                if (!response.CurrentPage[0].AdditionalData.TryGetValue("members@delta", out object members))
+                {
+                    return (users, nextPageUrl, deltaUrl, response);
+                }
+                foreach (JObject user in (JArray)members)
+                {
+                    if (user["@odata.type"].ToString().Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase) &&
+                        user["@removed"] == null)
+                    {
+                        users.Add(new AzureADUser { ObjectId = Guid.Parse((string)user["id"]) });
+                    }
+                }
+            }
+
+            return (users, nextPageUrl, deltaUrl, response);
+        }
+
+        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetNextUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage response)
+        {
+            var users = new List<AzureADUser>();
+            response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
+            TrackMetrics(response.AdditionalData);
+            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
+            nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
+            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
+            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+
+            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null)
+            {
+                if (!response.CurrentPage[0].AdditionalData.TryGetValue("members@delta", out object members))
+                {
+                    return (users, nextPageUrl, deltaUrl, response);
+                }
+
+                foreach (JObject user in (JArray)members)
+                {
+                    if (user["@odata.type"].ToString().Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase) &&
+                        user["@removed"] == null)
+                    {
+                        users.Add(new AzureADUser { ObjectId = Guid.Parse((string)user["id"]) });
+                    }
+                }
+            }
+
+            return (users, nextPageUrl, deltaUrl, response);
+        }
+
+        public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetFirstDeltaUsersPageAsync(string deltaLink)
+        {
+            var usersToAdd = new List<AzureADUser>();
+            var usersToRemove = new List<AzureADUser>();
+            var response = await GetGroupUsersPageByLinkAsync(deltaLink);
+            TrackMetrics(response.AdditionalData);
+            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
+            var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
+            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
+            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+
+            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null)
+            {
+                if (!response.CurrentPage[0].AdditionalData.TryGetValue("members@delta", out object members))
+                {
+                    return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl, response);
+                }
+
+                foreach (JObject user in (JArray)members)
+                {
+                    if (user["@odata.type"].ToString().Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        if (user["@removed"] == null)
+                        {
+                            usersToAdd.Add(new AzureADUser { ObjectId = Guid.Parse((string)user["id"]) });
+                        }
+                        else
+                        {
+                            usersToRemove.Add(new AzureADUser { ObjectId = Guid.Parse((string)user["id"]) });
+                        }
+                    }
+                }
+            }
+
+            return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl, response);
+        }
+
+        public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetNextDeltaUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage response)
+        {
+            var usersToAdd = new List<AzureADUser>();
+            var usersToRemove = new List<AzureADUser>();
+            response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
+            TrackMetrics(response.AdditionalData);
+            response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
+            nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
+            response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
+            var deltaUrl = (deltaLink1 == null) ? string.Empty : deltaLink1.ToString();
+
+            if (response.CurrentPage.Count > 0 && response.CurrentPage[0].AdditionalData != null)
+            {
+                if (!response.CurrentPage[0].AdditionalData.TryGetValue("members@delta", out object members))
+                {
+                    return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl, response);
+                }
+                foreach (JObject user in (JArray)members)
+                {
+                    if (user["@odata.type"].ToString().Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        if (user["@removed"] == null)
+                        {
+                            usersToAdd.Add(new AzureADUser { ObjectId = Guid.Parse((string)user["id"]) });
+                        }
+                        else
+                        {
+                            usersToRemove.Add(new AzureADUser { ObjectId = Guid.Parse((string)user["id"]) });
+                        }
+                    }
+                }
+            }
+
+            return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl, response);
         }
 
         public async Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid objectId)
@@ -430,9 +707,28 @@ namespace Repositories.GraphGroups
                 _telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage)).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
         }
 
+        public async Task<int> GetUsersCountAsync(Guid objectId)
+        {
+            var resourceUnitsUsed = _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed));
+            var throttleLimitPercentage = _telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage));
+            var requestUrl = _graphServiceClient.Groups[objectId.ToString()].TransitiveMembers.Request().RequestUrl;
+            requestUrl = $"{requestUrl}/microsoft.graph.user/$count";
+            var hrm = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+            hrm.Headers.Add("ConsistencyLevel", "eventual");
+            await _graphServiceClient.AuthenticationProvider.AuthenticateRequestAsync(hrm);
+            var r = await _graphServiceClient.HttpProvider.SendAsync(hrm);
+            if (r.Headers.TryGetValues(ResourceUnitHeader, out var resourceValues))
+                resourceUnitsUsed.TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
+            if (r.Headers.TryGetValues(ThrottlePercentageHeader, out var throttleValues))
+                throttleLimitPercentage.TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
+            var content = await r.Content.ReadAsStringAsync();
+            var userCount = int.Parse(content);
+            return userCount;
+        }
+
         const int GraphBatchLimit = 20;
         const int ConcurrentRequests = 10;
-        public Task<(ResponseCode ResponseCode, int SuccessCount)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+        public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
             //You can, in theory, send batches of 20 requests of 20 group adds each
             // but Graph starts saying "Service Unavailable" for a bunch of them if you do that, so only send so many at once
@@ -440,7 +736,7 @@ namespace Repositories.GraphGroups
             return BatchAndSend(users, b => MakeBulkAddRequest(b, targetGroup.ObjectId), GraphBatchLimit, 5);
         }
 
-        public Task<(ResponseCode ResponseCode, int SuccessCount)> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+        public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
             // This, however, is the most we can send per delete batch, and it works pretty well.
             return BatchAndSend(users, b => MakeBulkRemoveRequest(b, targetGroup.ObjectId), 1, GraphBatchLimit);
@@ -465,18 +761,22 @@ namespace Repositories.GraphGroups
 
         private string GetNewChunkId() => $"{Guid.NewGuid().ToString().Replace("-", string.Empty)}-";
 
-        private async Task<(ResponseCode ResponseCode, int SuccessCount)> BatchAndSend(IEnumerable<AzureADUser> users, MakeBulkRequest makeRequest, int requestMax, int batchSize)
+        private async Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)> BatchAndSend(IEnumerable<AzureADUser> users, MakeBulkRequest makeRequest, int requestMax, int batchSize)
         {
-            if (!users.Any()) { return (ResponseCode.Ok, 0); }
+            if (!users.Any()) { return (ResponseCode.Ok, 0, new List<AzureADUser>()); }
 
             var queuedBatches = new ConcurrentQueue<ChunkOfUsers>(
                     ChunksOfSize(users, requestMax) // Chop up the users into chunks of how many per graph request (20 for add, 1 for remove)
-                    .Select(x => new ChunkOfUsers { ToSend = x, Id = GetNewChunkId() }));
+                    .Select(x => new ChunkOfUsers
+                    {
+                        ToSend = x,
+                        Id = x[0].MembershipAction == MembershipAction.Add ? GetNewChunkId() : x[0].ObjectId.ToString()
+                    }));
 
             var responses = await Task.WhenAll(Enumerable.Range(0, ConcurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize)));
 
             var status = responses.Any(x => x.ResponseCode == ResponseCode.Error) ? ResponseCode.Error : ResponseCode.Ok;
-            return (status, responses.Sum(x => x.SuccessCount));
+            return (status, responses.Sum(x => x.SuccessCount), usersNotFound);
         }
 
         private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessQueue(ConcurrentQueue<ChunkOfUsers> queue, MakeBulkRequest makeRequest, int threadNumber, int batchSize)
@@ -540,23 +840,17 @@ namespace Repositories.GraphGroups
                     if (chunkToRetry.ShouldRetry)
                     {
                         // Not found
-                        if (chunkToRetry.ToSend.Count > 1
-                            && !string.IsNullOrWhiteSpace(idToRetry.AzureObjectId))
+                        if (!string.IsNullOrWhiteSpace(idToRetry.AzureObjectId))
                         {
                             var notFoundUser = chunkToRetry.ToSend.FirstOrDefault(x => x.ObjectId.ToString().Equals(idToRetry.AzureObjectId, StringComparison.InvariantCultureIgnoreCase));
                             if (notFoundUser != null)
                             {
                                 chunkToRetry.ToSend.Remove(notFoundUser);
+                            }
 
-                                var notFoundChunk = new ChunkOfUsers
-                                {
-                                    Id = GetNewChunkId(),
-                                    ToSend = new List<AzureADUser> { notFoundUser }
-                                };
-
-                                requeued++;
-                                queue.Enqueue(notFoundChunk.UpdateIdForRetry(threadNumber));
-                                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Queued {notFoundChunk.Id} from {chunkToRetry.Id}", RunId = RunId });
+                            if (chunkToRetry.ToSend.Count == 1 && chunkToRetry.ToSend[0].MembershipAction == MembershipAction.Remove)
+                            {
+                                continue;
                             }
                         }
 
@@ -627,7 +921,7 @@ namespace Repositories.GraphGroups
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sending requests {string.Join(",", tosend.BatchRequestSteps.Keys)}.", RunId = RunId });
 
                 var response = await _graphServiceClient.Batch.Request().PostAsync(tosend);
-                return GetStepIdsToRetry(await response.GetResponsesAsync());
+                return GetStepIdsToRetry(await response.GetResponsesAsync(), (Dictionary<string, BatchRequestStep>)tosend.BatchRequestSteps);
             }
             catch (ServiceException ex)
             {
@@ -653,8 +947,9 @@ namespace Repositories.GraphGroups
             };
 
         private static readonly Regex _userNotFound = new Regex(@"Resource '(?<id>[({]?[a-fA-F0-9]{8}[-]?([a-fA-F0-9]{4}[-]?){3}[a-fA-F0-9]{12}[})]?)' does not exist", RegexOptions.IgnoreCase);
+        private List<AzureADUser> usersNotFound = new List<AzureADUser>();
 
-        private async IAsyncEnumerable<RetryResponse> GetStepIdsToRetry(Dictionary<string, HttpResponseMessage> responses)
+        private async IAsyncEnumerable<RetryResponse> GetStepIdsToRetry(Dictionary<string, HttpResponseMessage> responses, Dictionary<string, BatchRequestStep> requests)
         {
             bool beenThrottled = false;
 
@@ -686,12 +981,6 @@ namespace Repositories.GraphGroups
                 if (status == HttpStatusCode.BadRequest && IsOkayError(content)) { }
                 else if (status == HttpStatusCode.NotFound && (content).Contains("does not exist or one of its queried reference-property objects are not present."))
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Regex Expression: {_userNotFound} and Content: {content}",
-                        RunId = RunId
-                    });
-
                     var match = _userNotFound.Match(content);
                     var userId = default(string);
 
@@ -703,6 +992,29 @@ namespace Repositories.GraphGroups
                             Message = $"User ID is found",
                             RunId = RunId
                         });
+
+                        var requestStep = requests[kvp.Key];
+
+                        if (requestStep.Request.Method == HttpMethod.Delete)
+                        {
+                            await _loggingRepository.LogMessageAsync(new LogMessage
+                            {
+                                Message = $"Removing {requestStep.RequestId} failed as this resource does not exit",
+                                RunId = RunId
+                            });
+
+                            usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(requestStep.RequestId) });
+                        }
+                        else
+                        {
+                            await _loggingRepository.LogMessageAsync(new LogMessage
+                            {
+                                Message = $"Adding {userId} failed as this resource does not exit",
+                                RunId = RunId
+                            });
+
+                            usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(userId) });
+                        }
                     }
 
                     else
@@ -716,14 +1028,14 @@ namespace Repositories.GraphGroups
                         yield return new RetryResponse
                         {
                             RequestId = kvp.Key,
-                            ResponseCode = ResponseCode.Ok
+                            ResponseCode = ResponseCode.IndividualRetry
                         };
                     }
 
                     yield return new RetryResponse
                     {
                         RequestId = kvp.Key,
-                        ResponseCode = ResponseCode.Ok,
+                        ResponseCode = ResponseCode.IndividualRetry,
                         AzureObjectId = userId
                     };
 
@@ -932,15 +1244,35 @@ namespace Repositories.GraphGroups
         private AsyncRetryPolicy GetRetryPolicy()
         {
             var retryLimit = 4;
-            var retryPolicy = Policy.Handle<ServiceException>()
+            var timeOutRetryLimit = 2;
+            var currentRetryIndex = 0;
+            var retryPolicy = Policy.Handle<ServiceException>(ex =>
+            {
+                if (ex.Message != null
+                    && ex.Message.Contains("The request timed out")
+                    && currentRetryIndex >= timeOutRetryLimit)
+                {
+                    return false;
+                }
+
+                return true;
+            })
                     .WaitAndRetryAsync(
                        retryCount: retryLimit,
                        retryAttempt => TimeSpan.FromMinutes(2),
-                       onRetry: async (ex, waitTime, currentRetry, context) =>
+                       onRetry: async (ex, waitTime, retryIndex, context) =>
                        {
+                           currentRetryIndex = retryIndex;
+
+                           var currentLimit = retryLimit;
+                           if (ex.Message != null && ex.Message.Contains("The request timed out"))
+                           {
+                               currentLimit = timeOutRetryLimit;
+                           }
+
                            await _loggingRepository.LogMessageAsync(new LogMessage
                            {
-                               Message = $"Got a transient exception. Retrying. This was try {currentRetry} out of {retryLimit}.\n{ex}"
+                               Message = $"Got a transient exception. Retrying. This was try {retryIndex} out of {currentLimit}.\n{ex}"
                            });
                        }
                     );

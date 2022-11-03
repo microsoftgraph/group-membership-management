@@ -19,11 +19,8 @@ namespace Services
         public Task<Dictionary<Guid, double>> GetRuntimesInSeconds(List<Guid> groupIds)
         {
             Dictionary<Guid, double> runtimes = new Dictionary<Guid, double>();
-            foreach(Guid groupId in groupIds)
-            {
-                if(!runtimes.ContainsKey(groupId))
-                    runtimes.Add(groupId, DEFAULT_RUNTIME_SECONDS);
-            }
+            
+            runtimes.Add(Guid.Empty, DEFAULT_RUNTIME_SECONDS);
 
             return Task.FromResult(runtimes);
         }

@@ -17,8 +17,8 @@ param location string
 @minLength(1)
 param servicePlanName string
 
-@description('Array of key vault references to be set in app settings')
-param secretSettings array
+@description('app settings')
+param secretSettings object
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string
@@ -35,6 +35,7 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
     clientAffinityEnabled: false
     httpsOnly: true
     siteConfig: {
+      use32BitWorkerProcess : false
       appSettings: secretSettings
     }
   }
@@ -53,11 +54,23 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         name: 'nonProdServiceUrl'
         value: 'https://${functionApp.properties.defaultHostName}'
       }
-      {
-        name: 'nonProdServiceKey'
-        value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
-      }
     ]
+  }
+}
+
+module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
+  name: 'secureSecretsTemplate-NonProdService'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultSecrets: {
+      secrets: [
+        { 
+          name: 'nonProdServiceKey'
+          value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
+        }
+      ]
+    }
   }
 }
 
@@ -68,12 +81,12 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
     appSettingNames: [
       'AzureFunctionsJobHost__extensions__durableTask__hubName'
       'AzureWebJobs.StarterFunction.Disabled'
-      'AzureWebJobs.OrchestratorFunction.Disabled'  
-      'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled'     
+      'AzureWebJobs.OrchestratorFunction.Disabled'
+      'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled'
       'AzureWebJobs.GroupCreatorAndRetrieverFunction.Disabled'
       'AzureWebJobs.GroupUpdaterFunction.Disabled'
       'AzureWebJobs.LoggerFunction.Disabled'
-      'AzureWebJobs.TenantUserReaderFunction.Disabled'          
+      'AzureWebJobs.TenantUserReaderFunction.Disabled'
     ]
   }
 }

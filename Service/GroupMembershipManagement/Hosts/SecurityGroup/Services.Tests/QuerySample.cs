@@ -12,13 +12,19 @@ namespace Tests.Services
 
         public string GetQuery()
         {
-            var allParts = QueryParts.Select(x => $"{{'type':'{x.Type}','sources': [{string.Join(",", x.SourceIds.Select(id => $"'{id}'"))}]}}");
-            return $"[{string.Join(",", allParts)}]";
+            var parts = string.Join(",", QueryParts.OrderBy(x => x.Index).Select(x => GetPartQuery(x.Index)));
+            return $"[{parts}]";
         }
 
-        public string GetSourceIds(int partIndex)
+        private string GetPartQuery(int partIndex)
         {
-            return string.Join(";", QueryParts[partIndex].SourceIds);
+            var queryPart = QueryParts.First(x => x.Index == partIndex);
+            return $"{{'type':'{queryPart.Type}','source': '{queryPart.SourceId}'}}";
+        }
+
+        public Guid GetSourceId(int partIndex)
+        {
+            return QueryParts.First(x => x.Index == partIndex).SourceId;
         }
 
         public static QuerySample GenerateQuerySample(string syncType, int numberOfParts = 2)
@@ -30,9 +36,8 @@ namespace Tests.Services
                 {
                     Index = i,
                     Type = syncType,
-                    SourceIds = Enumerable.Range(0, 3).Select(x => Guid.NewGuid()).ToList()
+                    SourceId = Guid.NewGuid()
                 });
-
             }
 
             return sampleQuery;
@@ -43,6 +48,7 @@ namespace Tests.Services
     {
         public int Index { get; set; }
         public string Type { get; set; }
-        public List<Guid> SourceIds { get; set; }
+        public Guid SourceId { get; set; }
+        public bool IsDestinationPart { get; set; }
     }
 }

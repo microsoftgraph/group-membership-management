@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Repositories.Contracts;
+using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -62,7 +63,7 @@ namespace Services.Tests
             _membershipSubOrchestratorResponse = new MembershipSubOrchestratorResponse
             {
                 FilePath = "http://file-path",
-                MembershipDeltaStatus = Entities.MembershipDeltaStatus.Ok
+                MembershipDeltaStatus = MembershipDeltaStatus.Ok
             };
 
             _durableHttpResponse = new DurableHttpResponse(System.Net.HttpStatusCode.NoContent);
@@ -109,7 +110,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestJobWithSinglePartAsync()
         {
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
@@ -124,7 +125,7 @@ namespace Services.Tests
         {
             _membershipAggregatorHttpRequest.PartsCount = 2;
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
@@ -139,7 +140,7 @@ namespace Services.Tests
         {
             _membershipAggregatorHttpRequest.IsDestinationPart = true;
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             Assert.IsNotNull(_jobTrackerEntity.Object.JobState.DestinationPart);
@@ -155,7 +156,7 @@ namespace Services.Tests
         {
             _membershipSubOrchestratorResponse.MembershipDeltaStatus = Entities.MembershipDeltaStatus.Error;
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never);
@@ -169,7 +170,7 @@ namespace Services.Tests
         {
             _durableHttpResponse = new DurableHttpResponse(System.Net.HttpStatusCode.BadRequest);
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
@@ -188,7 +189,7 @@ namespace Services.Tests
                                                )
                             .Throws<FileNotFoundException>();
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
@@ -212,7 +213,7 @@ namespace Services.Tests
                                                )
                             .Throws<Exception>();
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());

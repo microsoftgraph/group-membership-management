@@ -268,8 +268,13 @@ namespace Services.Tests
             var jobs = await _jobTriggerService.GetSyncJobsAsync();
             foreach (var job in jobs)
             {
+                _jobTriggerService.RunId = job.RunId.Value;
                 var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
                 await _jobTriggerService.SendEmailAsync(job, groupName);
+
+                Assert.IsNotNull(_jobTriggerService.RunId);
+                Assert.IsNotNull(_graphGroupRepository.RunId);
+                Assert.AreEqual(_jobTriggerService.RunId, _graphGroupRepository.RunId);
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);

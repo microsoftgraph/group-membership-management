@@ -15,6 +15,8 @@ namespace Services.Entities
         public string ProjectedMemberCount { get; set; } = "N/A";
         public string MembersToAdd { get; set; } = "N/A";
         public string MembersToRemove { get; set; } = "N/A";
+        public string MembersAdded { get; set; } = "N/A";
+        public string MembersRemoved { get; set; } = "N/A";
         public string IsInitialSync { get; set; } = "N/A";
         public string Result { get; set; } = "N/A";
         public string SyncJobTimeElapsedSeconds { get; set; } = "N/A";

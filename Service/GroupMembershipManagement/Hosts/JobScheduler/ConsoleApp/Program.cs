@@ -1,15 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using System.Threading.Tasks;
 using Services;
 using Microsoft.ApplicationInsights.Extensibility;
 using Repositories.SyncJobsRepository;
-using Services.Entities;
-using Newtonsoft.Json;
 using Repositories.Logging;
 using DIConcreteTypes;
 using Services.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.Contracts;
 
 namespace JobScheduler
 {
@@ -21,7 +21,8 @@ namespace JobScheduler
 
             // Injections
             var logAnalyticsSecret = new LogAnalyticsSecret<LoggingRepository>(appSettings.LogAnalyticsCustomerId, appSettings.LogAnalyticsPrimarySharedKey, "JobScheduler");
-            var loggingRepository = new LoggingRepository(logAnalyticsSecret);
+            var appConfigVerbosity = new AppConfigVerbosity { Verbosity = VerbosityLevel.INFO };
+            var loggingRepository = new LoggingRepository(logAnalyticsSecret, appConfigVerbosity);
             var syncJobRepository = new SyncJobRepository(appSettings.JobsStorageAccountConnectionString, appSettings.JobsTableName, loggingRepository);
 
 
@@ -41,7 +42,6 @@ namespace JobScheduler
             var runtimeRetrievalService = new DefaultRuntimeRetrievalService(jobSchedulerConfig.DefaultRuntimeSeconds);
 
             IJobSchedulingService jobSchedulingService = new JobSchedulingService(
-                jobSchedulerConfig,
                 syncJobRepository,
                 runtimeRetrievalService,
                 loggingRepository

@@ -17,8 +17,8 @@ param location string
 @minLength(1)
 param servicePlanName string
 
-@description('Array of key vault references to be set in app settings')
-param secretSettings array
+@description('app settings')
+param secretSettings object
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string
@@ -55,16 +55,29 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: 'https://${functionApp.properties.defaultHostName}/api/StarterFunction'
       }
       {
-        name: 'graphUpdaterFunctionKey'
-        value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
-      }
-      {
         name: 'graphUpdaterFunctionName'
         value: '${name}-GraphUpdater'
-      }      
+      }
     ]
   }
 }
+
+module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
+  name: 'secureSecretsTemplate-GraphUpdater'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultSecrets: {
+      secrets: [
+        { 
+          name: 'graphUpdaterFunctionKey'
+          value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
+        }
+      ]
+    }
+  }
+}
+
 
 resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
   name: 'slotConfigNames'

@@ -34,7 +34,7 @@ internal static class GraphClientExtensions
 
         services.AddScoped<IAuthenticationProvider, GraphAuthenticationProvider>();
         services.AddScoped<IHttpProvider, HttpClientHttpProvider>(sp => new HttpClientHttpProvider(new HttpClient()));
-        services.AddScoped(sp => new GraphServiceClient(
+        services.AddScoped<GraphServiceClient>(sp => new GraphServiceClient(
               sp.GetRequiredService<IAuthenticationProvider>(),
               sp.GetRequiredService<IHttpProvider>()));
         return services;

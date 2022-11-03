@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Services.Entities;
-using System;
+
+using Azure;
+using Entities;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -9,9 +10,9 @@ namespace Services.Contracts
 {
     public interface IJobSchedulingService
     {
-        public Task<List<SchedulerSyncJob>> GetAllSyncJobsAsync(bool includeFutureStartDates);
-        public Task<List<SchedulerSyncJob>> GetJobsToUpdateAsync();
-        public Task ResetJobsAsync(List<SchedulerSyncJob> jobs);
-        public Task DistributeJobsAsync(List<SchedulerSyncJob> jobs);
+        public Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, bool includeFutureJobs);
+        public Task<List<DistributionSyncJob>> ResetJobsAsync(List<DistributionSyncJob> jobs, int daysToAddForReset, bool includeFutureJobs);
+        public Task<List<DistributionSyncJob>> DistributeJobsAsync(List<DistributionSyncJob> jobs, int startTimeDelayMinutes, int delayBetweenSyncsSeconds);
+        public Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> updatedSyncJobs);
     }
 }

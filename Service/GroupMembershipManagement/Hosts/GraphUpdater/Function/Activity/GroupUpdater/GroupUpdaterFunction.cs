@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.GraphUpdater
@@ -24,11 +25,14 @@ namespace Hosts.GraphUpdater
         }
 
         [FunctionName(nameof(GroupUpdaterFunction))]
-        public async Task<int> UpdateGroupAsync([ActivityTrigger] GroupUpdaterRequest request)
+        public async Task<GroupUpdaterResponse> UpdateGroupAsync([ActivityTrigger] GroupUpdaterRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
+            _graphUpdaterService.RunId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+
             var successCount = 0;
+            var usersNotFound = new List<AzureADUser>();
 
             if (request.Type == RequestType.Add)
             {
@@ -36,6 +40,8 @@ namespace Hosts.GraphUpdater
                     request.Members, request.SyncJob.TargetOfficeGroupId, request.SyncJob.RunId.GetValueOrDefault(), request.IsInitialSync);
 
                 successCount = addUsersToGraphResponse.SuccessCount;
+                usersNotFound = addUsersToGraphResponse.UsersNotFound;
+
             }
             else
             {
@@ -43,11 +49,16 @@ namespace Hosts.GraphUpdater
                     request.Members, request.SyncJob.TargetOfficeGroupId, request.SyncJob.RunId.GetValueOrDefault(), request.IsInitialSync);
 
                 successCount = removeUsersFromGraphResponse.SuccessCount;
+                usersNotFound = removeUsersFromGraphResponse.UsersNotFound;
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
-            return successCount;
+            return new GroupUpdaterResponse()
+                {
+                    SuccessCount = successCount,
+                    UsersNotFound = usersNotFound
+                };
         }
     }
 }

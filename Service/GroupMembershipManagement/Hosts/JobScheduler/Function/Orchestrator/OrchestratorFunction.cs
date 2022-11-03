@@ -5,7 +5,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Services.Entities;
+using Entities;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -35,23 +35,78 @@ namespace Hosts.JobScheduler
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
-            var jobsToUpdate = await context.CallActivityAsync<List<SchedulerSyncJob>>(nameof(GetJobsToUpdateFunction), null);
+            var orchestratorRequest = context.GetInput<OrchestratorRequest>();
+            if(orchestratorRequest != null)
+            {
+                _jobSchedulerConfig.StartTimeDelayMinutes = orchestratorRequest.StartTimeDelayMinutes;
+            }
+
+            if(!_jobSchedulerConfig.ResetJobs && !_jobSchedulerConfig.DistributeJobs)
+            {
+
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        RunId = runId,
+                        Message = $"{nameof(OrchestratorFunction)} function completed immediately at: {context.CurrentUtcDateTime} due to Reset and Distribute set to false"
+                    });
+
+                return;
+            }
+
+            var jobsToUpdate = await context.CallSubOrchestratorAsync<List<DistributionSyncJob>>(nameof(GetJobsSubOrchestratorFunction), null);
+
+            List<DistributionSyncJob> jobsWithUpdates = null;
 
             if (_jobSchedulerConfig.ResetJobs)
             {
-                await context.CallActivityAsync(nameof(ResetJobsFunction),
+                jobsWithUpdates = await context.CallActivityAsync<List<DistributionSyncJob>>(nameof(ResetJobsFunction),
                     new ResetJobsRequest
                     {
-                        JobsToReset = jobsToUpdate
+                        JobsToReset = jobsToUpdate,
+                        DaysToAddForReset = _jobSchedulerConfig.DaysToAddForReset,
+                        IncludeFutureJobs = _jobSchedulerConfig.IncludeFutureJobs
+                    });
+
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        RunId = runId,
+                        Message = $"Successfully reset jobs to update."
                     });
             }
 
-            if (_jobSchedulerConfig.DistributeJobs)
+            else if (_jobSchedulerConfig.DistributeJobs)
             {
-                await context.CallActivityAsync(nameof(DistributeJobsFunction),
+                jobsWithUpdates = await context.CallActivityAsync<List<DistributionSyncJob>>(nameof(DistributeJobsFunction),
                     new DistributeJobsRequest
                     {
-                        JobsToDistribute = jobsToUpdate
+                        JobsToDistribute = jobsToUpdate,
+                        StartTimeDelayMinutes = _jobSchedulerConfig.StartTimeDelayMinutes,
+                        DelayBetweenSyncsSeconds = _jobSchedulerConfig.DelayBetweenSyncsSeconds
+                    });
+
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        RunId = runId,
+                        Message = $"Successfully distributed jobs to update."
+                    });
+            }
+
+            if (jobsWithUpdates != null && jobsWithUpdates.Count > 0)
+            {
+                await context.CallSubOrchestratorAsync(nameof(UpdateJobsSubOrchestratorFunction),
+                    new UpdateJobsSubOrchestratorRequest
+                    {
+                        JobsToUpdate = jobsWithUpdates
+                    });
+
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        RunId = runId,
+                        Message = $"Successfully updated all jobs accordingly."
                     });
             }
 

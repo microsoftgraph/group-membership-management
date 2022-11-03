@@ -37,7 +37,7 @@ steps:
     overrideParameters: -environmentAbbreviation "${{parameters.environmentAbbreviation}}"
                         -tenantId "${{parameters.tenantId}}"
                         -location "${{parameters.location}}"
-                        -solutionAbbreviation "${{parameters.solutionAbbreviation}}" 
+                        -solutionAbbreviation "${{parameters.solutionAbbreviation}}"
                         -storageAccountName "$(data_storageAccountName)"
     deploymentMode: 'Incremental'
 
@@ -64,7 +64,6 @@ steps:
     resourceGroupName: ${{parameters.solutionAbbreviation}}-compute-${{parameters.environmentAbbreviation}}
     sourceSlot: staging
     swapWithProduction: true
-  condition: notIn('${{ parameters.environmentAbbreviation }}', 'ua', 'prodv2')
 
 # This sets the "Enforce Scale Out Limit" in the function app configuration. This is apparently the only way to do it automatically. ARM templates don't support it.
 # https://docs.microsoft.com/en-us/azure/azure-functions/event-driven-scaling#limit-scale-out

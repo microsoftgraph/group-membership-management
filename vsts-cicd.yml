@@ -42,19 +42,19 @@ stages:
        coverageThreshold: 89
     - function:
        name: 'GraphUpdater'
-       coverageThreshold: 77
+       coverageThreshold: 75
     - function:
        name: 'SecurityGroup'
-       coverageThreshold: 94
+       coverageThreshold: 89
     - function:
-        name: 'AzureTableBackup'
+        name: 'AzureMaintenance'
         coverageThreshold: 95
     - function:
         name: 'AzureUserReader'
         coverageThreshold: 45
     - function:
         name: 'JobScheduler'
-        coverageThreshold: 60
+        coverageThreshold: 48
     - function:
         name: 'MembershipAggregator'
         coverageThreshold: 85
@@ -70,7 +70,7 @@ stages:
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
     dependsOn: Build_Functions
     stageName: 'NonProd_int'
-    functionApps:            
+    functionApps:
     - function:
        name: 'NonProdService'
     - function:
@@ -80,13 +80,13 @@ stages:
        dependsOn:
        - 'GraphUpdater'
     - function:
-       name: 'AzureUserReader'    
+       name: 'AzureUserReader'
     - function:
        name: 'SecurityGroup'
        dependsOn:
        - 'MembershipAggregator'
     - function:
-       name: 'AzureTableBackup'
+       name: 'AzureMaintenance'
     - function:
        name: 'JobScheduler'
     - function:
@@ -121,13 +121,13 @@ stages:
        dependsOn:
        - 'GraphUpdater'
     - function:
-       name: 'AzureUserReader'    
+       name: 'AzureUserReader'
     - function:
        name: 'SecurityGroup'
        dependsOn:
        - 'MembershipAggregator'
     - function:
-       name: 'AzureTableBackup'
+       name: 'AzureMaintenance'
     - function:
        name: 'JobScheduler'
     - function:
@@ -161,13 +161,13 @@ stages:
        dependsOn:
        - 'GraphUpdater'
     - function:
-       name: 'AzureUserReader'    
+       name: 'AzureUserReader'
     - function:
        name: 'SecurityGroup'
        dependsOn:
        - 'MembershipAggregator'
     - function:
-       name: 'AzureTableBackup'
+       name: 'AzureMaintenance'
     - function:
        name: 'JobScheduler'
     - function:

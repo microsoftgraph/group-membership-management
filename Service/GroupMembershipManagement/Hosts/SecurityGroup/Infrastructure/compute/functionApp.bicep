@@ -17,8 +17,8 @@ param location string
 @minLength(1)
 param servicePlanName string
 
-@description('Array of key vault references to be set in app settings')
-param secretSettings array
+@description('app settings')
+param secretSettings object
 
 resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
   name: name
@@ -49,10 +49,17 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.StarterFunction.Disabled'
       'AzureWebJobs.OrchestratorFunction.Disabled'
       'AzureWebJobs.SubOrchestratorFunction.Disabled'
+      'AzureWebJobs.DeltaUsersReaderFunction.Disabled'
+      'AzureWebJobs.DeltaUsersSenderFunction.Disabled'
       'AzureWebJobs.EmailSenderFunction.Disabled'
+      'AzureWebJobs.FileDownloaderFunction.Disabled'
+      'AzureWebJobs.GroupsReaderFunction.Disabled'
       'AzureWebJobs.GroupValidatorFunction.Disabled'
       'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
+      'AzureWebJobs.MembersReaderFunction.Disabled'
       'AzureWebJobs.SourceGroupsReaderFunction.Disabled'
+      'AzureWebJobs.SubsequentDeltaUsersReaderFunction.Disabled'
+      'AzureWebJobs.SubsequentMembersReaderFunction.Disabled'
       'AzureWebJobs.SubsequentUsersReaderFunction.Disabled'
       'AzureWebJobs.UsersReaderFunction.Disabled'
       'AzureWebJobs.UsersSenderFunction.Disabled'

@@ -1,8 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
+using Azure;
+using Azure.Data.Tables;
 using Entities;
-using Microsoft.Azure.Cosmos.Table;
-using Microsoft.Azure.Cosmos.Table.Queryable;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
@@ -13,69 +14,117 @@ namespace Repositories.SyncJobsRepository
 {
     public class SyncJobRepository : ISyncJobRepository
     {
-        private readonly CloudStorageAccount _cloudStorageAccount = null;
-        private readonly CloudTableClient _tableClient = null;
-        private readonly string _syncJobsTableName = null;
+        private readonly TableClient _tableClient = null;
         private readonly ILoggingRepository _log;
 
         public SyncJobRepository(string connectionString, string syncJobTableName, ILoggingRepository logger)
         {
-            _syncJobsTableName = syncJobTableName;
             _log = logger;
-            _cloudStorageAccount = CreateStorageAccountFromConnectionString(connectionString);
-            _tableClient = _cloudStorageAccount.CreateCloudTableClient(new TableClientConfiguration());
-            _tableClient.GetTableReference(syncJobTableName).CreateIfNotExists();
+            _tableClient = new TableClient(connectionString, syncJobTableName);
         }
 
         public async Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey)
         {
-            var table = _tableClient.GetTableReference(_syncJobsTableName);
-            var result = await table.ExecuteAsync(TableOperation.Retrieve<SyncJob>(partitionKey, rowKey));
+            var result = await _tableClient.GetEntityAsync<SyncJob>(partitionKey, rowKey);
 
-            if (result.HttpStatusCode != 404)
-                return result.Result as SyncJob;
+            if (result.GetRawResponse().Status != 404)
+                return result.Value;
 
             return null;
         }
 
-        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool applyFilters = true)
+        public AsyncPageable<SyncJob> GetPageableQueryResult(
+            SyncStatus status = SyncStatus.All,
+            bool includeFutureJobs = false)
         {
-            var syncJobs = new List<SyncJob>();
-            var table = _tableClient.GetTableReference(_syncJobsTableName);
-            var linqQuery = table.CreateQuery<SyncJob>().AsQueryable();
-
-            if (status != SyncStatus.All)
+            if (status == SyncStatus.All && includeFutureJobs)
             {
-                linqQuery = linqQuery.Where(x => x.Status == status.ToString());
+                return _tableClient.QueryAsync<SyncJob>();
+            }
+            else if (status != SyncStatus.All && includeFutureJobs)
+            {
+                return _tableClient.QueryAsync<SyncJob>(job => job.Status == status.ToString());
+            }
+            else if (status == SyncStatus.All && !includeFutureJobs)
+            {
+                return _tableClient.QueryAsync<SyncJob>(job => job.StartDate <= DateTime.UtcNow);
+            }
+            else
+            {
+                return _tableClient.QueryAsync<SyncJob>(job => job.Status == status.ToString() && job.StartDate <= DateTime.UtcNow);
+            }
+        }
+
+        public async Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(
+            AsyncPageable<SyncJob> pageableQueryResult,
+            string continuationToken,
+            bool applyFilters = true)
+        {
+            var bulkSegment = new TableSegmentBulkResult<DistributionSyncJob>
+            {
+                Results = new List<DistributionSyncJob>()
+            };
+
+            var index = 0;
+            var SEGMENT_BATCHSIZE = 100;
+
+            var pageableResult = pageableQueryResult.AsPages(continuationToken);
+            var pageEnumerator = pageableResult.GetAsyncEnumerator();
+
+            await pageEnumerator.MoveNextAsync();
+
+            try
+            {
+                do
+                {
+                    var segmentResult = pageEnumerator.Current;
+                    var filteredResults = applyFilters ? ApplyFiltersToResults(segmentResult.Values) : segmentResult.Values;
+                    var filteredDistributionSyncJobs = filteredResults.Select(job => new DistributionSyncJob(job));
+                    bulkSegment.Results.AddRange(filteredDistributionSyncJobs);
+                    continuationToken = segmentResult.ContinuationToken;
+
+                    await pageEnumerator.MoveNextAsync();
+                    index++;
+                }
+                while (continuationToken != null && index < SEGMENT_BATCHSIZE);
+            }
+            finally
+            {
+                await pageEnumerator.DisposeAsync();
             }
 
-            TableContinuationToken continuationToken = null;
-            do
+            bulkSegment.ContinuationToken = continuationToken;
+
+            return bulkSegment;
+        }
+
+        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool applyFilters = true)
+        {
+            var queryResult = status == SyncStatus.All ?
+            _tableClient.QueryAsync<SyncJob>() :
+            _tableClient.QueryAsync<SyncJob>(x => x.Status == status.ToString());
+
+            await foreach (var segmentResult in queryResult.AsPages())
             {
-                var segmentResult = await table.ExecuteQuerySegmentedAsync(linqQuery.AsTableQuery(), continuationToken);
-                continuationToken = segmentResult.ContinuationToken;
+                if (segmentResult.Values.Count == 0)
+                    await _log.LogMessageAsync(new LogMessage { Message = $"Warning: Number of enabled jobs in your sync jobs table is: {segmentResult.Values.Count}. Please confirm this is the case.", RunId = Guid.Empty });
 
-                if (segmentResult.Results.Count == 0)
-                    await _log.LogMessageAsync(new LogMessage { Message = $"Warning: Number of enabled jobs in your sync jobs table is: {segmentResult.Results.Count}. Please confirm this is the case.", RunId = Guid.Empty });
-
-                var results = applyFilters ? ApplyFilters(segmentResult.Results) : segmentResult.Results;
+                var results = applyFilters ? ApplyFiltersToResults(segmentResult.Values) : segmentResult.Values;
 
                 foreach (var job in results)
                 {
                     yield return job;
                 }
-
-            } while (continuationToken != null);
+            }
         }
 
         public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(IEnumerable<(string partitionKey, string rowKey)> jobIds)
         {
-            var table = _tableClient.GetTableReference(_syncJobsTableName);
 
             foreach (var (partitionKey, rowKey) in jobIds)
             {
-                var tableResult = await table.ExecuteAsync(TableOperation.Retrieve<SyncJob>(partitionKey, rowKey));
-                yield return tableResult.Result as SyncJob;
+                var tableResult = await _tableClient.GetEntityAsync<SyncJob>(partitionKey, rowKey);
+                yield return tableResult.Value;
             }
         }
 
@@ -93,8 +142,6 @@ namespace Repositories.SyncJobsRepository
         public async Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null)
         {
             var batchSize = 100;
-            var currentSize = 0;
-            var table = _tableClient.GetTableReference(_syncJobsTableName);
             var groupedJobs = jobs.GroupBy(x => x.PartitionKey);
 
             await _log.LogMessageAsync(new LogMessage { Message = $"Number of grouped jobs: {groupedJobs.Count()}", RunId = Guid.Empty });
@@ -102,7 +149,7 @@ namespace Repositories.SyncJobsRepository
 
             foreach (var group in groupedJobs)
             {
-                var batchOperation = new TableBatchOperation();
+                var batchOperation = new List<TableTransactionAction>();
 
                 foreach (var job in group.AsEnumerable())
                 {
@@ -112,39 +159,62 @@ namespace Repositories.SyncJobsRepository
                         await _log.LogMessageAsync(new LogMessage { Message = $"Setting job status to {status} for job Rowkey:{job.RowKey}", RunId = job.RunId });
                     }
 
-                    job.ETag = "*";
+                    job.ETag = ETag.All;
 
-					await _log.LogMessageAsync(new LogMessage { Message = string.Join('\n', job.GetType().GetProperties().Select(jobProperty => $"{jobProperty.Name} : {jobProperty.GetValue(job, null)}")), RunId = job.RunId });
+                    await _log.LogMessageAsync(new LogMessage { Message = string.Join('\n', job.GetType().GetProperties().Select(jobProperty => $"{jobProperty.Name} : {jobProperty.GetValue(job, null)}")), RunId = job.RunId });
 
-					batchOperation.Add(TableOperation.Replace(job));
+					batchOperation.Add(new TableTransactionAction(TableTransactionActionType.UpdateReplace, job));
 
-                    if (++currentSize == batchSize)
+                    if (batchOperation.Count == batchSize)
                     {
-                        await table.ExecuteBatchAsync(batchOperation);
-                        batchOperation = new TableBatchOperation();
-                        currentSize = 0;
+                        await _tableClient.SubmitTransactionAsync(batchOperation);
+                        batchOperation.Clear();
                     }
                 }
 
                 if (batchOperation.Any())
                 {
-                    await table.ExecuteBatchAsync(batchOperation);
+                    await _tableClient.SubmitTransactionAsync(batchOperation);
                 }
             }
             await _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key completed", RunId = Guid.Empty });
         }
 
-        private IEnumerable<SyncJob> ApplyFilters(IEnumerable<SyncJob> jobs)
+        public async Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> jobs)
         {
-            var jobsWithPastStartDate = jobs.Where(x => x.StartDate <= DateTime.UtcNow);
-            var allNonDryRunSyncJobs = jobsWithPastStartDate.Where(x => ((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == false);
-            var allDryRunSyncJobs = jobsWithPastStartDate.Where(x => ((DateTime.UtcNow - x.DryRunTimeStamp) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == true);
-            return allNonDryRunSyncJobs.Concat(allDryRunSyncJobs);
+            var batchOperation = new List<TableTransactionAction>();
+
+            if(jobs.Count() > 100)
+            {
+                jobs = jobs.Take(100).ToList();
+
+                await _log.LogMessageAsync(new LogMessage
+                {
+                    Message = $"ERROR: This batch is more than 100, which is not supported by storage tables. Only the first 100 will be updated. Please fix the logic!",
+                    RunId = Guid.Empty
+                });
+            }
+
+            foreach (var job in jobs)
+            {
+                job.ETag = ETag.All;
+
+                await _log.LogMessageAsync(new LogMessage { Message = string.Join('\n', job.GetType().GetProperties().Select(jobProperty => $"{jobProperty.Name} : {jobProperty.GetValue(job, null)}")) }, VerbosityLevel.DEBUG);
+
+                batchOperation.Add(new TableTransactionAction(TableTransactionActionType.UpdateMerge, job));
+            }
+
+            if (batchOperation.Any())
+            {
+                await _tableClient.SubmitTransactionAsync(batchOperation);
+            }
         }
 
-        private CloudStorageAccount CreateStorageAccountFromConnectionString(string storageConnectionString)
+        private IEnumerable<SyncJob> ApplyFiltersToResults(IEnumerable<SyncJob> jobs)
         {
-            return CloudStorageAccount.Parse(storageConnectionString);
+            var allNonDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == false);
+            var allDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.DryRunTimeStamp) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == true);
+            return allNonDryRunSyncJobs.Concat(allDryRunSyncJobs);
         }
     }
 }

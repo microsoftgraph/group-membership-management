@@ -29,6 +29,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Entities", "..\..\..\Entiti
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.SyncJobs.Tests", "..\..\..\Repositories.SyncJobs.Tests\Repositories.SyncJobs.Tests.csproj", "{D95698EC-E7F5-4358-A187-F833431847AE}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.SyncJobRepository", "..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj", "{525A2156-B1A2-41BF-8C17-A0D935F820EA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Common.DependencyInjection", "..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj", "{DB696D98-A5C8-42E5-8A95-9C609C0701AA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mail", "..\..\..\Repositories.Mail\Repositories.Mail.csproj", "{C361FB18-4965-43C4-98FA-8A9CE466A29F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +89,18 @@ Global
 		{D95698EC-E7F5-4358-A187-F833431847AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D95698EC-E7F5-4358-A187-F833431847AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D95698EC-E7F5-4358-A187-F833431847AE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{525A2156-B1A2-41BF-8C17-A0D935F820EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{525A2156-B1A2-41BF-8C17-A0D935F820EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{525A2156-B1A2-41BF-8C17-A0D935F820EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{525A2156-B1A2-41BF-8C17-A0D935F820EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB696D98-A5C8-42E5-8A95-9C609C0701AA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB696D98-A5C8-42E5-8A95-9C609C0701AA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB696D98-A5C8-42E5-8A95-9C609C0701AA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB696D98-A5C8-42E5-8A95-9C609C0701AA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C361FB18-4965-43C4-98FA-8A9CE466A29F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C361FB18-4965-43C4-98FA-8A9CE466A29F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C361FB18-4965-43C4-98FA-8A9CE466A29F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C361FB18-4965-43C4-98FA-8A9CE466A29F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

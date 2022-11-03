@@ -1,7 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
+using Azure;
+using Azure.Data.Tables;
 using Entities.CustomAttributes;
-using Microsoft.Azure.Cosmos.Table;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -9,7 +12,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Entities
 {
     [ExcludeFromCodeCoverage]
-    public class SyncJob : TableEntity
+    public class SyncJob : ITableEntity
     {
         public SyncJob()
         {
@@ -20,6 +23,8 @@ namespace Entities
             PartitionKey = partitionKey;
             RowKey = rowKey;
         }
+        public string PartitionKey { get; set; }
+        public string RowKey { get; set; }
 
         public Guid? RunId { get; set; }
 
@@ -38,7 +43,13 @@ namespace Entities
         /// Last Run Time (UTC)
         /// </summary>
         [IgnoreLogging]
-        public DateTime LastRunTime { get; set; }
+        public DateTime LastRunTime { get; set; } = DateTime.FromFileTimeUtc(0); //azure table storage rejects default(DateTime), so set them to this on construction.
+
+        /// <summary>
+        /// Last Successful Run Time (UTC)
+        /// </summary>
+        [IgnoreLogging]
+        public DateTime LastSuccessfulRunTime { get; set; } = DateTime.FromFileTimeUtc(0);
 
         /// <summary>
         /// Period (hours)
@@ -52,7 +63,7 @@ namespace Entities
         /// Start Date (UTC)
         /// </summary>
         [IgnoreLogging]
-        public DateTime StartDate { get; set; }
+        public DateTime StartDate { get; set; } = DateTime.FromFileTimeUtc(0);
 
         /// <summary>
         /// Threshold percentage for users being added
@@ -97,6 +108,10 @@ namespace Entities
         /// </summary>
         [IgnoreLogging]
         public int ThresholdViolations { get; set; }
+        public DateTimeOffset? Timestamp { get; set; }
+
+        [JsonIgnore]
+        public ETag ETag { get; set; }
 
         public Dictionary<string, string> ToDictionary() =>
             DictionaryHelper.ToDictionary(this, new DictionaryHelper.Options

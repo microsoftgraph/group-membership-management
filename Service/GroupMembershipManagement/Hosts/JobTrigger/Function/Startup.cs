@@ -44,10 +44,10 @@ namespace Hosts.JobTrigger
             {
                 return new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value));
             })
-            .AddSingleton<IGraphGroupRepository, GraphGroupRepository>();
+            .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
             builder.Services.AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(new TopicClient(GetValueOrThrow("serviceBusConnectionString"), GetValueOrThrow("serviceBusSyncJobTopic"))));
-            builder.Services.AddSingleton<IJobTriggerService, JobTriggerService>();
+            builder.Services.AddScoped<IJobTriggerService, JobTriggerService>();
         }
 
         private bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)

@@ -47,12 +47,15 @@ namespace Hosts.SecurityGroup
         private const int NumberOfGraphRetries = 5;
         private AsyncRetryPolicy _graphRetryPolicy;
         private const string EmailSubject = "EmailSubject";
-
-        public AzureADGroup[] ReadSourceGroups(string ids)
+        private Guid _runId;
+        public Guid RunId
         {
-            return ids.Split(';').Select(x => Guid.TryParse(x, out var parsed) ? parsed : Guid.Empty)
-                                           .Where(x => x != Guid.Empty)
-                                           .Select(x => new AzureADGroup { ObjectId = x }).ToArray();
+            get { return _runId; }
+            set
+            {
+                _runId = value;
+                _graphGroupRepository.RunId = value;
+            }
         }
 
         public async Task<PolicyResult<bool>> GroupExistsAsync(Guid objectId, Guid runId)
@@ -71,26 +74,94 @@ namespace Hosts.SecurityGroup
             return await _graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(objectId));
         }
 
-        public async Task<(List<AzureADUser> users,
-                           Dictionary<string, int> nonUserGraphObjects,
-                           string nextPageUrl,
-                           IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetFirstUsersPageAsync(Guid objectId, Guid runId)
+        public async Task<DeltaGroupInformation> GetFirstDeltaUsersPageAsync(string deltaLink)
+        {
+            var result = await _graphGroupRepository.GetFirstDeltaUsersPageAsync(deltaLink);
+            return new DeltaGroupInformation
+            {
+                UsersToAdd = result.usersToAdd,
+                UsersToRemove = result.usersToRemove,
+                NextPageUrl = result.nextPageUrl,
+                DeltaUrl = result.deltaUrl,
+                UsersFromGroup = result.usersFromGroup
+
+            };
+        }
+
+        public async Task<DeltaGroupInformation> GetNextDeltaUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage page)
+        {
+            var result = await _graphGroupRepository.GetNextDeltaUsersPageAsync(nextPageUrl, page);
+            return new DeltaGroupInformation
+            {
+                UsersToAdd = result.usersToAdd,
+                UsersToRemove = result.usersToRemove,
+                NextPageUrl = result.nextPageUrl,
+                DeltaUrl = result.deltaUrl,
+                UsersFromGroup = result.usersFromGroup
+            };
+        }
+
+        public async Task<int> GetGroupsCountAsync(Guid objectId, Guid runId)
+        {
+            return await _graphGroupRepository.GetGroupsCountAsync(objectId);
+        }
+
+        public async Task<int> GetUsersCountAsync(Guid objectId)
+        {
+            return await _graphGroupRepository.GetUsersCountAsync(objectId);
+        }
+
+        public async Task<DeltaGroupInformation> GetFirstUsersPageAsync(Guid objectId, Guid runId)
         {
             await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {objectId}." });
             var result = await _graphGroupRepository.GetFirstUsersPageAsync(objectId);
-            return result;
+            return new DeltaGroupInformation
+            {
+                UsersToAdd = result.users,
+                NextPageUrl = result.nextPageUrl,
+                DeltaUrl = result.deltaUrl,
+                UsersFromGroup = result.usersFromGroup
+            };
         }
 
-        public async Task<(List<AzureADUser> users,
-                           Dictionary<string, int> nonUserGraphObjects,
-                           string nextPageUrl,
-                           IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)> GetNextUsersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)
+        public async Task<DeltaGroupInformation> GetNextUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage usersFromGroup)
         {
             var result = await _graphGroupRepository.GetNextUsersPageAsync(nextPageUrl, usersFromGroup);
-            return result;
+            return new DeltaGroupInformation
+            {
+                UsersToAdd = result.users,
+                NextPageUrl = result.nextPageUrl,
+                DeltaUrl = result.deltaUrl,
+                UsersFromGroup = result.usersFromGroup
+            };
         }
 
-        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<AzureADUser> allusers, int currentPart)
+        public async Task<GroupInformation> GetFirstTransitiveMembersPageAsync(Guid objectId, Guid runId)
+        {
+            await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {objectId}." });
+            var result = await _graphGroupRepository.GetFirstTransitiveMembersPageAsync(objectId);
+            return new GroupInformation
+            {
+                Users = result.users,
+                NonUserGraphObjects = result.nonUserGraphObjects,
+                NextPageUrl = result.nextPageUrl,
+                UsersFromGroup = result.usersFromGroup
+            };
+        }
+
+        public async Task<GroupInformation> GetNextTransitiveMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)
+        {
+            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(nextPageUrl, usersFromGroup);
+            return new GroupInformation
+            {
+                Users = result.users,
+                NonUserGraphObjects = result.nonUserGraphObjects,
+                NextPageUrl = result.nextPageUrl,
+                UsersFromGroup = result.usersFromGroup
+            };
+        }
+
+        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<AzureADUser> allusers, int currentPart, bool exclusionary)
         {
             var runId = syncJob.RunId.GetValueOrDefault();
             var groupMembership = new GroupMembership
@@ -98,16 +169,31 @@ namespace Hosts.SecurityGroup
                 SourceMembers = allusers ?? new List<AzureADUser>(),
                 Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
                 RunId = runId,
+                Exclusionary = exclusionary,
                 SyncJobRowKey = syncJob.RowKey,
                 SyncJobPartitionKey = syncJob.PartitionKey,
-                MembershipObtainerDryRunEnabled = _isSecurityGroupDryRunEnabled
+                MembershipObtainerDryRunEnabled = _isSecurityGroupDryRunEnabled,
+                Query = syncJob.Query
             };
 
-            var timeStamp = syncJob.Timestamp.ToString("MMddyyyy-HHmmss");
+            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
             var fileName = $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_SecurityGroup_{currentPart}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
 
             return fileName;
+        }
+
+        public async Task SaveDeltaUsersAsync(SyncJob syncJob, Guid id,  List<AzureADUser> users, string deltaLink)
+        {
+            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
+            var fileName = $"/cache/delta_{id}_{timeStamp}.json";
+            await _blobStorageRepository.UploadFileAsync(fileName, deltaLink);
+            var groupMembership = new GroupMembership
+            {
+                SourceMembers = users ?? new List<AzureADUser>()
+            };
+            var datafileName = $"/cache/{id}_{timeStamp}.json";
+            await _blobStorageRepository.UploadFileAsync(datafileName, JsonConvert.SerializeObject(groupMembership));
         }
 
         public async Task SendEmailAsync(SyncJob job, Guid runId, string content, string[] additionalContentParams)

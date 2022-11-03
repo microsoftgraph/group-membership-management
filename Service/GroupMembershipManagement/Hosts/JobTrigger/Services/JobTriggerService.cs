@@ -28,6 +28,17 @@ namespace Services
         private readonly IGMMResources _gmmResources;
         private readonly IJobTriggerConfig _jobTriggerConfig;
 
+        private Guid _runId;
+        public Guid RunId
+        {
+            get { return _runId; }
+            set
+            {
+                _runId = value;
+                _graphGroupRepository.RunId = value;
+            }
+        }
+
         public JobTriggerService(
             ILoggingRepository loggingRepository,
             ISyncJobRepository syncJobRepository,
@@ -107,14 +118,6 @@ namespace Services
             }
 
             await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
-
-            // Don't leak this to the start and stop logs.
-            // The logging repository has this SyncJobInfo property that gets appended to all the logs,
-            // to make it easier to log information like the run ID and so on without having to pass all that around.
-            // However, the same logging repository gets reused for the life of the program, which means that, without this line,
-            // it'll append that information to the logs that say "JobTrigger function started" and "JobTrigger function completed".
-
-            _loggingRepository.SyncJobProperties = null;
         }
 
         public async Task SendMessageAsync(SyncJob job)
@@ -157,9 +160,14 @@ namespace Services
         {
             if(_jobTriggerConfig.GMMHasGroupReadWriteAllPermissions)
                 return true;
-            
+
             var isAppIdOwner = await _graphGroupRepository.IsAppIDOwnerOfGroup(_gmmAppId, groupId);
             return isAppIdOwner;
+        }
+
+        public async Task<List<string>> GetGroupEndpointsAsync(Guid groupId)
+        {
+            return await _graphGroupRepository.GetGroupEndpointsAsync(groupId);
         }
 
         private class JobVerificationStrategy

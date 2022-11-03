@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Services.Contracts;
-using Services.Entities;
 using Services.Tests.Mocks;
 using System;
 using System.Collections.Generic;
@@ -20,7 +20,6 @@ namespace Services.Tests
         public int BUFFER_SECONDS = 10;
 
         private JobSchedulingService _jobSchedulingService = null;
-        private JobSchedulerConfig _jobSchedulerConfig = null;
         private MockSyncJobRepository _mockSyncJobRepository = null;
         private DefaultRuntimeRetrievalService _defaultRuntimeRetrievalService = null;
         private MockLoggingRepository _mockLoggingRepository = null;
@@ -32,9 +31,7 @@ namespace Services.Tests
             _defaultRuntimeRetrievalService = new DefaultRuntimeRetrievalService(DEFAULT_RUNTIME_SECONDS);
             _mockLoggingRepository = new MockLoggingRepository();
 
-            _jobSchedulerConfig = new JobSchedulerConfig(true, 0, true, false, START_TIME_DELAY_MINUTES, BUFFER_SECONDS, DEFAULT_RUNTIME_SECONDS); ;
             _jobSchedulingService = new JobSchedulingService(
-                _jobSchedulerConfig,
                 _mockSyncJobRepository,
                 _defaultRuntimeRetrievalService,
                 _mockLoggingRepository
@@ -44,14 +41,14 @@ namespace Services.Tests
         [TestMethod]
         public void ResetAllStartTimes()
         {
-            List<SchedulerSyncJob> jobs = CreateSampleSyncJobs(10, 1);
+            List<DistributionSyncJob> jobs = CreateSampleSyncJobs(10, 1);
             DateTime newStartTime = DateTime.UtcNow;
 
-            List<SchedulerSyncJob> updatedJobs = _jobSchedulingService.ResetJobStartTimes(jobs, newStartTime, false);
+            List<DistributionSyncJob> updatedJobs = _jobSchedulingService.ResetJobStartTimes(jobs, newStartTime, false);
 
             Assert.AreEqual(jobs.Count, updatedJobs.Count);
 
-            foreach (SchedulerSyncJob job in updatedJobs)
+            foreach (DistributionSyncJob job in updatedJobs)
             {
                 Assert.AreEqual(job.StartDate, newStartTime);
             }
@@ -61,16 +58,16 @@ namespace Services.Tests
         public void ResetOlderStartTimes()
         {
             DateTime newStartTime = DateTime.UtcNow.Date;
-            List<SchedulerSyncJob> jobs = CreateSampleSyncJobs(10, 1, newStartTime.AddDays(4));
+            List<DistributionSyncJob> jobs = CreateSampleSyncJobs(10, 1, newStartTime.AddDays(4));
 
-            List<SchedulerSyncJob> updatedJobs = _jobSchedulingService.ResetJobStartTimes(jobs, newStartTime, false);
+            List<DistributionSyncJob> updatedJobs = _jobSchedulingService.ResetJobStartTimes(jobs, newStartTime, false);
 
             Assert.AreEqual(jobs.Count, updatedJobs.Count);
 
             int startTimeUpdatedCount = 0;
             int startTimeNotUpdatedCount = 0;
 
-            foreach (SchedulerSyncJob job in updatedJobs)
+            foreach (DistributionSyncJob job in updatedJobs)
             {
                 if (job.StartDate == newStartTime)
                 {
@@ -89,9 +86,9 @@ namespace Services.Tests
         [TestMethod]
         public async Task ScheduleJobsNone()
         {
-            List<SchedulerSyncJob> jobs = new List<SchedulerSyncJob>();
+            List<DistributionSyncJob> jobs = new List<DistributionSyncJob>();
 
-            List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs);
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
 
             Assert.AreEqual(updatedJobs.Count, 0);
         }
@@ -100,8 +97,8 @@ namespace Services.Tests
         public async Task ScheduleJobsOne()
         {
             DateTime dateTimeNow = DateTime.UtcNow;
-            List<SchedulerSyncJob> jobs = CreateSampleSyncJobs(1, 1);
-            List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs);
+            List<DistributionSyncJob> jobs = CreateSampleSyncJobs(1, 1);
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
 
             Assert.AreEqual(updatedJobs.Count, 1);
             Assert.IsTrue(updatedJobs[0].StartDate > dateTimeNow);
@@ -111,9 +108,9 @@ namespace Services.Tests
         public async Task ScheduleJobsMultipleWithPriority()
         {
             DateTime dateTimeNow = DateTime.UtcNow;
-            List<SchedulerSyncJob> jobs = CreateSampleSyncJobs(10, 1, dateTimeNow.Date.AddDays(-20), dateTimeNow.Date);
+            List<DistributionSyncJob> jobs = CreateSampleSyncJobs(10, 1, dateTimeNow.Date.AddDays(-20), dateTimeNow.Date);
 
-            List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs);
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
 
             jobs.Sort();
             updatedJobs.Sort();
@@ -137,16 +134,15 @@ namespace Services.Tests
 
             JobSchedulerConfig jobSchedulerConfig = new JobSchedulerConfig(true, 0, true, false, START_TIME_DELAY_MINUTES, BUFFER_SECONDS, DEFAULT_RUNTIME_SECONDS); ;
             JobSchedulingService jobSchedulingService = new JobSchedulingService(
-                jobSchedulerConfig,
                 _mockSyncJobRepository,
                 longerDefaultRuntimeService,
                 _mockLoggingRepository
             );
 
             DateTime dateTimeNow = DateTime.UtcNow.Date;
-            List<SchedulerSyncJob> jobs = CreateSampleSyncJobs(10, 1, dateTimeNow.Date.AddDays(-20), dateTimeNow.Date);
+            List<DistributionSyncJob> jobs = CreateSampleSyncJobs(10, 1, dateTimeNow.Date.AddDays(-20), dateTimeNow.Date);
 
-            List<SchedulerSyncJob> updatedJobs = await jobSchedulingService.DistributeJobStartTimesAsync(jobs);
+            List<DistributionSyncJob> updatedJobs = await jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
 
             jobs.Sort();
             updatedJobs.Sort();
@@ -178,10 +174,10 @@ namespace Services.Tests
         public async Task ScheduleJobsWithTwoDifferentPeriods()
         {
             DateTime dateTimeNow = DateTime.UtcNow;
-            List<SchedulerSyncJob> jobs = CreateSampleSyncJobs(3, 1, dateTimeNow.Date.AddDays(-20), dateTimeNow.Date);
+            List<DistributionSyncJob> jobs = CreateSampleSyncJobs(3, 1, dateTimeNow.Date.AddDays(-20), dateTimeNow.Date);
             jobs.AddRange(CreateSampleSyncJobs(3, 24, dateTimeNow.Date.AddDays(-20), dateTimeNow.Date));
 
-            List<SchedulerSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs);
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
 
             jobs.Sort(new PeriodComparer());
             updatedJobs.Sort(new PeriodComparer());
@@ -204,21 +200,19 @@ namespace Services.Tests
             }
         }
 
-        private List<SchedulerSyncJob> CreateSampleSyncJobs(int numberOfJobs, int period, DateTime? startDateBase = null, DateTime? lastRunTimeBase = null)
+        private List<DistributionSyncJob> CreateSampleSyncJobs(int numberOfJobs, int period, DateTime? startDateBase = null, DateTime? lastRunTimeBase = null)
         {
-            var jobs = new List<SchedulerSyncJob>();
+            var jobs = new List<DistributionSyncJob>();
             DateTime StartDateBase = startDateBase ?? DateTime.UtcNow.AddDays(-1);
             DateTime LastRunTimeBase = lastRunTimeBase ?? DateTime.UtcNow.AddDays(-1);
 
             for (int i = 0; i < numberOfJobs; i++)
             {
-                var job = new SchedulerSyncJob
+                var job = new DistributionSyncJob
                 {
-                    Requestor = $"requestor_{i}@email.com",
                     PartitionKey = DateTime.UtcNow.ToString("MMddyyyy"),
                     RowKey = Guid.NewGuid().ToString(),
                     Period = period,
-                    Query = $"select * from users where id = '{i}'",
                     StartDate = StartDateBase.AddDays(-1 * i),
                     Status = SyncStatus.Idle.ToString(),
                     TargetOfficeGroupId = Guid.NewGuid(),
@@ -232,9 +226,9 @@ namespace Services.Tests
         }
     }
 
-    public class PeriodComparer : Comparer<SchedulerSyncJob>
+    public class PeriodComparer : Comparer<DistributionSyncJob>
     {
-        public override int Compare(SchedulerSyncJob x, SchedulerSyncJob y)
+        public override int Compare(DistributionSyncJob x, DistributionSyncJob y)
         {
             if (x.Period != y.Period)
             {

@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Entities
@@ -11,6 +12,10 @@ namespace Entities
 		public Guid ObjectId { get; set; }
 
         public MembershipAction? MembershipAction { get; set; }
+
+        public Guid SourceGroup { get; set; }
+
+        public List<Guid> SourceGroups { get; set; }
 
         public override bool Equals(object obj)
 		{

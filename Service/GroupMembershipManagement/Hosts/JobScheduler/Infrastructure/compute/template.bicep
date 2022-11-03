@@ -93,6 +93,8 @@ var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVa
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountConnectionString')
 var jobsTableName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsTableName')
+var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
+var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-JobScheduler'
@@ -104,90 +106,61 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   }
 }
 
-var appSettings = [
-  {
-    name: 'WEBSITE_ENABLE_SYNC_UPDATE_SITE'
-    value: 1
-  }
-  {
-    name: 'SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT'
-    value: 0
-  }
-  {
-    name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-    value: reference(resourceId(appInsightsResourceGroup, 'microsoft.insights/components/', appInsightsName), '2015-05-01').InstrumentationKey
-  }
-  {
-    name: 'AzureWebJobsStorage'
-    value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${listKeys(resourceId(storageAccountResourceGroup, 'Microsoft.Storage/storageAccounts', storageAccountName), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value}'
-  }
-  {
-    name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-    value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${listKeys(resourceId(storageAccountResourceGroup, 'Microsoft.Storage/storageAccounts', storageAccountName), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value}'
-  }
-  {
-    name: 'FUNCTIONS_WORKER_RUNTIME'
-    value: 'dotnet'
-  }
-  {
-    name: 'FUNCTIONS_EXTENSION_VERSION'
-    value: '~3'
-  }
-  {
-    name: 'jobSchedulerSchedule'
-    value: '0 0 0 * * Sun'
-  }
-  {
-    name: 'logAnalyticsCustomerId'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'logAnalyticsPrimarySharedKey'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'jobsStorageAccountConnectionString'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'jobsTableName'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'appConfigurationEndpoint'
-    value: appConfigurationEndpoint
-  }
-]
+var commonSettings = {
+  WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
+  WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
+  SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
+  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
+  FUNCTIONS_EXTENSION_VERSION: '~4'
+}
 
-var stagingSettings = [
-  {
-    name: 'WEBSITE_CONTENTSHARE'
-    value: toLower('functionApp-JobScheduler-staging')
-  }
-  {
-    name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
-    value: '${solutionAbbreviation}compute${environmentAbbreviation}JobSchedulerStaging'
-  }
-  {
-    name: 'AzureWebJobs.JobSchedulerFunction.Disabled'
-    value: 1
-  }
-]
+var appSettings = {
+  APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  jobSchedulerSchedule: '0 0 0 * * Sun'
+  logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
+  logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
+  jobsStorageAccountConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  jobsTableName: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
+  appConfigurationEndpoint: appConfigurationEndpoint
+}
 
-var productionSettings = [
-  {
-    name: 'WEBSITE_CONTENTSHARE'
-    value: toLower('functionApp-JobScheduler')
-  }
-  {
-    name: 'AzureFunctionsJobHost__extensions__durableTask__hubName'
-    value: '${solutionAbbreviation}compute${environmentAbbreviation}JobScheduler'
-  }
-  {
-    name: 'AzureWebJobs.JobSchedulerFunction.Disabled'
-    value: 0
-  }
-]
+var stagingSettings = {
+  WEBSITE_CONTENTSHARE: toLower('functionApp-JobScheduler-staging')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobSchedulerStaging'
+  'AzureWebJobs.StarterFunction.Disabled': 1
+  'AzureWebJobs.OrchestratorFunction.Disabled': 1
+  'AzureWebJobs.LoggerFunction.Disabled': 1
+  'AzureWebJobs.GetJobsSubOrchestratorFunction.Disabled': 1
+  'AzureWebJobs.GetJobsSegmentedFunction.Disabled': 1
+  'AzureWebJobs.ResetJobsFunction.Disabled': 1
+  'AzureWebJobs.DistributeJobsFunction.Disabled': 1
+  'AzureWebJobs.UpdateJobsSubOrchestratorFunction.Disabled': 1
+  'AzureWebJobs.BatchUpdateJobsFunction.Disabled': 1
+  'AzureWebJobs.PipelineInvocationStarterFunction.Disabled': 1
+  'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 1
+  'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled': 1
+  'AzureWebJobs.PostCallbackFunction.Disabled': 1
+}
+
+var productionSettings = {
+  WEBSITE_CONTENTSHARE: toLower('functionApp-JobScheduler')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobScheduler'
+  'AzureWebJobs.StarterFunction.Disabled': 0
+  'AzureWebJobs.OrchestratorFunction.Disabled': 0
+  'AzureWebJobs.LoggerFunction.Disabled': 0
+  'AzureWebJobs.GetJobsSubOrchestratorFunction.Disabled': 0
+  'AzureWebJobs.GetJobsSegmentedFunction.Disabled': 0
+  'AzureWebJobs.ResetJobsFunction.Disabled': 0
+  'AzureWebJobs.DistributeJobsFunction.Disabled': 0
+  'AzureWebJobs.UpdateJobsSubOrchestratorFunction.Disabled': 0
+  'AzureWebJobs.BatchUpdateJobsFunction.Disabled': 0
+  'AzureWebJobs.PipelineInvocationStarterFunction.Disabled': 0
+  'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 0
+  'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled': 0
+  'AzureWebJobs.PostCallbackFunction.Disabled': 0
+}
 
 module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
   name: 'functionAppTemplate-JobScheduler'
@@ -196,7 +169,9 @@ module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
-    secretSettings: union(appSettings, productionSettings)
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
+    secretSettings: commonSettings
   }
   dependsOn: [
     servicePlanTemplate
@@ -210,7 +185,7 @@ module functionAppSlotTemplate_JobScheduler 'functionAppSlot.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
-    secretSettings: union(appSettings, stagingSettings)
+    secretSettings: commonSettings
   }
   dependsOn: [
     functionAppTemplate_JobScheduler
@@ -272,5 +247,25 @@ module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   dependsOn: [
     functionAppTemplate_JobScheduler
     functionAppSlotTemplate_JobScheduler
+  ]
+}
+
+resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
+  name: '${functionAppName}-JobScheduler/appsettings'
+  kind: 'string'
+  properties: union(commonSettings, appSettings, productionSettings)
+  dependsOn: [
+    functionAppTemplate_JobScheduler
+    keyVaultPoliciesTemplate
+  ]
+}
+
+resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
+  name: '${functionAppName}-JobScheduler/staging/appsettings'
+  kind: 'string'
+  properties: union(commonSettings, appSettings, stagingSettings)
+  dependsOn: [
+    functionAppSlotTemplate_JobScheduler
+    keyVaultPoliciesTemplate
   ]
 }

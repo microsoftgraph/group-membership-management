@@ -17,8 +17,8 @@ param location string
 @minLength(1)
 param servicePlanName string
 
-@description('Array of key vault references to be set in app settings')
-param secretSettings array
+@description('app settings')
+param secretSettings object
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string
@@ -56,14 +56,26 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: 'https://${functionAppSlot.properties.defaultHostName}/api/StarterFunction'
       }
       {
-        name: 'graphUpdaterStagingFunctionKey'
-        value: listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default
-      }
-      {
         name: 'graphUpdaterStagingFunctionName'
         value: '${name}-GraphUpdater/staging'
       }
     ]
+  }
+}
+
+module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
+  name: 'secureSecretsTemplate-GraphUpdaterStaging'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultSecrets: {
+      secrets: [
+        { 
+          name: 'graphUpdaterStagingFunctionKey'
+          value: listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default
+        }
+      ]
+    }
   }
 }
 

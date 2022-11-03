@@ -24,13 +24,26 @@ namespace Hosts.GraphUpdater
         [FunctionName(nameof(FileDownloaderFunction))]
         public async Task<string> DownloadFileAsync([ActivityTrigger] FileDownloaderRequest request)
         {
-            _loggingRepository.SyncJobProperties = request.SyncJob?.ToDictionary();
+            var blobResult = new BlobResult { BlobStatus = BlobStatus.NotFound };
+
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloading file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
-            var blobResult = await _blobStorageRepository.DownloadFileAsync(request.FilePath);
-            if (blobResult.BlobStatus == BlobStatus.NotFound)
+            if (request.FilePath.Contains("cache"))
             {
-                throw new FileNotFoundException($"File {request.FilePath} was not found");
+                blobResult = await _blobStorageRepository.DownloadCacheFileAsync(request.FilePath);
+                if (blobResult.BlobStatus == BlobStatus.NotFound)
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Cache File {request.FilePath} was not found", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                    return string.Empty;
+                }
+            }
+            else
+            {
+                blobResult = await _blobStorageRepository.DownloadFileAsync(request.FilePath);
+                if (blobResult.BlobStatus == BlobStatus.NotFound)
+                {
+                    throw new FileNotFoundException($"File {request.FilePath} was not found");
+                }
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloaded file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);

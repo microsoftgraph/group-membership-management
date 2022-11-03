@@ -17,8 +17,8 @@ param location string
 @minLength(1)
 param servicePlanName string
 
-@description('Array of key vault references to be set in app settings')
-param secretSettings array
+@description('app settings')
+param secretSettings object
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string
@@ -55,16 +55,30 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: 'https://${functionApp.properties.defaultHostName}'
       }
       {
-        name: 'azureUserReaderKey'
-        value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
-      }
-      {
         name: 'azureUserReaderFunctionName'
         value: '${name}-AzureUserReader'
       }
     ]
   }
 }
+
+module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
+  name: 'secureSecretsTemplate-AzureUserReader'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultSecrets: {
+      secrets: [
+        { 
+          name: 'azureUserReaderKey'
+          value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
+        }
+      ]
+    }
+  }
+}
+
+
 
 resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
   name: 'slotConfigNames'

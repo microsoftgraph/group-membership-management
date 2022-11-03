@@ -1,0 +1,43 @@
+﻿@* 
+Copyright (c) Microsoft Corporation.
+Licensed under the MIT license. 
+*@
+
+@page "/gmmonly"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Graph
+@using System.Text.Json
+@using System.Timers
+@inject Microsoft.Graph.GraphServiceClient GraphServiceClient
+@attribute [Authorize]
+
+<PageTitle>Gmm Groups</PageTitle>
+
+<h1>M365 groups managed by GMM</h1>
+<br />
+
+@if (user == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <p> Hello, @user.DisplayName! You have reached the Gmm only page, so you must be a gmm admin :) </p>
+}
+
+@code {
+    User? user;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            user = await GraphServiceClient.Me.Request().GetAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+}

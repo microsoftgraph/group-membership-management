@@ -32,16 +32,21 @@ namespace Services.Tests
             var mockSynJobs = new MockSyncJobRepository();
             var samplePageResponse = GetPageSampleResponse(100, true);
             var userCount = 100;
-            mockGraphGroup.Setup(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>())).ReturnsAsync(samplePageResponse);
+            mockGraphGroup.Setup(x => x.GetFirstTransitiveMembersPageAsync(It.IsAny<Guid>())).ReturnsAsync(samplePageResponse);
+            mockGraphGroup.SetupAllProperties();
 
             var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs);
 
             var groupId = Guid.NewGuid();
             var runId = Guid.NewGuid();
+            graphUpdaterService.RunId = runId;
+
             var response = await graphUpdaterService.GetFirstMembersPageAsync(groupId, runId);
 
             Assert.IsNotNull(response.NextPageUrl);
             Assert.AreEqual(userCount, response.Members.Count);
+            Assert.AreNotEqual(Guid.Empty, mockGraphGroup.Object.RunId);
+            Assert.AreEqual(graphUpdaterService.RunId, mockGraphGroup.Object.RunId);
 
         }
 
@@ -56,7 +61,7 @@ namespace Services.Tests
             var mockSynJobs = new MockSyncJobRepository();
             var samplePageResponse = GetPageSampleResponse(100, true);
             var userCount = 100;
-            mockGraphGroup.Setup(x => x.GetNextUsersPageAsync(It.IsAny<string>(), It.IsAny<IGroupTransitiveMembersCollectionWithReferencesPage>()))
+            mockGraphGroup.Setup(x => x.GetNextTransitiveMembersPageAsync(It.IsAny<string>(), It.IsAny<IGroupTransitiveMembersCollectionWithReferencesPage>()))
                             .ReturnsAsync(samplePageResponse);
 
             var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs);

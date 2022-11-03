@@ -20,6 +20,7 @@ namespace Repositories.Mocks
         public Dictionary<Guid, Group> Groups { get; set; } = new Dictionary<Guid, Group>();
         public Dictionary<Guid, List<AzureADUser>> GroupsToUsers { get; set; } = new Dictionary<Guid, List<AzureADUser>>();
         public Dictionary<(string, string), SyncJob> Jobs { get; set; } = new Dictionary<(string, string), SyncJob>();
+        public Guid RunId { get; set; }
 
         public MockGraphUpdaterService(IMailRepository mailRepository)
         {
@@ -84,12 +85,12 @@ namespace Repositories.Mocks
             return Task.CompletedTask;
         }
 
-        public Task<(GraphUpdaterStatus Status, int SuccessCount)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isinitialSync)
+        public Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isinitialSync)
         {
             throw new NotImplementedException();
         }
 
-        public Task<(GraphUpdaterStatus Status, int SuccessCount)> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isinitialSync)
+        public Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound)> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isinitialSync)
         {
             throw new NotImplementedException();
         }

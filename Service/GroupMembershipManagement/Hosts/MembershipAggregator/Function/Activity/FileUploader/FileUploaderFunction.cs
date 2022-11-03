@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
+using Entities.Helpers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
@@ -23,10 +24,9 @@ namespace Hosts.MembershipAggregator
         [FunctionName(nameof(FileUploaderFunction))]
         public async Task UploadFileAsync([ActivityTrigger] FileUploaderRequest request)
         {
-            var syncJobProperties = request.SyncJob.ToDictionary();
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploading file {request.FilePath}", DynamicProperties = syncJobProperties }, VerbosityLevel.DEBUG);
-            await _blobStorageRepository.UploadFileAsync(request.FilePath, request.Content);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded file {request.FilePath}", DynamicProperties = syncJobProperties }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploading file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            await _blobStorageRepository.UploadFileAsync(request.FilePath, TextCompressor.Decompress(request.Content));
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
         }
     }
 }

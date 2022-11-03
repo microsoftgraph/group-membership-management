@@ -26,7 +26,7 @@ namespace DemoUserSetup
         public async Task AddUsers()
         {
             await DeleteOldObjects("microsoft.graph.user");
-            var users = await _graphServiceClient.Users.Request().Filter("startswith(MailNickname, 'testuser')").GetAsync();
+            var users = await _graphServiceClient.Users.Request().Filter("startswith(MailNickname, 'testuser')").Select("OnPremisesImmutableId,DisplayName,Id").GetAsync();
             HandleExistingUsers(users.CurrentPage);
             while (users.NextPageRequest != null)
             {
@@ -102,6 +102,7 @@ namespace DemoUserSetup
 				var userNumber = int.Parse(user.DisplayName.Substring("Test User ".Length));
 				if (userNumber < _testUsers.Length)
 					_testUsers[userNumber] = ToEntity(user);
+                _userIds.Add(user.OnPremisesImmutableId, user.Id);
 			}
 		}
 

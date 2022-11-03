@@ -15,6 +15,7 @@ using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Repositories.Logging
@@ -31,8 +32,9 @@ namespace Repositories.Logging
         // see https://aspnetmonsters.com/2016/08/2016-08-27-httpclientwrong/?fbclid=IwAR2aNRweTjGdx5Foev4XvHj2Xldeg_UAb6xW3eLTFQDB7Xghv65LvrVa5wA
         private static readonly HttpClient _httpClient = MakeClient("ApplicationLog");
         private static readonly HttpClient _httpPIIClient = MakeClient("PIIApplicationLog");
+        private readonly SemaphoreSlim _logPropertiesSemaphore = new SemaphoreSlim(1, 1);
 
-        public Dictionary<string, string> SyncJobProperties { get; set; }
+        public Dictionary<Guid, LogProperties> SyncJobProperties { get; private set; } = new Dictionary<Guid, LogProperties>();
         public bool DryRun { get; set; } = false;
 
         public LoggingRepository(ILogAnalyticsSecret<LoggingRepository> logAnalytics, IAppConfigVerbosity appConfigVerbosity)
@@ -52,6 +54,38 @@ namespace Repositories.Logging
             return client;
         }
 
+        public void SetSyncJobProperties(Guid runId, Dictionary<string, string> properties)
+        {
+            _logPropertiesSemaphore.Wait();
+
+            if (SyncJobProperties.ContainsKey(runId))
+            {
+                SyncJobProperties[runId].Properties = properties;
+                SyncJobProperties[runId].ConcurrentParts += 1;
+            }
+            else
+            {
+                SyncJobProperties.Add(runId, new LogProperties { Properties = properties, ConcurrentParts = 1 });
+            }
+
+            _logPropertiesSemaphore.Release();
+        }
+
+        public void RemoveSyncJobProperties(Guid runId)
+        {
+            _logPropertiesSemaphore.Wait();
+
+            if (SyncJobProperties.ContainsKey(runId))
+            {
+                if ((SyncJobProperties[runId].ConcurrentParts - 1) <= 0)
+                    SyncJobProperties.Remove(runId);
+                else
+                    SyncJobProperties[runId].ConcurrentParts -= 1;
+            }
+
+            _logPropertiesSemaphore.Release();
+        }
+
         public async Task LogMessageAsync(LogMessage logMessage, VerbosityLevel verbosityLevel = VerbosityLevel.INFO, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
         {
             if (verbosityLevel <= _appConfigVerbosity.Verbosity)
@@ -62,7 +96,7 @@ namespace Repositories.Logging
 
         public async Task LogPIIMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
         {
-           await CommonLogMessageAsync(logMessage, _httpPIIClient, caller, file);
+            await CommonLogMessageAsync(logMessage, _httpPIIClient, caller, file);
         }
 
         private async Task CommonLogMessageAsync(LogMessage logMessage, HttpClient httpClient, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
@@ -155,21 +189,29 @@ namespace Repositories.Logging
         private Dictionary<string, string> CreatePropertiesDictionary(LogMessage logMessage)
         {
             var logMessageProperties = logMessage.ToDictionary();
-            if (SyncJobProperties?.Keys.Any() ?? false)
+
+            if (logMessage.RunId.HasValue
+                && SyncJobProperties.ContainsKey(logMessage.RunId.Value)
+                && SyncJobProperties[logMessage.RunId.Value] != null
+                && SyncJobProperties[logMessage.RunId.Value].Properties != null
+                )
             {
-                foreach (var key in SyncJobProperties.Keys)
+                var jobProperties = SyncJobProperties[logMessage.RunId.Value].Properties;
+                if (jobProperties.Any())
                 {
-                    if (!logMessageProperties.ContainsKey(key))
+                    foreach (var key in jobProperties.Keys)
                     {
-                        logMessageProperties.Add(key, SyncJobProperties[key]);
-                    }
-                    else if (string.IsNullOrWhiteSpace(logMessageProperties[key]) && !string.IsNullOrWhiteSpace(SyncJobProperties[key]))
-                    {
-                        logMessageProperties[key] = SyncJobProperties[key];
+                        if (!logMessageProperties.ContainsKey(key))
+                        {
+                            logMessageProperties.Add(key, jobProperties[key]);
+                        }
+                        else if (string.IsNullOrWhiteSpace(logMessageProperties[key]) && !string.IsNullOrWhiteSpace(jobProperties[key]))
+                        {
+                            logMessageProperties[key] = jobProperties[key];
+                        }
                     }
                 }
             }
-
             return logMessageProperties;
         }
     }

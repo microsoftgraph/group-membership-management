@@ -19,19 +19,15 @@ namespace Hosts.SecurityGroup
     public class OrchestratorFunction
     {
         private readonly ILoggingRepository _log;
-        private readonly IGraphGroupRepository _graphGroup;
         private readonly IConfiguration _configuration;
         private readonly SGMembershipCalculator _calculator;
-        private const string SyncDisabledNoValidGroupIds = "SyncDisabledNoValidGroupIds";
 
         public OrchestratorFunction(
             ILoggingRepository loggingRepository,
-            IGraphGroupRepository graphGroupRepository,
             SGMembershipCalculator calculator,
             IConfiguration configuration)
         {
             _log = loggingRepository;
-            _graphGroup = graphGroupRepository;
             _calculator = calculator;
             _configuration = configuration;
         }
@@ -41,11 +37,8 @@ namespace Hosts.SecurityGroup
         {
             var mainRequest = context.GetInput<OrchestratorRequest>();
             var syncJob = mainRequest.SyncJob;
-            var runId = syncJob.RunId.GetValueOrDefault(context.NewGuid());
+            var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
             List<AzureADUser> distinctUsers = null;
-
-            _log.SyncJobProperties = syncJob.ToDictionary();
-            _graphGroup.RunId = runId;
 
             try
             {
@@ -57,7 +50,7 @@ namespace Hosts.SecurityGroup
                 }
 
                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-                var sourceGroups = await context.CallActivityAsync<AzureADGroup[]>(nameof(SourceGroupsReaderFunction),
+                var sourceGroup = await context.CallActivityAsync<AzureADGroup>(nameof(SourceGroupsReaderFunction),
                                                                                     new SourceGroupsReaderRequest
                                                                                     {
                                                                                         SyncJob = syncJob,
@@ -66,30 +59,30 @@ namespace Hosts.SecurityGroup
                                                                                         RunId = runId
                                                                                     });
 
-                if (sourceGroups.Length == 0)
+                if (sourceGroup.ObjectId == Guid.Empty)
                 {
-                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"None of the source groups in Part# {mainRequest.CurrentPart} {syncJob.Query} were valid guids. Marking job as errored." });
+                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Source group id is not a valid, Part# {mainRequest.CurrentPart} {syncJob.Query}. Marking job as {SyncStatus.QueryNotValid}." });
                     await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest { SyncJob = syncJob, RunId = runId });
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.QueryNotValid });
                     return;
                 }
                 else
                 {
-                    // Run multiple source group processing flows in parallel
-                    var processingTasks = new List<Task<(List<AzureADUser> Users, SyncStatus Status)>>();
-                    foreach (var sourceGroup in sourceGroups)
-                    {
-                        var processTask = context.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(nameof(SubOrchestratorFunction), new SecurityGroupRequest { SyncJob = syncJob, SourceGroup = sourceGroup, RunId = runId });
-                        processingTasks.Add(processTask);
-                    }
-                    var tasks = await Task.WhenAll(processingTasks);
-                    if (tasks.Any(x => x.Status == SyncStatus.SecurityGroupNotFound))
+                    var sgResponse = await context.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(nameof(SubOrchestratorFunction),
+                                                                                                                    new SecurityGroupRequest
+                                                                                                                    {
+                                                                                                                        SyncJob = syncJob,
+                                                                                                                        SourceGroup = sourceGroup,
+                                                                                                                        RunId = runId
+                                                                                                                    });
+
+                    if (sgResponse.Status == SyncStatus.SecurityGroupNotFound)
                     {
                         await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.SecurityGroupNotFound });
                         return;
                     }
 
-                    var users = new List<AzureADUser>(tasks.SelectMany(x => x.Users));
+                    var users = sgResponse.Users;
                     distinctUsers = users.GroupBy(user => user.ObjectId).Select(userGrp => userGrp.First()).ToList();
 
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage
@@ -100,7 +93,14 @@ namespace Hosts.SecurityGroup
                     });
 
                     var filePath = await context.CallActivityAsync<string>(nameof(UsersSenderFunction),
-                                                                            new UsersSenderRequest { SyncJob = syncJob, RunId = runId, Users = distinctUsers, CurrentPart = mainRequest.CurrentPart });
+                                                                            new UsersSenderRequest
+                                                                            {
+                                                                                SyncJob = syncJob,
+                                                                                RunId = runId,
+                                                                                Users = distinctUsers,
+                                                                                CurrentPart = mainRequest.CurrentPart,
+                                                                                Exclusionary = mainRequest.Exclusionary
+                                                                            });
 
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = "Calling MembershipAggregator", RunId = runId });
                     var content = new MembershipAggregatorHttpRequest
@@ -129,6 +129,14 @@ namespace Hosts.SecurityGroup
             }
             catch (Exception ex)
             {
+                if (ex.Message != null && ex.Message.Contains("The request timed out"))
+                {
+                    syncJob.StartDate = context.CurrentUtcDateTime.AddMinutes(30);
+                    _ = _log.LogMessageAsync(new LogMessage { Message = $"Rescheduling job at {syncJob.StartDate} due to Graph API timeout.", RunId = runId });
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Idle });
+                    return;
+                }
+
                 _ = _log.LogMessageAsync(new LogMessage { Message = $"Caught unexpected exception in Part# {mainRequest.CurrentPart}, marking sync job as errored. Exception:\n{ex}", RunId = runId });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
@@ -136,8 +144,13 @@ namespace Hosts.SecurityGroup
                 // make sure this gets thrown to where App Insights will handle it
                 throw;
             }
+            finally
+            {
+                _log.RemoveSyncJobProperties(runId);
+            }
 
-            if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
+            if (!context.IsReplaying)
+                _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed", RunId = runId, DynamicProperties = syncJob.ToDictionary() }, VerbosityLevel.DEBUG);
         }
     }
 }

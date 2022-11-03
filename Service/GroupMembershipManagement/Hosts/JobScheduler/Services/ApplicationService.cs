@@ -1,17 +1,20 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
+using Azure.Core;
 using Entities;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
-using Services.Entities;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Services
 {
-    public class ApplicationService: IApplicationService
+    public class ApplicationService : IApplicationService
     {
         private readonly IJobSchedulingService _jobSchedulingService;
         private readonly IJobSchedulerConfig _jobSchedulerConfig;
@@ -27,21 +30,82 @@ namespace Services
 
         public async Task RunAsync()
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Starting JobScheduler console app." });
+            if(!_jobSchedulerConfig.ResetJobs && !_jobSchedulerConfig.DistributeJobs)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Configuration set to not reset or update so doing nothing." });
 
-            var jobs = await _jobSchedulingService.GetAllSyncJobsAsync(_jobSchedulerConfig.IncludeFutureJobs);
+                return;
+            }
+
+            List<DistributionSyncJob> jobsToUpdate = await GetSyncJobsAsync(_jobSchedulerConfig.IncludeFutureJobs);
+            List<DistributionSyncJob> jobsWithUpdates = null;
 
             if (_jobSchedulerConfig.ResetJobs)
             {
-                await _jobSchedulingService.ResetJobsAsync(jobs);   
+                var newStartTime = DateTime.UtcNow.AddDays(_jobSchedulerConfig.DaysToAddForReset);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resetting {jobsToUpdate.Count} jobs to have StartDate of {newStartTime}" });
+
+                jobsWithUpdates = await _jobSchedulingService.ResetJobsAsync(jobsToUpdate, _jobSchedulerConfig.DaysToAddForReset, _jobSchedulerConfig.IncludeFutureJobs);
+
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Reset {jobsToUpdate.Count} jobs to have StartDate of {newStartTime}" });
             }
 
-            if (_jobSchedulerConfig.DistributeJobs)
+            else if (_jobSchedulerConfig.DistributeJobs)
             {
-                await _jobSchedulingService.DistributeJobsAsync(jobs);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Distributing {jobsToUpdate.Count} jobs" });
+
+                jobsWithUpdates = await _jobSchedulingService.DistributeJobsAsync(jobsToUpdate, _jobSchedulerConfig.StartTimeDelayMinutes, _jobSchedulerConfig.DelayBetweenSyncsSeconds);
+
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Distributed {jobsToUpdate.Count} jobs" });
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Completed JobScheduler console app." });
+            if (jobsWithUpdates != null && jobsWithUpdates.Count > 0)
+            {
+                await UpdateSyncJobsAsync(jobsWithUpdates);
+            }
+
+        }
+
+        private async Task<List<DistributionSyncJob>> GetSyncJobsAsync(bool includeFutureJobs)
+        {
+            AsyncPageable<SyncJob> pageableQueryResult = null;
+            string continuationToken = null;
+
+            var jobs = new List<DistributionSyncJob>();
+            do
+            {
+                var tableQuerySegment = await _jobSchedulingService.GetSyncJobsSegmentAsync(pageableQueryResult, continuationToken, includeFutureJobs);
+
+                jobs.AddRange(tableQuerySegment.Results);
+
+                pageableQueryResult = tableQuerySegment.PageableQueryResult;
+                continuationToken = tableQuerySegment.ContinuationToken;
+
+            } while (continuationToken != null);
+
+            return jobs;
+        }
+
+        private async Task UpdateSyncJobsAsync(List<DistributionSyncJob> jobsToUpdate)
+        {
+            var BATCH_SIZE = 100;
+            var groupingsByPartitionKey = jobsToUpdate.GroupBy(x => x.PartitionKey);
+
+            var batchTasks = new List<Task>();
+
+            foreach (var grouping in groupingsByPartitionKey)
+            {
+                var jobsBatches = grouping.Select((x, idx) => new { x, idx })
+                .GroupBy(x => x.idx / BATCH_SIZE)
+                .Select(g => g.Select(a => a.x));
+
+                foreach (var batch in jobsBatches)
+                {
+                    batchTasks.Add(_jobSchedulingService.BatchUpdateSyncJobsAsync(batch));
+                }
+            }
+
+            await Task.WhenAll(batchTasks);
         }
     }
 }

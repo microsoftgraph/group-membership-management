@@ -26,13 +26,15 @@ namespace Services.Tests
         private SyncJob _syncJob;
         private JobState _jobState;
         private BlobResult _blobResult;
-        private DeltaResponse _deltaResponse;
         private PolicyResult<bool> _groupExists;
         private int _numberOfUsersForSourcePart;
+        private int _numberOfUsersForSourcePartOne;
+        private int _numberOfUsersForSourcePartTwo;
         private JobTrackerEntity _jobTrackerEntity;
         private int _numberOfUsersForDestinationPart;
         private Dictionary<string, int> _membersPerFile;
         private DeltaCalculatorService _deltaCalculatorService;
+        private DeltaCalculatorResponse _deltaCalculatorResponse;
         private (string FilePath, string Content) _downloaderResponse;
         private MembershipSubOrchestratorRequest _membershipSubOrchestratorRequest;
 
@@ -74,8 +76,10 @@ namespace Services.Tests
                                             );
 
 
-            _deltaResponse = null;
+            _deltaCalculatorResponse = null;
             _numberOfUsersForSourcePart = 10;
+            _numberOfUsersForSourcePartOne = 10;
+            _numberOfUsersForSourcePartTwo = 10;
             _numberOfUsersForDestinationPart = 10;
             _membersPerFile = new Dictionary<string, int>();
             _groupExists = PolicyResult<bool>.Successful(true, new Context());
@@ -134,6 +138,7 @@ namespace Services.Tests
                                                 SyncJobRowKey = _syncJob?.RowKey,
                                                 MembershipObtainerDryRunEnabled = false,
                                                 RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                                Exclusionary = false,
                                                 SourceMembers = Enumerable.Range(0, userCount)
                                                                          .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
                                                                          .ToList(),
@@ -162,6 +167,7 @@ namespace Services.Tests
                                     SyncJobRowKey = _syncJob?.RowKey,
                                     MembershipObtainerDryRunEnabled = false,
                                     RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                    Exclusionary = false,
                                     SourceMembers = Enumerable.Range(0, userCount)
                                                              .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
                                                              .ToList(),
@@ -208,12 +214,12 @@ namespace Services.Tests
                             })
                             .ReturnsAsync(() => _downloaderResponse);
 
-            _durableContext.Setup(x => x.CallActivityAsync<DeltaResponse>(It.Is<string>(x => x == nameof(DeltaCalculatorFunction)), It.IsAny<DeltaCalculatorRequest>()))
+            _durableContext.Setup(x => x.CallActivityAsync<DeltaCalculatorResponse>(It.Is<string>(x => x == nameof(DeltaCalculatorFunction)), It.IsAny<DeltaCalculatorRequest>()))
                             .Callback<string, object>(async (name, request) =>
                             {
-                                _deltaResponse = await CallDeltaCalculatorFunctionAsync(request as DeltaCalculatorRequest);
+                                _deltaCalculatorResponse = await CallDeltaCalculatorFunctionAsync(request as DeltaCalculatorRequest);
                             })
-                            .ReturnsAsync(() => _deltaResponse);
+                            .ReturnsAsync(() => _deltaCalculatorResponse);
 
             _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(FileUploaderFunction)), It.IsAny<FileUploaderRequest>()))
                             .Callback<string, object>(async (name, request) =>
@@ -565,6 +571,124 @@ namespace Services.Tests
             Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
         }
 
+        [TestMethod]
+        public async Task ProcessExclusionaryMembershipAsync()
+        {
+            _syncJob.ThresholdPercentageForAdditions = -1;
+            _syncJob.ThresholdPercentageForRemovals = -1;
+            _numberOfUsersForSourcePart = 50000;
+
+            _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path"))))
+                                    .Callback<string>(path =>
+                                    {
+                                        var userCount = path == _jobState.DestinationPart
+                                                                ? _numberOfUsersForDestinationPart
+                                                                : _numberOfUsersForSourcePart;
+
+                                        _blobResult = new BlobResult
+                                        {
+                                            BlobStatus = BlobStatus.Found,
+                                            Content = new BinaryData(new GroupMembership
+                                            {
+                                                SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                                SyncJobRowKey = _syncJob?.RowKey,
+                                                MembershipObtainerDryRunEnabled = false,
+                                                RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                                Exclusionary = true,
+                                                SourceMembers = Enumerable.Range(0, userCount)
+                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                                         .ToList(),
+                                                Destination = new AzureADGroup
+                                                {
+                                                    ObjectId = _syncJob != null
+                                                                ? _syncJob.TargetOfficeGroupId
+                                                                : Guid.Empty
+                                                }
+                                            })
+                                        };
+                                    })
+                                    .ReturnsAsync(() => _blobResult);
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+            Assert.AreEqual(0, response.ProjectedMemberCount);
+        }
+
+        [TestMethod]
+        public async Task ProcessExclusionaryAndInclusionaryMembershipAsync()
+        {
+            _syncJob.ThresholdPercentageForAdditions = -1;
+            _syncJob.ThresholdPercentageForRemovals = -1;
+            _numberOfUsersForSourcePartOne = 50000;
+            _numberOfUsersForSourcePartTwo = 25000;
+
+            _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path-1"))))
+                                    .Callback<string>(path =>
+                                    {
+                                        var userCount = path == _jobState.DestinationPart
+                                                                ? _numberOfUsersForDestinationPart
+                                                                : _numberOfUsersForSourcePartOne;
+
+                                        _blobResult = new BlobResult
+                                        {
+                                            BlobStatus = BlobStatus.Found,
+                                            Content = new BinaryData(new GroupMembership
+                                            {
+                                                SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                                SyncJobRowKey = _syncJob?.RowKey,
+                                                MembershipObtainerDryRunEnabled = false,
+                                                RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                                Exclusionary = false,
+                                                SourceMembers = Enumerable.Range(0, userCount)
+                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                                         .ToList(),
+                                                Destination = new AzureADGroup
+                                                {
+                                                    ObjectId = _syncJob != null
+                                                                ? _syncJob.TargetOfficeGroupId
+                                                                : Guid.Empty
+                                                }
+                                            })
+                                        };
+                                    })
+                                    .ReturnsAsync(() => _blobResult);
+
+            _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path-2"))))
+                                   .Callback<string>(path =>
+                                   {
+                                       var userCount = path == _jobState.DestinationPart
+                                                               ? _numberOfUsersForDestinationPart
+                                                               : _numberOfUsersForSourcePartTwo;
+
+                                       _blobResult = new BlobResult
+                                       {
+                                           BlobStatus = BlobStatus.Found,
+                                           Content = new BinaryData(new GroupMembership
+                                           {
+                                               SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                               SyncJobRowKey = _syncJob?.RowKey,
+                                               MembershipObtainerDryRunEnabled = false,
+                                               RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                               Exclusionary = true,
+                                               SourceMembers = Enumerable.Range(0, userCount)
+                                                                        .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                                        .ToList(),
+                                               Destination = new AzureADGroup
+                                               {
+                                                   ObjectId = _syncJob != null
+                                                               ? _syncJob.TargetOfficeGroupId
+                                                               : Guid.Empty
+                                               }
+                                           })
+                                       };
+                                   })
+                                   .ReturnsAsync(() => _blobResult);
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+            Assert.AreEqual(50000, response.ProjectedMemberCount);
+        }
+
         private async Task<(string FilePath, string Content)> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)
         {
             var function = new FileDownloaderFunction(_loggingRepository.Object, _blobStorageRepository.Object);
@@ -589,7 +713,7 @@ namespace Services.Tests
             await function.UpdateJobStatusAsync(request);
         }
 
-        private async Task<DeltaResponse> CallDeltaCalculatorFunctionAsync(DeltaCalculatorRequest request)
+        private async Task<DeltaCalculatorResponse> CallDeltaCalculatorFunctionAsync(DeltaCalculatorRequest request)
         {
             var function = new DeltaCalculatorFunction(_loggingRepository.Object, _blobStorageRepository.Object, _deltaCalculatorService);
             return await function.CalculateDeltaAsync(request);
@@ -597,7 +721,7 @@ namespace Services.Tests
 
         private string GenerateFileName(SyncJob syncJob, string suffix)
         {
-            var timeStamp = syncJob.Timestamp.ToString("MMddyyyy-HHmmss");
+            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
             return $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{syncJob.RunId}_{suffix}.json";
         }
     }

@@ -1,6 +1,7 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
+using Entities.Helpers;
 using Entities.ServiceBus;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -28,10 +29,10 @@ namespace Hosts.MembershipAggregator
         public async Task<MembershipSubOrchestratorResponse> RunMembershipSubOrchestratorFunctionAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var request = context.GetInput<MembershipSubOrchestratorRequest>();
+            var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
             var proxy = context.CreateEntityProxy<IJobTracker>(request.EntityId);
             var state = await proxy.GetState();
             var downloadFileTasks = new List<Task<(string FilePath, string Content)>>();
-            var dynamicProperties = request.SyncJob.ToDictionary();
 
             foreach (var part in state.CompletedParts)
             {
@@ -48,11 +49,11 @@ namespace Hosts.MembershipAggregator
             if (SourceMembership.SourceMembers.Count >= MEMBERS_LIMIT || DestinationMembership.SourceMembers.Count >= MEMBERS_LIMIT)
             {
                 var sourceFilePath = GenerateFileName(request.SyncJob, "SourceMembership");
-                var sourceContent = JsonConvert.SerializeObject(SourceMembership);
+                var sourceContent = TextCompressor.Compress(JsonConvert.SerializeObject(SourceMembership));
                 var sourceRequest = new FileUploaderRequest { FilePath = sourceFilePath, Content = sourceContent, SyncJob = request.SyncJob };
 
                 var destinationFilePath = GenerateFileName(request.SyncJob, "DestinationMembership");
-                var destinationContent = JsonConvert.SerializeObject(DestinationMembership);
+                var destinationContent = TextCompressor.Compress(JsonConvert.SerializeObject(DestinationMembership));
                 var destinationRequest = new FileUploaderRequest { FilePath = destinationFilePath, Content = destinationContent, SyncJob = request.SyncJob };
 
                 await Task.WhenAll
@@ -67,11 +68,11 @@ namespace Hosts.MembershipAggregator
             }
             else
             {
-                deltaCalculatorRequest.SourceGroupMembership = SourceMembership;
-                deltaCalculatorRequest.DestinationGroupMembership = DestinationMembership;
+                deltaCalculatorRequest.SourceGroupMembership = TextCompressor.Compress(JsonConvert.SerializeObject(SourceMembership));
+                deltaCalculatorRequest.DestinationGroupMembership = TextCompressor.Compress(JsonConvert.SerializeObject(DestinationMembership));
             }
 
-            var deltaResponse = await context.CallActivityAsync<DeltaResponse>(nameof(DeltaCalculatorFunction), deltaCalculatorRequest);
+            var deltaResponse = await context.CallActivityAsync<DeltaCalculatorResponse>(nameof(DeltaCalculatorFunction), deltaCalculatorRequest);
 
             if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.Ok)
             {
@@ -83,7 +84,7 @@ namespace Hosts.MembershipAggregator
                         Message = new LogMessage
                         {
                             Message = $"Uploaded membership file {uploadRequest.FilePath} with {SourceMembership.SourceMembers.Count} unique members",
-                            DynamicProperties = dynamicProperties
+                            RunId = runId
                         }
                     });
 
@@ -112,13 +113,13 @@ namespace Hosts.MembershipAggregator
             else if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.DryRun)
             {
                 var message = $"A Dry Run Synchronization for {request.SyncJob.TargetOfficeGroupId} is now complete. " +
-                              $"{deltaResponse.MembersToAdd.Count} users would have been added. " +
-                              $"{deltaResponse.MembersToRemove.Count} users would have been removed.";
+                              $"{deltaResponse.MembersToAddCount} users would have been added. " +
+                              $"{deltaResponse.MembersToRemoveCount} users would have been removed.";
 
                 await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
                     {
-                        Message = new LogMessage { Message = message, DynamicProperties = dynamicProperties }
+                        Message = new LogMessage { Message = message, RunId = runId }
                     });
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest
@@ -154,29 +155,44 @@ namespace Hosts.MembershipAggregator
                                             .ToList();
 
             var sourceGroupMembership = sourceGroupsMemberships[0];
-            sourceGroupMembership.SourceMembers = sourceGroupsMemberships.SelectMany(x => x.SourceMembers).Distinct().ToList();
+            var toInclude = sourceGroupsMemberships.Where(g => !g.Exclusionary).SelectMany(x => x.SourceMembers).ToList();
+            var toExclude = sourceGroupsMemberships.Where(g => g.Exclusionary).SelectMany(x => x.SourceMembers).ToList();
+            var diff = toInclude.Except(toExclude).ToList();
+
+            var source = sourceGroupsMemberships.SelectMany(x => x.SourceMembers).ToList();
+            var listGrouped = source.GroupBy(u => u.ObjectId)
+                               .Select(u => new AzureADUser() { ObjectId = u.Key, SourceGroups = u.Select(y => y.SourceGroup).Distinct().ToList() })
+                               .ToList();
+
+            var objectIds = new HashSet<Guid>(diff.Select(u => u.ObjectId));
+            var sourceMembers = listGrouped.Where(u => objectIds.Contains(u.ObjectId)).ToList();
+
+            sourceGroupMembership.SourceMembers = sourceMembers;
 
             var destinationGroupMembership = JsonConvert.DeserializeObject<GroupMembership>(allGroupMemberships.First(x => x.FilePath == destinationPath).Content);
 
             return (sourceGroupMembership, destinationGroupMembership);
         }
 
-        private FileUploaderRequest CreateAggregatedFileUploaderRequest(GroupMembership membership, DeltaResponse deltaResponse, SyncJob syncJob)
+        private FileUploaderRequest CreateAggregatedFileUploaderRequest(GroupMembership membership, DeltaCalculatorResponse deltaResponse, SyncJob syncJob)
         {
+            var membersToAdd = JsonConvert.DeserializeObject<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToAddJSON));
+            var membersToRemove = JsonConvert.DeserializeObject<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToAddJSON));
+
             var newMembership = (GroupMembership)membership.Clone();
             newMembership.SourceMembers.Clear();
-            newMembership.SourceMembers.AddRange(deltaResponse.MembersToAdd);
-            newMembership.SourceMembers.AddRange(deltaResponse.MembersToRemove);
+            newMembership.SourceMembers.AddRange(membersToAdd);
+            newMembership.SourceMembers.AddRange(membersToRemove);
 
             var filePath = GenerateFileName(syncJob, "Aggregated");
-            var content = JsonConvert.SerializeObject(newMembership);
+            var content = TextCompressor.Compress(JsonConvert.SerializeObject(newMembership));
 
             return new FileUploaderRequest { FilePath = filePath, Content = content, SyncJob = syncJob };
         }
 
         private string GenerateFileName(SyncJob syncJob, string suffix)
         {
-            var timeStamp = syncJob.Timestamp.ToString("MMddyyyy-HHmmss");
+            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
             return $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{syncJob.RunId}_{suffix}.json";
         }
     }

@@ -20,18 +20,19 @@ namespace Hosts.MembershipAggregator
     public class OrchestratorFunction
     {
         private readonly IConfiguration _configuration;
+        private readonly ILoggingRepository _loggingRepository;
 
-        public OrchestratorFunction(IConfiguration configuration)
+        public OrchestratorFunction(IConfiguration configuration, ILoggingRepository loggingRepository)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var request = context.GetInput<MembershipAggregatorHttpRequest>();
-            var syncJobProperties = request.SyncJob.ToDictionary();
-            var runId = request.SyncJob.RunId;
+            var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
             var entityId = new EntityId(nameof(JobTrackerEntity), $"{request.SyncJob.TargetOfficeGroupId}_{runId}");
             var proxy = context.CreateEntityProxy<IJobTracker>(entityId);
             var hasSourceCompleted = false;
@@ -39,7 +40,6 @@ namespace Hosts.MembershipAggregator
 
             try
             {
-
                 using (await context.LockAsync(entityId))
                 {
                     await proxy.SetTotalParts(request.PartsCount);
@@ -58,7 +58,7 @@ namespace Hosts.MembershipAggregator
                             Message = new LogMessage
                             {
                                 Message = $"{nameof(OrchestratorFunction)} function started",
-                                DynamicProperties = syncJobProperties
+                                RunId = runId
                             },
                             Verbosity = VerbosityLevel.DEBUG
                         });
@@ -75,11 +75,13 @@ namespace Hosts.MembershipAggregator
 
                     if (membershipResponse.MembershipDeltaStatus == MembershipDeltaStatus.Ok)
                     {
-                        var updateRequestContent = new MembershipHttpRequest {
-                            FilePath = membershipResponse.FilePath, 
+                        var updateRequestContent = new MembershipHttpRequest
+                        {
+                            FilePath = membershipResponse.FilePath,
                             SyncJob = request.SyncJob,
                             ProjectedMemberCount = membershipResponse.ProjectedMemberCount
                         };
+
                         var updateRequest = new DurableHttpRequest(HttpMethod.Post,
                                                                     new Uri(_configuration["graphUpdaterUrl"]),
                                                                     content: JsonConvert.SerializeObject(updateRequestContent),
@@ -93,10 +95,9 @@ namespace Hosts.MembershipAggregator
                                 Message = new LogMessage
                                 {
                                     Message = "Calling GraphUpdater",
-                                    DynamicProperties = syncJobProperties
+                                    RunId = runId
                                 }
                             });
-                                                        
 
                         var response = await context.CallHttpAsync(updateRequest);
 
@@ -106,7 +107,7 @@ namespace Hosts.MembershipAggregator
                                 Message = new LogMessage
                                 {
                                     Message = $"GraphUpdater response Code: {response.StatusCode}, Content: {response.Content}",
-                                    DynamicProperties = syncJobProperties
+                                    RunId = runId
                                 }
                             });
 
@@ -123,7 +124,7 @@ namespace Hosts.MembershipAggregator
                             Message = new LogMessage
                             {
                                 Message = $"{nameof(OrchestratorFunction)} function completed",
-                                DynamicProperties = syncJobProperties
+                                RunId = runId
                             },
                             Verbosity = VerbosityLevel.DEBUG
                         });
@@ -136,7 +137,7 @@ namespace Hosts.MembershipAggregator
                 await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
                     {
-                        Message = new LogMessage { Message = fe.Message, DynamicProperties = syncJobProperties }
+                        Message = new LogMessage { Message = fe.Message, RunId = runId }
                     });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
@@ -155,7 +156,7 @@ namespace Hosts.MembershipAggregator
                 await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
                     {
-                        Message = new LogMessage { Message = $"Unexpected exception. {ex}", DynamicProperties = syncJobProperties }
+                        Message = new LogMessage { Message = $"Unexpected exception. {ex}", RunId = runId }
                     });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
@@ -173,6 +174,8 @@ namespace Hosts.MembershipAggregator
                 {
                     await proxy.Delete();
                 }
+
+                _loggingRepository.RemoveSyncJobProperties(runId);
             }
         }
     }

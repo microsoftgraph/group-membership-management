@@ -1,7 +1,7 @@
 using Azure.Storage.Blobs;
 using CsvHelper;
 using Entities;
-using Entities.AzureTableBackup;
+using Entities.AzureMaintenance;
 using Microsoft.Azure.Cosmos.Table;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -27,7 +27,7 @@ namespace Repositories.AzureBlobBackupRepository
 			_loggingRepository = loggingRepository;
 		}
 
-		public async Task<BackupResult> BackupEntitiesAsync(IAzureTableBackup backupSettings, List<DynamicTableEntity> entities)
+		public async Task<BackupResult> BackupEntitiesAsync(IAzureMaintenance backupSettings, List<DynamicTableEntity> entities)
 		{
 			if (!entities.Any())
 			{
@@ -63,7 +63,7 @@ namespace Repositories.AzureBlobBackupRepository
 			return new BackupResult(blobName, "blob", entities.Count);
 		}
 
-		private static string GetContainerName(IAzureTableBackup backupSettings)
+		private static string GetContainerName(IAzureMaintenance backupSettings)
 		{
 			return $"{BACKUP_PREFIX}{backupSettings.SourceTableName}".ToLowerInvariant();
 		}
@@ -96,7 +96,7 @@ namespace Repositories.AzureBlobBackupRepository
 			return toReturn;
 		}
 
-		public async Task<List<BackupEntity>> GetBackupsAsync(IAzureTableBackup backupSettings)
+		public async Task<List<BackupEntity>> GetBackupsAsync(IAzureMaintenance backupSettings)
 		{
 			var blobContainerClient = await GetContainerClient(backupSettings);
 			if(blobContainerClient == null)
@@ -109,7 +109,7 @@ namespace Repositories.AzureBlobBackupRepository
 			return backupEntities;
 		}
 
-		public async Task<bool> VerifyDeleteBackupAsync(IAzureTableBackup backupSettings, string blobName)
+		public async Task<bool> VerifyDeleteBackupAsync(IAzureMaintenance backupSettings, string blobName)
 		{
 			var cutOffDate = DateTime.UtcNow.AddDays(-backupSettings.DeleteAfterDays);
 
@@ -131,7 +131,7 @@ namespace Repositories.AzureBlobBackupRepository
 					CreatedDate = blobProperties.Value.CreatedOn.UtcDateTime;
 				}
 
-				if (CreatedDate != null && CreatedDate < cutOffDate)
+				if (CreatedDate != default(DateTime) && CreatedDate < cutOffDate)
 				{
 					return true;
 				}
@@ -140,11 +140,11 @@ namespace Repositories.AzureBlobBackupRepository
 			{
 				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"The blob item {blobName} did not have a CreatedOn property and its name was unparseable" });
 			}
-			
+
 			return false;
 		}
 
-		public async Task DeleteBackupAsync(IAzureTableBackup backupSettings, string backupName)
+		public async Task DeleteBackupAsync(IAzureMaintenance backupSettings, string backupName)
 		{
 			var blobContainerClient = await GetContainerClient(backupSettings);
 			if (blobContainerClient == null)
@@ -160,7 +160,7 @@ namespace Repositories.AzureBlobBackupRepository
 			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Got {response.Value} when deleting blob {backupName}." });
 		}
 
-		private async Task<BlobContainerClient> GetContainerClient(IAzureTableBackup backupSettings)
+		private async Task<BlobContainerClient> GetContainerClient(IAzureMaintenance backupSettings)
         {
 			BlobServiceClient blobServiceClient = new BlobServiceClient(backupSettings.DestinationConnectionString);
 			var containerName = GetContainerName(backupSettings);

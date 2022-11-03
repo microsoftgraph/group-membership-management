@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
 using Entities;
 using Repositories.Contracts;
 using System;
@@ -59,9 +60,24 @@ namespace Repositories.SyncJobs.Tests
             await Task.CompletedTask;
         }
 
-        public async Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null)
+        public Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, bool applyFilters = true)
         {
-            await Task.CompletedTask;
+            throw new NotImplementedException();
+        }
+
+        public Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> jobs)
+        {
+            throw new NotImplementedException();
+        }
+
+        public AsyncPageable<SyncJob> GetPageableQueryResult(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false)
+        {
+            throw new NotImplementedException();
         }
     }
 }

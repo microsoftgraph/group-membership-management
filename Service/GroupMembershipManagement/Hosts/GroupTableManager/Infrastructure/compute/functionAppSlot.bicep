@@ -17,8 +17,8 @@ param location string
 @minLength(1)
 param servicePlanName string
 
-@description('Array of key vault references to be set in app settings')
-param secretSettings array
+@description('app settings')
+param secretSettings object
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string
@@ -46,7 +46,7 @@ resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
 }
 
 module secretsTemplate 'keyVaultSecrets.bicep' = {
-  name: 'secretsTemplate'
+  name: 'secretsTemplate-GroupTableManagerStaging'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     keyVaultName: dataKeyVaultName
@@ -56,14 +56,26 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: 'https://${functionAppSlot.properties.defaultHostName}/api/StarterFunction'
       }
       {
-        name: 'groupTableManagerStagingFunctionKey'
-        value: listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default
-      }
-      {
         name: 'groupTableManagerStagingFunctionName'
         value: '${name}-GroupTableManager/staging'
       }
     ]
+  }
+}
+
+module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
+  name: 'secureSecretsTemplate-GroupTableManagerStaging'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    keyVaultName: dataKeyVaultName
+    keyVaultSecrets: {
+      secrets: [
+        { 
+          name: 'groupTableManagerStagingFunctionKey'
+          value: listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default
+        }
+      ]
+    }
   }
 }
 

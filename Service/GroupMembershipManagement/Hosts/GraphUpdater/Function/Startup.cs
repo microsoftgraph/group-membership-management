@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Common.DependencyInjection;
+using DIConcreteTypes;
+using GraphUpdater.Entities;
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
@@ -9,6 +11,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
 using Services;
 using Services.Contracts;
@@ -27,12 +30,22 @@ namespace Hosts.GraphUpdater
         {
             base.Configure(builder);
 
+            builder.Services.AddOptions<DeltaCachingConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.DeltaCacheEnabled = GetBoolSetting(configuration, "GraphUpdater:IsDeltaCacheEnabled", false);
+            });
+            builder.Services.AddSingleton<IDeltaCachingConfig>(services =>
+            {
+                return new DeltaCachingConfig(services.GetService<IOptions<DeltaCachingConfig>>().Value.DeltaCacheEnabled);
+            });
+
             builder.Services.AddSingleton<IGraphServiceClient>((services) =>
             {
                 return new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value));
             })
-            .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
-            .AddSingleton<IGraphUpdaterService, GraphUpdaterService>()
+
+            .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
+            .AddScoped<IGraphUpdaterService, GraphUpdaterService>()
             .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
             {
                 var configuration = s.GetService<IConfiguration>();
@@ -40,6 +53,11 @@ namespace Hosts.GraphUpdater
                 var containerName = configuration["membershipContainerName"];
 
                 return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
+            })
+            .AddSingleton((s) =>
+            {
+                var configuration = s.GetService<IConfiguration>();
+                return new GraphUpdaterBatchSize { BatchSize = GetIntSetting(configuration, "GraphUpdater:UpdateBatchSize", 100) };
             });
         }
 
@@ -47,6 +65,14 @@ namespace Hosts.GraphUpdater
         {
             var isParsed = int.TryParse(configuration[settingName], out var maximumNumberOfThresholdRecipients);
             return isParsed ? maximumNumberOfThresholdRecipients : defaultValue;
+        }
+
+        private bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)
+        {
+            var checkParse = bool.TryParse(configuration[settingName], out bool value);
+            if (checkParse)
+                return value;
+            return defaultValue;
         }
     }
 }

@@ -50,17 +50,13 @@ namespace Hosts.JobScheduler
             builder.Services.AddScoped<IJobSchedulingService>(services =>
             {
                 return new JobSchedulingService(
-                        services.GetService<IJobSchedulerConfig>(),
                         services.GetService<ISyncJobRepository>(),
                         services.GetService<IRuntimeRetrievalService>(),
                         services.GetService<ILoggingRepository>()
                     );
             });
 
-            builder.Services.AddScoped<IApplicationService>(services =>
-            {
-                return new ApplicationService(services.GetService<IJobSchedulingService>(), services.GetService<IJobSchedulerConfig>(), services.GetService<ILoggingRepository>());
-            });
+            builder.Services.AddHttpClient();
         }
     }
 }
