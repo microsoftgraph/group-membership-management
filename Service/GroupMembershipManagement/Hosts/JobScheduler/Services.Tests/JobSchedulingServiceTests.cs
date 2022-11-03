@@ -35,6 +35,7 @@ namespace Services.Tests
         private JobSchedulingService _jobSchedulingService = null;
         private MockSyncJobRepository _mockSyncJobRepository = null;
         private DefaultRuntimeRetrievalService _defaultRuntimeRetrievalService = null;
+        private LogsRuntimeRetrievalService _logsRuntimeRetrievalService = null;
         private MockLoggingRepository _mockLoggingRepository = null;
         private Mock<IJobSchedulerConfig> _jobSchedulerConfig = new Mock<IJobSchedulerConfig>();
         private Mock<LogsQueryClient> _logsQueryClient = new Mock<LogsQueryClient>();
@@ -44,7 +45,8 @@ namespace Services.Tests
         {
             _jobSchedulerConfig.Setup(x => x.DefaultRuntimeSeconds).Returns(DEFAULT_RUNTIME_SECONDS);
             _mockSyncJobRepository = new MockSyncJobRepository();
-            _defaultRuntimeRetrievalService = new DefaultRuntimeRetrievalService(_jobSchedulerConfig.Object, _logsQueryClient.Object);
+            _defaultRuntimeRetrievalService = new DefaultRuntimeRetrievalService(_jobSchedulerConfig.Object.DefaultRuntimeSeconds);
+            _logsRuntimeRetrievalService = new LogsRuntimeRetrievalService(_jobSchedulerConfig.Object, _logsQueryClient.Object);
             _mockLoggingRepository = new MockLoggingRepository();
 
             _jobSchedulingService = new JobSchedulingService(
@@ -147,7 +149,7 @@ namespace Services.Tests
         {
             int defaultTenMinuteRuntime = 600;
             _jobSchedulerConfig.Setup(x => x.DefaultRuntimeSeconds).Returns(defaultTenMinuteRuntime);
-            var longerDefaultRuntimeService = new DefaultRuntimeRetrievalService(_jobSchedulerConfig.Object, _logsQueryClient.Object);
+            var longerDefaultRuntimeService = new DefaultRuntimeRetrievalService(_jobSchedulerConfig.Object.DefaultRuntimeSeconds);
 
             JobSchedulerConfig jobSchedulerConfig = new JobSchedulerConfig(
                                                         true, 0, true, false,
@@ -230,6 +232,10 @@ namespace Services.Tests
         public async Task ScheduleJobsOneFromLogs_MaxMetric()
         {
             _jobSchedulerConfig.Setup(x => x.GetRunTimeFromLogs).Returns(true);
+            _jobSchedulingService = new JobSchedulingService(
+                                        _mockSyncJobRepository,
+                                        _logsRuntimeRetrievalService,
+                                        _mockLoggingRepository);
 
             var numberOfJobs = 5;
             var periodInHours = 1;

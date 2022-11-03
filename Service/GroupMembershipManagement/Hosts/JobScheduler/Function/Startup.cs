@@ -46,9 +46,10 @@ namespace Hosts.JobScheduler
 
             builder.Services.AddScoped<IRuntimeRetrievalService>(services =>
             {
-                return new DefaultRuntimeRetrievalService(
-                    services.GetService<IJobSchedulerConfig>(),
-                    new LogsQueryClient(new DefaultAzureCredential()));
+                var config = services.GetService<IJobSchedulerConfig>();
+                return config.GetRunTimeFromLogs
+                ? new LogsRuntimeRetrievalService(config, new LogsQueryClient(new DefaultAzureCredential()))
+                : new DefaultRuntimeRetrievalService(config.DefaultRuntimeSeconds);
             });
 
             builder.Services.AddScoped<IJobSchedulingService>(services =>
