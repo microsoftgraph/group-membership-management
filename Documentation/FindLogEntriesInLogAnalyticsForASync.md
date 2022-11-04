@@ -8,7 +8,7 @@ This document will guide you through the steps required in log analytics for fin
 * Once you have the runId for the destination group, navigate to the log analytics workspace for your production environment. It start start with `gmm-data-`. Navigate to logs on the left panel and run the following query:
 
       ApplicationLog_CL 
-      | where runId_g == '<destination group RunId>'
+      | where RunId_g == '<destination group RunId>'
       | order by TimeGenerated
 
 * The *Results* will contain the logs with a message as well as the location of the message
@@ -16,7 +16,7 @@ This document will guide you through the steps required in log analytics for fin
 * You can additionally check for the logs based on a particular sync type as well such as `SecurityGroup`, like this:
 
       ApplicationLog_CL 
-      | where runId_g == '<destination group RunId>'
+      | where RunId_g == '<destination group RunId>'
       | order by TimeGenerated
       | where location_s == 'SecurityGroup'
       

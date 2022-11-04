@@ -41,6 +41,7 @@ resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
     siteConfig: {
       use32BitWorkerProcess : false
       appSettings: secretSettings
+      ftpsState: 'FtpsOnly'
     }
   }
   identity: {

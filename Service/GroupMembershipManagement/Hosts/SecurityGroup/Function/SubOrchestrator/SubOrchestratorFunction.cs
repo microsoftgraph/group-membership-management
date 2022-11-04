@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using Entities.ServiceBus;
 using Microsoft.ApplicationInsights;
 using Repositories.Contracts.InjectConfig;
+using Microsoft.Graph;
 
 namespace Hosts.SecurityGroup
 {
@@ -80,13 +81,14 @@ namespace Hosts.SecurityGroup
                     var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, allNonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
                     _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
                 }
-                else {
-                    try
+                else
+                {
+                    // first check if delta file exists in cache folder
+                    var filePath = $"cache/delta_{request.SourceGroup.ObjectId}";
+                    var fileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
+                    if (string.IsNullOrEmpty(fileContent))
                     {
-                        // first check if delta file exists in cache folder
-                        var filePath = $"cache/delta_{request.SourceGroup.ObjectId}";
-                        var fileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
-                        if (string.IsNullOrEmpty(fileContent))
+                        try
                         {
                             if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
                             var response = await GetUsersReaderFunction(context, allUsers, request);
@@ -97,7 +99,28 @@ namespace Hosts.SecurityGroup
                             }
                             await GetDeltaUsersSenderFunction(context, request, allUsers, response.deltaUrl);
                         }
-                        else
+                        catch (Exception e) when (e is KeyNotFoundException || e is ServiceException)
+                        {
+                            _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"delta query failed for group {request.SourceGroup.ObjectId}: {e.Message}" });
+                            allUsers.Clear();
+                            allNonUserGraphObjects.Clear();
+
+                            if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });
+                            // run exisiting code
+                            var response = await GetMembersReaderFunction(context, allUsers, allNonUserGraphObjects, request);
+                            allUsers = response.allUsers;
+                            if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+                            {
+                                allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
+                            }
+                            allNonUserGraphObjects = response.allNonUserGraphObjects;
+                            var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, allNonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
+                            _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
+                        }
+                    }
+                    else
+                    {
+                        try
                         {
                             if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query using delta link for group {request.SourceGroup.ObjectId}" });
                             var deltaResponse = await GetDeltaUsersReaderFunction(context, fileContent, deltaUsersToAdd, deltaUsersToRemove, request);
@@ -133,23 +156,22 @@ namespace Hosts.SecurityGroup
                             }
                             await GetDeltaUsersSenderFunction(context, request, allUsers, deltaResponse.deltaUrl);
                         }
-                        _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users" });
-                    }
-                    catch (Exception e)
-                    {
-                        _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"delta query failed for group {request.SourceGroup.ObjectId}: {e.Message}" });
-                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });
-                        // run exisiting code
-                        var response = await GetMembersReaderFunction(context, allUsers, allNonUserGraphObjects, request);
-                        allUsers = response.allUsers;
-                        if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+                        catch (Exception e) when (e is KeyNotFoundException || e is ServiceException)
                         {
-                            allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
+                            _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"delta query using delta link failed for group {request.SourceGroup.ObjectId}: {e.Message}" });
+                            allUsers.Clear();
+
+                            if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
+                            var response = await GetUsersReaderFunction(context, allUsers, request);
+                            allUsers = response.allUsers;
+                            if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+                            {
+                                allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
+                            }
+                            await GetDeltaUsersSenderFunction(context, request, allUsers, response.deltaUrl);
                         }
-                        allNonUserGraphObjects = response.allNonUserGraphObjects;
-                        var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, allNonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
-                        _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
                     }
+                    _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users" });
                 }
             }
             _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);

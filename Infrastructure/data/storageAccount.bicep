@@ -23,6 +23,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
   }
   properties: {
     supportsHttpsTrafficOnly: true
+    allowBlobPublicAccess: false
   }
   identity: {
     type: 'SystemAssigned'
@@ -35,9 +36,9 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
     keyVaultName: keyVaultName
     keyVaultSecrets: {
       secrets: [
-        { 
+        {
           name: startsWith(name, 'jobs') ? 'jobsStorageAccountConnectionString' : 'storageAccountConnectionString'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${name};AccountKey=${listkeys(resourceId(resourceGroup().name, 'Microsoft.Storage/storageAccounts', name), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value}'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value}'
         }
       ]
     }

@@ -443,6 +443,64 @@ namespace Tests.Services
         }
 
         [TestMethod]
+        public async Task HandleDeltaLinkExceptionAsync()
+        {
+            _groupCount = 0;
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
+                                       .Callback<string, object>(async (name, request) =>
+                                       {
+                                           _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
+                                       })
+                                       .ReturnsAsync(() => _groupCount);
+            _deltaUrl = "http://delta-url";
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
+                                       .Callback<string, object>(async (name, request) =>
+                                       {
+                                           _deltaUrl = await CallFileDownloaderFunctionAsync(request as FileDownloaderRequest);
+                                       })
+                                       .ReturnsAsync(() => _deltaUrl);
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(), It.IsAny<DeltaUsersReaderRequest>()))
+                                       .Callback<string, object>(async (name, request) =>
+                                       {
+                                           _deltaUsersReaderResponse = await CallDeltaUsersReaderFunctionAsync(request as DeltaUsersReaderRequest);
+                                       })
+                                       .Throws<KeyNotFoundException>();
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                   It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_securityGroupRequest.SourceGroup.ObjectId} exists.")),
+                                   It.IsAny<VerbosityLevel>(),
+                                   It.IsAny<string>(),
+                                   It.IsAny<string>()
+                               ), Times.Once);
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                    It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
+                                    It.IsAny<VerbosityLevel>(),
+                                    It.IsAny<string>(),
+                                    It.IsAny<string>()
+                                ), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()), Times.Once);
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                        It.Is<LogMessage>(m => m.Message.Contains($"read {_userCount} users")),
+                        It.IsAny<VerbosityLevel>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>()
+                    ), Times.Once);
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                        It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
+                        It.IsAny<VerbosityLevel>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>()
+                    ), Times.Once);
+            Assert.IsNotNull(Users);
+            Assert.AreEqual(_userCount, Users.Count);
+            Assert.AreEqual(SyncStatus.InProgress, Status);
+        }
+
+        [TestMethod]
         public async Task ProcessTMSinglePageRequestTestAsync()
         {
             _groupCount = 2;

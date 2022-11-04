@@ -188,7 +188,8 @@ namespace Hosts.GraphUpdater
 
                 if (!context.IsReplaying)
                 {
-                    if (membersAddedResponse.SuccessCount == membersToAdd.Count && membersRemovedResponse.SuccessCount == membersToRemove.Count)
+                    if (membersAddedResponse.SuccessCount + membersAddedResponse.UsersNotFound.Count == membersToAdd.Count && 
+						membersRemovedResponse.SuccessCount + membersRemovedResponse.UsersNotFound.Count == membersToRemove.Count)
                     {
                         TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Success");
                     }

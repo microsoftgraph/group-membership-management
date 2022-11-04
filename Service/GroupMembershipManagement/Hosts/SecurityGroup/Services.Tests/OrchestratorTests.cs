@@ -12,6 +12,7 @@ using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace Tests.Services
@@ -271,10 +272,67 @@ namespace Tests.Services
                 Message = "The request timed out"
             };
 
-            var serviceException = new ServiceException(error);
+            var exception = new Exception(error.Message);
 
             _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
-                                        .Throws(serviceException);
+                                        .Throws(exception);
+
+            var orchestratorFunction = new OrchestratorFunction(
+                                            _loggingRepository.Object,
+                                            _membershipCalculator,
+                                            _configuration.Object
+                                            );
+
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                        It.Is<LogMessage>(m => m.Message.StartsWith("Rescheduling job at")),
+                        It.IsAny<VerbosityLevel>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>()
+                    ), Times.Once);
+
+            var currentUtcDate = _durableOrchestrationContext.Object.CurrentUtcDateTime;
+            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
+                                                It.Is<IEnumerable<SyncJob>>(x => x.All(y => y.StartDate == currentUtcDate.AddMinutes(30))),
+                                                It.Is<SyncStatus>(s => s == SyncStatus.Idle)
+                                            ), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task TestServiceExceptionAsync()
+        {
+
+            var syncJob = new SyncJob
+            {
+                RowKey = Guid.NewGuid().ToString(),
+                PartitionKey = "00-00-0000",
+                TargetOfficeGroupId = Guid.NewGuid(),
+                Query = _querySample.GetQuery(),
+                Status = "InProgress",
+                Period = 6,
+                LastSuccessfulRunTime = DateTime.UtcNow
+            };
+
+            _orchestratorRequest = new OrchestratorRequest
+            {
+                CurrentPart = 1,
+                TotalParts = _querySample.QueryParts.Count + 1,
+                SyncJob = syncJob,
+                IsDestinationPart = false
+            };
+
+            _durableOrchestrationContext.Setup(x => x.GetInput<OrchestratorRequest>())
+                                        .Returns(() => _orchestratorRequest);
+            var error = new Error
+            {
+                Code = "502",
+                Message = "Bad Gateway"
+            };
+
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
+                                        .Throws(new ServiceException(error, null, HttpStatusCode.BadGateway));
+
 
             var orchestratorFunction = new OrchestratorFunction(
                                             _loggingRepository.Object,
