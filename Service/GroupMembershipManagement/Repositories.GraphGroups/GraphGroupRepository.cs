@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure;
-using Azure.Core;
 using Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
@@ -16,11 +15,13 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Runtime.CompilerServices;
+using System.Reflection;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using static System.Net.WebRequestMethods;
 using System.Web;
 using Group = Microsoft.Graph.Group;
 using Metric = Services.Entities.Metric;
@@ -634,7 +635,7 @@ namespace Repositories.GraphGroups
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
             var response = await GetFirstMembersAsync(url);
-            TrackMetrics(response.AdditionalData);
+            await TrackMetrics(response.AdditionalData, QueryType.Other);
             var nextPageUrl = response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1) ? nextLink1.ToString() : string.Empty;
             users.AddRange(ToUsers(response, nonUserGraphObjects));
             return (users, nonUserGraphObjects, nextPageUrl, response);
@@ -648,7 +649,7 @@ namespace Repositories.GraphGroups
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
             usersFromGroup = await GetNextMembersAsync(usersFromGroup, nextPageUrl);
-            TrackMetrics(usersFromGroup.AdditionalData);
+            await TrackMetrics(usersFromGroup.AdditionalData, QueryType.Other);
             nextPageUrl = usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink2) ? nextLink2.ToString() : string.Empty;
             users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
             return (users, nonUserGraphObjects, nextPageUrl, usersFromGroup);
