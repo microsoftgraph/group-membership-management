@@ -703,8 +703,8 @@ namespace Repositories.GraphGroups
                                     .Groups
                                     .Delta()
                                     .Request()
-                                    .Filter($"id  eq '{groupId}'")
-                                    .Top(MaxResultCount)
+                                    .Select("members")
+                                    .Filter($"id  eq '{groupId}'")                                    
                                     .GetAsync();
             });
         }
