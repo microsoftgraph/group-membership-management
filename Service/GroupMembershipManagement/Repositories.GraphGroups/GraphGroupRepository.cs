@@ -742,7 +742,16 @@ namespace Repositories.GraphGroups
             var r = await _graphServiceClient.HttpProvider.SendAsync(hrm);
 
             if (r.Headers.TryGetValues(ResourceUnitHeader, out var resourceValues))
-                resourceUnitsUsed.TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
+            {
+                int ruu = ParseFirst<int>(resourceValues, int.TryParse);
+                var ruuCustomEvent = new ResourceUnitCustomEvent();
+                ruuCustomEvent.RunId = RunId.ToString();
+                ruuCustomEvent.QueryType = Enum.GetName(typeof(QueryType), QueryType.Other);
+                ruuCustomEvent.ResourceUnit = ruu.ToString();
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {ruuCustomEvent.QueryType} - {ruu}", RunId = RunId });
+                TrackResourceUnitsUsedByTypeEvent(RunId, ruu, QueryType.Other);
+                resourceUnitsUsed.TrackValue(ruu);
+            }                
 
             if (r.Headers.TryGetValues(ThrottlePercentageHeader, out var throttleValues))
                 throttleLimitPercentage.TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
@@ -928,10 +937,10 @@ namespace Repositories.GraphGroups
 
             if (queryType == QueryType.Delta || queryType == QueryType.DeltaLink)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of delta related queries: {Enum.GetName(typeof(QueryType), queryType)}", RunId = RunId }, VerbosityLevel.DEBUG);
                 ruu = 5;
-                ruuCustomEvent.ResourceUnit = ruu.ToString();                
-                TrackRUUEvent(ruuCustomEvent);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = RunId });
+                ruuCustomEvent.ResourceUnit = ruu.ToString();
+                TrackResourceUnitsUsedByTypeEvent(RunId, ruu, queryType);
                 _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ruu);
                 return;
             }
@@ -939,17 +948,20 @@ namespace Repositories.GraphGroups
             // some replies just don't have the response headers
             // i suspect those either aren't throttled the same way or it's a different kind of call
             if (!additionalData.TryGetValue("responseHeaders", out var headers))
+            { 
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} is not available", RunId = RunId });
                 return;
+            }
 
             // see https://github.com/microsoftgraph/msgraph-sdk-dotnet/blob/dev/docs/headers.md#reading-response-headers
             var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
 
             if (responseHeaders.TryGetValue(ResourceUnitHeader, out var resourceValues))
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of delta unrelated queries: {Enum.GetName(typeof(QueryType), queryType)}", RunId = RunId }, VerbosityLevel.DEBUG);
+            {                
                 ruu = ParseFirst<int>(resourceValues, int.TryParse);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = RunId });
                 ruuCustomEvent.ResourceUnit = ruu.ToString();
-                TrackRUUEvent(ruuCustomEvent);
+                TrackResourceUnitsUsedByTypeEvent(RunId, ruu, queryType);
                 _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ruu);
             }
 
@@ -957,13 +969,15 @@ namespace Repositories.GraphGroups
                 _telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage)).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
         }
 
-        private void TrackRUUEvent(ResourceUnitCustomEvent ruuCustomEvent)
-        {        
-            var ruuDict = ruuCustomEvent.GetType()
-                .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                .ToDictionary(prop => prop.Name, prop => (string)prop.GetValue(ruuCustomEvent, null));
-
-            _telemetryClient.TrackEvent(nameof(Metric.ResourceUnitsUsed), ruuDict);
+        private void TrackResourceUnitsUsedByTypeEvent(Guid runId, int ruu, QueryType queryType)
+        {
+            var ruuByTypeEvent = new Dictionary<string, string>
+            {
+                { "RunId", runId.ToString() },
+                { "ResourceUnitsUsed", ruu.ToString() },
+                { "QueryType", queryType.ToString() }
+            };
+            _telemetryClient.TrackEvent("ResourceUnitsUsedByType", ruuByTypeEvent);
         }
 
         public async Task<int> GetUsersCountAsync(Guid objectId)
@@ -977,7 +991,16 @@ namespace Repositories.GraphGroups
             await _graphServiceClient.AuthenticationProvider.AuthenticateRequestAsync(hrm);
             var r = await _graphServiceClient.HttpProvider.SendAsync(hrm);
             if (r.Headers.TryGetValues(ResourceUnitHeader, out var resourceValues))
-                resourceUnitsUsed.TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
+            {
+                int ruu = ParseFirst<int>(resourceValues, int.TryParse);
+                var ruuCustomEvent = new ResourceUnitCustomEvent();
+                ruuCustomEvent.RunId = RunId.ToString();
+                ruuCustomEvent.QueryType = Enum.GetName(typeof(QueryType), QueryType.Other);
+                ruuCustomEvent.ResourceUnit = ruu.ToString();
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {ruuCustomEvent.QueryType} - {ruu}", RunId = RunId });
+                TrackResourceUnitsUsedByTypeEvent(RunId, ruu, QueryType.Other);
+                resourceUnitsUsed.TrackValue(ruu);
+            }
             if (r.Headers.TryGetValues(ThrottlePercentageHeader, out var throttleValues))
                 throttleLimitPercentage.TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
             var content = await r.Content.ReadAsStringAsync();
@@ -1224,7 +1247,16 @@ namespace Repositories.GraphGroups
                 var content = await response.Content.ReadAsStringAsync();
 
                 if (response.Headers.TryGetValues(ResourceUnitHeader, out var resourceValues))
-                    resourceUnitsUsed.TrackValue(ParseFirst<int>(resourceValues, int.TryParse));
+                {
+                    int ruu = ParseFirst<int>(resourceValues, int.TryParse);
+                    var ruuCustomEvent = new ResourceUnitCustomEvent();
+                    ruuCustomEvent.RunId = RunId.ToString();
+                    ruuCustomEvent.QueryType = Enum.GetName(typeof(QueryType), QueryType.Other);
+                    ruuCustomEvent.ResourceUnit = ruu.ToString();
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {ruuCustomEvent.QueryType} - {ruu}", RunId = RunId });
+                    TrackResourceUnitsUsedByTypeEvent(RunId, ruu, QueryType.Other);
+                    resourceUnitsUsed.TrackValue(ruu);
+                }
 
                 if (response.Headers.TryGetValues(ThrottlePercentageHeader, out var throttleValues))
                     throttleLimitPercentage.TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
