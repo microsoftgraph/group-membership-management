@@ -1,6 +1,10 @@
 {
   "version": "2.0",
   "functionTimeout": "00:10:00",
+  "concurrency": {
+    "dynamicConcurrencyEnabled": true,
+    "snapshotPersistenceEnabled": true
+  },
   "extensions": {
     "durableTask": {
       "extendedSessionsEnabled": true,
@@ -8,6 +12,9 @@
     }
   },
   "logging": {
+    "logLevel": {
+      "Host.Concurrency": "Trace"
+    },
     "applicationInsights": {
       "samplingExcludedTypes": "Request",
       "samplingSettings": {
