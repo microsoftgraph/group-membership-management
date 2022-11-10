@@ -26,7 +26,8 @@ namespace Hosts.SecurityGroup
 		public async Task<int> GetUserCountAsync([ActivityTrigger] GetUserCountRequest request)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GetUserCountFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-			var response = await _calculator.GetUsersCountAsync(request.GroupId);
+            _calculator.RunId = request.RunId;
+            var response = await _calculator.GetUsersCountAsync(request.GroupId);
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GetUserCountFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 			return response;
 		}
