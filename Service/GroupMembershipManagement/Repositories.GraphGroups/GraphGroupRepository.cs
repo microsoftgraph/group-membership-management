@@ -34,7 +34,7 @@ namespace Repositories.GraphGroups
         private readonly TelemetryClient _telemetryClient;
         private readonly ILoggingRepository _loggingRepository;
 
-        public Guid RunId { get; set; }        
+        public Guid RunId { get; set; }
 
         public GraphGroupRepository(IGraphServiceClient graphServiceClient, TelemetryClient telemetryClient, ILoggingRepository logger)
         {
@@ -704,7 +704,7 @@ namespace Repositories.GraphGroups
                                     .Delta()
                                     .Request()
                                     .Select("members")
-                                    .Filter($"id  eq '{groupId}'")                                    
+                                    .Filter($"id  eq '{groupId}'")
                                     .GetAsync();
             });
         }
@@ -743,11 +743,11 @@ namespace Repositories.GraphGroups
 
             if (r.Headers.TryGetValues(ResourceUnitHeader, out var resourceValues))
             {
-                int ruu = ParseFirst<int>(resourceValues, int.TryParse);               
+                int ruu = ParseFirst<int>(resourceValues, int.TryParse);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), QueryType.Other)} - {ruu}", RunId = RunId });
                 TrackResourceUnitsUsedByTypeEvent(RunId, ruu, QueryType.Other);
                 resourceUnitsUsed.TrackValue(ruu);
-            }                
+            }
 
             if (r.Headers.TryGetValues(ThrottlePercentageHeader, out var throttleValues))
                 throttleLimitPercentage.TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
@@ -760,7 +760,7 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetFirstUsersPageAsync(Guid objectId)
-        {            
+        {
             var users = new List<AzureADUser>();
             var response = await GetGroupUsersPageByIdAsync(objectId.ToString());
             await TrackMetrics(response.AdditionalData, QueryType.Delta);
@@ -789,7 +789,7 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetNextUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage response)
-        {            
+        {
             var users = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
             await TrackMetrics(response.AdditionalData, QueryType.Delta);
@@ -819,7 +819,7 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetFirstDeltaUsersPageAsync(string deltaLink)
-        {           
+        {
             var usersToAdd = new List<AzureADUser>();
             var usersToRemove = new List<AzureADUser>();
             var response = await GetGroupUsersPageByLinkAsync(deltaLink);
@@ -856,7 +856,7 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl, IGroupDeltaCollectionPage usersFromGroup)> GetNextDeltaUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage response)
-        {           
+        {
             var usersToAdd = new List<AzureADUser>();
             var usersToRemove = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
@@ -926,12 +926,12 @@ namespace Repositories.GraphGroups
 
         public async Task TrackMetrics(IDictionary<string, object> additionalData, QueryType queryType)
         {
-            int ruu = 0;           
+            int ruu = 0;
 
             if (queryType == QueryType.Delta || queryType == QueryType.DeltaLink)
             {
                 ruu = 5;
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = RunId });                
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = RunId });
                 TrackResourceUnitsUsedByTypeEvent(RunId, ruu, queryType);
                 _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ruu);
                 return;
@@ -940,7 +940,7 @@ namespace Repositories.GraphGroups
             // some replies just don't have the response headers
             // i suspect those either aren't throttled the same way or it's a different kind of call
             if (!additionalData.TryGetValue("responseHeaders", out var headers))
-            { 
+            {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} is not available", RunId = RunId });
                 return;
             }
@@ -949,9 +949,9 @@ namespace Repositories.GraphGroups
             var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
 
             if (responseHeaders.TryGetValue(ResourceUnitHeader, out var resourceValues))
-            {                
+            {
                 ruu = ParseFirst<int>(resourceValues, int.TryParse);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = RunId });                
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = RunId });
                 TrackResourceUnitsUsedByTypeEvent(RunId, ruu, queryType);
                 _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ruu);
             }
@@ -983,7 +983,7 @@ namespace Repositories.GraphGroups
             var r = await _graphServiceClient.HttpProvider.SendAsync(hrm);
             if (r.Headers.TryGetValues(ResourceUnitHeader, out var resourceValues))
             {
-                int ruu = ParseFirst<int>(resourceValues, int.TryParse);                
+                int ruu = ParseFirst<int>(resourceValues, int.TryParse);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), QueryType.Other)} - {ruu}", RunId = RunId });
                 TrackResourceUnitsUsedByTypeEvent(RunId, ruu, QueryType.Other);
                 resourceUnitsUsed.TrackValue(ruu);
@@ -1235,7 +1235,7 @@ namespace Repositories.GraphGroups
 
                 if (response.Headers.TryGetValues(ResourceUnitHeader, out var resourceValues))
                 {
-                    int ruu = ParseFirst<int>(resourceValues, int.TryParse);                   
+                    int ruu = ParseFirst<int>(resourceValues, int.TryParse);
                     await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), QueryType.Other)} - {ruu}", RunId = RunId });
                     TrackResourceUnitsUsedByTypeEvent(RunId, ruu, QueryType.Other);
                     resourceUnitsUsed.TrackValue(ruu);
@@ -1566,7 +1566,7 @@ namespace Repositories.GraphGroups
     {
         public string TargetOfficeGroupId { get; set; } = "N/A";
         public string RunId { get; set; } = "N/A";
-        public string ResourceUnit { get; set; } = "N/A";   
+        public string ResourceUnit { get; set; } = "N/A";
         public string QueryType { get; set; } = "N/A";
     }
 }
