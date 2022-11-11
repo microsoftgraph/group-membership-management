@@ -743,12 +743,8 @@ namespace Repositories.GraphGroups
 
             if (r.Headers.TryGetValues(ResourceUnitHeader, out var resourceValues))
             {
-                int ruu = ParseFirst<int>(resourceValues, int.TryParse);
-                var ruuCustomEvent = new ResourceUnitCustomEvent();
-                ruuCustomEvent.RunId = RunId.ToString();
-                ruuCustomEvent.QueryType = Enum.GetName(typeof(QueryType), QueryType.Other);
-                ruuCustomEvent.ResourceUnit = ruu.ToString();
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {ruuCustomEvent.QueryType} - {ruu}", RunId = RunId });
+                int ruu = ParseFirst<int>(resourceValues, int.TryParse);               
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), QueryType.Other)} - {ruu}", RunId = RunId });
                 TrackResourceUnitsUsedByTypeEvent(RunId, ruu, QueryType.Other);
                 resourceUnitsUsed.TrackValue(ruu);
             }                
@@ -788,7 +784,7 @@ namespace Repositories.GraphGroups
                     }
                 }
             }
-
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Count from First Page {users.Count}", RunId = RunId });
             return (users, nextPageUrl, deltaUrl, response);
         }
 
@@ -818,7 +814,7 @@ namespace Repositories.GraphGroups
                     }
                 }
             }
-
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Count from Next Page {users.Count}", RunId = RunId });
             return (users, nextPageUrl, deltaUrl, response);
         }
 
@@ -930,16 +926,12 @@ namespace Repositories.GraphGroups
 
         public async Task TrackMetrics(IDictionary<string, object> additionalData, QueryType queryType)
         {
-            int ruu = 0;
-            var ruuCustomEvent = new ResourceUnitCustomEvent();
-            ruuCustomEvent.RunId = RunId.ToString();
-            ruuCustomEvent.QueryType = Enum.GetName(typeof(QueryType), queryType);
+            int ruu = 0;           
 
             if (queryType == QueryType.Delta || queryType == QueryType.DeltaLink)
             {
                 ruu = 5;
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = RunId });
-                ruuCustomEvent.ResourceUnit = ruu.ToString();
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = RunId });                
                 TrackResourceUnitsUsedByTypeEvent(RunId, ruu, queryType);
                 _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ruu);
                 return;
@@ -959,8 +951,7 @@ namespace Repositories.GraphGroups
             if (responseHeaders.TryGetValue(ResourceUnitHeader, out var resourceValues))
             {                
                 ruu = ParseFirst<int>(resourceValues, int.TryParse);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = RunId });
-                ruuCustomEvent.ResourceUnit = ruu.ToString();
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = RunId });                
                 TrackResourceUnitsUsedByTypeEvent(RunId, ruu, queryType);
                 _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ruu);
             }
@@ -992,12 +983,8 @@ namespace Repositories.GraphGroups
             var r = await _graphServiceClient.HttpProvider.SendAsync(hrm);
             if (r.Headers.TryGetValues(ResourceUnitHeader, out var resourceValues))
             {
-                int ruu = ParseFirst<int>(resourceValues, int.TryParse);
-                var ruuCustomEvent = new ResourceUnitCustomEvent();
-                ruuCustomEvent.RunId = RunId.ToString();
-                ruuCustomEvent.QueryType = Enum.GetName(typeof(QueryType), QueryType.Other);
-                ruuCustomEvent.ResourceUnit = ruu.ToString();
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {ruuCustomEvent.QueryType} - {ruu}", RunId = RunId });
+                int ruu = ParseFirst<int>(resourceValues, int.TryParse);                
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), QueryType.Other)} - {ruu}", RunId = RunId });
                 TrackResourceUnitsUsedByTypeEvent(RunId, ruu, QueryType.Other);
                 resourceUnitsUsed.TrackValue(ruu);
             }
@@ -1248,12 +1235,8 @@ namespace Repositories.GraphGroups
 
                 if (response.Headers.TryGetValues(ResourceUnitHeader, out var resourceValues))
                 {
-                    int ruu = ParseFirst<int>(resourceValues, int.TryParse);
-                    var ruuCustomEvent = new ResourceUnitCustomEvent();
-                    ruuCustomEvent.RunId = RunId.ToString();
-                    ruuCustomEvent.QueryType = Enum.GetName(typeof(QueryType), QueryType.Other);
-                    ruuCustomEvent.ResourceUnit = ruu.ToString();
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {ruuCustomEvent.QueryType} - {ruu}", RunId = RunId });
+                    int ruu = ParseFirst<int>(resourceValues, int.TryParse);                   
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), QueryType.Other)} - {ruu}", RunId = RunId });
                     TrackResourceUnitsUsedByTypeEvent(RunId, ruu, QueryType.Other);
                     resourceUnitsUsed.TrackValue(ruu);
                 }
