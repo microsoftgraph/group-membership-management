@@ -784,7 +784,6 @@ namespace Repositories.GraphGroups
                     }
                 }
             }
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Count from First Page {users.Count}", RunId = RunId });
             return (users, nextPageUrl, deltaUrl, response);
         }
 
@@ -814,7 +813,7 @@ namespace Repositories.GraphGroups
                     }
                 }
             }
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Count from Next Page {users.Count}", RunId = RunId });
+
             return (users, nextPageUrl, deltaUrl, response);
         }
 
