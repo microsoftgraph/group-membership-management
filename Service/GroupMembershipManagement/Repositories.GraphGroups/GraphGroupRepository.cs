@@ -745,7 +745,7 @@ namespace Repositories.GraphGroups
             {
                 int ruu = ParseFirst<int>(resourceValues, int.TryParse);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), QueryType.Other)} - {ruu}", RunId = RunId });
-                TrackResourceUnitsUsedByTypeEvent(RunId, ruu, QueryType.Other);
+                TrackResourceUnitsUsedByTypeEvent(ruu, QueryType.Other);
                 resourceUnitsUsed.TrackValue(ruu);
             }
 
@@ -931,7 +931,7 @@ namespace Repositories.GraphGroups
             {
                 ruu = 5;
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = RunId });
-                TrackResourceUnitsUsedByTypeEvent(RunId, ruu, queryType);
+                TrackResourceUnitsUsedByTypeEvent(ruu, queryType);
                 _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ruu);
                 return;
             }
@@ -951,7 +951,7 @@ namespace Repositories.GraphGroups
             {
                 ruu = ParseFirst<int>(resourceValues, int.TryParse);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = RunId });
-                TrackResourceUnitsUsedByTypeEvent(RunId, ruu, queryType);
+                TrackResourceUnitsUsedByTypeEvent(ruu, queryType);
                 _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ruu);
             }
 
@@ -959,11 +959,11 @@ namespace Repositories.GraphGroups
                 _telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage)).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
         }
 
-        private void TrackResourceUnitsUsedByTypeEvent(Guid runId, int ruu, QueryType queryType)
+        private void TrackResourceUnitsUsedByTypeEvent(int ruu, QueryType queryType)
         {
             var ruuByTypeEvent = new Dictionary<string, string>
             {
-                { "RunId", runId.ToString() },
+                { "RunId", RunId.ToString() },
                 { "ResourceUnitsUsed", ruu.ToString() },
                 { "QueryType", queryType.ToString() }
             };
@@ -984,7 +984,7 @@ namespace Repositories.GraphGroups
             {
                 int ruu = ParseFirst<int>(resourceValues, int.TryParse);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), QueryType.Other)} - {ruu}", RunId = RunId });
-                TrackResourceUnitsUsedByTypeEvent(RunId, ruu, QueryType.Other);
+                TrackResourceUnitsUsedByTypeEvent(ruu, QueryType.Other);
                 resourceUnitsUsed.TrackValue(ruu);
             }
             if (r.Headers.TryGetValues(ThrottlePercentageHeader, out var throttleValues))
@@ -1236,7 +1236,7 @@ namespace Repositories.GraphGroups
                 {
                     int ruu = ParseFirst<int>(resourceValues, int.TryParse);
                     await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), QueryType.Other)} - {ruu}", RunId = RunId });
-                    TrackResourceUnitsUsedByTypeEvent(RunId, ruu, QueryType.Other);
+                    TrackResourceUnitsUsedByTypeEvent(ruu, QueryType.Other);
                     resourceUnitsUsed.TrackValue(ruu);
                 }
 

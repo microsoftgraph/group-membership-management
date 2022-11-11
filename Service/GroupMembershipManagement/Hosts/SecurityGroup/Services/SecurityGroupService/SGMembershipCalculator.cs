@@ -101,7 +101,7 @@ namespace Hosts.SecurityGroup
             };
         }
 
-        public async Task<int> GetGroupsCountAsync(Guid objectId, Guid runId)
+        public async Task<int> GetGroupsCountAsync(Guid objectId)
         {
             return await _graphGroupRepository.GetGroupsCountAsync(objectId);
         }

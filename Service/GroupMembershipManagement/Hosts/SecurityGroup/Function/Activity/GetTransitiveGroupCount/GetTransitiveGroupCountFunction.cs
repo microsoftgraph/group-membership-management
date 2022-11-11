@@ -27,7 +27,7 @@ namespace Hosts.SecurityGroup
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GetTransitiveGroupCountFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             _calculator.RunId = request.RunId;
-            var response = await _calculator.GetGroupsCountAsync(request.GroupId, request.RunId);
+            var response = await _calculator.GetGroupsCountAsync(request.GroupId);
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GetTransitiveGroupCountFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 			return response;
 		}
