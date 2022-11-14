@@ -2397,41 +2397,13 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 content: {
                   GridColumnsWidth: {
                     TargetOfficeGroupId: '274px'
-                    TotalNumberOfSourceParts: '295px'
-                    NumberOfExclusionarySourceParts: '167px'
+                    Total: '150px'
+                    Exclusionary: '150px'
                   }
-                  Query: 'customEvents\n| where name == "ExclusionarySourcePartsCount"\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["DestinationGroupObjectId"]),\n    TotalNumberOfSourceParts = toint(customDimensions["TotalNumberOfSourceParts"]),\n    NumberOfExclusionarySourceParts = toint(customDimensions["NumberOfExclusionarySourceParts"])    \n| distinct TargetOfficeGroupId, TotalNumberOfSourceParts, NumberOfExclusionarySourceParts\n| order by TotalNumberOfSourceParts desc'
-                  ControlType: 'AnalyticsGrid'
-                  SpecificChart: 'StackedColumn'
+                  Query: 'customEvents\n| where name == "ExclusionarySourcePartsCount"\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["DestinationGroupObjectId"]),\n    Exclusionary = toint(customDimensions["NumberOfExclusionarySourceParts"]),\n    Total = toint(customDimensions["TotalNumberOfSourceParts"]) \n| distinct TargetOfficeGroupId, Exclusionary, Total\n| order by Exclusionary desc\n'
                   PartTitle: 'ExclusionarySourcePartsCount'
-                  Dimensions: {
-                    xAxis: {
-                      name: 'timestamp'
-                      type: 'datetime'
-                    }
-                    yAxis: [
-                      {
-                        name: 'count_'
-                        type: 'long'
-                      }
-                    ]
-                    splitBy: [
-                      {
-                        name: 'Type'
-                        type: 'string'
-                      }
-                    ]
-                    aggregation: 'Sum'
-                  }
-                  LegendOptions: {
-                    isEnabled: true
-                    position: 'Bottom'
-                  }
+                  PartSubTitle: resourceGroup
                 }
-              }
-              partHeader: {
-                title: 'ExclusionarySourcePartsCount'
-                subtitle: resourceGroup
               }
             }
           }
@@ -4229,14 +4201,14 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   GridColumnsWidth: {
                     Column: '274px'
                     CurrentNull: '167px'
-                    PreviousNull: '167px'                    
+                    PreviousNull: '167px'
                     timestamp: '182px'
                   }
                   Query: 'customEvents\n| where name == "TrackNullColumns"\n| project timestamp,    \n    Column = tostring(customDimensions["Column"]),\n    CurrentNull = toint(customDimensions["CurrentNull"]),\n    PreviousNull = toint(customDimensions["PreviousNull"])    \n| distinct timestamp, Column, CurrentNull, PreviousNull\n| extend Delta = CurrentNull - PreviousNull\n| order by Delta desc'
                   PartTitle: 'Null Calculator'
                   PartSubTitle: resourceGroup
                 }
-              }              
+              }
             }
           }
         }
