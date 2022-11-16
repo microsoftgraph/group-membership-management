@@ -141,10 +141,13 @@ namespace Repositories.GraphGroups
                     var content = await individualResponses["outlook"].Content.ReadAsStringAsync();
                     var jObject = JObject.Parse(content);
                     var isMailEnabled = jObject.Value<bool>("mailEnabled");
+                    var isSecurityEnabled = jObject.Value<bool>("securityEnabled");
                     var groupTypes = jObject.Value<JArray>("groupTypes").Values<string>().ToList();
 
                     if (isMailEnabled && groupTypes.Contains("Unified"))
                         endpoints.Add("Outlook");
+                    else if (isSecurityEnabled && !groupTypes.Any())
+                        endpoints.Add("SecurityGroup");
                 }
 
                 if (individualResponses.ContainsKey("sharepoint") && individualResponses["sharepoint"].IsSuccessStatusCode)
