@@ -784,6 +784,7 @@ namespace Repositories.GraphGroups
                     }
                 }
             }
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Number of users from first page using delta - {users.Count}", RunId = RunId });
             return (users, nextPageUrl, deltaUrl, response);
         }
 
@@ -813,7 +814,7 @@ namespace Repositories.GraphGroups
                     }
                 }
             }
-
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Number of users from next page using delta - {users.Count}", RunId = RunId });
             return (users, nextPageUrl, deltaUrl, response);
         }
 
@@ -850,7 +851,7 @@ namespace Repositories.GraphGroups
                     }
                 }
             }
-
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Number of users from first page using delta link - {usersToAdd.Count + usersToRemove.Count}", RunId = RunId });
             return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl, response);
         }
 
@@ -886,7 +887,7 @@ namespace Repositories.GraphGroups
                     }
                 }
             }
-
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Number of users from next page using delta link - {usersToAdd.Count + usersToRemove.Count}", RunId = RunId });
             return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl, response);
         }
 
@@ -947,13 +948,16 @@ namespace Repositories.GraphGroups
             // see https://github.com/microsoftgraph/msgraph-sdk-dotnet/blob/dev/docs/headers.md#reading-response-headers
             var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
 
-            if (responseHeaders.TryGetValue(ResourceUnitHeader, out var resourceValues))
+            if (!responseHeaders.TryGetValue(ResourceUnitHeader, out var resourceValues))
             {
-                ruu = ParseFirst<int>(resourceValues, int.TryParse);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = RunId });
-                TrackResourceUnitsUsedByTypeEvent(ruu, queryType);
-                _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ruu);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} is not available (NEW)", RunId = RunId });
+                return;
             }
+           
+            ruu = ParseFirst<int>(resourceValues, int.TryParse);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = RunId });
+            TrackResourceUnitsUsedByTypeEvent(ruu, queryType);
+            _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ruu);            
 
             if (responseHeaders.TryGetValue(ThrottlePercentageHeader, out var throttleValues))
                 _telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage)).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
