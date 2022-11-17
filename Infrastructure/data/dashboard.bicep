@@ -4112,7 +4112,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
             position: {
               x: 1
               y: 57
-              colSpan: 9
+              colSpan: 16
               rowSpan: 5
             }
             metadata: {
@@ -4199,12 +4199,15 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               settings: {
                 content: {
                   GridColumnsWidth: {
-                    Column: '274px'
-                    CurrentNull: '167px'
-                    PreviousNull: '167px'
-                    timestamp: '182px'
+                    timestamp: '216.998px'
+                    Column: '245.993px'
+                    CurrentNullColumns: '210.998px'
+                    PreviousNullColumns: '200.998px'
+                    Delta: '126px'
+                    CurrentNullPercent: '190px'
+                    PreviousNullPercent: '219.009px'
                   }
-                  Query: 'customEvents\n| where name == "TrackNullColumns"\n| project timestamp,    \n    Column = tostring(customDimensions["Column"]),\n    CurrentNull = toint(customDimensions["CurrentNull"]),\n    PreviousNull = toint(customDimensions["PreviousNull"])    \n| distinct timestamp, Column, CurrentNull, PreviousNull\n| extend Delta = CurrentNull - PreviousNull\n| order by Delta desc'
+                  Query: 'customEvents\n| where name == "TrackNullColumns"\n| project timestamp,    \n    Column = tostring(customDimensions["Column"]),\n    CurrentNullColumns = toint(customDimensions["CurrentNull"]),\n    PreviousNullColumns = toint(customDimensions["PreviousNull"]),\n   CurrentRows = toint(customDimensions["CurrentRows"]),\n    PreviousRows = toint(customDimensions["PreviousRows"])\n| distinct timestamp, Column, CurrentNullColumns, PreviousNullColumns, CurrentRows, PreviousRows\n| extend Delta = CurrentNullColumns - PreviousNullColumns,\n         CurrentNullPercent = (toreal(CurrentNullColumns) / CurrentRows) * 100,\n         PreviousNullPercent = (toreal(PreviousNullColumns) / PreviousRows) * 100\n| distinct timestamp, Column, CurrentNullColumns, PreviousNullColumns, Delta, CurrentNullPercent, PreviousNullPercent\n| order by Delta desc\n\n'
                   PartTitle: 'Null Calculator'
                   PartSubTitle: resourceGroup
                 }
