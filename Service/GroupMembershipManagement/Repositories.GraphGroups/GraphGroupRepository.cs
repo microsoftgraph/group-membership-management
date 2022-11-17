@@ -665,6 +665,12 @@ namespace Repositories.GraphGroups
 
             var usersFromGroup = await GetGroupMembersPageByIdAsync(objectId.ToString());
             await TrackMetrics(usersFromGroup.AdditionalData, QueryType.Transitive);
+            if (usersFromGroup.AdditionalData.TryGetValue("responseHeaders", out var headers))
+            {
+                var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
+                responseHeaders.TryGetValue("request-id", out var requestId);
+                if (requestId.Count > 0) await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request Id - {requestId[0]}", RunId = RunId });
+            }
             usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
@@ -681,6 +687,12 @@ namespace Repositories.GraphGroups
 
             usersFromGroup = await GetGroupMembersNextPageAsnyc(usersFromGroup, nextPageUrl);
             await TrackMetrics(usersFromGroup.AdditionalData, QueryType.Transitive);
+            if (usersFromGroup.AdditionalData.TryGetValue("responseHeaders", out var headers))
+            {
+                var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
+                responseHeaders.TryGetValue("request-id", out var requestId);
+                if (requestId.Count > 0) await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request Id - {requestId[0]}", RunId = RunId });
+            }
             usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink2);
             nextPageUrl = (nextLink2 == null) ? string.Empty : nextLink2.ToString();
             users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
@@ -764,6 +776,12 @@ namespace Repositories.GraphGroups
             var users = new List<AzureADUser>();
             var response = await GetGroupUsersPageByIdAsync(objectId.ToString());
             await TrackMetrics(response.AdditionalData, QueryType.Delta);
+            if (response.AdditionalData.TryGetValue("responseHeaders", out var headers))
+            {
+                var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
+                responseHeaders.TryGetValue("request-id", out var requestId);
+                if (requestId.Count > 0) await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request Id - {requestId[0]}", RunId = RunId });
+            }
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -793,6 +811,12 @@ namespace Repositories.GraphGroups
             var users = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
             await TrackMetrics(response.AdditionalData, QueryType.Delta);
+            if (response.AdditionalData.TryGetValue("responseHeaders", out var headers))
+            {
+                var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
+                responseHeaders.TryGetValue("request-id", out var requestId);
+                if (requestId.Count > 0) await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request Id - {requestId[0]}", RunId = RunId });
+            }
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -824,6 +848,12 @@ namespace Repositories.GraphGroups
             var usersToRemove = new List<AzureADUser>();
             var response = await GetGroupUsersPageByLinkAsync(deltaLink);
             await TrackMetrics(response.AdditionalData, QueryType.DeltaLink);
+            if (response.AdditionalData.TryGetValue("responseHeaders", out var headers))
+            {
+                var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
+                responseHeaders.TryGetValue("request-id", out var requestId);               
+                if (requestId.Count > 0) await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request Id - {requestId[0]}", RunId = RunId });
+            }
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -861,6 +891,12 @@ namespace Repositories.GraphGroups
             var usersToRemove = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
             await TrackMetrics(response.AdditionalData, QueryType.DeltaLink);
+            if (response.AdditionalData.TryGetValue("responseHeaders", out var headers))
+            {
+                var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
+                responseHeaders.TryGetValue("request-id", out var requestId);
+                if (requestId.Count > 0) await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request Id - {requestId[0]}", RunId = RunId });
+            }
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
