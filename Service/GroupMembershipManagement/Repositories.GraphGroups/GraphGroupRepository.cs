@@ -665,12 +665,7 @@ namespace Repositories.GraphGroups
 
             var usersFromGroup = await GetGroupMembersPageByIdAsync(objectId.ToString());
             await TrackMetrics(usersFromGroup.AdditionalData, QueryType.Transitive);
-            if (usersFromGroup.AdditionalData.TryGetValue("responseHeaders", out var headers))
-            {
-                var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
-                responseHeaders.TryGetValue("request-id", out var requestId);
-                if (requestId.Count > 0) await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request Id - {requestId[0]}", RunId = RunId });
-            }
+            await TrackRequest(usersFromGroup.AdditionalData);
             usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
@@ -687,12 +682,7 @@ namespace Repositories.GraphGroups
 
             usersFromGroup = await GetGroupMembersNextPageAsnyc(usersFromGroup, nextPageUrl);
             await TrackMetrics(usersFromGroup.AdditionalData, QueryType.Transitive);
-            if (usersFromGroup.AdditionalData.TryGetValue("responseHeaders", out var headers))
-            {
-                var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
-                responseHeaders.TryGetValue("request-id", out var requestId);
-                if (requestId.Count > 0) await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request Id - {requestId[0]}", RunId = RunId });
-            }
+            await TrackRequest(usersFromGroup.AdditionalData); 
             usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink2);
             nextPageUrl = (nextLink2 == null) ? string.Empty : nextLink2.ToString();
             users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
@@ -776,12 +766,7 @@ namespace Repositories.GraphGroups
             var users = new List<AzureADUser>();
             var response = await GetGroupUsersPageByIdAsync(objectId.ToString());
             await TrackMetrics(response.AdditionalData, QueryType.Delta);
-            if (response.AdditionalData.TryGetValue("responseHeaders", out var headers))
-            {
-                var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
-                responseHeaders.TryGetValue("request-id", out var requestId);
-                if (requestId.Count > 0) await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request Id - {requestId[0]}", RunId = RunId });
-            }
+            await TrackRequest(response.AdditionalData);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -811,12 +796,7 @@ namespace Repositories.GraphGroups
             var users = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
             await TrackMetrics(response.AdditionalData, QueryType.Delta);
-            if (response.AdditionalData.TryGetValue("responseHeaders", out var headers))
-            {
-                var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
-                responseHeaders.TryGetValue("request-id", out var requestId);
-                if (requestId.Count > 0) await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request Id - {requestId[0]}", RunId = RunId });
-            }
+            await TrackRequest(response.AdditionalData);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -848,12 +828,7 @@ namespace Repositories.GraphGroups
             var usersToRemove = new List<AzureADUser>();
             var response = await GetGroupUsersPageByLinkAsync(deltaLink);
             await TrackMetrics(response.AdditionalData, QueryType.DeltaLink);
-            if (response.AdditionalData.TryGetValue("responseHeaders", out var headers))
-            {
-                var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
-                responseHeaders.TryGetValue("request-id", out var requestId);               
-                if (requestId.Count > 0) await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request Id - {requestId[0]}", RunId = RunId });
-            }
+            await TrackRequest(response.AdditionalData);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             var nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -891,12 +866,7 @@ namespace Repositories.GraphGroups
             var usersToRemove = new List<AzureADUser>();
             response = await GetGroupUsersNextPageAsnyc(response, nextPageUrl);
             await TrackMetrics(response.AdditionalData, QueryType.DeltaLink);
-            if (response.AdditionalData.TryGetValue("responseHeaders", out var headers))
-            {
-                var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
-                responseHeaders.TryGetValue("request-id", out var requestId);
-                if (requestId.Count > 0) await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request Id - {requestId[0]}", RunId = RunId });
-            }
+            await TrackRequest(response.AdditionalData);
             response.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink1);
             nextPageUrl = (nextLink1 == null) ? string.Empty : nextLink1.ToString();
             response.AdditionalData.TryGetValue("@odata.deltaLink", out object deltaLink1);
@@ -925,6 +895,33 @@ namespace Repositories.GraphGroups
             }
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Number of users from next page using delta link - {usersToAdd.Count + usersToRemove.Count}", RunId = RunId });
             return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl, response);
+        }
+
+        public async Task TrackRequest(IDictionary<string, object> additionalData)
+        {
+            string requestId = "";
+            string clientRequestId = "";
+            string diagnosticValue = "";
+            string dateValue = "";
+
+            if (!additionalData.TryGetValue("responseHeaders", out var headers))
+                return;
+            
+            var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
+
+            if (responseHeaders.TryGetValue("request-id", out var request))
+                requestId = request.Count > 0 ? request[0] : "";
+
+            if (responseHeaders.TryGetValue("client-request-id", out var clientRequest))
+                clientRequestId = clientRequest.Count > 0 ? clientRequest[0] : "";
+
+            if (responseHeaders.TryGetValue("x-ms-ags-diagnostic", out var diagnostic))
+                diagnosticValue = diagnostic.Count > 0 ? diagnostic[0] : "";
+
+            if (responseHeaders.TryGetValue("Date", out var date))
+                dateValue = date.Count > 0 ? date[0] : "";
+
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request Id - {requestId}, Client Request Id - {clientRequestId}, Diagnostic - {diagnosticValue}, Date - {dateValue}", RunId = RunId });
         }
 
         public async Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid objectId)
@@ -986,7 +983,7 @@ namespace Repositories.GraphGroups
 
             if (!responseHeaders.TryGetValue(ResourceUnitHeader, out var resourceValues))
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} is not available (NEW)", RunId = RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} is not available", RunId = RunId });
                 return;
             }
            
