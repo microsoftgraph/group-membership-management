@@ -361,16 +361,7 @@ namespace Tests.Services
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<string>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()), Times.Once);
-            Assert.AreEqual(_userCount, Users.Count);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                        It.Is<LogMessage>(m => m.Message.Contains($"read {_userCount} users")),
-                        It.IsAny<VerbosityLevel>(),
-                        It.IsAny<string>(),
-                        It.IsAny<string>()
-                    ), Times.Once);
-
+                      
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
                         It.IsAny<VerbosityLevel>(),
