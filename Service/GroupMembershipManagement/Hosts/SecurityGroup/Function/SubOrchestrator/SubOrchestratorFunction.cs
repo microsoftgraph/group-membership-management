@@ -142,8 +142,6 @@ namespace Hosts.SecurityGroup
                             if (countOfUsersFromAADGroup != countOfUsersFromCache)
                             {
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"{request.SourceGroup.ObjectId} has {countOfUsersFromAADGroup} users but cache has {countOfUsersFromCache} users. Running delta query..." });
-                                //var response = await GetUsersReaderFunction(context, allUsers, request);
-                                //allUsers = response.allUsers;
                             }
                             else if (countOfUsersFromAADGroup == countOfUsersFromCache)
                             {
