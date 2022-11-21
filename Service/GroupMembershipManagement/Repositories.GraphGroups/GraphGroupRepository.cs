@@ -913,16 +913,16 @@ namespace Repositories.GraphGroups
             var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
 
             if (responseHeaders.TryGetValue("request-id", out var request))
-                requestId = request.Count > 0 ? request[0] : "";
+                requestId = request.FirstOrDefault();
 
             if (responseHeaders.TryGetValue("client-request-id", out var clientRequest))
-                clientRequestId = clientRequest.Count > 0 ? clientRequest[0] : "";
+                clientRequestId = clientRequest.FirstOrDefault();
 
             if (responseHeaders.TryGetValue("x-ms-ags-diagnostic", out var diagnostic))
-                diagnosticValue = diagnostic.Count > 0 ? diagnostic[0] : "";
+                diagnosticValue = diagnostic.FirstOrDefault();
 
             if (responseHeaders.TryGetValue("Date", out var date))
-                dateValue = date.Count > 0 ? date[0] : "";
+                dateValue = date.FirstOrDefault();
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request Id - {requestId}, Client Request Id - {clientRequestId}, Diagnostic - {diagnosticValue}, Date - {dateValue}", RunId = RunId });
         }
