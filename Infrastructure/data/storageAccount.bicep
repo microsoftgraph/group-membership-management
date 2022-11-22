@@ -30,6 +30,36 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
   }
 }
 
+resource storageAccountPolicy 'Microsoft.Storage/storageAccounts/managementPolicies@2022-05-01' = {
+  name: 'default'
+  parent: storageAccount
+  properties: {
+    policy: {
+      rules: [
+        {
+          definition: {
+            actions: {
+              baseBlob: {
+                delete: {
+                  daysAfterModificationGreaterThan: 30
+                }
+              }
+            }
+            filters: {
+              blobTypes: [
+                'blockBlob'
+              ]
+            }
+          }
+          enabled: true
+          name: '30-Day Blob Deletion Policy'
+          type: 'Lifecycle'
+        }
+      ]
+    }
+  }
+}
+
 module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
   name: 'secureSecretsTemplate${name}'
   params: {
