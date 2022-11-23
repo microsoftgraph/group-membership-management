@@ -83,14 +83,12 @@ namespace Hosts.SecurityGroup
                         return;
                     }
 
-                    var users = sgResponse.Users;
-                    distinctUsers = users.GroupBy(user => user.ObjectId).Select(userGrp => userGrp.First()).ToList();
+                    distinctUsers = sgResponse.Users;
 
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage
                     {
                         RunId = runId,
-                        Message = $"Found {users.Count - distinctUsers.Count} duplicate user(s). " +
-                                    $"Read {distinctUsers.Count} users from source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
+                        Message = $"Read {distinctUsers.Count} users from source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
                     });
 
                     var filePath = await context.CallActivityAsync<string>(nameof(UsersSenderFunction),
