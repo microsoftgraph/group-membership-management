@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using System.Collections.Generic;
@@ -60,7 +61,7 @@ namespace Hosts.AzureMaintenance
             // Currently, only table backups are supported, but blob backups can be enabled here in the future
             var tableBackupSettings = _maintenanceSettings.Where(setting =>
             {
-                return setting.Backup && setting.SourceStorageSetting.StorageType == "table" && setting.DestinationStorageSetting.StorageType == "table";
+                return setting.Backup && setting.SourceStorageSetting.StorageType == StorageType.table && setting.DestinationStorageSetting.StorageType == StorageType.table;
             });
 
             var backupTasks = new List<Task>();
@@ -81,7 +82,7 @@ namespace Hosts.AzureMaintenance
                                         new LoggerRequest
                                         {
                                             RunId = runId,
-                                            Message = $"Cleaning up old backups for {maintenanceSetting.SourceStorageSetting.StorageType}: {maintenanceSetting.SourceStorageSetting.TargetName}"
+                                            Message = $"Cleaning up old backups for {maintenanceSetting.SourceStorageSetting.StorageType.ToString()}: {maintenanceSetting.SourceStorageSetting.TargetName}"
                                         });
 
                     var reviewAndDeleteRequests = await context.CallActivityAsync<List<ReviewAndDeleteRequest>>(nameof(RetrieveBackupsFunction), maintenanceSetting);

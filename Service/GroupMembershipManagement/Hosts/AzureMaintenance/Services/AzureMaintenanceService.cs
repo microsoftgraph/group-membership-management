@@ -32,7 +32,7 @@ namespace Services
 
 		public async Task RunBackupServiceAsync(IAzureMaintenanceJob maintenanceJob)
         {
-			if (maintenanceJob.SourceStorageSetting.StorageType == "table")
+			if (maintenanceJob.SourceStorageSetting.StorageType == StorageType.table)
 		        await BackupTableAsync(maintenanceJob);
         }
 
@@ -62,7 +62,7 @@ namespace Services
 			{
 				await backupStorage.CleanupAsync(maintenanceJob, targetName);
 
-				if (maintenanceJob.Backup && maintenanceJob.SourceStorageSetting.StorageType.ToLowerInvariant() == "table")
+				if (maintenanceJob.Backup && maintenanceJob.SourceStorageSetting.StorageType == StorageType.table)
 				{
 					await DeleteOldBackupTrackersAsync(new AzureMaintenanceJob(maintenanceJob), new List<string> { targetName });
 				}
@@ -93,13 +93,13 @@ namespace Services
 			await CompareBackupResults(maintenanceJob, backupResult);
 		}
 
-		private IAzureStorageBackupRepository DetermineBackupStorage(string backUpTo)
+		private IAzureStorageBackupRepository DetermineBackupStorage(StorageType backUpTo)
 		{
-			switch (backUpTo.ToLowerInvariant())
+			switch (backUpTo)
 			{
-				case "table":
+				case StorageType.table:
 					return _azureTableBackupRepository;
-				case "blob":
+				case StorageType.blob:
 					return _azureBlobBackupRepository;
 				default:
 					return null;

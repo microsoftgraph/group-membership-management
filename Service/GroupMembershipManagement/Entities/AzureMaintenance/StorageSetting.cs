@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace Entities.AzureMaintenance
 {
@@ -9,10 +10,12 @@ namespace Entities.AzureMaintenance
     {
         public string TargetName { get; set; }
         public string StorageConnectionString { get; set; }
-        public string StorageType { get; set; }
+
+        [JsonConverter(typeof(StringEnumConverter))]
+        public StorageType StorageType { get; set; }
 
         [JsonConstructor]
-        public StorageSetting(string targetName, string storageConnectionString, string storageType)
+        public StorageSetting(string targetName, string storageConnectionString, StorageType storageType)
         {
             TargetName = targetName;
             StorageConnectionString = storageConnectionString;

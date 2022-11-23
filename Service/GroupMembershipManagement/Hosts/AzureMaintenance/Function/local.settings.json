@@ -6,7 +6,7 @@
     "maintenanceTriggerSchedule": "0 0 0 * * *",
     "logAnalyticsCustomerId": "<customer-id>",
     "logAnalyticsPrimarySharedKey": "<primary-shared-key>",
-    "tablesToBackup": "[ { 'SourceTableName':'<table-name>', 'SourceConnectionString':'<connection-string>', 'DestinationConnectionString':'<connection-string>', 'BackupType': 'table', 'CleanupOnly': false, 'DeleteAfterDays': 7 } ]",
+    "maintenanceJobs": "[{'SourceStorageSetting':{'TargetName':'<target-name>','StorageConnectionString':'<connection-string>','StorageType':'table'},'DestinationStorageSetting':{'TargetName':'<target-name>','StorageConnectionString':'<connection-string>','StorageType':'table'},'Backup':true,'Cleanup':true,'DeleteAfterDays':30}]",
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io"
   }
 }
