@@ -10,7 +10,7 @@ param backupType string
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string
 
-var jobsBackupSettings = '{"SourceStorageSetting":{"TargetName":"${jobsTableNameSecret}","StorageConnectionString":"${jobsSourceTableConnectionStringSecret}","StorageType":"table"},"DestinationStorageSetting":{"TargetName":"${jobsTableNameSecret}","StorageConnectionString":"${jobsDestinationTableConnectionStringSecret}","StorageType":"${backupType}"},"Backup":true,"Cleanup":true,"DeleteAfterDays":30}'
+var jobsBackupSettings = '{"SourceStorageSetting":{"TargetName":"${jobsTableNameSecret}","StorageConnectionString":"${jobsSourceTableConnectionStringSecret}","StorageType":"Table"},"DestinationStorageSetting":{"TargetName":"${jobsTableNameSecret}","StorageConnectionString":"${jobsDestinationTableConnectionStringSecret}","StorageType":"${backupType}"},"Backup":true,"Cleanup":true,"DeleteAfterDays":30}'
 var backupSetting = '[ ${jobsBackupSettings} ]'
 
 resource secret 'Microsoft.KeyVault/vaults/secrets@2021-06-01-preview' = {

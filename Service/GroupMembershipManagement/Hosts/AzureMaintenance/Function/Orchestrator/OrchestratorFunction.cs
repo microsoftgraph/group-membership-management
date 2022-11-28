@@ -61,7 +61,7 @@ namespace Hosts.AzureMaintenance
             // Currently, only table backups are supported, but blob backups can be enabled here in the future
             var tableBackupSettings = _maintenanceSettings.Where(setting =>
             {
-                return setting.Backup && setting.SourceStorageSetting.StorageType == StorageType.table && setting.DestinationStorageSetting.StorageType == StorageType.table;
+                return setting.Backup && setting.SourceStorageSetting.StorageType == StorageType.Table && setting.DestinationStorageSetting.StorageType == StorageType.Table;
             });
 
             var backupTasks = new List<Task>();

@@ -5,7 +5,7 @@ namespace Entities
 {
     public enum StorageType
     {
-        table,
-        blob
+        Table,
+        Blob
     }
 }

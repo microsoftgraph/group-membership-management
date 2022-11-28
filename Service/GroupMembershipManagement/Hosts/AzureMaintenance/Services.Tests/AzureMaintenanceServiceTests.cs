@@ -26,12 +26,12 @@ namespace Services.Tests
             var backupSettings = new List<AzureMaintenanceJob>()
             {
                 new AzureMaintenanceJob(
-                    new StorageSetting("tableOne", "sourceConnection", StorageType.table),
-                    new StorageSetting("tableTwo", "destinationConnection", StorageType.table),
+                    new StorageSetting("tableOne", "sourceConnection", StorageType.Table),
+                    new StorageSetting("tableTwo", "destinationConnection", StorageType.Table),
                     true, true, 7),
                 new AzureMaintenanceJob(
-                    new StorageSetting("tableThree", "sourceConnection", StorageType.table),
-                    new StorageSetting("blobOne", "destinationConnection", StorageType.blob),
+                    new StorageSetting("tableThree", "sourceConnection", StorageType.Table),
+                    new StorageSetting("blobOne", "destinationConnection", StorageType.Blob),
                     true, true, 7)
             };
 
@@ -76,12 +76,12 @@ namespace Services.Tests
             var backupSettings = new List<AzureMaintenanceJob>()
             {
                 new AzureMaintenanceJob(
-                    new StorageSetting("tableOne", "sourceConnection", StorageType.table),
-                    new StorageSetting("tableTwo", "destinationConnection", StorageType.table),
+                    new StorageSetting("tableOne", "sourceConnection", StorageType.Table),
+                    new StorageSetting("tableTwo", "destinationConnection", StorageType.Table),
                     true, true, 7),
                 new AzureMaintenanceJob(
-                    new StorageSetting("tableThree", "sourceConnection", StorageType.table),
-                    new StorageSetting("blobOne", "destinationConnection", StorageType.blob),
+                    new StorageSetting("tableThree", "sourceConnection", StorageType.Table),
+                    new StorageSetting("blobOne", "destinationConnection", StorageType.Blob),
                     true, true, 7)
             };
 
@@ -126,12 +126,12 @@ namespace Services.Tests
             var backupSettings = new List<AzureMaintenanceJob>()
             {
                 new AzureMaintenanceJob(
-                    new StorageSetting("tableOne", "sourceConnection", StorageType.table),
-                    new StorageSetting("tableTwo", "destinationConnection", StorageType.table),
+                    new StorageSetting("tableOne", "sourceConnection", StorageType.Table),
+                    new StorageSetting("tableTwo", "destinationConnection", StorageType.Table),
                     true, true, 7),
                 new AzureMaintenanceJob(
-                    new StorageSetting("tableThree", "sourceConnection", StorageType.table),
-                    new StorageSetting("tableFour", "destinationConnection", StorageType.blob),
+                    new StorageSetting("tableThree", "sourceConnection", StorageType.Table),
+                    new StorageSetting("tableFour", "destinationConnection", StorageType.Blob),
                     true, true, 7)
             };
 
@@ -165,12 +165,12 @@ namespace Services.Tests
             var backupSettings = new List<AzureMaintenanceJob>()
             {
                 new AzureMaintenanceJob(
-                    new StorageSetting("tableOne", "sourceConnection", StorageType.table),
-                    new StorageSetting("tableTwo", "destinationConnection", StorageType.table),
+                    new StorageSetting("tableOne", "sourceConnection", StorageType.Table),
+                    new StorageSetting("tableTwo", "destinationConnection", StorageType.Table),
                     true, true, 7),
                 new AzureMaintenanceJob(
-                    new StorageSetting("blobOne", "sourceConnection", StorageType.blob),
-                    new StorageSetting("blobTwo", "destinationConnection", StorageType.blob),
+                    new StorageSetting("blobOne", "sourceConnection", StorageType.Blob),
+                    new StorageSetting("blobTwo", "destinationConnection", StorageType.Blob),
                     true, true, 7)
             };
 
@@ -209,12 +209,12 @@ namespace Services.Tests
             var backupSettings = new List<AzureMaintenanceJob>()
             {
                 new AzureMaintenanceJob(
-                    new StorageSetting("tableOne", "sourceConnection", StorageType.table),
-                    new StorageSetting("tableTwo", "destinationConnection", StorageType.table),
+                    new StorageSetting("tableOne", "sourceConnection", StorageType.Table),
+                    new StorageSetting("tableTwo", "destinationConnection", StorageType.Table),
                     true, true, 7),
                 new AzureMaintenanceJob(
-                    new StorageSetting("blobOne", "sourceConnection", StorageType.blob),
-                    new StorageSetting("blobTwo", "destinationConnection", StorageType.blob),
+                    new StorageSetting("blobOne", "sourceConnection", StorageType.Blob),
+                    new StorageSetting("blobTwo", "destinationConnection", StorageType.Blob),
                     true, true, 7)
             };
 
