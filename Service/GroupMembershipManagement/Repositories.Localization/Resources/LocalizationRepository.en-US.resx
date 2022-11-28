@@ -117,6 +117,24 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="CustomerPausedJobEmailBody" xml:space="preserve">
+    <value>You received this notification because you are listed as the owner of {0}.
+Your group {0} with Id {1} is currently offboarded from Group Membership Management (GMM) due to one of the following reasons:
+
+•	Group Owner Requested a Pause for more than 30 days.
+•	Source or Destination group has been deleted by group owner
+•	No response from group owner about membership adding/removal threshold hitting 
+
+If you believe this group should be continued managed by Group Membership Management (GMM), please reach out to GMM support before {2} to restore the current onboarding details. Otherwise, you may submit a new GMM onboarding request after the deadline if GMM is still needed. 
+
+Please feel free to contact GMMSupport if you have any questions. 
+
+Thank you,
+GMM Team</value>
+  </data>
+  <data name="CustomerPausedJobEmailSubject" xml:space="preserve">
+    <value>Group Membership Management (GMM) update</value>
+  </data>
   <data name="DecreaseThresholdMessage" xml:space="preserve">
     <value>Decrease membership threshold {0}%. Detected threshold {1}%.</value>
   </data>

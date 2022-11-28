@@ -118,6 +118,62 @@ namespace Repositories.SyncJobsRepository
             }
         }
 
+        public async IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync()
+        {
+            var queryResult = _tableClient.QueryAsync<SyncJob>(x => 
+                    x.Status != SyncStatus.Idle.ToString() && 
+                    x.Status != SyncStatus.InProgress.ToString() && 
+                    x.Status != SyncStatus.Error.ToString());
+                       
+            await foreach (var segmentResult in queryResult.AsPages())
+            {
+                if (segmentResult.Values.Count == 0)
+                    await _log.LogMessageAsync(new LogMessage { Message = $"Number of enabled jobs in your sync jobs table is: {segmentResult.Values.Count}.", RunId = Guid.Empty });
+
+                var results = segmentResult.Values.Where(x => ((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromDays(30)));
+
+                foreach (var job in results)
+                {
+                    yield return job;
+                }
+            }
+        }
+
+        public async Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs)
+        {
+            var batchSize = 100;
+            var groupedJobs = jobs.GroupBy(x => x.PartitionKey);
+
+            await _log.LogMessageAsync(new LogMessage { Message = $"Number of grouped jobs: {groupedJobs.Count()}", RunId = Guid.Empty });
+            await _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key started", RunId = Guid.Empty });
+
+            foreach (var group in groupedJobs)
+            {
+                var batchOperation = new List<TableTransactionAction>();
+
+                foreach (var job in group.AsEnumerable())
+                {
+                    job.ETag = ETag.All;
+
+                    await _log.LogMessageAsync(new LogMessage { Message = string.Join('\n', job.GetType().GetProperties().Select(jobProperty => $"{jobProperty.Name} : {jobProperty.GetValue(job, null)}")), RunId = job.RunId });
+
+                    batchOperation.Add(new TableTransactionAction(TableTransactionActionType.Delete, job));
+
+                    if (batchOperation.Count == batchSize)
+                    {
+                        await _tableClient.SubmitTransactionAsync(batchOperation);
+                        batchOperation.Clear();
+                    }
+                }
+
+                if (batchOperation.Any())
+                {
+                    await _tableClient.SubmitTransactionAsync(batchOperation);
+                }
+            }
+            await _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key completed", RunId = Guid.Empty });
+        }
+
         public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(IEnumerable<(string partitionKey, string rowKey)> jobIds)
         {
 

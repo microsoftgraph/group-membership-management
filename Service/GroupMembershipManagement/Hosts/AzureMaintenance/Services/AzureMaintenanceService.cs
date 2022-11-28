@@ -4,6 +4,7 @@ using Entities;
 using Entities.AzureMaintenance;
 using Repositories.Contracts;
 using Repositories.Contracts.AzureMaintenance;
+using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Entities;
 using Services.Entities.Contracts;
@@ -16,19 +17,34 @@ namespace Services
 {
     public class AzureMaintenanceService : IAzureMaintenanceService
 	{
-		private readonly ILoggingRepository _loggingRepository = null;
+        private const string CustomerPausedJobEmailSubject = "CustomerPausedJobEmailSubject";
+        private const string CustomerPausedJobEmailBody = "CustomerPausedJobEmailBody";
+
+        private readonly ILoggingRepository _loggingRepository = null;
 		private readonly IAzureTableBackupRepository _azureTableBackupRepository = null;
 		private readonly IAzureStorageBackupRepository _azureBlobBackupRepository = null;
+        private readonly ISyncJobRepository _syncJobRepository = null;
+        private readonly IGraphGroupRepository _graphGroupRepository = null;
+        private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
+        private readonly IMailRepository _mailRepository = null;
 
-		public AzureMaintenanceService(
+        public AzureMaintenanceService(
 			ILoggingRepository loggingRepository,
 			IAzureTableBackupRepository azureTableBackupRepository,
-			IAzureStorageBackupRepository azureBlobBackupRepository)
-		{
+            IAzureStorageBackupRepository azureBlobBackupRepository,
+            ISyncJobRepository syncJobRepository,
+            IGraphGroupRepository graphGroupRepository,
+            IEmailSenderRecipient emailSenderAndRecipients,
+            IMailRepository mailRepository)
+        {
 			_loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
 			_azureTableBackupRepository = azureTableBackupRepository ?? throw new ArgumentNullException(nameof(azureTableBackupRepository));
 			_azureBlobBackupRepository = azureBlobBackupRepository ?? throw new ArgumentNullException(nameof(azureBlobBackupRepository));
-		}
+            _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
+            _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
+            _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
+        }
 
 		public async Task RunBackupServiceAsync(IAzureMaintenanceJob maintenanceJob)
         {
@@ -136,5 +152,76 @@ namespace Services
 			var keys = deletedTables.Select(x => (backupSettings.SourceStorageSetting.TargetName, x)).ToList();
 			await _azureTableBackupRepository.DeleteBackupTrackersAsync(backupSettings, keys);
 		}
-	}
+
+        public async Task<List<SyncJob>> GetSyncJobsAsync()
+        {
+            var allJobs = new List<SyncJob>();
+            var jobs = _syncJobRepository.GetSpecificSyncJobsAsync();
+            await foreach (var job in jobs)
+            {
+                allJobs.Add(job);
+            }
+            return allJobs;
+        }
+
+        public async Task<string> GetGroupNameAsync(Guid groupId)
+        {
+            return await _graphGroupRepository.GetGroupNameAsync(groupId);
+        }
+
+        public async Task SendEmailAsync(SyncJob job, string groupName)
+        {
+            if (job != null)
+            {
+                var owners = await _graphGroupRepository.GetGroupOwnersAsync(job.TargetOfficeGroupId);
+                var ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
+                var message = new EmailMessage
+                {
+                    Subject = CustomerPausedJobEmailSubject,
+                    Content = CustomerPausedJobEmailBody,
+                    SenderAddress = _emailSenderAndRecipients.SenderAddress,
+                    SenderPassword = _emailSenderAndRecipients.SenderPassword,
+                    ToEmailAddresses = ownerEmails,
+                    CcEmailAddresses = _emailSenderAndRecipients.SupportEmailAddresses,
+                    AdditionalContentParams = new[]
+                    {
+                        groupName,
+                        job.TargetOfficeGroupId.ToString(),
+                        DateTime.UtcNow.AddDays(30).ToString()
+                    }
+                };
+
+                await _mailRepository.SendMailAsync(message, job.RunId);
+            }
+        }
+
+        public async Task<int> BackupInactiveJobsAsync(List<SyncJob> syncJobs)
+        {
+            if (syncJobs.Count <= 0) return 0;
+            return await _azureTableBackupRepository.BackupInactiveJobsAsync(syncJobs);
+        }
+
+        public async Task<List<string>> RemoveBackupsAsync()
+        {
+            var backupTables = await _azureTableBackupRepository.GetInactiveBackupsAsync();
+            var cutOffDate = DateTime.UtcNow.AddDays(-30);
+            var deletedTables = new List<string>();
+
+            foreach (var table in backupTables)
+            {
+                if (table.CreatedDate < cutOffDate)
+                {
+                    await _azureTableBackupRepository.DeleteBackupTableAsync(table.TableName);
+                    deletedTables.Add(table.TableName);
+                }
+            }
+
+            return deletedTables;
+        }
+
+        public async Task RemoveInactiveJobsAsync(IEnumerable<SyncJob> jobs)
+        {
+            await _syncJobRepository.DeleteSyncJobsAsync(jobs);
+        }
+    }
 }

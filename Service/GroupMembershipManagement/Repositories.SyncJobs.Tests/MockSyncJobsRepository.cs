@@ -79,5 +79,15 @@ namespace Repositories.SyncJobs.Tests
         {
             throw new NotImplementedException();
         }
+
+        public async IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

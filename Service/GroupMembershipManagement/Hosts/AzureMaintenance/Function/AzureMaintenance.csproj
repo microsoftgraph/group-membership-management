@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Repositories.AzureBlobBackupRepository\Repositories.AzureBlobBackupRepository.csproj" />
     <ProjectReference Include="..\..\..\Repositories.AzureTableBackupRepository\Repositories.AzureTableBackupRepository.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
     <ProjectReference Include="..\Services.Entities\Services.Entities.csproj" />
 	<ProjectReference Include="..\Services\Services.csproj" />
 	<ProjectReference Include="..\..\..\Repositories.Logging\Repositories.Logging.csproj" />

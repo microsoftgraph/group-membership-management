@@ -7,6 +7,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.AzureMaintenance;
+using Repositories.Contracts.InjectConfig;
 using Services.Entities;
 using Services.Entities.Contracts;
 using System.Collections.Generic;
@@ -37,6 +38,11 @@ namespace Services.Tests
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
+            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var mailAddresses = new Mock<IEmailSenderRecipient>();
+            var mailRespository = new Mock<IMailRepository>();
+
             var entities = new List<DynamicTableEntity>();
             for (int i = 0; i < 5; i++)
             {
@@ -58,7 +64,13 @@ namespace Services.Tests
             azureBlobBackupRepository.Setup(x => x.BackupEntitiesAsync(backupSettings[1], entities))
                                         .ReturnsAsync(new BackupResult("backupTableName", "blob", entities.Count));
 
-            var azureTableBackupService = new AzureMaintenanceService(loggerMock.Object, azureTableBackupRepository.Object, azureBlobBackupRepository.Object);
+            var azureTableBackupService = new AzureMaintenanceService(loggerMock.Object,
+                                                azureTableBackupRepository.Object,
+                                                azureBlobBackupRepository.Object,
+                                                syncJobRepository.Object,
+                                                graphGroupRepository.Object,
+                                                mailAddresses.Object,
+                                                mailRespository.Object);
             await azureTableBackupService.RunBackupServiceAsync(backupSettings[0]);
             await azureTableBackupService.RunBackupServiceAsync(backupSettings[1]);
 
@@ -87,6 +99,11 @@ namespace Services.Tests
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
+            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var mailAddresses = new Mock<IEmailSenderRecipient>();
+            var mailRespository = new Mock<IMailRepository>();
+
             var entities = new List<DynamicTableEntity>();
             for (int i = 0; i < 5; i++)
             {
@@ -108,7 +125,13 @@ namespace Services.Tests
             azureBlobBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[1]))
                                         .ReturnsAsync(backups);
 
-            var azureTableBackupService = new AzureMaintenanceService(loggerMock.Object, azureTableBackupRepository.Object, azureBlobBackupRepository.Object);
+            var azureTableBackupService = new AzureMaintenanceService(loggerMock.Object,
+                                                azureTableBackupRepository.Object,
+                                                azureBlobBackupRepository.Object,
+                                                syncJobRepository.Object,
+                                                graphGroupRepository.Object,
+                                                mailAddresses.Object,
+                                                mailRespository.Object);
             await azureTableBackupService.RunBackupServiceAsync(backupSettings[0]);
             await azureTableBackupService.RunBackupServiceAsync(backupSettings[1]);
 
@@ -137,6 +160,11 @@ namespace Services.Tests
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
+            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var mailAddresses = new Mock<IEmailSenderRecipient>();
+            var mailRespository = new Mock<IMailRepository>();
+
             var backups = new List<BackupEntity> { new BackupEntity("backupTableName", "blob") };
 
             azureTableBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[0]))
@@ -146,7 +174,13 @@ namespace Services.Tests
             azureTableBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[1]))
                                         .ReturnsAsync(backups);
 
-            var azureTableBackupService = new AzureMaintenanceService(loggerMock.Object, azureTableBackupRepository.Object, azureBlobBackupRepository.Object);
+            var azureTableBackupService = new AzureMaintenanceService(loggerMock.Object,
+                                                azureTableBackupRepository.Object,
+                                                azureBlobBackupRepository.Object,
+                                                syncJobRepository.Object,
+                                                graphGroupRepository.Object,
+                                                mailAddresses.Object,
+                                                mailRespository.Object);
             await azureTableBackupService.RunBackupServiceAsync(backupSettings[0]);
             await azureTableBackupService.RunBackupServiceAsync(backupSettings[1]);
 
@@ -176,6 +210,11 @@ namespace Services.Tests
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
+            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var mailAddresses = new Mock<IEmailSenderRecipient>();
+            var mailRespository = new Mock<IMailRepository>();
+
             var backupsTable = new List<BackupEntity> { new BackupEntity(tableSource, "table") };
             var backupsBlob = new List<BackupEntity> { new BackupEntity(blobSource, "blob") };
 
@@ -184,7 +223,13 @@ namespace Services.Tests
             azureBlobBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[1]))
                                         .ReturnsAsync(backupsBlob);
 
-            var azureTableBackupService = new AzureMaintenanceService(loggerMock.Object, azureTableBackupRepository.Object, azureBlobBackupRepository.Object);
+            var azureTableBackupService = new AzureMaintenanceService(loggerMock.Object,
+                                                azureTableBackupRepository.Object,
+                                                azureBlobBackupRepository.Object,
+                                                syncJobRepository.Object,
+                                                graphGroupRepository.Object,
+                                                mailAddresses.Object,
+                                                mailRespository.Object);
             var requests1 = await azureTableBackupService.RetrieveBackupsAsync(backupSettings[0]);
             var requests2 = await azureTableBackupService.RetrieveBackupsAsync(backupSettings[1]);
 
@@ -220,6 +265,11 @@ namespace Services.Tests
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
+            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var mailAddresses = new Mock<IEmailSenderRecipient>();
+            var mailRespository = new Mock<IMailRepository>();
+
             var backupsTable = new List<BackupEntity> { new BackupEntity(tableSource, "table") };
             var backupsBlob = new List<BackupEntity> { new BackupEntity(blobSource, "blob") };
 
@@ -233,7 +283,13 @@ namespace Services.Tests
             azureBlobBackupRepository.Setup(x => x.VerifyCleanupAsync(backupSettings[1], blobSource))
                                         .ReturnsAsync(false);
 
-            var azureTableBackupService = new AzureMaintenanceService(loggerMock.Object, azureTableBackupRepository.Object, azureBlobBackupRepository.Object);
+            var azureTableBackupService = new AzureMaintenanceService(loggerMock.Object,
+                                                azureTableBackupRepository.Object,
+                                                azureBlobBackupRepository.Object,
+                                                syncJobRepository.Object,
+                                                graphGroupRepository.Object,
+                                                mailAddresses.Object,
+                                                mailRespository.Object);
 
             var tableRequest = await azureTableBackupService.RetrieveBackupsAsync(backupSettings[0]);
             var blobRequest = await azureTableBackupService.RetrieveBackupsAsync(backupSettings[1]);

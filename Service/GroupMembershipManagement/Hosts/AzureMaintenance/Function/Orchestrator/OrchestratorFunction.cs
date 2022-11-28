@@ -36,7 +36,7 @@ namespace Hosts.AzureMaintenance
                                    Verbosity = VerbosityLevel.DEBUG
                                });
 
-           
+
 
             if (!_maintenanceSettings.Any())
             {
@@ -52,7 +52,7 @@ namespace Hosts.AzureMaintenance
                 return;
             }
 
-            /* 
+            /*
             * In the Azure Maintenance process, we do the following for each maintenance job / setting:
             * 1. BackupFunction: Backup any relevant tables / blobs
             * 2. RetrieveBackupsFunction: Retrieve all tables / blobs to be reviewed and cleaned if necessary
@@ -108,6 +108,24 @@ namespace Hosts.AzureMaintenance
                                         });
                 }
             }
+
+            var inactiveSyncJobs = await context.CallActivityAsync<List<SyncJob>>(nameof(ReadSyncJobsFunction), null);
+            var countOfBackUpJobs = await context.CallActivityAsync<int>(nameof(BackUpInactiveJobsFunction), inactiveSyncJobs);
+
+            if (inactiveSyncJobs != null && inactiveSyncJobs.Count > 0 && inactiveSyncJobs.Count == countOfBackUpJobs)
+            {
+                await context.CallActivityAsync<int>(nameof(RemoveInactiveJobsFunction), inactiveSyncJobs);
+
+                var processingTasks = new List<Task>();
+                foreach (var inactiveSyncJob in inactiveSyncJobs)
+                {
+                    var processTask = context.CallActivityAsync(nameof(SendEmailFunction), inactiveSyncJob);
+                    processingTasks.Add(processTask);
+                }
+                await Task.WhenAll(processingTasks);
+            }
+
+            await context.CallActivityAsync<List<string>>(nameof(RemoveBackUpsFunction), null);
 
             await context.CallActivityAsync(
                                nameof(LoggerFunction),

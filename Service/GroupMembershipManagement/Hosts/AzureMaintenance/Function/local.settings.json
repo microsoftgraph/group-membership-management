@@ -7,6 +7,17 @@
     "logAnalyticsCustomerId": "<customer-id>",
     "logAnalyticsPrimarySharedKey": "<primary-shared-key>",
     "maintenanceJobs": "[{'SourceStorageSetting':{'TargetName':'<target-name>','StorageConnectionString':'<connection-string>','StorageType':'table'},'DestinationStorageSetting':{'TargetName':'<target-name>','StorageConnectionString':'<connection-string>','StorageType':'table'},'Backup':true,'Cleanup':true,'DeleteAfterDays':30}]",
-    "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io"
+    "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
+    "jobsStorageAccountConnectionString": "",
+    "jobsTableName": "",
+    "graphCredentials:ClientId": "",
+    "graphCredentials:ClientSecret": "",
+    "graphCredentials:KeyVaultName": "",
+    "graphCredentials:KeyVaultTenantId": "",
+    "graphCredentials:TenantId": "",
+    "senderAddress": "",
+    "senderPassword": "",
+    "supportEmailAddresses": ""
+
   }
 }

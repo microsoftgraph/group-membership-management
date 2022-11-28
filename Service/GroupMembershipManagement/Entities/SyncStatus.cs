@@ -15,6 +15,7 @@ namespace Entities
         SecurityGroupNotFound = 8,
         FilePathNotValid = 9,
         QueryNotValid = 10,
-        FileNotFound = 11
+        FileNotFound = 11,
+        CustomerPaused = 12
     }
 }

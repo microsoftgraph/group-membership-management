@@ -14,9 +14,11 @@ namespace Repositories.Contracts
         Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, bool applyFilters = true);
         Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey);
         IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool applyFilters = true);
+        IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync();
         IAsyncEnumerable<SyncJob> GetSyncJobsAsync(IEnumerable<(string partitionKey, string rowKey)> jobIds);
         Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status);
         Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null);
         Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> jobs);
+        Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs);
     }
 }
