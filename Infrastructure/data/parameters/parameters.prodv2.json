@@ -8,11 +8,6 @@
     "serviceBusTopicSubscriptions": {
       "value": [
         {
-          "name": "Organization",
-          "ruleName": "syncType",
-          "ruleSqlExpression": "Type = 'Organization'"
-        },
-        {
           "name": "SecurityGroup",
           "ruleName": "syncType",
           "ruleSqlExpression": "Type = 'SecurityGroup'"
@@ -24,6 +19,6 @@
     },
     "serviceBusQueueName": {
       "value": "membership"
-    }    
+    }
   }
 }

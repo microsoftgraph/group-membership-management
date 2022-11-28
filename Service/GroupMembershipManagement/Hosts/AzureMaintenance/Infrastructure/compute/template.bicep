@@ -148,22 +148,22 @@ module functionAppSlotTemplate_AzureMaintenance 'functionAppSlot.bicep' = {
   ]
 }
 
-module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'keyVaultPoliciesTemplate-AzureMaintenance'
+module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
+  name: 'dataKeyVaultPoliciesTemplate-AzureMaintenance'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     name: dataKeyVaultName
     policies: [
       {
         objectId: functionAppTemplate_AzureMaintenance.outputs.msi
-        permissions: [
+        secrets: [
           'get'
           'list'
         ]
       }
       {
         objectId: functionAppSlotTemplate_AzureMaintenance.outputs.msi
-        permissions: [
+        secrets: [
           'get'
           'list'
         ]
@@ -183,7 +183,7 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppTemplate_AzureMaintenance
-    keyVaultPoliciesTemplate
+    dataKeyVaultPoliciesTemplate
   ]
 }
 
@@ -193,6 +193,6 @@ resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
     functionAppSlotTemplate_AzureMaintenance
-    keyVaultPoliciesTemplate
+    dataKeyVaultPoliciesTemplate
   ]
 }

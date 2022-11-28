@@ -69,11 +69,6 @@ param serviceBusTopicName string = 'syncJobs'
 @description('Enter service bus topic\'s subscriptions.')
 param serviceBusTopicSubscriptions array = [
   {
-    name: 'Organization'
-    ruleName: 'syncType'
-    ruleSqlExpression: 'Type = \'Organization\''
-  }
-  {
     name: 'SecurityGroup'
     ruleName: 'syncType'
     ruleSqlExpression: 'Type = \'SecurityGroup\''
@@ -250,8 +245,8 @@ module dataKeyVaultTemplate 'keyVault.bicep' = {
   }
 }
 
-module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'keyVaultPoliciesTemplate'
+module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
+  name: 'dataKeyVaultPoliciesTemplate'
   params: {
     name: keyVaultName
     policies: keyVaultReaders
