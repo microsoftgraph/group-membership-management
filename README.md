@@ -206,18 +206,76 @@ The following PowerShell script will create a new application, `<solutionAbbrevi
 -   graphAppTenantId
 -   graphAppClientSecret
 
+Note that this script will create an new application and authentication will be done using a client id and client secret pair. If you prefer to use a certificate skip to the next section.
+
 From your `PowerShell 5.x` command prompt navigate to the `Scripts` folder of your `Public` repo and run these commands:
 
     1. . ./Set-GraphCredentialsAzureADApplication.ps1
     2. Set-GraphCredentialsAzureADApplication	-SubscriptionName "<SubscriptionName>" `
                                                 -SolutionAbbreviation "<SolutionAbbreviation>" `
                                                 -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-                                                -TenantIdToCreateAppIn "<TenantId>" `
-                                                -TenantIdWithKeyVault "<TenantId>" `
+                                                -TenantIdToCreateAppIn "<App-TenantId>" `
+                                                -TenantIdWithKeyVault "<KeyVault-TenantId>" `
                                                 -Clean $true `
                                                 -Verbose
-    
 Follow the instructions on the screen.
+
+### Creating the certificate
+If you don't need to use a certificate for authentication you can skip this step.
+
+It is also possible to use a certificate instead of an id / secret pair to authenticate and query Graph API. GMM will automatically look for a certificate and use it if available, otherwise it will fallback to id / secret.
+
+We need to create a certificate that is going to be used for authentication, we are going to use the prereqs keyvault to create and store the certificate. Take note of the certificate name since we need to provide it in the next step.
+See [Quickstart: Set and retrieve a certificate from Azure Key Vault using the Azure portal](https://docs.microsoft.com/en-us/azure/key-vault/certificates/quick-create-portal) documentation.
+
+You can also use an existing certificate and upload it to the prereqs keyvault, you will need to provide a friendly certificate name that we will need in the next step.
+
+The script will create these settings in your prereqs keyvault.
+
+-   graphAppClientId
+-   graphAppTenantId
+-   graphAppClientSecret
+-   graphAppCertificateName
+
+From your `PowerShell 5.x` command prompt navigate to the `Scripts` folder of your `Public` repo and run these commands:
+
+    1. . ./Set-GraphCredentialsAzureADApplication.ps1
+    2. Set-GraphCredentialsAzureADApplication	-SubscriptionName "<SubscriptionName>" `
+                                                -SolutionAbbreviation "<SolutionAbbreviation>" `
+                                                -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
+                                                -TenantIdToCreateAppIn "<App-TenantId>" `
+                                                -TenantIdWithKeyVault "<KeyVault-TenantId>" `
+                                                -CertificateName "<CertificateName>" `
+                                                -Clean $true `
+                                                -Verbose
+
+Follow the instructions on the screen.
+
+
+### Upload the certificate to your `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application.
+
+We need to upload the certificate to the `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application, in order to do that we need to export it from the prerqs keyvault.
+
+Exporting the certificate:
+
+1. In the Azure Portal navigate to your prereqs keyvault, it will be named following this convention `<solutionAbbreviation>`-prereqs-`<environmentAbbreviation>`.
+2. Locate and click on the Certificates blade on the left menu.
+3. Click on your certificate from the list.
+4. Click on the latest version.
+5. On the top menu click on 'Download in CER format' button to download the certificate.
+
+If you need more details on how to export the certificate please see [Quickstart: Set and retrieve a certificate from Azure Key Vault using the Azure portal](https://docs.microsoft.com/en-us/azure/key-vault/certificates/quick-create-portal) documentation.
+
+Uploading the certificate:
+
+1. In the Azure Portal navigate to your 'Azure Active Directory'. If you don't see it on your screen you can use the top search bar to locate it.
+2. Navigate to 'App registrations' blade on the left menu.
+3. Click on 'All applications" to locate and open your `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application.
+4. On your application screen click on 'Certificates and secrets' blade on the left menu.
+5. Click on the 'Upload certificate' button.
+6. Locate and add your certificate.
+
+### Granting permissions
 
 Once your application is created, we need to grant the requested permissions to use Microsoft Graph API:
 
@@ -227,6 +285,8 @@ Once your application is created, we need to grant the requested permissions to 
 4. On your application screen click on `API permissions` blade on the left menu.
 5. Click on the 'Grant admin consent for `<YourOrganizationName>`' button.
 6. You might need to refresh the page to see the permissions status updated.
+
+
 
 ## Adding a new GMM environment
 
@@ -408,11 +468,11 @@ In Azure DevOps, we need to create a pipeline that will create your resources an
                 [
                     {
                     "objectId": "<user-object-id>",
-                    "permissions": [ "get", "set", "list" ]
+                    "secrets": [ "get", "set", "list" ]
                     },
                     {
                     "objectId": "<service-connection-object-id>",
-                    "permissions": [ "get", "set", "list" ]
+                    "secrets": [ "get", "set", "list" ]
                     }
                 ]
                 

@@ -38,7 +38,7 @@ namespace Hosts.MembershipAggregator
 
             builder.Services.AddSingleton<IGraphServiceClient>((services) =>
             {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value));
+                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
             })
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
             .AddScoped<IGraphAPIService, GraphAPIService>()
