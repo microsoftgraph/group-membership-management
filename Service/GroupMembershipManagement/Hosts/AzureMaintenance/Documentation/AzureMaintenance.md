@@ -10,28 +10,37 @@ This guide will explain how to use the AzureMaintenance function, found in Azure
 Format:
 ```
 {
-    SourceTableName: string
-    SourceConnectionString: string
-    DestinationConnectionString: string
-    BackupType: string
-    CleanupOnly: boolean
-    DeleteAfterDays: int
+    "SourceStorageSetting":
+    {
+        "TargetName": "<table-name>",
+        "StorageConnectionString": "<connection-string>",
+        "StorageType": "Table"
+    },
+    "DestinationStorageSetting":
+    {
+        "TargetName": "<table-name>",
+        "StorageConnectionString": "<connection-string>",
+        "StorageType": "Table"
+    },
+    "Backup": true,
+    "Cleanup": true,
+    "DeleteAfterDays": 30
 }
 ```
+* SourceStorageSetting: This property has information about the source table.
+* DestinationStorageSetting: This property has information about the destination table.
 
-* SourceTableName: The name of the source table, for example "syncJobs"
+* TargetName: The name of the source table, for example "syncJobs"
     * Note: If running where CleanupOnly is true, then this can also be "*"
 to indicate the desire to clean all tables in the storage account
-* SourceConnectionString: Connection string for the source storage account to backup / cleanup from
-* DestinationConnectionString: Connection string for the destination storage account to backup to / cleanup
-* BackupType: The type of backup desired from the following two options:
-    * "blob"    | backup / cleanup blob storage
-    * "table"   | backup / cleanup table storage
-* CleanupOnly: Whether or not you only want to clean up
-    * The default value is false, which means that a full backup and cleanup will be performed on the indicated tables
-    * Set this to true if you only want to clean old tables for maintenance
+* StorageConnectionString: Connection string for the source storage account to backup / cleanup from
+* StorageType: The type of backup desired from the following two options:
+    * "Blob"    | backup / cleanup blob storage
+    * "Table"   | backup / cleanup table storage
+* Backup: If set to true, a full backup will be performed on the indicated tables.
+* Cleanup: Set this to true if you only want to clean old tables for maintenance.
 * DeleteAfterDays: The number of days a table exists before it should be deleted
 
 ## Running the function
-1. Update the json for the AzureMaintenance config in the "tablesToBackup" secret in the gmm-data-\<env> keyvault
+1. Update the json for the AzureMaintenance config in the "maintenanceJobs" secret in the gmm-data-\<env> keyvault
 2. Run the function in Azure

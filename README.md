@@ -636,13 +636,24 @@ There are 3 Dry Run flags in GMM. If any of these Dry run flags are set, the syn
 the `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureMaintenance function can create backups for Azure Storage Tables and delete older backups automatically.
 Out of the box, the AzureMaintenance function will backup the `syncJobs` table; where all the groups' sync parameters are defined. The function is set to run every day at midnight and will delete backups older than 30 days.
 
-The function reads the backup configuration settings from the data keyvault (`<SolutionAbbreviation>`-data-`<EnvironmentAbbreviation>`), specifically from a secret named 'tablesToBackup' which is a string that represents a json array of backup configurations.
+The function reads the backup configuration settings from the data keyvault (`<SolutionAbbreviation>`-data-`<EnvironmentAbbreviation>`), specifically from a secret named 'maintenanceJobs' which is a string that represents a json array of backup configurations.
 
     [
         {
-            "SourceTableName": "syncJobs",
-            "SourceConnectionString": "<storage-account-connectionstring>",
-            "DestinationConnectionString": "<storage-account-connectionstring>",
+            "SourceStorageSetting":
+            {
+                "TargetName": "<table-name>",
+                "StorageConnectionString": "<connection-string>",
+                "StorageType": "Table"
+            },
+            "DestinationStorageSetting":
+            {
+                "TargetName": "<table-name>",
+                "StorageConnectionString": "<connection-string>",
+                "StorageType": "Table"
+            },
+            "Backup": true,
+            "Cleanup": true,
             "DeleteAfterDays": 30
         }
     ]
