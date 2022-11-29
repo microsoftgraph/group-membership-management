@@ -82,7 +82,16 @@ namespace Repositories.SyncJobs.Tests
 
         public async IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync()
         {
-            throw new NotImplementedException();
+            var jobs = Jobs.Where(x => x.StartDate <= DateTime.UtcNow);
+
+            jobs = jobs.Where(x => x.Status != SyncStatus.Idle.ToString() &&
+                                   x.Status != SyncStatus.InProgress.ToString() &&
+                                   x.Status != SyncStatus.Error.ToString());
+
+            foreach (var job in await Task.FromResult(jobs))
+            {
+                yield return job;
+            }
         }
 
         public Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs)

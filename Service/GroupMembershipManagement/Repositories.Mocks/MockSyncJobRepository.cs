@@ -63,7 +63,8 @@ namespace Repositories.Mocks
 
         public async IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync()
         {
-            throw new NotImplementedException();
+            foreach (var job in ExistingSyncJobs.Values.Where(x => Enum.Parse<SyncStatus>(x.Status) == SyncStatus.CustomerPaused))
+                yield return await Task.FromResult(job);
         }
 
         public Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs)

@@ -157,6 +157,7 @@ namespace Services
         {
             var allJobs = new List<SyncJob>();
             var jobs = _syncJobRepository.GetSpecificSyncJobsAsync();
+			if (jobs == null) { return allJobs; }
             await foreach (var job in jobs)
             {
                 allJobs.Add(job);
