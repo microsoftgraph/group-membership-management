@@ -128,7 +128,7 @@ namespace Repositories.SyncJobsRepository
             await foreach (var segmentResult in queryResult.AsPages())
             {
                 if (segmentResult.Values.Count == 0)
-                    await _log.LogMessageAsync(new LogMessage { Message = $"Number of enabled jobs in your sync jobs table is: {segmentResult.Values.Count}.", RunId = Guid.Empty });
+                    await _log.LogMessageAsync(new LogMessage { Message = $"Number of inactive jobs in your sync jobs table is: {segmentResult.Values.Count}.", RunId = Guid.Empty });
 
                 var results = segmentResult.Values.Where(x => ((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromDays(30)));
 
