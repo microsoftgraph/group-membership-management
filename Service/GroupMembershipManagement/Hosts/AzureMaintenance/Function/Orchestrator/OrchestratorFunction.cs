@@ -119,7 +119,7 @@ namespace Hosts.AzureMaintenance
 
                 if (inactiveSyncJobs != null && inactiveSyncJobs.Count > 0 && inactiveSyncJobs.Count == countOfBackUpJobs)
                 {
-                    await context.CallActivityAsync<int>(nameof(RemoveInactiveJobsFunction), inactiveSyncJobs);
+                    await context.CallActivityAsync(nameof(RemoveInactiveJobsFunction), inactiveSyncJobs);
 
                     var processingTasks = new List<Task>();
                     foreach (var inactiveSyncJob in inactiveSyncJobs)
