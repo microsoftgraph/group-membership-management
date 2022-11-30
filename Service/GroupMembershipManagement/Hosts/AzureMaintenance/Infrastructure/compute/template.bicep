@@ -213,6 +213,35 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   ]
 }
 
+module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
+  name: 'PrereqsKeyVaultPoliciesTemplate-JobTrigger'
+  scope: resourceGroup(prereqsKeyVaultResourceGroup)
+  params: {
+    name: prereqsKeyVaultName
+    policies: [
+      {
+        objectId: functionAppTemplate_AzureMaintenance.outputs.msi
+        permissions: [
+          'get'
+        ]
+        type: 'secrets'
+      }
+      {
+        objectId: functionAppSlotTemplate_AzureMaintenance.outputs.msi
+        permissions: [
+          'get'
+        ]
+        type: 'secrets'
+      }
+    ]
+    tenantId: tenantId
+  }
+  dependsOn: [
+    functionAppTemplate_AzureMaintenance
+    functionAppSlotTemplate_AzureMaintenance
+  ]
+}
+
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   name: '${functionAppName}-AzureMaintenance/appsettings'
   kind: 'string'
