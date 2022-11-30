@@ -5,5 +5,6 @@ namespace Repositories.Contracts.InjectConfig
     public interface IHandleInactiveJobsConfig
     {
         public bool HandleInactiveJobsEnabled { get; }
+        public int NumberOfDaysBeforeDeletion { get; }
     }
 }

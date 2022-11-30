@@ -210,6 +210,14 @@ param appConfigurationKeyData array = [
     }
   }
   {
+    key: 'AzureMaintenance:NumberOfDaysBeforeDeletion'
+    value: 35
+    contentType: 'int'
+    tag: {
+      tag1: 'AzureMaintenance'
+    }
+  }
+  {
     key: 'JobScheduler:JobSchedulerConfiguration'
     value: '{"ResetJobs":false,"DaysToAddForReset":0,"DistributeJobs":true,"IncludeFutureJobs":false,"StartTimeDelayMinutes":5,"DelayBetweenSyncsSeconds":5,"DefaultRuntimeSeconds":60,"GetRunTimeFromLogs":true,"RunTimeMetric":"Max","RunTimeRangeInDays":7,"RuntimeQuery":"AppEvents | where Name == \'SyncComplete\' | project TimeElapsed = todouble(Properties[\'SyncJobTimeElapsedSeconds\']), Destination = tostring(Properties[\'TargetOfficeGroupId\']), RunId = Properties[\'RunId\'], Result = Properties[\'Result\'], DryRun = Properties[\'IsDryRunEnabled\'] | where Result == \'Success\' and DryRun == \'False\' | project TimeElapsed, Destination, RunId | summarize MaxProcessingTime=max(TimeElapsed), AvgProcessingTime=avg(TimeElapsed) by Destination"}'
     contentType: 'string'

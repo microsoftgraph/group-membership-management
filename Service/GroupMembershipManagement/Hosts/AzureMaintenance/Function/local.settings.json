@@ -17,7 +17,8 @@
     "graphCredentials:TenantId": "",
     "senderAddress": "",
     "senderPassword": "",
-    "supportEmailAddresses": ""
-
+    "supportEmailAddresses": "",
+    "AzureMaintenance:NumberOfDaysBeforeDeletion": 30,
+    "AzureMaintenance:HandleInactiveJobsEnabled":  true
   }
 }

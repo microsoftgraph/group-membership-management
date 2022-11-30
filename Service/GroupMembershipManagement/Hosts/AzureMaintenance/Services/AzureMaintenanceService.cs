@@ -27,6 +27,7 @@ namespace Services
         private readonly IGraphGroupRepository _graphGroupRepository = null;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
         private readonly IMailRepository _mailRepository = null;
+        private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig = null;
 
         public AzureMaintenanceService(
 			ILoggingRepository loggingRepository,
@@ -35,7 +36,8 @@ namespace Services
             ISyncJobRepository syncJobRepository,
             IGraphGroupRepository graphGroupRepository,
             IEmailSenderRecipient emailSenderAndRecipients,
-            IMailRepository mailRepository)
+            IMailRepository mailRepository,
+			IHandleInactiveJobsConfig handleInactiveJobsConfig)
         {
 			_loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
 			_azureTableBackupRepository = azureTableBackupRepository ?? throw new ArgumentNullException(nameof(azureTableBackupRepository));
@@ -44,6 +46,7 @@ namespace Services
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
+            _handleInactiveJobsConfig = handleInactiveJobsConfig ?? throw new ArgumentNullException(nameof(handleInactiveJobsConfig));
         }
 
 		public async Task RunBackupServiceAsync(IAzureMaintenanceJob maintenanceJob)
@@ -188,7 +191,7 @@ namespace Services
                     {
                         groupName,
                         job.TargetOfficeGroupId.ToString(),
-                        DateTime.UtcNow.AddDays(30).ToString()
+                        DateTime.UtcNow.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion-5).ToString()
                     }
                 };
 
@@ -205,7 +208,7 @@ namespace Services
         public async Task<List<string>> RemoveBackupsAsync()
         {
             var backupTables = await _azureTableBackupRepository.GetInactiveBackupsAsync();
-            var cutOffDate = DateTime.UtcNow.AddDays(-30);
+            var cutOffDate = DateTime.UtcNow.AddDays(-_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion);
             var deletedTables = new List<string>();
 
             foreach (var table in backupTables)

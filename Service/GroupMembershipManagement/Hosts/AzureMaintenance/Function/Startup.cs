@@ -40,10 +40,13 @@ namespace Hosts.AzureMaintenance
             builder.Services.AddOptions<HandleInactiveJobsConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.HandleInactiveJobsEnabled = GetBoolSetting(configuration, "AzureMaintenance:HandleInactiveJobsEnabled", false);
+                settings.NumberOfDaysBeforeDeletion = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforeDeletion", 0);
             });
             builder.Services.AddSingleton<IHandleInactiveJobsConfig>(services =>
             {
-                return new HandleInactiveJobsConfig(services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.HandleInactiveJobsEnabled);
+                return new HandleInactiveJobsConfig(
+                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.HandleInactiveJobsEnabled,
+                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforeDeletion);
             });
 
             builder.Services.AddScoped<IAzureTableBackupRepository, AzureTableBackupRepository>();
@@ -85,13 +88,28 @@ namespace Hosts.AzureMaintenance
 
             builder.Services.AddScoped<IAzureMaintenanceService>(services =>
             {
-                return new AzureMaintenanceService(services.GetService<ILoggingRepository>(), services.GetService<IAzureTableBackupRepository>(), services.GetService<IAzureStorageBackupRepository>(), services.GetService<ISyncJobRepository>(), services.GetService<IGraphGroupRepository>(), services.GetService<IEmailSenderRecipient>(), services.GetService<IMailRepository>());
+                return new AzureMaintenanceService(services.GetService<ILoggingRepository>(),
+                    services.GetService<IAzureTableBackupRepository>(),
+                    services.GetService<IAzureStorageBackupRepository>(),
+                    services.GetService<ISyncJobRepository>(),
+                    services.GetService<IGraphGroupRepository>(),
+                    services.GetService<IEmailSenderRecipient>(),
+                    services.GetService<IMailRepository>(),
+                    services.GetService<IHandleInactiveJobsConfig>());
             });
         }
 
         private bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)
         {
             var checkParse = bool.TryParse(configuration[settingName], out bool value);
+            if (checkParse)
+                return value;
+            return defaultValue;
+        }
+
+        private int GetIntSetting(IConfiguration configuration, string settingName, int defaultValue)
+        {
+            var checkParse = int.TryParse(configuration[settingName], out int value);
             if (checkParse)
                 return value;
             return defaultValue;
