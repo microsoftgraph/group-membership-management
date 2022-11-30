@@ -9,16 +9,19 @@ using System.Threading.Tasks;
 using Services.Entities;
 using System.Linq;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 
 namespace Hosts.AzureMaintenance
 {
     public class OrchestratorFunction
     {
         private readonly List<AzureMaintenanceJob> _maintenanceSettings = null;
+        private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig = null;
 
-        public OrchestratorFunction(List<AzureMaintenanceJob> maintenanceSettings)
+        public OrchestratorFunction(List<AzureMaintenanceJob> maintenanceSettings, IHandleInactiveJobsConfig handleInactiveJobsConfig)
         {
             _maintenanceSettings = maintenanceSettings;
+            _handleInactiveJobsConfig = handleInactiveJobsConfig;
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
@@ -109,23 +112,26 @@ namespace Hosts.AzureMaintenance
             //    }
             //}
 
-            var inactiveSyncJobs = await context.CallActivityAsync<List<SyncJob>>(nameof(ReadSyncJobsFunction), null);
-            var countOfBackUpJobs = await context.CallActivityAsync<int>(nameof(BackUpInactiveJobsFunction), inactiveSyncJobs);
-
-            if (inactiveSyncJobs != null && inactiveSyncJobs.Count > 0 && inactiveSyncJobs.Count == countOfBackUpJobs)
+            if (_handleInactiveJobsConfig.HandleInactiveJobsEnabled)
             {
-                await context.CallActivityAsync<int>(nameof(RemoveInactiveJobsFunction), inactiveSyncJobs);
+                var inactiveSyncJobs = await context.CallActivityAsync<List<SyncJob>>(nameof(ReadSyncJobsFunction), null);
+                var countOfBackUpJobs = await context.CallActivityAsync<int>(nameof(BackUpInactiveJobsFunction), inactiveSyncJobs);
 
-                var processingTasks = new List<Task>();
-                foreach (var inactiveSyncJob in inactiveSyncJobs)
+                if (inactiveSyncJobs != null && inactiveSyncJobs.Count > 0 && inactiveSyncJobs.Count == countOfBackUpJobs)
                 {
-                    var processTask = context.CallActivityAsync(nameof(SendEmailFunction), inactiveSyncJob);
-                    processingTasks.Add(processTask);
-                }
-                await Task.WhenAll(processingTasks);
-            }
+                    await context.CallActivityAsync<int>(nameof(RemoveInactiveJobsFunction), inactiveSyncJobs);
 
-            await context.CallActivityAsync<List<string>>(nameof(RemoveBackUpsFunction), null);
+                    var processingTasks = new List<Task>();
+                    foreach (var inactiveSyncJob in inactiveSyncJobs)
+                    {
+                        var processTask = context.CallActivityAsync(nameof(SendEmailFunction), inactiveSyncJob);
+                        processingTasks.Add(processTask);
+                    }
+                    await Task.WhenAll(processingTasks);
+                }
+
+                await context.CallActivityAsync<List<string>>(nameof(RemoveBackUpsFunction), null);
+            }
 
             await context.CallActivityAsync(
                                nameof(LoggerFunction),
