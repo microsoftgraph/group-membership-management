@@ -19,6 +19,12 @@ param environmentAbbreviation string
 @description('Tenant id.')
 param tenantId string
 
+@description('Name of the resource group where the \'prereqs\' key vault is located.')
+param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
+
+@description('Name of the resource group where the \'prereqs\' key vault is located.')
+param prereqsKeyVaultResourceGroup string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
+
 @description('Service plan name.')
 param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
 
@@ -68,6 +74,14 @@ var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dat
 var maintenanceJobs = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'maintenanceJobs')
 var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
+var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
+var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientSecret')
+var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppTenantId')
+var senderUsername = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'senderUsername')
+var senderPassword = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'senderPassword')
+var supportEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'supportEmailAddresses')
+var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountConnectionString')
+var jobsTableName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsTableName')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-AzureMaintenance'
@@ -96,6 +110,16 @@ var appSettings = {
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
   maintenanceJobs: '@Microsoft.KeyVault(SecretUri=${reference(maintenanceJobs, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
+  jobsStorageAccountConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  jobsTableName: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:KeyVaultName': prereqsKeyVaultName
+  'graphCredentials:KeyVaultTenantId': tenantId
+  senderAddress: '@Microsoft.KeyVault(SecretUri=${reference(senderUsername, '2019-09-01').secretUriWithVersion})'
+  senderPassword: '@Microsoft.KeyVault(SecretUri=${reference(senderPassword, '2019-09-01').secretUriWithVersion})'
+  supportEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(supportEmailAddresses, '2019-09-01').secretUriWithVersion})'
 }
 
 var stagingSettings = {
@@ -107,6 +131,12 @@ var stagingSettings = {
   'AzureWebJobs.RetrieveBackupsFunction.Disabled': 1
   'AzureWebJobs.ReviewAndDeleteFunction.Disabled': 1
   'AzureWebJobs.TableBackupFunction.Disabled': 1
+  'AzureWebJobs.BackUpInactiveJobsFunction.Disabled': 1
+  'AzureWebJobs.ReadGroupNameFunction.Disabled': 1
+  'AzureWebJobs.ReadSyncJobsFunction.Disabled': 1
+  'AzureWebJobs.RemoveBackUpsFunction.Disabled': 1
+  'AzureWebJobs.RemoveInactiveJobsFunction.Disabled': 1
+  'AzureWebJobs.SendEmailFunction.Disabled': 1
 }
 
 var productionSettings = {
@@ -118,6 +148,12 @@ var productionSettings = {
   'AzureWebJobs.RetrieveBackupsFunction.Disabled': 0
   'AzureWebJobs.ReviewAndDeleteFunction.Disabled': 0
   'AzureWebJobs.TableBackupFunction.Disabled': 0
+  'AzureWebJobs.BackUpInactiveJobsFunction.Disabled': 0
+  'AzureWebJobs.ReadGroupNameFunction.Disabled': 0
+  'AzureWebJobs.ReadSyncJobsFunction.Disabled': 0
+  'AzureWebJobs.RemoveBackUpsFunction.Disabled': 0
+  'AzureWebJobs.RemoveInactiveJobsFunction.Disabled': 0
+  'AzureWebJobs.SendEmailFunction.Disabled': 0
 }
 
 module functionAppTemplate_AzureMaintenance 'functionApp.bicep' = {

@@ -322,7 +322,7 @@ namespace Repositories.AzureTableBackupRepository
                     }
                     catch (Exception ex)
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unable to add {job.RowKey} to table: {tableName}" });
+                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unable to add {job.RowKey} to table: {tableName}.\n{ex}" });
                     }                   
                     
                     await _loggingRepository.LogMessageAsync( new LogMessage { Message = $"Backing up inactive job with RowKey: {job.RowKey} to table: {tableName}" });

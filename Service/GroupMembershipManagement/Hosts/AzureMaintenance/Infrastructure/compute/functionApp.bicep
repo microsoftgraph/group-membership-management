@@ -51,6 +51,12 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.RetrieveBackupsFunction.Disabled'
       'AzureWebJobs.ReviewAndDeleteFunction.Disabled'
       'AzureWebJobs.TableBackupFunction.Disabled'
+      'AzureWebJobs.BackUpInactiveJobsFunction.Disabled'
+      'AzureWebJobs.ReadGroupNameFunction.Disabled'
+      'AzureWebJobs.ReadSyncJobsFunction.Disabled'
+      'AzureWebJobs.RemoveBackUpsFunction.Disabled'
+      'AzureWebJobs.RemoveInactiveJobsFunction.Disabled'
+      'AzureWebJobs.SendEmailFunction.Disabled'
     ]
   }
 }
