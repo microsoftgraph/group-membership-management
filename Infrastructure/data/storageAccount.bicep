@@ -14,6 +14,9 @@ param keyVaultName string
 ])
 param sku string = 'Standard_LRS'
 
+@description('Key vault name.')
+param add30DayDeletionPolicy bool = false
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
   name: name
   location: resourceGroup().location
@@ -30,7 +33,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
   }
 }
 
-resource storageAccountPolicy 'Microsoft.Storage/storageAccounts/managementPolicies@2022-05-01' = {
+resource storageAccountPolicy 'Microsoft.Storage/storageAccounts/managementPolicies@2022-05-01' = if (add30DayDeletionPolicy) {
   name: 'default'
   parent: storageAccount
   properties: {
