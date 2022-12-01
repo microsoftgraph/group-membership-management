@@ -269,7 +269,7 @@ namespace Hosts.SecurityGroup
                                                                                         List<AzureADUser> deltaUsersToRemove,
                                                                                         SecurityGroupRequest request)
         {
-            var response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(DeltaUsersReaderFunction), new DeltaUsersReaderRequest { DeltaLink = fileContent });
+            var response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(DeltaUsersReaderFunction), new DeltaUsersReaderRequest { RunId = request.RunId, DeltaLink = fileContent });
             deltaUsersToAdd.AddRange(response.UsersToAdd);
             deltaUsersToRemove.AddRange(response.UsersToRemove);
             while (!string.IsNullOrEmpty(response.NextPageUrl))
