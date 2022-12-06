@@ -184,8 +184,6 @@ namespace Hosts.GraphUpdater
 									CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
 																	SyncStatus.Idle, 0, groupMembership.RunId));
 
-				if (_deltaCachingConfig.DeltaCacheEnabled) await UpdateCacheAsync(context, sourceUsersNotFound, destinationUsersNotFound, syncJob, groupMembership.SourceMembers);
-
                 if (!context.IsReplaying)
                 {
                     if (membersAddedResponse.SuccessCount + membersAddedResponse.UsersNotFound.Count == membersToAdd.Count && 
@@ -199,7 +197,9 @@ namespace Hosts.GraphUpdater
                     }
                 }
 
-				await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
+                if (_deltaCachingConfig.DeltaCacheEnabled) await UpdateCacheAsync(context, sourceUsersNotFound, destinationUsersNotFound, syncJob, groupMembership.SourceMembers);
+
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
 
 				return OrchestrationRuntimeStatus.Completed;
 			}
