@@ -13,6 +13,8 @@ parameters:
   type: string
 - name: subscriptionId
   type: string
+- name: subscriptionName
+  type: string
 - name: keyVaultReaders
   type: object
 
@@ -30,6 +32,20 @@ steps:
     overrideParameters: '-environmentAbbreviation "${{parameters.environmentAbbreviation}}" -location "${{parameters.location}}" -solutionAbbreviation "${{parameters.solutionAbbreviation}}" -tenantId "${{parameters.tenantId}}" -keyVaultReaders "${{parameters.keyVaultReaders}}"'
     deploymentMode: 'Incremental'
     deploymentOutputs: dataoutputs
+
+- task: AzurePowerShell@4
+  displayName: 'run main script'
+  inputs:
+    azureSubscription: ${{parameters.serviceConnection}}
+    ScriptType: InlineScript
+    Inline: |
+     . ${{ parameters.root }}/Scripts/main.ps1
+
+     Set-UpdateQuery -SubscriptionName "${{parameters.subscriptionName}}" `
+     -SolutionAbbreviation "${{parameters.solutionAbbreviation}}" `
+     -EnvironmentAbbreviation "${{parameters.environmentAbbreviation}}" `
+     -Verbose
+    azurePowerShellVersion: LatestVersion
 
 - powershell: |
     Write-Host $ENV:dataoutputs;

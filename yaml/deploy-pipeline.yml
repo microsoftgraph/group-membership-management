@@ -5,6 +5,8 @@ parameters:
   type: string
 - name: subscriptionId
   type: string
+- name: subscriptionName
+  type: string
 - name: keyVaultReaders
   type: object
 - name: environmentAbbreviation
@@ -51,6 +53,7 @@ stages:
                root: $(Pipeline.Workspace)/$(Build.BuildNumber)_$(buildType)
                location: ${{ parameters.location }}
                tenantId: ${{ parameters.tenantId }}
+               subscriptionName: ${{ parameters.subscriptionName }}
                subscriptionId: ${{ parameters.subscriptionId }}
                keyVaultReaders: ${{ parameters.keyVaultReaders }}
 
