@@ -137,12 +137,13 @@ namespace Hosts.GraphUpdater
                                 CreateGroupUpdaterRequest(syncJob, membersToAdd, RequestType.Add, isInitialSync));
                 syncCompleteEvent.MembersAdded = membersAddedResponse.SuccessCount.ToString();
 				sourceUsersNotFound = membersAddedResponse.UsersNotFound;
+				syncCompleteEvent.MembersToAddNotFound = sourceUsersNotFound.Count.ToString();
 
                 var membersRemovedResponse = await context.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(nameof(GroupUpdaterSubOrchestratorFunction),
                                 CreateGroupUpdaterRequest(syncJob, membersToRemove, RequestType.Remove, isInitialSync));
                 syncCompleteEvent.MembersRemoved = membersRemovedResponse.SuccessCount.ToString();
                 destinationUsersNotFound = membersRemovedResponse.UsersNotFound;
-
+				syncCompleteEvent.MembersToRemoveNotFound = destinationUsersNotFound.Count.ToString();
 
                 if (isInitialSync)
 				{
