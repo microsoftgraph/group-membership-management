@@ -478,7 +478,7 @@ In Azure DevOps, we need to create a pipeline that will create your resources an
                 
 
             * `objectId`: the group or user object id.
-            * `permissions`: the list of permissions that will be set.
+            * `secrets`: the list of permissions that will be set.
 
             You can add or remove objects from the json array as needed.
 
