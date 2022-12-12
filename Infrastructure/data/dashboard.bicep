@@ -126,7 +126,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'customEvents\n| where name == "SyncComplete"\n'
+                  value: ''
                   isOptional: true
                 }
                 {
@@ -433,7 +433,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'customEvents\n| where name == "SyncComplete"\n'
+                  value: ''
                   isOptional: true
                 }
                 {
@@ -561,7 +561,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'customEvents\n| where name == "SyncComplete"\n'
+                  value: ''
                   isOptional: true
                 }
                 {
@@ -705,7 +705,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'customEvents\n| where name == "SyncComplete"\n'
+                  value: ''
                   isOptional: true
                 }
                 {
@@ -1084,7 +1084,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'customEvents\n| where name == "SyncComplete"\n'
+                  value: ''
                   isOptional: true
                 }
                 {
@@ -1155,9 +1155,9 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '13': {
             position: {
-              x: 7
+              x: 6
               y: 10
-              colSpan: 6
+              colSpan: 5
               rowSpan: 4
             }
             metadata: {
@@ -1204,7 +1204,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'customMetrics\n| where name == "SyncJobTimeElapsedSeconds"\n| project Seconds = todouble(value) * 1s\n| summarize Count = count() by DurationBin = bin(Seconds + 1m, 1m)\n| order by DurationBin desc\n| project DurationBin = tostring(DurationBin), Jobs = toint(Count)\n'
+                  value: ''
                   isOptional: true
                 }
                 {
@@ -1262,7 +1262,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project MembersAdded = toint(customDimensions["MembersAdded"]),\n    MembersRemoved = toint(customDimensions["MembersRemoved"]),\n    Destination = toguid(customDimensions["TargetOfficeGroupId"]),\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    RunId = toguid(customDimensions["RunId"])\n\n| where Result == "Success" and DryRun == "False"\n| distinct MembersRemoved, Destination, RunId\n| order by MembersRemoved desc\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project MembersRemoved = toint(customDimensions["MembersRemoved"]),\n    Destination = toguid(customDimensions["TargetOfficeGroupId"]),\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    RunId = toguid(customDimensions["RunId"])\n| where Result == "Success" and DryRun == "False"\n| distinct MembersRemoved, Destination, RunId\n| order by MembersRemoved desc\n\n'
                   ControlType: 'AnalyticsGrid'
                 }
               }
@@ -1274,10 +1274,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '14': {
             position: {
-              x: 13
+              x: 11
               y: 10
-              colSpan: 4
-              rowSpan: 4
+              colSpan: 6
+              rowSpan: 2
             }
             metadata: {
               inputs: [
@@ -1323,7 +1323,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'customMetrics\n| where name == "SyncJobTimeElapsedSeconds"\n| project Seconds = todouble(value) * 1s\n| summarize Count = count() by DurationBin = bin(Seconds + 1m, 1m)\n| order by DurationBin desc\n| project DurationBin = tostring(DurationBin), Jobs = toint(Count)\n'
+                  value: ''
                   isOptional: true
                 }
                 {
@@ -1381,7 +1381,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project MembersAdded = toint(customDimensions["MembersAdded"]),\n    MembersRemoved = toint(customDimensions["MembersRemoved"]),\n    Destination = toguid(customDimensions["TargetOfficeGroupId"]),\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    RunId = toguid(customDimensions["RunId"])\n| where Result == "Success" and DryRun == "False" and MembersAdded == 0 and MembersRemoved == 0\n| distinct RunId\n| summarize Count = count()'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project MembersAdded = toint(customDimensions["MembersAdded"]),\n    MembersRemoved = toint(customDimensions["MembersRemoved"]),\n    Destination = toguid(customDimensions["TargetOfficeGroupId"]),\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    RunId = toguid(customDimensions["RunId"])\n| where Result == "Success" and DryRun == "False"\n| distinct RunId, MembersAdded, MembersRemoved\n| summarize NoOps = countif(MembersAdded == 0 and MembersRemoved == 0), Total = count()\n| extend NoOpsPercent = todouble(NoOps) / Total * 100'
                   ControlType: 'AnalyticsGrid'
                 }
               }
@@ -1395,7 +1395,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
             position: {
               x: 1
               y: 10
-              colSpan: 6
+              colSpan: 5
               rowSpan: 4
             }
             metadata: {
@@ -1442,7 +1442,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'customMetrics\n| where name == "SyncJobTimeElapsedSeconds"\n| project Seconds = todouble(value) * 1s\n| summarize Count = count() by DurationBin = bin(Seconds + 1m, 1m)\n| order by DurationBin desc\n| project DurationBin = tostring(DurationBin), Jobs = toint(Count)\n'
+                  value: ''
                   isOptional: true
                 }
                 {
@@ -1500,7 +1500,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project MembersAdded = toint(customDimensions["MembersAdded"]),\n    MembersRemoved = toint(customDimensions["MembersRemoved"]),\n    Destination = toguid(customDimensions["TargetOfficeGroupId"]),\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    RunId = toguid(customDimensions["RunId"])\n| where Result == "Success" and DryRun == "False"\n| distinct MembersAdded, Destination, RunId\n| order by MembersAdded desc\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project MembersAdded = toint(customDimensions["MembersAdded"]),\n    Destination = toguid(customDimensions["TargetOfficeGroupId"]),\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    RunId = toguid(customDimensions["RunId"])\n| where Result == "Success" and DryRun == "False"\n| distinct MembersAdded, Destination, RunId\n| order by MembersAdded desc\n\n'
                   ControlType: 'AnalyticsGrid'
                 }
               }
@@ -1855,7 +1855,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\nTargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\nType = tostring(customDimensions["Type"]),\nResult = tostring(customDimensions["Result"]),\nMemberCount = toint(customDimensions["ProjectedMemberCount"])\n| where Result == "Success"\n| summarize MaxMemberCount = max(MemberCount) by TargetOfficeGroupId, Type\n| summarize Groups10kPlus = countif(MaxMemberCount > 10000), Groups25kPlus = countif(MaxMemberCount > 25000), Groups50kPlus = countif(MaxMemberCount > 50000), Groups75kPlus = countif(MaxMemberCount > 75000), Groups100kPlus = countif(MaxMemberCount > 100000) by Type\n'
+                  value: ''
                   isOptional: true
                 }
                 {
@@ -1975,7 +1975,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\nTargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\nType = tostring(customDimensions["Type"]),\nResult = tostring(customDimensions["Result"]),\nMemberCount = toint(customDimensions["ProjectedMemberCount"])\n| where Result == "Success"\n| summarize MaxMemberCount = max(MemberCount) by TargetOfficeGroupId, Type\n| summarize Groups10kPlus = countif(MaxMemberCount > 10000), Groups25kPlus = countif(MaxMemberCount > 25000), Groups50kPlus = countif(MaxMemberCount > 50000), Groups75kPlus = countif(MaxMemberCount > 75000), Groups100kPlus = countif(MaxMemberCount > 100000) by Type\n'
+                  value: ''
                   isOptional: true
                 }
                 {
@@ -2095,7 +2095,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'customEvents\n| where name == "NestedGroupCount"\n'
+                  value: ''
                   isOptional: true
                 }
                 {
@@ -2225,7 +2225,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'customEvents\n| where name == "UsersInCacheCount"\n'
+                  value: ''
                   isOptional: true
                 }
                 {
@@ -2356,7 +2356,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'customEvents\n| where name == "ExclusionarySourcePartsCount"\n'
+                  value: ''
                   isOptional: true
                 }
                 {
@@ -3593,9 +3593,9 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '38': {
             position: {
-              x: 1
+              x: 7
               y: 49
-              colSpan: 5
+              colSpan: 9
               rowSpan: 4
             }
             metadata: {
@@ -3646,7 +3646,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'ApplicationLog_CL\n| where (location_s == "GraphUpdater" and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress")\n| project TimeGenerated, Message, RowKey_g, TargetOfficeGroupId_g, RunId_g\n| order by TimeGenerated desc\n\n'
+                  value: ''
                   isOptional: true
                 }
                 {
@@ -3681,6 +3681,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
+                  GridColumnsWidth: {
+                    Message: '379px'
+                  }
+                  Query: 'ApplicationLog_CL\n| where (location_s == "GraphUpdater" and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress")\n| project TimeGenerated, Message, RunId_g\n| order by TimeGenerated desc'
                   PartTitle: 'Jobs marked as Error'
                 }
               }
@@ -3688,9 +3692,9 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '39': {
             position: {
-              x: 6
-              y: 49
-              colSpan: 5
+              x: 1
+              y: 53
+              colSpan: 8
               rowSpan: 4
             }
             metadata: {
@@ -3776,16 +3780,16 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  PartTitle: 'Jobs stuck as InProgress'
+                  PartTitle: 'Jobs potentially stuck InProgress'
                 }
               }
             }
           }
           '40': {
             position: {
-              x: 11
-              y: 49
-              colSpan: 5
+              x: 9
+              y: 53
+              colSpan: 7
               rowSpan: 4
             }
             metadata: {
@@ -3871,7 +3875,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'ApplicationLog_CL\n| project TimeGenerated, Message, location_s, RunId_g, TargetOfficeGroupId_g\n| where Message has "Threshold Exceeded"\n| distinct TargetOfficeGroupId_g, RunId_g, TimeGenerated\n| order by TimeGenerated desc\n\n'
+                  Query: 'ApplicationLog_CL\n| project TimeGenerated, Message, location_s, RunId_g, TargetOfficeGroupId_g\n| where Message has "Threshold Exceeded"\n| distinct TargetOfficeGroupId_g, RunId_g, TimeGenerated\n| order by TimeGenerated desc'
                   PartTitle: 'Threshold Exceeded Jobs'
                   PartSubTitle: 'ApplicationLog_CL'
                 }
@@ -3881,7 +3885,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '41': {
             position: {
               x: 1
-              y: 53
+              y: 57
               colSpan: 8
               rowSpan: 4
             }
@@ -3998,16 +4002,12 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   PartSubTitle: 'Descending order'
                 }
               }
-              partHeader: {
-                title: 'Sync Job Run Durations List'
-                subtitle: 'Descending order'
-              }
             }
           }
           '42': {
             position: {
               x: 9
-              y: 53
+              y: 57
               colSpan: 8
               rowSpan: 4
             }
@@ -4111,7 +4111,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '43': {
             position: {
               x: 1
-              y: 57
+              y: 61
               colSpan: 16
               rowSpan: 5
             }
@@ -4210,6 +4210,127 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   Query: 'customEvents\n| where name == "TrackNullColumns"\n| project timestamp,    \n    Column = tostring(customDimensions["Column"]),\n    CurrentNullColumns = toint(customDimensions["CurrentNull"]),\n    PreviousNullColumns = toint(customDimensions["PreviousNull"]),\n   CurrentRows = toint(customDimensions["CurrentRows"]),\n    PreviousRows = toint(customDimensions["PreviousRows"])\n| distinct timestamp, Column, CurrentNullColumns, PreviousNullColumns, CurrentRows, PreviousRows\n| extend Delta = CurrentNullColumns - PreviousNullColumns,\n         CurrentNullPercent = (toreal(CurrentNullColumns) / CurrentRows) * 100,\n         PreviousNullPercent = (toreal(PreviousNullColumns) / PreviousRows) * 100\n| distinct timestamp, Column, CurrentNullColumns, PreviousNullColumns, Delta, CurrentNullPercent, PreviousNullPercent\n| order by Delta desc\n\n'
                   PartTitle: 'Null Calculator'
                   PartSubTitle: resourceGroup
+                }
+              }
+            }
+          }
+          '44': {
+            position: {
+              x: 1
+              y: 49
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: ''
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where (Result == "PartialSuccess" or Result == "Failure") and DryRun == false\n| summarize by TargetOfficeGroupId, Result, Bin = bin(timestamp, 1d)\n| summarize count() by Bin, Result'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'Jobs with PartialSuccess or Failure'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'Bin'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'count_'
+                        type: 'long'
+                      }
+                    ]
+                    splitBy: [
+                      {
+                        name: 'Result'
+                        type: 'string'
+                      }
+                    ]
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
                 }
               }
             }
