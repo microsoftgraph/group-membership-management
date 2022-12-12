@@ -10,7 +10,6 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
@@ -213,6 +212,11 @@ namespace Hosts.SecurityGroup
         public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status)
         {
             await _syncJob.UpdateSyncJobStatusAsync(new[] { job }, status);
+        }
+
+        public async Task<string> GetGroupNameAsync(Guid groupId)
+        {
+            return await _graphGroupRepository.GetGroupNameAsync(groupId);
         }
     }
 }

@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
+using Microsoft.Graph;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -14,7 +15,6 @@ namespace Services
     public class JobTriggerService : IJobTriggerService
     {
         private const string EmailSubject = "EmailSubject";
-        private const string SyncStartedEmailBody = "SyncStartedEmailBody";
         private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
         private const string SyncDisabledNoOwnerEmailBody = "SyncDisabledNoOwnerEmailBody";
 
@@ -78,32 +78,32 @@ namespace Services
             return await _graphGroupRepository.GetGroupNameAsync(groupId);
         }
 
-        public async Task SendEmailAsync(SyncJob job, string groupName)
+        public async Task SendEmailAsync(SyncJob job, string emailTemplateName, string[] additionalContentParameters)
         {
-            if (job != null && job.LastRunTime == DateTime.FromFileTimeUtc(0))
+            string ownerEmails = null;
+            string ccAddress = _emailSenderAndRecipients.SupportEmailAddresses;
+
+            if (!SyncDisabledNoGroupEmailBody.Equals(emailTemplateName, StringComparison.InvariantCultureIgnoreCase))
             {
                 var owners = await _graphGroupRepository.GetGroupOwnersAsync(job.TargetOfficeGroupId);
-                var ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
-                var message = new EmailMessage
-                {
-                    Subject = EmailSubject,
-                    Content = SyncStartedEmailBody,
-                    SenderAddress = _emailSenderAndRecipients.SenderAddress,
-                    SenderPassword = _emailSenderAndRecipients.SenderPassword,
-                    ToEmailAddresses = ownerEmails,
-                    CcEmailAddresses = string.Empty,
-                    AdditionalContentParams = new[]
-                    {
-                        groupName,
-                        job.TargetOfficeGroupId.ToString(),
-                        _emailSenderAndRecipients.SupportEmailAddresses,
-                        _gmmResources.LearnMoreAboutGMMUrl,
-                        job.Requestor
-                    }
-                };
-
-                await _mailRepository.SendMailAsync(message, job.RunId);
+                ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
             }
+
+            if (emailTemplateName.Contains("disabled", StringComparison.InvariantCultureIgnoreCase))
+                ccAddress = _emailSenderAndRecipients.SyncDisabledCCAddresses;
+
+            var message = new EmailMessage
+            {
+                Subject = EmailSubject,
+                Content = emailTemplateName,
+                SenderAddress = _emailSenderAndRecipients.SenderAddress,
+                SenderPassword = _emailSenderAndRecipients.SenderPassword,
+                ToEmailAddresses = ownerEmails ?? job.Requestor,
+                CcEmailAddresses = ccAddress,
+                AdditionalContentParams = additionalContentParameters
+            };
+
+            await _mailRepository.SendMailAsync(message, job.RunId);
         }
 
         public async Task UpdateSyncJobStatusAsync(SyncStatus status, SyncJob job)
@@ -137,17 +137,17 @@ namespace Services
                 if (await strat.TestFunction(job.TargetOfficeGroupId) == false)
                 {
                     await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Marking sync job as failed because " + strat.ErrorMessage });
-					await _mailRepository.SendMailAsync(new EmailMessage
-					{
-						Subject = EmailSubject,
-						Content = strat.EmailBody,
-						SenderAddress = _emailSenderAndRecipients.SenderAddress,
-						SenderPassword = _emailSenderAndRecipients.SenderPassword,
-						ToEmailAddresses = job.Requestor,
-						CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
-						AdditionalContentParams = new[] { job.TargetOfficeGroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses }
-					}, job.RunId);
-					return false;
+                    await _mailRepository.SendMailAsync(new EmailMessage
+                    {
+                        Subject = EmailSubject,
+                        Content = strat.EmailBody,
+                        SenderAddress = _emailSenderAndRecipients.SenderAddress,
+                        SenderPassword = _emailSenderAndRecipients.SenderPassword,
+                        ToEmailAddresses = job.Requestor,
+                        CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
+                        AdditionalContentParams = new[] { job.TargetOfficeGroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses }
+                    }, job.RunId);
+                    return false;
                 }
 
                 await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Check passed: " + strat.StatusMessage });

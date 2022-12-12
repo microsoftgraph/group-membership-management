@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Entities;
 using Hosts.JobTrigger;
+using JobTrigger.Activity.EmailSender;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.ServiceBus;
@@ -25,6 +26,8 @@ namespace Services.Tests
         Mock<IJobTriggerService> _jobTriggerService;
         Mock<ILoggingRepository> _loggingRespository;
         Mock<IDurableOrchestrationContext> _context;
+        Mock<IEmailSenderRecipient> _emailSenderAndRecipients;
+        Mock<IGMMResources> _gmmResources;
         SyncStatus _syncStatus = SyncStatus.Idle;
         bool _canWriteToGroups;
         SyncJob _syncJob;
@@ -37,9 +40,11 @@ namespace Services.Tests
         {
             _syncJob = SampleDataHelper.CreateSampleSyncJobs(1, "SecurityGroup").First();
             _canWriteToGroups = true;
+            _gmmResources = new Mock<IGMMResources>();
             _jobTriggerService = new Mock<IJobTriggerService>();
-            _loggingRespository = new Mock<ILoggingRepository>();
             _context = new Mock<IDurableOrchestrationContext>();
+            _loggingRespository = new Mock<ILoggingRepository>();
+            _emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
             _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             _endpoints = new List<string> { "Yammer", "Teams" };
 
@@ -72,10 +77,10 @@ namespace Services.Tests
                     })
                     .ReturnsAsync(() => _syncJobGroup);
 
-            _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<SyncJobGroup>()))
+            _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>()))
                      .Callback<string, object>(async (name, request) =>
                      {
-                         await CallEmailSenderFunctionAsync();
+                         await CallEmailSenderFunctionAsync(request as EmailSenderRequest);
                      });
 
             _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()))
@@ -91,7 +96,10 @@ namespace Services.Tests
             _syncJob.Query = "{invalid json query}";
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
 
-            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object, _telemetryClient);
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                                _telemetryClient,
+                                                                _emailSenderAndRecipients.Object,
+                                                                _gmmResources.Object);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
@@ -110,7 +118,10 @@ namespace Services.Tests
             _syncJob.Query = null;
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
 
-            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object, _telemetryClient);
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                    _telemetryClient,
+                                                    _emailSenderAndRecipients.Object,
+                                                    _gmmResources.Object);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
@@ -128,7 +139,10 @@ namespace Services.Tests
         {
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
 
-            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object, _telemetryClient);
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                    _telemetryClient,
+                                                    _emailSenderAndRecipients.Object,
+                                                    _gmmResources.Object);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
@@ -138,11 +152,11 @@ namespace Services.Tests
                 It.IsAny<string>()));
 
             _context.Verify(x => x.CallActivityAsync<SyncJobGroup>(It.Is<string>(x => x == nameof(GroupNameReaderFunction)), It.IsAny<SyncJob>()), Times.Once());
-            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<SyncJobGroup>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>()), Times.Once());
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()), Times.Once());
 
             _jobTriggerService.Verify(x => x.GetGroupNameAsync(It.IsAny<Guid>()), Times.Once());
-            _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<string>()), Times.Once());
+            _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<string>(), It.IsAny<string[]>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendMessageAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<SyncStatus>(s => s == SyncStatus.InProgress), It.IsAny<SyncJob>()), Times.Once());
@@ -181,7 +195,10 @@ namespace Services.Tests
                         await CallTopicMessageSenderFunctionAsync(jobTriggerService: jobTriggerService);
                     });
 
-            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object, _telemetryClient);
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                        _telemetryClient,
+                                        _emailSenderAndRecipients.Object,
+                                        _gmmResources.Object);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
@@ -191,11 +208,11 @@ namespace Services.Tests
                 It.IsAny<string>()));
 
             _context.Verify(x => x.CallActivityAsync<SyncJobGroup>(It.Is<string>(x => x == nameof(GroupNameReaderFunction)), It.IsAny<SyncJob>()), Times.Once());
-            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<SyncJobGroup>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>()), Times.Once());
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()), Times.Once());
 
             _jobTriggerService.Verify(x => x.GetGroupNameAsync(It.IsAny<Guid>()), Times.Once());
-            _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<string>()), Times.Once());
+            _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<string>(), It.IsAny<string[]>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<SyncStatus>(s => s == SyncStatus.InProgress), It.IsAny<SyncJob>()), Times.Once());
 
@@ -214,7 +231,10 @@ namespace Services.Tests
             _context.Setup(x => x.CallActivityAsync<SyncJobGroup>(It.Is<string>(x => x == nameof(GroupNameReaderFunction)), It.IsAny<SyncJob>()))
                     .ReturnsAsync(new SyncJobGroup { Name = null, SyncJob = _syncJob });
 
-            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object, _telemetryClient);
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                        _telemetryClient,
+                                        _emailSenderAndRecipients.Object,
+                                        _gmmResources.Object);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()), Times.Once());
             Assert.AreEqual(SyncStatus.DestinationGroupNotFound, _syncStatus);
@@ -264,10 +284,10 @@ namespace Services.Tests
             return await groupNameReaderFunction.GetGroupNameAsync(_syncJob);
         }
 
-        private async Task CallEmailSenderFunctionAsync()
+        private async Task CallEmailSenderFunctionAsync(EmailSenderRequest request)
         {
             var emailSenderFunction = new EmailSenderFunction(_loggingRespository.Object, _jobTriggerService.Object);
-            await emailSenderFunction.SendEmailAsync(_syncJobGroup);
+            await emailSenderFunction.SendEmailAsync(request);
         }
 
         private async Task CallTopicMessageSenderFunctionAsync(ILoggingRepository loggingRepository = null, IJobTriggerService jobTriggerService = null)

@@ -32,6 +32,8 @@ namespace Services.Tests
 
         private const string Organization = "Organization";
         private const string SecurityGroup = "SecurityGroup";
+        private const string SyncStartedEmailBody = "SyncStartedEmailBody";
+        private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
 
         [TestInitialize]
         public void InitializeTest()
@@ -270,7 +272,7 @@ namespace Services.Tests
             {
                 _jobTriggerService.RunId = job.RunId.Value;
                 var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
-                await _jobTriggerService.SendEmailAsync(job, groupName);
+                await _jobTriggerService.SendEmailAsync(job, SyncStartedEmailBody, new string[] { });
 
                 Assert.IsNotNull(_jobTriggerService.RunId);
                 Assert.IsNotNull(_graphGroupRepository.RunId);
@@ -311,7 +313,7 @@ namespace Services.Tests
             foreach (var job in jobs)
             {
                 var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
-                await _jobTriggerService.SendEmailAsync(job, groupName);
+                await _jobTriggerService.SendEmailAsync(job, SyncStartedEmailBody, new string[] { });
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
@@ -346,7 +348,7 @@ namespace Services.Tests
             var jobs = await _jobTriggerService.GetSyncJobsAsync();
             foreach (var job in jobs)
             {
-                await _jobTriggerService.SendEmailAsync(job, "GroupName");
+                await _jobTriggerService.SendEmailAsync(job, SyncStartedEmailBody, new string[] { });
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
@@ -381,7 +383,7 @@ namespace Services.Tests
             var jobs = await _jobTriggerService.GetSyncJobsAsync();
             foreach (var job in jobs)
             {
-                await _jobTriggerService.SendEmailAsync(job, "GroupName");
+                await _jobTriggerService.SendEmailAsync(job, SyncStartedEmailBody, new string[] { });
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);

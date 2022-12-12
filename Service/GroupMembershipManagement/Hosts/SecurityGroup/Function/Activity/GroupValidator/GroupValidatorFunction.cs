@@ -17,7 +17,7 @@ namespace Hosts.SecurityGroup
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly SGMembershipCalculator _calculator;
         private const int NumberOfGraphRetries = 5;
-        private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
+        private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoSourceGroupEmailBody";
 
         public GroupValidatorFunction(ILoggingRepository loggingRepository, SGMembershipCalculator calculator, IEmailSenderRecipient emailSenderAndRecipients)
         {
@@ -43,12 +43,14 @@ namespace Hosts.SecurityGroup
                 if (groupExistsResult.Outcome == OutcomeType.Successful)
                 {
                     await _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.ObjectId} doesn't exist. Stopping sync and marking as {SyncStatus.SecurityGroupNotFound}." });
+                    var targetGroupName = await _calculator.GetGroupNameAsync(request.SyncJob.TargetOfficeGroupId);
                     if (request.SyncJob != null && request.ObjectId != default(Guid))
                         await _calculator.SendEmailAsync(request.SyncJob,
                                                             request.RunId,
                                                             SyncDisabledNoGroupEmailBody,
                                                             new[]
                                                             {
+                                                                targetGroupName,
                                                                 request.ObjectId.ToString(),
                                                                 _emailSenderAndRecipients.SyncDisabledCCAddresses
                                                             });

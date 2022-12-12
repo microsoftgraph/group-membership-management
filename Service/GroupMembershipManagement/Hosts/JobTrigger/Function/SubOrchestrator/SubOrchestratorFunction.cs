@@ -1,12 +1,14 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
+using JobTrigger.Activity.EmailSender;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,13 +18,23 @@ namespace Hosts.JobTrigger
 {
     public class SubOrchestratorFunction
     {
+        private const string SyncStartedEmailBody = "SyncStartedEmailBody";
+        private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
+
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly TelemetryClient _telemetryClient = null;
+        private readonly IEmailSenderRecipient _emailSenderAndRecipients;
+        private readonly IGMMResources _gmmResources;
 
-        public SubOrchestratorFunction(ILoggingRepository loggingRepository, TelemetryClient telemetryClient)
+        public SubOrchestratorFunction(ILoggingRepository loggingRepository,
+                                       TelemetryClient telemetryClient,
+                                       IEmailSenderRecipient emailSenderAndRecipients,
+                                       IGMMResources gmmResources)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
+            _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
+            _emailSenderAndRecipients = emailSenderAndRecipients;
         }
 
         [FunctionName(nameof(SubOrchestratorFunction))]
@@ -69,13 +81,41 @@ namespace Hosts.JobTrigger
             var groupInformation = await context.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), syncJob);
             if (string.IsNullOrEmpty(groupInformation.Name))
             {
+                await context.CallActivityAsync(nameof(EmailSenderFunction),
+                                                new EmailSenderRequest
+                                                {
+                                                    SyncJobGroup = groupInformation,
+                                                    EmailTemplateName = SyncDisabledNoGroupEmailBody,
+                                                    AdditionalContentParams = new[]
+                                                    {
+                                                        syncJob.TargetOfficeGroupId.ToString(),
+                                                        _emailSenderAndRecipients.SyncDisabledCCAddresses
+                                                    }
+                                                });
+
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest { Status = SyncStatus.DestinationGroupNotFound, SyncJob = syncJob });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationGroupNotFound, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
                 return;
             }
 
-            await context.CallActivityAsync(nameof(EmailSenderFunction), groupInformation);
+            if (syncJob.LastRunTime == DateTime.FromFileTimeUtc(0))
+                await context.CallActivityAsync(nameof(EmailSenderFunction),
+                                                new EmailSenderRequest
+                                                {
+                                                    SyncJobGroup = groupInformation,
+                                                    EmailTemplateName = SyncStartedEmailBody,
+                                                    AdditionalContentParams = new[]
+                                                    {
+                                                            groupInformation.Name,
+                                                            syncJob.TargetOfficeGroupId.ToString(),
+                                                            _emailSenderAndRecipients.SupportEmailAddresses,
+                                                            _gmmResources.LearnMoreAboutGMMUrl,
+                                                            syncJob.Requestor
+                                                    }
+                                                });
+
+
             var canWriteToGroup = await context.CallActivityAsync<bool>(nameof(GroupVerifierFunction), syncJob);
             await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                             new JobStatusUpdaterRequest { Status = canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, SyncJob = syncJob });
