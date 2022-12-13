@@ -11,6 +11,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.Logging;
 using Repositories.Mocks;
 using System;
 using System.Collections.Generic;
@@ -45,6 +46,7 @@ namespace Tests.Services
         private GroupInformation _membersReaderResponse;
         private DeltaGroupInformation _usersReaderResponse;
         private DeltaGroupInformation _deltaUsersReaderResponse;
+        private TelemetryClient _telemetryClient;
 
         [TestInitialize]
         public void Setup()
@@ -58,6 +60,7 @@ namespace Tests.Services
             _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             _userCount = 10;
             _blobResult = new BlobResult
@@ -361,7 +364,7 @@ namespace Tests.Services
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<string>()), Times.Once);
-                      
+
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
                         It.IsAny<VerbosityLevel>(),
@@ -490,6 +493,8 @@ namespace Tests.Services
             Assert.AreEqual(_userCount, Users.Count);
             Assert.AreEqual(SyncStatus.InProgress, Status);
         }
+
+
 
         [TestMethod]
         public async Task ProcessTMSinglePageRequestTestAsync()

@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 using Entities;
 using Hosts.SecurityGroup;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Polly;
 using Repositories.Contracts.InjectConfig;
@@ -54,6 +56,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
             var testJob = new SyncJob
             {
@@ -112,6 +115,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
             var testJob = new SyncJob
             {
@@ -169,6 +173,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
             var testJob = new SyncJob
             {
@@ -228,6 +233,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
@@ -287,6 +293,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
@@ -297,7 +304,8 @@ namespace Tests.FunctionApps
                 PartitionKey = "partition",
                 TargetOfficeGroupId = destinationGroup,
                 Query = sampleQuery.GetQuery(),
-                Status = "InProgress"
+                Status = "InProgress",
+                RunId = new Guid()
             };
 
             syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
@@ -346,6 +354,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
@@ -388,6 +397,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
@@ -447,6 +457,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 

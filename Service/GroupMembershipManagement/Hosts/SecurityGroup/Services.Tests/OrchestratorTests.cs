@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 using Entities;
 using Hosts.SecurityGroup;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Graph;
@@ -35,6 +37,7 @@ namespace Tests.Services
         private SyncStatus _subOrchestratorResponseStatus;
         private SGMembershipCalculator _membershipCalculator;
         private DurableHttpResponse _membershipAgregatorResponse;
+        private TelemetryClient _telemetryClient;
 
         [TestInitialize]
         public void Setup()
@@ -48,6 +51,7 @@ namespace Tests.Services
             _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             _usersToReturn = 10;
             _querySample = QuerySample.GenerateQuerySample("SecurityGroup");
@@ -95,6 +99,14 @@ namespace Tests.Services
                                         });
 
             AzureADGroup sourceGroup = null;
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        var telemetryRequest = request as TelemetryTrackerRequest;
+                        await CallTelemetryTrackerFunctionAsync(telemetryRequest);
+                    });
+
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<AzureADGroup>(It.IsAny<string>(), It.IsAny<SourceGroupsReaderRequest>()))
                                         .Callback<string, object>(async (name, request) =>
                                         {
@@ -439,6 +451,12 @@ namespace Tests.Services
                                             ), Times.Never);
 
 
+        }
+
+        private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request)
+        {
+            var telemetryTrackerFunction = new TelemetryTrackerFunction(_loggingRepository.Object, _telemetryClient);
+            await telemetryTrackerFunction.TrackEventAsync(request);
         }
 
         private async Task CallJobStatusUpdaterFunctionAsync(JobStatusUpdaterRequest request)
