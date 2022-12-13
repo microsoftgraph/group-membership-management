@@ -3,6 +3,8 @@
 
 using Entities;
 using Hosts.MembershipAggregator;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -23,6 +25,7 @@ namespace Services.Tests
         private DurableHttpResponse _durableHttpResponse;
         private MembershipAggregatorHttpRequest _membershipAggregatorHttpRequest;
         private MembershipSubOrchestratorResponse _membershipSubOrchestratorResponse;
+        private TelemetryClient _telemetryClient;
 
         private Mock<IConfiguration> _configuration;
         private Mock<JobTrackerEntity> _jobTrackerEntity;
@@ -38,6 +41,7 @@ namespace Services.Tests
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<ISyncJobRepository>();
             _durableContext = new Mock<IDurableOrchestrationContext>();
+            _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             _syncJob = new SyncJob
             {
@@ -84,6 +88,13 @@ namespace Services.Tests
 
             _durableContext.Setup(x => x.CallHttpAsync(It.IsAny<DurableHttpRequest>()))
                             .ReturnsAsync(() => _durableHttpResponse);
+
+            _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        var telemetryRequest = request as TelemetryTrackerRequest;
+                        await CallTelemetryTrackerFunctionAsync(telemetryRequest);
+                    });
 
             _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(LoggerFunction)), It.IsAny<LoggerRequest>()))
                             .Callback<string, object>(async (name, request) =>
@@ -226,6 +237,12 @@ namespace Services.Tests
                                             , Times.Once());
 
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
+        }
+
+        private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request)
+        {
+            var telemetryTrackerFunction = new TelemetryTrackerFunction(_loggingRepository.Object, _telemetryClient);
+            await telemetryTrackerFunction.TrackEventAsync(request);
         }
 
         private async Task CallLoggerFunctionAsync(LoggerRequest request)
