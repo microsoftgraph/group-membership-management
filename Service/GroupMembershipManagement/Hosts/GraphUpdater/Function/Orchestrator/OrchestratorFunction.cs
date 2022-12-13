@@ -120,8 +120,8 @@ namespace Hosts.GraphUpdater
 					await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
 									CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
 																	SyncStatus.DestinationGroupNotFound, syncJob.ThresholdViolations, groupMembership.RunId));
-
-					await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function did not complete", SyncJob = syncJob });
+                    if (!context.IsReplaying) await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationGroupNotFound, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function did not complete", SyncJob = syncJob });
 
 					return OrchestrationRuntimeStatus.Completed;
 				}
@@ -184,7 +184,7 @@ namespace Hosts.GraphUpdater
 				await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
 									CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
 																	SyncStatus.Idle, 0, groupMembership.RunId));
-
+                if (!context.IsReplaying) await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
                 if (!context.IsReplaying)
                 {
                     if (membersAddedResponse.SuccessCount + membersAddedResponse.UsersNotFound.Count == membersToAdd.Count && 
@@ -219,7 +219,8 @@ namespace Hosts.GraphUpdater
 					await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
 									CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
 																	SyncStatus.Error, syncJob.ThresholdViolations, groupMembership.RunId));
-				}
+                    if (!context.IsReplaying) await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                }
 
                 TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Failure");
 

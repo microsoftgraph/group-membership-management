@@ -108,6 +108,7 @@ namespace Hosts.GraphUpdater
                                                 {
                                                     Status = SyncStatus.FileNotFound
                                                 });
+                if (!context.IsReplaying) await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.FileNotFound, ResultStatus = ResultStatus.Failure, RunId = request.RunId });
 
                 throw;
             }

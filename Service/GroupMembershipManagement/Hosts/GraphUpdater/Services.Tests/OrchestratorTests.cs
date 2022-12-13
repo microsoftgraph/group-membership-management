@@ -27,6 +27,8 @@ namespace Services.Tests
     [TestClass]
     public class OrchestratorTests
     {
+        TelemetryClient _telemetryClient;
+
         GMMResources _gmmResources = new GMMResources
         {
             LearnMoreAboutGMMUrl = "http://learn-more-url"
@@ -99,12 +101,20 @@ namespace Services.Tests
                 RunId = syncJob.RunId.Value
             };
 
+            _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+
             mockGraphUpdaterService.Jobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
+            context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        var telemetryRequest = request as TelemetryTrackerRequest;
+                        await CallTelemetryTrackerFunctionAsync(telemetryRequest, mockLoggingRepo);
+                    });
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>()))
                     .Returns(async () => await RunJobReaderFunctionAsync(mockLoggingRepo, mockGraphUpdaterService, jobReaderRequest));
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
@@ -333,7 +343,7 @@ namespace Services.Tests
                     {
                         updateJobRequest = request as JobStatusUpdaterRequest;
                     });
-            
+
             context.Setup(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()))
                 .Returns(() => Task.FromResult(new GroupUpdaterSubOrchestratorResponse() { SuccessCount = 1, UsersNotFound = new List<AzureADUser>() }));
 
@@ -765,6 +775,12 @@ namespace Services.Tests
             var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(json);
 
             return groupMembership;
+        }
+
+        private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request, MockLoggingRepository mockLoggingRepository)
+        {
+            var telemetryTrackerFunction = new TelemetryTrackerFunction(mockLoggingRepository, _telemetryClient);
+            await telemetryTrackerFunction.TrackEventAsync(request);
         }
 
         private async Task CallLogMessageFunctionAsync(LoggerRequest loggerRequest, MockLoggingRepository mockLoggingRepository)
