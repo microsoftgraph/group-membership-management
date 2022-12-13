@@ -47,6 +47,13 @@ namespace Services.Tests
             _jobTriggerService.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>())).ReturnsAsync(() => "Test Group");
             _jobTriggerService.Setup(x => x.GetGroupEndpointsAsync(It.IsAny<Guid>())).ReturnsAsync(() => _endpoints);
 
+            _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        var telemetryRequest = request as TelemetryTrackerRequest;
+                        await CallTelemetryTrackerFunctionAsync(telemetryRequest);
+                    });
+
             _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(JobStatusUpdaterFunction)), It.IsAny<JobStatusUpdaterRequest>()))
                     .Callback<string, object>(async (name, request) =>
                     {
@@ -209,8 +216,34 @@ namespace Services.Tests
 
             var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object, _telemetryClient);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
-
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()), Times.Once());
             Assert.AreEqual(SyncStatus.DestinationGroupNotFound, _syncStatus);
+        }
+
+        [TestMethod]
+        public async Task TrackTelemetry()
+        {
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+            _context.Setup(x => x.CallActivityAsync<bool>(It.Is<string>(x => x == nameof(GroupVerifierFunction)), It.IsAny<SyncJob>()))
+                    .ReturnsAsync(false);
+
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object, _telemetryClient);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()), Times.Once());
+            Assert.AreEqual(SyncStatus.NotOwnerOfDestinationGroup, _syncStatus);
+
+            _syncJob.Query = "";
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+            suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object, _telemetryClient);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()), Times.Exactly(2));
+            Assert.AreEqual(SyncStatus.QueryNotValid, _syncStatus);
+        }
+
+        private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request)
+        {
+            var telemetryTrackerFunction = new TelemetryTrackerFunction(_loggingRespository.Object, _telemetryClient);
+            await telemetryTrackerFunction.TrackEventAsync(request);
         }
 
         private async Task CallJobStatusUpdaterFunctionAsync(JobStatusUpdaterRequest request)
