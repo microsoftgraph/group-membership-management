@@ -212,26 +212,31 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
     functionAppSlotTemplate_AzureMaintenance
   ]
 }
-
-module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'PrereqsKeyVaultPoliciesTemplate-JobTrigger'
+module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
+  name: 'prereqsKeyVaultPoliciesTemplate-AzureMaintenance'
   scope: resourceGroup(prereqsKeyVaultResourceGroup)
   params: {
     name: prereqsKeyVaultName
     policies: [
       {
         objectId: functionAppTemplate_AzureMaintenance.outputs.msi
-        permissions: [
+        secrets: [
+          'get'
+          'list'
+        ]
+        certificates: [
           'get'
         ]
-        type: 'secrets'
       }
       {
         objectId: functionAppSlotTemplate_AzureMaintenance.outputs.msi
-        permissions: [
+        secrets: [
+          'get'
+          'list'
+        ]
+        certificates: [
           'get'
         ]
-        type: 'secrets'
       }
     ]
     tenantId: tenantId
