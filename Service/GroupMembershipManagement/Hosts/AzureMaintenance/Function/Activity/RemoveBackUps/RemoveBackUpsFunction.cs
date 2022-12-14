@@ -22,7 +22,7 @@ namespace Hosts.AzureMaintenance
         }
 
         [FunctionName(nameof(RemoveBackUpsFunction))]
-        public async Task<List<string>> RemoveBackupsAsync([ActivityTrigger] List<SyncJob> syncJobs)
+        public async Task<List<string>> RemoveBackupsAsync([ActivityTrigger] object obj)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RemoveBackUpsFunction)} function started" }, VerbosityLevel.DEBUG);
             var tables = await _azureMaintenanceService.RemoveBackupsAsync();
