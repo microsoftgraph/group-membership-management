@@ -18,8 +18,10 @@ namespace Hosts.JobTrigger
 {
     public class SubOrchestratorFunction
     {
+        private const string EmailSubject = "EmailSubject";
         private const string SyncStartedEmailBody = "SyncStartedEmailBody";
         private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
+        private const string DestinationGroupNotFoundSubject = "DestinationGroupNotFoundSubject";
 
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly TelemetryClient _telemetryClient = null;
@@ -85,7 +87,8 @@ namespace Hosts.JobTrigger
                                                 new EmailSenderRequest
                                                 {
                                                     SyncJobGroup = groupInformation,
-                                                    EmailTemplateName = SyncDisabledNoGroupEmailBody,
+                                                    EmailSubjectTemplateName = DestinationGroupNotFoundSubject,
+                                                    EmailContentTemplateName = SyncDisabledNoGroupEmailBody,
                                                     AdditionalContentParams = new[]
                                                     {
                                                         syncJob.TargetOfficeGroupId.ToString(),
@@ -104,7 +107,8 @@ namespace Hosts.JobTrigger
                                                 new EmailSenderRequest
                                                 {
                                                     SyncJobGroup = groupInformation,
-                                                    EmailTemplateName = SyncStartedEmailBody,
+                                                    EmailSubjectTemplateName = EmailSubject,
+                                                    EmailContentTemplateName = SyncStartedEmailBody,
                                                     AdditionalContentParams = new[]
                                                     {
                                                             groupInformation.Name,

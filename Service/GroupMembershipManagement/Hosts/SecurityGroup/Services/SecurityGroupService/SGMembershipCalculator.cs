@@ -182,7 +182,7 @@ namespace Hosts.SecurityGroup
             return fileName;
         }
 
-        public async Task SaveDeltaUsersAsync(SyncJob syncJob, Guid id,  List<AzureADUser> users, string deltaLink)
+        public async Task SaveDeltaUsersAsync(SyncJob syncJob, Guid id, List<AzureADUser> users, string deltaLink)
         {
             var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
             var fileName = $"/cache/delta_{id}_{timeStamp}.json";
@@ -195,11 +195,11 @@ namespace Hosts.SecurityGroup
             await _blobStorageRepository.UploadFileAsync(datafileName, JsonConvert.SerializeObject(groupMembership));
         }
 
-        public async Task SendEmailAsync(SyncJob job, Guid runId, string content, string[] additionalContentParams)
+        public async Task SendEmailAsync(SyncJob job, Guid runId, string subject, string content, string[] additionalContentParams)
         {
             await _mail.SendMailAsync(new EmailMessage
             {
-                Subject = EmailSubject,
+                Subject = subject ?? EmailSubject,
                 Content = content,
                 SenderAddress = _emailSenderAndRecipients.SenderAddress,
                 SenderPassword = _emailSenderAndRecipients.SenderPassword,

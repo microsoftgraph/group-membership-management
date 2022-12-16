@@ -78,24 +78,24 @@ namespace Services
             return await _graphGroupRepository.GetGroupNameAsync(groupId);
         }
 
-        public async Task SendEmailAsync(SyncJob job, string emailTemplateName, string[] additionalContentParameters)
+        public async Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters)
         {
             string ownerEmails = null;
             string ccAddress = _emailSenderAndRecipients.SupportEmailAddresses;
 
-            if (!SyncDisabledNoGroupEmailBody.Equals(emailTemplateName, StringComparison.InvariantCultureIgnoreCase))
+            if (!SyncDisabledNoGroupEmailBody.Equals(emailContentTemplateName, StringComparison.InvariantCultureIgnoreCase))
             {
                 var owners = await _graphGroupRepository.GetGroupOwnersAsync(job.TargetOfficeGroupId);
                 ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
             }
 
-            if (emailTemplateName.Contains("disabled", StringComparison.InvariantCultureIgnoreCase))
+            if (emailContentTemplateName.Contains("disabled", StringComparison.InvariantCultureIgnoreCase))
                 ccAddress = _emailSenderAndRecipients.SyncDisabledCCAddresses;
 
             var message = new EmailMessage
             {
-                Subject = EmailSubject,
-                Content = emailTemplateName,
+                Subject = emailSubjectTemplateName ?? EmailSubject,
+                Content = emailContentTemplateName,
                 SenderAddress = _emailSenderAndRecipients.SenderAddress,
                 SenderPassword = _emailSenderAndRecipients.SenderPassword,
                 ToEmailAddresses = ownerEmails ?? job.Requestor,
@@ -158,7 +158,7 @@ namespace Services
 
         private async Task<bool> GMMCanWriteToGroupAsync(Guid groupId)
         {
-            if(_jobTriggerConfig.GMMHasGroupReadWriteAllPermissions)
+            if (_jobTriggerConfig.GMMHasGroupReadWriteAllPermissions)
                 return true;
 
             var isAppIdOwner = await _graphGroupRepository.IsAppIDOwnerOfGroup(_gmmAppId, groupId);

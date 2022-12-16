@@ -252,7 +252,7 @@ namespace Tests.FunctionApps
             var partIndex = 0;
             var partOneSource = sampleQuery.GetSourceId(partIndex);
 
-            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Content", null);
+            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Subject", "Content", null);
             Assert.AreEqual(0, blobRepository.Sent.Count);
         }
 
@@ -312,7 +312,7 @@ namespace Tests.FunctionApps
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
 
-            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Content", null);
+            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Subject", "Content", null);
             Assert.AreEqual(0, blobRepository.Sent.Count);
         }
 
@@ -372,7 +372,7 @@ namespace Tests.FunctionApps
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
 
-            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Content", null);
+            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Subject", "Content", null);
             Assert.AreEqual(0, blobRepository.Sent.Count);
         }
 
@@ -474,7 +474,7 @@ namespace Tests.FunctionApps
             syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
-            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Content", null);
+            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Subject", "Content", null);
             Assert.AreEqual(0, blobRepository.Sent.Count);
         }
     }
