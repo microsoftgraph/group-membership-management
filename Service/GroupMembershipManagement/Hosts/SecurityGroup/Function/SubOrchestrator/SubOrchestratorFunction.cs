@@ -13,11 +13,13 @@ using Entities.ServiceBus;
 using Microsoft.ApplicationInsights;
 using Repositories.Contracts.InjectConfig;
 using Microsoft.Graph;
+using Entities.Helpers;
 
 namespace Hosts.SecurityGroup
 {
     public class SubOrchestratorFunction
     {
+        private const int MEMBERS_LIMIT = 200000;
         private readonly IDeltaCachingConfig _deltaCachingConfig;
         private readonly ILoggingRepository _log;
         private readonly TelemetryClient _telemetryClient;
@@ -209,13 +211,16 @@ namespace Hosts.SecurityGroup
 
         public async Task GetDeltaUsersSenderFunction(IDurableOrchestrationContext context, SecurityGroupRequest request, List<AzureADUser> allUsers, string deltaUrl)
         {
+            var compressedUsers = TextCompressor.Compress(JsonConvert.SerializeObject(allUsers));
+                
+
             await context.CallActivityAsync(nameof(DeltaUsersSenderFunction),
                                                     new DeltaUsersSenderRequest
                                                     {
                                                         RunId = request.RunId,
                                                         SyncJob = request.SyncJob,
                                                         ObjectId = request.SourceGroup.ObjectId,
-                                                        Users = allUsers,
+                                                        CompressedUsers = compressedUsers,
                                                         DeltaLink = deltaUrl
                                                     });
         }
