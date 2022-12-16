@@ -138,8 +138,8 @@ GMM Team</value>
   <data name="DecreaseThresholdMessage" xml:space="preserve">
     <value>Decrease membership threshold {0}%. Detected threshold {1}%.</value>
   </data>
-  <data name="DestinationGroupNotFoundSubject" xml:space="preserve">
-    <value>Group Membership Management (GMM) destination group not found.</value>
+  <data name="DisabledJobEmailSubject" xml:space="preserve">
+    <value>Group Membership Management (GMM) sync disabled.</value>
   </data>
   <data name="EmailSubject" xml:space="preserve">
     <value>Group Membership Management (GMM) onboarding update</value>
@@ -159,9 +159,6 @@ GMM Team</value>
   </data>
   <data name="NoDataEmailSubject" xml:space="preserve">
     <value>Group Membership Management - No data found for group {0}</value>
-  </data>
-  <data name="SourceGroupNotFoundSubject" xml:space="preserve">
-    <value>Group Membership Management (GMM) source group not found.</value>
   </data>
   <data name="SyncCompletedEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group, {0}.

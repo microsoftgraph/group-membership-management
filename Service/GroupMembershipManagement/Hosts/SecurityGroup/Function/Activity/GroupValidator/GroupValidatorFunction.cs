@@ -17,7 +17,7 @@ namespace Hosts.SecurityGroup
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly SGMembershipCalculator _calculator;
         private const int NumberOfGraphRetries = 5;
-        private const string SourceGroupNotFoundSubject = "SourceGroupNotFoundSubject";
+        private const string DisabledJobEmailSubject = "DisabledJobEmailSubject";
         private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoSourceGroupEmailBody";
 
         public GroupValidatorFunction(ILoggingRepository loggingRepository, SGMembershipCalculator calculator, IEmailSenderRecipient emailSenderAndRecipients)
@@ -48,7 +48,7 @@ namespace Hosts.SecurityGroup
                     if (request.SyncJob != null && request.ObjectId != default(Guid))
                         await _calculator.SendEmailAsync(request.SyncJob,
                                                             request.RunId,
-                                                            SourceGroupNotFoundSubject,
+                                                            DisabledJobEmailSubject,
                                                             SyncDisabledNoGroupEmailBody,
                                                             new[]
                                                             {

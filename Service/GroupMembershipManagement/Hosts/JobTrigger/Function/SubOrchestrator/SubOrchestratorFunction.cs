@@ -21,7 +21,7 @@ namespace Hosts.JobTrigger
         private const string EmailSubject = "EmailSubject";
         private const string SyncStartedEmailBody = "SyncStartedEmailBody";
         private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
-        private const string DestinationGroupNotFoundSubject = "DestinationGroupNotFoundSubject";
+        private const string DisabledJobEmailSubject = "DisabledJobEmailSubject";
 
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly TelemetryClient _telemetryClient = null;
@@ -87,7 +87,7 @@ namespace Hosts.JobTrigger
                                                 new EmailSenderRequest
                                                 {
                                                     SyncJobGroup = groupInformation,
-                                                    EmailSubjectTemplateName = DestinationGroupNotFoundSubject,
+                                                    EmailSubjectTemplateName = DisabledJobEmailSubject,
                                                     EmailContentTemplateName = SyncDisabledNoGroupEmailBody,
                                                     AdditionalContentParams = new[]
                                                     {
