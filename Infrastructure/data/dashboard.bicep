@@ -1381,7 +1381,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project MembersAdded = toint(customDimensions["MembersAdded"]),\n    MembersRemoved = toint(customDimensions["MembersRemoved"]),\n    Destination = toguid(customDimensions["TargetOfficeGroupId"]),\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    RunId = toguid(customDimensions["RunId"])\n| summarize TotalCount = count(), NoOpCount = countif(Result == "Success" and DryRun == "False" and MembersAdded == 0 and MembersRemoved == 0)\n| extend NoOpPercentage = round((todecimal(NoOpCount) / TotalCount) * 100, 2)\n| project OpData = pack("TotalCount", TotalCount, "NoOpCount", NoOpCount, "NoOpPercentage", strcat(tostring(NoOpPercentage), "%"))\n| mv-expand OpData\n| extend Key = tostring(bag_keys(OpData)[0])\n| project Key, Value = OpData[Key]\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project MembersAdded = toint(customDimensions["MembersAdded"]),\n    MembersRemoved = toint(customDimensions["MembersRemoved"]),\n    Destination = toguid(customDimensions["TargetOfficeGroupId"]),\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    RunId = toguid(customDimensions["RunId"])\n| where Result == "Success" and DryRun == "False" and MembersAdded == 0 and MembersRemoved == 0\n| distinct RunId\n| summarize Count = count()'
                   ControlType: 'AnalyticsGrid'
                 }
               }
