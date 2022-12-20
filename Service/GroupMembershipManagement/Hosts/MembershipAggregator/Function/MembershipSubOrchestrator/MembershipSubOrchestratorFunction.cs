@@ -109,7 +109,7 @@ namespace Hosts.MembershipAggregator
                                                     Status = status,
                                                     ThresholdViolations = currentThresholdViolations
                                                 });
-                if (!context.IsReplaying) await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = status, ResultStatus = ResultStatus.Success, RunId = runId });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = status, ResultStatus = ResultStatus.Success, RunId = runId });
             }
             else if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.DryRun)
             {
@@ -129,7 +129,7 @@ namespace Hosts.MembershipAggregator
                                                     Status = SyncStatus.Idle,
                                                     IsDryRun = true
                                                 });
-                if (!context.IsReplaying) await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = runId });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = runId });
             }
             else if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.Error)
             {
@@ -139,7 +139,7 @@ namespace Hosts.MembershipAggregator
                                                     SyncJob = request.SyncJob,
                                                     Status = SyncStatus.Error
                                                 });
-                if (!context.IsReplaying) await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
             }
 
             return new MembershipSubOrchestratorResponse
