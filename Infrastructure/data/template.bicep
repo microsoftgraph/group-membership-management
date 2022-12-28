@@ -321,7 +321,7 @@ module jobsStorageAccountTemplate 'storageAccount.bicep' = {
     name: jobsStorageAccountName
     sku: storageAccountSku
     keyVaultName: keyVaultName
-    add30DayDeletionPolicy: true
+    addJobsStorageAccountPolicies: true
   }
 }
 

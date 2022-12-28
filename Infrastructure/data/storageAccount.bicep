@@ -15,7 +15,7 @@ param keyVaultName string
 param sku string = 'Standard_LRS'
 
 @description('Key vault name.')
-param add30DayDeletionPolicy bool = false
+param addJobsStorageAccountPolicies bool = false
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
   name: name
@@ -33,7 +33,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
   }
 }
 
-resource storageAccountPolicy 'Microsoft.Storage/storageAccounts/managementPolicies@2022-05-01' = if (add30DayDeletionPolicy) {
+resource allBlobPolicy 'Microsoft.Storage/storageAccounts/managementPolicies@2022-05-01' = if (addJobsStorageAccountPolicies) {
   name: 'default'
   parent: storageAccount
   properties: {
@@ -56,6 +56,28 @@ resource storageAccountPolicy 'Microsoft.Storage/storageAccounts/managementPolic
           }
           enabled: true
           name: '30-Day Blob Deletion Policy'
+          type: 'Lifecycle'
+        }
+        {
+          definition: {
+            actions: {
+              baseBlob: {
+                delete: {
+                  daysAfterModificationGreaterThan: 7
+                }
+              }
+            }
+            filters: {
+              blobTypes: [
+                'blockBlob'
+              ]
+              prefixMatch: [
+                'cache/'
+              ]
+            }
+          }
+          enabled: true
+          name: '7-Day Cache Blob Deletion Policy'
           type: 'Lifecycle'
         }
       ]
