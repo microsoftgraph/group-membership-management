@@ -22,7 +22,8 @@ Parameter description
 Set-PostDeploymentRoles -SolutionAbbreviation "<solutionAbbreviation>" `
                         -EnvironmentAbbreviation "<environmentAbbreviation>" `
                         -StorageAccountName "<storageAccountName>" `
-                        -AppConfigName "<appConfigName>"
+                        -AppConfigName "<appConfigName>" `
+                        -LogAnalyticsWorkspaceResourceName "<logAnalyticsWorkspaceResourceName>"
 #>
 
 function Set-PostDeploymentRoles {
@@ -35,7 +36,9 @@ function Set-PostDeploymentRoles {
 		[Parameter(Mandatory = $True)]
 		[string] $StorageAccountName,
 		[Parameter(Mandatory = $True)]
-		[string] $AppConfigName
+		[string] $AppConfigName,
+		[Parameter(Mandatory = $True)]
+		[string] $LogAnalyticsWorkspaceResourceName
     )
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -51,4 +54,10 @@ function Set-PostDeploymentRoles {
                                             -EnvironmentAbbreviation $EnvironmentAbbreviation `
                                             -AppConfigName $AppConfigName `
                                             -Verbose
+
+    . ($scriptsDirectory + '\PostDeployment\Set-LogAnalyticsReaderRole.ps1')
+    Set-LogAnalyticsReaderRole	-SolutionAbbreviation $SolutionAbbreviation `
+                                -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                -LogAnalyticsWorkspaceResourceName $LogAnalyticsWorkspaceResourceName `
+                                -Verbose
 }
