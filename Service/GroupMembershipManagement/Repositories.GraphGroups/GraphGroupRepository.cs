@@ -125,7 +125,7 @@ namespace Repositories.GraphGroups
             try
             {
                 var batchRequest = new BatchRequestContent();
-                var outlookRequest = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/v1.0/groups/{groupId}?$select=mailEnabled,groupTypes");
+                var outlookRequest = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/v1.0/groups/{groupId}?$select=mailEnabled,groupTypes,securityEnabled");
                 var outlookStep = new BatchRequestStep("outlook", outlookRequest);
                 var sharepointRequest = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/beta/groups/{groupId}/sites/root");
                 var sharepointStep = new BatchRequestStep("sharepoint", sharepointRequest);
@@ -685,7 +685,7 @@ namespace Repositories.GraphGroups
 
             usersFromGroup = await GetGroupMembersNextPageAsnyc(usersFromGroup, nextPageUrl);
             await TrackMetrics(usersFromGroup.AdditionalData, QueryType.Transitive);
-            await TrackRequest(usersFromGroup.AdditionalData); 
+            await TrackRequest(usersFromGroup.AdditionalData);
             usersFromGroup.AdditionalData.TryGetValue("@odata.nextLink", out object nextLink2);
             nextPageUrl = (nextLink2 == null) ? string.Empty : nextLink2.ToString();
             users.AddRange(ToUsers(usersFromGroup, nonUserGraphObjects));
@@ -909,7 +909,7 @@ namespace Repositories.GraphGroups
 
             if (!additionalData.TryGetValue("responseHeaders", out var headers))
                 return;
-            
+
             var responseHeaders = _graphServiceClient.HttpProvider.Serializer.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
 
             if (responseHeaders.TryGetValue("request-id", out var request))
@@ -989,11 +989,11 @@ namespace Repositories.GraphGroups
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} is not available", RunId = RunId });
                 return;
             }
-           
+
             ruu = ParseFirst<int>(resourceValues, int.TryParse);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = RunId });
             TrackResourceUnitsUsedByTypeEvent(ruu, queryType);
-            _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ruu);            
+            _telemetryClient.GetMetric(nameof(Metric.ResourceUnitsUsed)).TrackValue(ruu);
 
             if (responseHeaders.TryGetValue(ThrottlePercentageHeader, out var throttleValues))
                 _telemetryClient.GetMetric(nameof(Metric.ThrottleLimitPercentage)).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
