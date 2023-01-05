@@ -247,14 +247,20 @@ namespace Services.Tests
             _context.Setup(x => x.CallActivityAsync<bool>(It.Is<string>(x => x == nameof(GroupVerifierFunction)), It.IsAny<SyncJob>()))
                     .ReturnsAsync(false);
 
-            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object, _telemetryClient);
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                            _telemetryClient,
+                            _emailSenderAndRecipients.Object,
+                            _gmmResources.Object);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()), Times.Once());
             Assert.AreEqual(SyncStatus.NotOwnerOfDestinationGroup, _syncStatus);
 
             _syncJob.Query = "";
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
-            suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object, _telemetryClient);
+            suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                            _telemetryClient,
+                            _emailSenderAndRecipients.Object,
+                            _gmmResources.Object);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()), Times.Exactly(2));
             Assert.AreEqual(SyncStatus.QueryNotValid, _syncStatus);
