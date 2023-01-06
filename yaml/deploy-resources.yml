@@ -20,6 +20,24 @@ parameters:
 
 steps:
 
+- task: AzurePowerShell@5
+  displayName: 'Get existing data resources'
+  inputs:
+    azureSubscription: ${{parameters.serviceConnection}}
+    scriptType: inlineScript
+    inline: |
+      $dataResources = Get-AzResource -ResourceGroupName ${{parameters.solutionAbbreviation}}-data-${{parameters.environmentAbbreviation}} | Select-Object -Property Name,ResourceType | ConvertTo-Json -Compress
+      if(!$dataResources){
+        $dataResources = "[]"
+      }
+      else {
+        $dataResources = $dataResources.Replace("""", "'")
+      }
+
+      Write-Host "##vso[task.setvariable variable=dataResources;isOutput=true]$dataResources"
+    azurePowerShellVersion: LatestVersion
+  name: dataResourcesOutput
+
 - task: AzureResourceManagerTemplateDeployment@3
   displayName: 'deploy persistent data'
   inputs:
@@ -29,7 +47,7 @@ steps:
     location: $(location)
     csmFile: ${{ parameters.root }}/Infrastructure/data/template.bicep
     csmParametersFile: ${{parameters.root}}/Infrastructure/data/parameters/parameters.${{parameters.environmentAbbreviation}}.json
-    overrideParameters: '-environmentAbbreviation "${{parameters.environmentAbbreviation}}" -location "${{parameters.location}}" -solutionAbbreviation "${{parameters.solutionAbbreviation}}" -tenantId "${{parameters.tenantId}}" -keyVaultReaders "${{parameters.keyVaultReaders}}"'
+    overrideParameters: '-environmentAbbreviation "${{parameters.environmentAbbreviation}}" -location "${{parameters.location}}" -solutionAbbreviation "${{parameters.solutionAbbreviation}}" -tenantId "${{parameters.tenantId}}" -keyVaultReaders "${{parameters.keyVaultReaders}}" -existingDataResources "$(dataResourcesOutput.dataResources)"'
     deploymentMode: 'Incremental'
     deploymentOutputs: dataoutputs
 
