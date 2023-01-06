@@ -250,12 +250,12 @@ param emailReceivers array = [
   }
 ]
 
-@description('Array with existing data resources [{Name: string, ResourceType: string}]')
-param existingDataResources array = []
+@description('JSON string with an array listing the existing data resources [{Name: string, ResourceType: string}]')
+param existingDataResources string = '[]'
 
-var isDataKVPresent = !empty(filter(existingDataResources, x => x.Name == keyVaultName && x.ResourceType == 'Microsoft.KeyVault/vaults'))
+var isDataKVPresent = !empty(existingDataResources) ? !empty(filter(json(existingDataResources), x => x.Name == keyVaultName && x.ResourceType == 'Microsoft.KeyVault/vaults')) : false
 
-module dataKeyVaultTemplate 'keyVault.bicep' = if(isDataKVPresent) {
+module dataKeyVaultTemplate 'keyVault.bicep' = if(!isDataKVPresent) {
   name: 'dataKeyVaultTemplate'
   params: {
     name: keyVaultName
