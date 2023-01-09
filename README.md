@@ -23,7 +23,7 @@ Limitations:
     * [GMM environments](##GMM-environments)
 2. [GMM Setup](#GMM-Setup)
     * [Create Azure Devops Repositories](##Create-Azure-Devops-Repositories)
-    * [Create resource groups and the prereqs keyvault](##Create-resource-groups-and-the-prereqs-keyvault) 
+    * [Create resource groups and the prereqs keyvault](##Create-resource-groups-and-the-prereqs-keyvault)
     * [Create the Graph application and populate prereqs keyvault](##Create-the-Graph-application-and-populate-prereqs-keyvault)
     * [Adding a new GMM environment](##Adding-a-new-GMM-environment)
     * [Create a Service Connection](##Create-a-Service-Connection)
@@ -76,9 +76,9 @@ GMM logically separates the resources it uses into three [resource groups](https
 -   data
 -   compute
 
-Throughout this document we will use the following tokens as place holders: 
+Throughout this document we will use the following tokens as place holders:
 
-- `<SolutionAbbreviation>` - This is a name prefix (2 to 3 characters long). The current default value is '`gmm`'. See the Notes section below for information on how to change this value. 
+- `<SolutionAbbreviation>` - This is a name prefix (2 to 3 characters long). The current default value is '`gmm`'. See the Notes section below for information on how to change this value.
 - `<EnvironmentAbbreviation>` - This is the name of your environment (2 to 6 characters long). Each environment should have an unique value to avoid name collisions. See the Notes section below for more information.
 
 When setting up GMM, you will need to provide the value for each one of these as they will be used to name the Azure resources. Please Avoid using the names on this document as they are already in use and some Azure resources are required to have a unique name across all tenants globally.
@@ -89,9 +89,9 @@ The naming convention for the resource groups and other resources is `<SolutionA
 
 Both `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` must only contain numbers and/or lowercase letters! Using capital letters in either will cause problems!
 
-Currently,  the default value for `<SolutionAbbreviation>` is `gmm`. To change this default, update the `solutionAbbreviation` variable in the `vsts-cicd.yml` file of your `Private` repo. 
+Currently,  the default value for `<SolutionAbbreviation>` is `gmm`. To change this default, update the `solutionAbbreviation` variable in the `vsts-cicd.yml` file of your `Private` repo.
 
-The length restrictions for both `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` can be changed by updating their `minLength` and `maxLength` variables in the ARM templates (`template.bicep`). 
+The length restrictions for both `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` can be changed by updating their `minLength` and `maxLength` variables in the ARM templates (`template.bicep`).
 
 We recommend trying to use unique `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` names, since some resources in Azure require to have unique names globally so it is possible to have name collisions.
 
@@ -129,7 +129,7 @@ GMM leverages infrastructure as code through the use of ARM templates. Most of t
 
 ## GMM environments
 
-A `GMM environment` is the collection of resource groups, resources, and operating tenant that make a GMM instance. 
+A `GMM environment` is the collection of resource groups, resources, and operating tenant that make a GMM instance.
 
 The code is provided with a sample environment, `env`. The [vsts-cicd.yml](/vsts-cicd.yml) `yaml/deploy-pipeline.yml` template and parameter files for the `env` environment are provided to serve as a guide to create new environments. This name must not be reused.
 
@@ -153,23 +153,23 @@ The steps in this document will setup a single environment i.e. prodv2, if you w
         - Your `Public` repo will mimic this GitHub repository.
         - Create the `Public` repo based off this GitHub repo by following the [Manually Importing a Repo](https://docs.microsoft.com/en-us/azure/devops/repos/git/import-git-repository?view=azure-devops#manually-import-a-repo) documentation.
         - Keep the commit history of your `Public` repo in sync with this GitHub repo by running the following commands from your `Public` repo:
-       
+
                 git remote add upstream https://github.com/microsoftgraph/group-membership-management.git
                 git fetch upstream
                 git checkout upstream/main -b main
                 git merge upstream/main
                 git push --set-upstream origin main -f
-        
+
     - `Private` repository:
         - Your `Private` repo will refer to your `Public` repo as a submodule.
         - Create your `Private` repo based off the [group-membership-management-tenant ](https://github.com/microsoftgraph/group-membership-management-tenant) repo by following the [Manually Importing a Repo](https://docs.microsoft.com/en-us/azure/devops/repos/git/import-git-repository?view=azure-devops#manually-import-a-repo) documentation.
         - Open the `vsts-cicd.yml` file of your newly created repo and replace `<ProjectName>/<RepositoryName>` with your project name and your `Public` repository name.
         - Create the `Public` submodule by running the following command from your `Private` repo:
-        
+
                 git submodule add <url-of-public-repo> <name-of-public-repo>
-        
+
         - Let’s say that a new commit is added to the main branch of your `Public` repository. To add that new commit to the submodule in the `Private` repository, run the following commands:
-        
+
                 git submodule update --remote --merge
                 git add *
                 git commit -m “updated public submodule”
@@ -345,21 +345,21 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
     Save your changes.
 4. Create parameter files based off the provided `parameters.env.json` by using the [Add-ParamFiles.ps1](/scripts/Add-ParamFiles.ps1) script:
     * From your PowerShell command prompt navigate to the Scripts folder of your `Public` repo and type these commands.
-    
+
             1. . ./Add-ParamFiles.ps1
             2. Add-ParamFiles   -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
                                 -SourceEnvironmentAbbreviation "<SourceEnvironmentAbbreviation>" `
                                 -RepoPath "<RepoPath>"
         * Use `"env"` for `<SourceEnvironmentAbbreviation>` and the absolute path to your private repositoty for `<RepoPath>`.
-    * This command will go into each of the `parameters` folders and copy and rename the `parameters.env.json` file to `parameters.<EnvironmentAbbreviation>.json`. These new parameter files will be used to by the ARM templates to deploy the resources of the new environment. 
+    * This command will go into each of the `parameters` folders and copy and rename the `parameters.env.json` file to `parameters.<EnvironmentAbbreviation>.json`. These new parameter files will be used to by the ARM templates to deploy the resources of the new environment.
 
-### To remove a GMM environment: 
+### To remove a GMM environment:
 
 1. Delete the [vsts-cicd.yml](/vsts-cicd.yml) `yaml/deploy-pipeline.yml` template of the environment and save your changes. You might need to update any templates that had a dependency on the deleted template. For instance `dependsOn` and `condition` settings.
 
-2. Use the [Remove-ParamFiles.ps1](/scripts/Remove-ParamFiles.ps1) script to remove the parameter files of the given environment: 
+2. Use the [Remove-ParamFiles.ps1](/scripts/Remove-ParamFiles.ps1) script to remove the parameter files of the given environment:
     * From your PowerShell command prompt navigate to the Scripts folder of your `Public` repo and type these commands.
-    
+
             1. . ./Remove-ParamFiles.ps1
             2. Remove-ParamFiles    -TargetEnvironmentAbbreviation "<TargetEnvironmentAbbreviation>" `
                                     -RepoPath "<RepoPath>"
@@ -390,7 +390,7 @@ The following PowerShell scripts create a Service Principal and set up a Service
 
     This script will grant the service principal `Contributor` role over all resource groups for GMM. This script must be run by someone with the <b>Owner role on the subscription.</b>
 
-    From your `PowerShell 5.x` command prompt navigate to the `Scripts` folder of your `Public` repo and type these commands. 
+    From your `PowerShell 5.x` command prompt navigate to the `Scripts` folder of your `Public` repo and type these commands.
 
         1. . ./Set-ServicePrincipalManagedIdentityRoles.ps1
         2. Set-ServicePrincipalManagedIdentityRoles -SolutionAbbreviation "<SolutionAbbreviation>"  `
@@ -399,7 +399,7 @@ The following PowerShell scripts create a Service Principal and set up a Service
 
 3. Set-ServiceConnection.ps1
 
-    This script sets up the service connection for your environment. You must be an owner of the the service pricipal created in step 1 to run this script. 
+    This script sets up the service connection for your environment. You must be an owner of the the service pricipal created in step 1 to run this script.
 
     From your `PowerShell 5.x` command prompt navigate to the `Scripts` folder of your `Public` repo, run these commands, and follow the instructions on the screen:
 
@@ -414,7 +414,7 @@ The following PowerShell scripts create a Service Principal and set up a Service
     Where:
     *  `<OrganizationName>` - This is the name of your organization used in Azure DevOps.
     *  `<ProjectName>` - This is the name of the project in Azure DevOps we just created in a previous step.
-        
+
 ## Set up email notifications
 
 Please follow the steps in this documentation, which will ensure that the requestor is notified regarding the synchronization job status:
@@ -442,7 +442,7 @@ An environment is necessary to manage deployment approvals. To create the enviro
 
 In Azure DevOps, we need to create a pipeline that will create your resources and deploy your code.
 
--   See [Create your first pipeline](https://docs.microsoft.com/en-us/azure/devops/pipelines/create-first-pipeline?view=azure-devops&tabs=java%2Cyaml%2Cbrowser%2Ctfs-2018-2) documentation for more information: 
+-   See [Create your first pipeline](https://docs.microsoft.com/en-us/azure/devops/pipelines/create-first-pipeline?view=azure-devops&tabs=java%2Cyaml%2Cbrowser%2Ctfs-2018-2) documentation for more information:
     1. On Azure DevOps left menu locate and click on Pipelines.
     2. Click on 'Create Pipeline' or 'New Pipeline' depending on which one is presented to you.
     3. Select Azure Repos Git as your code location.
@@ -451,9 +451,9 @@ In Azure DevOps, we need to create a pipeline that will create your resources an
     6. Select your branch.
     7. Select '/vsts-cicd.yml' in the Path field.
     8. Click continue.
-    9. You will be presented with the "Review your pipeline YAML" screen. 
-    10. Locate and click on the "Variables" button on the top right side of your screen. 
-    11. Create the following variables: 
+    9. You will be presented with the "Review your pipeline YAML" screen.
+    10. Locate and click on the "Variables" button on the top right side of your screen.
+    11. Create the following variables:
 
         * `location` - This is the location where the Azure resources are going to be created. See [Resource Locations](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/resource-location?tabs=azure-powershell).
 
@@ -463,8 +463,8 @@ In Azure DevOps, we need to create a pipeline that will create your resources an
 
         * `keyVaultReaders_nonprod` - This is a list of service principals that will have access to the keyvaults in non-production environment. Within this list, you are required to have your own Azure user id and the id of your environment's service connection; any other value is optional. This variable's value is a JSON string that represents an array. See JSON format below.
 
-             <b>Note:</b> Use the following JSON format for `keyVaultReaders_nonprod`: 
-                
+             <b>Note:</b> Use the following JSON format for `keyVaultReaders_nonprod`:
+
                 [
                     {
                     "objectId": "<user-object-id>",
@@ -475,7 +475,7 @@ In Azure DevOps, we need to create a pipeline that will create your resources an
                     "secrets": [ "get", "set", "list" ]
                     }
                 ]
-                
+
 
             * `objectId`: the group or user object id.
             * `secrets`: the list of permissions that will be set.
@@ -504,7 +504,7 @@ Once the pipeline has completed building and deploying GMM code and resources to
 
 ### Grant functions access to required resources:
 
-The following script: 
+The following script:
 1. Grants all functions access to App Configuration.
 2. Grants SecurityGroup, MembershipAggregator, and GraphUpdater functions access to storage account.
 
@@ -514,19 +514,20 @@ From your `PowerShell 7.2.x` command prompt navigate to the `Scripts` folder of 
         2. Set-PostDeploymentRoles  -SolutionAbbreviation "<solutionAbbreviation>" `
                                     -EnvironmentAbbreviation "<environmentAbbreviation>" `
                                     -StorageAccountName "<storageAccountName>" `
-                                    -AppConfigName "<appConfigName>"
-
+                                    -AppConfigName "<appConfigName>" `
+                                    -LogAnalyticsWorkspaceResourceName "<logAnalyticsWorkspaceResourceName>"
 
 Where:
 * `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` are as before.
 * `<storageAccountName>` - can be found in the data key vault secrets under `jobsStorageAccountName`. It will have the form of: `jobs<environmentAbbreviation><randomId>`.
 * `<appConfigName>` - will have the form of "`<SolutionAbbreviation>`-appConfig-`<EnvironmentAbbreviation>`"
+* `<logAnalyticsWorkspaceResourceName>` - will be the name of your LogAnalytics resource (Also known as a Workspace) and will have the form of "`<SolutionAbbreviation>`-data-`<EnvironmentAbbreviation>`"
 
-### Create the jobs table: 
+### Create the jobs table:
 
-The jobs table contains all the sync jobs that GMM will perform. 
+The jobs table contains all the sync jobs that GMM will perform.
 
-### To create the jobs table for your environment: 
+### To create the jobs table for your environment:
 
 Open your jobs storage account on Azure Explorer:
 
@@ -535,7 +536,7 @@ Open your jobs storage account on Azure Explorer:
 * Go to `Resource Groups` and select `gmm-data-<EnvironmentAbbreviation>`
 * Under `Resources`, select the `jobs<EnvironmentAbbreviation><ID>` storage account, and open it on Azure Explorer
 
-Create a new table: 
+Create a new table:
 
 * On Azure Explorer, under your storage account, right click on `Tables` and create a new table called `syncJobs`
 * Go to the table and click on `Import` at the top bar
@@ -545,9 +546,9 @@ Create a new table:
 Note: For more information on the properties of the jobs table, see [syncJobs properties](https://microsoftit.visualstudio.com/OneITVSO/_git/STW-Sol-GrpMM-public?path=%2FDocumentation%2FsyncJobsProperties.ps1).
 ## (Optional) Set up a production environment
 
-To create a production environment: 
+To create a production environment:
 
-1. Using the same Azure DevOps repositories and pipeline created on the first iteration, follow the steps of [GMM Setup](#GMM-Setup) to create another environment. 
+1. Using the same Azure DevOps repositories and pipeline created on the first iteration, follow the steps of [GMM Setup](#GMM-Setup) to create another environment.
 2. Use the following `yaml/deploy-pipeline.yml` template for step 2 of [Adding a new GMM environment](###To-add-a-new-GMM-environment:):
 
         - template: yaml/deploy-pipeline.yml
@@ -592,17 +593,17 @@ To create a production environment:
                 in(variables['Build.Reason'], 'IndividualCI', 'Manual')
             )
 
-    Where: 
+    Where:
 
-    * `<ProdEnvironmentAbbreviation>` - The new environment being created or your production environment. 
-    * `<NonProdEnvironmentAbbreviation>` - The previously created environment or your non-production environment. 
+    * `<ProdEnvironmentAbbreviation>` - The new environment being created or your production environment.
+    * `<NonProdEnvironmentAbbreviation>` - The previously created environment or your non-production environment.
 
-    Note: if you notice the condition section, it states that your non-production environment must deploy successfully for your production environment to deploy. 
+    Note: if you notice the condition section, it states that your non-production environment must deploy successfully for your production environment to deploy.
 
 3. Add the following variables to your pipeline as you did in step 11 of [Creating a Pipeline](##-Create-an-Azure-DevOps-pipeline):
-    
+
     * `subscriptionId_prod` - This is the subscription Id of your production environment.
-    * `keyVaultReaders_prod` - This is a list of service principals that will have access to the keyvaults in non-production environments. Within this list, you are required to have your own Azure user id and the id of your environment's service connection; any other value is optional. This variable's value is a JSON string that represents an array. Use the same format used for `keyVaultReaders_nonprod` in step 11 of [Creating a Pipeline](##-Create-an-Azure-DevOps-pipeline:). 
+    * `keyVaultReaders_prod` - This is a list of service principals that will have access to the keyvaults in non-production environments. Within this list, you are required to have your own Azure user id and the id of your environment's service connection; any other value is optional. This variable's value is a JSON string that represents an array. Use the same format used for `keyVaultReaders_nonprod` in step 11 of [Creating a Pipeline](##-Create-an-Azure-DevOps-pipeline:).
 
 
 # Using GMM
@@ -632,7 +633,7 @@ A synchronization job must have the following properties populated:
 - TargetOfficeGroupId
 - Status
 - LastRunTime
-- LastSuccessfulRunTime 
+- LastSuccessfulRunTime
 - Period
 - Query
 - StartDate
@@ -642,7 +643,7 @@ A synchronization job must have the following properties populated:
 - IsDryRunEnabled
 - DryRunTimeStamp
 
-See [syncJobs properties](https://microsoftit.visualstudio.com/OneITVSO/_git/STW-Sol-GrpMM-public?path=%2FDocumentation%2FsyncJobsProperties.ps1) for more information. 
+See [syncJobs properties](https://microsoftit.visualstudio.com/OneITVSO/_git/STW-Sol-GrpMM-public?path=%2FDocumentation%2FsyncJobsProperties.ps1) for more information.
 
 
 A PowerShell script [New-GmmSecurityGroupSyncJob.ps1](/Service/GroupMembershipManagement/Hosts/SecurityGroup/Scripts/New-GmmSecurityGroupSyncJob.ps1) is provided to help you create the synchronization jobs.
@@ -671,7 +672,7 @@ The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGrou
     2. New-GmmSecurityGroupSyncJob	-SubscriptionName "<SubscriptionName>" `
                             -SolutionAbbreviation "<SolutionAbbreviation>" `
 							-EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
-							-Requestor "<RequestorEmailAddress>" ` 
+							-Requestor "<RequestorEmailAddress>" `
 							-TargetOfficeGroupId "<DestinationGroupObjectId>" `
 							-Query "<JSON string>" `
 							-Period <in hours, integer only> `
