@@ -19,8 +19,20 @@ function Set-UpdateSecurityGroupQuery {
 	$storageAccountNamePrefix = "jobs$EnvironmentAbbreviation"
 	$jobStorageAccount = $storageAccounts | Where-Object { $_.StorageAccountName -like "$storageAccountNamePrefix*" }
 
+    if(!$jobStorageAccount){
+        Write-Host "Storage account $storageAccountNamePrefix* does not exist."
+        return
+    }
+
 	$tableName = "syncJobs"
-	$cloudTable = (Get-AzStorageTable -Name $tableName -Context $jobStorageAccount.Context).CloudTable
+    $storageTable = Get-AzStorageTable -Name $tableName -Context $jobStorageAccount.Context
+
+    if(!$storageTable){
+        Write-Host "syncJobs table does not exist."
+        return
+    }
+
+	$cloudTable = $storageTable.CloudTable
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
