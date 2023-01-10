@@ -17,9 +17,12 @@ param sku string = 'Standard_LRS'
 @description('Key vault name.')
 param addJobsStorageAccountPolicies bool = false
 
+@description('Specifies the Azure location where the storage account will be created.')
+param location string
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
   name: name
-  location: resourceGroup().location
+  location: location
   kind: 'StorageV2'
   sku: {
     name: sku

@@ -312,6 +312,7 @@ module storageAccountTemplate 'storageAccount.bicep' = {
     name: storageAccountName
     sku: storageAccountSku
     keyVaultName: keyVaultName
+    location: location
   }
 }
 
@@ -322,6 +323,7 @@ module jobsStorageAccountTemplate 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     addJobsStorageAccountPolicies: true
+    location: location
   }
 }
 

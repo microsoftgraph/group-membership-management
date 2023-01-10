@@ -2,7 +2,7 @@
 param configStoreName string
 
 @description('Specifies the Azure location where the app configuration store should be created.')
-param location string = resourceGroup().location
+param location string
 
 @description('Sku')
 param appConfigurationSku string = 'Standard'
