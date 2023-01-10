@@ -25,7 +25,7 @@ function Set-UpdateSecurityGroupQuery {
     }
 
 	$tableName = "syncJobs"
-    $storageTable = Get-AzStorageTable -Name $tableName -Context $jobStorageAccount.Context
+    $storageTable = Get-AzStorageTable -Name $tableName -Context $jobStorageAccount.Context -ErrorAction SilentlyContinue
 
     if(!$storageTable){
         Write-Host "syncJobs table does not exist."
