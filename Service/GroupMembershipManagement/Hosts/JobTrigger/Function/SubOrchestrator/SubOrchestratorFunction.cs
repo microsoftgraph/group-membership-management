@@ -50,6 +50,9 @@ namespace Hosts.JobTrigger
             if (!context.IsReplaying)
                 _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
 
+            var frequency = await context.CallActivityAsync<int>(nameof(JobTrackerFunction), syncJob);
+            if (!context.IsReplaying) { TrackIdleJobsEvent(frequency, syncJob.TargetOfficeGroupId); }
+
             try
             {
                 if (!string.IsNullOrWhiteSpace(syncJob.Query))
@@ -135,6 +138,20 @@ namespace Hosts.JobTrigger
 
             if (!context.IsReplaying)
                 _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+        }
+
+        private void TrackIdleJobsEvent(int frequency, Guid targetOfficeGroupId)
+        {
+            var jobStarted = frequency >= 1 ? 1 : 0;
+
+            var idleJobsEvent = new Dictionary<string, string>
+            {
+                { "TargetOfficeGroupId", targetOfficeGroupId.ToString() },
+                { "Frequency", frequency.ToString() },
+                { "JobStarted", jobStarted.ToString() }
+            };
+
+            _telemetryClient.TrackEvent("IdleJobsTracker", idleJobsEvent);
         }
 
         private void TrackJobsStartedEvent(Guid? runId)
