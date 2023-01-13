@@ -34,6 +34,7 @@ namespace Services.Tests
         SyncJobGroup _syncJobGroup;
         TelemetryClient _telemetryClient;
         List<string> _endpoints;
+        int _frequency;
 
         [TestInitialize]
         public void Setup()
@@ -47,10 +48,18 @@ namespace Services.Tests
             _emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
             _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             _endpoints = new List<string> { "Yammer", "Teams" };
+            _frequency = 0;
 
             _jobTriggerService.Setup(x => x.GroupExistsAndGMMCanWriteToGroupAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => _canWriteToGroups);
             _jobTriggerService.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>())).ReturnsAsync(() => "Test Group");
             _jobTriggerService.Setup(x => x.GetGroupEndpointsAsync(It.IsAny<Guid>())).ReturnsAsync(() => _endpoints);
+
+            _context.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<SyncJob>()))
+                                        .Callback<string, object>(async (name, request) =>
+                                        {
+                                            _frequency = await CallJobTrackerFunctionAsync(request as SyncJob, DateTime.UtcNow);
+                                        })
+                                        .ReturnsAsync(() => _frequency);
 
             _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
                     .Callback<string, object>(async (name, request) =>
@@ -139,6 +148,13 @@ namespace Services.Tests
         {
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
 
+            _context.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<SyncJob>()))
+                                        .Callback<string, object>(async (name, request) =>
+                                        {
+                                            _frequency = await CallJobTrackerFunctionAsync(request as SyncJob, DateTime.FromFileTimeUtc(0));
+                                        })
+                                        .ReturnsAsync(() => _frequency);
+
             var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
                                                     _telemetryClient,
                                                     _emailSenderAndRecipients.Object,
@@ -151,6 +167,7 @@ namespace Services.Tests
                 It.IsAny<string>(),
                 It.IsAny<string>()));
 
+            _context.Verify(x => x.CallActivityAsync<int>(It.Is<string>(x => x == nameof(JobTrackerFunction)), It.IsAny<SyncJob>()), Times.Once());
             _context.Verify(x => x.CallActivityAsync<SyncJobGroup>(It.Is<string>(x => x == nameof(GroupNameReaderFunction)), It.IsAny<SyncJob>()), Times.Once());
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>()), Times.Once());
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()), Times.Once());
@@ -195,10 +212,11 @@ namespace Services.Tests
                         await CallTopicMessageSenderFunctionAsync(jobTriggerService: jobTriggerService);
                     });
 
+            _context.Setup(x => x.CallActivityAsync<int>(nameof(JobTrackerFunction), It.IsAny<SyncJob>())).ReturnsAsync(2);
             var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
-                                        _telemetryClient,
-                                        _emailSenderAndRecipients.Object,
-                                        _gmmResources.Object);
+                                                                _telemetryClient,
+                                                                _emailSenderAndRecipients.Object,
+                                                                _gmmResources.Object);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
@@ -207,6 +225,7 @@ namespace Services.Tests
                 It.IsAny<string>(),
                 It.IsAny<string>()));
 
+            _context.Verify(x => x.CallActivityAsync<int>(It.Is<string>(x => x == nameof(JobTrackerFunction)), It.IsAny<SyncJob>()), Times.Once());
             _context.Verify(x => x.CallActivityAsync<SyncJobGroup>(It.Is<string>(x => x == nameof(GroupNameReaderFunction)), It.IsAny<SyncJob>()), Times.Once());
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>()), Times.Once());
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()), Times.Once());
@@ -244,6 +263,13 @@ namespace Services.Tests
         public async Task TrackTelemetry()
         {
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+            _context.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<SyncJob>()))
+                                        .Callback<string, object>(async (name, request) =>
+                                        {
+                                            _frequency = await CallJobTrackerFunctionAsync(request as SyncJob, DateTime.UtcNow.AddDays(-1));
+                                        })
+                                        .ReturnsAsync(() => _frequency);
+
             _context.Setup(x => x.CallActivityAsync<bool>(It.Is<string>(x => x == nameof(GroupVerifierFunction)), It.IsAny<SyncJob>()))
                     .ReturnsAsync(false);
 
@@ -264,6 +290,20 @@ namespace Services.Tests
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()), Times.Exactly(2));
             Assert.AreEqual(SyncStatus.QueryNotValid, _syncStatus);
+        }
+
+        private async Task<int> CallIdleJobsTrackerFunctionAsync(SyncJob syncJob)
+        {
+            var jobTrackerFunction = new JobTrackerFunction(_loggingRespository.Object);
+            var frequency = await jobTrackerFunction.TrackJobFrequencyAsync(syncJob);
+            return frequency;
+        }
+
+        private async Task<int> CallJobTrackerFunctionAsync(SyncJob syncJob, DateTime dateTime)
+        {
+            syncJob.LastSuccessfulRunTime = dateTime;
+            var jobTrackerFunction = new JobTrackerFunction(_loggingRespository.Object);
+            return await jobTrackerFunction.TrackJobFrequencyAsync(syncJob);
         }
 
         private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request)
