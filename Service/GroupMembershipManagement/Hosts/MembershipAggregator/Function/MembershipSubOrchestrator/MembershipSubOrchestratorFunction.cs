@@ -40,7 +40,8 @@ namespace Hosts.MembershipAggregator
                 downloadFileTasks.Add(context.CallActivityAsync<(string FilePath, string Content)>(nameof(FileDownloaderFunction), downloadRequest));
             }
 
-            var (SourceMembership, DestinationMembership) = (await Task.WhenAll(ExtractMembershipInformationAsync(downloadFileTasks, state.DestinationPart))).First();
+            var completedDownloadTasks = await Task.WhenAll(downloadFileTasks);
+            var (SourceMembership, DestinationMembership) = ExtractMembershipInformationAsync(completedDownloadTasks, state.DestinationPart);
             var deltaCalculatorRequest = new DeltaCalculatorRequest
             {
                 RunId = request.SyncJob.RunId
@@ -148,13 +149,12 @@ namespace Hosts.MembershipAggregator
             };
         }
 
-        private async Task<(GroupMembership SourceMembership, GroupMembership DestinationMembership)>
-                ExtractMembershipInformationAsync(List<Task<(string FilePath, string Content)>> membershipTasks, string destinationPath)
+        private (GroupMembership SourceMembership, GroupMembership DestinationMembership)
+                ExtractMembershipInformationAsync((string FilePath, string Content)[] allGroupMemberships, string destinationPath)
         {
-            var allGroupMemberships = await Task.WhenAll(membershipTasks);
             var sourceGroupsMemberships = allGroupMemberships
                                             .Where(x => x.FilePath != destinationPath)
-                                            .Select(x => JsonConvert.DeserializeObject<GroupMembership>(x.Content))
+                                            .Select(x => JsonConvert.DeserializeObject<GroupMembership>(TextCompressor.Decompress(x.Content)))
                                             .ToList();
 
             var sourceGroupMembership = sourceGroupsMemberships[0];
@@ -172,7 +172,8 @@ namespace Hosts.MembershipAggregator
 
             sourceGroupMembership.SourceMembers = sourceMembers;
 
-            var destinationGroupMembership = JsonConvert.DeserializeObject<GroupMembership>(allGroupMemberships.First(x => x.FilePath == destinationPath).Content);
+            var destinationMembershipFile = allGroupMemberships.First(x => x.FilePath == destinationPath);
+            var destinationGroupMembership = JsonConvert.DeserializeObject<GroupMembership>(TextCompressor.Decompress(destinationMembershipFile.Content));
 
             return (sourceGroupMembership, destinationGroupMembership);
         }
