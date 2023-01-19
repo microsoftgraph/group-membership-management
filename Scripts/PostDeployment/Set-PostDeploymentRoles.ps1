@@ -9,9 +9,6 @@ Abbreviation used to denote the overall solution (or application)
 .PARAMETER EnvironmentAbbreviation
 Abbreviation for the environment
 
-.PARAMETER StorageAccountName
-Storage account name for the jobs storage account
-
 .PARAMETER AppConfigName
 App config name
 
@@ -21,9 +18,7 @@ Parameter description
 .EXAMPLE
 Set-PostDeploymentRoles -SolutionAbbreviation "<solutionAbbreviation>" `
                         -EnvironmentAbbreviation "<environmentAbbreviation>" `
-                        -StorageAccountName "<storageAccountName>" `
-                        -AppConfigName "<appConfigName>" `
-                        -LogAnalyticsWorkspaceResourceName "<logAnalyticsWorkspaceResourceName>"
+						-Verbose
 #>
 
 function Set-PostDeploymentRoles {
@@ -32,13 +27,7 @@ function Set-PostDeploymentRoles {
         [Parameter(Mandatory=$True)]
         [string] $SolutionAbbreviation,
 		[Parameter(Mandatory=$True)]
-		[string] $EnvironmentAbbreviation,
-		[Parameter(Mandatory = $True)]
-		[string] $StorageAccountName,
-		[Parameter(Mandatory = $True)]
-		[string] $AppConfigName,
-		[Parameter(Mandatory = $True)]
-		[string] $LogAnalyticsWorkspaceResourceName
+		[string] $EnvironmentAbbreviation
     )
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -46,18 +35,15 @@ function Set-PostDeploymentRoles {
 
     Set-StorageAccountContainerManagedIdentityRoles	-SolutionAbbreviation $SolutionAbbreviation `
                                                     -EnvironmentAbbreviation $EnvironmentAbbreviation `
-                                                    -StorageAccountName $StorageAccountName `
                                                     -Verbose
 
     . ($scriptsDirectory + '\PostDeployment\Set-AppConfigurationManagedIdentityRoles.ps1')
-    Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation $SolutionAbbreviation `
-                                            -EnvironmentAbbreviation $EnvironmentAbbreviation `
-                                            -AppConfigName $AppConfigName `
-                                            -Verbose
+    Set-AppConfigurationManagedIdentityRoles    -SolutionAbbreviation $SolutionAbbreviation `
+                                                -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                                -Verbose
 
     . ($scriptsDirectory + '\PostDeployment\Set-LogAnalyticsReaderRole.ps1')
     Set-LogAnalyticsReaderRole	-SolutionAbbreviation $SolutionAbbreviation `
                                 -EnvironmentAbbreviation $EnvironmentAbbreviation `
-                                -LogAnalyticsWorkspaceResourceName $LogAnalyticsWorkspaceResourceName `
                                 -Verbose
 }

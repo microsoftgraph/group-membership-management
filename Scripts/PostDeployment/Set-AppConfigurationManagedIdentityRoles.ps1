@@ -13,17 +13,13 @@ The abbreviation for your solution.
 .PARAMETER EnvironmentAbbreviation
 A 2-6 character abbreviation for your environment.
 
-.PARAMETER AppConfigName
-App config name.
-
 .PARAMETER ErrorActionPreference
 Parameter description
 
 .EXAMPLE
-Set-AppConfigurationManagedIdentityRoles  -SolutionAbbreviation "gmm" `
-                                    -EnvironmentAbbreviation "<env>" `
-                                    -AppConfigName "<app configuration name>" `
-                                    -Verbose
+Set-AppConfigurationManagedIdentityRoles  	-SolutionAbbreviation "gmm" `
+											-EnvironmentAbbreviation "<env>" `
+											-Verbose
 #>
 function Set-AppConfigurationManagedIdentityRoles
 {
@@ -33,8 +29,6 @@ function Set-AppConfigurationManagedIdentityRoles
 		[string] $SolutionAbbreviation,
 		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation,
-		[Parameter(Mandatory = $True)]
-		[string] $AppConfigName,
 		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
 	)
@@ -42,6 +36,7 @@ function Set-AppConfigurationManagedIdentityRoles
 	$functionApps = @("GraphUpdater","MembershipAggregator","SecurityGroup","AzureMaintenance","AzureUserReader","JobScheduler","JobTrigger","NonProdService")
 
 	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
+	$appConfigName = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation"
 
 	foreach ($functionApp in $functionApps)
 	{
@@ -60,24 +55,29 @@ function Set-AppConfigurationManagedIdentityRoles
 			$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $fa;
 
 			# Grant the app service access to the app configuration
-			if (![string]::IsNullOrEmpty($AppConfigName) -and $appServicePrincipal)
+			if ($appServicePrincipal)
 			{
-				$appConfigObject = Get-AzAppConfigurationStore -ResourceGroupName $resourceGroupName -Name $AppConfigName;
+				$appConfigObject = Get-AzAppConfigurationStore -ResourceGroupName $resourceGroupName -Name $appConfigName;
 
 				if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $appConfigObject.Id))
 				{
-					New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $appConfigObject.Id -RoleDefinitionName "App Configuration Data Reader";
-					Write-Host "Added role assignment to allow $fa to read from the $AppConfigName app configuration.";
+					$assignment = New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $appConfigObject.Id -RoleDefinitionName "App Configuration Data Reader";
+					if ($assignment) {
+						Write-Host "Added role assignment to allow $fa to read from the $appConfigName app configuration.";
+					}
+					else {
+						Write-Host "Failed to add role assignment to allow $fa to read from the $appConfigName app configuration. Please double check that you have permission to perform this operation";
+					}
 				}
 				else
 				{
-					Write-Host "$fa can already read keys from the $AppConfigName app configuration.";
+					Write-Host "$fa can already read keys from the $appConfigName app configuration.";
 				}
 			} elseif ($null -eq $appServicePrincipal) {
 				Write-Host "Function $fa was not found!"
 			}
-
-			Write-Host "Done.";
 		}
 	}
+
+	Write-Host "Done attempting to add App Configuration Data Reader role assignments.";
 }
