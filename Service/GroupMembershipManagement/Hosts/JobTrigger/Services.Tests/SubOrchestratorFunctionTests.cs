@@ -122,6 +122,20 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task HandleStuckInProgressJobs()
+        {
+            _syncJob.Status = SyncStatus.StuckInProgress.ToString();
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                                _telemetryClient,
+                                                                _emailSenderAndRecipients.Object,
+                                                                _gmmResources.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
+            _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(SyncStatus.ErroredDueToStuckInProgress, It.IsAny<SyncJob>()), Times.Once());
+        }
+
+        [TestMethod]
         public async Task HandleEmptyJSONQuery()
         {
             _syncJob.Query = null;

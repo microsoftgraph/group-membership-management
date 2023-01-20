@@ -22,10 +22,10 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName(nameof(SyncJobsReaderFunction))]
-        public async Task<List<SyncJob>> GetSyncJobsAsync([ActivityTrigger] object obj)
+        public async Task<List<SyncJob>> GetSyncJobsAsync([ActivityTrigger] SyncStatus status)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SyncJobsReaderFunction)} function started" }, VerbosityLevel.DEBUG);
-            var jobs = await _jobTriggerService.GetSyncJobsAsync();
+            var jobs = await _jobTriggerService.GetSyncJobsAsync(status);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SyncJobsReaderFunction)} function completed" }, VerbosityLevel.DEBUG);
             return jobs;
         }

@@ -129,7 +129,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync();
+            var jobs = await _jobTriggerService.GetSyncJobsAsync(SyncStatus.Idle);
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -148,7 +148,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync();
+            var jobs = await _jobTriggerService.GetSyncJobsAsync(SyncStatus.Idle);
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -170,6 +170,25 @@ namespace Services.Tests
                 var canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
                 await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
                 Assert.AreEqual(job.Status, SyncStatus.InProgress.ToString());
+            }
+        }
+
+        [TestMethod]
+        public async Task VerifyJobStatusIsUpdatedToStuckInProgress()
+        {
+            var jobs = 2;
+
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobs, Organization));
+
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
+
+            foreach (var job in _syncJobRepository.Jobs)
+            {
+                job.Status = SyncStatus.InProgress.ToString();
+                var canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
+                await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup ? SyncStatus.StuckInProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
+                Assert.AreEqual(job.Status, SyncStatus.StuckInProgress.ToString());
             }
         }
 
@@ -268,7 +287,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync();
+            var jobs = await _jobTriggerService.GetSyncJobsAsync(SyncStatus.Idle);
             foreach (var job in jobs)
             {
                 _jobTriggerService.RunId = job.RunId.Value;
@@ -310,7 +329,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync();
+            var jobs = await _jobTriggerService.GetSyncJobsAsync(SyncStatus.Idle);
             foreach (var job in jobs)
             {
                 var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
@@ -346,7 +365,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync();
+            var jobs = await _jobTriggerService.GetSyncJobsAsync(SyncStatus.Idle);
             foreach (var job in jobs)
             {
                 await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
@@ -381,7 +400,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync();
+            var jobs = await _jobTriggerService.GetSyncJobsAsync(SyncStatus.Idle);
             foreach (var job in jobs)
             {
                 await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });

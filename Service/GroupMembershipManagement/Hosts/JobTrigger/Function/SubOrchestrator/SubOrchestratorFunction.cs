@@ -45,6 +45,12 @@ namespace Hosts.JobTrigger
 
             var syncJob = context.GetInput<SyncJob>();
 
+            if (!string.IsNullOrEmpty(syncJob.Status) && syncJob.Status == SyncStatus.StuckInProgress.ToString())
+            {
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.ErroredDueToStuckInProgress, SyncJob = syncJob });
+                return;
+            }
+
             if (!context.IsReplaying) { TrackJobsStartedEvent(syncJob.RunId); }
 
             if (!context.IsReplaying)
@@ -124,8 +130,22 @@ namespace Hosts.JobTrigger
 
 
             var canWriteToGroup = await context.CallActivityAsync<bool>(nameof(GroupVerifierFunction), syncJob);
-            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                            new JobStatusUpdaterRequest { Status = canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, SyncJob = syncJob });
+
+            var statusValue = SyncStatus.StuckInProgress;
+
+            if (!canWriteToGroup)
+            {
+                statusValue = SyncStatus.NotOwnerOfDestinationGroup;
+            }
+            else
+            {
+                if (syncJob.Status == SyncStatus.Idle.ToString())
+                {
+                    statusValue = SyncStatus.InProgress;
+                }
+            }
+
+            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = statusValue, SyncJob = syncJob });
 
             if (canWriteToGroup)
             {

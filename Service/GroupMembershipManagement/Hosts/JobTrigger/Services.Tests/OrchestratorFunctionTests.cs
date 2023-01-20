@@ -29,8 +29,8 @@ namespace Services.Tests
             var loggerJobProperties = new Dictionary<Guid, LogProperties>();
 
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
-            jobTriggerService.Setup(x => x.GetSyncJobsAsync()).ReturnsAsync(syncJobs);
-            context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(SyncJobsReaderFunction)), null))
+            jobTriggerService.Setup(x => x.GetSyncJobsAsync(SyncStatus.Idle)).ReturnsAsync(syncJobs);
+            context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(SyncJobsReaderFunction)), It.IsAny<SyncStatus>()))
                         .Returns(() => CallSyncJobsReaderFunctionAsync(loggingRepository.Object, jobTriggerService.Object));
 
             context.Setup(x => x.CallSubOrchestratorAsync(It.Is<string>(x => x == nameof(SubOrchestratorFunction)), It.IsAny<SyncJob>()));
@@ -46,7 +46,7 @@ namespace Services.Tests
         private async Task<List<SyncJob>> CallSyncJobsReaderFunctionAsync(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
         {
             var syncJobsReaderFunction = new SyncJobsReaderFunction(loggingRepository, jobTriggerService);
-            var jobs = await syncJobsReaderFunction.GetSyncJobsAsync(null);
+            var jobs = await syncJobsReaderFunction.GetSyncJobsAsync(SyncStatus.Idle);
             return jobs;
         }
     }
