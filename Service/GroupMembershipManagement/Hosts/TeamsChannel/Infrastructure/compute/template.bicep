@@ -93,7 +93,7 @@ var storageAccountConnectionString = resourceId(subscription().subscriptionId, d
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
-  name: 'servicePlanTemplate-SecurityGroup'
+  name: 'servicePlanTemplate-TeamsChannel'
   params: {
     name: servicePlanName
     sku: servicePlanSku
@@ -137,8 +137,8 @@ var appSettings = {
 }
 
 var stagingSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-SecurityGroup-staging')
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}SecurityGroupStaging'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-TeamsChannel-staging')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelStaging'
   membershipAggregatorUrl: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorStagingUrl, '2019-09-01').secretUriWithVersion})'
   membershipAggregatorFunctionKey: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorStagingFunctionKey, '2019-09-01').secretUriWithVersion})'
   'AzureWebJobs.StarterFunction.Disabled': 1
@@ -161,8 +161,8 @@ var stagingSettings = {
 }
 
 var productionSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-SecurityGroup')
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}SecurityGroup'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-TeamsChannel')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannel'
   membershipAggregatorUrl: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorUrl, '2019-09-01').secretUriWithVersion})'
   membershipAggregatorFunctionKey: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorFunctionKey, '2019-09-01').secretUriWithVersion})'
   'AzureWebJobs.StarterFunction.Disabled': 0
@@ -184,10 +184,10 @@ var productionSettings = {
   'AzureWebJobs.UsersSenderFunction.Disabled': 0
 }
 
-module functionAppTemplate_SecurityGroup 'functionApp.bicep' = {
-  name: 'functionAppTemplate-SecurityGroup'
+module functionAppTemplate_TeamsChannel 'functionApp.bicep' = {
+  name: 'functionAppTemplate-TeamsChannel'
   params: {
-    name: '${functionAppName}-SecurityGroup'
+    name: '${functionAppName}-TeamsChannel'
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
@@ -198,35 +198,35 @@ module functionAppTemplate_SecurityGroup 'functionApp.bicep' = {
   ]
 }
 
-module functionAppSlotTemplate_SecurityGroup 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-SecurityGroup'
+module functionAppSlotTemplate_TeamsChannel 'functionAppSlot.bicep' = {
+  name: 'functionAppSlotTemplate-TeamsChannel'
   params: {
-    name: '${functionAppName}-SecurityGroup/staging'
+    name: '${functionAppName}-TeamsChannel/staging'
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
     secretSettings: commonSettings
   }
   dependsOn: [
-    functionAppTemplate_SecurityGroup
+    functionAppTemplate_TeamsChannel
   ]
 }
 
 module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'dataKeyVaultPoliciesTemplate-SecurityGroup'
+  name: 'dataKeyVaultPoliciesTemplate-TeamsChannel'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     name: dataKeyVaultName
     policies: [
       {
-        objectId: functionAppTemplate_SecurityGroup.outputs.msi
+        objectId: functionAppTemplate_TeamsChannel.outputs.msi
         secrets: [
           'get'
           'list'
         ]
       }
       {
-        objectId: functionAppSlotTemplate_SecurityGroup.outputs.msi
+        objectId: functionAppSlotTemplate_TeamsChannel.outputs.msi
         secrets: [
           'get'
           'list'
@@ -236,19 +236,19 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
     tenantId: tenantId
   }
   dependsOn: [
-    functionAppTemplate_SecurityGroup
-    functionAppSlotTemplate_SecurityGroup
+    functionAppTemplate_TeamsChannel
+    functionAppSlotTemplate_TeamsChannel
   ]
 }
 
 module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'prereqsKeyVaultPoliciesTemplate-SecurityGroup'
+  name: 'prereqsKeyVaultPoliciesTemplate-TeamsChannel'
   scope: resourceGroup(prereqsKeyVaultResourceGroup)
   params: {
     name: prereqsKeyVaultName
     policies: [
       {
-        objectId: functionAppTemplate_SecurityGroup.outputs.msi
+        objectId: functionAppTemplate_TeamsChannel.outputs.msi
         secrets: [
           'get'
           'list'
@@ -258,7 +258,7 @@ module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
         ]
       }
       {
-        objectId: functionAppSlotTemplate_SecurityGroup.outputs.msi
+        objectId: functionAppSlotTemplate_TeamsChannel.outputs.msi
         secrets: [
           'get'
           'list'
@@ -271,27 +271,27 @@ module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
     tenantId: tenantId
   }
   dependsOn: [
-    functionAppTemplate_SecurityGroup
-    functionAppSlotTemplate_SecurityGroup
+    functionAppTemplate_TeamsChannel
+    functionAppSlotTemplate_TeamsChannel
   ]
 }
 
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
-  name: '${functionAppName}-SecurityGroup/appsettings'
+  name: '${functionAppName}-TeamsChannel/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
-    functionAppTemplate_SecurityGroup
+    functionAppTemplate_TeamsChannel
     dataKeyVaultPoliciesTemplate
   ]
 }
 
 resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
-  name: '${functionAppName}-SecurityGroup/staging/appsettings'
+  name: '${functionAppName}-TeamsChannel/staging/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
-    functionAppSlotTemplate_SecurityGroup
+    functionAppSlotTemplate_TeamsChannel
     dataKeyVaultPoliciesTemplate
   ]
 }
