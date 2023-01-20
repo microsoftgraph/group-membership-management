@@ -54,6 +54,9 @@ stages:
        name: 'SecurityGroup'
        coverageThreshold: 89
     - function:
+       name: 'TeamsChannel'
+       coverageThreshold: 0
+    - function:
        name: 'AzureMembershipProvider'
        coverageThreshold: 50
     - function:
