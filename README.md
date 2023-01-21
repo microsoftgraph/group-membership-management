@@ -738,5 +738,8 @@ To troubleshoot any issues that might occur we can use Log Analytics and Applica
 1. Find Logs in the Log analytics workspace following the instructions [here](/Documentation/FindLogEntriesInLogAnalyticsForASync.md).
 2. Find failures and exceptions with Application Insights [here](/Documentation/TroubleshootWithApplicationInsights.md).
 
+# Tearing down your GMM environment.
+In the event that you want to reset the GMM environment refer to [Delete GMM environment](/Documentation/DeleteEnvironment.md) for additional guidance.
+
 # Breaking changes
 See [Breaking changes](breaking_changes.md)
