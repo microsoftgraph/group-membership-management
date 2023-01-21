@@ -543,7 +543,7 @@ Create a new table:
 * Import the `syncJobsSample.csv` file located under the `Documentation` folder of your `Public` repo
 * IMPORTANT: Remove the sample entry from the table before proceeding
 
-Note: For more information on the properties of the jobs table, see [syncJobs properties](https://microsoftit.visualstudio.com/OneITVSO/_git/STW-Sol-GrpMM-public?path=%2FDocumentation%2FsyncJobsProperties.ps1).
+Note: For more information on the properties of the jobs table, see [syncJobs properties](./Documentation/syncJobsProperties.md).
 ## (Optional) Set up a production environment
 
 To create a production environment:
@@ -643,7 +643,7 @@ A synchronization job must have the following properties populated:
 - IsDryRunEnabled
 - DryRunTimeStamp
 
-See [syncJobs properties](https://microsoftit.visualstudio.com/OneITVSO/_git/STW-Sol-GrpMM-public?path=%2FDocumentation%2FsyncJobsProperties.ps1) for more information.
+See [syncJobs properties](./Documentation/syncJobsProperties.md) for more information.
 
 
 A PowerShell script [New-GmmSecurityGroupSyncJob.ps1](/Service/GroupMembershipManagement/Hosts/SecurityGroup/Scripts/New-GmmSecurityGroupSyncJob.ps1) is provided to help you create the synchronization jobs.
@@ -680,9 +680,10 @@ The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGrou
 							-ThresholdPercentageForRemovals <integer only> `
 							-Verbose
 
-You can also use Microsoft Azure Storage Explorer to add, edit or delete synchronization jobs. see [Get started with Storage Explorer](https://docs.microsoft.com/en-us/azure/vs-azure-tools-storage-manage-with-storage-explorer?tabs=windows).
+You can also use Microsoft Azure Storage Explorer to add, edit or delete synchronization jobs. See [Get started with Storage Explorer](https://docs.microsoft.com/en-us/azure/vs-azure-tools-storage-manage-with-storage-explorer?tabs=windows).
 
-
+### Setting up the NonProdService function
+The NonProdService function will create and populate test groups in the tenant for use in GMM integration testing (or for sources in your own manual tests as well). See [Setting up NonProdService function](./Service/GroupMembershipManagement/Hosts/NonProdService/Documentation/README.md).
 ### Dry Run Settings
 
 Dry run settings are present in GMM to provide users the ability to test new changes without affecting the group membership. This configuration is present in the application configuration table.
