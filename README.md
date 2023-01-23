@@ -683,6 +683,7 @@ The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGrou
 You can also use Microsoft Azure Storage Explorer to add, edit or delete synchronization jobs. See [Get started with Storage Explorer](https://docs.microsoft.com/en-us/azure/vs-azure-tools-storage-manage-with-storage-explorer?tabs=windows).
 
 ### Setting up the NonProdService function
+
 The NonProdService function will create and populate test groups in the tenant for use in GMM integration testing (or for sources in your own manual tests as well). See [Setting up NonProdService function](./Service/GroupMembershipManagement/Hosts/NonProdService/Documentation/README.md).
 ### Dry Run Settings
 
