@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TeamsChannel", "TeamsChannel.csproj", "{8D0F1034-7FDA-4B10-BBBA-7C3420F69AF7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TeamsChannel", "TeamsChannel.csproj", "{8D0F1034-7FDA-4B10-BBBA-7C3420F69AF7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Services.Tests", "..\Services.Tests\Services.Tests.csproj", "{C4733670-2E41-4D02-9E93-95522BFEF0EB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Tests", "..\Services.Tests\Services.Tests.csproj", "{C4733670-2E41-4D02-9E93-95522BFEF0EB}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hosts.FunctionBase", "..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj", "{655614F4-3B6A-4000-BFE3-81C17623A6E6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{C4733670-2E41-4D02-9E93-95522BFEF0EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C4733670-2E41-4D02-9E93-95522BFEF0EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C4733670-2E41-4D02-9E93-95522BFEF0EB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{655614F4-3B6A-4000-BFE3-81C17623A6E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{655614F4-3B6A-4000-BFE3-81C17623A6E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{655614F4-3B6A-4000-BFE3-81C17623A6E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{655614F4-3B6A-4000-BFE3-81C17623A6E6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

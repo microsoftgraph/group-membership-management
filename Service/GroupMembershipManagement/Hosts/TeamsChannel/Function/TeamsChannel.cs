@@ -7,13 +7,27 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 
-namespace TeamsChannel
+namespace Hosts.TeamsChannel
 {
-    public static class Function1
+    public class TeamsChannel
     {
-        [FunctionName("Function1")]
-        public static async Task<IActionResult> Run(
+        private readonly ILoggingRepository _loggingRepository;
+        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly bool _isTeamsChannelEnabled;
+
+        public TeamsChannel(ILoggingRepository loggingRepository, ISyncJobRepository syncJobRepository, IDryRunValue dryRun)
+        {
+            _loggingRepository = loggingRepository;
+            _syncJobRepository = syncJobRepository;
+            _isTeamsChannelEnabled = dryRun.DryRunEnabled;
+
+        }
+
+        [FunctionName("TeamsChannel")]
+        public async Task<IActionResult> RunAsync(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
             ILogger log)
         {
