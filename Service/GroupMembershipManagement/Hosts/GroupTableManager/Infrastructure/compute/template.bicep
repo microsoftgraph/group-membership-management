@@ -175,8 +175,8 @@ resource staticWebApp 'Microsoft.Web/staticSites@2021-03-01' = {
     branch: branch
     buildProperties: {
       appBuildCommand: 'dotnet run'
-      appLocation: 'UI/WebApp'
-      outputLocation: 'UI/WebApp/wwwroot'
+      appLocation: 'UI/web-app'
+      outputLocation: 'UI/web-app/wwwroot'
       skipGithubActionWorkflowGeneration: true
     }
     enterpriseGradeCdnStatus: 'Disabled'

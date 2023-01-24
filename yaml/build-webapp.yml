@@ -43,24 +43,24 @@ steps:
       useGlobalJson: true
       workingDirectory: 'Service\GroupMembershipManagement'
 
-  - script: dotnet build --configuration $(buildConfiguration) public\UI\WebApp\WebAppWithAuth.csproj
-    displayName: 'Building $(buildConfiguration)...'
+  # - script: dotnet build --configuration $(buildConfiguration) public\UI\WebApp\WebAppWithAuth.csproj
+  #   displayName: 'Building $(buildConfiguration)...'
 
-  - task: DotNetCoreCLI@2
-    displayName: 'Dotnet publish GmmUI webapp'
-    inputs:
-      command: publish
-      arguments: '--configuration $(BuildConfiguration) --output GmmUI'
-      projects: 'public/UI/WebApp/*.csproj'
-      publishWebProjects: false
-      modifyOutputPath: false
-      zipAfterPublish: false
+  # - task: DotNetCoreCLI@2
+  #   displayName: 'Dotnet publish GmmUI webapp'
+  #   inputs:
+  #     command: publish
+  #     arguments: '--configuration $(BuildConfiguration) --output GmmUI'
+  #     projects: 'public/UI/WebApp/*.csproj'
+  #     publishWebProjects: false
+  #     modifyOutputPath: false
+  #     zipAfterPublish: false
 
   - task: CopyFiles@2
     displayName: 'Copy GmmUI webapp package'
     inputs:
       SourceFolder:  public/UI
-      Contents: '**\WebApp\**'
+      Contents: '**\web-app\**'
       TargetFolder: '$(build.artifactstagingdirectory)/webapp_package/'
 
   - task: CopyFiles@2

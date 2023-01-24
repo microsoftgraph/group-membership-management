@@ -95,7 +95,7 @@ steps:
     name: DeployStaticWebApp
     displayName: Deploy Static Web App
     inputs:
-      app_location: 'WebApp'
+      app_location: 'web-app'
       output_location: 'wwwroot'
       cwd: '${{ parameters.root }}/webapp_package'
       azure_static_web_apps_api_token: $(deployment_token) # captured from deploymentOutputs
