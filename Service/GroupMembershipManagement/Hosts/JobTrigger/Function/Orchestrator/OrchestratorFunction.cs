@@ -25,19 +25,23 @@ namespace Hosts.JobTrigger
         {
             if (!context.IsReplaying)
                 _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started" }, VerbosityLevel.DEBUG);
-            var syncJobs = await context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), SyncStatus.Idle);
 
-            var inProgressSyncJobs = await context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), SyncStatus.InProgress);
-            syncJobs.AddRange(inProgressSyncJobs);
+            var syncJobsDueToRun = new List<SyncJob>();
 
-            var stuckInProgressSyncJobs = await context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), SyncStatus.StuckInProgress);
-            syncJobs.AddRange(stuckInProgressSyncJobs);
+            var readertasks = new List<Task<List<SyncJob>>>{
+                context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), SyncStatus.Idle),
+                context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), SyncStatus.InProgress),
+                context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), SyncStatus.StuckInProgress)
+            };
 
-            if (syncJobs != null && syncJobs.Count > 0)
+            var results = await Task.WhenAll(readertasks);
+            syncJobsDueToRun.AddRange(results.SelectMany(x => x));
+
+            if (syncJobsDueToRun != null && syncJobsDueToRun.Count > 0)
             {
                 // Run multiple sync job processing flows in parallel
                 var processingTasks = new List<Task>();
-                foreach (var syncJob in syncJobs)
+                foreach (var syncJob in syncJobsDueToRun)
                 {
                     syncJob.RunId = context.NewGuid();
                     _loggingRepository.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
@@ -48,7 +52,7 @@ namespace Hosts.JobTrigger
                 await Task.WhenAll(processingTasks);
             }
 
-            syncJobs.ForEach(x =>
+            syncJobsDueToRun.ForEach(x =>
             {
                 if (x.RunId.HasValue)
                     _loggingRepository.RemoveSyncJobProperties(x.RunId.Value);
