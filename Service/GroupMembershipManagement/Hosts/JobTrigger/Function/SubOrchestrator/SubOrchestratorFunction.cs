@@ -134,6 +134,8 @@ namespace Hosts.JobTrigger
                                                     }
                                                 });
 
+            syncJob.LastSuccessfulStartTime = context.CurrentUtcDateTime;
+
             var canWriteToGroup = await context.CallActivityAsync<bool>(nameof(GroupVerifierFunction), syncJob);
 
             var statusValue = SyncStatus.StuckInProgress;
