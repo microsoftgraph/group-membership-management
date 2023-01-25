@@ -63,6 +63,10 @@ namespace Hosts.JobTrigger
                 {
                     TrackIdleJobsEvent(frequency, syncJob.TargetOfficeGroupId);
                 }
+                else if (syncJob.Status == SyncStatus.InProgress.ToString())
+                {
+                    TrackInProgressJobsEvent(frequency, syncJob.TargetOfficeGroupId, syncJob.RunId);
+                }
             }
 
             try
@@ -185,6 +189,18 @@ namespace Hosts.JobTrigger
             };
 
             _telemetryClient.TrackEvent("IdleJobsTracker", idleJobsEvent);
+        }
+
+        private void TrackInProgressJobsEvent(int frequency, Guid targetOfficeGroupId, Guid? runId)
+        {
+            var inProgressJobsEvent = new Dictionary<string, string>
+            {
+                { "TargetOfficeGroupId", targetOfficeGroupId.ToString() },
+                { "Frequency", frequency.ToString() },
+                { "RunId", runId.ToString() }
+            };
+
+            _telemetryClient.TrackEvent("InProgressJobsTracker", inProgressJobsEvent);
         }
 
         private void TrackExclusionaryEvent(IDurableOrchestrationContext context, SyncJob syncJob)

@@ -23,11 +23,18 @@ namespace Hosts.JobTrigger
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobTrackerFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
             var frequency = 0;
-            if (syncJob != null)
+            if (syncJob != null && syncJob.LastSuccessfulRunTime != DateTime.FromFileTimeUtc(0))
             {
-                if (syncJob.LastSuccessfulRunTime == DateTime.FromFileTimeUtc(0)) return frequency;
-                var timeDifference = (int)(DateTime.UtcNow - syncJob.LastSuccessfulRunTime).TotalHours;
-                frequency = timeDifference / syncJob.Period;
+                if (syncJob.Status == SyncStatus.Idle.ToString())
+                {
+                    var timeDifference = (int)(DateTime.UtcNow - syncJob.LastSuccessfulRunTime).TotalHours;
+                    frequency = timeDifference / syncJob.Period;
+                }
+                else if (syncJob.Status == SyncStatus.InProgress.ToString() || syncJob.Status == SyncStatus.StuckInProgress.ToString())
+                {
+                    var timeDifference = (int)(DateTime.UtcNow - syncJob.LastSuccessfulStartTime).TotalHours;
+                    frequency = timeDifference / syncJob.Period;
+                }
             }
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobTrackerFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
             return frequency;
