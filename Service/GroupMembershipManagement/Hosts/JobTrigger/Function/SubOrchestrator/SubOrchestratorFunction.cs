@@ -57,7 +57,13 @@ namespace Hosts.JobTrigger
                 _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
 
             var frequency = await context.CallActivityAsync<int>(nameof(JobTrackerFunction), syncJob);
-            if (!context.IsReplaying) { TrackIdleJobsEvent(frequency, syncJob.TargetOfficeGroupId); }
+
+            if (!context.IsReplaying) {
+                if (syncJob.Status == SyncStatus.Idle.ToString())
+                {
+                    TrackIdleJobsEvent(frequency, syncJob.TargetOfficeGroupId);
+                }
+            }
 
             try
             {
@@ -128,7 +134,6 @@ namespace Hosts.JobTrigger
                                                     }
                                                 });
 
-
             var canWriteToGroup = await context.CallActivityAsync<bool>(nameof(GroupVerifierFunction), syncJob);
 
             var statusValue = SyncStatus.StuckInProgress;
@@ -137,12 +142,9 @@ namespace Hosts.JobTrigger
             {
                 statusValue = SyncStatus.NotOwnerOfDestinationGroup;
             }
-            else
+            else if (syncJob.Status == SyncStatus.Idle.ToString())
             {
-                if (syncJob.Status == SyncStatus.Idle.ToString())
-                {
                     statusValue = SyncStatus.InProgress;
-                }
             }
 
             await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = statusValue, SyncJob = syncJob });
@@ -160,6 +162,15 @@ namespace Hosts.JobTrigger
                 _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
         }
 
+        private void TrackJobsStartedEvent(Guid? runId)
+        {
+            var jobsStartedEvent = new Dictionary<string, string>
+            {
+                { "RunId", runId.ToString() }
+            };
+            _telemetryClient.TrackEvent("NumberOfJobsStarted", jobsStartedEvent);
+        }
+
         private void TrackIdleJobsEvent(int frequency, Guid targetOfficeGroupId)
         {
             var jobStarted = frequency >= 1 ? 1 : 0;
@@ -172,15 +183,6 @@ namespace Hosts.JobTrigger
             };
 
             _telemetryClient.TrackEvent("IdleJobsTracker", idleJobsEvent);
-        }
-
-        private void TrackJobsStartedEvent(Guid? runId)
-        {
-            var jobsStartedEvent = new Dictionary<string, string>
-            {
-                { "RunId", runId.ToString() }
-            };
-            _telemetryClient.TrackEvent("NumberOfJobsStarted", jobsStartedEvent);
         }
 
         private void TrackExclusionaryEvent(IDurableOrchestrationContext context, SyncJob syncJob)
