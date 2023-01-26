@@ -38,9 +38,6 @@ namespace Hosts.TeamsChannel
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"TeamsChannel recieved a message. Query: {syncJob.Query}.", RunId = syncJob.RunId });
 
-
-
-
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = "TeamsChannel finished.", RunId = syncJob.RunId });
         }
     }

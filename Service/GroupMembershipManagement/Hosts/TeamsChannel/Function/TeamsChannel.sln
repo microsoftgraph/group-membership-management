@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hosts.FunctionBase", "..\..
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Entities", "..\..\..\Entities\Entities.csproj", "{FF202719-91A0-441B-9578-9AD0040F1E3B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TeamsChannel.Service", "..\Services\TeamsChannel.Service\TeamsChannel.Service.csproj", "{9EE19A20-25C7-49ED-B42E-7FE7611816B8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{FF202719-91A0-441B-9578-9AD0040F1E3B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FF202719-91A0-441B-9578-9AD0040F1E3B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FF202719-91A0-441B-9578-9AD0040F1E3B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9EE19A20-25C7-49ED-B42E-7FE7611816B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9EE19A20-25C7-49ED-B42E-7FE7611816B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9EE19A20-25C7-49ED-B42E-7FE7611816B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9EE19A20-25C7-49ED-B42E-7FE7611816B8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
