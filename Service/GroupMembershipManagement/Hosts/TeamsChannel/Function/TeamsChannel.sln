@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Entities", "..\..\..\Entiti
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TeamsChannel.Service", "..\Services\TeamsChannel.Service\TeamsChannel.Service.csproj", "{9EE19A20-25C7-49ED-B42E-7FE7611816B8}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.BlobStorage", "..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj", "{8F6B63D9-7897-4D9D-81F1-BA6CD94C8BC2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{9EE19A20-25C7-49ED-B42E-7FE7611816B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9EE19A20-25C7-49ED-B42E-7FE7611816B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9EE19A20-25C7-49ED-B42E-7FE7611816B8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8F6B63D9-7897-4D9D-81F1-BA6CD94C8BC2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8F6B63D9-7897-4D9D-81F1-BA6CD94C8BC2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8F6B63D9-7897-4D9D-81F1-BA6CD94C8BC2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8F6B63D9-7897-4D9D-81F1-BA6CD94C8BC2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
