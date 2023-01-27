@@ -1,7 +1,13 @@
+using TeamsChannel.Service.Contracts;
+
 namespace TeamsChannel.Service
 {
-    public class TeamsChannelService
+    public class TeamsChannelService : ITeamsChannelService
     {
+        public TeamsChannelService()
+        {
+
+        }
 
     }
 }
