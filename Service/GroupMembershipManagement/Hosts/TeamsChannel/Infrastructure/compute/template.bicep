@@ -141,23 +141,7 @@ var stagingSettings = {
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelStaging'
   membershipAggregatorUrl: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorStagingUrl, '2019-09-01').secretUriWithVersion})'
   membershipAggregatorFunctionKey: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorStagingFunctionKey, '2019-09-01').secretUriWithVersion})'
-  'AzureWebJobs.StarterFunction.Disabled': 1
-  'AzureWebJobs.OrchestratorFunction.Disabled': 1
-  'AzureWebJobs.SubOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.DeltaUsersReaderFunction.Disabled': 1
-  'AzureWebJobs.DeltaUsersSenderFunction.Disabled': 1
-  'AzureWebJobs.EmailSenderFunction.Disabled': 1
-  'AzureWebJobs.FileDownloaderFunction.Disabled': 1
-  'AzureWebJobs.GroupsReaderFunction.Disabled': 1
-  'AzureWebJobs.GroupValidatorFunction.Disabled': 1
-  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 1
-  'AzureWebJobs.MembersReaderFunction.Disabled': 1
-  'AzureWebJobs.SourceGroupsReaderFunction.Disabled': 1
-  'AzureWebJobs.SubsequentDeltaUsersReaderFunction.Disabled': 1
-  'AzureWebJobs.SubsequentMembersReaderFunction.Disabled': 1
-  'AzureWebJobs.SubsequentUsersReaderFunction.Disabled': 1
-  'AzureWebJobs.UsersReaderFunction.Disabled': 1
-  'AzureWebJobs.UsersSenderFunction.Disabled': 1
+  'TeamsChannel:IsTeamsChannelDryRunEnabled': 1
 }
 
 var productionSettings = {
@@ -165,23 +149,7 @@ var productionSettings = {
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannel'
   membershipAggregatorUrl: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorUrl, '2019-09-01').secretUriWithVersion})'
   membershipAggregatorFunctionKey: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorFunctionKey, '2019-09-01').secretUriWithVersion})'
-  'AzureWebJobs.StarterFunction.Disabled': 0
-  'AzureWebJobs.OrchestratorFunction.Disabled': 0
-  'AzureWebJobs.SubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.DeltaUsersReaderFunction.Disabled': 0
-  'AzureWebJobs.DeltaUsersSenderFunction.Disabled': 0
-  'AzureWebJobs.EmailSenderFunction.Disabled': 0
-  'AzureWebJobs.FileDownloaderFunction.Disabled': 0
-  'AzureWebJobs.GroupsReaderFunction.Disabled': 0
-  'AzureWebJobs.GroupValidatorFunction.Disabled': 0
-  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 0
-  'AzureWebJobs.MembersReaderFunction.Disabled': 0
-  'AzureWebJobs.SourceGroupsReaderFunction.Disabled': 0
-  'AzureWebJobs.SubsequentDeltaUsersReaderFunction.Disabled': 0
-  'AzureWebJobs.SubsequentMembersReaderFunction.Disabled': 0
-  'AzureWebJobs.SubsequentUsersReaderFunction.Disabled': 0
-  'AzureWebJobs.UsersReaderFunction.Disabled': 0
-  'AzureWebJobs.UsersSenderFunction.Disabled': 0
+  'TeamsChannel:IsTeamsChannelDryRunEnabled': 0
 }
 
 module functionAppTemplate_TeamsChannel 'functionApp.bicep' = {
