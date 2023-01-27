@@ -196,7 +196,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task ProcessDestinationGroup()
+        public async Task ProcessIdleJob()
         {
             var topicClient = new Mock<ITopicClient>();
 
@@ -255,6 +255,70 @@ namespace Services.Tests
                                                                     && (bool)m.UserProperties["IsDestinationPart"] == true)), Times.Once());
 
             Assert.AreEqual(SyncStatus.InProgress, _syncStatus);
+        }
+        [TestMethod]
+        public async Task ProcessInProgressJob()
+        {
+            var topicClient = new Mock<ITopicClient>();
+
+            var inProgressSyncJob = SampleDataHelper.CreateSampleSyncJobs(1, "SecurityGroup").First();
+            inProgressSyncJob.Status = SyncStatus.InProgress.ToString();
+
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(inProgressSyncJob);
+            _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        var gmmResources = new Mock<IGMMResources>();
+                        var mailRepository = new Mock<IMailRepository>();
+                        var jobTriggerConfig = new Mock<IJobTriggerConfig>();
+                        var syncJobRepository = new Mock<ISyncJobRepository>();
+                        var graphGroupRepository = new Mock<IGraphGroupRepository>();
+                        var gmmAppId = new Mock<IKeyVaultSecret<IJobTriggerService>>();
+                        var emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
+                        var serviceBusTopicsRepository = new ServiceBusTopicsRepository(topicClient.Object);
+                        var jobTriggerService = new JobTriggerService(
+                                                        _loggingRespository.Object,
+                                                        syncJobRepository.Object,
+                                                        serviceBusTopicsRepository,
+                                                        graphGroupRepository.Object,
+                                                        gmmAppId.Object,
+                                                        mailRepository.Object,
+                                                        emailSenderAndRecipients.Object,
+                                                        gmmResources.Object,
+                                                        jobTriggerConfig.Object);
+
+                        await CallTopicMessageSenderFunctionAsync(jobTriggerService: jobTriggerService);
+                    });
+
+            _context.Setup(x => x.CallActivityAsync<int>(nameof(JobTrackerFunction), It.IsAny<SyncJob>())).ReturnsAsync(2);
+            var suborchestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                                _telemetryClient,
+                                                                _emailSenderAndRecipients.Object,
+                                                                _gmmResources.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
+
+            _loggingRespository.Verify(x => x.LogMessageAsync(
+                It.Is<LogMessage>(m => !m.Message.Contains("JSON query is not valid") && !m.Message.Contains("Job query is empty for job")),
+                It.IsAny<VerbosityLevel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()));
+
+            _context.Verify(x => x.CallActivityAsync<int>(It.Is<string>(x => x == nameof(JobTrackerFunction)), It.IsAny<SyncJob>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync<SyncJobGroup>(It.Is<string>(x => x == nameof(GroupNameReaderFunction)), It.IsAny<SyncJob>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()), Times.Once());
+
+            _jobTriggerService.Verify(x => x.GetGroupNameAsync(It.IsAny<Guid>()), Times.Once());
+            _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>()), Times.Once());
+            _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
+            _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<SyncStatus>(s => s == SyncStatus.StuckInProgress), It.IsAny<SyncJob>()), Times.Once());
+
+            topicClient.Verify(x => x.SendAsync(It.IsAny<Message>()), Times.Exactly(2));
+            topicClient.Verify(x => x.SendAsync(It.Is<Message>(m => (string)m.UserProperties["Type"] == "SecurityGroup")), Times.Exactly(2));
+            topicClient.Verify(x => x.SendAsync(It.Is<Message>(m => m.UserProperties.ContainsKey("IsDestinationPart")
+                                                                    && (bool)m.UserProperties["IsDestinationPart"] == true)), Times.Once());
+
+            Assert.AreEqual(SyncStatus.StuckInProgress, _syncStatus);
         }
 
         [TestMethod]
