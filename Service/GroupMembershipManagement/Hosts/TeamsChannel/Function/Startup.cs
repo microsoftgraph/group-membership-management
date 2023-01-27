@@ -15,7 +15,7 @@ namespace Hosts.TeamsChannel
     {
         protected override string FunctionName => nameof(TeamsChannel);
 
-        protected override string DryRunSettingName => "TeamsChannel:IsTeamsChannelcDryRunEnabled";
+        protected override string DryRunSettingName => "TeamsChannel:IsTeamsChannelDryRunEnabled";
 
         public override void Configure(IFunctionsHostBuilder builder)
         {
