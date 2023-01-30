@@ -729,9 +729,9 @@ The run frequency is set to every day at midnight, it is defined as a NCRONTAB e
 
 In the event that you are setting up GMM in a demo tenant refer to [Setting GMM in a demo tenant](/Documentation/DemoTenant.md) for additional guidance.
 
-# Setting up GMM UI
+# GMM UI
 
-To set up the GMM UI web app, please refer to [GMM UI](UI/WebApp/README.md) for additional guidance.
+Please refer to [GMM UI](UI/web-app/README.md) for additional guidance.
 
 # Steps to debug and troubleshoot a failing sync
 

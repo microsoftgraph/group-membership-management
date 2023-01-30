@@ -1,61 +1,4 @@
 steps:
- 
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      useGlobalJson: true
-      workingDirectory: 'public\Service\GroupMembershipManagement'
-  
-  - task: DotNetCoreCLI@2
-    displayName: 'dotnet build webApp backend function'
-    inputs:
-      command: build
-      projects: 'public/Service/GroupMembershipManagement/Hosts/GroupTableManager/Function/*.csproj'
-      arguments: '--configuration $(buildConfiguration)'
-  
-  - task: DotNetCoreCLI@2
-    displayName: 'dotnet publish webApp backend function'
-    inputs:
-      command: publish
-      arguments: '--configuration $(BuildConfiguration) --output GroupTableManager'
-      projects: 'public/Service/GroupMembershipManagement/Hosts/GroupTableManager/Function/*.csproj'
-      publishWebProjects: false
-      modifyOutputPath: false
-      zipAfterPublish: false
-  
-  - task: ArchiveFiles@2
-    displayName: 'archive webApp backend function'
-    inputs:
-      rootFolderOrFile: "$(System.DefaultWorkingDirectory)/GroupTableManager"
-      includeRootFolder: false
-      archiveFile: "$(System.DefaultWorkingDirectory)/functions/groupTableManager.zip"
-  
-  - task: CopyFiles@2
-    displayName: 'copy webApp backend function package'
-    inputs:
-      SourceFolder: $(System.DefaultWorkingDirectory)/functions
-      Contents: groupTableManager.zip
-      TargetFolder: '$(build.artifactstagingdirectory)/function_packages/'
-  
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      useGlobalJson: true
-      workingDirectory: 'Service\GroupMembershipManagement'
-
-  # - script: dotnet build --configuration $(buildConfiguration) public\UI\WebApp\WebAppWithAuth.csproj
-  #   displayName: 'Building $(buildConfiguration)...'
-
-  # - task: DotNetCoreCLI@2
-  #   displayName: 'Dotnet publish GmmUI webapp'
-  #   inputs:
-  #     command: publish
-  #     arguments: '--configuration $(BuildConfiguration) --output GmmUI'
-  #     projects: 'public/UI/WebApp/*.csproj'
-  #     publishWebProjects: false
-  #     modifyOutputPath: false
-  #     zipAfterPublish: false
-
   - task: CopyFiles@2
     displayName: 'Copy GmmUI webapp package'
     inputs:
@@ -66,9 +9,9 @@ steps:
   - task: CopyFiles@2
     displayName: 'Copy GmmUI webapp arm templates'
     inputs:
-      SourceFolder: public/Service/GroupMembershipManagement/Hosts/GroupTableManager
+      SourceFolder: public/Service/GroupMembershipManagement/Hosts/UI
       Contents: '**\Infrastructure\**'
-      TargetFolder: '$(build.artifactstagingdirectory)/webapp_arm_templates/GroupTableManager'
+      TargetFolder: '$(build.artifactstagingdirectory)/webapp_arm_templates/UI'
 
   - task: PublishBuildArtifacts@1
     displayName: 'Publish web app artifacts'
