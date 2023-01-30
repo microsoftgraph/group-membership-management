@@ -22,6 +22,10 @@ variables:
 
 stages:
 
+- template: build-tag.yml
+  parameters:
+    tagName: $(Build.BuildNumber)
+
 - template: build-services.yml
   parameters:
     repoToCheckout: ''

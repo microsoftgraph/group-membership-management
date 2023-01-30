@@ -52,6 +52,12 @@ namespace Entities
         public DateTime LastSuccessfulRunTime { get; set; } = DateTime.FromFileTimeUtc(0);
 
         /// <summary>
+        /// Last Successful Start Time (UTC)
+        /// </summary>
+        [IgnoreLogging]
+        public DateTime LastSuccessfulStartTime { get; set; } = DateTime.FromFileTimeUtc(0);
+
+        /// <summary>
         /// Period (hours)
         /// </summary>
         [IgnoreLogging]

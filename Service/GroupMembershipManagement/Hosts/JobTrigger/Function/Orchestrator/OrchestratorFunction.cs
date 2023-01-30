@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Hosts.JobTrigger
@@ -24,12 +25,23 @@ namespace Hosts.JobTrigger
         {
             if (!context.IsReplaying)
                 _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started" }, VerbosityLevel.DEBUG);
-            var syncJobs = await context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), null);
-            if (syncJobs != null && syncJobs.Count > 0)
+
+            var syncJobsDueToRun = new List<SyncJob>();
+
+            var readertasks = new List<Task<List<SyncJob>>>{
+                context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), SyncStatus.Idle),
+                context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), SyncStatus.InProgress),
+                context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), SyncStatus.StuckInProgress)
+            };
+
+            var results = await Task.WhenAll(readertasks);
+            syncJobsDueToRun.AddRange(results.SelectMany(x => x));
+
+            if (syncJobsDueToRun != null && syncJobsDueToRun.Count > 0)
             {
                 // Run multiple sync job processing flows in parallel
                 var processingTasks = new List<Task>();
-                foreach (var syncJob in syncJobs)
+                foreach (var syncJob in syncJobsDueToRun)
                 {
                     syncJob.RunId = context.NewGuid();
                     _loggingRepository.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
@@ -40,7 +52,7 @@ namespace Hosts.JobTrigger
                 await Task.WhenAll(processingTasks);
             }
 
-            syncJobs.ForEach(x =>
+            syncJobsDueToRun.ForEach(x =>
             {
                 if (x.RunId.HasValue)
                     _loggingRepository.RemoveSyncJobProperties(x.RunId.Value);

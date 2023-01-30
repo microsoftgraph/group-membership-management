@@ -16,6 +16,8 @@ namespace Entities
         FilePathNotValid = 9,
         QueryNotValid = 10,
         FileNotFound = 11,
-        CustomerPaused = 12
+        CustomerPaused = 12,
+        StuckInProgress = 13,
+        ErroredDueToStuckInProgress = 14
     }
 }

@@ -45,13 +45,29 @@ namespace Hosts.JobTrigger
 
             var syncJob = context.GetInput<SyncJob>();
 
+            if (!string.IsNullOrEmpty(syncJob.Status) && syncJob.Status == SyncStatus.StuckInProgress.ToString())
+            {
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.ErroredDueToStuckInProgress, SyncJob = syncJob });
+                return;
+            }
+
             if (!context.IsReplaying) { TrackJobsStartedEvent(syncJob.RunId); }
 
             if (!context.IsReplaying)
                 _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
 
             var frequency = await context.CallActivityAsync<int>(nameof(JobTrackerFunction), syncJob);
-            if (!context.IsReplaying) { TrackIdleJobsEvent(frequency, syncJob.TargetOfficeGroupId); }
+
+            if (!context.IsReplaying) {
+                if (syncJob.Status == SyncStatus.Idle.ToString())
+                {
+                    TrackIdleJobsEvent(frequency, syncJob.TargetOfficeGroupId);
+                }
+                else if (syncJob.Status == SyncStatus.InProgress.ToString())
+                {
+                    TrackInProgressJobsEvent(frequency, syncJob.TargetOfficeGroupId, syncJob.RunId);
+                }
+            }
 
             try
             {
@@ -122,10 +138,22 @@ namespace Hosts.JobTrigger
                                                     }
                                                 });
 
+            syncJob.LastSuccessfulStartTime = context.CurrentUtcDateTime;
 
             var canWriteToGroup = await context.CallActivityAsync<bool>(nameof(GroupVerifierFunction), syncJob);
-            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                            new JobStatusUpdaterRequest { Status = canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, SyncJob = syncJob });
+
+            var statusValue = SyncStatus.StuckInProgress;
+
+            if (!canWriteToGroup)
+            {
+                statusValue = SyncStatus.NotOwnerOfDestinationGroup;
+            }
+            else if (syncJob.Status == SyncStatus.Idle.ToString())
+            {
+                    statusValue = SyncStatus.InProgress;
+            }
+
+            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = statusValue, SyncJob = syncJob });
 
             if (canWriteToGroup)
             {
@@ -138,6 +166,15 @@ namespace Hosts.JobTrigger
 
             if (!context.IsReplaying)
                 _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+        }
+
+        private void TrackJobsStartedEvent(Guid? runId)
+        {
+            var jobsStartedEvent = new Dictionary<string, string>
+            {
+                { "RunId", runId.ToString() }
+            };
+            _telemetryClient.TrackEvent("NumberOfJobsStarted", jobsStartedEvent);
         }
 
         private void TrackIdleJobsEvent(int frequency, Guid targetOfficeGroupId)
@@ -154,13 +191,16 @@ namespace Hosts.JobTrigger
             _telemetryClient.TrackEvent("IdleJobsTracker", idleJobsEvent);
         }
 
-        private void TrackJobsStartedEvent(Guid? runId)
+        private void TrackInProgressJobsEvent(int frequency, Guid targetOfficeGroupId, Guid? runId)
         {
-            var jobsStartedEvent = new Dictionary<string, string>
+            var inProgressJobsEvent = new Dictionary<string, string>
             {
+                { "TargetOfficeGroupId", targetOfficeGroupId.ToString() },
+                { "Frequency", frequency.ToString() },
                 { "RunId", runId.ToString() }
             };
-            _telemetryClient.TrackEvent("NumberOfJobsStarted", jobsStartedEvent);
+
+            _telemetryClient.TrackEvent("InProgressJobsTracker", inProgressJobsEvent);
         }
 
         private void TrackExclusionaryEvent(IDurableOrchestrationContext context, SyncJob syncJob)

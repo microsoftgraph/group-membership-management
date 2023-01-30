@@ -62,10 +62,10 @@ namespace Services
             _jobTriggerConfig = jobTriggerConfig ?? throw new ArgumentNullException(nameof(jobTriggerConfig));
         }
 
-        public async Task<List<SyncJob>> GetSyncJobsAsync()
+        public async Task<List<SyncJob>> GetSyncJobsAsync(SyncStatus syncStatus)
         {
             var allJobs = new List<SyncJob>();
-            var jobs = _syncJobRepository.GetSyncJobsAsync(SyncStatus.Idle);
+            var jobs = _syncJobRepository.GetSyncJobsAsync(syncStatus);
             await foreach (var job in jobs)
             {
                 allJobs.Add(job);
@@ -115,6 +115,17 @@ namespace Services
                     RunId = job.RunId,
                     Message = $"Starting job."
                 });
+            }
+
+            if (status == SyncStatus.StuckInProgress)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = job.RunId,
+                    Message = $"Restarting job stuck in InProgress."
+                });
+
+                job.LastRunTime = DateTime.UtcNow;
             }
 
             await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
