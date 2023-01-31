@@ -3,10 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
-    "@types/jest": "^27.5.2",
     "@types/node": "^16.18.11",
     "@types/react": "^18.0.27",
     "@types/react-dom": "^18.0.10",
@@ -44,11 +42,10 @@
     ]
   },
   "devDependencies": {
-    "@babel/preset-env": "7.16.0",
-    "@babel/preset-react": "7.16.0",
     "@babel/node": "7.16.0",
     "@babel/plugin-proposal-class-properties": "7.16.0",
+    "@babel/plugin-proposal-private-property-in-object": "7.16.0",
     "@babel/polyfill": "7.12.1",
-    "@babel/plugin-proposal-private-property-in-object": "7.16.0"
+    "@types/testing-library__jest-dom": "^5.14.5"
   }
 }
