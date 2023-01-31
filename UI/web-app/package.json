@@ -42,5 +42,13 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@babel/preset-env": "7.16.0",
+    "@babel/preset-react": "7.16.0",
+    "@babel/node": "7.16.0",
+    "@babel/plugin-proposal-class-properties": "7.16.0",
+    "@babel/polyfill": "7.12.1",
+    "@babel/plugin-proposal-private-property-in-object": "7.16.0"
   }
 }
