@@ -3,18 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "@types/node": "^16.18.11",
-    "@types/react": "^18.0.27",
-    "@types/react-dom": "^18.0.10",
-    "i18next": "^22.4.9",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-i18next": "^12.1.4",
+    "@testing-library/react": "13.4.0",
+    "@testing-library/user-event": "13.5.0",
+    "@types/node": "16.18.11",
+    "@types/react": "18.0.27",
+    "@types/react-dom": "18.0.10",
+    "i18next": "22.4.9",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-i18next": "12.1.4",
     "react-scripts": "5.0.1",
-    "typescript": "^4.9.4",
-    "web-vitals": "^2.1.4"
+    "typescript": "4.9.4",
+    "web-vitals": "2.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -45,6 +45,6 @@
     "@babel/plugin-proposal-class-properties": "7.16.0",
     "@babel/plugin-proposal-private-property-in-object": "7.16.0",
     "@babel/polyfill": "7.12.1",
-    "@types/testing-library__jest-dom": "^5.14.5"
+    "@types/testing-library__jest-dom": "5.14.5"
   }
 }
