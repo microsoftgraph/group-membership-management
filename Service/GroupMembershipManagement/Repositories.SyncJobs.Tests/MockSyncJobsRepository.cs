@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Azure;
 using Entities;
+using Models.Entities;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;

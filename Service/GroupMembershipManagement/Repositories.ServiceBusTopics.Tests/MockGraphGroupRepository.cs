@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Graph;
+using Models.Entities;
 
 namespace Repositories.ServiceBusTopics.Tests
 {

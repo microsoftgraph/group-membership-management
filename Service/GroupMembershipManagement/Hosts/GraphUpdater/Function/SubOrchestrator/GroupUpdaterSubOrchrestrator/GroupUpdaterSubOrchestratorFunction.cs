@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System;
 using Microsoft.ApplicationInsights;
 using GraphUpdater.Entities;
+using Models.Entities;
 
 namespace Hosts.GraphUpdater
 {

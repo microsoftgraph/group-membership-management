@@ -6,6 +6,7 @@ using Microsoft.Graph;
 using Microsoft.Graph.Auth;
 using Microsoft.Identity.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Models.Entities;
 using Repositories.Contracts;
 using Repositories.GraphGroups;
 using Repositories.MembershipDifference;

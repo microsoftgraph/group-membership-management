@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Graph;
+using Models.Entities;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 

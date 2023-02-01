@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
+using Models.Entities;
 using Newtonsoft.Json;
 using Polly;
 using Repositories.Contracts;

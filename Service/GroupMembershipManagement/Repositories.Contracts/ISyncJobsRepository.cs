@@ -3,6 +3,7 @@
 
 using Azure;
 using Entities;
+using Models.Entities;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 

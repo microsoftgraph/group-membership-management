@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Entities;
 using Microsoft.Graph;
+using Models.Entities;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;

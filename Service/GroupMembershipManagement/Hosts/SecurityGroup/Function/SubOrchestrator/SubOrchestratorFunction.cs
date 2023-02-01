@@ -14,6 +14,7 @@ using Microsoft.ApplicationInsights;
 using Repositories.Contracts.InjectConfig;
 using Microsoft.Graph;
 using Entities.Helpers;
+using Models.Entities;
 
 namespace Hosts.SecurityGroup
 {

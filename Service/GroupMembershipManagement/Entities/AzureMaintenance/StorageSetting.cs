@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Models.Entities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 

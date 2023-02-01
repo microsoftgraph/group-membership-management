@@ -10,6 +10,7 @@ using Services.Entities;
 using System.Linq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Models.Entities;
 
 namespace Hosts.AzureMaintenance
 {

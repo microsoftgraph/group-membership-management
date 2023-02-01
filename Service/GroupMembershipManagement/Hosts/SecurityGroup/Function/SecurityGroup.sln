@@ -36,6 +36,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.BlobStorage", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Contracts", "..\..\GraphUpdater\Services.Contracts\Services.Contracts.csproj", "{222C5740-8AE7-4641-9C09-A62A532F174D}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NewEntities", "..\..\..\NewEntities\NewEntities.csproj", "{FBCD7D13-430A-4C51-B498-D369F677330F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -110,6 +112,10 @@ Global
 		{222C5740-8AE7-4641-9C09-A62A532F174D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{222C5740-8AE7-4641-9C09-A62A532F174D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{222C5740-8AE7-4641-9C09-A62A532F174D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FBCD7D13-430A-4C51-B498-D369F677330F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FBCD7D13-430A-4C51-B498-D369F677330F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FBCD7D13-430A-4C51-B498-D369F677330F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FBCD7D13-430A-4C51-B498-D369F677330F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

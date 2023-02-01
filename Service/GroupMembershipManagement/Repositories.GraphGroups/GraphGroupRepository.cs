@@ -25,6 +25,7 @@ using static System.Net.WebRequestMethods;
 using System.Web;
 using Group = Microsoft.Graph.Group;
 using Metric = Services.Entities.Metric;
+using Models.Entities;
 
 namespace Repositories.GraphGroups
 {
