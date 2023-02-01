@@ -4031,7 +4031,7 @@ packages:
       boolbase: 1.0.0
       css-what: 3.4.2
       domutils: 1.7.0
-      nth-check: 1.0.2
+      nth-check: 2.0.1
     dev: false
     resolution:
       integrity: sha1-ajRlM1ZjWTSoG6ymjQJVQyEF2+8=
@@ -7345,12 +7345,12 @@ packages:
       node: '>=8'
     resolution:
       integrity: sha1-t+zR5e1T2o43pV4cImnguX7XSOo=
-  /nth-check/1.0.2:
+  /nth-check/2.0.1:
     dependencies:
       boolbase: 1.0.0
     dev: false
     resolution:
-      integrity: sha1-sr0pXDfj3VijvwcAN2Zjuk2c8Fw=
+      integrity: sha1-Lv4WL1w9oGoolZ+9PbddvuqfD8I=
   /nth-check/2.1.1:
     dependencies:
       boolbase: 1.0.0

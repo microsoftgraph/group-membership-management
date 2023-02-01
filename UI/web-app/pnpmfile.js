@@ -9,8 +9,7 @@ module.exports = {
 function readPackage(packageJson, context) {
 
   const dependencyChanges = [
-    // sample format
-    // new PackageUpgradeStrategy('packageName', ['targetVersion'], 'newVersion'),
+    new PackageUpgradeStrategy('nth-check', ['^1.0.2'], '2.0.1'),
   ];
 
   const logger = new Logger(context);
