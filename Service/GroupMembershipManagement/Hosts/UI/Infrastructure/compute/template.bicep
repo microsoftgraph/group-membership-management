@@ -9,6 +9,9 @@ param location string
 @description('Name of the public source branch where webapp repo exists.')
 param branch string
 
+@description('Repository URL.')
+param repositoryUrl string
+
 resource staticWebApp 'Microsoft.Web/staticSites@2021-03-01' = {
   name: '${solutionAbbreviation}-ui'
   location: location
@@ -25,7 +28,7 @@ resource staticWebApp 'Microsoft.Web/staticSites@2021-03-01' = {
     }
     enterpriseGradeCdnStatus: 'Disabled'
     provider: 'DevOps'
-    repositoryUrl: 'https://microsoftit.visualstudio.com/OneITVSO/_git/STW-Sol-GrpMM-public'
+    repositoryUrl: repositoryUrl
     stagingEnvironmentPolicy: 'Disabled'
   }
 }

@@ -4,6 +4,9 @@
   "parameters": {
     "branch": {
       "value": "<webapp-source-branch>"
+    },
+    "repositoryUrl": {
+      "value": "<repository-Url>"
     }
   }
 }
