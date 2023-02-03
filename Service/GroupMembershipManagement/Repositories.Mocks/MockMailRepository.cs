@@ -12,7 +12,7 @@ namespace Repositories.Mocks
 	public class MockMailRepository : IMailRepository
 	{
 		public List<EmailMessage> SentEmails { get; set; } = new List<EmailMessage>();
-		public Task SendMailAsync(EmailMessage emailMessage, Guid? runId)
+		public Task SendMailAsync(EmailMessage emailMessage, Guid? runId, bool useAdaptiveCard = true, string templateDirectory = "")
 		{
 			SentEmails.Add(emailMessage);
 			return Task.CompletedTask;

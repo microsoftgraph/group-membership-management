@@ -78,7 +78,7 @@ namespace Services
             return await _graphGroupRepository.GetGroupNameAsync(groupId);
         }
 
-        public async Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters)
+        public async Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters, string templateDirectory = "")
         {
             string ownerEmails = null;
             string ccAddress = _emailSenderAndRecipients.SupportEmailAddresses;
@@ -103,7 +103,7 @@ namespace Services
                 AdditionalContentParams = additionalContentParameters
             };
 
-            await _mailRepository.SendMailAsync(message, job.RunId);
+            await _mailRepository.SendMailAsync(message, job.RunId, true, templateDirectory);
         }
 
         public async Task UpdateSyncJobStatusAsync(SyncStatus status, SyncJob job)
@@ -139,7 +139,7 @@ namespace Services
             await _serviceBusTopicsRepository.AddMessageAsync(job);
         }
 
-        public async Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job)
+        public async Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job, string templateDirectory = "")
         {
             foreach (var strat in new JobVerificationStrategy[] {
                 new JobVerificationStrategy { TestFunction = _graphGroupRepository.GroupExists, StatusMessage = $"Destination group {job.TargetOfficeGroupId} exists.", ErrorMessage = $"destination group {job.TargetOfficeGroupId} doesn't exist.", EmailBody = SyncDisabledNoGroupEmailBody },
@@ -160,7 +160,7 @@ namespace Services
                         ToEmailAddresses = job.Requestor,
                         CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
                         AdditionalContentParams = new[] { job.TargetOfficeGroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses }
-                    }, job.RunId);
+                    }, job.RunId, true, templateDirectory);
                     return false;
                 }
 

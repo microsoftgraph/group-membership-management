@@ -4,6 +4,7 @@ using Entities;
 using Models;
 using Polly;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Linq;

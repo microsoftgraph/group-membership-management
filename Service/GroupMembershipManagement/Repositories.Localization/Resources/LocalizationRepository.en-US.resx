@@ -203,11 +203,11 @@ Regards,
 GMM Team</value>
   </data>
   <data name="SyncStartedEmailBody" xml:space="preserve">
-    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group, {0}.
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group, {1}.
 
 GMM onboarding is requested by {4} to systematically manage the group membership based on the pre-set rules. Please visit {3} to learn more about GMM.
 
-The group {0} with Id: {1} has started its initial sync.
+The group {1} with Id: {0} has started its initial sync.
 
 This is an auto-generated email. Please reach out to the onboarding requestor {4} for any specific questions about this group and reach out to {2} for GMM inquires. 
 

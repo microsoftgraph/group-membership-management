@@ -10,5 +10,6 @@ namespace JobTrigger.Activity.EmailSender
         public string EmailSubjectTemplateName { get; set; }
         public string EmailContentTemplateName { get; set; }
         public string[] AdditionalContentParams { get; set; }
+        public string FunctionDirectory { get; set; }
     }
 }

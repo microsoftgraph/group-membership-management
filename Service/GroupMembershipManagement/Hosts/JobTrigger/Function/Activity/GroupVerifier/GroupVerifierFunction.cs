@@ -25,14 +25,16 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName(nameof(GroupVerifierFunction))]
-        public async Task<bool> VerifyGroupAsync([ActivityTrigger] SyncJob syncJob)
+        public async Task<bool> VerifyGroupAsync([ActivityTrigger] GroupVerifierRequest request)
         {
+            var syncJob = request.SyncJob;
             var canWriteToGroup = false;
+
             if (syncJob != null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupVerifierFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
                 _jobTriggerService.RunId = syncJob.RunId ?? Guid.Empty;
-                canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(syncJob);
+                canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(syncJob, request.FunctionDirectory);
 
                 if (canWriteToGroup)
                 {

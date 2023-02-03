@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
@@ -12,6 +12,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Repositories.Contracts\Repositories.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Templates\DefaultCard.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

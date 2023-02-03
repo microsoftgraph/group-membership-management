@@ -41,7 +41,7 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName(nameof(SubOrchestratorFunction))]
-        public async Task RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        public async Task RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
         {
 
             var syncJob = context.GetInput<SyncJob>();
@@ -113,7 +113,8 @@ namespace Hosts.JobTrigger
                                                     {
                                                         syncJob.TargetOfficeGroupId.ToString(),
                                                         _emailSenderAndRecipients.SyncDisabledCCAddresses
-                                                    }
+                                                    },
+                                                    FunctionDirectory = executionContext.FunctionAppDirectory
                                                 });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
@@ -131,15 +132,20 @@ namespace Hosts.JobTrigger
                                                     EmailContentTemplateName = SyncStartedEmailBody,
                                                     AdditionalContentParams = new[]
                                                     {
-                                                            groupInformation.Name,
                                                             syncJob.TargetOfficeGroupId.ToString(),
+                                                            groupInformation.Name,
                                                             _emailSenderAndRecipients.SupportEmailAddresses,
                                                             _gmmResources.LearnMoreAboutGMMUrl,
                                                             syncJob.Requestor
-                                                    }
+                                                    },
+                                                    FunctionDirectory = executionContext.FunctionAppDirectory
                                                 });
 
-            var canWriteToGroup = await context.CallActivityAsync<bool>(nameof(GroupVerifierFunction), syncJob);
+            var canWriteToGroup = await context.CallActivityAsync<bool>(nameof(GroupVerifierFunction), new GroupVerifierRequest()
+            {
+                SyncJob = syncJob,
+                FunctionDirectory = executionContext.FunctionDirectory
+            });
 
             var statusValue = SyncStatus.StuckInProgress;
 
