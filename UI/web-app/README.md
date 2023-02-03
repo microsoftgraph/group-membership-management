@@ -2,9 +2,51 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+## Development Tools
+### Node Version Switcher (NVS) - Cross Platform
+NVS helps you do development on projects with multiple versions of Node.  It provides an easy method for installing node and managing the current shell version. NVS can be configured _per shell_, allowing for multiple repos needing different node versions to be worked on simultaneously.
+
+#### Installation
+
+Download instructions can be found [in the repo](https://github.com/jasongin/nvs).  After installation, running `nvs install` will print instructions to your shell on how to set it up.
+
+#### Using NVS with `.node-version` file
+
+Running the `nvs auto on` command will ensure your Node version aligns with the repo whenever your shell enters a directory with a `.node-version` file.
+
+If you don't want to turn this feature on, you can still take advantage of the file by running `nvs use auto` manually from within our repo will set your Node version to the repo's, from the `.node-version` file.
+
+### Node.js through NVS
+
+Easy repo instructions:
+
+1. Open your shell
+1. At the shell prompt type:
+
+    ```bash
+    cd <repo directory>
+    nvs use auto
+    ```
+
+Set default Node version:
+
+1. Open your shell
+1. Open browser to check the current [NodeJS LTS version](https://nodejs.org/)
+1. At the shell prompt type:
+
+    ``` bash
+    nvs add <version>
+        Example: nvs add v14.19.0
+    nvs link <version>
+        Example: nvs add v14.19.0
+
+### PNPM
+Performant Node Package Manager, or pnpm is what we use to manage dependencies. You can get it [here](https://pnpm.io/installation).
+We are using pnpm v7, which is compatible with node v14.
+
 ## Available Scripts
 
-In the project directory, you can run:
+In this project directory, you can run:
 
 ### `npm start`
 
