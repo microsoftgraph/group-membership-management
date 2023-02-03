@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+	  <PackageReference Include="Azure.Identity" Version="1.6.0" />
+	  <PackageReference Include="Azure.Monitor.Query" Version="1.1.0" />
+	  <PackageReference Include="Microsoft.ApplicationInsights" Version="2.20.0" />
+	  <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj" />
+    <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
+    <ProjectReference Include="..\Services.Entities\Services.Entities.csproj" />
+  </ItemGroup>
+
+</Project>
