@@ -46,13 +46,13 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
 }
 
 module secretsTemplate 'keyVaultSecrets.bicep' = {
-  name: 'secretsTemplate-JobScheduler'
+  name: 'secretsTemplate-Notifier'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     keyVaultName: dataKeyVaultName
     keyVaultParameters: [
       {
-        name: 'jobSchedulerFunctionBaseUrl'
+        name: 'notifierFunctionBaseUrl'
         value: 'https://${functionApp.properties.defaultHostName}'
       }
     ]
@@ -60,14 +60,14 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
 }
 
 module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
-  name: 'secureSecretsTemplate-JobScheduler'
+  name: 'secureSecretsTemplate-Notifier'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     keyVaultName: dataKeyVaultName
     keyVaultSecrets: {
       secrets: [
         { 
-          name: 'jobSchedulerFunctionKey'
+          name: 'notifierFunctionKey'
           value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
         }
       ]
@@ -84,15 +84,9 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.StarterFunction.Disabled'
       'AzureWebJobs.OrchestratorFunction.Disabled'
       'AzureWebJobs.LoggerFunction.Disabled'
-      'AzureWebJobs.GetJobsSubOrchestratorFunction.Disabled'
-      'AzureWebJobs.GetJobsSegmentedFunction.Disabled'
-      'AzureWebJobs.ResetJobsFunction.Disabled'
-      'AzureWebJobs.DistributeJobsFunction.Disabled'
-      'AzureWebJobs.UpdateJobsSubOrchestratorFunction.Disabled'
-      'AzureWebJobs.BatchUpdateJobsFunction.Disabled'
       'AzureWebJobs.PipelineInvocationStarterFunction.Disabled'
       'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled'
-      'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled'
+      'AzureWebJobs.CheckNotifierStatusFunction.Disabled'
       'AzureWebJobs.PostCallbackFunction.Disabled'
     ]
   }

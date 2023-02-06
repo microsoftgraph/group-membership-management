@@ -324,6 +324,8 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
             - function:
             name: 'JobScheduler'
             - function:
+            name: 'Notifier'
+            - function:
             name: 'JobTrigger'
             dependsOn:
             - 'SecurityGroup'
@@ -581,6 +583,8 @@ To create a production environment:
             name: 'AzureMaintenance'
             - function:
             name: 'JobScheduler'
+            - function:
+            name: 'Notifier'
             - function:
             name: 'JobTrigger'
             dependsOn:

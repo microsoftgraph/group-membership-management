@@ -97,7 +97,7 @@ var storageAccountConnectionString = resourceId(subscription().subscriptionId, d
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
-  name: 'servicePlanTemplate-JobScheduler'
+  name: 'servicePlanTemplate-Notifier'
   params: {
     name: servicePlanName
     sku: servicePlanSku
@@ -118,54 +118,39 @@ var appSettings = {
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  jobSchedulerSchedule: '0 0 0 * * Sun'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
-  jobsStorageAccountConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  jobsTableName: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
 }
 
 var stagingSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-JobScheduler-staging')
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobSchedulerStaging'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-Notifier-staging')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}NotifierStaging'
   'AzureWebJobs.StarterFunction.Disabled': 1
   'AzureWebJobs.OrchestratorFunction.Disabled': 1
-  'AzureWebJobs.LoggerFunction.Disabled': 1
-  'AzureWebJobs.GetJobsSubOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.GetJobsSegmentedFunction.Disabled': 1
-  'AzureWebJobs.ResetJobsFunction.Disabled': 1
-  'AzureWebJobs.DistributeJobsFunction.Disabled': 1
-  'AzureWebJobs.UpdateJobsSubOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.BatchUpdateJobsFunction.Disabled': 1
+  'AzureWebJobs.LoggerFunction.Disabled': 11
   'AzureWebJobs.PipelineInvocationStarterFunction.Disabled': 1
   'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled': 1
+  'AzureWebJobs.CheckNotifierStatusFunction.Disabled': 1
   'AzureWebJobs.PostCallbackFunction.Disabled': 1
 }
 
 var productionSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-JobScheduler')
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobScheduler'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-Notifier')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}Notifier'
   'AzureWebJobs.StarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
   'AzureWebJobs.LoggerFunction.Disabled': 0
-  'AzureWebJobs.GetJobsSubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.GetJobsSegmentedFunction.Disabled': 0
-  'AzureWebJobs.ResetJobsFunction.Disabled': 0
-  'AzureWebJobs.DistributeJobsFunction.Disabled': 0
-  'AzureWebJobs.UpdateJobsSubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.BatchUpdateJobsFunction.Disabled': 0
   'AzureWebJobs.PipelineInvocationStarterFunction.Disabled': 0
   'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled': 0
+  'AzureWebJobs.CheckNotifierStatusFunction.Disabled': 0
   'AzureWebJobs.PostCallbackFunction.Disabled': 0
 }
 
-module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
-  name: 'functionAppTemplate-JobScheduler'
+module functionAppTemplate_Notifier 'functionApp.bicep' = {
+  name: 'functionAppTemplate-Notifier'
   params: {
-    name: '${functionAppName}-JobScheduler'
+    name: '${functionAppName}-Notifier'
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
@@ -178,35 +163,35 @@ module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
   ]
 }
 
-module functionAppSlotTemplate_JobScheduler 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-JobScheduler'
+module functionAppSlotTemplate_Notifier 'functionAppSlot.bicep' = {
+  name: 'functionAppSlotTemplate-Notifier'
   params: {
-    name: '${functionAppName}-JobScheduler/staging'
+    name: '${functionAppName}-Notifier/staging'
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
     secretSettings: commonSettings
   }
   dependsOn: [
-    functionAppTemplate_JobScheduler
+    functionAppTemplate_Notifier
   ]
 }
 
 module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'dataKeyVaultPoliciesTemplate-JobScheduler'
+  name: 'dataKeyVaultPoliciesTemplate-Notifier'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     name: dataKeyVaultName
     policies: [
       {
-        objectId: functionAppTemplate_JobScheduler.outputs.msi
+        objectId: functionAppTemplate_Notifier.outputs.msi
         secrets: [
           'get'
           'list'
         ]
       }
       {
-        objectId: functionAppSlotTemplate_JobScheduler.outputs.msi
+        objectId: functionAppSlotTemplate_Notifier.outputs.msi
         secrets: [
           'get'
           'list'
@@ -216,25 +201,25 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
     tenantId: tenantId
   }
   dependsOn: [
-    functionAppTemplate_JobScheduler
-    functionAppSlotTemplate_JobScheduler
+    functionAppTemplate_Notifier
+    functionAppSlotTemplate_Notifier
   ]
 }
 
 module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'prereqsKeyVaultPoliciesTemplate-JobScheduler'
+  name: 'prereqsKeyVaultPoliciesTemplate-Notifier'
   scope: resourceGroup(prereqsKeyVaultResourceGroup)
   params: {
     name: prereqsKeyVaultName
     policies: [
       {
-        objectId: functionAppTemplate_JobScheduler.outputs.msi
+        objectId: functionAppTemplate_Notifier.outputs.msi
         secrets: [
           'get'
         ]
       }
       {
-        objectId: functionAppSlotTemplate_JobScheduler.outputs.msi
+        objectId: functionAppSlotTemplate_Notifier.outputs.msi
         secrets: [
           'get'
         ]
@@ -243,27 +228,27 @@ module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
     tenantId: tenantId
   }
   dependsOn: [
-    functionAppTemplate_JobScheduler
-    functionAppSlotTemplate_JobScheduler
+    functionAppTemplate_Notifier
+    functionAppSlotTemplate_Notifier
   ]
 }
 
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
-  name: '${functionAppName}-JobScheduler/appsettings'
+  name: '${functionAppName}-Notifier/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
-    functionAppTemplate_JobScheduler
+    functionAppTemplate_Notifier
     dataKeyVaultPoliciesTemplate
   ]
 }
 
 resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
-  name: '${functionAppName}-JobScheduler/staging/appsettings'
+  name: '${functionAppName}-Notifier/staging/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
-    functionAppSlotTemplate_JobScheduler
+    functionAppSlotTemplate_Notifier
     dataKeyVaultPoliciesTemplate
   ]
 }
