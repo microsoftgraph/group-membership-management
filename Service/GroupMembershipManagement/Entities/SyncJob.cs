@@ -72,6 +72,12 @@ namespace Entities
         public DateTime StartDate { get; set; } = DateTime.FromFileTimeUtc(0);
 
         /// <summary>
+        /// Ignore threshold check if this is set to true
+        /// </summary>
+        [IgnoreLogging]
+        public bool IgnoreThresholdOnce { get; set; }
+
+        /// <summary>
         /// Threshold percentage for users being added
         /// </summary>
         [IgnoreLogging]

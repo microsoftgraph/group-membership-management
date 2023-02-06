@@ -126,8 +126,13 @@ namespace Services
 
                 if (threshold.IsThresholdExceeded)
                 {
-                    deltaResponse.MembershipDeltaStatus = MembershipDeltaStatus.ThresholdExceeded;
-                    await SendThresholdNotificationAsync(threshold, job, sourceMembership.RunId);
+                    deltaResponse.MembershipDeltaStatus = job.IgnoreThresholdOnce ? MembershipDeltaStatus.Ok : MembershipDeltaStatus.ThresholdExceeded;
+
+                    if (job.IgnoreThresholdOnce)
+                        await LogIgnoreThresholdOnceAsync(job, sourceMembership.RunId);
+                    else
+                        await SendThresholdNotificationAsync(threshold, job, sourceMembership.RunId);
+
                     return deltaResponse;
                 }
 
@@ -231,6 +236,15 @@ namespace Services
                 IsAdditionsThresholdExceeded = isAdditionsThresholdExceeded,
                 IsRemovalsThresholdExceeded = isRemovalsThresholdExceeded
             };
+        }
+
+        private async Task LogIgnoreThresholdOnceAsync(SyncJob job, Guid runId)
+        {
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Going to sync the job even though threshold exceeded because IgnoreThresholdOnce is currently set to {job.IgnoreThresholdOnce}.",
+                RunId = runId
+            });
         }
 
         private async Task SendThresholdNotificationAsync(ThresholdResult threshold, SyncJob job, Guid runId)
