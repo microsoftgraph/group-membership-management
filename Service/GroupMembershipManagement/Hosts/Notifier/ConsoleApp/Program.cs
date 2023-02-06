@@ -12,7 +12,7 @@ using Repositories.Contracts;
 using Azure.Identity;
 using Azure.Monitor.Query;
 
-namespace JobScheduler
+namespace Notifier
 {
     internal static class Program
     {
@@ -21,7 +21,7 @@ namespace JobScheduler
             var appSettings = AppSettings.LoadAppSettings();
 
             // Injections
-            var logAnalyticsSecret = new LogAnalyticsSecret<LoggingRepository>(appSettings.LogAnalyticsCustomerId, appSettings.LogAnalyticsPrimarySharedKey, "JobScheduler");
+            var logAnalyticsSecret = new LogAnalyticsSecret<LoggingRepository>(appSettings.LogAnalyticsCustomerId, appSettings.LogAnalyticsPrimarySharedKey, "Notifier");
             var appConfigVerbosity = new AppConfigVerbosity { Verbosity = VerbosityLevel.INFO };
             var loggingRepository = new LoggingRepository(logAnalyticsSecret, appConfigVerbosity);
             var syncJobRepository = new SyncJobRepository(appSettings.JobsStorageAccountConnectionString, appSettings.JobsTableName, loggingRepository);
@@ -31,32 +31,16 @@ namespace JobScheduler
             telemetryConfiguration.InstrumentationKey = appSettings.APPINSIGHTS_INSTRUMENTATIONKEY;
             telemetryConfiguration.TelemetryInitializers.Add(new OperationCorrelationTelemetryInitializer());
 
-            var jobSchedulerConfig = new JobSchedulerConfig(
-                appSettings.ResetJobs,
-                appSettings.DaysToAddForReset,
-                appSettings.DistributeJobs,
-                appSettings.IncludeFutureJobs,
-                appSettings.StartTimeDelayMinutes,
-                appSettings.DelayBetweenSyncsSeconds,
-                appSettings.DefaultRuntimeSeconds,
-                appSettings.GetRunTimeFromLogs,
-                appSettings.RunTimeMetric,
-                appSettings.RunTimeQuery,
-                appSettings.RunTimeRangeInDays,
+            var notifierConfig = new NotifierConfig(
                 appSettings.WorkspaceId
                 );
 
             var logsQueryClient = new LogsQueryClient(new DefaultAzureCredential());
-            var runtimeRetrievalService = new DefaultRuntimeRetrievalService(jobSchedulerConfig, logsQueryClient);
-            var jobSchedulingService = new JobSchedulingService(
-                syncJobRepository,
-                runtimeRetrievalService,
-                loggingRepository
-            );
+            var runtimeRetrievalService = new DefaultRuntimeRetrievalService(notifierConfig, logsQueryClient);
 
-            IApplicationService applicationService = new ApplicationService(jobSchedulingService, jobSchedulerConfig, loggingRepository);
+            IApplicationService applicationService = new ApplicationService(notifierConfig, loggingRepository);
 
-            // Call the JobScheduler ApplicationService
+            // Call the Notifier ApplicationService
             await applicationService.RunAsync();
         }
     }

@@ -65,6 +65,9 @@ stages:
     - function:
         name: 'MembershipAggregator'
         coverageThreshold: 85
+    - function:
+        name: 'Notifier'
+      #   coverageThreshold: 48
 
 - template: yaml/deploy-pipeline.yml
   parameters:
@@ -101,6 +104,8 @@ stages:
        name: 'AzureMaintenance'
     - function:
        name: 'JobScheduler'
+    - function:
+       name: 'Notifier'
     - function:
        name: 'JobTrigger'
        dependsOn:
@@ -148,6 +153,8 @@ stages:
     - function:
        name: 'JobScheduler'
     - function:
+       name: 'Notifier'
+    - function:
        name: 'JobTrigger'
        dependsOn:
        - 'SecurityGroup'
@@ -192,6 +199,8 @@ stages:
        name: 'AzureMaintenance'
     - function:
        name: 'JobScheduler'
+    - function:
+       name: 'Notifier'
     - function:
        name: 'JobTrigger'
        dependsOn:

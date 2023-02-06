@@ -33,7 +33,7 @@ function Set-AppConfigurationManagedIdentityRoles
 		[string] $ErrorActionPreference = $Stop
 	)
 
-	$functionApps = @("GraphUpdater","MembershipAggregator","SecurityGroup","AzureMaintenance","AzureUserReader","JobScheduler","JobTrigger","NonProdService")
+	$functionApps = @("GraphUpdater","MembershipAggregator","SecurityGroup","AzureMaintenance","AzureUserReader","JobScheduler","JobTrigger","NonProdService","Notifier")
 
 	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
 	$appConfigName = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation"

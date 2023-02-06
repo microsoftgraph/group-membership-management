@@ -1,19 +1,6 @@
 {
   "logAnalyticsCustomerId": "",
   "logAnalyticsPrimarySharedKey": "",
-  "jobsStorageAccountConnectionString": "",
-  "jobsTableName": "",
-  "resetJobs": "",
-  "daysToAddForReset": "",
-  "distributeJobs": "",
-  "includeFutureJobs": "",
-  "defaultRuntime": "",
-  "startTimeDelayMinutes": "",
-  "delayBetweenSyncsSeconds": "",
-  "getRunTimeFromLogs": "",
-  "runTimeMetric": "",
-  "runTimeQuery": "",
-  "runTimeRangeInDays": "",
   "workspaceId": "",
   "APPINSIGHTS_INSTRUMENTATIONKEY": ""
 }

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31605.320
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services", "..\Services\Services.csproj", "{B709EB78-E8C1-406E-B1CE-7C2A0CB1C68F}"
 EndProject
@@ -18,8 +18,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.SyncJobs.Tests", "..\..\..\Repositories.SyncJobs.Tests\Repositories.SyncJobs.Tests.csproj", "{7D9A596C-A624-4E70-B810-96FA71CD9FBF}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.SyncJobRepository", "..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj", "{515DF9AB-E28C-4D9A-965B-BCB63DBC61C1}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JobSchedulerConsoleApp", "JobSchedulerConsoleApp.csproj", "{DD719A71-BB4C-4D0B-83D4-CB7CB1A2E506}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DIConcreteTypes", "..\..\..\DIConcreteTypes\DIConcreteTypes.csproj", "{9738947D-F191-4F1F-843A-055C5E37D741}"
 EndProject
@@ -63,10 +61,6 @@ Global
 		{515DF9AB-E28C-4D9A-965B-BCB63DBC61C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{515DF9AB-E28C-4D9A-965B-BCB63DBC61C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{515DF9AB-E28C-4D9A-965B-BCB63DBC61C1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DD719A71-BB4C-4D0B-83D4-CB7CB1A2E506}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DD719A71-BB4C-4D0B-83D4-CB7CB1A2E506}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DD719A71-BB4C-4D0B-83D4-CB7CB1A2E506}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DD719A71-BB4C-4D0B-83D4-CB7CB1A2E506}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9738947D-F191-4F1F-843A-055C5E37D741}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9738947D-F191-4F1F-843A-055C5E37D741}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9738947D-F191-4F1F-843A-055C5E37D741}.Release|Any CPU.ActiveCfg = Release|Any CPU
