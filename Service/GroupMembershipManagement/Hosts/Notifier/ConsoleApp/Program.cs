@@ -4,7 +4,6 @@
 using System.Threading.Tasks;
 using Services;
 using Microsoft.ApplicationInsights.Extensibility;
-using Repositories.SyncJobsRepository;
 using Repositories.Logging;
 using DIConcreteTypes;
 using Services.Contracts;
