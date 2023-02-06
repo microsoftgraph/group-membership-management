@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using Models.Entities;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;

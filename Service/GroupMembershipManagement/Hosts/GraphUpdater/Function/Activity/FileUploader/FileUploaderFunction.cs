@@ -4,6 +4,7 @@ using Entities;
 using Entities.ServiceBus;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models.Entities;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;

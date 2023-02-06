@@ -5,6 +5,7 @@ using Hosts.JobTrigger;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using Models.Entities;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
