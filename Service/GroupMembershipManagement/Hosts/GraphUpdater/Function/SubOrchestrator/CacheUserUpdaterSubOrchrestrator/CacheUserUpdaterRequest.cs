@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
-using GraphUpdater.Entities;
+using Models.Entities;
 using System;
 using System.Collections.Generic;
 

@@ -5,6 +5,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
+using Models.Entities;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Services.Entities;

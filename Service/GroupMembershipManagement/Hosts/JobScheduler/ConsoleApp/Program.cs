@@ -23,7 +23,7 @@ namespace JobScheduler
             // Injections
             var logAnalyticsSecret = new LogAnalyticsSecret<LoggingRepository>(appSettings.LogAnalyticsCustomerId, appSettings.LogAnalyticsPrimarySharedKey, "JobScheduler");
             var appConfigVerbosity = new AppConfigVerbosity { Verbosity = VerbosityLevel.INFO };
-            var loggingRepository = new LoggingRepository(logAnalyticsSecret, appConfigVerbosity);
+            var loggingRepository = new LoggingRepository(logAnalyticsSecret);
             var syncJobRepository = new SyncJobRepository(appSettings.JobsStorageAccountConnectionString, appSettings.JobsTableName, loggingRepository);
 
 
@@ -46,8 +46,7 @@ namespace JobScheduler
                 appSettings.WorkspaceId
                 );
 
-            var logsQueryClient = new LogsQueryClient(new DefaultAzureCredential());
-            var runtimeRetrievalService = new DefaultRuntimeRetrievalService(jobSchedulerConfig, logsQueryClient);
+            var runtimeRetrievalService = new DefaultRuntimeRetrievalService(defaultRuntimeSeconds: 60);
             var jobSchedulingService = new JobSchedulingService(
                 syncJobRepository,
                 runtimeRetrievalService,

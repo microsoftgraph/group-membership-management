@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Entities;
 using Microsoft.Graph;
+using Models.Entities;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;

@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30309.148
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JobTrigger", "JobTrigger.csproj", "{DA7BF750-16A4-4D1B-BE4B-0A45FAAC15F6}"
 EndProject
@@ -41,6 +41,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Localization", "..\..\..\Repositories.Localization\Repositories.Localization.csproj", "{F0ADC8DC-12EC-41D6-B630-B8CF4548C429}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mocks", "..\..\..\Repositories.Mocks\Repositories.Mocks.csproj", "{B59CE4B0-5A36-41E7-825E-2A07850363AD}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models.Entities", "..\..\..\Models.Entities\Models.Entities.csproj", "{CE9E9A3A-8C0F-40CB-8AF6-81B47D08FF29}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -128,6 +130,10 @@ Global
 		{B59CE4B0-5A36-41E7-825E-2A07850363AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B59CE4B0-5A36-41E7-825E-2A07850363AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B59CE4B0-5A36-41E7-825E-2A07850363AD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE9E9A3A-8C0F-40CB-8AF6-81B47D08FF29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE9E9A3A-8C0F-40CB-8AF6-81B47D08FF29}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE9E9A3A-8C0F-40CB-8AF6-81B47D08FF29}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE9E9A3A-8C0F-40CB-8AF6-81B47D08FF29}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

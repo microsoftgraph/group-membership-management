@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
+using Models.Entities;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;

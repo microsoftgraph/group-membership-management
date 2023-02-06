@@ -4,6 +4,7 @@
 using Azure;
 using Azure.Storage.Blobs.Models;
 using Entities;
+using Models.Entities;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;

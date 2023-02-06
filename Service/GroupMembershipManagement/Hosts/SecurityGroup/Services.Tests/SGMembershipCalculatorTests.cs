@@ -14,6 +14,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Tests.FunctionApps.Mocks;
 using Tests.Services;
+using Models.Entities;
 
 namespace Tests.FunctionApps
 {

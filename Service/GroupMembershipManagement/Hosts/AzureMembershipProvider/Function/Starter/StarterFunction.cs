@@ -9,6 +9,7 @@ using Repositories.Contracts;
 using Azure.Messaging.ServiceBus;
 using Entities;
 using Hosts.AzureMembershipProvider;
+using Models.Entities;
 
 namespace Hosts.AzureMembershipProvider
 {

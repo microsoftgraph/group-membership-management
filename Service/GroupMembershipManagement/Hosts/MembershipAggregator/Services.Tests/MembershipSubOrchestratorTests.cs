@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using Models.Entities;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;

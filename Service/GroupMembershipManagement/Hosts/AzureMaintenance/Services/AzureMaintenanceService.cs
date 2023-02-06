@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Entities;
 using Entities.AzureMaintenance;
+using Models.Entities;
 using Repositories.Contracts;
 using Repositories.Contracts.AzureMaintenance;
 using Repositories.Contracts.InjectConfig;

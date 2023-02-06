@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Repositories.Contracts.InjectConfig;
+using Models.Entities;
 using System;
 using System.Threading.Tasks;
 

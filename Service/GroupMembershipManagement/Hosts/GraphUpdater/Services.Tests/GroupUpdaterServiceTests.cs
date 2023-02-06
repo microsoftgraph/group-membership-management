@@ -5,6 +5,7 @@ using Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Models.Entities;
 using Repositories.Mocks;
 using Services.Entities;
 using Services.Tests.Mocks;

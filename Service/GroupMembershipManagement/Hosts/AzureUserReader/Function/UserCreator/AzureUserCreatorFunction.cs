@@ -5,6 +5,7 @@ using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
+using Models.Entities;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
