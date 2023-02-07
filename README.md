@@ -510,7 +510,7 @@ The following script:
 1. Grants all functions access to App Configuration.
 2. Grants SecurityGroup, MembershipAggregator, and GraphUpdater functions access to storage account.
 
-From your `PowerShell 7.2.x` command prompt navigate to the `Scripts` folder of your `Public` repo, run these commands, and follow the instructions on the screen:
+From your `PowerShell 7.2.x` command prompt navigate to the `Scripts/PostDeployment` folder of your `Public` repo, run these commands, and follow the instructions on the screen:
 
         1. . ./Set-PostDeploymentRoles.ps1
         2. Set-PostDeploymentRoles  -SolutionAbbreviation "<solutionAbbreviation>" `
