@@ -1,4 +1,4 @@
-# Job Scheduler Function App
+# Notifier Function App
 This guide will explain how to use the Notifier function, found in Notifier/Function
 
 ## Prerequisites
