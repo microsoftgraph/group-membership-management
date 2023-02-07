@@ -13,6 +13,7 @@ using Azure.Messaging.ServiceBus;
 using Entities;
 using System.Text;
 using Microsoft.Graph;
+using TeamsChannel.Service.Contracts;
 
 namespace Hosts.TeamsChannel
 {
@@ -20,12 +21,14 @@ namespace Hosts.TeamsChannel
     {
         private readonly ILoggingRepository _loggingRepository;
         private readonly ISyncJobRepository _syncJobRepository;
+        private readonly ITeamsChannelService _teamsChannelService;
         private readonly bool _isTeamsChannelEnabled;
 
-        public TeamsChannel(ILoggingRepository loggingRepository, ISyncJobRepository syncJobRepository, IDryRunValue dryRun)
+        public TeamsChannel(ILoggingRepository loggingRepository, ISyncJobRepository syncJobRepository, ITeamsChannelService teamsChannelService, IDryRunValue dryRun)
         {
             _loggingRepository = loggingRepository;
             _syncJobRepository = syncJobRepository;
+            _teamsChannelService = teamsChannelService;
             _isTeamsChannelEnabled = dryRun.DryRunEnabled;
 
         }
