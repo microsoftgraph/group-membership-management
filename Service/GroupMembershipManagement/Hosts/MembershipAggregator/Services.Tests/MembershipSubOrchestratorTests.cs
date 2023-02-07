@@ -295,6 +295,22 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task IgnoreThresholdOnceTestAsync()
+        {
+            var currentThresholdViolations = 1;
+            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);
+            _numberOfUsersForDestinationPart = 5;
+            _syncJob.ThresholdViolations = currentThresholdViolations;
+            _syncJob.IgnoreThresholdOnce = true;
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Going to sync the job")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
+        }
+
+        [TestMethod]
         public async Task HitRemovalThresholdTestAsync()
         {
             _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);
