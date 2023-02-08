@@ -1,9 +1,11 @@
-using GMMWebApi.Configuration;
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+using WebApi.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
-namespace GMMWebApi.Controllers.v1
+namespace WebApi.Controllers.v1
 {
     [ApiController]
     [ApiVersion("1.0")]

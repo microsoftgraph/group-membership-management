@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-namespace GMMWebApi.Configuration
+namespace WebApi.Configuration
 {
     public class WebAPISettings
     {

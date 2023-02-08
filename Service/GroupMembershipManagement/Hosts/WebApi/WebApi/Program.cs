@@ -1,13 +1,16 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 using Azure.Identity;
-using GMMWebApi.Configuration;
+using WebApi.Configuration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.Identity.Web;
+using Microsoft.IdentityModel.Logging;
 using Microsoft.OpenApi.Models;
 
-namespace GMMWebApi
+namespace WebApi
 {
     public class Program
     {
@@ -18,6 +21,8 @@ namespace GMMWebApi
             var azureADConfigSection = builder.Configuration.GetSection("AzureAd");
             var tenantId = azureADConfigSection.GetValue<string>("TenantId");
             var clientId = azureADConfigSection.GetValue<string>("ClientId");
+            var instanceUrl = azureADConfigSection.GetValue<string>("Instance");
+            instanceUrl += instanceUrl.Last() == '/' ? string.Empty : "/";
 
             builder.Services.Configure<WebAPISettings>(builder.Configuration.GetSection("WebAPI:Settings"));
             builder.Configuration.AddAzureAppConfiguration(options =>
@@ -35,8 +40,8 @@ namespace GMMWebApi
             builder.Services.AddAzureAppConfiguration();
 
             builder.Services
-                .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddMicrosoftIdentityWebApi(azureADConfigSection);
+               .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+               .AddMicrosoftIdentityWebApi(azureADConfigSection);
 
             builder.Services.AddApiVersioning(opt =>
                 {
@@ -76,20 +81,23 @@ namespace GMMWebApi
                     {
                         Implicit = new OpenApiOAuthFlow()
                         {
-                            AuthorizationUrl = new Uri($"https://login.microsoftonline.com/{tenantId}/oauth2/authorize"),
-                            TokenUrl = new Uri($"https://login.microsoftonline.com/{tenantId}/oauth2/token")
+                            AuthorizationUrl = new Uri($"{instanceUrl}{tenantId}/oauth2/authorize"),
+                            TokenUrl = new Uri($"{instanceUrl}{tenantId}/oauth2/token")
                         }
                     }
                 });
             });
 
             builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
+            builder.Services.AddApplicationInsightsTelemetry();
 
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
+                IdentityModelEventSource.ShowPII = true;
+
                 var apiVersionDescriptionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
                 app.UseSwagger();
                 app.UseSwaggerUI(options =>
@@ -99,12 +107,12 @@ namespace GMMWebApi
                         var url = $"/swagger/{description.GroupName}/swagger.json";
                         options.SwaggerEndpoint(url, description.GroupName.ToUpperInvariant());
                         options.OAuthAppName("Swagger Client");
-                        options.OAuthClientId($"api://{clientId}");
+                        options.OAuthClientId(clientId);
                         options.OAuthUseBasicAuthenticationWithAccessCodeGrant();
                         options.OAuthAdditionalQueryStringParams(new Dictionary<string, string> {
                                 { "scope", $"https://{clientId}/.default" },
                                 { "nonce", Guid.NewGuid().ToString() },
-                                { "resource", $"api://{clientId}" }
+                                { "resource", clientId }
                             });
                     }
                 });
