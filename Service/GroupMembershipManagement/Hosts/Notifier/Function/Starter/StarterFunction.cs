@@ -4,6 +4,7 @@
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Azure.Core;
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -23,11 +24,13 @@ namespace Hosts.Notifier
 
         [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
-            //[HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestMessage req,
-            [TimerTrigger("%notifierSchedule%", RunOnStartup = true)] TimerInfo myTimer,
+            [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestMessage req,
             [DurableClient] IDurableOrchestrationClient starter)
         {
             Console.Write("Hello, World.");
+            var content = await req.Content.ReadAsStringAsync();
+            Console.WriteLine(content);
+
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
 
