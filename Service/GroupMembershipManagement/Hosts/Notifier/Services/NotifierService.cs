@@ -31,19 +31,23 @@ namespace Services
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
         }
 
-        public async Task SendEmailAsync(string toEmailAddress)
+        public async Task SendEmailAsync(string recipientAddresses)
         {
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sending email to recipient addresses." });
+
             var message = new EmailMessage
             {
                 Subject = "TestSubject",
                 Content = "TestContent",
                 SenderAddress = _emailSenderAndRecipients.SenderAddress,
                 SenderPassword = _emailSenderAndRecipients.SenderPassword,
-                ToEmailAddresses = toEmailAddress,
+                ToEmailAddresses = recipientAddresses,
                 CcEmailAddresses = _emailSenderAndRecipients.SupportEmailAddresses,
             };
             
             await _mailRepository.SendMailAsync(message, null);
+
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sent email to recipient addresses." });
         }
 
     }
