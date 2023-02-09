@@ -35,7 +35,10 @@ namespace Hosts.Notifier
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
-            await context.CallActivityAsync(nameof(SendNotificationFunction), "abgonz@microsoft.com");
+            var request = context.GetInput<NotifierRequest>();
+            var recipientAddresses = request.RecipientAddresses;
+
+            await context.CallActivityAsync(nameof(SendNotificationFunction), recipientAddresses);
 
             await context.CallActivityAsync(nameof(LoggerFunction),
                 new LoggerRequest

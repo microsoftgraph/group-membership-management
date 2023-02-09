@@ -13,6 +13,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Azure.Identity;
 using Azure.Monitor.Query;
+using Common.DependencyInjection;
+using DIConcreteTypes;
+using Microsoft.Graph;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 
@@ -44,7 +47,12 @@ namespace Hosts.Notifier
                 return notifierConfig;
             });
 
-            builder.Services.AddScoped<INotifierService>(services =>
+            builder.Services.AddSingleton<IKeyVaultSecret<INotifierService>>(services => new KeyVaultSecret<INotifierService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
+            .AddSingleton<IGraphServiceClient>((services) =>
+            {
+                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
+            })
+            .AddScoped<INotifierService>(services =>
             {
                 return new NotifierService(
                     services.GetService<ILoggingRepository>(),
