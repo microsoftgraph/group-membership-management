@@ -82,7 +82,9 @@ stages:
     keyVaultReaders: $(keyVaultReaders_nonprod)
     location: $(location)
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-int'
-    dependsOn: Build_Functions
+    dependsOn:
+      - Build_Functions
+      - Build_WebAPI
     stageName: 'NonProd_int'
     functionApps:
     - function:
@@ -130,7 +132,9 @@ stages:
     keyVaultReaders: $(keyVaultReaders_nonprod)
     location: $(location)
     serviceConnection: '$(SolutionAbbreviation)-serviceconnection-ua'
-    dependsOn: Build_Functions
+    dependsOn:
+      - Build_Functions
+      - Build_WebAPI
     stageName: 'NonProd_ua'
     functionApps:
     - function:

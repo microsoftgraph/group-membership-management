@@ -63,18 +63,7 @@ namespace WebApi
             builder.Services.AddSwaggerGen(options =>
             {
                 // Enabled OAuth security in Swagger
-                options.AddSecurityRequirement(new OpenApiSecurityRequirement
-                    {
-                        {
-                            new OpenApiSecurityScheme
-                            {
-                                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "oauth2" }
-                            },
-                            new[] { "user_impersonation" }
-                        }
-                    });
-
-                options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+                options.AddSecurityDefinition("WebApiAuth2", new OpenApiSecurityScheme
                 {
                     Type = SecuritySchemeType.OAuth2,
                     Flows = new OpenApiOAuthFlows
@@ -86,10 +75,24 @@ namespace WebApi
                         }
                     }
                 });
+
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                    {
+                        {
+                            new OpenApiSecurityScheme
+                            {
+                                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "WebApiAuth2" }
+                            },
+                            new[] { "user_impersonation" }
+                        }
+                    });
+
             });
 
             builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
             builder.Services.AddApplicationInsightsTelemetry();
+
+            MessageHandlerInjector.InjectMessageHandlers(builder);
 
             var app = builder.Build();
 
@@ -97,6 +100,8 @@ namespace WebApi
             if (app.Environment.IsDevelopment())
             {
                 IdentityModelEventSource.ShowPII = true;
+
+                app.UseDeveloperExceptionPage();
 
                 var apiVersionDescriptionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
                 app.UseSwagger();
