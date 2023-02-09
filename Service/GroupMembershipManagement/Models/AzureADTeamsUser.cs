@@ -12,7 +12,7 @@ namespace Models.Entities
     {
       public string TeamsId { get; set; }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
 		{
 			AzureADTeamsUser? castObj = obj as AzureADTeamsUser;
 			if (castObj is null) return false;
