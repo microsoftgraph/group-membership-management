@@ -24,6 +24,8 @@ namespace Repositories.TeamsChannel
 
             var members = await _graphServiceClient.Teams[groupId.ToString()].Channels[channelId].Members.Request().GetAsync();
 
+            await _logger.LogMessageAsync(new LogMessage { Message = $"Read {members.Count} Teams users from group {groupId}, channel {channelId}." });
+
             // x! uses the "null forgiving operator" to fix the nullable/non-nullable type mismatch https://stackoverflow.com/a/54724546
             // it's fine here because the where clause guarantees there's no nulls.
             toReturn.AddRange(members.CurrentPage.Select(ToTeamsUser).Where(x => x != null).Select(x => x!));
@@ -32,7 +34,10 @@ namespace Repositories.TeamsChannel
             {
                 members = await members.NextPageRequest.GetAsync();
                 toReturn.AddRange(members.CurrentPage.Select(ToTeamsUser).Where(x => x != null).Select(x => x!));
+                await _logger.LogMessageAsync(new LogMessage { Message = $"Read {members.Count} Teams users from group {groupId}, channel {channelId}." });
             }
+
+            await _logger.LogMessageAsync(new LogMessage { Message = $"Read a total of {toReturn.Count} Teams users from group {groupId}, channel {channelId}." });
 
             return toReturn;
         }
