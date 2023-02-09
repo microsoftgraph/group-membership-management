@@ -44,6 +44,14 @@ namespace Hosts.Notifier
                 return notifierConfig;
             });
 
+            builder.Services.AddScoped<INotifierService>(services =>
+            {
+                return new NotifierService(
+                    services.GetService<ILoggingRepository>(),
+                    services.GetService<IMailRepository>(),
+                    services.GetService<IEmailSenderRecipient>());
+            });
+
             builder.Services.AddHttpClient();
         }
     }

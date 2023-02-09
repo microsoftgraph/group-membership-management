@@ -23,20 +23,17 @@ namespace Hosts.Notifier
         }
 
         [FunctionName(nameof(StarterFunction))]
-        public async Task RunAsync(
+        public async Task<HttpResponseMessage> RunAsync(
             [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestMessage req,
             [DurableClient] IDurableOrchestrationClient starter)
         {
-            Console.Write("Hello, World.");
-            var content = await req.Content.ReadAsStringAsync();
-            Console.WriteLine(content);
-
-
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
 
             await starter.StartNewAsync(nameof(OrchestratorFunction), null);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
+
+            return req.CreateResponse(System.Net.HttpStatusCode.OK);
         }
     }
 }

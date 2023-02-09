@@ -10,5 +10,6 @@ namespace Services.Contracts
 {
     public interface INotifierService
     {
+        public Task SendEmailAsync(string toEmailAddress);
     }
 }
