@@ -6,6 +6,14 @@
     "logAnalyticsCustomerId": "",
     "logAnalyticsPrimarySharedKey": "",
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
-    "APPINSIGHTS_INSTRUMENTATIONKEY": ""
+    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+    "graphCredentials:ClientId": "",
+    "graphCredentials:ClientSecret": "",
+    "graphCredentials:KeyVaultName": "",
+    "graphCredentials:KeyVaultTenantId": "",
+    "graphCredentials:TenantId": "",
+    "senderAddress": "",
+    "senderPassword": "",
+    "supportEmailAddresses": ""
   }
 }
