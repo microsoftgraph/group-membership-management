@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Repositories.Mail\Repositories.Mail.csproj" />
     <ProjectReference Include="..\Services\Services.csproj" />
   </ItemGroup>
 

@@ -17,12 +17,33 @@ namespace Services
 {
     public class NotifierService : INotifierService
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly IMailRepository _mailRepository = null;
+        private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
 
         public NotifierService(
-            ILoggingRepository loggingRepository)
+            ILoggingRepository loggingRepository,
+            IMailRepository mailRepository,
+            IEmailSenderRecipient emailSenderAndRecipients)
         {
-            _loggingRepository = loggingRepository;
+            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
+            _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
+        }
+
+        public async Task SendEmailAsync(string toEmailAddress)
+        {
+            var message = new EmailMessage
+            {
+                Subject = "TestSubject",
+                Content = "TestContent",
+                SenderAddress = _emailSenderAndRecipients.SenderAddress,
+                SenderPassword = _emailSenderAndRecipients.SenderPassword,
+                ToEmailAddresses = toEmailAddress,
+                CcEmailAddresses = _emailSenderAndRecipients.SupportEmailAddresses,
+            };
+            
+            await _mailRepository.SendMailAsync(message, null);
         }
 
     }

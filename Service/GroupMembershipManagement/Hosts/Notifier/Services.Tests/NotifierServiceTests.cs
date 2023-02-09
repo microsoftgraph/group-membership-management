@@ -9,6 +9,7 @@ using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Repositories.Contracts.InjectConfig;
+using Repositories.Mail;
 using Services.Contracts;
 using Services.Tests.Mocks;
 using System;
@@ -28,15 +29,21 @@ namespace Services.Tests
     {
         private MockLoggingRepository _mockLoggingRepository = null;
         private Mock<LogsQueryClient> _logsQueryClient = new Mock<LogsQueryClient>();
+        private Mock<MailRepository> _mockMailRepository = null;
+        private Mock<IEmailSenderRecipient> _mailAddresses = null;
         private NotifierService _notifierService = null;
 
         [TestInitialize]
         public void InitializeTest()
         {
             _mockLoggingRepository = new MockLoggingRepository();
+            _mockMailRepository = new Mock<MailRepository>();
+            _mailAddresses = new Mock<IEmailSenderRecipient>();
 
             _notifierService = new NotifierService(
-                _mockLoggingRepository
+                _mockLoggingRepository,
+                _mockMailRepository.Object,
+                _mailAddresses.Object
             );
         }
 

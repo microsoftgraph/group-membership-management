@@ -35,7 +35,7 @@ namespace Hosts.Notifier
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
-            var orchestratorRequest = context.GetInput<OrchestratorRequest>();
+            await context.CallActivityAsync(nameof(SendNotificationFunction), "abgonz@microsoft.com");
 
             await context.CallActivityAsync(nameof(LoggerFunction),
                 new LoggerRequest
