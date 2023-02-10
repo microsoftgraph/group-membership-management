@@ -67,7 +67,7 @@ stages:
         coverageThreshold: 85
     - function:
         name: 'Notifier'
-        coverageThreshold: 0
+        coverageThreshold: 75
 
 - template: yaml/deploy-pipeline.yml
   parameters:
