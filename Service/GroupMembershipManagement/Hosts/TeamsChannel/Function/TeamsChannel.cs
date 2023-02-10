@@ -53,6 +53,7 @@ namespace Hosts.TeamsChannel
 
             // upload to blob storage
 
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uplading {users.Count} from {syncInfo.SyncJob.Query} to blob storage.", RunId = runId }, VerbosityLevel.DEBUG);
             var filename = await _teamsChannelService.UploadMembership(users, syncInfo, _isTeamsChannelDryRunEnabled);
 
             // make HTTP call
