@@ -1,8 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Models.Entities
+namespace Models
 {
     [ExcludeFromCodeCoverage]
 	public class AzureADUser : IAzureADObject, IEquatable<AzureADUser>

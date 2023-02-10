@@ -1,8 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using System;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Models.Entities
+namespace Models
 {
 	[ExcludeFromCodeCoverage]
 	public class AzureADGroup : IAzureADObject, IEquatable<AzureADGroup>

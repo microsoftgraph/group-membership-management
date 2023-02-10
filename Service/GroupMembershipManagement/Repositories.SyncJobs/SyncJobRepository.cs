@@ -4,7 +4,7 @@
 using Azure;
 using Azure.Data.Tables;
 using Entities;
-using Models.Entities;
+using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;

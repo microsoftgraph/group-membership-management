@@ -9,7 +9,7 @@ using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using Models.Entities;
+using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.ServiceBusTopics;

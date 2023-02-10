@@ -7,7 +7,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using Models.Entities;
+using Models;
 using Repositories.Contracts;
 using Repositories.Mocks;
 using Services.Tests.Mocks;

@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 using Entities;
 using Microsoft.Graph;
-using Models.Entities;
+using Models;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 

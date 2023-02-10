@@ -3,7 +3,7 @@
 using Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
-using Models.Entities;
+using Models;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;

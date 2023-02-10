@@ -3,7 +3,7 @@
 using Entities;
 using Entities.ServiceBus;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Models.Entities;
+using Models;
 using Newtonsoft.Json;
 using Services.Tests.Mocks;
 using System;

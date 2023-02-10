@@ -53,7 +53,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.GraphUsers.Tes
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.BlobStorage", "Repositories.BlobStorage\Repositories.BlobStorage.csproj", "{3B3732FE-07C6-439B-B2A4-EDADF2F07C39}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Models.Entities", "Models.Entities\Models.Entities.csproj", "{67134BF6-A485-456E-9AB1-67DB20EB85C6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Models", "Models\Models.csproj", "{33ADF87B-336E-4A24-8DBC-4A86471C0634}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -153,10 +153,10 @@ Global
 		{3B3732FE-07C6-439B-B2A4-EDADF2F07C39}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3B3732FE-07C6-439B-B2A4-EDADF2F07C39}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3B3732FE-07C6-439B-B2A4-EDADF2F07C39}.Release|Any CPU.Build.0 = Release|Any CPU
-		{67134BF6-A485-456E-9AB1-67DB20EB85C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{67134BF6-A485-456E-9AB1-67DB20EB85C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{67134BF6-A485-456E-9AB1-67DB20EB85C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{67134BF6-A485-456E-9AB1-67DB20EB85C6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33ADF87B-336E-4A24-8DBC-4A86471C0634}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33ADF87B-336E-4A24-8DBC-4A86471C0634}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33ADF87B-336E-4A24-8DBC-4A86471C0634}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33ADF87B-336E-4A24-8DBC-4A86471C0634}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

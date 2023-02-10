@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 using Azure;
 using Entities;
-using Models.Entities;
+using Models;
 using Repositories.Contracts;
 using Services.Entities;
 using System;

@@ -18,7 +18,6 @@
     <ProjectReference Include="..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj" />
     <ProjectReference Include="..\..\..\Entities\Entities.csproj" />
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
-    <ProjectReference Include="..\..\..\Models.Entities\Models.Entities.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Localization\Repositories.Localization.csproj" />

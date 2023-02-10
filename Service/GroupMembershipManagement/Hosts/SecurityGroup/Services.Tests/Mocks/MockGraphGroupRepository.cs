@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 using Entities;
 using Microsoft.Graph;
-using Models.Entities;
+using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;

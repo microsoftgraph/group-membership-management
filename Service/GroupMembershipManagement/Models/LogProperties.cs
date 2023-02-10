@@ -1,7 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-namespace Models.Entities
+using System.Collections.Generic;
+
+namespace Models
 {
     public class LogProperties
     {

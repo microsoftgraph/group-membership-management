@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 using Entities;
 using Microsoft.Graph;
-using Models.Entities;
+using Models;
 using Polly;
 using Repositories.Contracts;
 using Services.Contracts;

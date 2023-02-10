@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Models.Entities;
+using Models;
 using Repositories.Mocks;
 using Services.Contracts;
 using System;

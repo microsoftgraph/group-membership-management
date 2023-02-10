@@ -3,7 +3,7 @@
 
 using Entities;
 using Microsoft.Graph;
-using Models.Entities;
+using Models;
 using Newtonsoft.Json;
 using Polly;
 using Polly.Wrap;

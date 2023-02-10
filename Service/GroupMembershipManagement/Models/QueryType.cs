@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-namespace Models.Entities
+namespace Models
 {
     public enum QueryType
     {

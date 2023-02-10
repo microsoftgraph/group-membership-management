@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-namespace Models.Entities
+namespace Models
 {
-    public enum StorageType
+    public enum ResultStatus
     {
-        Table,
-        Blob
+        Success = 0,
+        Failure = 1
     }
 }

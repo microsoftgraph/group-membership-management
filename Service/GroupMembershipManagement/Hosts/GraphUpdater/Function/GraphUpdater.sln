@@ -40,7 +40,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Entities", "..\Ser
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.BlobStorage", "..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj", "{FFBFBD09-3D56-4A29-8AE4-2F9B472993B8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models.Entities", "..\..\..\Models.Entities\Models.Entities.csproj", "{24B08204-982E-46A2-8C8F-19330833E638}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\Models.csproj", "{91C43350-2026-49D8-A71F-9E98E87A82EC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -124,10 +124,10 @@ Global
 		{FFBFBD09-3D56-4A29-8AE4-2F9B472993B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FFBFBD09-3D56-4A29-8AE4-2F9B472993B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FFBFBD09-3D56-4A29-8AE4-2F9B472993B8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{24B08204-982E-46A2-8C8F-19330833E638}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{24B08204-982E-46A2-8C8F-19330833E638}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{24B08204-982E-46A2-8C8F-19330833E638}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{24B08204-982E-46A2-8C8F-19330833E638}.Release|Any CPU.Build.0 = Release|Any CPU
+		{91C43350-2026-49D8-A71F-9E98E87A82EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{91C43350-2026-49D8-A71F-9E98E87A82EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{91C43350-2026-49D8-A71F-9E98E87A82EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{91C43350-2026-49D8-A71F-9E98E87A82EC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

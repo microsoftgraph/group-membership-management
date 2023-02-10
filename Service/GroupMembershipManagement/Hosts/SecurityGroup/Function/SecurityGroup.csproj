@@ -15,7 +15,6 @@
     <ProjectReference Include="..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj" />
     <ProjectReference Include="..\..\..\DIConcreteTypes\DIConcreteTypes.csproj" />
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
-    <ProjectReference Include="..\..\..\NewEntities\NewEntities.csproj" />
     <ProjectReference Include="..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />

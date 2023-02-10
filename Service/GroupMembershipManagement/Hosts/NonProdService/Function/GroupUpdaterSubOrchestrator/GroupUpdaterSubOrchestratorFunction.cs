@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System;
 using Microsoft.ApplicationInsights;
 using Repositories.Contracts;
-using Models.Entities;
+using Models;
 
 namespace Hosts.NonProdService
 {
