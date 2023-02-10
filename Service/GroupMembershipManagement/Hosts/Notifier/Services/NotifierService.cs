@@ -37,8 +37,8 @@ namespace Services
 
             var message = new EmailMessage
             {
-                Subject = "TestSubject",
-                Content = "TestContent",
+                Subject = "Test Subject",
+                Content = "Test Content",
                 SenderAddress = _emailSenderAndRecipients.SenderAddress,
                 SenderPassword = _emailSenderAndRecipients.SenderPassword,
                 ToEmailAddresses = recipientAddresses,

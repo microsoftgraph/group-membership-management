@@ -226,14 +226,6 @@ param appConfigurationKeyData array = [
     }
   }
   {
-    key: 'Notifier:NotifierConfiguration'
-    value: ''
-    contentType: 'string'
-    tag: {
-      tag1: 'Notifier'
-    }
-  }
-  {
     key: 'GMM:LearnMoreUrl'
     value: 'http://learn-more-about-gmm-url.com'
     contentType: 'string'

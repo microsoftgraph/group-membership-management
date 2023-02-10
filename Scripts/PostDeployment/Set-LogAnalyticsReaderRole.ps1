@@ -34,7 +34,7 @@ function Set-LogAnalyticsReaderRole
 		[string] $ErrorActionPreference = $Stop
 	)
 
-	$functionApps = @("JobScheduler", "Notifier")
+	$functionApps = @("JobScheduler")
 
 	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
 	$logAnalyticsWorkspaceResourceName = $resourceGroupName

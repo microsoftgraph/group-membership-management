@@ -27,7 +27,6 @@ namespace Services
         public async Task RunAsync()
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Application service run async." });
-
         }
 
     }

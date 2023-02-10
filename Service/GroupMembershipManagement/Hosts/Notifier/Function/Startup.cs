@@ -31,22 +31,6 @@ namespace Hosts.Notifier
         {
             base.Configure(builder);
 
-            builder.Services.AddOptions<NotifierConfigString>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                if (!string.IsNullOrEmpty(NotifierConfigSettingName))
-                {
-                    settings.Value = configuration[NotifierConfigSettingName];
-                }
-            });
-
-            builder.Services.AddScoped<INotifierConfig>(services =>
-            {
-                var jsonString = services.GetService<IOptions<NotifierConfigString>>().Value.Value;
-                var notifierConfig = JsonConvert.DeserializeObject<NotifierConfig>(jsonString);
-                notifierConfig.WorkspaceId = GetValueOrThrow("logAnalyticsCustomerId");
-                return notifierConfig;
-            });
-
             builder.Services.AddSingleton<IKeyVaultSecret<INotifierService>>(services => new KeyVaultSecret<INotifierService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
             .AddSingleton<IGraphServiceClient>((services) =>
             {
