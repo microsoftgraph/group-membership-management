@@ -26,14 +26,14 @@ namespace Hosts.TeamsChannel
         private readonly ILoggingRepository _loggingRepository;
         private readonly ISyncJobRepository _syncJobRepository;
         private readonly ITeamsChannelService _teamsChannelService;
-        private readonly bool _isTeamsChannelEnabled;
+        private readonly bool _isTeamsChannelDryRunEnabled;
 
         public TeamsChannel(ILoggingRepository loggingRepository, ISyncJobRepository syncJobRepository, ITeamsChannelService teamsChannelService, IDryRunValue dryRun)
         {
             _loggingRepository = loggingRepository;
             _syncJobRepository = syncJobRepository;
             _teamsChannelService = teamsChannelService;
-            _isTeamsChannelEnabled = dryRun.DryRunEnabled;
+            _isTeamsChannelDryRunEnabled = dryRun.DryRunEnabled;
 
         }
 
@@ -50,6 +50,12 @@ namespace Hosts.TeamsChannel
 
             var users = await _teamsChannelService.GetUsersFromTeam(GetGroupInfo(message));
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count()} from {syncInfo.SyncJob.Query}.", RunId = runId }, VerbosityLevel.DEBUG);
+
+            // upload to blob storage
+
+            var filename = await _teamsChannelService.UploadMembership(users, syncInfo, _isTeamsChannelDryRunEnabled);
+
+            // make HTTP call
 
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = "TeamsChannel finished.", RunId = runId }, VerbosityLevel.DEBUG);

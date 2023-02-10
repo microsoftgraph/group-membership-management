@@ -16,7 +16,7 @@ namespace Repositories.TeamsChannel
             _graphServiceClient = graphServiceClient;
         }
 
-        public async Task<IEnumerable<AzureADTeamsUser>> ReadUsersFromChannel(AzureADTeamsChannel teamsChannel, Guid runId)
+        public async Task<List<AzureADTeamsUser>> ReadUsersFromChannel(AzureADTeamsChannel teamsChannel, Guid runId)
         {
             var groupId = teamsChannel.ObjectId;
             var channelId = teamsChannel.ChannelId;
