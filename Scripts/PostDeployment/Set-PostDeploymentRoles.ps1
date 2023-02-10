@@ -31,11 +31,16 @@ function Set-PostDeploymentRoles {
     )
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
-    . ($scriptsDirectory + '\PostDeployment\Set-StorageAccountContainerManagedIdentityRoles.ps1')
 
+    . ($scriptsDirectory + '\PostDeployment\Set-StorageAccountContainerManagedIdentityRoles.ps1')
     Set-StorageAccountContainerManagedIdentityRoles	-SolutionAbbreviation $SolutionAbbreviation `
                                                     -EnvironmentAbbreviation $EnvironmentAbbreviation `
                                                     -Verbose
+
+    . ($scriptsDirectory + '\PostDeployment\Set-KeyVaultSecretsUserRoles.ps1')
+    Set-KeyVaultSecretsUserRoles	-SolutionAbbreviation $SolutionAbbreviation `
+                                    -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                    -Verbose
 
     . ($scriptsDirectory + '\PostDeployment\Set-AppConfigurationManagedIdentityRoles.ps1')
     Set-AppConfigurationManagedIdentityRoles    -SolutionAbbreviation $SolutionAbbreviation `
