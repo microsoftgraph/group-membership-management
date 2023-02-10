@@ -13,6 +13,7 @@
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
     <ProjectReference Include="..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj" />
     <ProjectReference Include="..\Services.Contracts\TeamsChannel.Service.Contracts.csproj" />
+    <ProjectReference Include="..\Services\TeamsChannel.Service\TeamsChannel.Service.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">

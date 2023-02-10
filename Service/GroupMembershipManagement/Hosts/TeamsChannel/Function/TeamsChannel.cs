@@ -17,6 +17,7 @@ using TeamsChannel.Service.Contracts;
 using Models.Entities;
 using Newtonsoft.Json.Linq;
 using System.Linq;
+using TeamsChannel.Service;
 
 namespace Hosts.TeamsChannel
 {
@@ -47,7 +48,7 @@ namespace Hosts.TeamsChannel
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"TeamsChannel recieved a message. Query: {syncInfo.SyncJob.Query}.", RunId = runId }, VerbosityLevel.DEBUG);
 
-            var users = await _teamsChannelService.GetUsersFromTeam(GetChannelToRead(syncInfo), runId);
+            var users = await _teamsChannelService.GetUsersFromTeam(GetGroupInfo(message));
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count()} from {syncInfo.SyncJob.Query}.", RunId = runId }, VerbosityLevel.DEBUG);
 
 
@@ -66,26 +67,6 @@ namespace Hosts.TeamsChannel
             };
         }
 
-        private AzureADTeamsChannel GetChannelToRead(ChannelSyncInfo syncInfo)
-        {
-            var queryArray = JArray.Parse(syncInfo.SyncJob.Query);
-            var thisPart = queryArray[syncInfo.CurrentPart - 1] as JObject;
-            return new AzureADTeamsChannel
-            {
-                ObjectId = thisPart["group"].Value<Guid>(),
-                ChannelId = thisPart["channel"].Value<string>()
-            };
 
-        }
-
-        // this should be easy to turn into one of those durable function Request objects later
-        private class ChannelSyncInfo
-        {
-            public SyncJob SyncJob { get; init; }
-            public int TotalParts { get; init; }
-            public int CurrentPart { get; init; }
-            public bool Exclusionary { get; init; }
-            public bool IsDestinationPart { get; init; }
-        }
     }
 }

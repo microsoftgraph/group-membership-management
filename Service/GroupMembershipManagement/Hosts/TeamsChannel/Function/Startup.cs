@@ -7,11 +7,14 @@ using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
+using Repositories.TeamsChannel;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TeamsChannel.Service;
+using TeamsChannel.Service.Contracts;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
 [assembly: FunctionsStartup(typeof(Hosts.TeamsChannel.Startup))]
@@ -38,7 +41,9 @@ namespace Hosts.TeamsChannel
                 var containerName = configuration["membershipContainerName"];
 
                 return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
-            });
+            })
+            .AddTransient<ITeamsChannelService, TeamsChannelService>()
+            .AddTransient<ITeamsChannelRepository, TeamsChannelRepository>();
         }
     }
 }
