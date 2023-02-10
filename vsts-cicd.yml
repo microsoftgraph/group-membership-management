@@ -108,8 +108,6 @@ stages:
     - function:
        name: 'JobScheduler'
     - function:
-       name: 'Notifier'
-    - function:
        name: 'JobTrigger'
        dependsOn:
        - 'SecurityGroup'
@@ -156,8 +154,6 @@ stages:
     - function:
        name: 'JobScheduler'
     - function:
-       name: 'Notifier'
-    - function:
        name: 'JobTrigger'
        dependsOn:
        - 'SecurityGroup'
@@ -202,8 +198,6 @@ stages:
        name: 'AzureMaintenance'
     - function:
        name: 'JobScheduler'
-    - function:
-       name: 'Notifier'
     - function:
        name: 'JobTrigger'
        dependsOn:

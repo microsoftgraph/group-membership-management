@@ -19,12 +19,10 @@ namespace Hosts.Notifier
 {
     public class PipelineInvocationStarterFunction
     {
-        private INotifierConfig _notifierConfig;
         private readonly ILoggingRepository _loggingRepository = null;
 
-        public PipelineInvocationStarterFunction(INotifierConfig notifierConfig, ILoggingRepository loggingRepository)
+        public PipelineInvocationStarterFunction(ILoggingRepository loggingRepository)
         {
-            _notifierConfig = notifierConfig;
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 

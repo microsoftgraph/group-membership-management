@@ -14,11 +14,8 @@ namespace Hosts.Notifier
 {
     public class OrchestratorFunction
     {
-        private readonly INotifierConfig _notifierConfig;
-
-        public OrchestratorFunction(INotifierConfig notifierConfig)
+        public OrchestratorFunction()
         {
-            _notifierConfig = notifierConfig ?? throw new ArgumentNullException(nameof(notifierConfig));
         }
 
         [FunctionName(nameof(OrchestratorFunction))]

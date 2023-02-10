@@ -15,8 +15,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Logging", "..\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services", "..\Services\Services.csproj", "{E884F60C-224D-48B1-B070-D8CEABBA1C53}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Entities", "..\Services.Entities\Services.Entities.csproj", "{BAFCE8DB-C5B9-4F8B-A610-ACD9D6E2335B}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Tests", "..\Services.Tests\Services.Tests.csproj", "{08C337C1-DE5C-4942-9E6E-6E752B8474F5}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Notifier", "Notifier.csproj", "{10C89227-9228-4E8C-8988-CBDE10FE75B1}"
