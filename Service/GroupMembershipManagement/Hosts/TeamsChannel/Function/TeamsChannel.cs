@@ -49,7 +49,7 @@ namespace Hosts.TeamsChannel
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"TeamsChannel recieved a message. Query: {syncInfo.SyncJob.Query}.", RunId = runId }, VerbosityLevel.DEBUG);
 
             var users = await _teamsChannelService.GetUsersFromTeam(GetGroupInfo(message));
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count()} from {syncInfo.SyncJob.Query}.", RunId = runId }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count} from {syncInfo.SyncJob.Query}.", RunId = runId }, VerbosityLevel.DEBUG);
 
             // upload to blob storage
 
