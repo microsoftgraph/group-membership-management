@@ -103,7 +103,7 @@ namespace Services
                 AdditionalContentParams = additionalContentParameters
             };
 
-            await _mailRepository.SendMailAsync(message, job.RunId, true, templateDirectory);
+            await _mailRepository.SendMailAsync(message, job.RunId, templateDirectory);
         }
 
         public async Task UpdateSyncJobStatusAsync(SyncStatus status, SyncJob job)
@@ -160,7 +160,7 @@ namespace Services
                         ToEmailAddresses = job.Requestor,
                         CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
                         AdditionalContentParams = new[] { job.TargetOfficeGroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses }
-                    }, job.RunId, true, templateDirectory);
+                    }, job.RunId, templateDirectory);
                     return false;
                 }
 

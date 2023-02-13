@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Entities;
 using Models;
+using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;

@@ -265,7 +265,7 @@ namespace Services.Tests
         public async Task VerifyInitialSyncEmailNotificationIsSent()
         {
             var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), true, ""));
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
 
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
@@ -300,14 +300,14 @@ namespace Services.Tests
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
-            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), true, ""), Times.Exactly(validStartDateJobs));
+            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""), Times.Exactly(validStartDateJobs));
         }
 
         [TestMethod]
         public async Task VerifyJobsAreProcessedWithMissingMailSendPermission()
         {
             var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), true, ""));
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
 
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
@@ -343,7 +343,7 @@ namespace Services.Tests
         public async Task VerifyJobsAreProcessedWithMissingMailLicenses()
         {
             var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), true, ""));
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
 
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
@@ -378,7 +378,7 @@ namespace Services.Tests
         public async Task VerifyJobsAreProcessedMailingExceptions()
         {
             var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), true, ""));
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
 
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,

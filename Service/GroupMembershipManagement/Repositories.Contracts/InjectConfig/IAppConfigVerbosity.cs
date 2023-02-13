@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-namespace Repositories.Contracts
+namespace Repositories.Contracts.InjectConfig
 {
     public enum VerbosityLevel
     {
@@ -12,5 +12,5 @@ namespace Repositories.Contracts
     public interface IAppConfigVerbosity
     {
         public VerbosityLevel Verbosity { get; }
-	}
+    }
 }

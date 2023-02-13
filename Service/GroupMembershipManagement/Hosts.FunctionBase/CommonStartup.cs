@@ -1,13 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure.Identity;
 using Common.DependencyInjection;
 using DIConcreteTypes;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
-using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -117,11 +116,23 @@ namespace Hosts.FunctionBase
                     creds.Value.SupportEmailAddresses);
             });
 
+            builder.Services.AddOptions<MailAdaptiveCardConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.IsAdaptiveCardEnabled = configuration.GetValue<bool>("Mail:IsAdaptiveCardEnabled");
+            });
+            builder.Services.AddSingleton<IMailAdaptiveCardConfig>(services =>
+            {
+                var creds = services.GetService<IOptions<MailAdaptiveCardConfig>>();
+                return new MailAdaptiveCardConfig(creds.Value.IsAdaptiveCardEnabled);
+            });
+
             builder.Services.AddSingleton<IMailRepository>(services =>
-                new MailRepository(new GraphServiceClient(
-                                                    FunctionAppDI.CreateMailAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value)),
-                                                    services.GetService<ILocalizationRepository>(),
-                                                    services.GetService<ILoggingRepository>()));
+                new MailRepository(
+                    new GraphServiceClient(
+                        FunctionAppDI.CreateMailAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value)),
+                        services.GetService<IMailAdaptiveCardConfig>(),
+                        services.GetService<ILocalizationRepository>(),
+                        services.GetService<ILoggingRepository>()));
 
             builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {

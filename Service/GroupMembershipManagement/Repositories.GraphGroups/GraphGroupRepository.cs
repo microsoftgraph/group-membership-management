@@ -26,6 +26,7 @@ using System.Web;
 using Group = Microsoft.Graph.Group;
 using Metric = Services.Entities.Metric;
 using Models;
+using Repositories.Contracts.InjectConfig;
 
 namespace Repositories.GraphGroups
 {

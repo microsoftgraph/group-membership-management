@@ -80,7 +80,7 @@ namespace Services.Tests
                         _syncStatus = updateRequest.Status;
                     });
 
-            _context.Setup(x => x.CallActivityAsync<bool>(It.Is<string>(x => x == nameof(GroupVerifierFunction)), It.IsAny<SyncJob>()))
+            _context.Setup(x => x.CallActivityAsync<bool>(It.Is<string>(x => x == nameof(GroupVerifierFunction)), It.IsAny<GroupVerifierRequest>()))
                     .Returns(async () => await CallGroupVerifierFunctionAsync());
 
             _context.Setup(x => x.CallActivityAsync<SyncJobGroup>(It.Is<string>(x => x == nameof(GroupNameReaderFunction)), It.IsAny<SyncJob>()))
@@ -231,11 +231,11 @@ namespace Services.Tests
                     });
 
             _context.Setup(x => x.CallActivityAsync<int>(nameof(JobTrackerFunction), It.IsAny<SyncJob>())).ReturnsAsync(2);
-            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+            var suborchestrator = new SubOrchestratorFunction(_loggingRespository.Object,
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => !m.Message.Contains("JSON query is not valid") && !m.Message.Contains("Job query is empty for job")),
@@ -352,7 +352,7 @@ namespace Services.Tests
                                         })
                                         .ReturnsAsync(() => _frequency);
 
-            _context.Setup(x => x.CallActivityAsync<bool>(It.Is<string>(x => x == nameof(GroupVerifierFunction)), It.IsAny<SyncJob>()))
+            _context.Setup(x => x.CallActivityAsync<bool>(It.Is<string>(x => x == nameof(GroupVerifierFunction)), It.IsAny<GroupVerifierRequest>()))
                     .ReturnsAsync(false);
 
             var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
@@ -403,7 +403,12 @@ namespace Services.Tests
         private async Task<bool> CallGroupVerifierFunctionAsync()
         {
             var groupVerifierFunction = new GroupVerifierFunction(_loggingRespository.Object, _jobTriggerService.Object, _telemetryClient);
-            return await groupVerifierFunction.VerifyGroupAsync(_syncJob);
+            var request = new GroupVerifierRequest()
+            {
+                SyncJob = _syncJob,
+                FunctionDirectory = ""
+            };
+            return await groupVerifierFunction.VerifyGroupAsync(request);
         }
 
         private async Task<SyncJobGroup> CallGroupNameReaderFunctionAsync()

@@ -5,6 +5,7 @@ using Microsoft.Graph;
 using Microsoft.Graph.Auth;
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,24 +13,25 @@ using System.Linq;
 using System.Security;
 using System.Text;
 using System.Threading.Tasks;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Repositories.Mail
 {
     public class MailRepository : IMailRepository
     {
+        private readonly IMailAdaptiveCardConfig _mailAdaptiveCardConfig;
         private readonly ILocalizationRepository _localizationRepository;
         private readonly IGraphServiceClient _graphClient;
 		private readonly ILoggingRepository _loggingRepository;
 
-		public MailRepository(IGraphServiceClient graphClient, ILocalizationRepository localizationRepository, ILoggingRepository loggingRepository)
+		public MailRepository(IGraphServiceClient graphClient, IMailAdaptiveCardConfig mailAdaptiveCardConfig, ILocalizationRepository localizationRepository, ILoggingRepository loggingRepository)
         {
-            _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
+            _mailAdaptiveCardConfig = mailAdaptiveCardConfig ?? throw new ArgumentNullException(nameof(mailAdaptiveCardConfig));
+            _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        public async Task SendMailAsync(EmailMessage emailMessage, Guid? runId, bool useAdaptiveCard = true, string templateDirectory = "")
+        public async Task SendMailAsync(EmailMessage emailMessage, Guid? runId, string adaptiveCardTemplateDirectory = "")
         {
             if (emailMessage is null)
             {
@@ -38,9 +40,9 @@ namespace Repositories.Mail
 
             Message message;
 
-            if (useAdaptiveCard)
+            if (_mailAdaptiveCardConfig.IsAdaptiveCardEnabled)
             {
-                message = GetAdaptiveCardMessage(emailMessage, templateDirectory);
+                message = GetAdaptiveCardMessage(emailMessage, adaptiveCardTemplateDirectory);
             }
             else
             {

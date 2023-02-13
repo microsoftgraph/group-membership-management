@@ -1,7 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-namespace Repositories.Contracts
+using Repositories.Contracts.InjectConfig;
+
+namespace DIConcreteTypes
 {
     public class AppConfigVerbosity: IAppConfigVerbosity
     {
