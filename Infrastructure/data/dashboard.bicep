@@ -1589,7 +1589,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
             position: {
               x: 11
               y: 12
-              colSpan: 3
+              colSpan: 6
               rowSpan: 2
             }
             metadata: {
@@ -1650,7 +1650,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartTitle'
-                  value: '# of Jobs Completed'
+                  value: 'Sync Job Reliability %'
                   isOptional: true
                 }
                 {
@@ -1675,12 +1675,15 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "IdleJobsTracker"\n| order by timestamp desc\n| project timestamp,\n          Id = tostring(customDimensions["TargetOfficeGroupId"]),\n          Frequency = toint(customDimensions["Frequency"]),\n          JobStarted = toint(customDimensions["JobStarted"])\n| summarize StartReliabilityPercentage = (toreal(countif(JobStarted >= 1)) / sum(Frequency)) * 100\n\n'
+                  GridColumnsWidth: {
+                    ReliabilityPercentage: '458.993px'
+                  }
+                  Query: 'let P1 = toscalar(\n    customEvents\n\t| where name == "IdleJobsTracker"\n\t| order by timestamp desc\n\t| project timestamp,\n\t\t\t  Id = tostring(customDimensions["TargetOfficeGroupId"]),\n\t\t\t  Frequency = toint(customDimensions["Frequency"]),\n\t\t\t  JobStarted = toint(customDimensions["JobStarted"])\n\t| summarize StartReliabilityPercentage = (toreal(countif(JobStarted >= 1)) / sum(Frequency)) * 100\n);\nlet P2 = toscalar(\n    customEvents\n\t| where name == "InProgressJobsTracker"\n\t| order by timestamp desc\n\t| project timestamp,\n\t\tId = tostring(customDimensions["TargetOfficeGroupId"]),\n\t\tFrequency = toint(customDimensions["Frequency"]),\n\t\tRunId = toguid(customDimensions["RunId"])\n\t| where Frequency > 0\n\t| summarize max(Frequency) by RunId\n\t| join kind=rightouter (\n\t\tcustomEvents\n\t\t| where name == "NumberOfJobsStarted"\n\t\t| order by timestamp desc\n\t\t| project timestamp,\n\t\t\tJobStartedRunId = toguid(customDimensions["RunId"])\n\t\t| distinct JobStartedRunId)\n\t\ton $left.RunId == $right.JobStartedRunId\n\t| summarize\n\t\tCountOfJobsThatDidNotGoOverPeriod = (toreal(countif(isnull(RunId)))),\n\t\tCountOfAllExpectedJobs =  (countif(JobStartedRunId != "") + sum(max_Frequency) - countif(max_Frequency > 0))\n\t| project InProgressReliabilityPercentage = CountOfJobsThatDidNotGoOverPeriod / CountOfAllExpectedJobs * 100\n);\nprint ReliabilityPercentage = (P1 + P2) / 2\n'
                   ControlType: 'AnalyticsGrid'
                 }
               }
               partHeader: {
-                title: 'Sync Job Start Reliability %'
+                title: 'Sync Job Reliability %'
                 subtitle: resourceGroup
               }
             }
@@ -4626,106 +4629,6 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     position: 'Bottom'
                   }
                 }
-              }
-            }
-          }
-          '48': {
-            position: {
-              x: 14
-              y: 12
-              colSpan: 3
-              rowSpan: 2
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'resourceTypeMode'
-                  isOptional: true
-                }
-                {
-                  name: 'ComponentId'
-                  isOptional: true
-                }
-                {
-                  name: 'Scope'
-                  value: {
-                    resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
-                    ]
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'PartId'
-                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
-                  isOptional: true
-                }
-                {
-                  name: 'Version'
-                  value: '2.0'
-                  isOptional: true
-                }
-                {
-                  name: 'TimeRange'
-                  value: 'P1D'
-                  isOptional: true
-                }
-                {
-                  name: 'DashboardId'
-                  isOptional: true
-                }
-                {
-                  name: 'DraftRequestParameters'
-                  isOptional: true
-                }
-                {
-                  name: 'Query'
-                  value: ''
-                  isOptional: true
-                }
-                {
-                  name: 'ControlType'
-                  value: 'AnalyticsGrid'
-                  isOptional: true
-                }
-                {
-                  name: 'SpecificChart'
-                  isOptional: true
-                }
-                {
-                  name: 'PartTitle'
-                  value: '# of Jobs Completed'
-                  isOptional: true
-                }
-                {
-                  name: 'PartSubTitle'
-                  value: resourceGroup
-                  isOptional: true
-                }
-                {
-                  name: 'Dimensions'
-                  isOptional: true
-                }
-                {
-                  name: 'LegendOptions'
-                  isOptional: true
-                }
-                {
-                  name: 'IsQueryContainTimeRange'
-                  value: false
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
-              settings: {
-                content: {
-                  Query: 'customEvents\n| where name == "InProgressJobsTracker"\n| order by timestamp desc\n| project timestamp,\n    Id = tostring(customDimensions["TargetOfficeGroupId"]),\n    Frequency = toint(customDimensions["Frequency"]),\n    RunId = toguid(customDimensions["RunId"])\n| where Frequency > 0\n| summarize max(Frequency) by RunId\n| join kind=rightouter (\n    customEvents\n    | where name == "NumberOfJobsStarted"\n    | order by timestamp desc\n    | project timestamp,\n        JobStartedRunId = toguid(customDimensions["RunId"])\n    | distinct JobStartedRunId)\n    on $left.RunId == $right.JobStartedRunId\n| summarize\n    CountOfJobsThatDidNotGoOverPeriod = (toreal(countif(isnull(RunId)))),\n    CountOfAllExpectedJobs =  (countif(JobStartedRunId != "") + sum(max_Frequency) - countif(max_Frequency > 0))\n| project InProgressReliabilityPercentage = CountOfJobsThatDidNotGoOverPeriod / CountOfAllExpectedJobs * 100'
-                  ControlType: 'AnalyticsGrid'
-                }
-              }
-              partHeader: {
-                title: 'Sync Job InProgress Reliability %'
-                subtitle: resourceGroup
               }
             }
           }
