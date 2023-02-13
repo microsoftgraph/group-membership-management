@@ -3978,7 +3978,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   GridColumnsWidth: {
                     Message: '379px'
                   }
-                  Query: 'ApplicationLog_CL\n| where (location_s == "GraphUpdater" and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress")\n| project TimeGenerated, Message, RunId_g\n| order by TimeGenerated desc'
+                  Query: 'ApplicationLog_CL\n| where (location_s == "GraphUpdater" and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress" and Message !has "StuckInProgress")\n| project TimeGenerated, Message, RunId_g\n| order by TimeGenerated desc'
                   PartTitle: 'Jobs marked as Error'
                 }
               }
