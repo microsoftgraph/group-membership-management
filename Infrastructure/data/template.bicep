@@ -233,6 +233,14 @@ param appConfigurationKeyData array = [
       tag1: 'GMM'
     }
   }
+  {
+    key: 'Mail:IsAdaptiveCardEnabled'
+    value: 'false'
+    contentType: 'bool'
+    tag: {
+      tag1: 'Mail'
+    }
+  }
 ]
 
 @description('Unique name within the resource group for the Action group.')
