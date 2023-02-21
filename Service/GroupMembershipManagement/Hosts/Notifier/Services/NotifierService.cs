@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Entities;
+using Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Repositories.Contracts;
@@ -11,7 +12,6 @@ using System.Linq;
 using Newtonsoft.Json;
 using Repositories.Contracts.InjectConfig;
 using Azure;
-using Models.Entities;
 
 namespace Services
 {
