@@ -5,7 +5,7 @@ using JobTrigger.Activity.EmailSender;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Models.Entities;
+using Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
@@ -138,8 +138,6 @@ namespace Hosts.JobTrigger
                                                             syncJob.Requestor
                                                     }
                                                 });
-
-            syncJob.LastSuccessfulStartTime = context.CurrentUtcDateTime;
 
             var canWriteToGroup = await context.CallActivityAsync<bool>(nameof(GroupVerifierFunction), syncJob);
 

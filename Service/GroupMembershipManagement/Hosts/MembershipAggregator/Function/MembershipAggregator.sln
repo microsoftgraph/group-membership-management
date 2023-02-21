@@ -25,7 +25,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Entities", "..\Ser
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.GraphAzureADGroups", "..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj", "{2D7DA9E0-600C-4FD3-A62B-409C80D5F859}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models.Entities", "..\..\..\Models.Entities\Models.Entities.csproj", "{791875B0-4DDC-432C-90B3-9B5BCAEAF8AC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\Models.csproj", "{19BF43FB-E8C1-4701-8F55-D73A5A1E9E5D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -77,10 +77,10 @@ Global
 		{2D7DA9E0-600C-4FD3-A62B-409C80D5F859}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2D7DA9E0-600C-4FD3-A62B-409C80D5F859}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2D7DA9E0-600C-4FD3-A62B-409C80D5F859}.Release|Any CPU.Build.0 = Release|Any CPU
-		{791875B0-4DDC-432C-90B3-9B5BCAEAF8AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{791875B0-4DDC-432C-90B3-9B5BCAEAF8AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{791875B0-4DDC-432C-90B3-9B5BCAEAF8AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{791875B0-4DDC-432C-90B3-9B5BCAEAF8AC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{19BF43FB-E8C1-4701-8F55-D73A5A1E9E5D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19BF43FB-E8C1-4701-8F55-D73A5A1E9E5D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19BF43FB-E8C1-4701-8F55-D73A5A1E9E5D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19BF43FB-E8C1-4701-8F55-D73A5A1E9E5D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

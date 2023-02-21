@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models.Entities;
+using Models;
 using System;
 using System.Collections.Generic;
 using System.Text;

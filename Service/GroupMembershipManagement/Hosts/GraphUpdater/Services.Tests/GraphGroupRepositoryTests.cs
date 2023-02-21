@@ -7,7 +7,7 @@ using Microsoft.Graph;
 using Microsoft.Graph.Core.Requests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using Models.Entities;
+using Models;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.GraphGroups;

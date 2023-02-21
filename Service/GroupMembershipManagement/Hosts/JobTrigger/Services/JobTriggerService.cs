@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
-using Models.Entities;
+using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -115,6 +115,8 @@ namespace Services
                     RunId = job.RunId,
                     Message = $"Starting job."
                 });
+
+                job.LastSuccessfulStartTime = DateTime.UtcNow;
             }
 
             if (status == SyncStatus.StuckInProgress)
@@ -126,6 +128,7 @@ namespace Services
                 });
 
                 job.LastRunTime = DateTime.UtcNow;
+                job.LastSuccessfulStartTime = DateTime.UtcNow;
             }
 
             await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, status);

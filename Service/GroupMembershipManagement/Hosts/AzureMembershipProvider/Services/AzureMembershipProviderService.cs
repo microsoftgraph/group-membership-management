@@ -3,7 +3,7 @@
 using Entities;
 using Entities.ServiceBus;
 using Microsoft.Graph;
-using Models.Entities;
+using Models;
 using Newtonsoft.Json;
 using Polly.Retry;
 using Repositories.Contracts;

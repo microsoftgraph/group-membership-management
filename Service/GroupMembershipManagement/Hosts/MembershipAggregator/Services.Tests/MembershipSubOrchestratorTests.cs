@@ -8,7 +8,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using Models.Entities;
+using Models;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -292,6 +292,22 @@ namespace Services.Tests
                                             It.IsAny<string[]>()
                                         )
                                             , Times.Never());
+        }
+
+        [TestMethod]
+        public async Task IgnoreThresholdOnceTestAsync()
+        {
+            var currentThresholdViolations = 1;
+            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);
+            _numberOfUsersForDestinationPart = 5;
+            _syncJob.ThresholdViolations = currentThresholdViolations;
+            _syncJob.IgnoreThresholdOnce = true;
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Going to sync the job")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
         }
 
         [TestMethod]

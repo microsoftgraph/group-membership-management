@@ -8,7 +8,7 @@ using Azure.Monitor.Query.Models;
 using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using Models.Entities;
+using Models;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Tests.Mocks;

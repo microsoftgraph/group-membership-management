@@ -12,7 +12,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Repositories.Mocks;
 using MockSyncJobRepository = Repositories.SyncJobs.Tests.MockSyncJobRepository;
-using Models.Entities;
+using Models;
 
 namespace Tests.Repositories
 {

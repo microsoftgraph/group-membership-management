@@ -8,7 +8,7 @@ using DIConcreteTypes;
 using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using Models.Entities;
+using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Entities.CustomExceptions;

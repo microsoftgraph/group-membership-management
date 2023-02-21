@@ -3,7 +3,7 @@
 using Entities;
 using Microsoft.Graph;
 using Microsoft.Graph.Auth;
-using Models.Entities;
+using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
