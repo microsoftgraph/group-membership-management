@@ -111,6 +111,8 @@ stages:
        name: 'JobTrigger'
        dependsOn:
        - 'SecurityGroup'
+    - function:
+       name: 'Notifier'
     condition: |
       and(
         succeeded('Build_Functions'),
@@ -157,6 +159,8 @@ stages:
        name: 'JobTrigger'
        dependsOn:
        - 'SecurityGroup'
+    - function:
+       name: 'Notifier'
     condition: |
       and(
           succeeded('Build_Functions'),
@@ -202,6 +206,8 @@ stages:
        name: 'JobTrigger'
        dependsOn:
        - 'SecurityGroup'
+    - function:
+       name: 'Notifier'
     condition: |
       and(
         succeeded('NonProd_ua'),
