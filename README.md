@@ -421,6 +421,10 @@ Please follow the steps in this documentation, which will ensure that the reques
 [SetSenderAddressForEmailNotification.md](/Service/GroupMembershipManagement/Repositories.Mail/Documentation/SetSenderAddressForEmailNotification.md)
 
 
+## Setup the Notifier
+
+Please follow the instructions in the [Notifier Setup](./Documentation/NotifierSetup.md) documentation.
+
 ## Create an Azure DevOps environment
 
 An environment is necessary to manage deployment approvals. To create the environment:
