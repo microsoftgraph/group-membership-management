@@ -8,9 +8,6 @@ Please read before proceeding:
 -   The tool interacts with Microsoft cloud using Graph APIs as a data source. The app needs to be onboarded and granted permissions by the customer tenant admin.
 -   The tool allows the user to specify: source security groups, the destination Microsoft 365 Group, frequency of syncs, and start date of sync.
 
-Limitations:
-- Note that this tool can not use on-premise mastered SGs as destination groups since we are not able to add GMM Graph application (see "Create `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` Azure Application" section.) as owner to such groups as the owner does not sync to AAD.
-
 <br>
 
 # Table of Contents
