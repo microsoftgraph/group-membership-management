@@ -133,7 +133,8 @@ namespace Hosts.FunctionBase
                         FunctionAppDI.CreateMailAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value)),
                         services.GetService<IMailAdaptiveCardConfig>(),
                         services.GetService<ILocalizationRepository>(),
-                        services.GetService<ILoggingRepository>()));
+                        services.GetService<ILoggingRepository>(),
+                        GetValueOrDefault("actionableEmailProviderId")));
 
             builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {

@@ -19,6 +19,7 @@
     "syncDisabledCCEmailAddresses": "",
     "supportEmailAddresses": "",
     "membershipStorageAccountName": "",
-    "membershipContainerName": ""
+    "membershipContainerName": "",
+    "actionableEmailProviderId": ""
   }
 }

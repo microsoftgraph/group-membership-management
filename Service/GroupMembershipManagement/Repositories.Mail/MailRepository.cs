@@ -22,13 +22,15 @@ namespace Repositories.Mail
         private readonly ILocalizationRepository _localizationRepository;
         private readonly IGraphServiceClient _graphClient;
 		private readonly ILoggingRepository _loggingRepository;
+        private readonly string _actionableEmailProviderId;
 
-		public MailRepository(IGraphServiceClient graphClient, IMailAdaptiveCardConfig mailAdaptiveCardConfig, ILocalizationRepository localizationRepository, ILoggingRepository loggingRepository)
+		public MailRepository(IGraphServiceClient graphClient, IMailAdaptiveCardConfig mailAdaptiveCardConfig, ILocalizationRepository localizationRepository, ILoggingRepository loggingRepository, string actionableEmailProviderId)
         {
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
             _mailAdaptiveCardConfig = mailAdaptiveCardConfig ?? throw new ArgumentNullException(nameof(mailAdaptiveCardConfig));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _actionableEmailProviderId = actionableEmailProviderId ?? throw new ArgumentNullException(nameof(actionableEmailProviderId));
         }
 
         public async Task SendMailAsync(EmailMessage emailMessage, Guid? runId, string adaptiveCardTemplateDirectory = "")
@@ -101,7 +103,7 @@ namespace Repositories.Mail
             string htmlContent = System.IO.File.ReadAllText(Path.Combine(templateDirectory, "Templates/DefaultCard.html"), Encoding.UTF8);
 
             string groupId = emailMessage?.AdditionalContentParams[0];
-            htmlContent = htmlContent.Replace("{0}", subjectContent).Replace("{1}", messageContent).Replace("{2}", groupId);
+            htmlContent = htmlContent.Replace("{0}", _actionableEmailProviderId).Replace("{1}", subjectContent).Replace("{2}", messageContent).Replace("{3}", groupId);
 
             var message = new Message
             {

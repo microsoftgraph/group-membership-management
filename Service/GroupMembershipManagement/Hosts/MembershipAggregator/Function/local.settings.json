@@ -21,7 +21,8 @@
     "senderPassword": "",
     "syncCompletedCCEmailAddresses": "",
     "syncDisabledCCEmailAddresses": "",
-    "supportEmailAddresses": ""
+    "supportEmailAddresses": "",
+    "actionableEmailProviderId": ""
   },
   "ConnectionStrings": {}
 }
