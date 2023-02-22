@@ -1,15 +1,10 @@
 # Notifier Setup
 
-The GMM Notifier uses adaptive cards to send Outlook Actionable Emails (OAM). OAM requires that an special id, called an `provider id`, be included in each adaptive card payload in order to validate the sender, content, and recipients of the message.
+The GMM Notifier uses adaptive cards to send Outlook Actionable Emails (OAM). OAM requires that a special id, called a `provider id`, be included in each adaptive card payload in order to validate the sender, content, and recipients of the message.
 
-The provider id is not a secret, since it is only one part of a multipart authorization scheme. The provider id is tied directly to a list of authorized senders, from which the email must be sent in order to be accepted.  Regardless, we will be treating it like a secret within GMM.
+If an actionable message is sent from an email address that is not part of the approved senders list, the adaptive card will not be rendered.
 
-These are the steps to procure, you must procure a `provider id` for your environment.
-
-## Prerequisites
-
-1. You should already have set up your pre-requisites Key Vault.
-2. You need a list of sender email addresses from which actionable emails will originate.
+These are the steps to procure a `provider id` for an environment.
 
 ## Create a Provider
 
