@@ -17,6 +17,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using Entities.Helpers;
+using Newtonsoft.Json;
+using SecurityGroup.SubOrchestrator;
 
 namespace Tests.Services
 {
@@ -116,7 +119,7 @@ namespace Tests.Services
                                         .ReturnsAsync(() => sourceGroup);
 
             _subOrchestratorResponseStatus = SyncStatus.InProgress;
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
                                         .ReturnsAsync(() =>
                                         {
                                             var users = new List<AzureADUser>();
@@ -125,7 +128,12 @@ namespace Tests.Services
                                                 users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                             }
 
-                                            return (users, _subOrchestratorResponseStatus);
+                                            return TextCompressor.Compress(JsonConvert.SerializeObject(new SubOrchestratorResponse
+                                            {
+                                                Users = users,
+                                                Status = _subOrchestratorResponseStatus
+                                            }));
+
                                         });
 
             string _filePath = null;
@@ -252,7 +260,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestUnhandledExceptionAsync()
         {
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
                                         .Throws<Exception>();
 
             var orchestratorFunction = new OrchestratorFunction(
@@ -287,7 +295,7 @@ namespace Tests.Services
 
             var exception = new Exception(error.Message);
 
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
                                         .Throws(exception);
 
             var orchestratorFunction = new OrchestratorFunction(
@@ -343,7 +351,7 @@ namespace Tests.Services
                 Message = "Bad Gateway"
             };
 
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
                                         .Throws(new ServiceException(error, null, HttpStatusCode.BadGateway));
 
 
@@ -418,6 +426,8 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestValidPartRequestAsync()
         {
+            _usersToReturn = 100000;
+
             var orchestratorFunction = new OrchestratorFunction(
                                             _loggingRepository.Object,
                                             _membershipCalculator,
@@ -432,6 +442,13 @@ namespace Tests.Services
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
                                             ), Times.Once);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                    It.Is<LogMessage>(m => m.Message.Contains($"Successfully uploaded {_usersToReturn} users")),
+                                    It.IsAny<VerbosityLevel>(),
+                                    It.IsAny<string>(),
+                                    It.IsAny<string>()
+                                ), Times.Once);
 
             _blobStorageRepository.Verify(x => x.UploadFileAsync(
                                                 It.IsAny<string>(),

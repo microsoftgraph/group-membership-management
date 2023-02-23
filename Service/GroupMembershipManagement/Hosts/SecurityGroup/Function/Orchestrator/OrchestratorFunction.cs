@@ -1,6 +1,8 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
 using Entities;
+using Entities.Helpers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
@@ -9,6 +11,7 @@ using Microsoft.Graph;
 using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts;
+using SecurityGroup.SubOrchestrator;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -72,13 +75,15 @@ namespace Hosts.SecurityGroup
                 }
                 else
                 {
-                    var sgResponse = await context.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(nameof(SubOrchestratorFunction),
+                    var compressedResponse = await context.CallSubOrchestratorAsync<string>(nameof(SubOrchestratorFunction),
                                                                                                                     new SecurityGroupRequest
                                                                                                                     {
                                                                                                                         SyncJob = syncJob,
                                                                                                                         SourceGroup = sourceGroup,
                                                                                                                         RunId = runId
                                                                                                                     });
+
+                    var sgResponse = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
                     if (sgResponse.Status == SyncStatus.SecurityGroupNotFound)
                     {
@@ -100,7 +105,7 @@ namespace Hosts.SecurityGroup
                                                                             {
                                                                                 SyncJob = syncJob,
                                                                                 RunId = runId,
-                                                                                Users = distinctUsers,
+                                                                                Users = TextCompressor.Compress(JsonConvert.SerializeObject(distinctUsers)),
                                                                                 CurrentPart = mainRequest.CurrentPart,
                                                                                 Exclusionary = mainRequest.Exclusionary
                                                                             });
