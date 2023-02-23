@@ -16,6 +16,9 @@ namespace Entities.Helpers
         /// <returns>Base64 compressed string</returns>
         public static string Compress(string input)
         {
+            if (input == null)
+                return input;
+
             var inputBytes = Encoding.Default.GetBytes(input);
             using (var sourceMS = new MemoryStream(inputBytes))
             using (var destinationMS = new MemoryStream())
@@ -35,6 +38,9 @@ namespace Entities.Helpers
         /// <returns>string</returns>
         public static string Decompress(string input)
         {
+            if (input == null)
+                return input;
+
             var inputBytes = Convert.FromBase64String(input);
             using (var inputStream = new MemoryStream(inputBytes))
             using (var outputStream = new MemoryStream())

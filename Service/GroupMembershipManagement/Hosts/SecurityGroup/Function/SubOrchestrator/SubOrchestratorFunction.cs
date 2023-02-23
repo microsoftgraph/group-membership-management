@@ -15,6 +15,7 @@ using Repositories.Contracts.InjectConfig;
 using Microsoft.Graph;
 using Entities.Helpers;
 using Models;
+using SecurityGroup.SubOrchestrator;
 
 namespace Hosts.SecurityGroup
 {
@@ -35,8 +36,13 @@ namespace Hosts.SecurityGroup
             _telemetryClient = telemetryClient;
         }
 
+        /// <summary>
+        /// Run SubOrchestrator
+        /// </summary>
+        /// <param name="context"></param>
+        /// <returns>Compressed serialized SubOrchestratorResponse</returns>
         [FunctionName(nameof(SubOrchestratorFunction))]
-        public async Task<(List<AzureADUser> Users, SyncStatus Status)> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        public async Task<string> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var request = context.GetInput<SecurityGroupRequest>();
             var allUsers = new List<AzureADUser>();
@@ -48,7 +54,9 @@ namespace Hosts.SecurityGroup
             {
                 _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
                 var isExistingGroup = await context.CallActivityAsync<bool>(nameof(GroupValidatorFunction), new GroupValidatorRequest { SyncJob = request.SyncJob, RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId });
-                if (!isExistingGroup) { return (null, SyncStatus.SecurityGroupNotFound); }
+                if (!isExistingGroup)
+                    return TextCompressor.Compress(JsonConvert.SerializeObject(new SubOrchestratorResponse { Status = SyncStatus.SecurityGroupNotFound }));
+
                 var transitiveGroupCount = await context.CallActivityAsync<int>(nameof(GetTransitiveGroupCountFunction),
                                                             new GetTransitiveGroupCountRequest
                                                             {
@@ -74,13 +82,18 @@ namespace Hosts.SecurityGroup
                 {
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });
                     // run exisiting code
-                    var response = await GetMembersReaderFunction(context, allUsers, allNonUserGraphObjects, request);
-                    allUsers = response.allUsers;
+                    var compressedResponse = await GetMembersReaderFunction(context, request);
+                    var response = JsonConvert.DeserializeObject<MembersReaderResponse>(TextCompressor.Decompress(compressedResponse));
+
+                    allUsers.AddRange(response.Users);
+
                     if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
                     {
                         allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
                     }
-                    allNonUserGraphObjects = response.allNonUserGraphObjects;
+
+                    response.NonUserGraphObjects.Where(x => !allNonUserGraphObjects.ContainsKey(x.Key)).ToList().ForEach(x => allNonUserGraphObjects.Add(x.Key, x.Value));
+
                     var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, allNonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
                     _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
                 }
@@ -88,19 +101,25 @@ namespace Hosts.SecurityGroup
                 {
                     // first check if delta file exists in cache folder
                     var filePath = $"cache/delta_{request.SourceGroup.ObjectId}";
-                    var fileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
-                    if (string.IsNullOrEmpty(fileContent))
+                    var compressedDeltaFileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
+                    var deltaFileContent = TextCompressor.Decompress(compressedDeltaFileContent);
+
+                    if (string.IsNullOrEmpty(deltaFileContent))
                     {
                         try
                         {
                             if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
-                            var response = await GetUsersReaderFunction(context, allUsers, request);
-                            allUsers = response.allUsers;
+                            var compressedResponse = await GetUsersReaderFunction(context, request);
+                            var response = JsonConvert.DeserializeObject<UsersReaderResponse>(TextCompressor.Decompress(compressedResponse));
+
+                            allUsers.AddRange(response.Users);
+
                             if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
                             {
                                 allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
                             }
-                            await GetDeltaUsersSenderFunction(context, request, allUsers, response.deltaUrl);
+
+                            await GetDeltaUsersSenderFunction(context, request, allUsers, response.DeltaUrl);
                         }
                         catch (Exception e) when (e is KeyNotFoundException || e is ServiceException)
                         {
@@ -110,13 +129,18 @@ namespace Hosts.SecurityGroup
 
                             if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });
                             // run exisiting code
-                            var response = await GetMembersReaderFunction(context, allUsers, allNonUserGraphObjects, request);
-                            allUsers = response.allUsers;
+                            var compressedResponse = await GetMembersReaderFunction(context, request);
+                            var response = JsonConvert.DeserializeObject<MembersReaderResponse>(TextCompressor.Decompress(compressedResponse));
+
+                            allUsers.AddRange(response.Users);
+
                             if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
                             {
                                 allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
                             }
-                            allNonUserGraphObjects = response.allNonUserGraphObjects;
+
+                            response.NonUserGraphObjects.Where(x => !allNonUserGraphObjects.ContainsKey(x.Key)).ToList().ForEach(x => allNonUserGraphObjects.Add(x.Key, x.Value));
+
                             var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, allNonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
                             _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
                         }
@@ -126,13 +150,16 @@ namespace Hosts.SecurityGroup
                         try
                         {
                             if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query using delta link for group {request.SourceGroup.ObjectId}" });
-                            var deltaResponse = await GetDeltaUsersReaderFunction(context, fileContent, deltaUsersToAdd, deltaUsersToRemove, request);
-                            deltaUsersToAdd = deltaResponse.deltaUsersToAdd;
-                            deltaUsersToRemove = deltaResponse.deltaUsersToRemove;
+                            var compressedDeltaResponse = await GetDeltaUsersReaderFunction(context, deltaFileContent, request);
+                            var deltaResponse = JsonConvert.DeserializeObject<DeltaUserReaderResponse>(TextCompressor.Decompress(compressedDeltaResponse));
+
+                            deltaUsersToAdd.AddRange(deltaResponse.UsersToAdd);
+                            deltaUsersToRemove = deltaResponse.UsersToRemove;
                             filePath = $"cache/{request.SourceGroup.ObjectId}";
-                            fileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
-                            var json = JsonConvert.DeserializeObject<GroupMembership>(fileContent);
-                            var sourceMembers = json.SourceMembers.Distinct().ToList();
+                            var compressedCacheFileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
+                            var cacheFileContent = TextCompressor.Decompress(compressedCacheFileContent);
+                            var membership = JsonConvert.DeserializeObject<GroupMembership>(cacheFileContent);
+                            var sourceMembers = membership.SourceMembers.Distinct().ToList();
                             if (!context.IsReplaying) { TrackCachedUsersEvent(request.RunId, sourceMembers.Count, request.SourceGroup.ObjectId); }
                             sourceMembers.AddRange(deltaUsersToAdd);
                             var newUsers = sourceMembers.Except(deltaUsersToRemove).ToList();
@@ -155,7 +182,8 @@ namespace Hosts.SecurityGroup
                             {
                                 allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
                             }
-                            await GetDeltaUsersSenderFunction(context, request, allUsers, deltaResponse.deltaUrl);
+
+                            await GetDeltaUsersSenderFunction(context, request, allUsers, deltaResponse.DeltaUrl);
                         }
                         catch (Exception e) when (e is KeyNotFoundException || e is ServiceException)
                         {
@@ -163,20 +191,30 @@ namespace Hosts.SecurityGroup
                             allUsers.Clear();
 
                             if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
-                            var response = await GetUsersReaderFunction(context, allUsers, request);
-                            allUsers = response.allUsers;
+                            var compressedResponse = await GetUsersReaderFunction(context, request);
+                            var response = JsonConvert.DeserializeObject<UsersReaderResponse>(TextCompressor.Decompress(compressedResponse));
+
+                            if (response.Users.Any())
+                                allUsers.AddRange(response.Users);
+
                             if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
                             {
                                 allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
                             }
-                            await GetDeltaUsersSenderFunction(context, request, allUsers, response.deltaUrl);
+
+                            await GetDeltaUsersSenderFunction(context, request, allUsers, response.DeltaUrl);
                         }
                     }
                     _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"From group {request.SourceGroup.ObjectId}, read {allUsers.Count} users" });
                 }
             }
             _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return (allUsers, SyncStatus.InProgress);
+
+            return TextCompressor.Compress(JsonConvert.SerializeObject(new SubOrchestratorResponse
+            {
+                Users = allUsers,
+                Status = SyncStatus.InProgress
+            }));
         }
 
         private void TrackCachedUsersEvent(Guid runId, int cachedUsersCount, Guid groupId)
@@ -213,7 +251,7 @@ namespace Hosts.SecurityGroup
         public async Task GetDeltaUsersSenderFunction(IDurableOrchestrationContext context, SecurityGroupRequest request, List<AzureADUser> allUsers, string deltaUrl)
         {
             var compressedUsers = TextCompressor.Compress(JsonConvert.SerializeObject(allUsers));
-                
+
 
             await context.CallActivityAsync(nameof(DeltaUsersSenderFunction),
                                                     new DeltaUsersSenderRequest
@@ -226,12 +264,18 @@ namespace Hosts.SecurityGroup
                                                     });
         }
 
-        public async Task<(List<AzureADUser> allUsers, Dictionary<string, int> allNonUserGraphObjects)> GetMembersReaderFunction(
-                                                                            IDurableOrchestrationContext context,
-                                                                            List<AzureADUser> allUsers,
-                                                                            Dictionary<string, int> allNonUserGraphObjects,
-                                                                            SecurityGroupRequest request)
+        /// <summary>
+        /// Get Members
+        /// </summary>
+        /// <param name="context"></param>
+        /// <param name="request"></param>
+        /// <returns>Compressed serialized MembersReaderResponse</returns>
+        public async Task<string> GetMembersReaderFunction(IDurableOrchestrationContext context, SecurityGroupRequest request)
         {
+            var allUsers = new List<AzureADUser>();
+            var allNonUserGraphObjects = new Dictionary<string, int>();
+
+
             var response = await context.CallActivityAsync<GroupInformation>(nameof(MembersReaderFunction), new MembersReaderRequest { RunId = request.RunId, GroupId = request.SourceGroup.ObjectId });
             allUsers.AddRange(response.Users);
             response.NonUserGraphObjects.ToList().ForEach(x => allNonUserGraphObjects.Add(x.Key, x.Value));
@@ -248,15 +292,27 @@ namespace Hosts.SecurityGroup
                         allNonUserGraphObjects[x.Key] = x.Value;
                 });
             }
-            return (allUsers, allNonUserGraphObjects);
+
+            var membersResponse = new MembersReaderResponse
+            {
+                Users = allUsers,
+                NonUserGraphObjects = allNonUserGraphObjects
+            };
+
+            return TextCompressor.Compress(JsonConvert.SerializeObject(membersResponse));
         }
 
-        public async Task<(List<AzureADUser> allUsers, string deltaUrl)> GetUsersReaderFunction(
+        /// <summary>
+        /// Get Users
+        /// </summary>
+        /// <param name="context"></param>
+        /// <param name="request"></param>
+        /// <returns>Compressed serialized UsersReaderResponse</returns>
+        public async Task<string> GetUsersReaderFunction(
                                                     IDurableOrchestrationContext context,
-                                                    List<AzureADUser> allUsers,
                                                     SecurityGroupRequest request)
         {
-            allUsers.Clear();
+            var allUsers = new List<AzureADUser>();
             var response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(UsersReaderFunction), new UsersReaderRequest { RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId });
             allUsers.AddRange(response.UsersToAdd);
             while (!string.IsNullOrEmpty(response.NextPageUrl))
@@ -265,16 +321,32 @@ namespace Hosts.SecurityGroup
                 response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(SubsequentUsersReaderFunction), new SubsequentUsersReaderRequest { RunId = request.RunId, NextPageUrl = response.NextPageUrl, GroupUsersPage = response.UsersFromGroup });
                 allUsers.AddRange(response.UsersToAdd);
             }
-            return (allUsers, response.DeltaUrl);
+
+            var usersReaderResponse = new UsersReaderResponse
+            {
+                Users = allUsers,
+                DeltaUrl = response.DeltaUrl
+            };
+
+            return TextCompressor.Compress(JsonConvert.SerializeObject(usersReaderResponse));
         }
 
-        public async Task<(List<AzureADUser> deltaUsersToAdd, List<AzureADUser> deltaUsersToRemove, string deltaUrl)> GetDeltaUsersReaderFunction(
+        /// <summary>
+        /// Get deltas for additions and removals
+        /// </summary>
+        /// <param name="context"></param>
+        /// <param name="fileContent"></param>
+        /// <param name="request"></param>
+        /// <returns>Compressed serialized DeltaUserReaderResponse</returns>
+        public async Task<string> GetDeltaUsersReaderFunction(
                                                                                         IDurableOrchestrationContext context,
                                                                                         string fileContent,
-                                                                                        List<AzureADUser> deltaUsersToAdd,
-                                                                                        List<AzureADUser> deltaUsersToRemove,
                                                                                         SecurityGroupRequest request)
         {
+
+            var deltaUsersToAdd = new List<AzureADUser>();
+            var deltaUsersToRemove = new List<AzureADUser>();
+
             var response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(DeltaUsersReaderFunction), new DeltaUsersReaderRequest { RunId = request.RunId, DeltaLink = fileContent });
             deltaUsersToAdd.AddRange(response.UsersToAdd);
             deltaUsersToRemove.AddRange(response.UsersToRemove);
@@ -285,7 +357,15 @@ namespace Hosts.SecurityGroup
                 deltaUsersToAdd.AddRange(response.UsersToAdd);
                 deltaUsersToRemove.AddRange(response.UsersToRemove);
             }
-            return (deltaUsersToAdd, deltaUsersToRemove, response.DeltaUrl);
+
+            var deltaUserReaderResponse = new DeltaUserReaderResponse
+            {
+                UsersToAdd = deltaUsersToAdd,
+                UsersToRemove = deltaUsersToRemove,
+                DeltaUrl = response.DeltaUrl
+            };
+
+            return TextCompressor.Compress(JsonConvert.SerializeObject(deltaUserReaderResponse));
         }
     }
 }

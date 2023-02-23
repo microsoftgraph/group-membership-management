@@ -18,6 +18,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Entities.Helpers;
+using Newtonsoft.Json;
+using SecurityGroup.SubOrchestrator;
 
 namespace Tests.Services
 {
@@ -120,7 +123,7 @@ namespace Tests.Services
                                         })
                                         .ReturnsAsync(() => _groupExists);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<DeltaUsersSenderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<DeltaUsersSenderRequest>()))
                                        .Callback<string, object>(async (name, request) =>
                                        {
                                            await CallDeltaUsersSenderFunctionAsync(request as DeltaUsersSenderRequest);
@@ -271,6 +274,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task ProcessDeltaSinglePageRequestTestAsync()
         {
+            string content = null;
             _groupCount = 0;
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
                                        .Callback<string, object>(async (name, request) =>
@@ -278,9 +282,23 @@ namespace Tests.Services
                                            _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                        })
                                        .ReturnsAsync(() => _groupCount);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
+                                       .Callback<string, object>(async (name, request) =>
+                                       {
+                                           var fileDownloaderRequest = request as FileDownloaderRequest;
+
+                                           if (fileDownloaderRequest.FilePath.StartsWith("cache/delta_"))
+                                               content = string.Empty;
+                                           else
+                                               content = await CallFileDownloaderFunctionAsync(fileDownloaderRequest);
+                                       })
+                                       .ReturnsAsync(() => content);
+
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_securityGroupRequest.SourceGroup.ObjectId} exists.")),
@@ -314,9 +332,9 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(_userCount, Users.Count);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(response.Users);
+            Assert.AreEqual(_userCount, response.Users.Count);
+            Assert.AreEqual(SyncStatus.InProgress, response.Status);
         }
 
         [TestMethod]
@@ -346,7 +364,8 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_securityGroupRequest.SourceGroup.ObjectId} exists.")),
@@ -373,8 +392,8 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(response.Users);
+            Assert.AreEqual(SyncStatus.InProgress, response.Status);
         }
 
         [TestMethod]
@@ -398,7 +417,8 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_securityGroupRequest.SourceGroup.ObjectId} exists.")),
@@ -432,9 +452,9 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(_userCount, Users.Count);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(response.Users);
+            Assert.AreEqual(_userCount, response.Users.Count);
+            Assert.AreEqual(SyncStatus.InProgress, response.Status);
         }
 
         [TestMethod]
@@ -462,7 +482,9 @@ namespace Tests.Services
                                        .Throws<KeyNotFoundException>();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
+
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_securityGroupRequest.SourceGroup.ObjectId} exists.")),
                                    It.IsAny<VerbosityLevel>(),
@@ -490,9 +512,9 @@ namespace Tests.Services
                         It.IsAny<string>(),
                         It.IsAny<string>()
                     ), Times.Once);
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(_userCount, Users.Count);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(response.Users);
+            Assert.AreEqual(_userCount, response.Users.Count);
+            Assert.AreEqual(SyncStatus.InProgress, response.Status);
         }
 
 
@@ -510,7 +532,8 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_securityGroupRequest.SourceGroup.ObjectId} exists.")),
@@ -544,16 +567,17 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(_userCount, Users.Count);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(response.Users);
+            Assert.AreEqual(_userCount, response.Users.Count);
+            Assert.AreEqual(SyncStatus.InProgress, response.Status);
         }
 
         [TestMethod]
         public async Task ProcessDeltaMultiplePageRequestTestAsync()
         {
+            string content = null;
+
             _usersReaderNextPageUrl = "http://next-page-url";
-            _deltaUrl = "http://delta-url";
             _groupCount = 0;
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
                                       .Callback<string, object>(async (name, request) =>
@@ -562,9 +586,22 @@ namespace Tests.Services
                                       })
                                       .ReturnsAsync(() => _groupCount);
 
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
+                           .Callback<string, object>(async (name, request) =>
+                           {
+                               var fileDownloaderRequest = request as FileDownloaderRequest;
+
+                               if (fileDownloaderRequest.FilePath.StartsWith("cache/delta_"))
+                                   content = string.Empty;
+                               else
+                                   content = await CallFileDownloaderFunctionAsync(fileDownloaderRequest);
+                           })
+                           .ReturnsAsync(() => content);
+
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_securityGroupRequest.SourceGroup.ObjectId} exists.")),
@@ -598,9 +635,9 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(_userCount * Number_Of_Pages, Users.Count);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(response.Users);
+            Assert.AreEqual(_userCount * Number_Of_Pages, response.Users.Count);
+            Assert.AreEqual(SyncStatus.InProgress, response.Status);
         }
 
         [TestMethod]
@@ -632,7 +669,8 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_securityGroupRequest.SourceGroup.ObjectId} exists.")),
@@ -659,8 +697,8 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(response.Users);
+            Assert.AreEqual(SyncStatus.InProgress, response.Status);
         }
 
         [TestMethod]
@@ -678,7 +716,8 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_securityGroupRequest.SourceGroup.ObjectId} exists.")),
@@ -712,14 +751,16 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(_userCount * Number_Of_Pages, Users.Count);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(response.Users);
+            Assert.AreEqual(_userCount * Number_Of_Pages, response.Users.Count);
+            Assert.AreEqual(SyncStatus.InProgress, response.Status);
         }
 
         [TestMethod]
         public async Task ProcessDeltaMultiplePagesRequestTestAsync()
         {
+            string content = null;
+
             _usersReaderNextPageUrl = "http://next-page-url";
             _deltaUrl = "http://delta-url";
             _groupCount = 0;
@@ -729,6 +770,18 @@ namespace Tests.Services
                                           _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                       })
                                       .ReturnsAsync(() => _groupCount);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
+               .Callback<string, object>(async (name, request) =>
+               {
+                   var fileDownloaderRequest = request as FileDownloaderRequest;
+
+                   if (fileDownloaderRequest.FilePath.StartsWith("cache/delta_"))
+                       content = string.Empty;
+                   else
+                       content = await CallFileDownloaderFunctionAsync(fileDownloaderRequest);
+               })
+               .ReturnsAsync(() => content);
 
             _userCount = 10;
             _graphGroupRepository.Setup(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()))
@@ -747,7 +800,8 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+
             _graphGroupRepository.Verify(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GetNextUsersPageAsync(It.IsAny<string>(), It.IsAny<IGroupDeltaCollectionPage>()), Times.Once);
         }
@@ -789,7 +843,8 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+
             _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<string>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GetNextDeltaUsersPageAsync(It.IsAny<string>(), It.IsAny<IGroupDeltaCollectionPage>()), Times.Once);
         }
@@ -825,7 +880,8 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+
             _graphGroupRepository.Verify(x => x.GetFirstTransitiveMembersPageAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GetNextTransitiveMembersPageAsync(It.IsAny<string>(), It.IsAny<IGroupTransitiveMembersCollectionWithReferencesPage>()), Times.Once);
         }
@@ -837,7 +893,8 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                 It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
@@ -862,8 +919,8 @@ namespace Tests.Services
                                 It.IsAny<string>()
                             ), Times.Once);
 
-            Assert.IsNull(Users);
-            Assert.AreEqual(SyncStatus.SecurityGroupNotFound, Status);
+            Assert.IsNull(response.Users);
+            Assert.AreEqual(SyncStatus.SecurityGroupNotFound, response.Status);
         }
 
         private async Task<bool> CallGroupValidatorFunctionAsync(GroupValidatorRequest request)
