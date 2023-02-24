@@ -9,6 +9,8 @@ parameters:
   type: object
 - name: condition
   type: object
+- name: buildRelease
+  type: boolean
 
 stages:
 
@@ -19,13 +21,17 @@ stages:
   jobs:
   - ${{ each app in parameters.functionApps }}:
       - job: Build_${{ app.function.name }}
-        strategy:
-          maxParallel: 2
-          matrix:
-            debug:
-              BuildConfiguration: debug
-            release:
-              BuildConfiguration: release
+        ${{ if parameters.buildRelease }}:
+          strategy:
+              maxParallel: 2
+              matrix:
+                debug:
+                  BuildConfiguration: debug
+                release:
+                  BuildConfiguration: release
+        ${{ else }}:
+          variables:
+            BuildConfiguration: 'debug'
 
         steps:
 
