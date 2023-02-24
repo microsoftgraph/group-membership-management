@@ -19,6 +19,7 @@ variables:
   "BuildConfiguration": 'debug'
   "SolutionAbbreviation": 'gmm'
   disable.coverage.autogenerate: 'true'
+  "buildRelease": ${{  and(eq(variables['Build.SourceBranch'], 'refs/heads/develop'), in(variables['Build.Reason'], 'IndividualCI', 'Manual')) }}
 
 stages:
 
@@ -30,6 +31,7 @@ stages:
   parameters:
     repoToCheckout: ''
     checkoutPath: ''
+    buildRelease: ${{variables.buildRelease}}
 
 - template: yaml/build-functionapps.yml
   parameters:
@@ -37,6 +39,7 @@ stages:
     condition: succeeded('Build_Common')
     repoToCheckout: ''
     checkoutPath: ''
+    buildRelease: ${{variables.buildRelease}}
     functionApps:
     - function:
         name: 'NonProdService'
