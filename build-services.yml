@@ -3,22 +3,27 @@ parameters:
   type: string
 - name: checkoutPath
   type: string
+- name: buildRelease
+  type: boolean
 
 stages:
 
 - stage: Build_Common
   jobs:
   - job: Build_Common
-    strategy:
-      maxParallel: 2
-      matrix:
-        debug:
-          BuildConfiguration: debug
-        release:
-          BuildConfiguration: release
+    ${{ if parameters.buildRelease }}:
+      strategy:
+          maxParallel: 2
+          matrix:
+            debug:
+              BuildConfiguration: debug
+            release:
+              BuildConfiguration: release
+    ${{ else }}:
+      variables:
+        BuildConfiguration: 'debug'
 
     steps:
-
     - ${{ if ne(parameters.repoToCheckout, '') }}:
       - checkout: ${{ parameters.repoToCheckout }}
         path: ${{ parameters.checkoutPath }}
