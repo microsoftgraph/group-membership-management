@@ -121,11 +121,16 @@ namespace Repositories.SyncJobsRepository
 
         public async IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync()
         {
-            var queryResult = _tableClient.QueryAsync<SyncJob>(x => 
-                    x.Status != SyncStatus.Idle.ToString() && 
-                    x.Status != SyncStatus.InProgress.ToString() && 
+            var queryResult = _tableClient.QueryAsync<SyncJob>(x =>
+                    x.Status != SyncStatus.Idle.ToString() &&
+                    x.Status != SyncStatus.InProgress.ToString() &&
+                    x.Status != SyncStatus.StuckInProgress.ToString() &&
+                    x.Status != SyncStatus.ErroredDueToStuckInProgress.ToString() &&
+                    x.Status != SyncStatus.QueryNotValid.ToString() &&
+                    x.Status != SyncStatus.FileNotFound.ToString() &&
+                    x.Status != SyncStatus.FilePathNotValid.ToString() &&
                     x.Status != SyncStatus.Error.ToString());
-                       
+
             await foreach (var segmentResult in queryResult.AsPages())
             {
                 if (segmentResult.Values.Count == 0)
