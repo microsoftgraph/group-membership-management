@@ -58,7 +58,7 @@ stages:
                     /p:thresholdType=line
                     /p:thresholdStat=total
                     /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\webapi\
-                    /p:Exclude=[WebApi]WebApi.Program%2c[WebApi]WebApi.Configuration*
+                    /p:Exclude=[WebApi]WebApi.Program%2c[WebApi]WebApi.Configuration*%2c[*Entities]*%2c[*Contracts]*%2c[Services.Messages*]*%2c[WebApi.Models]*
                    '
       condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
