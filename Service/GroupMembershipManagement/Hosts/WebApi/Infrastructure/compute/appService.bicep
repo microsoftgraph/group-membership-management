@@ -30,3 +30,5 @@ resource websiteTemplate 'Microsoft.Web/sites@2022-03-01' = {
     type: 'SystemAssigned'
   }
 }
+
+output principalId string = websiteTemplate.identity.principalId
