@@ -2,7 +2,6 @@
 # Start with a minimal pipeline that you can customize to build and deploy your code.
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
-# ${{  and(eq(variables['Build.SourceBranch'], 'refs/heads/develop'), in(variables['Build.Reason'], 'IndividualCI', 'Manual')) }}
 name: $(major).$(minor).$(Date:yyMM).$(Rev:r)
 
 trigger:
@@ -20,7 +19,7 @@ variables:
   "BuildConfiguration": 'debug'
   "SolutionAbbreviation": 'gmm'
   disable.coverage.autogenerate: 'true'
-  "buildRelease": 'true'
+  "buildRelease": ${{  in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/users/angelmendez/pipeline-fix') }}
 
 stages:
 
