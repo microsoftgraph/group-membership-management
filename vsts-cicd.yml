@@ -19,7 +19,7 @@ variables:
   "BuildConfiguration": 'debug'
   "SolutionAbbreviation": 'gmm'
   disable.coverage.autogenerate: 'true'
-  "buildRelease": ${{  in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/users/angelmendez/pipeline-fix') }}
+  "buildRelease": ${{  in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/main') }}
 
 stages:
 
