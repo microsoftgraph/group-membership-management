@@ -34,6 +34,7 @@ function Set-AppConfigurationManagedIdentityRoles
 	)
 
 	$functionApps = @("GraphUpdater","MembershipAggregator","SecurityGroup","AzureMaintenance","AzureUserReader","JobScheduler","JobTrigger","NonProdService","Notifier")
+	$webApi = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
 
 	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
 	$appConfigName = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation"
@@ -45,7 +46,7 @@ function Set-AppConfigurationManagedIdentityRoles
 		$ProductionFunctionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp"
 		$StagingFunctionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp/slots/staging"
 
-		$functionAppBasedOnSlots = @($ProductionFunctionAppName,$StagingFunctionAppName)
+		$functionAppBasedOnSlots = @($ProductionFunctionAppName,$StagingFunctionAppName, $webApi)
 
 		foreach ($fa in $functionAppBasedOnSlots)
 		{

@@ -22,6 +22,7 @@ Please read before proceeding:
     * [Create Azure Devops Repositories](##Create-Azure-Devops-Repositories)
     * [Create resource groups and the prereqs keyvault](##Create-resource-groups-and-the-prereqs-keyvault)
     * [Create the Graph application and populate prereqs keyvault](##Create-the-Graph-application-and-populate-prereqs-keyvault)
+    * [Create the WebAPI application and populate prereqs keyvault](##Create-the-WebAPI-application-and-populate-prereqs-keyvault)
     * [Adding a new GMM environment](##Adding-a-new-GMM-environment)
     * [Create a Service Connection](##Create-a-Service-Connection)
     * [Set up email notifications](##Set-up-email-notifications)
@@ -283,7 +284,9 @@ Once your application is created, we need to grant the requested permissions to 
 5. Click on the 'Grant admin consent for `<YourOrganizationName>`' button.
 6. You might need to refresh the page to see the permissions status updated.
 
+## Create the WebAPI application and populate prereqs keyvault
 
+See [WebApiSetup.md](/Service/GroupMembershipManagement/Hosts/WebApi/Documentation/WebApiSetup.md) for more information.
 
 ## Adding a new GMM environment
 
@@ -505,7 +508,7 @@ In Azure DevOps, we need to create a pipeline that will create your resources an
 
 Once the pipeline has completed building and deploying GMM code and resources to your Azure resource groups, we need to make some final configuration changes.
 
-### Grant functions access to required resources:
+### Grant functions and web api access to required resources:
 
 The following script:
 1. Grants all functions access to App Configuration.
