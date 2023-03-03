@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Repositories.Contracts.InjectConfig;
+using Repositories.Contracts;
 
 namespace DIConcreteTypes
 {

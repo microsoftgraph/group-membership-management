@@ -5,13 +5,14 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.SecurityGroup
 {
-	public class MembersReaderFunction
+    public class MembersReaderFunction
 	{
 		private readonly ILoggingRepository _log;
 		private readonly SGMembershipCalculator _calculator;

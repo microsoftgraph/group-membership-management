@@ -20,6 +20,7 @@ using System.Threading.Tasks;
 using Entities.Helpers;
 using Newtonsoft.Json;
 using SecurityGroup.SubOrchestrator;
+using Microsoft.Azure.WebJobs;
 
 namespace Tests.Services
 {
@@ -35,6 +36,7 @@ namespace Tests.Services
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
         private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
+        private Mock<ExecutionContext> _executionContext;
         private int _usersToReturn;
         private QuerySample _querySample;
         private OrchestratorRequest _orchestratorRequest;
@@ -55,6 +57,7 @@ namespace Tests.Services
             _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _executionContext = new Mock<ExecutionContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             _usersToReturn = 10;
@@ -165,7 +168,7 @@ namespace Tests.Services
                                             _configuration.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains("Found invalid value for CurrentPart or TotalParts")),
@@ -192,7 +195,7 @@ namespace Tests.Services
                                            _configuration.Object
                                            );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains($"Marking job as {SyncStatus.QueryNotValid}")),
@@ -206,7 +209,7 @@ namespace Tests.Services
                                                 It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid)
                                             ), Times.Once);
 
-            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once);
+            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -221,7 +224,7 @@ namespace Tests.Services
                                            _configuration.Object
                                            );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains($"Marking job as {SyncStatus.QueryNotValid}")),
@@ -235,7 +238,7 @@ namespace Tests.Services
                                                 It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid)
                                             ), Times.Once);
 
-            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once);
+            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -249,7 +252,7 @@ namespace Tests.Services
                                             _configuration.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
                                                 It.IsAny<IEnumerable<SyncJob>>(),
@@ -269,7 +272,7 @@ namespace Tests.Services
                                             _configuration.Object
                                             );
 
-            await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object));
+            await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.StartsWith("Caught unexpected exception")),
@@ -304,7 +307,7 @@ namespace Tests.Services
                                             _configuration.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.StartsWith("Rescheduling job at")),
@@ -361,7 +364,7 @@ namespace Tests.Services
                                             _configuration.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.StartsWith("Rescheduling job at")),
@@ -388,7 +391,7 @@ namespace Tests.Services
                                             _configuration.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains($"Read {_usersToReturn} users from source groups")),
@@ -434,7 +437,7 @@ namespace Tests.Services
                                             _configuration.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains($"Read {_usersToReturn} users from source groups")),

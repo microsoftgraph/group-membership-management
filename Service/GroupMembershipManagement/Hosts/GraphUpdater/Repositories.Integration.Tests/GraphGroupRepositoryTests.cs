@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 
 namespace Repositories.Integration.Tests
 {
-	[TestClass]
+    [TestClass]
 	public class GraphGroupRepositoryTests
 	{
 		// an Azure AD app in your demo tenant with http://localhost as a redirect URI under "Mobile and Desktop Applications"

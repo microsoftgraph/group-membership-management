@@ -99,7 +99,7 @@ namespace Services
             return await graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(groupId));
         }
 
-        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)
+        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
         {
             await _mailRepository.SendMailAsync(new EmailMessage
             {
@@ -111,7 +111,7 @@ namespace Services
                 CcEmailAddresses = ccEmail,
                 AdditionalContentParams = additionalContentParams,
                 AdditionalSubjectParams = additionalSubjectParams
-            }, runId);
+            }, runId, adaptiveCardTemplateDirectory);
         }
 
         public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)

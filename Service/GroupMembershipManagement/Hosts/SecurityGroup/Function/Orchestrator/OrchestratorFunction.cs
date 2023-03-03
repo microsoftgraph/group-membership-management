@@ -11,6 +11,7 @@ using Microsoft.Graph;
 using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using SecurityGroup.SubOrchestrator;
 using System;
 using System.Collections.Generic;
@@ -38,7 +39,7 @@ namespace Hosts.SecurityGroup
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
         {
             var mainRequest = context.GetInput<OrchestratorRequest>();
             var syncJob = mainRequest.SyncJob;
@@ -68,7 +69,7 @@ namespace Hosts.SecurityGroup
                 if (sourceGroup.ObjectId == Guid.Empty)
                 {
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Source group id is not a valid, Part# {mainRequest.CurrentPart} {syncJob.Query}. Marking job as {SyncStatus.QueryNotValid}." });
-                    await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest { SyncJob = syncJob, RunId = runId });
+                    await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest { SyncJob = syncJob, RunId = runId, AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory });
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.QueryNotValid });
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.QueryNotValid, ResultStatus = ResultStatus.Failure, RunId = runId });
                     return;

@@ -53,7 +53,7 @@ namespace Hosts.GraphUpdater
                             syncJob.Requestor,
                             SyncDisabledNoGroupEmailBody,
                             new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses },
-                            request.RunId);
+                            request.RunId, null, null, null, request.AdaptiveCardTemplateDirectory);
                 }
                 else if (groupExistsResult.FaultType == FaultType.ExceptionHandledByThisPolicy)
                     await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Exceeded {NumberOfGraphRetries} while trying to determine if a group exists." });

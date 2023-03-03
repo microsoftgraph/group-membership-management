@@ -161,11 +161,11 @@ GMM Team</value>
     <value>Group Membership Management - No data found for group {0}</value>
   </data>
   <data name="SyncCompletedEmailBody" xml:space="preserve">
-    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group, {0}.
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group, {1}.
 
 GMM onboarding is requested by {4} to systematically manage the group membership based on the pre-set rules. Please visit {5} to learn more about GMM.
 
-The group {0} with Id: {1} has completed its initial sync. Added {2} users and removed {3} users.
+The group {1} with Id: {0} has completed its initial sync. Added {2} users and removed {3} users.
 
 This is an auto-generated email. Please reach out to the onboarding requestor {4} for any specific questions about this group and reach out to {6} for GMM inquires. 
 
@@ -182,13 +182,13 @@ This is an auto-generated email. Please reach out to {1} if you have further que
 This is an auto-generated email. Please reach out to {1} if you have further questions about GMM.</value>
   </data>
   <data name="SyncDisabledNoSourceGroupEmailBody" xml:space="preserve">
-    <value>The sync for group {0} has been disabled because the source group with object Id: {1} doesn't exist.
+    <value>The sync for group with id {0} has been disabled because the source group with object Id: {1} doesn't exist.
 This is an auto-generated email. Please reach out to {2} if you have further questions about GMM.</value>
   </data>
   <data name="SyncDisabledNoValidGroupIds" xml:space="preserve">
-    <value>The sync has been disabled because the object ID(s) {0} are not valid GUIDs and do not refer to valid groups.
+    <value>The sync with destination id {0} has been disabled because the object ID(s) {1} are not valid GUIDs and do not refer to valid groups.
 
-This is an auto-generated email. Please reach out to {1} if you have further questions about GMM.</value>
+This is an auto-generated email. Please reach out to {2} if you have further questions about GMM.</value>
   </data>
   <data name="SyncJobDisabledEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group. Please visit {3} to learn more about GMM.
@@ -217,7 +217,7 @@ GMM Team</value>
   <data name="SyncThresholdBothEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group. Please visit {3} to learn more about GMM.
 
-The group {0} with Id: {1} has exceeded the specified thresholds.
+The group {1} with Id: {0} has exceeded the specified thresholds.
 
 {2}
 
@@ -240,7 +240,7 @@ Regards,
 GMM Team</value>
   </data>
   <data name="SyncThresholdDisablingJobEmailSubject" xml:space="preserve">
-    <value>[THRESHOLD_EXCEEDED] GMM: Synchronization job for group {0} has been disabled.</value>
+    <value>[THRESHOLD_EXCEEDED] GMM: Synchronization job for group {1} has been disabled.</value>
   </data>
   <data name="SyncThresholdEmailSubject" xml:space="preserve">
     <value>[THRESHOLD_EXCEEDED] GMM: Action required for group {0}.</value>

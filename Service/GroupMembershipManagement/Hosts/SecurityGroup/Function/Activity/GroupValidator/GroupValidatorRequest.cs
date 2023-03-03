@@ -12,5 +12,6 @@ namespace Hosts.SecurityGroup
         public SyncJob SyncJob { get; set; }
         public string Content { get; set; }
         public string[] AdditionalContentParams { get; set; }
+        public string AdaptiveCardTemplateDirectory { get; set; }
     }
 }

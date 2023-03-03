@@ -6,7 +6,6 @@ using Azure.Data.Tables;
 using Entities;
 using Models;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Linq;

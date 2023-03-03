@@ -12,16 +12,17 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Models;
 using Newtonsoft.Json;
-using Repositories.Contracts.InjectConfig;
 using Repositories.Mocks;
 using Services.Contracts;
-using Services.Entities;
 using Services.Tests.Mocks;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
+using Microsoft.Azure.WebJobs;
+using ExecutionContext = Microsoft.Azure.WebJobs.ExecutionContext;
 
 namespace Services.Tests
 {
@@ -109,6 +110,7 @@ namespace Services.Tests
             blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
+            var executionContext = new Mock<ExecutionContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
                     .Callback<string, object>(async (name, request) =>
@@ -128,7 +130,7 @@ namespace Services.Tests
                 .Returns(() => Task.FromResult(new GroupUpdaterSubOrchestratorResponse() { SuccessCount = 1, UsersNotFound = new List<AzureADUser>() }));
 
             var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
-            var response = await orchestrator.RunOrchestratorAsync(context.Object);
+            var response = await orchestrator.RunOrchestratorAsync(context.Object, executionContext.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
@@ -225,6 +227,7 @@ namespace Services.Tests
             graphUpdaterService.Setup(x => x.GetGroupOwnersAsync(It.IsAny<Guid>(), It.IsAny<int>())).ReturnsAsync(owners);
 
             var context = new Mock<IDurableOrchestrationContext>();
+            var executionContext = new Mock<ExecutionContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonConvert.SerializeObject(groupMembership));
@@ -247,7 +250,7 @@ namespace Services.Tests
                     });
 
             var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
-            var response = await orchestrator.RunOrchestratorAsync(context.Object);
+            var response = await orchestrator.RunOrchestratorAsync(context.Object, executionContext.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
@@ -329,6 +332,7 @@ namespace Services.Tests
             blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
+            var executionContext = new Mock<ExecutionContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
@@ -349,7 +353,7 @@ namespace Services.Tests
                 .Returns(() => Task.FromResult(new GroupUpdaterSubOrchestratorResponse() { SuccessCount = 1, UsersNotFound = new List<AzureADUser>() }));
 
             var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
-            await Assert.ThrowsExceptionAsync<ArgumentNullException>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
+            await Assert.ThrowsExceptionAsync<ArgumentNullException>(async () => await orchestrator.RunOrchestratorAsync(context.Object, executionContext.Object));
 
             Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Caught unexpected exception, marking sync job as errored.")));
@@ -408,13 +412,14 @@ namespace Services.Tests
             blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
+            var executionContext = new Mock<ExecutionContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
 
             var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
-            await orchestrator.RunOrchestratorAsync(context.Object);
+            await orchestrator.RunOrchestratorAsync(context.Object, executionContext.Object);
 
             Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
             Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Caught unexpected exception, marking sync job as errored.")));
@@ -485,6 +490,7 @@ namespace Services.Tests
             blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
+            var executionContext = new Mock<ExecutionContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
@@ -498,7 +504,7 @@ namespace Services.Tests
             mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
 
             var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
-            await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestrator.RunOrchestratorAsync(context.Object));
+            await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestrator.RunOrchestratorAsync(context.Object, executionContext.Object));
         }
 
         [TestMethod]
@@ -556,6 +562,7 @@ namespace Services.Tests
             };
 
             var context = new Mock<IDurableOrchestrationContext>();
+            var executionContext = new Mock<ExecutionContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonConvert.SerializeObject(groupMembership));
@@ -572,7 +579,7 @@ namespace Services.Tests
                     });
 
             var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
-            var response = await orchestrator.RunOrchestratorAsync(context.Object);
+            var response = await orchestrator.RunOrchestratorAsync(context.Object, executionContext.Object);
 
             Assert.AreEqual(SyncStatus.DestinationGroupNotFound, updateJobRequest.Status);
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
@@ -676,6 +683,7 @@ namespace Services.Tests
             blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
+            var executionContext = new Mock<ExecutionContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>()))
                     .Returns(async () => await RunJobReaderFunctionAsync(mockLoggingRepo, mockGraphUpdaterService, jobReaderRequest));
@@ -711,7 +719,7 @@ namespace Services.Tests
                                                                              });
 
             var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
-            await orchestrator.RunOrchestratorAsync(context.Object);
+            await orchestrator.RunOrchestratorAsync(context.Object, executionContext.Object);
 
             context.Verify(x => x.CallSubOrchestratorAsync(nameof(CacheUserUpdaterSubOrchestratorFunction), It.IsAny<CacheUserUpdaterRequest>()), Times.Exactly(3));
         }

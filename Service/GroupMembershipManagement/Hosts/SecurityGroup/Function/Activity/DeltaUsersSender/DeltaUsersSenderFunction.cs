@@ -9,6 +9,7 @@ using Microsoft.Graph;
 using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;

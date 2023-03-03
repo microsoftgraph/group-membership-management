@@ -3,7 +3,6 @@
 using Entities;
 using Models;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

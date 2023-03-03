@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 
 namespace Hosts.GraphUpdater
 {
-	public class OrchestratorFunction
+    public class OrchestratorFunction
 	{
 		private const string SyncCompletedEmailBody = "SyncCompletedEmailBody";
 		private readonly TelemetryClient _telemetryClient;
@@ -57,7 +57,7 @@ namespace Hosts.GraphUpdater
 		}
 
 		[FunctionName(nameof(OrchestratorFunction))]
-		public async Task<OrchestrationRuntimeStatus> RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+		public async Task<OrchestrationRuntimeStatus> RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
 		{
 			GroupMembership groupMembership = null;
 			MembershipHttpRequest graphRequest = null;
@@ -113,7 +113,8 @@ namespace Hosts.GraphUpdater
 											   RunId = groupMembership.RunId,
 											   GroupId = groupMembership.Destination.ObjectId,
 											   JobPartitionKey = groupMembership.SyncJobPartitionKey,
-											   JobRowKey = groupMembership.SyncJobRowKey
+											   JobRowKey = groupMembership.SyncJobRowKey,
+											   AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory
 										   });
 
 				if (!isValidGroup)
@@ -157,9 +158,9 @@ namespace Hosts.GraphUpdater
 					var ownerEmails = string.Join(";", groupOwners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
 
 					var additionalContent = new[]
-					{
-								groupName,
-								groupMembership.Destination.ObjectId.ToString(),
+                    {
+                                groupMembership.Destination.ObjectId.ToString(),
+                                groupName,
 								membersToAdd.Count.ToString(),
 								membersToRemove.Count.ToString(),
 								syncJob.Requestor,
@@ -174,7 +175,8 @@ namespace Hosts.GraphUpdater
 														CcEmail = _emailSenderAndRecipients.SyncCompletedCCAddresses,
 														ContentTemplate = SyncCompletedEmailBody,
 														AdditionalContentParams = additionalContent,
-														RunId = groupMembership.RunId
+														RunId = groupMembership.RunId,
+														AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory
 													});
 				}
 

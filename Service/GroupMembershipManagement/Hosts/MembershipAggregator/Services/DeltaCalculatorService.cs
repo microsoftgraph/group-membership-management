@@ -270,7 +270,7 @@ namespace Services
 
             string contentTemplate;
             string[] additionalContent;
-            string[] additionalSubjectContent = new[] { groupName };
+            string[] additionalSubjectContent = new[] { job.TargetOfficeGroupId.ToString(), groupName };
 
             var thresholdEmail = GetThresholdEmail(groupName, threshold, job);
             contentTemplate = thresholdEmail.ContentTemplate;
@@ -291,8 +291,8 @@ namespace Services
                 contentTemplate = SyncJobDisabledEmailBody;
                 additionalContent = new[]
                 {
-                    groupName,
                     job.TargetOfficeGroupId.ToString(),
+                    groupName,
                     _gmmResources.LearnMoreAboutGMMUrl,
                     _emailSenderAndRecipients.SupportEmailAddresses
                 };
@@ -329,8 +329,8 @@ namespace Services
             {
                 additionalContent = new[]
                 {
-                      groupName,
                       job.TargetOfficeGroupId.ToString(),
+                      groupName,
                       $"{increasedThresholdMessage}\n{decreasedThresholdMessage}",
                       _gmmResources.LearnMoreAboutGMMUrl,
                       _emailSenderAndRecipients.SupportEmailAddresses
@@ -340,8 +340,8 @@ namespace Services
             {
                 additionalContent = new[]
                 {
+                      job.TargetOfficeGroupId.ToString(), 
                       groupName,
-                      job.TargetOfficeGroupId.ToString(),
                       $"{increasedThresholdMessage}\n",
                       _gmmResources.LearnMoreAboutGMMUrl,
                       _emailSenderAndRecipients.SupportEmailAddresses
@@ -351,8 +351,8 @@ namespace Services
             {
                 additionalContent = new[]
                 {
-                      groupName,
                       job.TargetOfficeGroupId.ToString(),
+                      groupName,
                       $"{decreasedThresholdMessage}\n",
                       _gmmResources.LearnMoreAboutGMMUrl,
                       _emailSenderAndRecipients.SupportEmailAddresses

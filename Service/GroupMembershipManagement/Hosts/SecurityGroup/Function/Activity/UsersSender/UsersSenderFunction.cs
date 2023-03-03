@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 

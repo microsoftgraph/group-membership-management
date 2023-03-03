@@ -3,7 +3,6 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Repositories.Contracts;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Collections.Generic;
@@ -11,6 +10,7 @@ using System;
 using Microsoft.ApplicationInsights;
 using GraphUpdater.Entities;
 using Models;
+using Repositories.Contracts;
 
 namespace Hosts.GraphUpdater
 {

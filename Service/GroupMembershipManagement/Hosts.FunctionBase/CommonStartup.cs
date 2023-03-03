@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Identity;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Microsoft.ApplicationInsights;
