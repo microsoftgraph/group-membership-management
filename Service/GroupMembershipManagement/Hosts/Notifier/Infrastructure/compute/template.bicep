@@ -229,6 +229,9 @@ module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
         secrets: [
           'get'
         ]
+        certificates: [
+          'get'
+        ]
       }
       {
         objectId: functionAppSlotTemplate_Notifier.outputs.msi
