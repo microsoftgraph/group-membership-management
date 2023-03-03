@@ -31,18 +31,7 @@ namespace Hosts.Notifier
         {
             base.Configure(builder);
 
-            builder.Services.AddSingleton<IKeyVaultSecret<INotifierService>>(services => new KeyVaultSecret<INotifierService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
-            .AddSingleton<IGraphServiceClient>((services) =>
-            {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
-            })
-            .AddScoped<INotifierService>(services =>
-            {
-                return new NotifierService(
-                    services.GetService<ILoggingRepository>(),
-                    services.GetService<IMailRepository>(),
-                    services.GetService<IEmailSenderRecipient>());
-            });
+            builder.Services.AddScoped<INotifierService, NotifierService>();
 
             builder.Services.AddHttpClient();
         }
