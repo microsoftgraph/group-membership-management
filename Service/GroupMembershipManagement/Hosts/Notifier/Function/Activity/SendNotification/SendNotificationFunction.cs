@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 using Entities;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs;
@@ -23,13 +26,11 @@ namespace Hosts.Notifier
         }
 
         [FunctionName(nameof(SendNotificationFunction))]
-        public async Task<bool> SendNotificationAsync([ActivityTrigger] string recipientAddresses)
+        public async Task SendNotificationAsync([ActivityTrigger] string recipientAddresses)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SendNotificationFunction)} function started at: {DateTime.UtcNow}" });
             await _notifierService.SendEmailAsync(recipientAddresses);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SendNotificationFunction)} function completed at: {DateTime.UtcNow}" });
-
-            return true;
         }
     }
 }
