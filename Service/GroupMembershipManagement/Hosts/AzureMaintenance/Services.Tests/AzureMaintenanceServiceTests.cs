@@ -580,7 +580,7 @@ namespace Services.Tests
                                                 handleInactiveJobsConfig.Object);
 
             await azureTableBackupService.SendEmailAsync(job, "Test Group");
-            mailRespository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid>()), Times.Once());
+            mailRespository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid>(), It.IsAny<string>()), Times.Once());
         }
 
         public IEnumerable<SyncJob> GetJobs(List<SyncJob> jobs)

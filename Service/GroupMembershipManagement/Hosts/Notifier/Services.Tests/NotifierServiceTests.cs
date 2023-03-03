@@ -47,7 +47,7 @@ namespace Services.Tests
                                                 );
 
             await notifierService.SendEmailAsync("user1@test.com;user2@test.com");
-            mailRespository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null), Times.Once());
+            mailRespository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null, It.IsAny<string>()), Times.Once());
         }
 
     }
