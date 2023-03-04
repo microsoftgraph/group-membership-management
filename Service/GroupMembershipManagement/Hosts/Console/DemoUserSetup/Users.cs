@@ -4,7 +4,6 @@ using Microsoft.Graph;
 using System;
 using System.Text;
 using System.Threading.Tasks;
-using Entities;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -60,7 +59,7 @@ namespace DemoUserSetup
 			}
 
 
-            var sw = new StreamWriter("memberids.csv", false);
+            using var sw = new StreamWriter("memberids.csv", false);
             sw.WriteLine("PersonnelNumber,AzureObjectId");
             foreach (var user in _userIds)
             {
@@ -96,6 +95,7 @@ namespace DemoUserSetup
 			}
 		}
 
+        private static int _existingUsers = 0;
 		private void HandleExistingUsers(IEnumerable<User> users)
 		{
 			foreach (var user in users)
@@ -104,6 +104,12 @@ namespace DemoUserSetup
 				if (userNumber < _testUsers.Length)
 					_testUsers[userNumber] = ToEntity(user);
                 _userIds.Add(user.OnPremisesImmutableId, user.Id);
+
+                _existingUsers++;
+                if (_existingUsers % 1000 == 0)
+                {
+                    Console.WriteLine($"Got {_existingUsers} existing users.");
+                }
 			}
 		}
 
@@ -122,7 +128,7 @@ namespace DemoUserSetup
                 OnPremisesImmutableId = csvUser.ImmutableId
             };
 
-            var graphUser = await _graphServiceClient.Users.Request().AddAsync(user);
+            var graphUser = await _graphServiceClient.Users.Request().WithMaxRetry(5).AddAsync(user);
             _testUsers[number] = ToEntity(graphUser);
 
             if (!_userIds.ContainsKey(csvUser.ImmutableId))

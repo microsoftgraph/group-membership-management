@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using System;
 using System.Threading.Tasks;
 using Microsoft.Graph;
 using Microsoft.Graph.Auth;
@@ -20,9 +21,12 @@ namespace DemoUserSetup
             string clientId = AppSettings.LoadAppSettings().ClientId;
             string tenantId = AppSettings.LoadAppSettings().TenantId;
 
+            Console.WriteLine("Authenticating, opening a browser tab for you.");
+
 			var publicClientApp = PublicClientApplicationBuilder.Create(clientId)
             .WithRedirectUri("http://localhost")
             .WithAuthority(AzureCloudInstance.AzurePublic, tenantId)
+            .WithTenantId(tenantId)
             .Build();
 
 			var authProvider = new InteractiveAuthenticationProvider(publicClientApp);
