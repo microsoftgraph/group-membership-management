@@ -83,7 +83,7 @@ var appSettings = [
     name: 'Settings:AppConfigurationEndpoint'
     value: appConfigurationEndpoint
   }
-    {
+  {
     name: 'AzureAd:ClientId'
     value: '@Microsoft.KeyVault(SecretUri=${reference(webapiClientId, '2019-09-01').secretUriWithVersion})'
   }
