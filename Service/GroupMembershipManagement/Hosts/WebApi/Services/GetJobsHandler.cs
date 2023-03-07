@@ -28,18 +28,18 @@ namespace Services
             await foreach (var job in jobs)
             {
                 var dto = new SyncJobDTO
-                {
-                    PartitionKey = job.PartitionKey,
-                    RowKey = job.RowKey,
-                    Status = job.Status,
-                    TargetGroupId = job.TargetOfficeGroupId,
-                    LastSuccessfulRunTime = job.LastSuccessfulRunTime,
-                    LastSuccessfulStartTime = job.LastSuccessfulStartTime,
-                    StartDate = job.StartDate,
-                    ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
-                    ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals,
-                    EstimatedNextRunTime = job.StartDate > job.LastSuccessfulRunTime ? job.StartDate : job.LastSuccessfulRunTime.AddHours(job.Period),
-                };
+                (
+                    partitionKey: job.PartitionKey,
+                    rowKey: job.RowKey,
+                    targetGroupId: job.TargetOfficeGroupId,
+                    status: job.Status,
+                    startDate: job.StartDate,
+                    lastSuccessfulStartTime: job.LastSuccessfulStartTime,
+                    lastSuccessfulRunTime: job.LastSuccessfulRunTime,
+                    estimatedNextRunTime: job.StartDate > job.LastSuccessfulRunTime ? job.StartDate : job.LastSuccessfulRunTime.AddHours(job.Period),
+                    thresholdPercentageForAdditions: job.ThresholdPercentageForAdditions,
+                    thresholdPercentageForRemovals: job.ThresholdPercentageForRemovals
+                );
 
                 response.Model.Add(dto);
             }

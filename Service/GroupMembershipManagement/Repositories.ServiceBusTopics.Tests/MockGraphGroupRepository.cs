@@ -189,5 +189,10 @@ namespace Repositories.ServiceBusTopics.Tests
 		{
 			throw new NotImplementedException();
 		}
-	}
+
+        public Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }

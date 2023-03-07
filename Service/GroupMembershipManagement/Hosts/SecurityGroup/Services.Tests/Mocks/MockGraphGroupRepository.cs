@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Microsoft.Graph;
 using Models;
 using Repositories.Contracts;
@@ -200,7 +199,12 @@ namespace Tests.FunctionApps.Mocks
 		{
 			throw new NotImplementedException();
 		}
-	}
+
+        public Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds)
+        {
+            throw new NotImplementedException();
+        }
+    }
 
 	public class MockException : Exception { }
 

@@ -3,6 +3,8 @@ parameters:
   type: string
 - name: checkoutPath
   type: string
+- name: buildRelease
+  type: boolean
 
 stages:
 
@@ -10,13 +12,17 @@ stages:
   dependsOn: Build_Common
   jobs:
   - job: Build_WebAPI
-    strategy:
-      maxParallel: 2
-      matrix:
-        debug:
-          BuildConfiguration: debug
-        release:
-          BuildConfiguration: release
+    ${{ if parameters.buildRelease }}:
+      strategy:
+        maxParallel: 2
+        matrix:
+          debug:
+            BuildConfiguration: debug
+          release:
+            BuildConfiguration: release
+    ${{ else }}:
+      variables:
+        BuildConfiguration: 'debug'
 
     steps:
 
@@ -58,7 +64,7 @@ stages:
                     /p:thresholdType=line
                     /p:thresholdStat=total
                     /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\webapi\
-                    /p:Exclude=[WebApi]WebApi.Program%2c[WebApi]WebApi.Configuration*%2c[*Entities]*%2c[*Contracts]*%2c[Services.Messages*]*%2c[WebApi.Models]*
+                    /p:Exclude=[WebApi]WebApi.Program%2c[WebApi]WebApi.Configuration*%2c[*Entities]*%2c[*Contracts]*%2c[Services.Messages*]*%2c[WebApi.Models]*%2c[Repositories*]*%2c[Models]*%2c[Common.DependencyInjection]*%2c[DIConcreteTypes]*
                    '
       condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 

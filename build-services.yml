@@ -99,3 +99,4 @@ stages:
   parameters:
     repoToCheckout: ${{ parameters.repoToCheckout }}
     checkoutPath: ${{ parameters.checkoutPath }}
+    buildRelease: ${{ parameters.buildRelease }}
