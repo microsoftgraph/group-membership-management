@@ -3,5 +3,6 @@
     "saveToReload": "and save to reload",
     "learnReact": "Learn React!!",
     "english": "English",
-    "spanish": "Spanish"
+    "spanish": "Spanish",
+    "emptyList": "There are no GMM managed groups"
 }
