@@ -9,8 +9,9 @@ namespace Models
 	public class AzureADGroup : IAzureADObject, IEquatable<AzureADGroup>
 	{
 		public Guid ObjectId { get; set; }
+        public string Type { get; set; }
 
-		public override bool Equals(object obj)
+        public override bool Equals(object obj)
 		{
 			if (obj is null) return false;
 			return obj is AzureADGroup && (obj as AzureADGroup).ObjectId == ObjectId;

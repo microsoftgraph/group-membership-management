@@ -4,7 +4,7 @@
 
 namespace WebApi.Models.Responses
 {
-    public class GetJobsModel : List<WebApi.Models.DTOs.SyncJob>
+    public class GetJobsModel : List<DTOs.SyncJob>
     {
         public GetJobsModel()
         {

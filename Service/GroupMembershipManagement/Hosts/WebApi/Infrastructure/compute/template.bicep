@@ -72,6 +72,12 @@ param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbrev
 var webapiClientId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'webapiClientId')
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
+var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountConnectionString')
+var jobsTableName = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsTableName')
+var graphAppClientId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
+var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientSecret')
+var graphAppCertificateName = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppCertificateName')
+var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppTenantId')
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   scope: resourceGroup(dataResourceGroup)
@@ -79,10 +85,6 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
 }
 
 var appSettings = [
-  {
-    name: 'Settings:AppConfigurationEndpoint'
-    value: appConfigurationEndpoint
-  }
   {
     name: 'AzureAd:ClientId'
     value: '@Microsoft.KeyVault(SecretUri=${reference(webapiClientId, '2019-09-01').secretUriWithVersion})'
@@ -104,17 +106,53 @@ var appSettings = [
     value: appInsights.properties.ConnectionString
   }
   {
-    name: 'logAnalyticsCustomerId'
+    name: 'Settings:appConfigurationEndpoint'
+    value: appConfigurationEndpoint
+  }
+  {
+    name: 'Settings:logAnalyticsCustomerId'
     value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   }
   {
-    name: 'logAnalyticsPrimarySharedKey'
+    name: 'Settings:logAnalyticsPrimarySharedKey'
     value: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:jobsStorageAccountConnectionString'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:jobsTableName'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:GraphCredentials:ClientCertificateName'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:GraphCredentials:ClientSecret'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:GraphCredentials:ClientId'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:GraphCredentials:TenantId'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:GraphCredentials:KeyVaultName'
+    value: prereqsKeyVaultName
+  }
+  {
+    name: 'Settings:GraphCredentials:KeyVaultTenantId'
+    value: tenantId
   }
 ]
 
 module servicePlanTemplate 'servicePlan.bicep' = {
-  name: 'servicePlanTemplate-WebAPI'
+  name: 'servicePlanTemplate-WebApi'
   params: {
     name: servicePlanName
     sku: servicePlanSku
@@ -124,7 +162,7 @@ module servicePlanTemplate 'servicePlan.bicep' = {
 }
 
 module appService 'appService.bicep' = {
-  name: 'appServiceTemplate-WebAPI'
+  name: 'appServiceTemplate-WebApi'
   params:{
     name: '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-webapi'
     location: location

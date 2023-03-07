@@ -9,6 +9,15 @@ using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.OpenApi.Models;
+using Repositories.Contracts;
+using Repositories.Logging;
+using Microsoft.Extensions.Options;
+using DIConcreteTypes;
+using Repositories.SyncJobsRepository;
+using Microsoft.AspNetCore.OData;
+using Common.DependencyInjection;
+using Microsoft.Graph;
+using Repositories.GraphGroups;
 
 namespace WebApi
 {
@@ -16,7 +25,7 @@ namespace WebApi
     {
         public static void Main(string[] args)
         {
-            var builder = WebApplication.CreateBuilder(args);
+            var builder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder(args);
 
             var azureADConfigSection = builder.Configuration.GetSection("AzureAd");
             var tenantId = azureADConfigSection.GetValue<string>("TenantId");
@@ -58,7 +67,8 @@ namespace WebApi
                 setup.SubstituteApiVersionInUrl = true;
             });
 
-            builder.Services.AddControllers();
+            builder.Services.AddControllers()
+                            .AddOData(options => options.Select().Filter());
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(options =>
             {
@@ -92,7 +102,37 @@ namespace WebApi
             builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
             builder.Services.AddApplicationInsightsTelemetry();
 
-            MessageHandlerInjector.InjectMessageHandlers(builder);
+            builder.Services.InjectMessageHandlers();
+
+            builder.Services.AddOptions<LogAnalyticsSecret<LoggingRepository>>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.WorkSpaceId = configuration.GetValue<string>("Settings:logAnalyticsCustomerId");
+                settings.SharedKey = configuration.GetValue<string>("Settings:logAnalyticsPrimarySharedKey");
+                settings.Location = "WebAPI";
+            })
+            .Services.AddSingleton<ILoggingRepository, LoggingRepository>(services =>
+            {
+                var settings = services.GetRequiredService<IOptions<LogAnalyticsSecret<LoggingRepository>>>();
+                return new LoggingRepository(settings.Value);
+            });
+
+            builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.ConnectionString = configuration.GetValue<string>("Settings:jobsStorageAccountConnectionString");
+                settings.TableName = configuration.GetValue<string>("Settings:jobsTableName");
+            })
+            .Services.AddSingleton<ISyncJobRepository>(services =>
+            {
+                var settings = services.GetRequiredService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
+                return new SyncJobRepository(settings.Value.ConnectionString, settings.Value.TableName, services.GetService<ILoggingRepository>());
+            });
+
+            builder.Services.Configure<GraphCredentials>(builder.Configuration.GetSection("Settings:GraphCredentials"))
+            .AddSingleton<IGraphServiceClient>((services) =>
+            {
+                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetRequiredService<IOptions<GraphCredentials>>().Value));
+            })
+            .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
             var app = builder.Build();
 
@@ -127,6 +167,7 @@ namespace WebApi
             app.UseAzureAppConfiguration();
 
             app.UseHttpsRedirection();
+
 
             app.UseAuthentication();
             app.UseAuthorization();

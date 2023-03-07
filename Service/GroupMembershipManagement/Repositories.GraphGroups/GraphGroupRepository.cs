@@ -1593,6 +1593,86 @@ namespace Repositories.GraphGroups
 
             return retryPolicy;
         }
+
+        public async Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds)
+        {
+            var baseUrl = "https://graph.microsoft.com";
+            var groups = new List<AzureADGroup>();
+
+            try
+            {
+                var skip = 0;
+                var take = 20;
+                var idBatch = groupIds.Skip(skip).Take(take);
+
+                while (idBatch.Any())
+                {
+                    var steps = idBatch.Select(id =>
+                    {
+                        var groupRequest = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/v1.0/groups/{id}?$select=mailEnabled,groupTypes,securityEnabled");
+                        return new BatchRequestStep(id.ToString(), groupRequest);
+                    }).ToList();
+
+                    var batchRequest = new BatchRequestContent();
+                    steps.ForEach(step => batchRequest.AddBatchRequestStep(step));
+
+                    var batchResponse = await SendGroupBatchRequestAsync(batchRequest);
+                    groups.AddRange(batchResponse);
+
+                    idBatch = groupIds.Skip(skip += take).Take(take);
+                }
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Unable to retrieve group types\n{ex.GetBaseException()}"
+                });
+            }
+
+            return groups;
+        }
+
+        private async Task<List<AzureADGroup>> SendGroupBatchRequestAsync(BatchRequestContent batchRequest)
+        {
+            var groups = new List<AzureADGroup>();
+            var batchResponse = await _graphServiceClient.Batch.Request().PostAsync(batchRequest);
+            var individualResponses = await batchResponse.GetResponsesAsync();
+
+            foreach (var response in individualResponses)
+            {
+                var group = new AzureADGroup
+                {
+                    ObjectId = Guid.Parse(response.Key),
+                    Type = "Unknown"
+                };
+
+                if (response.Value.IsSuccessStatusCode)
+                {
+                    var content = await response.Value.Content.ReadAsStringAsync();
+                    var jObject = JObject.Parse(content);
+                    var isMailEnabled = jObject.Value<bool>("mailEnabled");
+                    var isSecurityEnabled = jObject.Value<bool>("securityEnabled");
+                    var groupTypes = jObject.Value<JArray>("groupTypes").Values<string>().ToList();
+
+                    // table defining group types can be found here
+                    // https://learn.microsoft.com/en-us/graph/api/resources/groups-overview
+                    // ?view=graph-rest-1.0&tabs=http#group-types-in-azure-ad-and-microsoft-graph
+                    if (groupTypes.Contains("Unified") && isMailEnabled)
+                        group.Type = "Microsoft 365";
+                    else if (!groupTypes.Any() && !isMailEnabled && isSecurityEnabled)
+                        group.Type = "Security";
+                    else if (!groupTypes.Any() && isMailEnabled && isSecurityEnabled)
+                        group.Type = "Mail enabled security";
+                    else if (!groupTypes.Any() && isMailEnabled && !isSecurityEnabled)
+                        group.Type = "Distribution";
+                }
+
+                groups.Add(group);
+            }
+
+            return groups;
+        }
     }
 
     internal class RetryResponse
