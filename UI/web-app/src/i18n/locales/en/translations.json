@@ -4,5 +4,8 @@
     "learnReact": "Learn React!!",
     "english": "English",
     "spanish": "Spanish",
-    "emptyList": "There are no GMM managed groups"
+    "emptyList": "There are no GMM managed groups",
+    "toggleSelection": "Toggle selection",
+    "toggleAllSelection": "Toggle selection for all items",
+    "selectRow": "select row"
 }

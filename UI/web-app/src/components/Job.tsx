@@ -2,12 +2,18 @@
 // Licensed under the MIT license.
 import { DetailsList, DetailsListLayoutMode } from '@fluentui/react/lib/DetailsList';
 import { IJob } from "../interfaces/IJob.interfaces";
+import { useTranslation } from 'react-i18next';
 
 export interface IDetailsListBasicExampleProps {
   jobs: IJob[];
 }
 
 export function Job(props:IDetailsListBasicExampleProps) {
+
+  const { t } = useTranslation();
+  var toggleSelection = t('toggleSelection');
+  var toggleAllSelection = t('toggleAllSelection');
+  var selectRow = t('selectRow');
 
   var columns = [
     { key: 'column1', name: 'Identifier', fieldName: 'Identifier', minWidth: 100, maxWidth: 200, isResizable: true },
@@ -30,9 +36,9 @@ export function Job(props:IDetailsListBasicExampleProps) {
             setKey="set"
             layoutMode={DetailsListLayoutMode.justified}
             selectionPreservedOnEmptyClick={true}
-            ariaLabelForSelectionColumn="Toggle selection"
-            ariaLabelForSelectAllCheckbox="Toggle selection for all items"
-            checkButtonAriaLabel="select row"
+            ariaLabelForSelectionColumn={toggleSelection}
+            ariaLabelForSelectAllCheckbox={toggleAllSelection}
+            checkButtonAriaLabel={selectRow}
         />
         <br />
       </div>

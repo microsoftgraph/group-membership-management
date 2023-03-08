@@ -4,5 +4,8 @@
   "learnReact": "Aprende React",
   "english": "Inglés",
   "spanish": "Español",
-  "emptyList": "No hay grupos administrados por GMM"
+  "emptyList": "No hay grupos administrados por GMM",
+  "toggleSelection": "Cambiar selección",
+  "toggleAllSelection": "Cambiar selección para todo",
+  "selectRow": "Seleccionar fila"
 }
