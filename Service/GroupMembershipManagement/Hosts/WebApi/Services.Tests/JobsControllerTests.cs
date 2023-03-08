@@ -10,10 +10,10 @@ using Models;
 using Moq;
 using Repositories.Contracts;
 using Repositories.GraphGroups;
-using WebApi.Controllers.v1;
 using WebApi.Models.Responses;
 using Microsoft.Graph;
 using Microsoft.Graph.Core.Requests;
+using WebApi.Controllers.v1.Jobs;
 
 namespace Services.Tests
 {

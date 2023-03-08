@@ -3,7 +3,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using WebApi.Controllers.v1;
+using WebApi.Controllers.v1.Roles;
 
 namespace Services.Tests
 {

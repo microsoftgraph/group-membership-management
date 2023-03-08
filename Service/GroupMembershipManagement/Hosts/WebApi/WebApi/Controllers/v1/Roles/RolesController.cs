@@ -3,7 +3,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace WebApi.Controllers.v1
+namespace WebApi.Controllers.v1.Roles
 {
     [ApiController]
     [ApiVersion("1.0")]

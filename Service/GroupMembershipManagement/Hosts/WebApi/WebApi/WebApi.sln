@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Contracts", "..\Se
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Messages.Contracts", "..\Services.Messages.Contracts\Services.Messages.Contracts.csproj", "{01414474-DB5C-4C34-AB7F-D9126925E464}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApi.Models", "..\Models\WebApi.Models.csproj", "{5E6F3B2D-D6B0-4214-A402-82C32A7900F5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApi.Models", "..\WebApi.Models\WebApi.Models.csproj", "{5E6F3B2D-D6B0-4214-A402-82C32A7900F5}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Messages", "..\Services.Messages\Services.Messages.csproj", "{00C45D04-DBBF-4CA7-BC0E-7950BCBB6B5B}"
 EndProject

@@ -6,8 +6,9 @@ using Microsoft.AspNetCore.OData.Query;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using WebApi.Models.DTOs;
 
-namespace WebApi.Controllers.v1
+namespace WebApi.Controllers.v1.Jobs
 {
     [ApiController]
     [ApiVersion("1.0")]
@@ -24,7 +25,7 @@ namespace WebApi.Controllers.v1
         [EnableQuery()]
         [Authorize(Roles = "Admin")]
         [HttpGet()]
-        public async Task<ActionResult<IEnumerable<Models.DTOs.SyncJob>>> GetJobsAsync()
+        public async Task<ActionResult<IEnumerable<SyncJob>>> GetJobsAsync()
         {
             var response = await _getJobsRequestHandler.ExecuteAsync(new GetJobsRequest());
             return Ok(response.Model);

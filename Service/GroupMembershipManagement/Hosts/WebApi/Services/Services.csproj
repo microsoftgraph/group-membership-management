@@ -10,6 +10,7 @@
     <ProjectReference Include="..\..\..\Entities\Entities.csproj" />
     <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
     <ProjectReference Include="..\Services.Messages\Services.Messages.csproj" />
+    <ProjectReference Include="..\WebApi.Models\WebApi.Models.csproj" />
   </ItemGroup>
 
 </Project>
