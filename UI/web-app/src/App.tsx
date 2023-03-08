@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import './App.css';
 import Loader from './components/Loader';
-import Job from './components/Job';
+import { Job } from './components/Job';
 
 function App() {
   const [jobs, setJobs] = useState([]);
