@@ -73,6 +73,7 @@ function Set-WebApiAzureADApplication {
 
     Write-Host "Please sign in as an account that can make Azure AD Apps in your target tenant."
 	Connect-AzAccount -Tenant $TenantId
+	Set-AzContext -Subscription $SubscriptionName
 
 	#region Delete Application / Service Principal if they already exist
     $webApiAppDisplayName = "$SolutionAbbreviation-webapi-$EnvironmentAbbreviation"
