@@ -1,12 +1,31 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure;
+using Azure.Data.Tables;
+using Newtonsoft.Json;
 using System;
+using System.Diagnostics.CodeAnalysis;
+using Models.ThresholdNotifications;
+using System.Runtime.Serialization;
 
-namespace Models.ThresholdNotifications
+namespace Entities
 {
-    public class ThresholdNotification
+    [ExcludeFromCodeCoverage]
+    public class ThresholdNotification : ITableEntity
     {
+        public ThresholdNotification()
+        {
+        }
+
+        public ThresholdNotification(string partitionKey, string rowKey)
+        {
+            PartitionKey = partitionKey;
+            RowKey = rowKey;
+        }
+        public string PartitionKey { get; set; }
+        public string RowKey { get; set; }
+
         /// <summary>
         /// The threshold notification id.
         /// </summary>
@@ -15,12 +34,32 @@ namespace Models.ThresholdNotifications
         /// <summary>
         /// The id of the group associated with the notification.
         /// </summary>
-        public Guid TargetOfficeGroupId { get; set; } = Guid.Empty;
+        public Guid TargetOfficeGroupId { get; set; }
 
         /// <summary>
-        /// The notification status.
+        /// Gets or sets the notification status name to persist in the azure table store.
         /// </summary>
-        public ThresholdNotificationStatus Status { get; set; } = ThresholdNotificationStatus.Unknown;
+        public string StatusName { get; set; }
+
+        [IgnoreDataMember]
+        public ThresholdNotificationStatus? Status
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(this.StatusName))
+                {
+                    return null;
+                }
+
+                return (ThresholdNotificationStatus)Enum.Parse(typeof(ThresholdNotificationStatus), this.StatusName);
+            }
+
+            set
+            {
+                this.StatusName = value?.ToString();
+            }
+        }
+
 
         /// <summary>
         /// The allowed change size of users to be added to the group as a percentage of the current group size.
@@ -60,7 +99,26 @@ namespace Models.ThresholdNotifications
         /// <summary>
         /// The action taken to resolve the notification.
         /// </summary>
-        public ThresholdNotificationResolution Resolution { get; set; } = ThresholdNotificationResolution.Unresolved;
+        public string ResolutionName { get; set; }
 
+        [IgnoreDataMember]
+        public ThresholdNotificationResolution? Resolution
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(this.ResolutionName))
+                {
+                    return null;
+                }
+
+                return (ThresholdNotificationResolution)Enum.Parse(typeof(ThresholdNotificationResolution), this.ResolutionName);
+            }
+        }
+
+        [JsonIgnore]
+        public DateTimeOffset? Timestamp { get; set; }
+
+        [JsonIgnore]
+        public ETag ETag { get; set; }
     }
 }

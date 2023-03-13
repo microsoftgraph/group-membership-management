@@ -533,7 +533,7 @@ Where:
 
 The jobs table contains all the sync jobs that GMM will perform.
 
-### To create the jobs table for your environment:
+### To create the necessary tables for your environment:
 
 Open your jobs storage account on Azure Explorer:
 
@@ -542,14 +542,19 @@ Open your jobs storage account on Azure Explorer:
 * Go to `Resource Groups` and select `gmm-data-<EnvironmentAbbreviation>`
 * Under `Resources`, select the `jobs<EnvironmentAbbreviation><ID>` storage account, and open it on Azure Explorer
 
-Create a new table:
+Create two new table:
 
-* On Azure Explorer, under your storage account, right click on `Tables` and create a new table called `syncJobs`
-* Go to the table and click on `Import` at the top bar
-* Import the `syncJobsSample.csv` file located under the `Documentation` folder of your `Public` repo
-* IMPORTANT: Remove the sample entry from the table before proceeding
+* On Azure Explorer, under your storage account, right click on `Tables`
+  * Create a new table called `syncJobs`
+    * Go to the table and click on `Import` at the top bar
+    * Import the `syncJobsSample.csv` file located under the `Documentation` folder of your `Public` repo
+    * IMPORTANT: Remove the sample entry from the table before proceeding
+    * Note: For more information on the properties of the jobs table, see [syncJobs properties](./Documentation/syncJobsProperties.md).
+  * Create a new table called `notifications`
+    * Go to the table and click on `Import` at the top bar
+    * Import the `thresholdNotificationSample.csv` file located under the `Documentation` folder of your `Public` repo
+    * IMPORTANT: Remove the sample entry from the table before proceeding
 
-Note: For more information on the properties of the jobs table, see [syncJobs properties](./Documentation/syncJobsProperties.md).
 ## (Optional) Set up a production environment
 
 To create a production environment:

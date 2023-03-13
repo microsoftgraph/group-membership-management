@@ -6,17 +6,17 @@ namespace Models.ThresholdNotifications
     public enum ThresholdNotificationResolution
     {
         /// <summary>
+        /// All states.
+        /// </summary>
+        All = 0,
+        /// <summary>
         /// The notification is unresolved.
         /// </summary>
-        Unresolved = 0,
+        Unresolved = 1,
         /// <summary>
         /// The notification was resolved by overriding the threshold for the next sync.
         /// </summary>
-        ThresholdOverride = 1,
-        /// <summary>
-        /// The notification was resolved by adjusting a sync job threshold.
-        /// </summary>
-        ThresholdAdjusted = 2,
+        IgnoreOnce = 2,
         /// <summary>
         /// The notification was resolved by pausing the sync job
         /// </summary>

@@ -105,6 +105,11 @@ param membershipContainerName string = 'membership'
 @description('Enter jobs table name.')
 @minLength(1)
 param jobsTableName string
+
+@description('Enter notifications table name.')
+@minLength(1)
+param notificationsTableName string = 'notifications'
+
 param logAnalyticsName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
 
 @allowed([
@@ -421,6 +426,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'jobsTableName'
         value: jobsTableName
+      }
+      {
+        name: 'notificationsTableName'
+        value: notificationsTableName
       }
       {
         name: 'appInsightsAppId'

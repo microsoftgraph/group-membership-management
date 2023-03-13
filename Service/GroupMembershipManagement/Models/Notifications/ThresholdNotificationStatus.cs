@@ -6,29 +6,29 @@ namespace Models.ThresholdNotifications
     public enum ThresholdNotificationStatus
     {
         /// <summary>
+        /// All states.
+        /// </summary>
+        All = 0,
+        /// <summary>
         /// Unknown state.
         /// </summary>
-        Unknown = 0,
+        Unknown = 1,
         /// <summary>
         /// Notification has been added to the notifications table by GMM.
         /// </summary>
-        Queued = 1,
+        Queued = 2,
         /// <summary>
         /// The notificaton trigger has dispatched the notificaton to the notifier function.
         /// </summary>
-        Triggered = 2,
+        Triggered = 3,
         /// <summary>
         /// The notifier function has received the notification.
         /// </summary>
-        Processing = 3,
+        Processing = 4,
         /// <summary>
         /// The notifier has emailed the notification recipients.
         /// </summary>
-        AwaitingResponse = 4,
-        /// <summary>
-        /// A notification recipient has responded to the notification.
-        /// </summary>
-        ResponseReceived = 5,
+        AwaitingResponse = 5,
         /// <summary>
         /// The notification is resolved.
         /// </summary>

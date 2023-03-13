@@ -5,6 +5,9 @@
     "jobsTableName": {
       "value": "syncJobs"
     },
+    "notificationsTableName": {
+      "value": "notifications"
+    },
     "serviceBusTopicSubscriptions": {
       "value": [
         {

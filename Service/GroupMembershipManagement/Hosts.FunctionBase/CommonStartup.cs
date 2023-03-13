@@ -18,6 +18,7 @@ using Repositories.Localization;
 using Repositories.Logging;
 using Repositories.Mail;
 using Repositories.SyncJobsRepository;
+using Repositories.NotificationsRepository;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -146,6 +147,19 @@ namespace Hosts.FunctionBase
             {
                 var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
                 return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
+            });
+            
+            builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
+                settings.TableName = configuration.GetValue<string>("notificationsTableName");
+            });
+
+            builder.Services.AddSingleton<INotificationRepository>(services =>
+            {
+                var creds = services.GetService<IOptions<NotificationRepoCredentials<NotificationRepository>>>();
+                return new NotificationRepository(services.GetService<INotificationRepoCredentials<NotificationRepository>>(), 
+                                                  services.GetService<ILoggingRepository>());
             });
 
             builder.Services.AddSingleton<TelemetryClient>(sp =>
