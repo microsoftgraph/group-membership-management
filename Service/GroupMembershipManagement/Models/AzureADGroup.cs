@@ -11,13 +11,14 @@ namespace Models
 		public Guid ObjectId { get; set; }
         public string Type { get; set; }
 
-        public override bool Equals(object obj)
+		public override bool Equals(object? obj)
 		{
-			if (obj is null) return false;
-			return obj is AzureADGroup && (obj as AzureADGroup).ObjectId == ObjectId;
+			var castobj = obj as AzureADGroup;
+			if (castobj is null) return false;
+			return castobj.ObjectId == ObjectId;
 		}
 
-		public bool Equals(AzureADGroup other)
+		public bool Equals(AzureADGroup? other)
 		{
 			if (other is null) return false;
 			return ObjectId == other.ObjectId;
