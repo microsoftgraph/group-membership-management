@@ -1,5 +1,6 @@
 using Entities;
 using Entities.ServiceBus;
+using Models;
 using Models.Entities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;

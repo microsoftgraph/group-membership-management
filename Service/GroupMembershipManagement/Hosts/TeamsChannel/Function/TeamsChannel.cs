@@ -14,7 +14,6 @@ using Entities;
 using System.Text;
 using Microsoft.Graph;
 using TeamsChannel.Service.Contracts;
-using Models.Entities;
 using Newtonsoft.Json.Linq;
 using System.Linq;
 using TeamsChannel.Service;

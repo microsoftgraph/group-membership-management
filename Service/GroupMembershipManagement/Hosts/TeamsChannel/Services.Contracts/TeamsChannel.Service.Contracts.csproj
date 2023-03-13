@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Entities\Entities.csproj" />
-    <ProjectReference Include="..\..\..\Models.Entities\Models.Entities.csproj" />
+    <ProjectReference Include="..\..\..\Models\Models.csproj" />
   </ItemGroup>
 
 </Project>
