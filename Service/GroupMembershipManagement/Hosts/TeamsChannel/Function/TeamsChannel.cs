@@ -23,17 +23,14 @@ namespace Hosts.TeamsChannel
     public class TeamsChannel
     {
         private readonly ILoggingRepository _loggingRepository;
-        private readonly ISyncJobRepository _syncJobRepository;
         private readonly ITeamsChannelService _teamsChannelService;
         private readonly bool _isTeamsChannelDryRunEnabled;
 
-        public TeamsChannel(ILoggingRepository loggingRepository, ISyncJobRepository syncJobRepository, ITeamsChannelService teamsChannelService, IDryRunValue dryRun)
+        public TeamsChannel(ILoggingRepository loggingRepository, TeamsChannelService teamsChannelService, IDryRunValue dryRun)
         {
             _loggingRepository = loggingRepository;
-            _syncJobRepository = syncJobRepository;
             _teamsChannelService = teamsChannelService;
             _isTeamsChannelDryRunEnabled = dryRun.DryRunEnabled;
-
         }
 
         [FunctionName("TeamsChannel")]
@@ -53,7 +50,8 @@ namespace Hosts.TeamsChannel
             // upload to blob storage
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uplading {users.Count} from {syncInfo.SyncJob.Query} to blob storage.", RunId = runId }, VerbosityLevel.DEBUG);
-            var filename = await _teamsChannelService.UploadMembership(users, syncInfo, _isTeamsChannelDryRunEnabled);
+            var filePath = await _teamsChannelService.UploadMembership(users, syncInfo, _isTeamsChannelDryRunEnabled);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uplading {users.Count} from {syncInfo.SyncJob.Query} to blob storage at {filePath}.", RunId = runId }, VerbosityLevel.DEBUG);
 
             // make HTTP call
 

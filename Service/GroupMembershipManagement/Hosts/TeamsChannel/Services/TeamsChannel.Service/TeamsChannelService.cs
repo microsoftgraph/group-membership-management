@@ -5,6 +5,8 @@ using Models.Entities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
+using System.Net.Http;
+using System.Net.Http.Json;
 using TeamsChannel.Service.Contracts;
 
 namespace TeamsChannel.Service
@@ -13,12 +15,16 @@ namespace TeamsChannel.Service
     {
         private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly ISyncJobRepository _syncJobRepository;
         private readonly ILoggingRepository _logger;
 
-        public TeamsChannelService(ILoggingRepository loggingRepository, ITeamsChannelRepository teamsChannelRepository, IBlobStorageRepository blobStorageRepository)
+        public TeamsChannelService(ITeamsChannelRepository teamsChannelRepository, IBlobStorageRepository blobStorageRepository, IHttpClientFactory httpClientFactory, ISyncJobRepository syncJobRepository, ILoggingRepository loggingRepository)
         {
             _teamsChannelRepository = teamsChannelRepository;
             _blobStorageRepository = blobStorageRepository;
+            _httpClientFactory = httpClientFactory;
+            _syncJobRepository = syncJobRepository;
             _logger = loggingRepository;
         }
 
@@ -71,6 +77,38 @@ namespace TeamsChannel.Service
             await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, uploaded {users.Count} users to {fileName}.", RunId = runId }, VerbosityLevel.DEBUG);
 
             return fileName;
+        }
+
+        public async Task MakeMembershipAggregatorRequest(ChannelSyncInfo syncInfo, string blobFilePath)
+        {
+            var aggregatorRequest = new MembershipAggregatorHttpRequest
+            {
+                FilePath = blobFilePath,
+                PartNumber = syncInfo.CurrentPart,
+                PartsCount = syncInfo.TotalParts,
+                SyncJob = syncInfo.SyncJob,
+                IsDestinationPart = syncInfo.IsDestinationPart
+            };
+
+            // we could use typed clients here instead, i'd prefer doing this in DI https://learn.microsoft.com/en-us/aspnet/core/fundamentals/http-requests?view=aspnetcore-7.0
+            // but that feels like overkill when this is probably going to become a durable function eventually.
+            // also, it feels like a good idea to me to only create an httpClient if we're actually going to use it
+            var httpClient = _httpClientFactory.CreateClient(Constants.MembershipAggregatorHttpClientName);
+
+            // add retry logic with Polly here
+            await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, making HTTP request to {httpClient.BaseAddress}.", RunId = syncInfo.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            var response = await httpClient.PostAsJsonAsync(httpClient.BaseAddress, aggregatorRequest);
+
+            if (response.StatusCode != System.Net.HttpStatusCode.NoContent)
+            {
+                await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, successfully made POST request to {httpClient.BaseAddress}.", RunId = syncInfo.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            }
+            else
+            {
+                var responseBody = await response.Content.ReadAsStringAsync();
+                await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, POST request failed. Got {response.StatusCode} instead. Response body: {responseBody}.", RunId = syncInfo.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncInfo.SyncJob }, SyncStatus.Error);
+            }
 
         }
 
