@@ -9,6 +9,6 @@ namespace Repositories.Contracts
 {
     public interface ITeamsChannelRepository
     {
-        public Task<IEnumerable<AzureADTeamsUser>> ReadUsersFromChannel(Guid groupId, string channelId);
+        public Task<IEnumerable<AzureADTeamsUser>> ReadUsersFromChannel(AzureADTeamsChannel teamsChannel, Guid runId);
     }
 }

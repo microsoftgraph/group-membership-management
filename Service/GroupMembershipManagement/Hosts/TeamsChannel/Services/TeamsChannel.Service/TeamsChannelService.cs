@@ -1,3 +1,4 @@
+using Entities;
 using Models.Entities;
 using Repositories.Contracts;
 using TeamsChannel.Service.Contracts;
@@ -15,9 +16,10 @@ namespace TeamsChannel.Service
             _logger = loggingRepository;
         }
 
-        public Task<IEnumerable<AzureADTeamsUser>> GetUsersFromTeam(Guid groupId, string channelId)
+        public Task<IEnumerable<AzureADTeamsUser>> GetUsersFromTeam(AzureADTeamsChannel azureADTeamsChannel, Guid runId)
         {
-            return _teamsChannelRepository.ReadUsersFromChannel(groupId, channelId);
+            _logger.LogMessageAsync(new LogMessage { Message = $"In Service, reading from group {azureADTeamsChannel.ObjectId} and channel {azureADTeamsChannel.ChannelId}.", RunId = runId}, VerbosityLevel.DEBUG)
+            return _teamsChannelRepository.ReadUsersFromChannel(azureADTeamsChannel, runId);
         }
 
 
