@@ -5,6 +5,10 @@
     <AssemblyName>Hosts.$(MSBuildProjectName)</AssemblyName>
     <RootNamespace>Hosts.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
   </PropertyGroup>
+  <PropertyGroup>
+    <!-- Prevent the Microsoft.Extensions.Http package from getting deleted on publish https://github.com/Azure/azure-functions-host/issues/5894  -->
+    <_FunctionsSkipCleanOutput>true</_FunctionsSkipCleanOutput>
+</PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" Version="5.8.1" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.1.3" />
