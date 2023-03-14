@@ -54,8 +54,13 @@ namespace Hosts.JobTrigger
 
             if (!context.IsReplaying) { TrackJobsStartedEvent(syncJob.RunId); }
 
-            if (!context.IsReplaying)
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+            await context.CallActivityAsync(nameof(LoggerFunction),
+                new LoggerRequest
+                {
+                    RunId = (Guid)syncJob.RunId,
+                    Message = $"{nameof(SubOrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
+                    Verbosity = VerbosityLevel.DEBUG
+                });
 
             var frequency = await context.CallActivityAsync<int>(nameof(JobTrackerFunction), syncJob);
 
@@ -83,8 +88,13 @@ namespace Hosts.JobTrigger
                 }
                 else
                 {
-                    if (!context.IsReplaying)
-                        _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Job query is empty for job RowKey:{syncJob.RowKey}", RunId = syncJob.RunId });
+              
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                        new LoggerRequest
+                        {
+                            RunId = (Guid)syncJob.RunId,
+                            Message = $"Job query is empty for job RowKey:{syncJob.RowKey}"
+                        });
 
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.QueryNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
@@ -93,8 +103,14 @@ namespace Hosts.JobTrigger
             }
             catch (JsonReaderException)
             {
-                if (!context.IsReplaying)
-                    _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"JSON query is not valid for job RowKey:{syncJob.RowKey}", RunId = syncJob.RunId });
+             
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                        new LoggerRequest
+                        {
+                            RunId = (Guid)syncJob.RunId,
+                            Message = $"JSON query is not valid for job RowKey:{syncJob.RowKey}"
+                        });
+
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.QueryNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
                 return;
@@ -169,8 +185,14 @@ namespace Hosts.JobTrigger
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.NotOwnerOfDestinationGroup, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
             }
 
-            if (!context.IsReplaying)
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+            await context.CallActivityAsync(nameof(LoggerFunction),
+               new LoggerRequest
+               {
+                   RunId = (Guid)syncJob.RunId,
+                   Message = $"{nameof(SubOrchestratorFunction)} function completed at: {context.CurrentUtcDateTime}",
+                   Verbosity = VerbosityLevel.DEBUG
+               });
+
         }
 
         private void TrackJobsStartedEvent(Guid? runId)

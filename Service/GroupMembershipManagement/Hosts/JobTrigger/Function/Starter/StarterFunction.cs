@@ -1,10 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
+using Hosts.JobTrigger;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Repositories.Contracts;
 using System;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace Hosts.JobTrigger
@@ -17,6 +21,7 @@ namespace Hosts.JobTrigger
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
+
         [FunctionName(nameof(StarterFunction))]
         public async Task Run(
             [TimerTrigger("%jobTriggerSchedule%")] TimerInfo myTimer,
@@ -28,3 +33,4 @@ namespace Hosts.JobTrigger
         }
     }
 }
+

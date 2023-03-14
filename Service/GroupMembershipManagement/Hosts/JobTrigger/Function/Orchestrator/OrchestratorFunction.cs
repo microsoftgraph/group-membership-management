@@ -25,21 +25,7 @@ namespace Hosts.JobTrigger
         [FunctionName(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            // LISA START
             
-           /* var syncJobsDueToRun = new List<SyncJob>();
-
-            var readertasks = new List<Task<List<SyncJob>>>{
-                context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), SyncStatus.Idle),
-                context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), SyncStatus.InProgress),
-                context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), SyncStatus.StuckInProgress)
-            };
-
-            var results = await Task.WhenAll(readertasks);
-            syncJobsDueToRun.AddRange(results.SelectMany(x => x));*/
-
-            // LISA END
-
             var runId = context.NewGuid();
 
             await context.CallActivityAsync(nameof(LoggerFunction),
