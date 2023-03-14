@@ -1,5 +1,6 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -24,10 +25,9 @@ namespace Hosts.JobTrigger
         [FunctionName(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            if (!context.IsReplaying)
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started" }, VerbosityLevel.DEBUG);
-
-            var syncJobsDueToRun = new List<SyncJob>();
+            // LISA START
+            
+           /* var syncJobsDueToRun = new List<SyncJob>();
 
             var readertasks = new List<Task<List<SyncJob>>>{
                 context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), SyncStatus.Idle),
@@ -36,13 +36,56 @@ namespace Hosts.JobTrigger
             };
 
             var results = await Task.WhenAll(readertasks);
-            syncJobsDueToRun.AddRange(results.SelectMany(x => x));
+            syncJobsDueToRun.AddRange(results.SelectMany(x => x));*/
 
-            if (syncJobsDueToRun != null && syncJobsDueToRun.Count > 0)
+            // LISA END
+
+            var runId = context.NewGuid();
+
+            await context.CallActivityAsync(nameof(LoggerFunction),
+                new LoggerRequest
+                {
+                    RunId = runId,
+                    Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
+                    Verbosity = VerbosityLevel.DEBUG
+                });
+
+
+            AsyncPageable<SyncJob> pageableQueryResult = null;
+            string continuationToken = null;
+
+            var syncJobs = new List<SyncJob>();
+            do
+            {
+                var segmentResponse = await context.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction),
+                    new GetJobsSegmentedRequest
+                    {
+                        PageableQueryResult = pageableQueryResult,
+                        ContinuationToken = continuationToken
+                    });
+
+                syncJobs.AddRange(segmentResponse.JobsSegment);
+
+                pageableQueryResult = segmentResponse.PageableQueryResult;
+                continuationToken = segmentResponse.ContinuationToken;
+                 
+            } while (continuationToken != null);
+
+
+            await context.CallActivityAsync(nameof(LoggerFunction),
+             new LoggerRequest
+             {
+                 RunId = runId,
+                 Message = $"{nameof(OrchestratorFunction)} number of jobs in the syncJobs List: {syncJobs.Count}",
+                 Verbosity = VerbosityLevel.DEBUG
+             });
+
+
+            if (syncJobs != null && syncJobs.Count > 0)
             {
                 // Run multiple sync job processing flows in parallel
                 var processingTasks = new List<Task>();
-                foreach (var syncJob in syncJobsDueToRun)
+                foreach (var syncJob in syncJobs)
                 {
                     syncJob.RunId = context.NewGuid();
                     _loggingRepository.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
@@ -53,14 +96,20 @@ namespace Hosts.JobTrigger
                 await Task.WhenAll(processingTasks);
             }
 
-            syncJobsDueToRun.ForEach(x =>
+            syncJobs.ForEach(x =>
             {
                 if (x.RunId.HasValue)
                     _loggingRepository.RemoveSyncJobProperties(x.RunId.Value);
             });
 
-            if (!context.IsReplaying)
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed" }, VerbosityLevel.DEBUG);
+            await context.CallActivityAsync(nameof(LoggerFunction),
+               new LoggerRequest
+               {
+                   RunId = runId,
+                   Message = $"{nameof(OrchestratorFunction)} function completed at: {context.CurrentUtcDateTime}",
+                   Verbosity = VerbosityLevel.DEBUG
+               });
+
         }
     }
 }

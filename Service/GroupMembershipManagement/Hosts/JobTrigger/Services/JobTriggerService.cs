@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
 using Entities;
 using Models;
 using Repositories.Contracts;
@@ -17,6 +18,7 @@ namespace Services
         private const string EmailSubject = "EmailSubject";
         private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
         private const string SyncDisabledNoOwnerEmailBody = "SyncDisabledNoOwnerEmailBody";
+        private const int JobsBatchSize = 20;
 
         private readonly ILoggingRepository _loggingRepository;
         private readonly ISyncJobRepository _syncJobRepository;
@@ -62,15 +64,18 @@ namespace Services
             _jobTriggerConfig = jobTriggerConfig ?? throw new ArgumentNullException(nameof(jobTriggerConfig));
         }
 
-        public async Task<List<SyncJob>> GetSyncJobsAsync(SyncStatus syncStatus)
+        public async Task<TableSegmentBulkResult<SyncJob>> GetSyncJobsSegmentAsync(
+          AsyncPageable<SyncJob> pageableQueryResult,
+          string continuationToken)
         {
-            var allJobs = new List<SyncJob>();
-            var jobs = _syncJobRepository.GetSyncJobsAsync(syncStatus);
-            await foreach (var job in jobs)
+            if (pageableQueryResult == null)
             {
-                allJobs.Add(job);
+                pageableQueryResult = _syncJobRepository.GetPageableQueryResult(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
             }
-            return allJobs;
+
+            var queryResultSegment = await _syncJobRepository.GetSyncJobsSegmentAsync(pageableQueryResult, continuationToken, JobsBatchSize);
+
+            return queryResultSegment;
         }
 
         public async Task<string> GetGroupNameAsync(Guid groupId)
