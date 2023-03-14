@@ -101,6 +101,13 @@ namespace Services.Tests
                     {
                         await CallTopicMessageSenderFunctionAsync();
                     });
+
+            _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(LoggerFunction)), It.IsAny<LoggerRequest>()))
+                   .Callback<string, object>(async (name, request) =>
+                   {
+                       await CallLoggerFunctionAsync(request as LoggerRequest);
+                   });
+
         }
 
         [TestMethod]
@@ -427,6 +434,12 @@ namespace Services.Tests
         {
             var topicMessageSenderFunction = new TopicMessageSenderFunction(loggingRepository ?? _loggingRespository.Object, jobTriggerService ?? _jobTriggerService.Object);
             await topicMessageSenderFunction.SendMessageAsync(_syncJob);
+        }
+
+        private async Task CallLoggerFunctionAsync(LoggerRequest request)
+        {
+            var loggerFunction = new LoggerFunction(_loggingRespository.Object);
+            await loggerFunction.LogMessageAsync(request);
         }
     }
 }

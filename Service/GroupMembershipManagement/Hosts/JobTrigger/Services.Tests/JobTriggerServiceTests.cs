@@ -15,6 +15,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Tests.Repositories;
 using MockSyncJobRepository = Repositories.SyncJobs.Tests.MockSyncJobRepository;
+using Azure;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Services.Tests
 {
@@ -129,7 +131,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync(SyncStatus.Idle);
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync(null, "");
+            var jobs = bulkSegment.Results;
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -148,7 +151,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync(SyncStatus.Idle);
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync(null, "");
+            var jobs = bulkSegment.Results;
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -287,7 +291,9 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync(SyncStatus.Idle);
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync(null, "");
+            var jobs = bulkSegment.Results;
+
             foreach (var job in jobs)
             {
                 _jobTriggerService.RunId = job.RunId.Value;
@@ -329,7 +335,9 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync(SyncStatus.Idle);
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync(null, "");
+            var jobs = bulkSegment.Results;
+
             foreach (var job in jobs)
             {
                 var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
@@ -365,7 +373,9 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync(SyncStatus.Idle);
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync(null, "");
+            var jobs = bulkSegment.Results;
+
             foreach (var job in jobs)
             {
                 await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
@@ -400,7 +410,9 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync(SyncStatus.Idle);
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync(null, "");
+            var jobs = bulkSegment.Results;
+
             foreach (var job in jobs)
             {
                 await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });

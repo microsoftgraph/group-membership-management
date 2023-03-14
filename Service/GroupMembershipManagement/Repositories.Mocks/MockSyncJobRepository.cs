@@ -22,19 +22,6 @@ namespace Repositories.Mocks
             return await Task.FromResult(job);
         }
 
-        // these aren't actually async, but this is the easiest way to get these to return IAsyncEnumerables
-        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool applyFilters = true)
-        {
-            foreach (var job in ExistingSyncJobs.Values.Where(x => Enum.Parse<SyncStatus>(x.Status) == status || status == SyncStatus.All))
-                yield return await Task.FromResult(job);
-        }
-
-        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(IEnumerable<(string partitionKey, string rowKey)> jobIds)
-        {
-            foreach (var job in jobIds.Select(x => ExistingSyncJobs[x]))
-                yield return await Task.FromResult(job);
-        }
-
         public Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status)
         {
             foreach (var job in jobs)
@@ -52,7 +39,7 @@ namespace Repositories.Mocks
             throw new NotImplementedException();
         }
 
-        public Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, bool applyFilters = true)
+        public Task<TableSegmentBulkResult<SyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, int batchSize, bool applyFilters = true)
         {
             throw new NotImplementedException();
         }
@@ -69,6 +56,11 @@ namespace Repositories.Mocks
         }
 
         public Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs)
+        {
+            throw new NotImplementedException();
+        }
+
+        public AsyncPageable<SyncJob> GetPageableQueryResult(bool includeFutureJobs = false, params SyncStatus[] statusFilters)
         {
             throw new NotImplementedException();
         }

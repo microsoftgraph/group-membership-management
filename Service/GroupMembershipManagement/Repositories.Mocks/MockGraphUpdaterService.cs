@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace Repositories.Mocks
 {
-    public class MockGraphUpdaterService : IGraphUpdaterService
+    public class MockGraphUpdaterService :  IGraphUpdaterService
     {
         IMailRepository _mailRepository;
 
