@@ -17,8 +17,10 @@ namespace Services
 {
     public class JobSchedulingService : IJobSchedulingService {
 
-        public readonly int MINUTES_IN_HOUR = 60;
-        public readonly int SECONDS_IN_MINUTE = 60;
+        private const int MINUTES_IN_HOUR = 60;
+        private const int SECONDS_IN_MINUTE = 60;
+        private const int JobsBatchSize = 100;
+
 
         private readonly ISyncJobRepository _syncJobRepository;
         private readonly IRuntimeRetrievalService _runtimeRetrievalService;
@@ -64,14 +66,21 @@ namespace Services
         {
             if (pageableQueryResult == null)
             {
-                pageableQueryResult = _syncJobRepository.GetPageableQueryResult(SyncStatus.All, includeFutureJobs);
-            }
+                pageableQueryResult = _syncJobRepository.GetPageableQueryResult(includeFutureJobs, SyncStatus.All);
+            } 
 
-            var queryResultSegment = await _syncJobRepository.GetSyncJobsSegmentAsync(pageableQueryResult, continuationToken, false);
- 
-            return queryResultSegment;
+            var queryResultSegment = await _syncJobRepository.GetSyncJobsSegmentAsync(pageableQueryResult, continuationToken, JobsBatchSize, false);
+
+            var returnQueryResultSegment = new TableSegmentBulkResult<DistributionSyncJob>()
+            {
+                ContinuationToken = queryResultSegment.ContinuationToken,
+                PageableQueryResult = queryResultSegment.PageableQueryResult,
+                Results = queryResultSegment.Results.Select(job => new DistributionSyncJob(job)).ToList<DistributionSyncJob>()  
+            };
+
+            return returnQueryResultSegment;
         }
-
+        
         public async Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> updatedSyncJobs)
         {
             await _syncJobRepository.BatchUpdateSyncJobsAsync(updatedSyncJobs);
