@@ -19,6 +19,9 @@
     },
     "serviceBusQueueName": {
       "value": "membership"
+    },
+    "notifierProviderId": {
+      "value": ""
     }
   }
 }

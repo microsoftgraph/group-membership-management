@@ -258,6 +258,11 @@ param emailReceivers array = [
   }
 ]
 
+@description('Enter actionable email notifier provider id.')
+@minLength(0)
+@maxLength(36)
+param notifierProviderId string
+
 @description('JSON string with an array listing the existing data resources [{Name: string, ResourceType: string}]')
 param existingDataResources string = '[]'
 
@@ -432,6 +437,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'logAnalyticsCustomerId'
         value: logAnalyticsTemplate.outputs.customerId
+      }
+      {
+        name: 'notifierProviderId'
+        value: notifierProviderId
       }
     ]
   }
