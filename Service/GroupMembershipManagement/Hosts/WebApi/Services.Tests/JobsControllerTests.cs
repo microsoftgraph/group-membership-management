@@ -78,7 +78,7 @@ namespace Services.Tests
                 });
             });
 
-            _syncJobRepository.Setup(x => x.GetPageableQueryResult(SyncStatus.All, true))
+            _syncJobRepository.Setup(x => x.GetPageableQueryResult(true, SyncStatus.All))
                               .Returns(() =>
                               {
                                   var response = new Mock<Response>();

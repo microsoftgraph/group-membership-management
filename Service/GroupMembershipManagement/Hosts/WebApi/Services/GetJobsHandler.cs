@@ -23,7 +23,7 @@ namespace Services
         protected override async Task<GetJobsResponse> ExecuteCoreAsync(GetJobsRequest request)
         {
             var response = new GetJobsResponse();
-            var jobs = _syncJobRepository.GetPageableQueryResult(Models.SyncStatus.All, true);
+            var jobs = _syncJobRepository.GetPageableQueryResult(true, Models.SyncStatus.All);
 
             await foreach (var job in jobs)
             {
