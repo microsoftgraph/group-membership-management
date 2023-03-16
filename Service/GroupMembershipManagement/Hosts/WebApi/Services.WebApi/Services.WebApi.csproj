@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
@@ -8,9 +8,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Entities\Entities.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Localization\Repositories.Localization.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj" />
-    <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Services.Contracts\Services.Contracts.csproj" />
+    <ProjectReference Include="..\Services.Messages.Contracts\Services.Messages.Contracts.csproj" />
     <ProjectReference Include="..\Services.Messages\Services.Messages.csproj" />
+    <ProjectReference Include="..\Services.WebApi.Contracts\Services.WebApi.Contracts.csproj" />
     <ProjectReference Include="..\WebApi.Models\WebApi.Models.csproj" />
   </ItemGroup>
 

@@ -22,6 +22,12 @@ param tenantId string
 @description('Service plan name.')
 param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-webapi-serviceplan'
 
+@description('App service name.')
+param appServiceName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-webapi'
+
+@description('Enter the hostname for the api')
+param hostname string = '${appServiceName}.azurewebsites.net'
+
 @description('Service plan sku')
 @allowed([
   'D1'
@@ -78,6 +84,7 @@ var graphAppClientId = resourceId(subscription().subscriptionId, prereqsResource
 var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientSecret')
 var graphAppCertificateName = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppCertificateName')
 var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppTenantId')
+var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   scope: resourceGroup(dataResourceGroup)
@@ -142,6 +149,14 @@ var appSettings = [
     value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
   }
   {
+    name: 'Settings:ActionableEmailProviderId'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:Hostname'
+    value: hostname
+  }
+  {
     name: 'Settings:GraphCredentials:KeyVaultName'
     value: prereqsKeyVaultName
   }
@@ -164,7 +179,7 @@ module servicePlanTemplate 'servicePlan.bicep' = {
 module appService 'appService.bicep' = {
   name: 'appServiceTemplate-WebApi'
   params:{
-    name: '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-webapi'
+    name: appServiceName
     location: location
     servicePlanName: servicePlanName
     appSettings: appSettings

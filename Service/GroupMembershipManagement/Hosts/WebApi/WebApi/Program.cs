@@ -18,6 +18,8 @@ using Microsoft.AspNetCore.OData;
 using Common.DependencyInjection;
 using Microsoft.Graph;
 using Repositories.GraphGroups;
+using Services.Contracts.Notifications;
+using Services.Notifications;
 using Repositories.NotificationsRepository;
 
 namespace WebApi
@@ -143,6 +145,13 @@ namespace WebApi
                 return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetRequiredService<IOptions<GraphCredentials>>().Value));
             })
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
+
+            builder.Services.AddOptions<ThresholdNotificationServiceConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.ActionableEmailProviderId = configuration.GetValue<Guid>("Settings:ActionableEmailProviderId");
+                settings.Hostname = configuration.GetValue<string>("Settings:Hostname");
+            });
+            builder.Services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
 
             var app = builder.Build();
 

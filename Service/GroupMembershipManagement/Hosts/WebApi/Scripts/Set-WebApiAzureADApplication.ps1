@@ -173,10 +173,30 @@ function Set-WebApiAzureADApplication {
 		$webApiApp.Web.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
 		$webApiApp.Web.ImplicitGrantSetting.EnableIdTokenIssuance = $true
 
+		# Add upn to list of claims if it doesn't exist (required by WebApi)
+		$optionalClaim = $webApiApp.OptionalClaim;
+		$hasUpnClaim = $false;
+
+		foreach($claim in $optionalClaim.AccessToken) {
+			if ("upn" -eq $claim.Name) {
+				$hasUpnClaim = $true;
+			}
+		}
+
+		if (!$hasUpnClaim) {
+			$optionalClaim.AccessToken += @{
+				Name = "upn"
+				Source = $null
+				Essential = $false
+				AdditionalProperties = @()
+			}
+		}
+
 		Write-Verbose "Updating Azure AD app $webApiAppDisplayName"
 		Update-AzADApplication	-ObjectId $($webApiApp.Id) `
                                 -DisplayName $webApiAppDisplayName `
 								-AvailableToOtherTenants $true `
+								-OptionalClaim $optionalClaim `
 								-Web $webSettings
     }
 

@@ -3,62 +3,117 @@
 
 using Services.Contracts.Notifications;
 using Models.ThresholdNotifications;
+using Repositories.Contracts;
+using Models.AdaptiveCards;
+using AdaptiveCards.Templating;
+using DIConcreteTypes;
+using Microsoft.Extensions.Options;
 
 namespace Services.Notifications
 {
     public class ThresholdNotificationService : IThresholdNotificationService
     {
-        /// <inheritdoc />
-        public async Task<string> CreateNotificationHTMLAsync(ThresholdNotification notification)
+        private readonly IGraphGroupRepository _graphGroupRepository;
+        private readonly ILocalizationRepository _localizationRepository;
+        private readonly string _hostname;
+        private readonly Guid _providerId;
+
+        public ThresholdNotificationService(
+            IOptions<ThresholdNotificationServiceConfig> config,
+            IGraphGroupRepository graphGroupRepository,
+            ILocalizationRepository localizationRepository)
         {
-            string notificationHTML;
-
-            if (notification.Status == ThresholdNotificationStatus.Resolved)
-            {
-                notificationHTML = "Threshold Notification Resolved template";
-            }
-            else
-            {
-                notificationHTML = "Threshold Notification template";
-            }
-
-            return await Task.FromResult(notificationHTML);
+            _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
+            _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
+            _hostname = config.Value.Hostname;
+            _providerId = config.Value.ActionableEmailProviderId;
         }
 
         /// <inheritdoc />
-        public async Task<ThresholdNotification?> GetNotificationAsync(Guid id)
+        public async Task<string> CreateNotificationCardAsync(ThresholdNotification notification)
         {
-            var testGuid = Guid.Parse("12340000-0000-0000-0000-00000000abcd");
-            var testNotification = new ThresholdNotification()
+            var cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdNotification);
+            var groupName = await _graphGroupRepository.GetGroupNameAsync(notification.TargetOfficeGroupId);
+            var cardData = new ThesholdNotificationCardData
             {
-                Id = testGuid
+                GroupName = groupName,
+                ChangeQuantityForAdditions = notification.ChangeQuantityForAdditions,
+                ChangeQuantityForRemovals = notification.ChangeQuantityForRemovals,
+                ChangePercentageForAdditions = notification.ChangePercentageForAdditions,
+                ChangePercentageForRemovals = notification.ChangePercentageForRemovals,
+                ThresholdPercentageForAdditions = notification.ThresholdPercentageForAdditions,
+                ThresholdPercentageForRemovals = notification.ThresholdPercentageForRemovals,
+                ApiHostname = _hostname,
+                NotificationId = $"{notification.Id}",
+                ProviderId = $"{_providerId}"
             };
 
-            if (id == testGuid)
-            {
-                return await Task.FromResult(testNotification);
-            }
+            var template = new AdaptiveCardTemplate(cardJson);
+            var card = template.Expand(cardData);
 
-            return null;
+            return card;
         }
 
         /// <inheritdoc />
-        public async Task<List<string>> GetRecipientEmailAddressesAsync(ThresholdNotification notification)
+        public async Task<string> CreateNotFoundNotificationCardAsync(Guid notificationId)
         {
-            var testEmails = new List<string>
+            var cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdNotificationNotFound);
+            var cardData = new ThesholdNotificationNotFoundCardData
             {
-                "user1@contoso.net",
-                "user2@contoso.net",
-                "user3@contoso.net"
+                NotificationId = $"{notificationId}",
+                ProviderId = $"{_providerId}"
             };
 
-            return testEmails;
+            var template = new AdaptiveCardTemplate(cardJson);
+            var card = template.Expand(cardData);
+
+            return card;
+
         }
 
-        /// <inheritdoc />
-        public async Task SaveNotificationAsync(ThresholdNotification notification)
+        public async Task<string> CreateResolvedNotificationCardAsync(ThresholdNotification notification)
         {
-            throw new NotImplementedException();
+            var cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdNotificationResolved);
+            var resolution = _localizationRepository.TranslateSetting(notification.Resolution);
+            var groupName = await _graphGroupRepository.GetGroupNameAsync(notification.TargetOfficeGroupId);
+            var cardData = new ThesholdNotificationResolvedCardData
+            {
+                GroupName = groupName,
+                ChangeQuantityForAdditions = notification.ChangeQuantityForAdditions,
+                ChangeQuantityForRemovals = notification.ChangeQuantityForRemovals,
+                ChangePercentageForAdditions = notification.ChangePercentageForAdditions,
+                ChangePercentageForRemovals = notification.ChangePercentageForRemovals,
+                ThresholdPercentageForAdditions = notification.ThresholdPercentageForAdditions,
+                ThresholdPercentageForRemovals = notification.ThresholdPercentageForRemovals,
+                ResolvedByUPN = notification.ResolvedByUPN,
+                ResolvedTime = notification.ResolvedTime.ToString("U"),
+                Resolution = resolution,
+                NotificationId = $"{notification.Id}",
+                ProviderId = $"{_providerId}"
+            };
+
+            var template = new AdaptiveCardTemplate(cardJson);
+            var card = template.Expand(cardData);
+
+            return card;
+        }
+
+        public async Task<string> CreateUnauthorizedNotificationCardAsync(ThresholdNotification notification)
+        {
+
+            var groupName = await _graphGroupRepository.GetGroupNameAsync(notification.TargetOfficeGroupId);
+            var cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdNotificationUnauthorized);
+            var cardData = new ThesholdNotificationUnauthorizedCardData
+            {
+                GroupName = groupName,
+                NotificationId = $"{notification.Id}",
+                ProviderId = $"{_providerId}"
+            };
+
+            var template = new AdaptiveCardTemplate(cardJson);
+            var card = template.Expand(cardData);
+
+            return card;
         }
     }
 }

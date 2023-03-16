@@ -16,9 +16,14 @@ namespace Repositories.Localization
 
         public string TranslateSetting(string settingName, params string[] additionalParams)
         {
-            return additionalParams == null
+            return additionalParams == null || additionalParams.Length == 0
                     ? _localizer.GetString(settingName)
                     : _localizer.GetString(settingName, additionalParams);
+        }
+
+        public string TranslateSetting(Enum settingName, params string[] additionalParams)
+        {
+            return TranslateSetting($"{settingName.GetType().Name}.{settingName}", additionalParams);
         }
     }
 }

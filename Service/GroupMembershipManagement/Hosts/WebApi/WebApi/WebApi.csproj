@@ -21,13 +21,16 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj" />
     <ProjectReference Include="..\..\..\DIConcreteTypes\DIConcreteTypes.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Localization\Repositories.Localization.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Logging\Repositories.Logging.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj" />
     <ProjectReference Include="..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj" />
-    <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Services.Notifications\Services.Notifications.csproj" />
     <ProjectReference Include="..\Services.Messages\Services.Messages.csproj" />
-    <ProjectReference Include="..\Services\Services.csproj" />
+	<ProjectReference Include="..\Services.WebApi.Contracts\Services.WebApi.Contracts.csproj" />
+    <ProjectReference Include="..\Services.WebApi\Services.WebApi.csproj" />
     <ProjectReference Include="..\WebApi.Models\WebApi.Models.csproj" />
   </ItemGroup>
 
