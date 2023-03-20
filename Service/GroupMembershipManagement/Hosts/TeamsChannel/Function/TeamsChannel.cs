@@ -42,24 +42,24 @@ namespace Hosts.TeamsChannel
             var runId = syncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
             _loggingRepository.SetSyncJobProperties(runId, syncInfo.SyncJob.ToDictionary());
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"TeamsChannel recieved a message. Query: {syncInfo.SyncJob.Query}.", RunId = runId }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"TeamsChannel recieved a message. Query: {syncInfo.SyncJob.Query}.", RunId = runId });
 
             var users = await _teamsChannelService.GetUsersFromTeam(GetGroupInfo(message));
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count} from {syncInfo.SyncJob.Query}.", RunId = runId }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count} from {syncInfo.SyncJob.Query}.", RunId = runId });
 
             // upload to blob storage
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploading {users.Count} users from {syncInfo.SyncJob.Query} to blob storage.", RunId = runId }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploading {users.Count} users from {syncInfo.SyncJob.Query} to blob storage.", RunId = runId });
             var filePath = await _teamsChannelService.UploadMembership(users, syncInfo, _isTeamsChannelDryRunEnabled);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded {users.Count} users from {syncInfo.SyncJob.Query} to blob storage at {filePath}.", RunId = runId }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded {users.Count} users from {syncInfo.SyncJob.Query} to blob storage at {filePath}.", RunId = runId });
 
             // make HTTP call
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Making MembershipAggregator request.", RunId = runId }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Making MembershipAggregator request.", RunId = runId });
             await _teamsChannelService.MakeMembershipAggregatorRequest(syncInfo, filePath);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Made MembershipAggregator request.", RunId = runId }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Made MembershipAggregator request.", RunId = runId });
 
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = "TeamsChannel finished.", RunId = runId }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = "TeamsChannel finished.", RunId = runId });
         }
 
         private ChannelSyncInfo GetGroupInfo(ServiceBusReceivedMessage message)

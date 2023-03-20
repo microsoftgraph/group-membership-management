@@ -32,7 +32,7 @@ namespace TeamsChannel.Service
         {
             Guid runId = channelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
             var azureADTeamsChannel = GetChannelToRead(channelSyncInfo);
-            _logger.LogMessageAsync(new LogMessage { Message = $"In Service, reading from group {azureADTeamsChannel.ObjectId} and channel {azureADTeamsChannel.ChannelId}.", RunId = runId }, VerbosityLevel.DEBUG);
+            _logger.LogMessageAsync(new LogMessage { Message = $"In Service, reading from group {azureADTeamsChannel.ObjectId} and channel {azureADTeamsChannel.ChannelId}.", RunId = runId });
             return _teamsChannelRepository.ReadUsersFromChannel(azureADTeamsChannel, runId);
         }
 
@@ -71,10 +71,10 @@ namespace TeamsChannel.Service
             var timeStamp = channelSyncInfo.SyncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
             var fileName = $"/{channelSyncInfo.SyncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_TeamsChannel_{channelSyncInfo.CurrentPart}.json";
 
-            await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, uploading {users.Count} users to {fileName}.", RunId = runId }, VerbosityLevel.DEBUG);
+            await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, uploading {users.Count} users to {fileName}.", RunId = runId });
             await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
 
-            await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, uploaded {users.Count} users to {fileName}.", RunId = runId }, VerbosityLevel.DEBUG);
+            await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, uploaded {users.Count} users to {fileName}.", RunId = runId });
 
             return fileName;
         }
@@ -96,17 +96,17 @@ namespace TeamsChannel.Service
             var httpClient = _httpClientFactory.CreateClient(Constants.MembershipAggregatorHttpClientName);
 
             // add retry logic with Polly here
-            await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, making HTTP request to {httpClient.BaseAddress}.", RunId = syncInfo.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, making HTTP request to {httpClient.BaseAddress}.", RunId = syncInfo.SyncJob.RunId });
             var response = await httpClient.PostAsJsonAsync(httpClient.BaseAddress, aggregatorRequest);
 
             if (response.StatusCode != System.Net.HttpStatusCode.NoContent)
             {
-                await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, successfully made POST request to {httpClient.BaseAddress}.", RunId = syncInfo.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, successfully made POST request to {httpClient.BaseAddress}.", RunId = syncInfo.SyncJob.RunId });
             }
             else
             {
                 var responseBody = await response.Content.ReadAsStringAsync();
-                await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, POST request failed. Got {response.StatusCode} instead. Response body: {responseBody}.", RunId = syncInfo.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, POST request failed. Got {response.StatusCode} instead. Response body: {responseBody}.", RunId = syncInfo.SyncJob.RunId });
                 await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncInfo.SyncJob }, SyncStatus.Error);
             }
 
