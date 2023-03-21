@@ -26,14 +26,14 @@ namespace Hosts.TeamsChannel
         private readonly ITeamsChannelService _teamsChannelService;
         private readonly bool _isTeamsChannelDryRunEnabled;
 
-        public TeamsChannel(ILoggingRepository loggingRepository, TeamsChannelService teamsChannelService, IDryRunValue dryRun)
+        public TeamsChannel(ILoggingRepository loggingRepository, ITeamsChannelService teamsChannelService, IDryRunValue dryRun)
         {
             _loggingRepository = loggingRepository;
             _teamsChannelService = teamsChannelService;
             _isTeamsChannelDryRunEnabled = dryRun.DryRunEnabled;
         }
 
-        [FunctionName("TeamsChannel")]
+        [FunctionName(nameof(TeamsChannel))]
         public async Task RunAsync(
             [ServiceBusTrigger("%serviceBusSyncJobTopic%", "TeamsChannel", Connection = "serviceBusTopicConnection")] ServiceBusReceivedMessage message)
         {
