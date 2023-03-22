@@ -39,10 +39,10 @@ namespace TeamsChannel.Service
         private AzureADTeamsChannel GetChannelToRead(ChannelSyncInfo syncInfo)
         {
             var queryArray = JArray.Parse(syncInfo.SyncJob.Query);
-            var thisPart = queryArray[syncInfo.CurrentPart - 1] as JObject;
+            var thisPart = (queryArray[syncInfo.CurrentPart - 1] as JObject)["source"];
             return new AzureADTeamsChannel
             {
-                ObjectId = thisPart["group"].Value<Guid>(),
+                ObjectId = Guid.Parse(thisPart["group"].Value<string>()),
                 ChannelId = thisPart["channel"].Value<string>()
             };
         }
