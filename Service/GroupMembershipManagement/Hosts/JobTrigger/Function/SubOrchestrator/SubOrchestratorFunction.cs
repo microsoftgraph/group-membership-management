@@ -160,7 +160,7 @@ namespace Hosts.JobTrigger
             var canWriteToGroup = await context.CallActivityAsync<bool>(nameof(GroupVerifierFunction), new GroupVerifierRequest()
             {
                 SyncJob = syncJob,
-                FunctionDirectory = executionContext.FunctionDirectory
+                FunctionDirectory = executionContext.FunctionAppDirectory
             });
 
             var statusValue = SyncStatus.StuckInProgress;
