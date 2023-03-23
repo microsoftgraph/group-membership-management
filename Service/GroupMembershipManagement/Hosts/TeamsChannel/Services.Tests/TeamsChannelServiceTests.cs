@@ -23,7 +23,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public void TestMethod1()
+        public void GetsUsersFromTeam()
         {
         }
     }
