@@ -99,9 +99,9 @@ namespace TeamsChannel.Service
             await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, making HTTP request to {httpClient.BaseAddress}.", RunId = syncInfo.SyncJob.RunId });
             var response = await httpClient.PostAsJsonAsync(httpClient.BaseAddress, aggregatorRequest);
 
-            if (response.StatusCode != System.Net.HttpStatusCode.NoContent)
+            if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
             {
-                await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, successfully made POST request to {httpClient.BaseAddress}.", RunId = syncInfo.SyncJob.RunId });
+                await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, successfully made POST request to {httpClient.BaseAddress}. Status Code: {response.StatusCode}", RunId = syncInfo.SyncJob.RunId });
             }
             else
             {
