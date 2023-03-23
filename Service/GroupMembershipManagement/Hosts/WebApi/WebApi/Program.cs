@@ -99,6 +99,8 @@ namespace WebApi
 
             });
 
+            builder.Services.AddCors();
+
             builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
             builder.Services.AddApplicationInsightsTelemetry();
 
@@ -167,8 +169,13 @@ namespace WebApi
             app.UseAzureAppConfiguration();
 
             app.UseHttpsRedirection();
-
-
+            app.UseStaticFiles();
+            app.UseRouting();
+            app.UseCors(x => x
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .SetIsOriginAllowed(origin => true) // allow any origin
+                .AllowCredentials()); // allow credentials
             app.UseAuthentication();
             app.UseAuthorization();
 
