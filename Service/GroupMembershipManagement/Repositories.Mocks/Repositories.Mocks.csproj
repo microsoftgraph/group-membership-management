@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Hosts\GraphUpdater\Services.Contracts\Services.Contracts.csproj" />
+    <ProjectReference Include="..\Models\Models.csproj" />
     <ProjectReference Include="..\Repositories.Contracts\Repositories.Contracts.csproj" />
   </ItemGroup>
 

@@ -3,6 +3,7 @@
 using Entities;
 using Microsoft.Graph;
 using Models;
+using Models.Entities;
 using Polly;
 using Repositories.Contracts;
 using Services.Contracts;
