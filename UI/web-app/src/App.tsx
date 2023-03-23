@@ -1,26 +1,20 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-import { useState, useEffect } from 'react';
-import './App.css';
-import Loader from './components/Loader';
-import { Job } from './components/Job';
 
-function App() {
-  const [jobs, setJobs] = useState([]);
-  const [err, setError] = useState({});
+import { MsalProvider } from "@azure/msal-react";
+import { IPublicClientApplication } from "@azure/msal-browser";
+import PageLayout from "./components/PageLayout";
 
-  useEffect(() => {
-    fetch('https://demo6035515.mockable.io/groups')
-    .then(response => response.json())
-    .then(res => setJobs(res))
-    .catch(err => setError(err))
-  }, [])
+type AppProps = {
+    pca: IPublicClientApplication
+};
 
-  return (
-    <div className="App">
-      {jobs.length > 0 ? <Job jobs={jobs} /> : (<Loader />)}
-    </div>
-  );
+function App({ pca }: AppProps) {
+    return (
+      <MsalProvider instance={pca}>
+        <PageLayout />
+      </MsalProvider>
+    );
 }
 
 export default App;

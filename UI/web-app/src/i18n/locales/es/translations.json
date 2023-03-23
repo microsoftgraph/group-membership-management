@@ -5,6 +5,7 @@
   "english": "Inglés",
   "spanish": "Español",
   "emptyList": "No hay grupos administrados por GMM",
+  "loading": "Cargando",
   "toggleSelection": "Cambiar selección",
   "toggleAllSelection": "Cambiar selección para todo",
   "selectRow": "Seleccionar fila"

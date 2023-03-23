@@ -12,7 +12,7 @@ param branch string
 @description('Repository URL.')
 param repositoryUrl string
 
-resource staticWebApp 'Microsoft.Web/staticSites@2021-03-01' = {
+resource staticWebApp 'Microsoft.Web/staticSites@2022-03-01' = {
   name: '${solutionAbbreviation}-ui'
   location: location
   sku: {
