@@ -4,6 +4,8 @@ using Models.Entities;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Mocks;
+using System.Net.Http.Json;
+using System.Text.Json;
 using TeamsChannel.Service;
 using TeamsChannel.Service.Contracts;
 
@@ -13,7 +15,11 @@ namespace Services.Tests
     public class TeamsChannelServiceTests
     {
         private TeamsChannelService _service;
+        private ChannelSyncInfo _syncInfo;
         private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository;
+        private Mock<IBlobStorageRepository> _mockBlobStorageRepository;
+        private Mock<IHttpClientFactory> _mockHttpClientFactory;
+
         private Dictionary<AzureADTeamsChannel, List<AzureADTeamsUser>> _mockChannels = new Dictionary<AzureADTeamsChannel, List<AzureADTeamsUser>>
         {
             { new AzureADTeamsChannel { ObjectId = Guid.Empty, ChannelId = "some channel" },
@@ -21,6 +27,8 @@ namespace Services.Tests
             { new AzureADTeamsChannel { ObjectId = Guid.Parse("00000000-0000-0000-0000-000000000001"), ChannelId = "another channel" },
                 new List<AzureADTeamsUser> { new AzureADTeamsUser { ObjectId = Guid.NewGuid(), TeamsId = "third guy" }, new AzureADTeamsUser { ObjectId = Guid.NewGuid(), TeamsId = "fourth guy" } } }
         };
+        const string ExpectedFilename = "/00000000-0000-0000-0000-000000000042/03281995-010203_00000000-0000-0000-0000-000000000012_TeamsChannel_1.json";
+
 
         [TestInitialize]
         public void SetUp()
@@ -28,27 +36,60 @@ namespace Services.Tests
             _mockTeamsChannelRepository = new Mock<ITeamsChannelRepository>();
             _mockTeamsChannelRepository.Setup<Task<List<AzureADTeamsUser>>>(repo => repo.ReadUsersFromChannel(It.IsIn<AzureADTeamsChannel>(_mockChannels.Keys), It.IsAny<Guid>()))
                 .ReturnsAsync((AzureADTeamsChannel c, Guid g) => _mockChannels[c]);
-            var mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
+            _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
             var mockSyncJobRepository = new MockSyncJobRepository();
-            var mockHttpClientFactory = new Mock<IHttpClientFactory>();
+            _mockHttpClientFactory = new Mock<IHttpClientFactory>();
 
-            _service = new TeamsChannelService(_mockTeamsChannelRepository.Object, mockBlobStorageRepository.Object, mockHttpClientFactory.Object, mockSyncJobRepository, new MockLoggingRepository());
+            //var expectedBaseAddress = new Uri("https://membershipaggregator");
+            //var mockHttpClient = Mock.Of<HttpClient>(h => h.BaseAddress == expectedBaseAddress &&
+            //    h.PostAsJsonAsync(expectedBaseAddress.ToString(), It.IsNotNull<MembershipAggregatorHttpRequest>(), It.IsNotNull<JsonSerializerOptions>(),
+            //    It.IsNotNull<CancellationToken>()) == Task.FromResult(Mock.Of<HttpResponseMessage>(response => response.StatusCode == System.Net.HttpStatusCode.NoContent)));
+
+            //_mockHttpClientFactory.Setup(x => x.CreateClient(Constants.MembershipAggregatorHttpClientName)).Returns(mockHttpClient);
+
+            _service = new TeamsChannelService(_mockTeamsChannelRepository.Object, _mockBlobStorageRepository.Object, _mockHttpClientFactory.Object, mockSyncJobRepository, new MockLoggingRepository());
+
+            _syncInfo = new ChannelSyncInfo
+            {
+                CurrentPart = 1,
+                SyncJob = new SyncJob
+                {
+                    RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
+                    TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
+                    Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
+                    Query = @"[{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000000"", ""channel"":""some channel""}},{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000001"", ""channel"":""another channel""}}]"
+                }
+            };
         }
 
         [TestMethod]
         public async Task GetsUsersFromTeam()
         {
-            var userList = await _service.GetUsersFromTeam(new ChannelSyncInfo
-            {
-                CurrentPart = 1,
-                SyncJob = new SyncJob
-                {
-                    Query = @"[{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000000"", ""channel"":""some channel""}},{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000001"", ""channel"":""another channel""}}]"
-                }
-            });
+            var sourceChannel = new AzureADTeamsChannel { ObjectId = Guid.Empty, ChannelId = "some channel" };
+            var userList = await _service.GetUsersFromTeam(_syncInfo);
 
-            Assert.IsTrue(userList.SequenceEqual(_mockChannels[new AzureADTeamsChannel { ObjectId = Guid.Empty, ChannelId = "some channel" }]));
+
+            Assert.IsTrue(userList.SequenceEqual(_mockChannels[sourceChannel]));
             Assert.AreEqual(2, userList.Count);
+            _mockTeamsChannelRepository.Verify(m => m.ReadUsersFromChannel(sourceChannel, _syncInfo.SyncJob.RunId.Value));
         }
+
+        [TestMethod]
+        public async Task CanUploadMembership()
+        {
+            var sourceChannel = new AzureADTeamsChannel { ObjectId = Guid.Empty, ChannelId = "some channel" };
+            var sourceMembers = _mockChannels[sourceChannel];
+
+            var filePath = await _service.UploadMembership(sourceMembers, _syncInfo, false);
+
+            Assert.AreEqual(ExpectedFilename, filePath);
+            _mockBlobStorageRepository.Verify(mock => mock.UploadFileAsync(ExpectedFilename, It.IsNotNull<string>(), It.IsAny<Dictionary<string, string>>()));
+        }
+
+        //[TestMethod]
+        //public async Task MakesSuccessfulMembershipAggregatorRequest()
+        //{
+        //    await _service.MakeMembershipAggregatorRequest(_syncInfo, ExpectedFilename);
+        //}
     }
 }
