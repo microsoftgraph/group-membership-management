@@ -155,12 +155,7 @@ namespace Hosts.FunctionBase
                 settings.TableName = configuration.GetValue<string>("notificationsTableName");
             });
 
-            builder.Services.AddSingleton<INotificationRepository>(services =>
-            {
-                var creds = services.GetService<IOptions<NotificationRepoCredentials<NotificationRepository>>>();
-                return new NotificationRepository(services.GetService<INotificationRepoCredentials<NotificationRepository>>(), 
-                                                  services.GetService<ILoggingRepository>());
-            });
+            builder.Services.AddSingleton<INotificationRepository, NotificationRepository>();
 
             builder.Services.AddSingleton<TelemetryClient>(sp =>
             {
