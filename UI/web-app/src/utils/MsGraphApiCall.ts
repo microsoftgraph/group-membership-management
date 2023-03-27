@@ -17,13 +17,6 @@ export async function callMsGraph() {
 
     const headers = new Headers();
     const bearer = `Bearer ${response.accessToken}`;
-    console.log(response.accessToken);
-    console.log(msalConfig.auth.clientId);
-    console.log(msalConfig.auth.authority);
-    console.log(loginRequest.scopes);
-    console.log(config.endpoint);
-
-
     headers.append("Authorization", bearer);
 
     const options = {
