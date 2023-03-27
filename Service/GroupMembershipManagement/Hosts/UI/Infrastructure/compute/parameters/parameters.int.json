@@ -7,6 +7,9 @@
     },
     "repositoryUrl": {
       "value": "<repository-Url>"
+    },
+    "customDomainName": {
+      "value": "<custom-domain-name>"
     }
   }
 }
