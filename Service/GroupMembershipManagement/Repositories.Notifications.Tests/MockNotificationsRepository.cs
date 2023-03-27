@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 
 using Azure;
-using Entities;
 using Models;
+using Models.ThresholdNotifications;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
