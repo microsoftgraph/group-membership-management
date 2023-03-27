@@ -95,7 +95,6 @@ namespace TeamsChannel.Service
             // also, it feels like a good idea to me to only create an httpClient if we're actually going to use it
             var httpClient = _httpClientFactory.CreateClient(Constants.MembershipAggregatorHttpClientName);
 
-            // add retry logic with Polly here
             await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, making HTTP request to {httpClient.BaseAddress}.", RunId = syncInfo.SyncJob.RunId });
             var response = await httpClient.PostAsJsonAsync(httpClient.BaseAddress, aggregatorRequest);
 
