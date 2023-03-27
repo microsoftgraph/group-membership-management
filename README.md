@@ -542,7 +542,7 @@ Open your jobs storage account on Azure Explorer:
 * Go to `Resource Groups` and select `gmm-data-<EnvironmentAbbreviation>`
 * Under `Resources`, select the `jobs<EnvironmentAbbreviation><ID>` storage account, and open it on Azure Explorer
 
-Create two new table:
+Create two new tables:
 
 * On Azure Explorer, under your storage account, right click on `Tables`
   * Create a new table called `syncJobs`
