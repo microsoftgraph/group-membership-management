@@ -12,33 +12,33 @@ Please read before proceeding:
 
 # Table of Contents
 
-1. [GMM Setup Overview](#GMM-Setup-Overview:)
-    * [Setup prerequisites](##Setup-prerequisites)
-    * [Resource groups overview](##Resource-groups-overview)
-    * [Prereqs keyvault overview](##Prereqs-keyvault-overview)
-    * [ARM templates and parameter files overview](##ARM-templates-and-parameter-files-overview)
-    * [GMM environments](##GMM-environments)
-2. [GMM Setup](#GMM-Setup)
-    * [Create Azure Devops Repositories](##Create-Azure-Devops-Repositories)
-    * [Create resource groups and the prereqs keyvault](##Create-resource-groups-and-the-prereqs-keyvault)
-    * [Create the Graph application and populate prereqs keyvault](##Create-the-Graph-application-and-populate-prereqs-keyvault)
-    * [Create the WebAPI application and populate prereqs keyvault](##Create-the-WebAPI-application-and-populate-prereqs-keyvault)
-    * [Adding a new GMM environment](##Adding-a-new-GMM-environment)
-    * [Create a Service Connection](##Create-a-Service-Connection)
-    * [Set up email notifications](##Set-up-email-notifications)
-    * [Create an Azure DevOps environment](##Create-an-Azure-DevOps-environment)
-    * [Create an Azure DevOps pipeline](##Create-an-Azure-DevOps-pipeline)
-    * [Post-Deployment tasks](##Post-Deployment-tasks)
-    * [(Optional) Set up a production environment(s)]((Optional)-Set-up-a-production-environment(s))
-3. [Using GMM](#Using-GMM)
-    * [Adding Graph application as an owner to GMM managed destination group](##Adding-Graph-application-as-an-owner-to-GMM-managed-destination-group)
-    * [Creating synchronization jobs for source groups](##Creating-synchronization-jobs-for-source-groups)
-    * [Dry Run Settings](##Dry-Run-Settings)
-4. [Setting AzureMaintenance function](#Setting-AzureMaintenance-function)
-5. [Setting GMM in a demo tenant](#Setting-GMM-in-a-demo-tenant)
-6. [Setting up GMM UI](#Setting-up-GMM-UI)
-7. [Steps to debug and troubleshoot a failing sync](#Steps-to-debug-and-troubleshoot-a-failing-sync)
-8. [Breaking changes](#Breaking-changes)
+1. [GMM Setup Overview](#gmm-setup-overview)
+    * [Setup prerequisites](#setup-prerequisites)
+    * [Resource groups overview](#resource-groups-overview)
+    * [Prereqs keyvault overview](#prereqs-keyvault-overview)
+    * [ARM templates and parameter files overview](#arm-templates-and-parameter-files-overview)
+    * [GMM environments](#gmm-environments)
+2. [GMM Setup](#gmm-Setup)
+    * [Create Azure Devops Repositories](#create-azure-devops-repositories)
+    * [Create resource groups and the prereqs keyvault](#create-resource-groups-and-the-prereqs-keyvault)
+    * [Create the Graph application and populate prereqs keyvault](#create-the-graph-application-and-populate-prereqs-keyvault)
+    * [Create the WebAPI application and populate prereqs keyvault](#create-the-webapi-application-and-populate-prereqs-keyvault)
+    * [Adding a new GMM environment](#adding-a-new-gmm-environment)
+    * [Create a Service Connection](#create-a-service-connection)
+    * [Set up email notifications](#set-up-email-notifications)
+    * [Create an Azure DevOps environment](#create-an-azure-devops-environment)
+    * [Create an Azure DevOps pipeline](#create-an-azure-devops-pipeline)
+    * [Post-Deployment tasks](#post-deployment-tasks)
+    * [(Optional) Set up a production environment(s)](#optional-set-up-a-production-environment)
+3. [Using GMM](#using-gmm)
+    * [Adding Graph application as an owner to GMM managed destination group](#adding-graph-application-as-an-owner-to-gmm-managed-destination-group)
+    * [Creating synchronization jobs for source groups](#creating-synchronization-jobs-for-source-groups)
+    * [Dry Run Settings](#dry-run-settings)
+4. [Setting AzureMaintenance function](#setting-azuremaintenance-function)
+5. [Setting GMM in a demo tenant](#setting-gmm-in-a-demo-tenant)
+6. [Setting up GMM UI](#setting-up-gmm-ui)
+7. [Steps to debug and troubleshoot a failing sync](#steps-to-debug-and-troubleshoot-a-failing-sync)
+8. [Breaking changes](#breaking-changes)
 
 <br>
 
@@ -742,7 +742,7 @@ The run frequency is set to every day at midnight, it is defined as a NCRONTAB e
 
 In the event that you are setting up GMM in a demo tenant refer to [Setting GMM in a demo tenant](/Documentation/DemoTenant.md) for additional guidance.
 
-# GMM UI
+# Setting up GMM UI
 
 Please refer to [GMM UI](UI/web-app/README.md) for additional guidance.
 
