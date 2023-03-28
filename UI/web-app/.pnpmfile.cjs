@@ -10,6 +10,7 @@ function readPackage(packageJson, context) {
 
   const dependencyChanges = [
     new PackageUpgradeStrategy('nth-check', ['^1.0.2'], '2.0.1'),
+    new PackageUpgradeStrategy('webpack', ['^5.64.4'], '5.76.0'),
   ];
 
   const logger = new Logger(context);
