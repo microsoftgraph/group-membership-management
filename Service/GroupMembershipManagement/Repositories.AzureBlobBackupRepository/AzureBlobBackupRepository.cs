@@ -3,7 +3,7 @@
 
 using Azure.Storage.Blobs;
 using CsvHelper;
-using Entities;
+using Models;
 using Entities.AzureMaintenance;
 using Microsoft.Azure.Cosmos.Table;
 using Repositories.Contracts;
@@ -16,6 +16,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Models.AzureMaintenance;
 
 namespace Repositories.AzureBlobBackupRepository
 {

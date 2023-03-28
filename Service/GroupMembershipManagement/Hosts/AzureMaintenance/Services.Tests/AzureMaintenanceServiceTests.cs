@@ -15,6 +15,7 @@ using Services.Entities.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Models.AzureMaintenance;
 
 namespace Services.Tests
 {

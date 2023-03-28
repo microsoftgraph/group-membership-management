@@ -3,6 +3,7 @@
 using Azure;
 using Azure.Core;
 using Entities;
+using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;

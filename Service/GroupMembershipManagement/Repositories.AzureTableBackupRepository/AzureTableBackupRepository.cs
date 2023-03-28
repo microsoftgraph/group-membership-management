@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 
 using Azure.Data.Tables;
-using Entities;
+using Models;
+using Models.AzureMaintenance;
 using Entities.AzureMaintenance;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.Cosmos.Table.Queryable;
@@ -16,6 +17,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using TableEntity = Microsoft.Azure.Cosmos.Table.TableEntity;
+using Entities;
 
 namespace Repositories.AzureTableBackupRepository
 {

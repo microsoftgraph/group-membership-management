@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
-using Entities.ServiceBus;
+using Models.ServiceBus;
 using Hosts.AzureMembershipProvider;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;

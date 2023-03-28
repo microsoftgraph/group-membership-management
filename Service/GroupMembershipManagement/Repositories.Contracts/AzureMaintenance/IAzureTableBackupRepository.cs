@@ -3,7 +3,7 @@
 using Entities;
 using Entities.AzureMaintenance;
 using Microsoft.Azure.Cosmos.Table;
-using Services.Entities;
+using Models.AzureMaintenance;
 using Services.Entities.Contracts;
 using System.Collections.Generic;
 using System.Threading.Tasks;

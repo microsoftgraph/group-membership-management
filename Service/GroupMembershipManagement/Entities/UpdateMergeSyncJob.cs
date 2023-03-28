@@ -3,8 +3,6 @@
 
 using Azure;
 using Azure.Data.Tables;
-using Entities;
-using Entities.CustomAttributes;
 using Newtonsoft.Json;
 using System;
 

@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
-using Entities.ServiceBus;
+using Models.ServiceBus;
 using Hosts.SecurityGroup;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -18,7 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Entities.Helpers;
+using Models.Helpers;
 using Newtonsoft.Json;
 using SecurityGroup.SubOrchestrator;
 

@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 using System;
 
-namespace Entities.AzureMaintenance
+namespace Models.AzureMaintenance
 {
     public class BackupTable
     {

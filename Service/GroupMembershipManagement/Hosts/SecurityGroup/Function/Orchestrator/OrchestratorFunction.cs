@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 using Azure;
 using Entities;
-using Entities.Helpers;
+using Models.Helpers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;

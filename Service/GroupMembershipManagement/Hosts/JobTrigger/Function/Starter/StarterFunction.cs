@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
+using Models;
 using Hosts.JobTrigger;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;

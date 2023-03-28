@@ -2,13 +2,13 @@
 // Licensed under the MIT license.
 
 using Entities;
-using Entities.ServiceBus;
+using Models;
+using Models.ServiceBus;
 using Hosts.MembershipAggregator;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using Models;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;

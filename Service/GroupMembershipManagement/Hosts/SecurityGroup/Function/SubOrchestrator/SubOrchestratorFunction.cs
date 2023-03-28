@@ -9,11 +9,11 @@ using System.Collections.Generic;
 using System;
 using System.Linq;
 using Newtonsoft.Json;
-using Entities.ServiceBus;
+using Models.ServiceBus;
 using Microsoft.ApplicationInsights;
 using Repositories.Contracts.InjectConfig;
 using Microsoft.Graph;
-using Entities.Helpers;
+using Models.Helpers;
 using Models;
 using SecurityGroup.SubOrchestrator;
 

@@ -17,10 +17,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using Entities.Helpers;
 using Newtonsoft.Json;
 using SecurityGroup.SubOrchestrator;
 using Microsoft.Azure.WebJobs;
+using Models.Helpers;
 
 namespace Tests.Services
 {

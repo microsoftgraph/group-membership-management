@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 using Azure.Core;
 using Entities;
-using Entities.ServiceBus;
+using Models.ServiceBus;
 using GraphUpdater.Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;

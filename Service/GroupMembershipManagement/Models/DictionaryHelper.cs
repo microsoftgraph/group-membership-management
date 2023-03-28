@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities.CustomAttributes;
+using Models.CustomAttributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace Entities
+namespace Models
 {
     public static class DictionaryHelper
     {

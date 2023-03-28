@@ -1,7 +1,6 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Entities.ServiceBus;
+using Models.ServiceBus;
 using GraphUpdater.Entities;
 using Hosts.GraphUpdater;
 using Microsoft.ApplicationInsights;

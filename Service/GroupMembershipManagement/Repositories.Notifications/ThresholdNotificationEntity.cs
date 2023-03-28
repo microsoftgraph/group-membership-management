@@ -3,7 +3,7 @@
 
 using Azure;
 using Azure.Data.Tables;
-using Entities.CustomAttributes;
+using Models.CustomAttributes;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;

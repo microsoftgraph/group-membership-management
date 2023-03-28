@@ -6,7 +6,7 @@ using System;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System.Threading.Tasks;
-using Entities.ServiceBus;
+using Models.ServiceBus;
 using System.Text.RegularExpressions;
 using System.Linq;
 using Newtonsoft.Json;

@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities.CustomAttributes;
+using Models.CustomAttributes;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Entities
+namespace Models
 {
     [ExcludeFromCodeCoverage]
     public class LogMessage

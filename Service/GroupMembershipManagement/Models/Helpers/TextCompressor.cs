@@ -5,7 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 
-namespace Entities.Helpers
+namespace Models.Helpers
 {
     public static class TextCompressor
     {

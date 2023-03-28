@@ -4,7 +4,7 @@
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Entities;
+using Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.Http;

@@ -3,7 +3,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Entities
+namespace Models.Exceptions
 {
 	[ExcludeFromCodeCoverage]
 	public class GraphUpdaterSessionLockLostException: Exception
