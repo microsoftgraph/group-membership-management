@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.OData;
 using Common.DependencyInjection;
 using Microsoft.Graph;
 using Repositories.GraphGroups;
+using Repositories.NotificationsRepository;
 
 namespace WebApi
 {
