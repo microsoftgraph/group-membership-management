@@ -1,5 +1,6 @@
 using Entities;
 using Entities.ServiceBus;
+using Microsoft.Graph;
 using Models;
 using Models.Entities;
 using Newtonsoft.Json;
@@ -28,10 +29,32 @@ namespace TeamsChannel.Service
             _logger = loggingRepository;
         }
 
-        public Task<List<AzureADTeamsUser>> GetUsersFromTeam(ChannelSyncInfo channelSyncInfo)
+        public async Task<(AzureADTeamsChannel parsedChannel, bool isGood)> VerifyChannel(ChannelSyncInfo channelSyncInfo)
         {
             Guid runId = channelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
             var azureADTeamsChannel = GetChannelToRead(channelSyncInfo);
+
+            if (!channelSyncInfo.IsDestinationPart)
+            {
+                _logger.LogMessageAsync(new LogMessage { Message = $"In Service, group {azureADTeamsChannel.ObjectId} and channel {azureADTeamsChannel.ChannelId} is not a destination.", RunId = runId });
+                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { channelSyncInfo.SyncJob }, SyncStatus.PrivateChannelNotDestination);
+                return (azureADTeamsChannel, isGood: false);
+            }
+
+            var destType = await _teamsChannelRepository.GetChannelType(azureADTeamsChannel, runId);
+
+            if (destType != ChannelMembershipType.Private.ToString())
+            {
+                await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, group {azureADTeamsChannel.ObjectId} and channel {azureADTeamsChannel.ChannelId} is not a private channel. It is {destType}.", RunId = runId });
+                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { channelSyncInfo.SyncJob }, SyncStatus.TeamsChannelNotPrivate);
+                return (azureADTeamsChannel, isGood: false);
+            }
+
+            return (azureADTeamsChannel, isGood: true);
+        }
+
+        public Task<List<AzureADTeamsUser>> GetUsersFromTeam(AzureADTeamsChannel azureADTeamsChannel, Guid runId)
+        {
             _logger.LogMessageAsync(new LogMessage { Message = $"In Service, reading from group {azureADTeamsChannel.ObjectId} and channel {azureADTeamsChannel.ChannelId}.", RunId = runId });
             return _teamsChannelRepository.ReadUsersFromChannel(azureADTeamsChannel, runId);
         }
@@ -57,7 +80,7 @@ namespace TeamsChannel.Service
             // since you'd have to change it everywhere someone uses a GroupMembership. 
             var groupMembership = new GroupMembership
             {
-                SourceMembers =  new List<AzureADUser>(users) ?? new List<AzureADUser>(),
+                SourceMembers = new List<AzureADUser>(users) ?? new List<AzureADUser>(),
                 Destination = new AzureADGroup { ObjectId = channelSyncInfo.SyncJob.TargetOfficeGroupId },
                 RunId = runId,
                 Exclusionary = channelSyncInfo.Exclusionary,

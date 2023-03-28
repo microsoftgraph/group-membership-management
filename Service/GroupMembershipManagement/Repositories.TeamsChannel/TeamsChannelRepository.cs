@@ -45,6 +45,17 @@ namespace Repositories.TeamsChannel
             return toReturn;
         }
 
+        public async Task<string> GetChannelType(AzureADTeamsChannel teamsChannel, Guid runId)
+        {
+            await _logger.LogMessageAsync(new LogMessage { Message = $"Reading metadata about group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}." });
+
+            var channelData = await _graphServiceClient.Teams[teamsChannel.ObjectId.ToString()].Channels[teamsChannel.ChannelId].Request().GetAsync();
+
+            await _logger.LogMessageAsync(new LogMessage { Message = $"Read metadata about group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}. MembershipType is {channelData.MembershipType}." });
+
+            return channelData.MembershipType.ToString();
+        }
+
 
         private AzureADTeamsUser? ToTeamsUser(ConversationMember member)
         {

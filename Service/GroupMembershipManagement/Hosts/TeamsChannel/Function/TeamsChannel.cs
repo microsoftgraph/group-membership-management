@@ -44,7 +44,17 @@ namespace Hosts.TeamsChannel
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"TeamsChannel recieved a message. Query: {syncInfo.SyncJob.Query}.", RunId = runId });
 
-            var users = await _teamsChannelService.GetUsersFromTeam(GetGroupInfo(message));
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"TeamsChannel validating target office group. Query: {syncInfo.SyncJob.Query}.", RunId = runId });
+            var parsedAndValidated = await _teamsChannelService.VerifyChannel(syncInfo);
+
+            if (!parsedAndValidated.isGood)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Target office group did not validate. Marked as {syncInfo.SyncJob.Status}.", RunId = runId });
+                return;
+            }
+
+
+            var users = await _teamsChannelService.GetUsersFromTeam(parsedAndValidated.parsedChannel, runId);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count} from {syncInfo.SyncJob.Query}.", RunId = runId });
 
             // upload to blob storage

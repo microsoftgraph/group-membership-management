@@ -19,6 +19,8 @@ namespace Models
         FileNotFound = 11,
         CustomerPaused = 12,
         StuckInProgress = 13,
-        ErroredDueToStuckInProgress = 14
+        ErroredDueToStuckInProgress = 14,
+        PrivateChannelNotDestination = 15,
+        TeamsChannelNotPrivate = 16,
     }
 }

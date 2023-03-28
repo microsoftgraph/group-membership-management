@@ -10,5 +10,6 @@ namespace Repositories.Contracts
     public interface ITeamsChannelRepository
     {
         public Task<List<AzureADTeamsUser>> ReadUsersFromChannel(AzureADTeamsChannel teamsChannel, Guid runId);
+        public Task<string> GetChannelType(AzureADTeamsChannel teamsChannel, Guid runId);
     }
 }

@@ -1,5 +1,6 @@
 using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Models;
 using Models.Entities;
 using Moq;
 using Repositories.Contracts;
@@ -36,7 +37,10 @@ namespace Services.Tests
             _mockTeamsChannelRepository = new Mock<ITeamsChannelRepository>();
             _mockTeamsChannelRepository.Setup<Task<List<AzureADTeamsUser>>>(repo => repo.ReadUsersFromChannel(It.IsIn<AzureADTeamsChannel>(_mockChannels.Keys), It.IsAny<Guid>()))
                 .ReturnsAsync((AzureADTeamsChannel c, Guid g) => _mockChannels[c]);
-            _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
+            _mockTeamsChannelRepository.Setup<Task<string>>(repo => repo.GetChannelType(It.IsIn<AzureADTeamsChannel>(_mockChannels.Keys), It.IsAny<Guid>()))
+                .ReturnsAsync((AzureADTeamsChannel tc, Guid _) => tc.ChannelId == "some channel" ? "Private" : "Standard");
+                
+                _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
             var mockSyncJobRepository = new MockSyncJobRepository();
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
 
@@ -52,9 +56,11 @@ namespace Services.Tests
             _syncInfo = new ChannelSyncInfo
             {
                 CurrentPart = 1,
+                IsDestinationPart = true,
                 SyncJob = new SyncJob
                 {
                     RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
+                    Status = SyncStatus.InProgress.ToString(),
                     TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
                     Query = @"[{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000000"", ""channel"":""some channel""}},{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000001"", ""channel"":""another channel""}}]"
@@ -63,10 +69,65 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task VerifyRejectsNonDestinationPrivateChannels()
+        {
+            var badSyncInfo = new ChannelSyncInfo
+            {
+                CurrentPart = 2,
+                IsDestinationPart = true,
+                SyncJob = new SyncJob
+                {
+                    RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
+                    Status = SyncStatus.InProgress.ToString(),
+                    TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
+                    Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
+                    Query = @"[{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000000"", ""channel"":""some channel""}},{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000001"", ""channel"":""another channel""}}]"
+                }
+            };
+
+            var verification = await _service.VerifyChannel(badSyncInfo);
+
+            Assert.IsFalse(verification.isGood);
+            Assert.AreEqual(SyncStatus.TeamsChannelNotPrivate.ToString(), badSyncInfo.SyncJob.Status);
+        }
+
+
+        [TestMethod]
+        public async Task VerifyAcceptsGoodSync()
+        {
+            var verification = await _service.VerifyChannel(_syncInfo);
+
+            Assert.IsTrue(verification.isGood);
+            Assert.AreEqual(SyncStatus.InProgress.ToString(), _syncInfo.SyncJob.Status);
+        }
+
+        [TestMethod]
+        public async Task VerifyRejectsNonPrivateChannels()
+        {
+            var badSyncInfo = new ChannelSyncInfo
+            {
+                CurrentPart = 1,
+                IsDestinationPart = false,
+                SyncJob = new SyncJob
+                {
+                    RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
+                    TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
+                    Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
+                    Query = @"[{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000000"", ""channel"":""some channel""}},{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000001"", ""channel"":""another channel""}}]"
+                }
+            };
+
+            var verification = await _service.VerifyChannel(badSyncInfo);
+
+            Assert.IsFalse(verification.isGood);
+            Assert.AreEqual(SyncStatus.PrivateChannelNotDestination.ToString(), badSyncInfo.SyncJob.Status);
+        }
+
+        [TestMethod]
         public async Task GetsUsersFromTeam()
         {
             var sourceChannel = new AzureADTeamsChannel { ObjectId = Guid.Empty, ChannelId = "some channel" };
-            var userList = await _service.GetUsersFromTeam(_syncInfo);
+            var userList = await _service.GetUsersFromTeam(sourceChannel, _syncInfo.SyncJob.RunId.Value);
 
 
             Assert.IsTrue(userList.SequenceEqual(_mockChannels[sourceChannel]));
