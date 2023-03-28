@@ -19,18 +19,30 @@ From your `PowerShell 7.x` command prompt navigate to the `Service\GroupMembersh
     2.    Set-WebApiAzureADApplication	-SubscriptionName "<subscription-name>" `
                                         -SolutionAbbreviation "<solution-abbreviation>" `
                                         -EnvironmentAbbreviation "<environment-abbreviation>" `
-                                        -TenantId "<app-tenant-id>" `
+                                        -AppTenantId "<app-tenant-id>" `
+                                        -KeyVaultTenantId "<keyvault-tenant-id>" `
                                         -Clean $false `
                                         -Verbose
 Follow the instructions on the screen.
 
+Note:
+AppTenantId <app-tenant-id> - If the application is going to be installed in a different tenant, set that tenant id here.
+KeyVaultTenantId <keyvault-tenant-id> - This is the tenant where your GMM resources are located, i.e. keyvaults, storage account.
+
+If you only have one tenant, these will be set to the same tenant id.
+
 ## Create an AAD Group for GMM Admins
+
+Login and follow these steps in the tenant that was set in "AppTenantId" to run the Set-WebApiAzureADApplication.ps1 script in the previous step.
+
 In order to control access to the WebAPI, several roles are created when the WebAPI application is created by the script below, 'Reader', 'Admin'.
 
 1. Create a new Azure Active Directory Group or use an existing one.
 2. Add members to the group, members of this group will act as GMM administrators. Administrators will have access to all jobs present in GMM and will be able to perform any CRUD action on them.
 
 ## Add Admin role to you GMM Admins group
+
+Login and follow these steps in the tenant that was set in "AppTenantId" to run the Set-WebApiAzureADApplication.ps1 script in the previous step.
 
 1. From the Azure Portal locate and open "Azure Active Directory"
 2. On the left menu select "Enterprise Applications"
@@ -42,6 +54,8 @@ You might need to change the "Application Type" filter to "All Applications".
 7. Under "Users and groups", click on "None selected" and search for group created in the previous step and select it.
 8. Under "Select a role" click on "None selected", from the roles list select "Admin"
 9. Click "Assign"
+
+Note: Individual users can be added and granted the proper permission, if you decide not to use a group.
 
 ## Grant Permissions
 

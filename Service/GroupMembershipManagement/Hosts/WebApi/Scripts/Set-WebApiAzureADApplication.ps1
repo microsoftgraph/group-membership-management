@@ -26,8 +26,12 @@ Solution Abbreviation
 .PARAMETER EnvironmentAbbreviation
 Environment Abbreviation
 
-.PARAMETER TenantId
-Azure tenant id where the application is going to be created.
+.PARAMETER AppTenantId
+Azure tenant id where the application is going to be installed.
+
+.PARAMETER KeyVaultTenantId
+Azure tenant id where keyvaults exists.
+The application is going to be created in this tenant and its settings stored in the data keyvault.
 
 .PARAMETER CertificateName
 Certificate name
@@ -41,7 +45,8 @@ When re-running the script, this flag is used to indicate if we need to recreate
 Set-WebApiAzureADApplication	-SubscriptionName "<subscription-name>" `
 								-SolutionAbbreviation "<solution-abbreviation>" `
 								-EnvironmentAbbreviation "<environment-abbreviation>" `
-								-TenantId "<app-tenant-id>" `
+								-AppTenantId "<app-tenant-id>" `
+								-KeyVaultTenantId "<keyvault-tenant-id>" `
 								-Clean $false `
 								-Verbose
 #>
@@ -56,7 +61,9 @@ function Set-WebApiAzureADApplication {
 		[Parameter(Mandatory=$True)]
 		[string] $EnvironmentAbbreviation,
 		[Parameter(Mandatory=$True)]
-		[Guid] $TenantId,
+		[Guid] $AppTenantId,
+		[Parameter(Mandatory=$True)]
+		[Guid] $KeyVaultTenantId,
 		[Parameter(Mandatory=$False)]
 		[string] $CertificateName,
 		[Parameter(Mandatory=$False)]
@@ -72,7 +79,9 @@ function Set-WebApiAzureADApplication {
     Install-AzModuleIfNeeded
 
     Write-Host "Please sign in as an account that can make Azure AD Apps in your target tenant."
-	Connect-AzAccount -Tenant $TenantId
+	# Connect to keyvault tenant
+	# we are going to create the multitenant app here first
+	Connect-AzAccount -Tenant $KeyVaultTenantId
 	Set-AzContext -Subscription $SubscriptionName
 
 	#region Delete Application / Service Principal if they already exist
@@ -156,7 +165,8 @@ function Set-WebApiAzureADApplication {
 		                       -IdentifierUris "api://$($webApiApp.AppId)" `
 							   -DisplayName $webApiAppDisplayName `
 							   -Web $webSettings `
-							   -AppRole $appRoles
+							   -AppRole $appRoles `
+							   -AvailableToOtherTenants $true
 	}
 	else
 	{
@@ -166,12 +176,14 @@ function Set-WebApiAzureADApplication {
 		Write-Verbose "Updating Azure AD app $webApiAppDisplayName"
 		Update-AzADApplication	-ObjectId $($webApiApp.Id) `
                                 -DisplayName $webApiAppDisplayName `
-								-AvailableToOtherTenants $false `
+								-AvailableToOtherTenants $true `
 								-Web $webSettings
     }
 
+	Start-Sleep -Seconds 30
+
 	# These need to go into the key vault
-	$webApiAppTenantId = $TenantId;
+	$webApiAppTenantId = $AppTenantId;
 	$webApiAppClientId = $webApiApp.AppId;
 
 	# Create new secret
@@ -233,6 +245,10 @@ function Set-WebApiAzureADApplication {
 								-SecretValue $webApiAppCertificateSecret
 		Write-Verbose "$webApiAppCertificateName added to vault for $webApiAppDisplayName."
 	}
+
+	Start-Process "https://login.microsoftonline.com/$AppTenantId/oauth2/authorize?client_id=$($webApiApp.AppId)&response_type=code&prompt=admin_consent&redirect_uri=$($replyUrls[0])"
+	Write-Host "Your default browser has been launched and directed to a site (link below) that will prompt for admin consent. Make sure to login with you tenant admin account."
+	Write-Host "https://login.microsoftonline.com/$AppTenantId/oauth2/authorize?client_id=$($webApiApp.AppId)&response_type=code&prompt=admin_consent&redirect_uri=$($replyUrls[0])"
 
 	Write-Verbose "Set-WebApiAzureADApplication completed."
 }
