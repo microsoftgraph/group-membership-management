@@ -129,6 +129,13 @@ namespace WebApi
                 return new SyncJobRepository(settings.Value.ConnectionString, settings.Value.TableName, services.GetService<ILoggingRepository>());
             });
 
+            builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.ConnectionString = configuration.GetValue<string>("Settings:jobsStorageAccountConnectionString");
+                settings.TableName = configuration.GetValue<string>("Settings:notificationsTableName");
+            });
+            builder.Services.AddSingleton<INotificationRepository, NotificationRepository>();
+
             builder.Services.Configure<GraphCredentials>(builder.Configuration.GetSection("Settings:GraphCredentials"))
             .AddSingleton<IGraphServiceClient>((services) =>
             {

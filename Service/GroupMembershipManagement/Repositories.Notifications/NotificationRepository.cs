@@ -3,6 +3,8 @@
 
 using Azure;
 using Azure.Data.Tables;
+using DIConcreteTypes;
+using Microsoft.Extensions.Options;
 using Models.ThresholdNotifications;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -17,10 +19,10 @@ namespace Repositories.NotificationsRepository
         private readonly TableClient _tableClient = null;
         private readonly ILoggingRepository _log;
 
-        public NotificationRepository(INotificationRepoCredentials<NotificationRepository> notificationRepoCredentials, ILoggingRepository logger)
+        public NotificationRepository(IOptions<NotificationRepoCredentials<NotificationRepository>> notificationRepoCredentials, ILoggingRepository logger)
         {
             _log = logger ?? throw new ArgumentNullException(nameof(logger));
-            _tableClient = new TableClient(notificationRepoCredentials.TableName, notificationRepoCredentials.ConnectionString);
+            _tableClient = new TableClient(notificationRepoCredentials.Value.ConnectionString, notificationRepoCredentials.Value.TableName);
         }
         public async Task<ThresholdNotification> GetThresholdNotificationByIdAsync(Guid notificationId)
         {
@@ -38,6 +40,13 @@ namespace Repositories.NotificationsRepository
             }
             return null;
         }
+
+        public async Task SaveNotificationAsync(ThresholdNotification notification)
+        {
+            var entity = ToEntity(notification);
+            await _tableClient.UpsertEntityAsync(entity);
+        }
+
         private ThresholdNotification ToModel(ThresholdNotificationEntity entity)
         {
             return new ThresholdNotification

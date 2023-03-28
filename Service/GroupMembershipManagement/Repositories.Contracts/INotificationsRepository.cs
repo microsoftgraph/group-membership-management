@@ -10,5 +10,6 @@ namespace Repositories.Contracts
     public interface INotificationRepository
     {
         Task<ThresholdNotification> GetThresholdNotificationByIdAsync(Guid notificationId);
+        Task SaveNotificationAsync(ThresholdNotification notification);
     }
 }

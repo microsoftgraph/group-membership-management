@@ -7,9 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Requests\**" />
-    <EmbeddedResource Remove="Requests\**" />
-    <None Remove="Requests\**" />
+    <ProjectReference Include="..\..\..\Models\Models.csproj" />
   </ItemGroup>
 
 </Project>
