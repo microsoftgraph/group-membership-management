@@ -17,5 +17,9 @@ namespace Repositories.Mocks
             var notification = ExistingNotifications.ContainsKey(("ThresholdNotification", notificationId.ToString())) ? ExistingNotifications[("ThresholdNotification", notificationId.ToString())] : null;
             return await Task.FromResult(notification);
         }
+        public async Task SaveNotificationAsync(ThresholdNotification notification)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
