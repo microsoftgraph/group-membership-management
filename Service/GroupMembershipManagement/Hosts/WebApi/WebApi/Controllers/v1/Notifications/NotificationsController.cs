@@ -30,7 +30,7 @@ namespace WebApi.Controllers.v1.Notifications
         [HttpPost()]
         public async Task<ActionResult<string>> ResolveNotificationAsync(Guid id, [FromBody]ResolveNotification model)
         {
-            var upn = User.FindFirstValue("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn");
+            var upn = User.FindFirstValue(ClaimTypes.Upn);
             var response = await _resolveNotificationHandler.ExecuteAsync(new ResolveNotificationRequest(id, upn, model.Resolution));
             Response.Headers["card-update-in-body"] = "true";
             return this.Content(response.CardJson, "application/json");

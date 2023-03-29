@@ -24,21 +24,24 @@ namespace Services.Tests
     {
         private int _notificationCount = 10;
         private Guid _testGuid = Guid.NewGuid();
+        private string _testUserUPN = "testuser@test.com";
         private List<AzureADGroup> _groups = null!;
         private List<string> _groupTypes = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
-        private Mock<INotificationRepository> _notificationRepository = null!;  
+        private Mock<INotificationRepository> _notificationRepository = null!;
         private ResolveNotificationHandler _resolveNotificationsHandler = null!;
         private NotificationsController _notificationsController = null!;
         private List<ThresholdNotification> _thresholdNotifications = null!;
         private ResolveNotification _model = null!;
+        private ThresholdNotification _thresholdNotification = null!;
 
         [TestInitialize]
         public void Initialize()
         {
             _groups = new List<AzureADGroup>();
-            _model = new ResolveNotification() { 
+            _model = new ResolveNotification()
+            {
                 Resolution = "Paused"
             };
 
@@ -46,6 +49,8 @@ namespace Services.Tests
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _notificationRepository = new Mock<INotificationRepository>();
 
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+                .ReturnsAsync((string email, Guid groupObjectId) => email == _testUserUPN ? true : false);
             _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
                                     .ReturnsAsync(() => _groups);
 
@@ -81,26 +86,29 @@ namespace Services.Tests
                 });
             });
 
+            _thresholdNotification = new ThresholdNotification()
+            {
+                ChangePercentageForAdditions = 0,
+                ChangePercentageForRemovals = 0,
+                CreatedTime = DateTime.UtcNow,
+                Resolution = ThresholdNotificationResolution.Paused,
+                Id = Guid.NewGuid(),
+                ResolvedByUPN = _testUserUPN,
+                ResolvedTime = DateTime.UtcNow,
+                Status = ThresholdNotificationStatus.AwaitingResponse
+            };
+
             _notificationRepository.Setup(x => x.GetThresholdNotificationByIdAsync(It.IsAny<Guid>()))
-                .Returns(() => {
-                    var notification = new ThresholdNotification()
-                    {
-                        ChangePercentageForAdditions = 0,
-                        ChangePercentageForRemovals = 0,
-                        CreatedTime = DateTime.UtcNow,
-                        Resolution = ThresholdNotificationResolution.Paused,
-                        Id = Guid.NewGuid(),
-                        ResolvedByUPN = "testuser@test.com",
-                        ResolvedTime = DateTime.UtcNow,
-                    };
-                    return Task.FromResult(notification);
+                .Returns(() =>
+                {
+                    return Task.FromResult(_thresholdNotification);
                 });
 
             _resolveNotificationsHandler = new ResolveNotificationHandler(_loggingRepository.Object,
                 _notificationRepository.Object,
                 _graphGroupRepository.Object);
             _notificationsController = new NotificationsController(_resolveNotificationsHandler);
-            var identity = new ClaimsIdentity(new List<Claim> { new Claim(ClaimTypes.Name, "testuser") }, "test");
+            var identity = new ClaimsIdentity(new List<Claim> { new Claim(ClaimTypes.Upn, _testUserUPN) }, "test");
             var principal = new ClaimsPrincipal(identity);
             _notificationsController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = principal } };
         }
@@ -113,6 +121,54 @@ namespace Services.Tests
 
             Assert.IsNotNull(response);
             Assert.IsNotNull(result);
+            Assert.AreEqual("Notification has now been resolved.", result.Content);
+            Assert.AreEqual("application/json", result.ContentType);
+        }
+
+        [TestMethod]
+        public async Task HandleNotificationsNotFoundTestAsync()
+        {
+            ThresholdNotification? nullNotification = null;
+            _notificationRepository
+                .Setup(x => x.GetThresholdNotificationByIdAsync(It.IsAny<Guid>()))
+                .Returns(() => Task.FromResult(nullNotification));
+
+            var response = await _notificationsController.ResolveNotificationAsync(_testGuid, _model);
+            var result = response.Result as ContentResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.AreEqual("Error: Notification not found.", result.Content);
+            Assert.AreEqual("application/json", result.ContentType);
+        }
+
+        [TestMethod]
+        public async Task HandleUserNotGroupOwnerTestAsync()
+        {
+            var identity = new ClaimsIdentity(new List<Claim> { new Claim(ClaimTypes.Upn, "not-an-owner@contoso.net") }, "test");
+            var principal = new ClaimsPrincipal(identity);
+            _notificationsController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = principal } };
+
+            var response = await _notificationsController.ResolveNotificationAsync(_testGuid, _model);
+            var result = response.Result as ContentResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.AreEqual("Error: User is not an owner.", result.Content);
+            Assert.AreEqual("application/json", result.ContentType);
+        }
+
+        [TestMethod]
+        public async Task HandleNotificationIsAlreadyResolvedTestAsync()
+        {
+            _thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
+
+            var response = await _notificationsController.ResolveNotificationAsync(_testGuid, _model);
+            var result = response.Result as ContentResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.AreEqual("Notification has already been resolved.", result.Content);
             Assert.AreEqual("application/json", result.ContentType);
         }
     }

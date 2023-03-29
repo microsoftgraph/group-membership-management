@@ -48,7 +48,7 @@ namespace Services
             if (thresholdNotification.Status == ThresholdNotificationStatus.Resolved)
             {
                 // TODO: Will return actual card json in user story: 10204885.
-                response.CardJson = "Notification has already been resolved..";
+                response.CardJson = "Notification has already been resolved.";
                 return response;
             }
 
