@@ -110,5 +110,10 @@ namespace Repositories.Mocks
             var userOwners = allOwners == null ? new List<User>() : allOwners.OfType<User>().ToList();
             return Task.FromResult(userOwners);
         }
+
+        public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
