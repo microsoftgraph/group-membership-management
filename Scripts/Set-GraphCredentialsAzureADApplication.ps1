@@ -123,7 +123,7 @@ function Set-GraphCredentialsAzureADApplication {
 	# see: https://stackoverflow.com/questions/42164581/how-to-configure-a-new-azure-ad-application-through-powershell
 	$requiredResourceAccess = New-Object -TypeName "Microsoft.Open.AzureAD.Model.RequiredResourceAccess"
 	$requiredResourceAccess.ResourceAccess = (Get-AzureADServicePrincipal -Filter "AppId eq '00000003-0000-0000-c000-000000000000'").AppRoles `
-		| Where-Object { ($_.Value -eq "User.Read.All") -or ($_.Value -eq "GroupMember.Read.All") } `
+		| Where-Object { ($_.Value -eq "User.Read.All") -or ($_.Value -eq "GroupMember.Read.All") -or ($_.Value -eq "ChannelMember.ReadWrite.All")} `
 		| ForEach-Object { New-Object -TypeName "Microsoft.Open.AzureAD.Model.ResourceAccess" -ArgumentList $_.Id,"Role" }
 	$requiredResourceAccess.ResourceAppId = "00000003-0000-0000-c000-000000000000"
 

@@ -72,14 +72,14 @@ A: GMM creates an application `<SolutionAbbreviation>`-Graph-`<EnvironmentAbbrev
 4. Locate and open `<SolutionAbbreviation>`-Graph-`<EnvironmentAbbreviation>` application from the list.
 5. Click on 'API Permissions'.
 6. Make sure the application has the right Microsoft Graph permissions and that admin consent was granted.
-    - Application permissions: GroupMember.Read.All, User.Read.All
+    - Application permissions: GroupMember.Read.All, User.Read.All. If you want Teams channel management, you'll also need ChannelMember.ReadWrite.All.
 
 In order to add permissions to the application:
 
 -   On the 'API permissions' (step 5) screen, locate and click on 'Add a permission',
 -   Click on 'Microsoft Graph'
 -   Click on 'Application permissions'
--   Locate and check GroupMember.ReadWrite.All, User.Read.All permissions.
+-   Locate and check GroupMember.ReadWrite.All, User.Read.All permissions. If you want Teams channel management, you'll also need ChannelMember.ReadWrite.All.
 -   Click on 'Add permissions' button.
 -   Click on 'Grant admin consent for `<organization-name>` button.
 
