@@ -17,14 +17,14 @@ namespace Models
 
         public List<Guid> SourceGroups { get; set; }
 
-        public override bool Equals(object? obj)
+        public override bool Equals(object obj)
 		{
 			var castobj = obj as AzureADUser;
 			if (castobj is null) return false;
 			return castobj.ObjectId == ObjectId;
 		}
 
-		public bool Equals(AzureADUser? other)
+		public bool Equals(AzureADUser other)
 		{
 			if (other is null) return false;
 			return ObjectId == other.ObjectId;

@@ -12,20 +12,20 @@ namespace Models.Entities
     {
       public string TeamsId { get; set; }
 
-        public override bool Equals(object? obj)
+        public override bool Equals(object obj)
 		{
-			AzureADTeamsUser? castObj = obj as AzureADTeamsUser;
+			AzureADTeamsUser castObj = obj as AzureADTeamsUser;
 			if (castObj is null) return false;
 			return castObj.ObjectId == ObjectId && castObj.TeamsId == TeamsId;
 		}
 
-		public bool Equals(AzureADTeamsUser? other)
+		public bool Equals(AzureADTeamsUser other)
 		{
 			if (other is null) return false;
 			return ObjectId == other.ObjectId && TeamsId == other.TeamsId;
 		}
 
-		public static bool operator ==(AzureADTeamsUser? lhs, AzureADTeamsUser? rhs)
+		public static bool operator ==(AzureADTeamsUser lhs, AzureADTeamsUser rhs)
 		{
 			if (lhs is null)
 				return rhs is null;
@@ -33,7 +33,7 @@ namespace Models.Entities
 			return lhs.Equals(rhs);
 		}
 
-		public static bool operator !=(AzureADTeamsUser? lhs, AzureADTeamsUser? rhs)
+		public static bool operator !=(AzureADTeamsUser lhs, AzureADTeamsUser rhs)
 		{
 			return !(lhs == rhs);
 		}
