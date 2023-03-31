@@ -39,15 +39,15 @@ namespace Services.Tests
             loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
 
             var mailAddresses = new Mock<IEmailSenderRecipient>();
-            var mailRespository = new Mock<IMailRepository>();
+            var mailRepository = new Mock<IMailRepository>();
 
             var notifierService = new NotifierService(loggerMock.Object,
-                                                mailRespository.Object,
+                                                mailRepository.Object,
                                                 mailAddresses.Object
                                                 );
 
             await notifierService.SendEmailAsync("user1@test.com;user2@test.com");
-            mailRespository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null, It.IsAny<string>()), Times.Once());
+            mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null, It.IsAny<string>()), Times.Once());
         }
 
     }
