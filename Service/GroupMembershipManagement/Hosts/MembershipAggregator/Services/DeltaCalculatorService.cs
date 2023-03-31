@@ -145,7 +145,7 @@ namespace Services
                                 Id = Guid.NewGuid(),
                                 ChangePercentageForAdditions = deltaResponse.MembersToAdd.Count,
                                 ChangePercentageForRemovals = deltaResponse.MembersToRemove.Count,
-                                CreatedTime = DateTime.Now,
+                                CreatedTime = DateTime.UtcNow,
                                 Resolution = ThresholdNotificationResolution.Unresolved,
                                 ResolvedByUPN = string.Empty,
                                 ResolvedTime = DateTime.FromFileTimeUtc(0),
