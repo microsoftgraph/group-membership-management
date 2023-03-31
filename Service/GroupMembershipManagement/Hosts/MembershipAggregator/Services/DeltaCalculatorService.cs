@@ -3,6 +3,7 @@
 using Entities;
 using Entities.ServiceBus;
 using Models;
+using Models.ThresholdNotifications;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -31,7 +32,9 @@ namespace Services
         private readonly IThresholdConfig _thresholdConfig;
         private readonly IGMMResources _gmmResources;
         private readonly ILocalizationRepository _localizationRepository;
+        private readonly INotificationRepository _notificationRepository;
         private readonly bool _isDryRunEnabled;
+        private readonly IThresholdNotificationConfig _thresholdNotificationConfig;
 
         private Guid _runId;
         public Guid RunId
@@ -51,8 +54,10 @@ namespace Services
             IGraphAPIService graphAPIService,
             IDryRunValue dryRun,
             IThresholdConfig thresholdConfig,
+            IThresholdNotificationConfig thresholdNotificationConfig,
             IGMMResources gmmResources,
-            ILocalizationRepository localizationRepository
+            ILocalizationRepository localizationRepository,
+            INotificationRepository notificationRepository
             )
         {
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
@@ -60,8 +65,10 @@ namespace Services
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService));
             _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
+            _thresholdNotificationConfig = thresholdNotificationConfig ?? throw new ArgumentNullException(nameof(thresholdNotificationConfig));
             _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
+            _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _isDryRunEnabled = dryRun != null && dryRun.DryRunEnabled;
         }
 
@@ -131,7 +138,30 @@ namespace Services
                     if (job.IgnoreThresholdOnce)
                         await LogIgnoreThresholdOnceAsync(job, sourceMembership.RunId);
                     else
-                        await SendThresholdNotificationAsync(threshold, job, sourceMembership.RunId);
+                    {
+                        if(_thresholdNotificationConfig.IsThresholdNotificationEnabled)
+                        {
+                            var thresholdNotification = new Models.ThresholdNotifications.ThresholdNotification { 
+                                Id = Guid.NewGuid(),
+                                ChangePercentageForAdditions = deltaResponse.MembersToAdd.Count,
+                                ChangePercentageForRemovals = deltaResponse.MembersToRemove.Count,
+                                CreatedTime = DateTime.Now,
+                                Resolution = ThresholdNotificationResolution.Unresolved,
+                                ResolvedByUPN = string.Empty,
+                                ResolvedTime = DateTime.FromFileTimeUtc(0),
+                                Status = ThresholdNotificationStatus.Queued,
+                                TargetOfficeGroupId = job.TargetOfficeGroupId,
+                                ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
+                                ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals
+                            };
+
+                            await _notificationRepository.SaveNotificationAsync(thresholdNotification);
+                        }
+                        else
+                        {
+                            await SendThresholdNotificationAsync(threshold, job, sourceMembership.RunId);
+                        }
+                    }
 
                     return deltaResponse;
                 }

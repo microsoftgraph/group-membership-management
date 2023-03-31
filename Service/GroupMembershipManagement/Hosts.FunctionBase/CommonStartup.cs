@@ -157,6 +157,16 @@ namespace Hosts.FunctionBase
 
             builder.Services.AddSingleton<INotificationRepository, NotificationRepository>();
 
+            builder.Services.AddOptions<ThresholdNotificationConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.IsThresholdNotificationEnabled = configuration.GetValue<bool>("ThresholdNotification:IsThresholdNotificationEnabled");
+            });
+            builder.Services.AddSingleton<IThresholdNotificationConfig>(services =>
+            {
+                var creds = services.GetService<IOptions<ThresholdNotificationConfig>>();
+                return new ThresholdNotificationConfig(creds.Value.IsThresholdNotificationEnabled);
+            });
+            
             builder.Services.AddSingleton<TelemetryClient>(sp =>
             {
                 var telemetryConfiguration = new TelemetryConfiguration();

@@ -29,6 +29,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\M
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DIConcreteTypes", "..\..\..\DIConcreteTypes\DIConcreteTypes.csproj", "{B56BC7BA-4F7E-44EC-BE72-7C8DD8F23B4D}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.NotificationRepository", "..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj", "{63C840D2-CE0C-4308-BEB6-35B49AF7B276}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -87,6 +89,10 @@ Global
 		{B56BC7BA-4F7E-44EC-BE72-7C8DD8F23B4D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B56BC7BA-4F7E-44EC-BE72-7C8DD8F23B4D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B56BC7BA-4F7E-44EC-BE72-7C8DD8F23B4D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{63C840D2-CE0C-4308-BEB6-35B49AF7B276}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{63C840D2-CE0C-4308-BEB6-35B49AF7B276}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{63C840D2-CE0C-4308-BEB6-35B49AF7B276}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{63C840D2-CE0C-4308-BEB6-35B49AF7B276}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

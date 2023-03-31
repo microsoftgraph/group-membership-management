@@ -246,6 +246,14 @@ param appConfigurationKeyData array = [
       tag1: 'Mail'
     }
   }
+  {
+    key: 'ThresholdNotification:IsThresholdNotificationEnabled'
+    value: 'false'
+    contentType: 'bool'
+    tag: {
+      tag1: 'ThresholdNotification'
+    }
+  }
 ]
 
 @description('Unique name within the resource group for the Action group.')

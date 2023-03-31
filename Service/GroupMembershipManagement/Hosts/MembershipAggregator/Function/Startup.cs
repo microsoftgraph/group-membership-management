@@ -12,6 +12,7 @@ using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
+using Repositories.NotificationsRepository;
 using Services;
 using Services.Contracts;
 
@@ -43,6 +44,7 @@ namespace Hosts.MembershipAggregator
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
             .AddScoped<IGraphAPIService, GraphAPIService>()
             .AddScoped<IDeltaCalculatorService, DeltaCalculatorService>()
+            .AddSingleton<INotificationRepository, NotificationRepository>()
             .AddSingleton<IThresholdConfig>(services =>
             {
                 return new ThresholdConfig

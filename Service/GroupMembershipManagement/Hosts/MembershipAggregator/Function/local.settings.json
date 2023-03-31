@@ -8,6 +8,7 @@
     "logAnalyticsPrimarySharedKey": "",
     "jobsStorageAccountConnectionString": "",
     "jobsTableName": "syncJobs",
+    "notificationsTableName": "notifications",
     "graphUpdaterUrl": "",
     "graphUpdaterFunctionKey": "",
     "membershipStorageAccountName": "",

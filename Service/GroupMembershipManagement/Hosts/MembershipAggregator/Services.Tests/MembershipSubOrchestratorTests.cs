@@ -18,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Models.ThresholdNotifications;
 
 namespace Services.Tests
 {
@@ -43,17 +44,20 @@ namespace Services.Tests
         private Mock<IGMMResources> _gmmResources;
         private Mock<IGraphAPIService> _graphAPIService;
         private Mock<IThresholdConfig> _thresholdConfig;
+        private Mock<IThresholdNotificationConfig> _thresholdNotificationConfig;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<ISyncJobRepository> _syncJobRepository;
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IDurableOrchestrationContext> _durableContext;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
         private Mock<ILocalizationRepository> _localizationRepository;
+        private Mock<INotificationRepository> _notificationRepository;
 
         [TestInitialize]
         public void SetupTest()
         {
             _thresholdConfig = new Mock<IThresholdConfig>();
+            _thresholdNotificationConfig = new Mock<IThresholdNotificationConfig>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<ISyncJobRepository>();
             _durableContext = new Mock<IDurableOrchestrationContext>();
@@ -62,6 +66,7 @@ namespace Services.Tests
             _graphAPIService = new Mock<IGraphAPIService>();
             _gmmResources = new Mock<IGMMResources>();
             _localizationRepository = new Mock<ILocalizationRepository>();
+            _notificationRepository = new Mock<INotificationRepository>();
             _dryRun = new Mock<IDryRunValue>();
 
             _deltaCalculatorService = new DeltaCalculatorService
@@ -72,8 +77,10 @@ namespace Services.Tests
                                                 _graphAPIService.Object,
                                                 _dryRun.Object,
                                                 _thresholdConfig.Object,
+                                                _thresholdNotificationConfig.Object,
                                                 _gmmResources.Object,
-                                                _localizationRepository.Object
+                                                _localizationRepository.Object,
+                                                _notificationRepository.Object
                                             );
 
 
@@ -475,8 +482,10 @@ namespace Services.Tests
                                     _graphAPIService.Object,
                                     _dryRun.Object,
                                     _thresholdConfig.Object,
+                                    _thresholdNotificationConfig.Object,
                                     _gmmResources.Object,
-                                    _localizationRepository.Object
+                                    _localizationRepository.Object,
+                                    _notificationRepository.Object
                                 );
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
@@ -507,8 +516,10 @@ namespace Services.Tests
                                     _graphAPIService.Object,
                                     _dryRun.Object,
                                     _thresholdConfig.Object,
+                                    _thresholdNotificationConfig.Object,
                                     _gmmResources.Object,
-                                    _localizationRepository.Object
+                                    _localizationRepository.Object,
+                                    _notificationRepository.Object
                                 );
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
@@ -534,8 +545,10 @@ namespace Services.Tests
                                     _graphAPIService.Object,
                                     _dryRun.Object,
                                     _thresholdConfig.Object,
+                                    _thresholdNotificationConfig.Object,
                                     _gmmResources.Object,
-                                    _localizationRepository.Object
+                                    _localizationRepository.Object,
+                                    _notificationRepository.Object
                                 );
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
@@ -704,6 +717,23 @@ namespace Services.Tests
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
             Assert.AreEqual(50000, response.ProjectedMemberCount);
+        }
+
+        [TestMethod]
+        public async Task SendThresholdNotificationIfEnabled()
+        {
+            _syncJob.ThresholdViolations = 2;
+            _thresholdNotificationConfig.Setup(x => x.IsThresholdNotificationEnabled).Returns(true);
+            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsFollowUps).Returns(3);
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
+
+            _notificationRepository.Verify(x => x.SaveNotificationAsync(It.IsAny<Models.ThresholdNotifications.ThresholdNotification>()), Times.Once());
+            _notificationRepository.Verify(x => x.SaveNotificationAsync(
+                It.Is<Models.ThresholdNotifications.ThresholdNotification>(n => n.Status.Equals(ThresholdNotificationStatus.Queued))));
         }
 
         private async Task<(string FilePath, string Content)> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)

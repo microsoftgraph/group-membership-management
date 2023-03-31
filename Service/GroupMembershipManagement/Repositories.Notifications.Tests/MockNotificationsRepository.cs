@@ -20,5 +20,10 @@ namespace Repositories.Notifications.Tests
             var thresholdNotification = ThresholdNotifications.FirstOrDefault(x => x.Id == notificationId);
             return await Task.FromResult(thresholdNotification);
         }
+
+        public Task SaveNotificationAsync(ThresholdNotification notification)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
