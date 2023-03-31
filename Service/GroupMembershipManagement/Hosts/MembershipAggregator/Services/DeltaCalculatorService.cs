@@ -143,8 +143,8 @@ namespace Services
                         {
                             var thresholdNotification = new Models.ThresholdNotifications.ThresholdNotification { 
                                 Id = Guid.NewGuid(),
-                                ChangePercentageForAdditions = deltaResponse.MembersToAdd.Count,
-                                ChangePercentageForRemovals = deltaResponse.MembersToRemove.Count,
+                                ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage,
+                                ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage,
                                 CreatedTime = DateTime.UtcNow,
                                 Resolution = ThresholdNotificationResolution.Unresolved,
                                 ResolvedByUPN = string.Empty,

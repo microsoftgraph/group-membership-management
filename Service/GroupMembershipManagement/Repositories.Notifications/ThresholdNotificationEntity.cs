@@ -70,12 +70,12 @@ namespace Repositories.NotificationsRepository
         /// <summary>
         /// The allowed change size of users to be added to the group as a percentage of the current group size.
         /// </summary>
-        public int ThresholdPercentageForAdditions { get; set; } = 100;
+        public int ThresholdPercentageForAdditions { get; set; } = 0;
 
         /// <summary>
         /// The allowed change size of users to be removed from the group as a percentage of the current group size.
         /// </summary>
-        public int ThresholdPercentageForRemovals { get; set; } = 20;
+        public int ThresholdPercentageForRemovals { get; set; } = 0;
 
         /// <summary>
         /// The percentage of users to be added as a percentage of the current group size.
