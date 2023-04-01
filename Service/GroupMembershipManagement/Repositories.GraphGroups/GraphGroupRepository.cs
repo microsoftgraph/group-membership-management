@@ -1168,7 +1168,7 @@ namespace Repositories.GraphGroups
                         {
                             var chunksOfUsers = chunkToRetry.ToSend.Select(x => new ChunkOfUsers
                             {
-                                Id = GetNewChunkId(),
+                                Id = x.ObjectId.ToString(),
                                 ToSend = new List<AzureADUser> { x }
                             });
 
@@ -1184,10 +1184,22 @@ namespace Repositories.GraphGroups
 
                         if (chunkToRetry.ToSend.Count > 0)
                         {
-                            requeued++;
-                            var originalId = chunkToRetry.Id;
-                            queue.Enqueue(chunkToRetry.UpdateIdForRetry(threadNumber));
-                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId} as {chunkToRetry.Id}", RunId = RunId });
+                            if (chunkToRetry.ToSend.Count == 1 && idToRetry.ResponseCode == ResponseCode.IndividualRetry && idToRetry.HttpStatusCode == HttpStatusCode.BadRequest)
+                            {
+                                await _loggingRepository.LogMessageAsync(new LogMessage
+                                {
+                                    Message = $"{chunkToRetry.Id} already exists",
+                                    RunId = RunId
+                                });
+                            }
+
+                            else
+                            {
+                                requeued++;
+                                var originalId = chunkToRetry.Id;
+                                queue.Enqueue(chunkToRetry.UpdateIdForRetry(threadNumber));
+                                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId} as {chunkToRetry.Id}", RunId = RunId });
+                            }
                         }
                     }
                 }
@@ -1292,7 +1304,15 @@ namespace Repositories.GraphGroups
 
 
                 // Note that the ones with empty bodies mean "this response is okay and we don't have to do anything about it."
-                if (status == HttpStatusCode.BadRequest && IsOkayError(content)) { }
+                if (status == HttpStatusCode.BadRequest && IsOkayError(content))
+                {
+                    yield return new RetryResponse
+                    {
+                        RequestId = kvp.Key,
+                        ResponseCode = ResponseCode.IndividualRetry,
+                        HttpStatusCode = HttpStatusCode.BadRequest
+                    };
+                }
                 else if (status == HttpStatusCode.NotFound && (content).Contains("does not exist or one of its queried reference-property objects are not present."))
                 {
                     var match = _userNotFound.Match(content);
@@ -1679,6 +1699,7 @@ namespace Repositories.GraphGroups
     {
         public string RequestId { get; set; }
         public ResponseCode ResponseCode { get; set; }
+        public HttpStatusCode HttpStatusCode { get; set; }
         public string AzureObjectId { get; set; }
     }
 
