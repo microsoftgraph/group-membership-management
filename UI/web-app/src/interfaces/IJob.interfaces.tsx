@@ -7,6 +7,7 @@ export interface IJob {
     targetGroupId: string;
     targetGroupType: string;
     startDate: string;
+    status: string;
     lastSuccessfulStartTime: string;
     lastSuccessfulRunTime: string;
     estimatedNextRunTime: string;
