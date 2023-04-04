@@ -179,11 +179,17 @@ namespace WebApi
             app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseRouting();
+
+            var allowedOrigins = new[] { "https://*.microsoft.com", "http://localhost:3000" };
             app.UseCors(x => x
+                .SetIsOriginAllowedToAllowWildcardSubdomains()
+                .WithOrigins(allowedOrigins)
                 .AllowAnyMethod()
                 .AllowAnyHeader()
-                .SetIsOriginAllowed(origin => true) // allow any origin
-                .AllowCredentials()); // allow credentials
+                .AllowCredentials()
+                .Build()
+            );
+
             app.UseAuthentication();
             app.UseAuthorization();
 
