@@ -19,6 +19,11 @@
           "name": "TeamsChannel",
           "ruleName": "syncType",
           "ruleSqlExpression": "Type = 'TeamsChannel'"
+        },
+        {
+          "name": "GroupOwnership",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'GroupOwnership'"
         }
       ]
     },
