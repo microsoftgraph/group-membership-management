@@ -27,8 +27,6 @@ namespace Repositories.SyncJobs.Tests
                                         && (DateTime.UtcNow - x.LastRunTime > TimeSpan.FromHours(x.Period))
                                         && (x.Status == SyncStatus.Idle.ToString() || x.Status == SyncStatus.InProgress.ToString() || x.Status == SyncStatus.StuckInProgress.ToString()));
 
-
-
             var result = new Models.Page<SyncJob>
             {
                 Values = new List<SyncJob>(jobs)
