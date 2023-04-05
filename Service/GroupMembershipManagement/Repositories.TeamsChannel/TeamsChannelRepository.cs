@@ -1,5 +1,6 @@
 using Entities;
 using Microsoft.Graph;
+using Models;
 using Models.Entities;
 using Repositories.Contracts;
 

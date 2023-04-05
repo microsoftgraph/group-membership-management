@@ -1,8 +1,8 @@
 using Entities;
-using Entities.ServiceBus;
 using Microsoft.Graph;
 using Models;
 using Models.Entities;
+using Models.ServiceBus;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;

@@ -29,7 +29,7 @@ namespace Repositories.Mocks
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
         }
 
-        public Task<Services.Entities.UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId)
+        public Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId)
         {
             throw new NotImplementedException();
         }
@@ -39,7 +39,7 @@ namespace Repositories.Mocks
             return await Task.FromResult(Groups[groupId].DisplayName);
         }
 
-        public Task<Services.Entities.UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage membersPage, Guid runId)
+        public Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage membersPage, Guid runId)
         {
             throw new NotImplementedException();
         }
