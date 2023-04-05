@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Models;
 using System;
 
 namespace Entities
@@ -12,22 +13,26 @@ namespace Entities
         public int Period { get; set; }
         public string Status { get; set; }
 
-        public DistributionSyncJob(SyncJob syncJob) : base(syncJob) {
+        public DistributionSyncJob(SyncJob syncJob)
+        {
             TargetOfficeGroupId = syncJob.TargetOfficeGroupId;
             LastRunTime = syncJob.LastRunTime;
             Period = syncJob.Period;
             Status = syncJob.Status;
+            PartitionKey = syncJob.PartitionKey;
+            RowKey = syncJob.RowKey;
+            StartDate = syncJob.StartDate;
         }
 
         public DistributionSyncJob() { }
 
         public int CompareTo(DistributionSyncJob other)
         {
-            if (Status == other.Status || (Status != "Idle" && other.Status != "Idle"))
+            if (Status == other.Status || (Status != SyncStatus.Idle.ToString() && other.Status != SyncStatus.Idle.ToString()))
             {
                 return LastRunTime.CompareTo(other.LastRunTime);
             }
-            else if (Status == "Idle")
+            else if (Status == SyncStatus.Idle.ToString())
             {
                 return -1;
             }

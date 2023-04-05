@@ -17,7 +17,7 @@ namespace Repositories.Mocks
             var notification = ExistingNotifications.ContainsKey(("ThresholdNotification", notificationId.ToString())) ? ExistingNotifications[("ThresholdNotification", notificationId.ToString())] : null;
             return await Task.FromResult(notification);
         }
-        public async Task SaveNotificationAsync(ThresholdNotification notification)
+        public Task SaveNotificationAsync(ThresholdNotification notification)
         {
             // Resolve warning CS1998 about async method signature without await keyword
             var _ = await Task.FromResult(Task.CompletedTask);

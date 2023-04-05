@@ -6,14 +6,14 @@ using Azure.Data.Tables;
 using Newtonsoft.Json;
 using System;
 
-namespace Entities
+namespace Repositories.SyncJobsRepository.Entities
 {
-    public class UpdateMergeSyncJob : ITableEntity
+    internal class UpdateMergeSyncJobEntity : ITableEntity
     {
         public string PartitionKey { get; set; }
 
         public string RowKey { get; set; }
-        
+
         public DateTime StartDate { get; set; } = DateTime.FromFileTimeUtc(0);
 
         public DateTimeOffset? Timestamp { get; set; }
@@ -21,12 +21,6 @@ namespace Entities
         [JsonIgnore]
         public ETag ETag { get; set; }
 
-        public UpdateMergeSyncJob(SyncJob syncJob) {
-            PartitionKey = syncJob.PartitionKey;
-            RowKey = syncJob.RowKey;
-            StartDate = syncJob.StartDate;
-        }
-
-        public UpdateMergeSyncJob() { }
+        public UpdateMergeSyncJobEntity() { }
     }
 }

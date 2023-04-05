@@ -6,6 +6,7 @@ using Azure.Data.Tables;
 using Entities;
 using Models;
 using Repositories.Contracts;
+using Repositories.SyncJobsRepository.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -43,7 +44,7 @@ namespace Repositories.SyncJobsRepository
             {
                 if (includeFutureJobs)
                     return _tableClient.QueryAsync<SyncJob>();
-                else 
+                else
                     return _tableClient.QueryAsync<SyncJob>($"StartDate le datetime\'{DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff")}Z\'");
             }
 
@@ -194,7 +195,7 @@ namespace Repositories.SyncJobsRepository
 
                     await _log.LogMessageAsync(new LogMessage { Message = string.Join('\n', job.GetType().GetProperties().Select(jobProperty => $"{jobProperty.Name} : {jobProperty.GetValue(job, null)}")), RunId = job.RunId });
 
-					batchOperation.Add(new TableTransactionAction(TableTransactionActionType.UpdateReplace, job));
+                    batchOperation.Add(new TableTransactionAction(TableTransactionActionType.UpdateReplace, job));
 
                     if (batchOperation.Count == batchSize)
                     {
@@ -213,11 +214,12 @@ namespace Repositories.SyncJobsRepository
 
         public async Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> jobs)
         {
+            var entities = MapUpdateMergeSyncJobsToEntities(jobs);
             var batchOperation = new List<TableTransactionAction>();
 
-            if(jobs.Count() > 100)
+            if (entities.Count() > 100)
             {
-                jobs = jobs.Take(100).ToList();
+                entities = entities.Take(100).ToList();
 
                 await _log.LogMessageAsync(new LogMessage
                 {
@@ -226,7 +228,7 @@ namespace Repositories.SyncJobsRepository
                 });
             }
 
-            foreach (var job in jobs)
+            foreach (var job in entities)
             {
                 job.ETag = ETag.All;
 
@@ -253,6 +255,21 @@ namespace Repositories.SyncJobsRepository
         {
             var jobsWithPastStartDate = jobs.Where(x => x.StartDate <= DateTime.UtcNow);
             return jobsWithPastStartDate;
+        }
+
+        private UpdateMergeSyncJobEntity MapUpdateMergeSyncJobToEntity(UpdateMergeSyncJob updateMergeSyncJob)
+        {
+            return new UpdateMergeSyncJobEntity
+            {
+                PartitionKey = updateMergeSyncJob.PartitionKey,
+                RowKey = updateMergeSyncJob.RowKey,
+                StartDate = updateMergeSyncJob.StartDate
+            };
+        }
+
+        private List<UpdateMergeSyncJobEntity> MapUpdateMergeSyncJobsToEntities(IEnumerable<UpdateMergeSyncJob> jobs)
+        {
+            return jobs.Select(x => MapUpdateMergeSyncJobToEntity(x)).ToList();
         }
     }
 }

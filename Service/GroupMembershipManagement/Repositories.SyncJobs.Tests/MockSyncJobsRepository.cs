@@ -23,7 +23,7 @@ namespace Repositories.SyncJobs.Tests
 
         public async Task<TableSegmentBulkResult<SyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, int batchSize, bool applyFilters = true)
         {
-            var jobs = Jobs.Where(x => (x.StartDate <= DateTime.UtcNow) 
+            var jobs = Jobs.Where(x => (x.StartDate <= DateTime.UtcNow)
                                         && (DateTime.UtcNow - x.LastRunTime > TimeSpan.FromHours(x.Period))
                                         && (x.Status == SyncStatus.Idle.ToString() || x.Status == SyncStatus.InProgress.ToString() || x.Status == SyncStatus.StuckInProgress.ToString()));
 
@@ -33,7 +33,6 @@ namespace Repositories.SyncJobs.Tests
             {
                 Results = new List<SyncJob>(jobs)
             });
-
         }
 
         public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status)
