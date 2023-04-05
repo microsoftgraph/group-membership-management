@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 using Azure;
 using Entities;
-using Entities.ServiceBus;
 using Models;
+using Models.ServiceBus;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
