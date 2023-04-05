@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 using Models.Entities;
 using System;
 using System.Collections.Generic;
@@ -13,3 +15,4 @@ namespace Repositories.Contracts
         public Task<string> GetChannelType(AzureADTeamsChannel teamsChannel, Guid runId);
     }
 }
+

@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Reflection;
 using System.Xml.Linq;

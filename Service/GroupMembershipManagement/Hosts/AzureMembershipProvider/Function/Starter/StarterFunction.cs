@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 using System;
 using System.Text;
 using System.Threading.Tasks;
@@ -60,3 +62,4 @@ namespace Hosts.AzureMembershipProvider
         }
     }
 }
+

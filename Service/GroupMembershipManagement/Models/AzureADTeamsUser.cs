@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -43,3 +45,4 @@ namespace Models.Entities
 		public override string ToString() => $"u: {ObjectId} t: {TeamsId}";
     }
 }
+

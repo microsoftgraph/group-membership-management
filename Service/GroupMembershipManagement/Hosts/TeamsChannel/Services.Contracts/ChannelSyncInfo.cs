@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 using Entities;
 using System;
 using System.Collections.Generic;
@@ -17,3 +19,4 @@ namespace TeamsChannel.Service.Contracts
         public bool IsDestinationPart { get; init; }
     }
 }
+
