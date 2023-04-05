@@ -55,7 +55,7 @@ stages:
        coverageThreshold: 89
     - function:
        name: 'TeamsChannel'
-       coverageThreshold: 0
+       coverageThreshold: 72
     - function:
        name: 'AzureMembershipProvider'
        coverageThreshold: 50
@@ -102,6 +102,10 @@ stages:
        name: 'AzureUserReader'
     - function:
        name: 'SecurityGroup'
+       dependsOn:
+       - 'MembershipAggregator'
+    - function:
+       name: 'TeamsChannel'
        dependsOn:
        - 'MembershipAggregator'
     - function:
@@ -155,6 +159,10 @@ stages:
        dependsOn:
        - 'MembershipAggregator'
     - function:
+       name: 'TeamsChannel'
+       dependsOn:
+       - 'MembershipAggregator'
+    - function:
        name: 'AzureMembershipProvider'
        dependsOn:
        - 'MembershipAggregator'
@@ -199,6 +207,10 @@ stages:
        name: 'AzureUserReader'
     - function:
        name: 'SecurityGroup'
+       dependsOn:
+       - 'MembershipAggregator'
+    - function:
+       name: 'TeamsChannel'
        dependsOn:
        - 'MembershipAggregator'
     - function:
