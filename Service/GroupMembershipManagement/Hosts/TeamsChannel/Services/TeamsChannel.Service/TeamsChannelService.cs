@@ -43,7 +43,7 @@ namespace TeamsChannel.Service
                 return (azureADTeamsChannel, isGood: false);
             }
 
-            var destType = await _teamsChannelRepository.GetChannelType(azureADTeamsChannel, runId);
+            var destType = await _teamsChannelRepository.GetChannelTypeAsync(azureADTeamsChannel, runId);
 
             if (destType != ChannelMembershipType.Private.ToString())
             {
@@ -58,7 +58,7 @@ namespace TeamsChannel.Service
         public Task<List<AzureADTeamsUser>> GetUsersFromTeamAsync(AzureADTeamsChannel azureADTeamsChannel, Guid runId)
         {
             _logger.LogMessageAsync(new LogMessage { Message = $"In Service, reading from group {azureADTeamsChannel.ObjectId} and channel {azureADTeamsChannel.ChannelId}.", RunId = runId });
-            return _teamsChannelRepository.ReadUsersFromChannel(azureADTeamsChannel, runId);
+            return _teamsChannelRepository.ReadUsersFromChannelAsync(azureADTeamsChannel, runId);
         }
 
         private AzureADTeamsChannel GetChannelToRead(ChannelSyncInfo syncInfo)

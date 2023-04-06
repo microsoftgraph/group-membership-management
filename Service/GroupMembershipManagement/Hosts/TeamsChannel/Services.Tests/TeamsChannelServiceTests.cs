@@ -37,9 +37,9 @@ namespace Services.Tests
         public void SetUp()
         {
             _mockTeamsChannelRepository = new Mock<ITeamsChannelRepository>();
-            _mockTeamsChannelRepository.Setup<Task<List<AzureADTeamsUser>>>(repo => repo.ReadUsersFromChannel(It.IsIn<AzureADTeamsChannel>(_mockChannels.Keys), It.IsAny<Guid>()))
+            _mockTeamsChannelRepository.Setup<Task<List<AzureADTeamsUser>>>(repo => repo.ReadUsersFromChannelAsync(It.IsIn<AzureADTeamsChannel>(_mockChannels.Keys), It.IsAny<Guid>()))
                 .ReturnsAsync((AzureADTeamsChannel c, Guid g) => _mockChannels[c]);
-            _mockTeamsChannelRepository.Setup<Task<string>>(repo => repo.GetChannelType(It.IsIn<AzureADTeamsChannel>(_mockChannels.Keys), It.IsAny<Guid>()))
+            _mockTeamsChannelRepository.Setup<Task<string>>(repo => repo.GetChannelTypeAsync(It.IsIn<AzureADTeamsChannel>(_mockChannels.Keys), It.IsAny<Guid>()))
                 .ReturnsAsync((AzureADTeamsChannel tc, Guid _) => tc.ChannelId == "some channel" ? "Private" : "Standard");
                 
                 _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
@@ -127,7 +127,7 @@ namespace Services.Tests
 
             Assert.IsTrue(userList.SequenceEqual(_mockChannels[sourceChannel]));
             Assert.AreEqual(2, userList.Count);
-            _mockTeamsChannelRepository.Verify(m => m.ReadUsersFromChannel(sourceChannel, _syncInfo.SyncJob.RunId.Value));
+            _mockTeamsChannelRepository.Verify(m => m.ReadUsersFromChannelAsync(sourceChannel, _syncInfo.SyncJob.RunId.Value));
         }
 
         [TestMethod]

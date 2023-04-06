@@ -19,7 +19,7 @@ namespace Repositories.TeamsChannel
             _logger = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        public async Task<List<AzureADTeamsUser>> ReadUsersFromChannel(AzureADTeamsChannel teamsChannel, Guid runId)
+        public async Task<List<AzureADTeamsUser>> ReadUsersFromChannelAsync(AzureADTeamsChannel teamsChannel, Guid runId)
         {
             var groupId = teamsChannel.ObjectId;
             var channelId = teamsChannel.ChannelId;
@@ -48,7 +48,7 @@ namespace Repositories.TeamsChannel
             return toReturn;
         }
 
-        public async Task<string> GetChannelType(AzureADTeamsChannel teamsChannel, Guid runId)
+        public async Task<string> GetChannelTypeAsync(AzureADTeamsChannel teamsChannel, Guid runId)
         {
             await _logger.LogMessageAsync(new LogMessage { Message = $"Reading metadata about group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}." });
 
