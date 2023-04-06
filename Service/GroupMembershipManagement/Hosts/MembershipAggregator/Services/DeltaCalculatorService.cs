@@ -145,6 +145,8 @@ namespace Services
                                 Id = Guid.NewGuid(),
                                 ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage,
                                 ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage,
+                                ChangeQuantityForAdditions = delta.Delta.ToAdd.Count,
+                                ChangeQuantityForRemovals = delta.Delta.ToRemove.Count,
                                 CreatedTime = DateTime.UtcNow,
                                 Resolution = ThresholdNotificationResolution.Unresolved,
                                 ResolvedByUPN = string.Empty,

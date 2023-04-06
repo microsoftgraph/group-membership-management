@@ -54,6 +54,8 @@ namespace Repositories.NotificationsRepository
                 Id = entity.Id,
                 ChangePercentageForAdditions = entity.ChangePercentageForAdditions,
                 ChangePercentageForRemovals = entity.ChangePercentageForRemovals,
+                ChangeQuantityForAdditions = entity.ChangeQuantityForAdditions,
+                ChangeQuantityForRemovals = entity.ChangeQuantityForRemovals,
                 CreatedTime = entity.CreatedTime,
                 Resolution = entity.Resolution.GetValueOrDefault(),
                 ResolvedByUPN = entity.ResolvedByUPN,
