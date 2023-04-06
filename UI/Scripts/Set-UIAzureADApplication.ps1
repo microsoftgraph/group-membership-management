@@ -231,9 +231,13 @@ function Set-UIAzureADApplication {
 						 -SecretValue $uiTenantSecret
     Write-Verbose "$uiTenantSecretName added to vault for $uiAppDisplayName."
 
-	Start-Process "https://login.microsoftonline.com/$AppTenantId/oauth2/authorize?client_id=$($uiApp.AppId)&response_type=token&prompt=admin_consent&redirect_uri=$($replyUrls[0])"
-	Write-Host "Your default browser has been launched and directed to a site (link below) that will prompt for admin consent. Make sure to login with you tenant admin account."
-	Write-Host "https://login.microsoftonline.com/$AppTenantId/oauth2/authorize?client_id=$($uiApp.AppId)&response_type=token&prompt=admin_consent&redirect_uri=$($replyUrls[0])"
-
 	Write-Verbose "Set-UIAzureADApplication completed."
 }
+
+Set-UIAzureADApplication	-SubscriptionName "MSFT-STSolution-02" `
+								-SolutionAbbreviation "gmm" `
+								-EnvironmentAbbreviation "lp" `
+								-AppTenantId "47422a28-7e87-4738-bd25-d4f338f6f5a7" `
+								-KeyVaultTenantId "72f988bf-86f1-41af-91ab-2d7cd011db47" `
+								-Clean $false `
+								-Verbose

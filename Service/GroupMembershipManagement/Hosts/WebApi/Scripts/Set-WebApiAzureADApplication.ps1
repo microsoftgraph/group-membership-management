@@ -132,6 +132,22 @@ function Set-WebApiAzureADApplication {
 
 		New-AzADServicePrincipal -ApplicationId $webApiApp.AppId
 
+
+		$permissionScope = New-Object Microsoft.Azure.Powershell.Cmdlets.Resources.MSGraph.Models.ApiV10.MicrosoftGraphPermissionScope
+		$permissionScope.Id = New-Guid
+		$permissionScope.AdminConsentDescription = "admin"
+		$permissionScope.AdminConsentDisplayName = "admin"
+		$permissionScope.IsEnabled = $true
+		$permissionScope.Type = "User"
+		$permissionScope.UserConsentDescription = "user"
+		$permissionScope.UserConsentDisplayName = "user"
+		$permissionScope.Value = "user_impersonation"
+
+		$api = $webApiApp.Api
+		$api.Oauth2PermissionScope = $permissionScope
+
+		Update-AzADApplication -ApplicationId $webApiApp.AppId -Api $api
+
 		$webSettings = $webApiApp.Web
         $webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
 		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $true
@@ -252,3 +268,11 @@ function Set-WebApiAzureADApplication {
 
 	Write-Verbose "Set-WebApiAzureADApplication completed."
 }
+
+Set-WebApiAzureADApplication	-SubscriptionName "MSFT-STSolution-02" `
+								-SolutionAbbreviation "gmm" `
+								-EnvironmentAbbreviation "lp" `
+								-AppTenantId "47422a28-7e87-4738-bd25-d4f338f6f5a7" `
+								-KeyVaultTenantId "72f988bf-86f1-41af-91ab-2d7cd011db47" `
+								-Clean $false `
+								-Verbose
