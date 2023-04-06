@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Entities;
 using Models.Entities;
 
 namespace TeamsChannel.Service.Contracts
@@ -10,5 +11,6 @@ namespace TeamsChannel.Service.Contracts
         public Task<List<AzureADTeamsUser>> GetUsersFromTeamAsync(AzureADTeamsChannel azureADTeamsChannel, Guid runId);
         public Task<string> UploadMembershipAsync(List<AzureADTeamsUser> users, ChannelSyncInfo channelSyncInfo, bool dryRun);
         public Task MakeMembershipAggregatorRequestAsync(ChannelSyncInfo syncInfo, string blobFilePath);
+        public Task MarkSyncJobAsErroredAsync(SyncJob syncJob);
     }
 }

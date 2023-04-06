@@ -141,5 +141,12 @@ namespace Services.Tests
             Assert.AreEqual(ExpectedFilename, filePath);
             _mockBlobStorageRepository.Verify(mock => mock.UploadFileAsync(ExpectedFilename, It.IsNotNull<string>(), It.IsAny<Dictionary<string, string>>()));
         }
+
+        [TestMethod]
+        public async Task CanMarkJobsAsError()
+        {
+            await _service.MarkSyncJobAsErroredAsync(_syncInfo.SyncJob);
+            Assert.AreEqual(SyncStatus.Error.ToString(), _syncInfo.SyncJob.Status);
+        }
     }
 }

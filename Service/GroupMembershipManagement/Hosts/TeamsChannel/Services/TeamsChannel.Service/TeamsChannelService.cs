@@ -131,10 +131,14 @@ namespace TeamsChannel.Service
             {
                 var responseBody = await response.Content.ReadAsStringAsync();
                 await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, POST request failed. Got {response.StatusCode} instead. Response body: {responseBody}.", RunId = syncInfo.SyncJob.RunId });
-                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncInfo.SyncJob }, SyncStatus.Error);
+                await MarkSyncJobAsErroredAsync(syncInfo.SyncJob);
             }
 
         }
 
+        public async Task MarkSyncJobAsErroredAsync(SyncJob syncJob)
+        {
+            await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Error);
+        }
     }
 }

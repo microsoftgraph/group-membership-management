@@ -39,28 +39,45 @@ namespace Hosts.TeamsChannel
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"TeamsChannel recieved a message. Query: {syncInfo.SyncJob.Query}.", RunId = runId });
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"TeamsChannel validating target office group. Query: {syncInfo.SyncJob.Query}.", RunId = runId });
-            var parsedAndValidated = await _teamsChannelService.VerifyChannelAsync(syncInfo);
 
-            if (!parsedAndValidated.isGood)
+            try
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Target office group did not validate. Marked as {syncInfo.SyncJob.Status}.", RunId = runId });
-                return;
+
+                var parsedAndValidated = await _teamsChannelService.VerifyChannelAsync(syncInfo);
+
+                if (!parsedAndValidated.isGood)
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Target office group did not validate. Marked as {syncInfo.SyncJob.Status}.", RunId = runId });
+                    return;
+                }
+
+
+                var users = await _teamsChannelService.GetUsersFromTeamAsync(parsedAndValidated.parsedChannel, runId);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count} from {syncInfo.SyncJob.Query}.", RunId = runId });
+
+                // upload to blob storage
+
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploading {users.Count} users from {syncInfo.SyncJob.Query} to blob storage.", RunId = runId });
+                var filePath = await _teamsChannelService.UploadMembershipAsync(users, syncInfo, _isTeamsChannelDryRunEnabled);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded {users.Count} users from {syncInfo.SyncJob.Query} to blob storage at {filePath}.", RunId = runId });
+
+                // make HTTP call
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = "Making MembershipAggregator request.", RunId = runId });
+                await _teamsChannelService.MakeMembershipAggregatorRequestAsync(syncInfo, filePath);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = "Made MembershipAggregator request.", RunId = runId });
             }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Caught unexpected exception: {ex}. Marking job as errored.", RunId = runId });
+                await _teamsChannelService.MarkSyncJobAsErroredAsync(syncInfo.SyncJob);
 
-
-            var users = await _teamsChannelService.GetUsersFromTeamAsync(parsedAndValidated.parsedChannel, runId);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count} from {syncInfo.SyncJob.Query}.", RunId = runId });
-
-            // upload to blob storage
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploading {users.Count} users from {syncInfo.SyncJob.Query} to blob storage.", RunId = runId });
-            var filePath = await _teamsChannelService.UploadMembershipAsync(users, syncInfo, _isTeamsChannelDryRunEnabled);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded {users.Count} users from {syncInfo.SyncJob.Query} to blob storage at {filePath}.", RunId = runId });
-
-            // make HTTP call
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Making MembershipAggregator request.", RunId = runId });
-            await _teamsChannelService.MakeMembershipAggregatorRequestAsync(syncInfo, filePath);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Made MembershipAggregator request.", RunId = runId });
+                // rethrow caught exception so App Insights can get it.
+                throw;
+            }
+            finally
+            {
+                _loggingRepository.RemoveSyncJobProperties(runId);
+            }
 
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = "TeamsChannel finished.", RunId = runId });
