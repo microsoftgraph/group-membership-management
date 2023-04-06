@@ -22,9 +22,9 @@ namespace Hosts.TeamsChannel
 
         public TeamsChannel(ILoggingRepository loggingRepository, ITeamsChannelService teamsChannelService, IDryRunValue dryRun)
         {
-            _loggingRepository = loggingRepository;
-            _teamsChannelService = teamsChannelService;
-            _isTeamsChannelDryRunEnabled = dryRun.DryRunEnabled;
+            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _teamsChannelService = teamsChannelService ?? throw new ArgumentNullException(nameof(teamsChannelService));
+            _isTeamsChannelDryRunEnabled = dryRun?.DryRunEnabled ?? throw new ArgumentNullException(nameof(dryRun));
         }
 
         [FunctionName(nameof(TeamsChannel))]
@@ -39,7 +39,7 @@ namespace Hosts.TeamsChannel
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"TeamsChannel recieved a message. Query: {syncInfo.SyncJob.Query}.", RunId = runId });
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"TeamsChannel validating target office group. Query: {syncInfo.SyncJob.Query}.", RunId = runId });
-            var parsedAndValidated = await _teamsChannelService.VerifyChannel(syncInfo);
+            var parsedAndValidated = await _teamsChannelService.VerifyChannelAsync(syncInfo);
 
             if (!parsedAndValidated.isGood)
             {
@@ -48,18 +48,18 @@ namespace Hosts.TeamsChannel
             }
 
 
-            var users = await _teamsChannelService.GetUsersFromTeam(parsedAndValidated.parsedChannel, runId);
+            var users = await _teamsChannelService.GetUsersFromTeamAsync(parsedAndValidated.parsedChannel, runId);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count} from {syncInfo.SyncJob.Query}.", RunId = runId });
 
             // upload to blob storage
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploading {users.Count} users from {syncInfo.SyncJob.Query} to blob storage.", RunId = runId });
-            var filePath = await _teamsChannelService.UploadMembership(users, syncInfo, _isTeamsChannelDryRunEnabled);
+            var filePath = await _teamsChannelService.UploadMembershipAsync(users, syncInfo, _isTeamsChannelDryRunEnabled);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded {users.Count} users from {syncInfo.SyncJob.Query} to blob storage at {filePath}.", RunId = runId });
 
             // make HTTP call
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Making MembershipAggregator request.", RunId = runId });
-            await _teamsChannelService.MakeMembershipAggregatorRequest(syncInfo, filePath);
+            await _teamsChannelService.MakeMembershipAggregatorRequestAsync(syncInfo, filePath);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Made MembershipAggregator request.", RunId = runId });
 
 

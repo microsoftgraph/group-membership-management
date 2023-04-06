@@ -46,13 +46,6 @@ namespace Services.Tests
             var mockSyncJobRepository = new MockSyncJobRepository();
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
 
-            //var expectedBaseAddress = new Uri("https://membershipaggregator");
-            //var mockHttpClient = Mock.Of<HttpClient>(h => h.BaseAddress == expectedBaseAddress &&
-            //    h.PostAsJsonAsync(expectedBaseAddress.ToString(), It.IsNotNull<MembershipAggregatorHttpRequest>(), It.IsNotNull<JsonSerializerOptions>(),
-            //    It.IsNotNull<CancellationToken>()) == Task.FromResult(Mock.Of<HttpResponseMessage>(response => response.StatusCode == System.Net.HttpStatusCode.NoContent)));
-
-            //_mockHttpClientFactory.Setup(x => x.CreateClient(Constants.MembershipAggregatorHttpClientName)).Returns(mockHttpClient);
-
             _service = new TeamsChannelService(_mockTeamsChannelRepository.Object, _mockBlobStorageRepository.Object, _mockHttpClientFactory.Object, mockSyncJobRepository, new MockLoggingRepository());
 
             _syncInfo = new ChannelSyncInfo
@@ -87,7 +80,7 @@ namespace Services.Tests
                 }
             };
 
-            var verification = await _service.VerifyChannel(badSyncInfo);
+            var verification = await _service.VerifyChannelAsync(badSyncInfo);
 
             Assert.IsFalse(verification.isGood);
             Assert.AreEqual(SyncStatus.TeamsChannelNotPrivate.ToString(), badSyncInfo.SyncJob.Status);
@@ -97,7 +90,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task VerifyAcceptsGoodSync()
         {
-            var verification = await _service.VerifyChannel(_syncInfo);
+            var verification = await _service.VerifyChannelAsync(_syncInfo);
 
             Assert.IsTrue(verification.isGood);
             Assert.AreEqual(SyncStatus.InProgress.ToString(), _syncInfo.SyncJob.Status);
@@ -119,7 +112,7 @@ namespace Services.Tests
                 }
             };
 
-            var verification = await _service.VerifyChannel(badSyncInfo);
+            var verification = await _service.VerifyChannelAsync(badSyncInfo);
 
             Assert.IsFalse(verification.isGood);
             Assert.AreEqual(SyncStatus.PrivateChannelNotDestination.ToString(), badSyncInfo.SyncJob.Status);
@@ -129,7 +122,7 @@ namespace Services.Tests
         public async Task GetsUsersFromTeam()
         {
             var sourceChannel = new AzureADTeamsChannel { ObjectId = Guid.Empty, ChannelId = "some channel" };
-            var userList = await _service.GetUsersFromTeam(sourceChannel, _syncInfo.SyncJob.RunId.Value);
+            var userList = await _service.GetUsersFromTeamAsync(sourceChannel, _syncInfo.SyncJob.RunId.Value);
 
 
             Assert.IsTrue(userList.SequenceEqual(_mockChannels[sourceChannel]));
@@ -143,16 +136,10 @@ namespace Services.Tests
             var sourceChannel = new AzureADTeamsChannel { ObjectId = Guid.Empty, ChannelId = "some channel" };
             var sourceMembers = _mockChannels[sourceChannel];
 
-            var filePath = await _service.UploadMembership(sourceMembers, _syncInfo, false);
+            var filePath = await _service.UploadMembershipAsync(sourceMembers, _syncInfo, false);
 
             Assert.AreEqual(ExpectedFilename, filePath);
             _mockBlobStorageRepository.Verify(mock => mock.UploadFileAsync(ExpectedFilename, It.IsNotNull<string>(), It.IsAny<Dictionary<string, string>>()));
         }
-
-        //[TestMethod]
-        //public async Task MakesSuccessfulMembershipAggregatorRequest()
-        //{
-        //    await _service.MakeMembershipAggregatorRequest(_syncInfo, ExpectedFilename);
-        //}
     }
 }

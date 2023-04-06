@@ -15,8 +15,8 @@ namespace Repositories.TeamsChannel
 
         public TeamsChannelRepository(ILoggingRepository loggingRepository, GraphServiceClient graphServiceClient)
         {
-            _logger = loggingRepository;
-            _graphServiceClient = graphServiceClient;
+            _graphServiceClient = graphServiceClient ?? throw new ArgumentNullException(nameof(graphServiceClient));
+            _logger = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         public async Task<List<AzureADTeamsUser>> ReadUsersFromChannel(AzureADTeamsChannel teamsChannel, Guid runId)

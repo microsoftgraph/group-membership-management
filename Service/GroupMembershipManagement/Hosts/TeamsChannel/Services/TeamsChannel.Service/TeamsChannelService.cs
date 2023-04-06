@@ -24,14 +24,14 @@ namespace TeamsChannel.Service
 
         public TeamsChannelService(ITeamsChannelRepository teamsChannelRepository, IBlobStorageRepository blobStorageRepository, IHttpClientFactory httpClientFactory, ISyncJobRepository syncJobRepository, ILoggingRepository loggingRepository)
         {
-            _teamsChannelRepository = teamsChannelRepository;
-            _blobStorageRepository = blobStorageRepository;
-            _httpClientFactory = httpClientFactory;
-            _syncJobRepository = syncJobRepository;
-            _logger = loggingRepository;
+            _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
+            _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
+            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _logger = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        public async Task<(AzureADTeamsChannel parsedChannel, bool isGood)> VerifyChannel(ChannelSyncInfo channelSyncInfo)
+        public async Task<(AzureADTeamsChannel parsedChannel, bool isGood)> VerifyChannelAsync(ChannelSyncInfo channelSyncInfo)
         {
             Guid runId = channelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
             var azureADTeamsChannel = GetChannelToRead(channelSyncInfo);
@@ -55,7 +55,7 @@ namespace TeamsChannel.Service
             return (azureADTeamsChannel, isGood: true);
         }
 
-        public Task<List<AzureADTeamsUser>> GetUsersFromTeam(AzureADTeamsChannel azureADTeamsChannel, Guid runId)
+        public Task<List<AzureADTeamsUser>> GetUsersFromTeamAsync(AzureADTeamsChannel azureADTeamsChannel, Guid runId)
         {
             _logger.LogMessageAsync(new LogMessage { Message = $"In Service, reading from group {azureADTeamsChannel.ObjectId} and channel {azureADTeamsChannel.ChannelId}.", RunId = runId });
             return _teamsChannelRepository.ReadUsersFromChannel(azureADTeamsChannel, runId);
@@ -72,7 +72,7 @@ namespace TeamsChannel.Service
             };
         }
 
-        public async Task<string> UploadMembership(List<AzureADTeamsUser> users, ChannelSyncInfo channelSyncInfo, bool dryRun)
+        public async Task<string> UploadMembershipAsync(List<AzureADTeamsUser> users, ChannelSyncInfo channelSyncInfo, bool dryRun)
         {
             Guid runId = channelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
 
@@ -104,7 +104,7 @@ namespace TeamsChannel.Service
             return fileName;
         }
 
-        public async Task MakeMembershipAggregatorRequest(ChannelSyncInfo syncInfo, string blobFilePath)
+        public async Task MakeMembershipAggregatorRequestAsync(ChannelSyncInfo syncInfo, string blobFilePath)
         {
             var aggregatorRequest = new MembershipAggregatorHttpRequest
             {
