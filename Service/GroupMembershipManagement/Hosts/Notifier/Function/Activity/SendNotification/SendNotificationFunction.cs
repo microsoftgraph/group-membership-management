@@ -26,10 +26,10 @@ namespace Hosts.Notifier
         }
 
         [FunctionName(nameof(SendNotificationFunction))]
-        public async Task SendNotificationAsync([ActivityTrigger] string recipientAddresses)
+        public async Task SendNotificationAsync([ActivityTrigger] Guid targetOfficeGroupId)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SendNotificationFunction)} function started at: {DateTime.UtcNow}" });
-            await _notifierService.SendEmailAsync(recipientAddresses);
+            await _notifierService.SendEmailAsync(targetOfficeGroupId);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SendNotificationFunction)} function completed at: {DateTime.UtcNow}" });
         }
     }

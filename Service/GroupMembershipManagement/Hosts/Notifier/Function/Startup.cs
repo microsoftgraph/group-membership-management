@@ -8,6 +8,7 @@ using Hosts.Notifier;
 using Services;
 using Services.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.GraphGroups;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -30,8 +31,13 @@ namespace Hosts.Notifier
         public override void Configure(IFunctionsHostBuilder builder)
         {
             base.Configure(builder);
-
-            builder.Services.AddScoped<INotifierService, NotifierService>();
+           
+            builder.Services.AddSingleton<IGraphServiceClient>((services) =>
+            {
+                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
+            })
+            .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
+            .AddScoped<INotifierService, NotifierService>();
 
             builder.Services.AddHttpClient();
         }

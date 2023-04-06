@@ -5,10 +5,13 @@ using Azure;
 using Azure.Data.Tables;
 using DIConcreteTypes;
 using Microsoft.Extensions.Options;
+using Microsoft.Graph;
 using Models.ThresholdNotifications;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Repositories.NotificationsRepository
@@ -45,6 +48,29 @@ namespace Repositories.NotificationsRepository
         {
             var entity = ToEntity(notification);
             await _tableClient.UpsertEntityAsync(entity);
+        }
+
+        public async IAsyncEnumerable<ThresholdNotification> GetQueuedNotificationsAsync()
+        {
+            var notifications = new List<ThresholdNotification>();
+
+            var queryResult = _tableClient.QueryAsync<ThresholdNotificationEntity>(x => x.StatusName == ThresholdNotificationStatus.Queued.ToString());
+
+            await foreach (var segmentResult in queryResult.AsPages())
+            {
+                var results = segmentResult.Values.Where(x => x.ResolutionName == ThresholdNotificationResolution.Unresolved.ToString());
+                foreach (var notification in results)
+                {
+                    yield return ToModel(notification);
+                }
+            }
+        }
+
+        public async Task UpdateNotificationStatusAsync(ThresholdNotification notification, ThresholdNotificationStatus status)
+        {
+            var updatedNotification = ToEntity(notification);
+            updatedNotification.Status = status;
+            await SaveNotificationAsync(ToModel(updatedNotification));
         }
 
         private ThresholdNotification ToModel(ThresholdNotificationEntity entity)

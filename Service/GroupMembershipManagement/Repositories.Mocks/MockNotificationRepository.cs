@@ -21,5 +21,14 @@ namespace Repositories.Mocks
         {
             await Task.CompletedTask;
         }
+
+        public IAsyncEnumerable<ThresholdNotification> GetQueuedNotificationsAsync()
+        {
+            throw new NotImplementedException();
+        }
+        public Task UpdateNotificationStatusAsync(ThresholdNotification notification, ThresholdNotificationStatus status)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

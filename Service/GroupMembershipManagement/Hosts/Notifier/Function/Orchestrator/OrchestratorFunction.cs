@@ -8,6 +8,7 @@ using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Models.ThresholdNotifications;
 
 namespace Hosts.Notifier
 {
@@ -31,10 +32,17 @@ namespace Hosts.Notifier
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
-            var request = context.GetInput<NotifierRequest>();
-            var recipientAddresses = request.RecipientAddresses;
+            var notifications = await context.CallActivityAsync<List<Models.ThresholdNotifications.ThresholdNotification>>(nameof(RetrieveNotificationsFunction), null);
 
-            await context.CallActivityAsync(nameof(SendNotificationFunction), recipientAddresses);
+            if (notifications != null && notifications.Count > 0)
+            {
+                foreach(var notification in notifications)
+                {
+                    await context.CallActivityAsync(nameof(UpdateNotificationStatusFunction), new UpdateNotificationStatusRequest { Notification = notification, Status = ThresholdNotificationStatus.Queued });
+                    await context.CallActivityAsync(nameof(SendNotificationFunction), notification.TargetOfficeGroupId);
+                    await context.CallActivityAsync(nameof(UpdateNotificationStatusFunction), new UpdateNotificationStatusRequest { Notification = notification, Status = ThresholdNotificationStatus.AwaitingResponse });
+                }
+            }
 
             await context.CallActivityAsync(nameof(LoggerFunction),
                 new LoggerRequest

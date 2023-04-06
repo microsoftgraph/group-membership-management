@@ -39,13 +39,29 @@ namespace Services.Tests
 
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
+            var notificationRepository = new Mock<INotificationRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var users = new List<User>();
+            var targetOfficeGroupId = Guid.NewGuid();
+            for (int i = 0; i < 2; i++)
+            {
+                var user = new User
+                {
+                    Mail = $"owner_{i}@email.com"
+                };
+
+                users.Add(user);
+            }
+            _ = graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(targetOfficeGroupId, 0)).ReturnsAsync(users);
 
             var notifierService = new NotifierService(loggerMock.Object,
                                                 mailRepository.Object,
-                                                mailAddresses.Object
+                                                mailAddresses.Object,
+                                                notificationRepository.Object,
+                                                graphGroupRepository.Object
                                                 );
 
-            await notifierService.SendEmailAsync("user1@test.com;user2@test.com");
+            await notifierService.SendEmailAsync(targetOfficeGroupId);
             mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null, It.IsAny<string>()), Times.Once());
         }
 

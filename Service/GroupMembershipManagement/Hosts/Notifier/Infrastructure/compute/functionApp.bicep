@@ -85,6 +85,7 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.OrchestratorFunction.Disabled'
       'AzureWebJobs.LoggerFunction.Disabled'
       'AzureWebJobs.PipelineInvocationStarterFunction.Disabled'
+      'AzureWebJobs.TimerStarterFunction.Disabled'
       'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled'
       'AzureWebJobs.CheckNotifierStatusFunction.Disabled'
       'AzureWebJobs.PostCallbackFunction.Disabled'
