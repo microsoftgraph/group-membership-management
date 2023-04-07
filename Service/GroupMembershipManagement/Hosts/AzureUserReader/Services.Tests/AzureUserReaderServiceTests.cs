@@ -5,7 +5,6 @@ using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using DIConcreteTypes;
-using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Models;

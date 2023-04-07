@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Hosts.SecurityGroup;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights;

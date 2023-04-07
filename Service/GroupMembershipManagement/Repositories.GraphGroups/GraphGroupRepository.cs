@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure;
-using Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
 using Newtonsoft.Json.Linq;

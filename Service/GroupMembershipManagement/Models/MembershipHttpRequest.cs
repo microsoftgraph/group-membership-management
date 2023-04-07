@@ -1,9 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using System;
-
-namespace Entities
+namespace Models
 {
     public class MembershipHttpRequest
     {

@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
 using System;
+using Entities;
 
-namespace Entities
+namespace Models
 {
     public class DistributionSyncJob : UpdateMergeSyncJob, IComparable<DistributionSyncJob>
     {
@@ -26,7 +26,7 @@ namespace Entities
 
         public DistributionSyncJob() { }
 
-        public int CompareTo(DistributionSyncJob other)
+        public int CompareTo(Models.DistributionSyncJob other)
         {
             if (Status == other.Status || (Status != SyncStatus.Idle.ToString() && other.Status != SyncStatus.Idle.ToString()))
             {

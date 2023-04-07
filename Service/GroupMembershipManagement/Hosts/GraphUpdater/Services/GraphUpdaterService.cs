@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
 using Models;

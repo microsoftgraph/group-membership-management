@@ -9,7 +9,6 @@ using Newtonsoft.Json;
 using Repositories.Contracts.InjectConfig;
 using Repositories.Contracts;
 using Azure.Messaging.ServiceBus;
-using Entities;
 using Hosts.AzureMembershipProvider;
 using Models;
 

@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Entities.AzureMaintenance;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Graph;
@@ -61,7 +60,7 @@ namespace Services.Tests
                                         .ReturnsAsync(new BackupResult("backupTableName", "table", entities.Count));
             azureTableBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[0]))
                                         .ReturnsAsync(backups);
-            azureTableBackupRepository.Setup(x => x.GetLastestBackupResultTrackerAsync(It.IsAny<IAzureMaintenanceJob>()))
+            azureTableBackupRepository.Setup(x => x.GetLatestBackupResultTrackerAsync(It.IsAny<IAzureMaintenanceJob>()))
                                         .ReturnsAsync((BackupResult) null);
 
             azureBlobBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[1]))
@@ -124,7 +123,7 @@ namespace Services.Tests
                                         .ReturnsAsync(new BackupResult { BackupTableName = "backupTableName", BackedUpTo = "table", RowCount = entities.Count });
             azureTableBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[0]))
                                         .ReturnsAsync(backups);
-            azureTableBackupRepository.Setup(x => x.GetLastestBackupResultTrackerAsync(It.IsAny<IAzureMaintenanceJob>()))
+            azureTableBackupRepository.Setup(x => x.GetLatestBackupResultTrackerAsync(It.IsAny<IAzureMaintenanceJob>()))
                                         .ReturnsAsync(new BackupResult { BackupTableName = "backupTableName", BackedUpTo = "table", RowCount = 1 });
 
             azureBlobBackupRepository.Setup(x => x.BackupEntitiesAsync(backupSettings[1], entities))
@@ -178,7 +177,7 @@ namespace Services.Tests
 
             azureTableBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[0]))
                                         .ReturnsAsync(backups);
-            azureTableBackupRepository.Setup(x => x.GetLastestBackupResultTrackerAsync(It.IsAny<IAzureMaintenanceJob>()))
+            azureTableBackupRepository.Setup(x => x.GetLatestBackupResultTrackerAsync(It.IsAny<IAzureMaintenanceJob>()))
                                         .ReturnsAsync(new BackupResult { BackupTableName = "backupTableName", BackedUpTo = "table", RowCount = 1 });
             azureTableBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[1]))
                                         .ReturnsAsync(backups);

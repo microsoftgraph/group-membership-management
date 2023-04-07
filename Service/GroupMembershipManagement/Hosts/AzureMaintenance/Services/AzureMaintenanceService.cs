@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Entities.AzureMaintenance;
 using Models;
 using Repositories.Contracts;
@@ -129,7 +128,7 @@ namespace Services
 
 		private async Task CompareBackupResults(IAzureMaintenanceJob backupSettings, BackupResult currentBackup)
 		{
-			var previousBackupTracker = await _azureTableBackupRepository.GetLastestBackupResultTrackerAsync(backupSettings);
+			var previousBackupTracker = await _azureTableBackupRepository.GetLatestBackupResultTrackerAsync(backupSettings);
 			await _azureTableBackupRepository.AddBackupResultTrackerAsync(backupSettings, currentBackup);
 
 			if (previousBackupTracker == null)

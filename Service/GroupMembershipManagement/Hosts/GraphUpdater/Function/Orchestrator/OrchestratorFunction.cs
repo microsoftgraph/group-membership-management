@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Core;
-using Entities;
 using Models.ServiceBus;
 using GraphUpdater.Entities;
 using Microsoft.ApplicationInsights;

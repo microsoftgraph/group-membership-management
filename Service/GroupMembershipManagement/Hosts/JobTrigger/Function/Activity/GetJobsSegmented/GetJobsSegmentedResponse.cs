@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Entities;
+using Models;
 using System.Collections.Generic;
 
 namespace Hosts.JobTrigger

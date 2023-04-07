@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 using Azure;
-using Entities;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Mvc;

@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Entities;
 using Microsoft.Graph;
 using Models;
 using Newtonsoft.Json;

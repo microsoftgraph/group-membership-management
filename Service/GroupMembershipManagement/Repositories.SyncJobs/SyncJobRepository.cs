@@ -27,10 +27,10 @@ namespace Repositories.SyncJobsRepository
 
         public async Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey)
         {
-            var result = await _tableClient.GetEntityAsync<SyncJob>(partitionKey, rowKey);
+            var result = await _tableClient.GetEntityAsync<SyncJobEntity>(partitionKey, rowKey);
 
             if (result.GetRawResponse().Status != 404)
-                return result.Value;
+                return MapSyncJobEntityToDTO(result.Value);
 
             return null;
         }
@@ -51,10 +51,10 @@ namespace Repositories.SyncJobsRepository
                     query = $"({query}) and StartDate le datetime\'{DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff")}Z\'";
             }
 
-            var jobs = _tableClient.QueryAsync<SyncJob>(query);
+            var jobs = _tableClient.QueryAsync<SyncJobEntity>(query);
             await foreach (var job in jobs)
             {
-                yield return job;
+                yield return MapSyncJobEntityToDTO(job);
             }
         }
 
@@ -63,18 +63,18 @@ namespace Repositories.SyncJobsRepository
             string continuationToken = null,
             int? pageSize = null)
         {
-            AsyncPageable<SyncJob> tableQuery = _tableClient.QueryAsync<SyncJob>(query);
-            IAsyncEnumerator<Azure.Page<SyncJob>> pageEnumerator = tableQuery
+            AsyncPageable<SyncJobEntity> tableQuery = _tableClient.QueryAsync<SyncJobEntity>(query);
+            IAsyncEnumerator<Azure.Page<SyncJobEntity>> pageEnumerator = tableQuery
                                                                     .AsPages(continuationToken: continuationToken, pageSizeHint: pageSize)
                                                                     .GetAsyncEnumerator();
             await pageEnumerator.MoveNextAsync();
-            Azure.Page<SyncJob> page = pageEnumerator.Current;
+            Azure.Page<SyncJobEntity> page = pageEnumerator.Current;
             await pageEnumerator.DisposeAsync();
 
             return new Models.Page<SyncJob>
             {
                 Query = query,
-                Values = page.Values,
+                Values = MapSyncJobEntitiesToDTOs(page.Values),
                 ContinuationToken = page.ContinuationToken,
             };
         }
@@ -120,7 +120,7 @@ namespace Repositories.SyncJobsRepository
 
         public async IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync()
         {
-            var queryResult = _tableClient.QueryAsync<SyncJob>(x =>
+            var queryResult = _tableClient.QueryAsync<SyncJobEntity>(x =>
                     x.Status != SyncStatus.Idle.ToString() &&
                     x.Status != SyncStatus.InProgress.ToString() &&
                     x.Status != SyncStatus.StuckInProgress.ToString() &&
@@ -139,7 +139,7 @@ namespace Repositories.SyncJobsRepository
 
                 foreach (var job in results)
                 {
-                    yield return job;
+                    yield return MapSyncJobEntityToDTO(job);
                 }
             }
         }
@@ -147,7 +147,7 @@ namespace Repositories.SyncJobsRepository
         public async Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs)
         {
             var batchSize = 100;
-            var groupedJobs = jobs.GroupBy(x => x.PartitionKey);
+            var groupedJobs = MapSyncJobsToEntities(jobs).GroupBy(x => x.PartitionKey);
 
             await _log.LogMessageAsync(new LogMessage { Message = $"Number of grouped jobs: {groupedJobs.Count()}", RunId = Guid.Empty });
             await _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key started", RunId = Guid.Empty });
@@ -193,7 +193,7 @@ namespace Repositories.SyncJobsRepository
         public async Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null)
         {
             var batchSize = 100;
-            var groupedJobs = jobs.GroupBy(x => x.PartitionKey);
+            var groupedJobs = MapSyncJobsToEntities(jobs).GroupBy(x => x.PartitionKey);
 
             await _log.LogMessageAsync(new LogMessage { Message = $"Number of grouped jobs: {groupedJobs.Count()}", RunId = Guid.Empty });
             await _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key started", RunId = Guid.Empty });
@@ -289,6 +289,66 @@ namespace Repositories.SyncJobsRepository
         private List<UpdateMergeSyncJobEntity> MapUpdateMergeSyncJobsToEntities(IEnumerable<UpdateMergeSyncJob> jobs)
         {
             return jobs.Select(x => MapUpdateMergeSyncJobToEntity(x)).ToList();
+        }
+
+        private SyncJob MapSyncJobEntityToDTO(SyncJobEntity job)
+        {
+            return new SyncJob(job.PartitionKey, job.RowKey)
+            {
+                IgnoreThresholdOnce = job.IgnoreThresholdOnce,
+                IsDryRunEnabled = job.IsDryRunEnabled,
+                DryRunTimeStamp = job.DryRunTimeStamp,
+                LastRunTime = job.LastRunTime,
+                LastSuccessfulRunTime = job.LastSuccessfulRunTime,
+                LastSuccessfulStartTime = job.LastSuccessfulStartTime,
+                StartDate = job.StartDate,
+                Timestamp = job.Timestamp,
+                TargetOfficeGroupId = job.TargetOfficeGroupId,
+                RunId = job.RunId,
+                Period = job.Period,
+                ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
+                ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals,
+                ThresholdViolations = job.ThresholdViolations,
+                ETag = job.ETag.ToString(),
+                Query = job.Query,
+                Requestor = job.Requestor,
+                Status = job.Status,
+            };
+        }
+
+        private List<SyncJob> MapSyncJobEntitiesToDTOs(IEnumerable<SyncJobEntity> jobEntities)
+        {
+            return jobEntities.Select(x => MapSyncJobEntityToDTO(x)).ToList();
+        }
+
+        private SyncJobEntity MapSyncJobToEntity(SyncJob job)
+        {
+            return new SyncJobEntity(job.PartitionKey, job.RowKey)
+            {
+                IgnoreThresholdOnce = job.IgnoreThresholdOnce,
+                IsDryRunEnabled = job.IsDryRunEnabled,
+                DryRunTimeStamp = job.DryRunTimeStamp,
+                LastRunTime = job.LastRunTime,
+                LastSuccessfulRunTime = job.LastSuccessfulRunTime,
+                LastSuccessfulStartTime = job.LastSuccessfulStartTime,
+                StartDate = job.StartDate,
+                Timestamp = job.Timestamp,
+                TargetOfficeGroupId = job.TargetOfficeGroupId,
+                RunId = job.RunId,
+                Period = job.Period,
+                ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
+                ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals,
+                ThresholdViolations = job.ThresholdViolations,
+                ETag = string.IsNullOrWhiteSpace(job.ETag) ? ETag.All : new ETag(job.ETag),
+                Query = job.Query,
+                Requestor = job.Requestor,
+                Status = job.Status,
+            };
+        }
+
+        private List<SyncJobEntity> MapSyncJobsToEntities(IEnumerable<SyncJob> jobEntities)
+        {
+            return jobEntities.Select(x => MapSyncJobToEntity(x)).ToList();
         }
     }
 }

@@ -3,23 +3,19 @@
 
 using Azure;
 using Azure.Data.Tables;
-using Models;
 using Models.CustomAttributes;
 using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 
-namespace Entities
+namespace Repositories.SyncJobsRepository.Entities
 {
-    [ExcludeFromCodeCoverage]
-    public class SyncJob : ITableEntity
+    internal class SyncJobEntity : ITableEntity
     {
-        public SyncJob()
+        public SyncJobEntity()
         {
         }
 
-        public SyncJob(string partitionKey, string rowKey)
+        public SyncJobEntity(string partitionKey, string rowKey)
         {
             PartitionKey = partitionKey;
             RowKey = rowKey;
@@ -125,12 +121,5 @@ namespace Entities
 
         [JsonIgnore]
         public ETag ETag { get; set; }
-
-        public Dictionary<string, string> ToDictionary() =>
-            DictionaryHelper.ToDictionary(this, new DictionaryHelper.Options
-            {
-                UseCamelCase = false,
-                PropertiesToIgnore = new List<string> { "Timestamp", "ETag" }
-            });
     }
 }

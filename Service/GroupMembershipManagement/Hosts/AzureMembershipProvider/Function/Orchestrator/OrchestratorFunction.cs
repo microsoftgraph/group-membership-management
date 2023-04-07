@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 using Azure;
 using Azure.Core;
-using Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;

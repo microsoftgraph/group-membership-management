@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Models.ServiceBus;
 using Hosts.GraphUpdater;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -14,6 +13,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Models;
 
 namespace Services.Tests
 {

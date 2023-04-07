@@ -17,7 +17,8 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using TableEntity = Microsoft.Azure.Cosmos.Table.TableEntity;
-using Entities;
+using Azure;
+using Repositories.SyncJobsRepository.Entities;
 
 namespace Repositories.AzureTableBackupRepository
 {
@@ -193,7 +194,7 @@ namespace Repositories.AzureTableBackupRepository
                 // Do not delete empty tables
                 var takeOneQuery = table.CreateQuery<TableEntity>().AsQueryable().Take(1);
                 var takeOneResults = table.ExecuteQuery(takeOneQuery.AsTableQuery()).ToList();
-                if(takeOneResults.Count == 0)
+                if (takeOneResults.Count == 0)
                 {
                     return false;
                 }
@@ -261,7 +262,7 @@ namespace Repositories.AzureTableBackupRepository
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Created backup tracker ({backupResult.RowKey}) for {backupSettings.SourceStorageSetting.TargetName}" });
         }
 
-        public async Task<BackupResult> GetLastestBackupResultTrackerAsync(IAzureMaintenanceJob backupSettings)
+        public async Task<BackupResult> GetLatestBackupResultTrackerAsync(IAzureMaintenanceJob backupSettings)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Getting latest backup tracker for {backupSettings.SourceStorageSetting.TargetName}" });
 
@@ -319,15 +320,15 @@ namespace Repositories.AzureTableBackupRepository
                 {
                     try
                     {
-                        tableClient.AddEntity(job);
+                        tableClient.AddEntity(MapSyncJobToEntity(job));
                         backupCount++;
                     }
                     catch (Exception ex)
                     {
                         await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unable to add {job.RowKey} to table: {tableName}.\n{ex}" });
-                    }                   
-                    
-                    await _loggingRepository.LogMessageAsync( new LogMessage { Message = $"Backing up inactive job with RowKey: {job.RowKey} to table: {tableName}" });
+                    }
+
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Backing up inactive job with RowKey: {job.RowKey} to table: {tableName}" });
                 }
             }
 
@@ -416,6 +417,31 @@ namespace Repositories.AzureTableBackupRepository
         {
             var cloudTableClient = await GetCloudTableClientAsync(connectionString);
             return cloudTableClient.GetTableReference(tableName);
+        }
+
+        private SyncJobEntity MapSyncJobToEntity(SyncJob job)
+        {
+            return new SyncJobEntity(job.PartitionKey, job.RowKey)
+            {
+                IgnoreThresholdOnce = job.IgnoreThresholdOnce,
+                IsDryRunEnabled = job.IsDryRunEnabled,
+                DryRunTimeStamp = job.DryRunTimeStamp,
+                LastRunTime = job.LastRunTime,
+                LastSuccessfulRunTime = job.LastSuccessfulRunTime,
+                LastSuccessfulStartTime = job.LastSuccessfulStartTime,
+                StartDate = job.StartDate,
+                Timestamp = job.Timestamp,
+                TargetOfficeGroupId = job.TargetOfficeGroupId,
+                RunId = job.RunId,
+                Period = job.Period,
+                ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
+                ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals,
+                ThresholdViolations = job.ThresholdViolations,
+                ETag = string.IsNullOrWhiteSpace(job.ETag) ? ETag.All : new ETag(job.ETag),
+                Query = job.Query,
+                Requestor = job.Requestor,
+                Status = job.Status,
+            };
         }
     }
 }

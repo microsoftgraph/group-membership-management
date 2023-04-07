@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Hosts.JobTrigger;
 using JobTrigger.Activity.EmailSender;
 using Microsoft.ApplicationInsights;

@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure;
-using Entities;
 using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;

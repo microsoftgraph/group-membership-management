@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-namespace Entities
+namespace Models
 {
     public class MembershipAggregatorHttpRequest : MembershipHttpRequest
     {

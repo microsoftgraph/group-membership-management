@@ -5,7 +5,6 @@ using Azure;
 using Azure.Core;
 using Azure.Monitor.Query;
 using Azure.Monitor.Query.Models;
-using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
