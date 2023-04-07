@@ -56,7 +56,7 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "Models\Models.csproj", "{33ADF87B-336E-4A24-8DBC-4A86471C0634}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Models.Tests", "Models.Tests\Models.Tests.csproj", "{A96E6F5F-0022-47A0-A4DE-B915DF4746D6}"
-EndProject
+EndProject.
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.NotificationRepository", "Repositories.Notifications\Repositories.NotificationRepository.csproj", "{684F33BF-821D-41F8-A9D2-EBA0AD1A64E7}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Notifications.Tests", "Repositories.Notifications.Tests\Repositories.Notifications.Tests.csproj", "{31948D74-32A0-45D4-8732-C63D2E1A1622}"
@@ -167,14 +167,6 @@ Global
 		{A96E6F5F-0022-47A0-A4DE-B915DF4746D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A96E6F5F-0022-47A0-A4DE-B915DF4746D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A96E6F5F-0022-47A0-A4DE-B915DF4746D6}.Release|Any CPU.Build.0 = Release|Any CPU
-		{684F33BF-821D-41F8-A9D2-EBA0AD1A64E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{684F33BF-821D-41F8-A9D2-EBA0AD1A64E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{684F33BF-821D-41F8-A9D2-EBA0AD1A64E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{684F33BF-821D-41F8-A9D2-EBA0AD1A64E7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{31948D74-32A0-45D4-8732-C63D2E1A1622}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{31948D74-32A0-45D4-8732-C63D2E1A1622}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{31948D74-32A0-45D4-8732-C63D2E1A1622}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{31948D74-32A0-45D4-8732-C63D2E1A1622}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
