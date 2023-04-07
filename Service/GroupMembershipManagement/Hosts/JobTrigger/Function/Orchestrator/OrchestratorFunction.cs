@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
