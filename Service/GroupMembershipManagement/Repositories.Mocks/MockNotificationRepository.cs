@@ -19,7 +19,9 @@ namespace Repositories.Mocks
         }
         public async Task SaveNotificationAsync(ThresholdNotification notification)
         {
-            throw new NotImplementedException();
+            // Resolve warning CS1998 about async method signature without await keyword
+            var _ = await Task.FromResult(Task.CompletedTask);
+            return;
         }
     }
 }

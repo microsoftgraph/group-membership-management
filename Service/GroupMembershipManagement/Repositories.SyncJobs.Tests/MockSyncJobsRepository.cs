@@ -26,13 +26,13 @@ namespace Repositories.SyncJobs.Tests
             var jobs = Jobs.Where(x => (x.StartDate <= DateTime.UtcNow) 
                                         && (DateTime.UtcNow - x.LastRunTime > TimeSpan.FromHours(x.Period))
                                         && (x.Status == SyncStatus.Idle.ToString() || x.Status == SyncStatus.InProgress.ToString() || x.Status == SyncStatus.StuckInProgress.ToString()));
-           
- 
 
-            return new TableSegmentBulkResult<SyncJob>
+
+
+            return await Task.FromResult(new TableSegmentBulkResult<SyncJob>
             {
                 Results = new List<SyncJob>(jobs)
-            };
+            });
 
         }
 

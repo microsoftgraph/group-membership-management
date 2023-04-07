@@ -26,7 +26,7 @@ namespace Services.Contracts.Notifications
         /// </summary>
         /// <param name="notificationId">The id of the notification.</param>
         /// <returns>The adpative card used to indicate that the notification no longer exists.</returns>
-        Task<string> CreateNotFoundNotificationCardAsync(Guid notificationId);
+        string CreateNotFoundNotificationCard(Guid notificationId);
 
         /// <summary>
         /// Generates the adaptive card for a threshold notification that a user is unauthorized to view or resolve.

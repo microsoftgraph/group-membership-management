@@ -56,7 +56,7 @@ stages:
       retryCountOnTaskFailure: 3
       inputs:
         command: test
-        projects: 'Service/GroupMembershipManagement/Hosts/WebApi/Services.Tests'
+        projects: 'Service/GroupMembershipManagement/Hosts/WebApi/WebApi.Tests'
         arguments: '--configuration $(BuildConfiguration)
                     /p:CollectCoverage=true
                     /p:CoverletOutputFormat=cobertura

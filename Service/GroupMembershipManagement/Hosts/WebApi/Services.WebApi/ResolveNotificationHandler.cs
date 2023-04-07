@@ -33,7 +33,7 @@ namespace Services
 
             if (thresholdNotification == null)
             {
-                response.CardJson = await _thresholdNotificationService.CreateNotFoundNotificationCardAsync(request.Id);
+                response.CardJson = _thresholdNotificationService.CreateNotFoundNotificationCard(request.Id);
                 return response;
             }
 

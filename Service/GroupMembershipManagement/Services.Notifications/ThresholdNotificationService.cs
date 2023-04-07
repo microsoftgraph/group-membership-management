@@ -55,7 +55,7 @@ namespace Services.Notifications
         }
 
         /// <inheritdoc />
-        public async Task<string> CreateNotFoundNotificationCardAsync(Guid notificationId)
+        public string CreateNotFoundNotificationCard(Guid notificationId)
         {
             var cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdNotificationNotFound);
             var cardData = new ThesholdNotificationNotFoundCardData
@@ -71,6 +71,7 @@ namespace Services.Notifications
 
         }
 
+        /// <inheritdoc />
         public async Task<string> CreateResolvedNotificationCardAsync(ThresholdNotification notification)
         {
             var cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdNotificationResolved);
@@ -98,6 +99,7 @@ namespace Services.Notifications
             return card;
         }
 
+        /// <inheritdoc />
         public async Task<string> CreateUnauthorizedNotificationCardAsync(ThresholdNotification notification)
         {
 
