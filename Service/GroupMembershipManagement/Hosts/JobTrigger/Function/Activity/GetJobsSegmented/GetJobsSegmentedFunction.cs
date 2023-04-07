@@ -25,15 +25,14 @@ namespace Hosts.JobTrigger
         public async Task<GetJobsSegmentedResponse> GetJobsToUpdateAsync([ActivityTrigger] GetJobsSegmentedRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            var tableQuerySegment = await _jobTriggerService.GetSyncJobsSegmentAsync(request.PageableQueryResult, request.ContinuationToken);
+            var tableQuerySegment = await _jobTriggerService.GetSyncJobsSegmentAsync(request.Query, request.ContinuationToken);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} number of jobs about to be returned: {tableQuerySegment.Results.Count}" }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} number of jobs about to be returned: {tableQuerySegment.Values.Count}" }, VerbosityLevel.DEBUG);
 
             return new GetJobsSegmentedResponse
             {
-                PageableQueryResult = tableQuerySegment.PageableQueryResult,
-                JobsSegment = tableQuerySegment.Results,
+                Query = tableQuerySegment.Query,
+                JobsSegment = tableQuerySegment.Values,
                 ContinuationToken = tableQuerySegment.ContinuationToken
             };
         }

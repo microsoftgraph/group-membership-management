@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure;
+
 using Entities;
 using Models;
 using Repositories.Contracts;
@@ -21,7 +21,7 @@ namespace Repositories.SyncJobs.Tests
             return await Task.FromResult(job);
         }
 
-        public async Task<TableSegmentBulkResult<SyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, int batchSize, bool applyFilters = true)
+        public async Task<Page<SyncJob>> GetSyncJobsSegmentAsync(string query, string continuationToken, int batchSize, bool applyFilters = true)
         {
             var jobs = Jobs.Where(x => (x.StartDate <= DateTime.UtcNow)
                                         && (DateTime.UtcNow - x.LastRunTime > TimeSpan.FromHours(x.Period))
@@ -29,10 +29,12 @@ namespace Repositories.SyncJobs.Tests
 
 
 
-            return await Task.FromResult(new TableSegmentBulkResult<SyncJob>
+            var result = new Models.Page<SyncJob>
             {
-                Results = new List<SyncJob>(jobs)
-            });
+                Values = new List<SyncJob>(jobs)
+            };
+
+            return await Task.FromResult(result);
         }
 
         public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status)
@@ -56,11 +58,6 @@ namespace Repositories.SyncJobs.Tests
             throw new NotImplementedException();
         }
 
-        public AsyncPageable<SyncJob> GetPageableQueryResult(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false)
-        {
-            throw new NotImplementedException();
-        }
-
         public async IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync()
         {
             var jobs = Jobs.Where(x => x.StartDate <= DateTime.UtcNow);
@@ -80,9 +77,14 @@ namespace Repositories.SyncJobs.Tests
             throw new NotImplementedException();
         }
 
-        public AsyncPageable<SyncJob> GetPageableQueryResult(bool includeFutureJobs = false, params SyncStatus[] statusFilters)
+        public Task<Page<SyncJob>> GetPageableQueryResultAsync(bool includeFutureJobs, int? pageSize, params SyncStatus[] statusFilters)
         {
-            return null;
+            return Task.FromResult(new Page<SyncJob>());
+        }
+
+        public IAsyncEnumerable<SyncJob> GetSyncJobsAsync(bool includeFutureJobs = false, params SyncStatus[] statusFilters)
+        {
+            throw new NotImplementedException();
         }
     }
 }

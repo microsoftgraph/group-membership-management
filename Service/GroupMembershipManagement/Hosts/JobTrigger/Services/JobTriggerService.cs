@@ -64,18 +64,14 @@ namespace Services
             _jobTriggerConfig = jobTriggerConfig ?? throw new ArgumentNullException(nameof(jobTriggerConfig));
         }
 
-        public async Task<TableSegmentBulkResult<SyncJob>> GetSyncJobsSegmentAsync(
-          AsyncPageable<SyncJob> pageableQueryResult,
-          string continuationToken)
+        public async Task<Models.Page<SyncJob>> GetSyncJobsSegmentAsync(string query, string continuationToken)
         {
-            if (pageableQueryResult == null)
+            if (string.IsNullOrWhiteSpace(continuationToken))
             {
-                pageableQueryResult = _syncJobRepository.GetPageableQueryResult(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
+                return await _syncJobRepository.GetPageableQueryResultAsync(false, null, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
             }
 
-            var queryResultSegment = await _syncJobRepository.GetSyncJobsSegmentAsync(pageableQueryResult, continuationToken, JobsBatchSize);
-
-            return queryResultSegment;
+            return await _syncJobRepository.GetSyncJobsSegmentAsync(query, continuationToken, JobsBatchSize);
         }
 
         public async Task<string> GetGroupNameAsync(Guid groupId)

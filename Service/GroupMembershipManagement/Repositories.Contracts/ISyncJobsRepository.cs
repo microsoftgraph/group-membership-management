@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Azure;
 using Entities;
 using Models;
 using System.Collections.Generic;
@@ -11,8 +10,9 @@ namespace Repositories.Contracts
 {
     public interface ISyncJobRepository
     {
-        public AsyncPageable<SyncJob> GetPageableQueryResult(bool includeFutureJobs = false, params SyncStatus[] statusFilters);
-        Task<TableSegmentBulkResult<SyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, int batchSize, bool applyFilters = true);
+        IAsyncEnumerable<SyncJob> GetSyncJobsAsync(bool includeFutureJobs = false, params SyncStatus[] statusFilters);
+        Task<Page<SyncJob>> GetPageableQueryResultAsync(bool includeFutureJobs = false, int? pageSize = null, params SyncStatus[] statusFilters);
+        Task<Page<SyncJob>> GetSyncJobsSegmentAsync(string query, string continuationToken, int batchSize, bool applyFilters = true);
         Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey);
         IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync();
         Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status);

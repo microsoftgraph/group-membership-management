@@ -4,17 +4,14 @@ using Entities;
 using Hosts.JobTrigger;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.Storage;
-using Moq;
 using Models;
+using Moq;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Azure;
 
 namespace Services.Tests
 {
@@ -25,7 +22,7 @@ namespace Services.Tests
         public async Task ValidOrchestratorRunAsync()
         {
             var loggingRepository = new Mock<ILoggingRepository>();
-            var graphRespository = new Mock<IGraphGroupRepository>();
+            var graphRepository = new Mock<IGraphGroupRepository>();
             var jobTriggerService = new Mock<IJobTriggerService>();
             var jobTriggerServiceInProgress = new Mock<IJobTriggerService>();
             var jobTriggerServiceStuckInProgress = new Mock<IJobTriggerService>();
@@ -35,14 +32,14 @@ namespace Services.Tests
 
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
 
-            jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync(It.IsAny<AsyncPageable<SyncJob>>(), It.IsAny<String>()))
-                                    .Returns(async () => new TableSegmentBulkResult<SyncJob>
+            jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync(It.IsAny<string>(), It.IsAny<string>()))
+                                    .ReturnsAsync(() => new Page<SyncJob>
                                     {
-                                        Results = syncJobs
+                                        Values = syncJobs
                                     });
 
             context.Setup(x => x.CallActivityAsync<GetJobsSegmentedResponse>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<GetJobsSegmentedRequest>()))
-                        .Returns( () =>  CallGetSyncJobsSegmentAsync(loggingRepository.Object, jobTriggerService.Object));
+                        .Returns(() => CallGetSyncJobsSegmentAsync(loggingRepository.Object, jobTriggerService.Object));
 
             context.Setup(x => x.CallSubOrchestratorAsync(It.Is<string>(x => x == nameof(SubOrchestratorFunction)), It.IsAny<SyncJob>()));
 
@@ -59,7 +56,7 @@ namespace Services.Tests
         public async Task ZeroJobsRetrieved()
         {
             var loggingRepository = new Mock<ILoggingRepository>();
-            var graphRespository = new Mock<IGraphGroupRepository>();
+            var graphRepository = new Mock<IGraphGroupRepository>();
             var jobTriggerService = new Mock<IJobTriggerService>();
             var context = new Mock<IDurableOrchestrationContext>();
             var syncJobs = SampleDataHelper.CreateSampleSyncJobs(0, "SecurityGroup");
@@ -67,11 +64,11 @@ namespace Services.Tests
             var loggerJobProperties = new Dictionary<Guid, LogProperties>();
 
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
-          
+
             context.Setup(x => x.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction), It.IsAny<GetJobsSegmentedRequest>()))
-                        .Returns(async () => new GetJobsSegmentedResponse
+                        .ReturnsAsync(() => new GetJobsSegmentedResponse
                         {
-                            PageableQueryResult = null,
+                            Query = null,
                             JobsSegment = syncJobs,
                             ContinuationToken = null
                         });
@@ -88,7 +85,7 @@ namespace Services.Tests
         public async Task NoContinuationTokenRetrieved()
         {
             var loggingRepository = new Mock<ILoggingRepository>();
-            var graphRespository = new Mock<IGraphGroupRepository>();
+            var graphRepository = new Mock<IGraphGroupRepository>();
             var jobTriggerService = new Mock<IJobTriggerService>();
             var context = new Mock<IDurableOrchestrationContext>();
             var syncJobs = SampleDataHelper.CreateSampleSyncJobs(10, "SecurityGroup");
@@ -98,9 +95,9 @@ namespace Services.Tests
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
 
             context.Setup(x => x.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction), It.IsAny<GetJobsSegmentedRequest>()))
-                        .Returns(async () => new GetJobsSegmentedResponse
+                        .ReturnsAsync(() => new GetJobsSegmentedResponse
                         {
-                            PageableQueryResult = null,
+                            Query = null,
                             JobsSegment = syncJobs,
                             ContinuationToken = null
                         });
@@ -116,7 +113,7 @@ namespace Services.Tests
         public async Task MultipleBatchesRetrieved()
         {
             var loggingRepository = new Mock<ILoggingRepository>();
-            var graphRespository = new Mock<IGraphGroupRepository>();
+            var graphRepository = new Mock<IGraphGroupRepository>();
             var jobTriggerService = new Mock<IJobTriggerService>();
             var context = new Mock<IDurableOrchestrationContext>();
             var syncJobs1 = SampleDataHelper.CreateSampleSyncJobs(10, "SecurityGroup");
@@ -127,15 +124,15 @@ namespace Services.Tests
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
 
             context.SetupSequence(x => x.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction), It.IsAny<GetJobsSegmentedRequest>()))
-                        .Returns(async () => new GetJobsSegmentedResponse
+                        .ReturnsAsync(() => new GetJobsSegmentedResponse
                         {
-                            PageableQueryResult = null,
+                            Query = "some-query",
                             JobsSegment = syncJobs1,
                             ContinuationToken = "ContinuationTokenDummy"
                         })
-                        .Returns(async () => new GetJobsSegmentedResponse
+                        .ReturnsAsync(() => new GetJobsSegmentedResponse
                         {
-                            PageableQueryResult = null,
+                            Query = null,
                             JobsSegment = syncJobs2,
                             ContinuationToken = null
                         });
@@ -153,8 +150,8 @@ namespace Services.Tests
             var getJobsSegmentedResponse = await getJobsSegmentedFunction.GetJobsToUpdateAsync(
                 new GetJobsSegmentedRequest
                 {
-                    PageableQueryResult = null,
-                    ContinuationToken = null    
+                    Query = null,
+                    ContinuationToken = null
                 });
             return getJobsSegmentedResponse;
         }

@@ -1,14 +1,11 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure;
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Hosts.JobTrigger
@@ -25,7 +22,7 @@ namespace Hosts.JobTrigger
         [FunctionName(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            
+
             var runId = context.NewGuid();
 
             await context.CallActivityAsync(nameof(LoggerFunction),
@@ -36,27 +33,25 @@ namespace Hosts.JobTrigger
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
-
-            AsyncPageable<SyncJob> pageableQueryResult = null;
+            string query = null;
             string continuationToken = null;
-
             var syncJobs = new List<SyncJob>();
+
             do
             {
                 var segmentResponse = await context.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction),
                     new GetJobsSegmentedRequest
                     {
-                        PageableQueryResult = pageableQueryResult,
+                        Query = query,
                         ContinuationToken = continuationToken
                     });
 
                 syncJobs.AddRange(segmentResponse.JobsSegment);
 
-                pageableQueryResult = segmentResponse.PageableQueryResult;
+                query = segmentResponse.Query;
                 continuationToken = segmentResponse.ContinuationToken;
-                 
-            } while (continuationToken != null);
 
+            } while (continuationToken != null);
 
             await context.CallActivityAsync(nameof(LoggerFunction),
              new LoggerRequest
@@ -65,7 +60,6 @@ namespace Hosts.JobTrigger
                  Message = $"{nameof(OrchestratorFunction)} number of jobs in the syncJobs List: {syncJobs.Count}",
                  Verbosity = VerbosityLevel.DEBUG
              });
-
 
             if (syncJobs != null && syncJobs.Count > 0)
             {

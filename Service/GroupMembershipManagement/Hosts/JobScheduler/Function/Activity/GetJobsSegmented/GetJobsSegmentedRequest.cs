@@ -1,14 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Azure;
 using Entities;
+using Models;
 
 namespace Hosts.JobScheduler
 {
     public class GetJobsSegmentedRequest
     {
-        public AsyncPageable<SyncJob> PageableQueryResult;
+        public string Query;
         public string ContinuationToken;
         public bool IncludeFutureJobs;
     }

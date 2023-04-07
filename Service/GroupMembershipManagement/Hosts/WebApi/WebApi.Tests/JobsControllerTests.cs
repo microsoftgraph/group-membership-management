@@ -78,13 +78,8 @@ namespace Services.Tests
                 });
             });
 
-            _syncJobRepository.Setup(x => x.GetPageableQueryResult(true, SyncStatus.All))
-                              .Returns(() =>
-                              {
-                                  var response = new Mock<Response>();
-                                  var jobPage = Page<SyncJob>.FromValues(_jobEntities, null, response.Object);
-                                  return AsyncPageable<SyncJob>.FromPages(new[] { jobPage });
-                              });
+            _syncJobRepository.Setup(x => x.GetSyncJobsAsync(true, SyncStatus.All))
+                              .Returns(() => ToAsyncEnumerable(_jobEntities));
 
             _getJobsHandler = new GetJobsHandler(_loggingRepository.Object,
                                                  _syncJobRepository.Object,
@@ -160,6 +155,14 @@ namespace Services.Tests
                 It.IsAny<string>(),
                 It.IsAny<string>()
             ), Times.Once);
+        }
+
+        private async IAsyncEnumerable<T> ToAsyncEnumerable<T>(IEnumerable<T> input)
+        {
+            foreach (var value in await Task.FromResult(input))
+            {
+                yield return value;
+            }
         }
     }
 }

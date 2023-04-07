@@ -2,20 +2,19 @@
 // Licensed under the MIT license.
 
 using Entities;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using Models;
+using Newtonsoft.Json;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using Newtonsoft.Json;
-using Repositories.Contracts.InjectConfig;
-using Azure;
-using Models;
+using System.Threading.Tasks;
 
 namespace Services
 {
-    public class JobSchedulingService : IJobSchedulingService {
+    public class JobSchedulingService : IJobSchedulingService
+    {
 
         private const int MINUTES_IN_HOUR = 60;
         private const int SECONDS_IN_MINUTE = 60;
@@ -59,28 +58,19 @@ namespace Services
             return updatedJobs;
         }
 
-        public async Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(
-            AsyncPageable<SyncJob> pageableQueryResult,
+        public async Task<Page<SyncJob>> GetSyncJobsSegmentAsync(
+            string query,
             string continuationToken,
             bool includeFutureJobs)
         {
-            if (pageableQueryResult == null)
+            if (string.IsNullOrWhiteSpace(continuationToken))
             {
-                pageableQueryResult = _syncJobRepository.GetPageableQueryResult(includeFutureJobs, SyncStatus.All);
-            } 
+                return await _syncJobRepository.GetPageableQueryResultAsync(includeFutureJobs, JobsBatchSize, SyncStatus.All);
+            }
 
-            var queryResultSegment = await _syncJobRepository.GetSyncJobsSegmentAsync(pageableQueryResult, continuationToken, JobsBatchSize, false);
-
-            var returnQueryResultSegment = new TableSegmentBulkResult<DistributionSyncJob>()
-            {
-                ContinuationToken = queryResultSegment.ContinuationToken,
-                PageableQueryResult = queryResultSegment.PageableQueryResult,
-                Results = queryResultSegment.Results.Select(job => new DistributionSyncJob(job)).ToList<DistributionSyncJob>()  
-            };
-
-            return returnQueryResultSegment;
+            return await _syncJobRepository.GetSyncJobsSegmentAsync(query, continuationToken, JobsBatchSize, false);
         }
-        
+
         public async Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> updatedSyncJobs)
         {
             await _syncJobRepository.BatchUpdateSyncJobsAsync(updatedSyncJobs);
@@ -88,7 +78,8 @@ namespace Services
 
         public List<DistributionSyncJob> ResetJobStartTimes(List<DistributionSyncJob> syncJobsToReset, DateTime newStartTime, bool includeFutureStartDates = false)
         {
-            List<DistributionSyncJob> updatedSyncJobs = syncJobsToReset.Select(job => {
+            List<DistributionSyncJob> updatedSyncJobs = syncJobsToReset.Select(job =>
+            {
                 if (includeFutureStartDates || job.StartDate.CompareTo(newStartTime) < 0)
                     job.StartDate = newStartTime;
                 return job;
@@ -110,7 +101,8 @@ namespace Services
             Dictionary<int, List<DistributionSyncJob>> periodToJobs = new Dictionary<int, List<DistributionSyncJob>>();
             foreach (DistributionSyncJob job in syncJobsToDistribute)
             {
-                if (!periodToJobs.ContainsKey(job.Period)) {
+                if (!periodToJobs.ContainsKey(job.Period))
+                {
                     periodToJobs.Add(job.Period, new List<DistributionSyncJob>() { job });
                 }
                 else
@@ -150,13 +142,13 @@ namespace Services
 
             double totalTimeInSeconds = runtimeMap.Values.Sum() + (jobsToDistribute.Count - runtimeMap.Count) * runtimeMap[Guid.Empty];
 
-            int concurrencyNumber = (int) Math.Ceiling(totalTimeInSeconds / (periodInHours * MINUTES_IN_HOUR * SECONDS_IN_MINUTE));
+            int concurrencyNumber = (int)Math.Ceiling(totalTimeInSeconds / (periodInHours * MINUTES_IN_HOUR * SECONDS_IN_MINUTE));
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Calculated {concurrencyNumber} thread count for jobs with period {periodInHours}" });
 
             List<DateTime> jobThreads = new List<DateTime>(concurrencyNumber);
             DateTime startTime = DateTime.UtcNow.AddMinutes(startTimeDelayMinutes);
-            for(int index = 0; index < concurrencyNumber; index++)
+            for (int index = 0; index < concurrencyNumber; index++)
             {
                 jobThreads.Add(startTime);
             }

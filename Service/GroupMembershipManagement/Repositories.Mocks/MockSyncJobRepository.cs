@@ -1,10 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure;
+
 using Entities;
 using Models;
 using Repositories.Contracts;
-using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,16 +33,6 @@ namespace Repositories.Mocks
             return Task.CompletedTask;
         }
 
-        public AsyncPageable<SyncJob> GetPageableQueryResult(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<TableSegmentBulkResult<SyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, int batchSize, bool applyFilters = true)
-        {
-            throw new NotImplementedException();
-        }
-
         public Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> jobs)
         {
             throw new NotImplementedException();
@@ -60,9 +49,19 @@ namespace Repositories.Mocks
             throw new NotImplementedException();
         }
 
-        public AsyncPageable<SyncJob> GetPageableQueryResult(bool includeFutureJobs = false, params SyncStatus[] statusFilters)
+        public IAsyncEnumerable<SyncJob> GetSyncJobsAsync(bool includeFutureJobs = false, params SyncStatus[] statusFilters)
         {
             throw new NotImplementedException();
+        }
+
+        public Task<Page<SyncJob>> GetPageableQueryResultAsync(bool includeFutureJobs = false, int? pageSize = null, params SyncStatus[] statusFilters)
+        {
+            return Task.FromResult(new Page<SyncJob>());
+        }
+
+        public Task<Page<SyncJob>> GetSyncJobsSegmentAsync(string query, string continuationToken, int batchSize, bool applyFilters = true)
+        {
+            return Task.FromResult(new Page<SyncJob>());
         }
     }
 }

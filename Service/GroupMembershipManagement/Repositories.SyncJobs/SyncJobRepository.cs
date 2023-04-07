@@ -35,68 +35,87 @@ namespace Repositories.SyncJobsRepository
             return null;
         }
 
-        public AsyncPageable<SyncJob> GetPageableQueryResult(
-            bool includeFutureJobs,
-            params SyncStatus[] statusFilters)
+        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(bool includeFutureJobs = false, params SyncStatus[] statusFilters)
         {
+            string query = null;
 
-            if (statusFilters.Length == 1 && statusFilters[0] == SyncStatus.All)
+            if (statusFilters.Contains(SyncStatus.All))
             {
-                if (includeFutureJobs)
-                    return _tableClient.QueryAsync<SyncJob>();
-                else
-                    return _tableClient.QueryAsync<SyncJob>($"StartDate le datetime\'{DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff")}Z\'");
+                if (!includeFutureJobs)
+                    query = $"StartDate le datetime\'{DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff")}Z\'";
+            }
+            else
+            {
+                query = string.Join(" or ", statusFilters.Select(status => $"Status eq \'{status}\'"));
+                if (!includeFutureJobs)
+                    query = $"({query}) and StartDate le datetime\'{DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff")}Z\'";
             }
 
-            String query = String.Join(" or ", statusFilters.Select(status => $"Status eq \'{status}\'"));
-            Console.WriteLine(query);
-
-            if (includeFutureJobs)
-                return _tableClient.QueryAsync<SyncJob>(query);
-            else
-                return _tableClient.QueryAsync<SyncJob>($"({query}) and StartDate le datetime\'{DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff")}Z\'");
-
+            var jobs = _tableClient.QueryAsync<SyncJob>(query);
+            await foreach (var job in jobs)
+            {
+                yield return job;
+            }
         }
 
-        public async Task<TableSegmentBulkResult<SyncJob>> GetSyncJobsSegmentAsync(
-           AsyncPageable<SyncJob> pageableQueryResult,
+        private async Task<Models.Page<SyncJob>> GetPageAsync(
+            string query,
+            string continuationToken = null,
+            int? pageSize = null)
+        {
+            AsyncPageable<SyncJob> tableQuery = _tableClient.QueryAsync<SyncJob>(query);
+            IAsyncEnumerator<Azure.Page<SyncJob>> pageEnumerator = tableQuery
+                                                                    .AsPages(continuationToken: continuationToken, pageSizeHint: pageSize)
+                                                                    .GetAsyncEnumerator();
+            await pageEnumerator.MoveNextAsync();
+            Azure.Page<SyncJob> page = pageEnumerator.Current;
+            await pageEnumerator.DisposeAsync();
+
+            return new Models.Page<SyncJob>
+            {
+                Query = query,
+                Values = page.Values,
+                ContinuationToken = page.ContinuationToken,
+            };
+        }
+
+        public async Task<Models.Page<SyncJob>> GetPageableQueryResultAsync(
+            bool includeFutureJobs,
+            int? pageSize = null,
+            params SyncStatus[] statusFilters)
+        {
+            string query = null;
+            var result = new Models.Page<SyncJob>();
+
+            if (statusFilters.Contains(SyncStatus.All))
+            {
+                if (!includeFutureJobs)
+                    query = $"StartDate le datetime\'{DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff")}Z\'";
+
+                return await GetPageAsync(query, pageSize: pageSize);
+            }
+
+            query = string.Join(" or ", statusFilters.Select(status => $"Status eq \'{status}\'"));
+
+            if (!includeFutureJobs)
+                query = $"({query}) and StartDate le datetime\'{DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff")}Z\'";
+
+            return await GetPageAsync(query);
+        }
+
+        public async Task<Models.Page<SyncJob>> GetSyncJobsSegmentAsync(
+           string query,
            string continuationToken,
            int batchSize,
            bool applyJobTriggerFilters = true)
         {
-            var bulkSegment = new TableSegmentBulkResult<SyncJob>
+            var result = await GetPageAsync(query, continuationToken, batchSize);
+            if (applyJobTriggerFilters)
             {
-                Results = new List<SyncJob>()
-            };
-
-            var index = 0;
-            var pageableResult = pageableQueryResult.AsPages(continuationToken);
-            var pageEnumerator = pageableResult.GetAsyncEnumerator();
-
-            await pageEnumerator.MoveNextAsync();
-
-            try
-            {
-                do
-                {
-                    var segmentResult = pageEnumerator.Current;
-                    var filteredResults = applyJobTriggerFilters ? ApplyJobTriggerFilters(segmentResult.Values) : segmentResult.Values;
-                    bulkSegment.Results.AddRange(filteredResults);
-                    continuationToken = segmentResult.ContinuationToken;
-
-                    await pageEnumerator.MoveNextAsync();
-                    index++;
-                }
-                while (continuationToken != null && index < batchSize);
-            }
-            finally
-            {
-                await pageEnumerator.DisposeAsync();
+                result.Values = ApplyJobTriggerFilters(result.Values).ToList();
             }
 
-            bulkSegment.ContinuationToken = continuationToken;
-
-            return bulkSegment;
+            return result;
         }
 
         public async IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync()

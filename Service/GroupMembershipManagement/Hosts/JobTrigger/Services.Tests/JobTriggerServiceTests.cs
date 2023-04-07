@@ -1,10 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using DIConcreteTypes;
-using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
+using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.Mocks;
@@ -15,8 +14,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Tests.Repositories;
 using MockSyncJobRepository = Repositories.SyncJobs.Tests.MockSyncJobRepository;
-using Azure;
-using Microsoft.WindowsAzure.Storage;
 
 namespace Services.Tests
 {
@@ -131,8 +128,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync(null, "");
-            var jobs = bulkSegment.Results;
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync("some-query", "continuation-token");
+            var jobs = bulkSegment.Values;
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -151,8 +148,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync(null, "");
-            var jobs = bulkSegment.Results;
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync("some-query", "continuation-token");
+            var jobs = bulkSegment.Values;
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -291,8 +288,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync(null, "");
-            var jobs = bulkSegment.Results;
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync("some-query", "continuation-token");
+            var jobs = bulkSegment.Values;
 
             foreach (var job in jobs)
             {
@@ -335,8 +332,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync(null, "");
-            var jobs = bulkSegment.Results;
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync("some-query", "continuation-token");
+            var jobs = bulkSegment.Values;
 
             foreach (var job in jobs)
             {
@@ -373,8 +370,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync(null, "");
-            var jobs = bulkSegment.Results;
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync("some-query", "continuation-token");
+            var jobs = bulkSegment.Values;
 
             foreach (var job in jobs)
             {
@@ -410,8 +407,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync(null, "");
-            var jobs = bulkSegment.Results;
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync("some-query", "continuation-token");
+            var jobs = bulkSegment.Values;
 
             foreach (var job in jobs)
             {

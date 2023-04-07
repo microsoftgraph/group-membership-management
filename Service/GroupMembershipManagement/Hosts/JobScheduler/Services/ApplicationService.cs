@@ -31,7 +31,7 @@ namespace Services
 
         public async Task RunAsync()
         {
-            if(!_jobSchedulerConfig.ResetJobs && !_jobSchedulerConfig.DistributeJobs)
+            if (!_jobSchedulerConfig.ResetJobs && !_jobSchedulerConfig.DistributeJobs)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Configuration set to not reset or update so doing nothing." });
 
@@ -69,22 +69,21 @@ namespace Services
 
         private async Task<List<DistributionSyncJob>> GetSyncJobsAsync(bool includeFutureJobs)
         {
-            AsyncPageable<SyncJob> pageableQueryResult = null;
+            var jobs = new List<SyncJob>();
+            string query = null;
             string continuationToken = null;
+            Models.Page<SyncJob> pageableQueryResult = null;
 
-            var jobs = new List<DistributionSyncJob>();
             do
             {
-                var tableQuerySegment = await _jobSchedulingService.GetSyncJobsSegmentAsync(pageableQueryResult, continuationToken, includeFutureJobs);
-
-                jobs.AddRange(tableQuerySegment.Results);
-
-                pageableQueryResult = tableQuerySegment.PageableQueryResult;
-                continuationToken = tableQuerySegment.ContinuationToken;
+                pageableQueryResult = await _jobSchedulingService.GetSyncJobsSegmentAsync(query, continuationToken, includeFutureJobs);
+                jobs.AddRange(pageableQueryResult.Values);
+                query = pageableQueryResult.Query;
+                continuationToken = pageableQueryResult.ContinuationToken;
 
             } while (continuationToken != null);
 
-            return jobs;
+            return jobs.Select(x => new DistributionSyncJob(x)).ToList();
         }
 
         private async Task UpdateSyncJobsAsync(List<DistributionSyncJob> jobsToUpdate)

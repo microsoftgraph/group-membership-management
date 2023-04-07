@@ -8,6 +8,8 @@ using System;
 using System.Threading.Tasks;
 using Services.Contracts;
 using Repositories.Contracts;
+using System.Linq;
+using Entities;
 
 namespace Hosts.JobScheduler
 {
@@ -25,14 +27,14 @@ namespace Hosts.JobScheduler
         public async Task<GetJobsSegmentedResponse> GetJobsToUpdateAsync([ActivityTrigger] GetJobsSegmentedRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            var tableQuerySegment = await _jobSchedulingService.GetSyncJobsSegmentAsync(request.PageableQueryResult, request.ContinuationToken, request.IncludeFutureJobs);
+            var tableQuerySegment = await _jobSchedulingService.GetSyncJobsSegmentAsync(request.Query, request.ContinuationToken, request.IncludeFutureJobs);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
             return new GetJobsSegmentedResponse
             {
-                PageableQueryResult = tableQuerySegment.PageableQueryResult,
-                JobsSegment = tableQuerySegment.Results,
-                ContinuationToken = tableQuerySegment.ContinuationToken
+                Query = tableQuerySegment.Query,
+                ContinuationToken = tableQuerySegment.ContinuationToken,
+                JobsSegment = tableQuerySegment.Values.Select(x => new DistributionSyncJob(x)).ToList(),
             };
         }
     }
