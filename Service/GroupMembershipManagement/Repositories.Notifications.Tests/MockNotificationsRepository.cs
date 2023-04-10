@@ -1,7 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure;
-using Models;
 using Models.ThresholdNotifications;
 using Repositories.Contracts;
 using System;
