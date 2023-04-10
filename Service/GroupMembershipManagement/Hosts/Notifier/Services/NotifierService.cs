@@ -8,9 +8,7 @@ using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Linq;
-using Newtonsoft.Json;
 using Repositories.Contracts.InjectConfig;
-using Azure;
 using Models.ThresholdNotifications;
 
 namespace Services
