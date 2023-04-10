@@ -1,7 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure;
-using Entities;
 using Hosts.OwnershipReader;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -173,18 +171,14 @@ namespace Services.Tests
                                             await CallTelemetryTrackerFunctionAsync(_telemetryTrackerRequest);
                                         });
 
-            _ownershipReaderService.Setup(x => x.GetSyncJobsSegmentAsync(It.IsAny<AsyncPageable<SyncJob>>(), It.IsAny<string>()))
+            _ownershipReaderService.Setup(x => x.GetSyncJobsSegmentAsync(It.IsAny<string>(), It.IsAny<string>()))
                                    .ReturnsAsync(() =>
                                    {
-                                       var response = new Mock<Response>();
-                                       var jobPage = Page<SyncJob>.FromValues(_sampleSyncJobs, null, response.Object);
-                                       var pages = AsyncPageable<SyncJob>.FromPages(new[] { jobPage });
-
-                                       return new TableSegmentBulkResult<SyncJob>
+                                       return new Page<SyncJob>
                                        {
-                                           PageableQueryResult = pages,
+                                           Query = "some-query",
                                            ContinuationToken = null,
-                                           Results = _sampleSyncJobs
+                                           Values = _sampleSyncJobs
                                        };
                                    });
 

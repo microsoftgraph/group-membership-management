@@ -25,15 +25,13 @@ namespace Hosts.OwnershipReader
         public async Task<GetJobsSegmentedResponse> GetJobsAsync([ActivityTrigger] GetJobsSegmentedRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            var tableQuerySegment = await _ownershipReaderService.GetSyncJobsSegmentAsync(request.PageableQueryResult, request.ContinuationToken);
+            var responsePage = await _ownershipReaderService.GetSyncJobsSegmentAsync(request.Query, request.ContinuationToken);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} number of jobs about to be returned: {tableQuerySegment.Results.Count}" }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} number of jobs about to be returned: {responsePage.Values.Count}" }, VerbosityLevel.DEBUG);
 
             return new GetJobsSegmentedResponse
             {
-                PageableQueryResult = tableQuerySegment.PageableQueryResult,
-                JobsSegment = tableQuerySegment.Results,
-                ContinuationToken = tableQuerySegment.ContinuationToken
+                ResponsePage = responsePage
             };
         }
     }

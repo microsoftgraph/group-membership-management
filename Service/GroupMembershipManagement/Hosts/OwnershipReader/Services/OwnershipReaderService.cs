@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure;
-using Entities;
+
 using Models;
 using Models.ServiceBus;
 using Newtonsoft.Json;
@@ -39,15 +38,15 @@ namespace Services
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
         }
 
-        public async Task<TableSegmentBulkResult<SyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken)
+        public async Task<Page<SyncJob>> GetSyncJobsSegmentAsync(string query, string continuationToken)
         {
-            if (pageableQueryResult == null)
+            if (string.IsNullOrWhiteSpace(continuationToken))
             {
-                pageableQueryResult = _syncJobRepository.GetPageableQueryResult(true, SyncStatus.All);
+                return await _syncJobRepository.GetPageableQueryResultAsync(true, JobsBatchSize, SyncStatus.All);
             }
 
-            var queryResultSegment = await _syncJobRepository.GetSyncJobsSegmentAsync(pageableQueryResult, continuationToken, JobsBatchSize, false);
-            return queryResultSegment;
+            return await _syncJobRepository.GetSyncJobsSegmentAsync(query, continuationToken, JobsBatchSize, false);
+
         }
 
         public async Task<List<Guid>> GetGroupOwnersAsync(Guid groupId)

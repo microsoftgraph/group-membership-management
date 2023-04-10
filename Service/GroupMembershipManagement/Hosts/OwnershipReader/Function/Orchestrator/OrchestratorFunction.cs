@@ -90,22 +90,22 @@ namespace Hosts.OwnershipReader
                     return;
                 }
 
+                string query = null;
                 string continuationToken = null;
                 var syncJobs = new List<SyncJob>();
-                AsyncPageable<SyncJob> pageableQueryResult = null;
 
                 do
                 {
                     var segmentResponse = await context.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction),
                                                                                                     new GetJobsSegmentedRequest
                                                                                                     {
-                                                                                                        PageableQueryResult = pageableQueryResult,
+                                                                                                        Query = query,
                                                                                                         ContinuationToken = continuationToken
                                                                                                     });
 
-                    syncJobs.AddRange(segmentResponse.JobsSegment);
-                    pageableQueryResult = segmentResponse.PageableQueryResult;
-                    continuationToken = segmentResponse.ContinuationToken;
+                    syncJobs.AddRange(segmentResponse.ResponsePage.Values);
+                    query = segmentResponse.ResponsePage.Query;
+                    continuationToken = segmentResponse.ResponsePage.ContinuationToken;
 
                 } while (continuationToken != null);
 
