@@ -1,68 +1,94 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Azure;
-using Azure.Core;
-using Azure.Monitor.Query;
-using Azure.Monitor.Query.Models;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
-using Repositories.Contracts.AzureMaintenance;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.Mail;
-using Services.Contracts;
-using Services.Tests.Mocks;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 using Microsoft.Graph;
+using Models.ThresholdNotifications;
 
 namespace Services.Tests
 {
     [TestClass]
     public class NotifierServiceTests
     {
-        [TestMethod]
-        public async Task TestSendEmail()
-        {
-            var loggerMock = new Mock<ILoggingRepository>();
-            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+        private Mock<ILoggingRepository> _loggerMock;
+        private Mock<IEmailSenderRecipient> _mailAddresses;
+        private Mock<IMailRepository> _mailRepository ;
+        private Mock<INotificationRepository> _notificationRepository;
+        private Mock<IGraphGroupRepository> _graphGroupRepository;
+        private List<User> _users;
+        private Guid _targetOfficeGroupId;
+        private NotifierService _notifierService;
+        private ThresholdNotification _notification;
 
-            var mailAddresses = new Mock<IEmailSenderRecipient>();
-            var mailRepository = new Mock<IMailRepository>();
-            var notificationRepository = new Mock<INotificationRepository>();
-            var graphGroupRepository = new Mock<IGraphGroupRepository>();
-            var users = new List<User>();
-            var targetOfficeGroupId = Guid.NewGuid();
+        [TestInitialize]
+        public void SetupTest()
+        {
+            _graphGroupRepository = new Mock<IGraphGroupRepository>();
+            _mailRepository = new Mock<IMailRepository>();
+            _notificationRepository = new Mock<INotificationRepository>();
+            _loggerMock = new Mock<ILoggingRepository>();
+            _mailAddresses = new Mock<IEmailSenderRecipient>();
+            _users = new List<User>();
+            _notification = new ThresholdNotification
+            {
+                Id = Guid.NewGuid(),
+                ChangePercentageForAdditions = 1,
+                ChangePercentageForRemovals = 1,
+                CreatedTime = DateTime.UtcNow,
+                Resolution = ThresholdNotificationResolution.Unresolved,
+                ResolvedByUPN = string.Empty,
+                ResolvedTime = DateTime.UtcNow,
+                Status = ThresholdNotificationStatus.Unknown,
+                TargetOfficeGroupId = Guid.NewGuid(),
+                ThresholdPercentageForAdditions = -1,
+                ThresholdPercentageForRemovals = -1,
+            };
+            _loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+
             for (int i = 0; i < 2; i++)
             {
                 var user = new User
                 {
                     Mail = $"owner_{i}@email.com"
                 };
-
-                users.Add(user);
+                _users.Add(user);
             }
-            _ = graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(targetOfficeGroupId, 0)).ReturnsAsync(users);
+            _ = _graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(_targetOfficeGroupId, 0)).ReturnsAsync(_users);
 
-            var notifierService = new NotifierService(loggerMock.Object,
-                                                mailRepository.Object,
-                                                mailAddresses.Object,
-                                                notificationRepository.Object,
-                                                graphGroupRepository.Object
+            _notifierService = new NotifierService(_loggerMock.Object,
+                                                _mailRepository.Object,
+                                                _mailAddresses.Object,
+                                                _notificationRepository.Object,
+                                                _graphGroupRepository.Object
                                                 );
+        }
 
-            await notifierService.SendEmailAsync(targetOfficeGroupId);
-            mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null, It.IsAny<string>()), Times.Once());
+        [TestMethod]
+        public async Task TestSendEmail()
+        {
+            await _notifierService.SendEmailAsync(_targetOfficeGroupId);
+            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null, It.IsAny<string>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task TestRetrieveQueuedNotifications()
+        {
+            await _notifierService.RetrieveQueuedNotifications();
+            _notificationRepository.Verify(x => x.GetQueuedNotificationsAsync(), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task TestUpdateNotificationStatus()
+        {
+            await _notifierService.UpdateNotificationStatus(_notification, ThresholdNotificationStatus.Queued);
+            _notificationRepository.Verify(x => x.UpdateNotificationStatusAsync(It.IsAny<ThresholdNotification>(), It.IsAny<ThresholdNotificationStatus>()), Times.Once());
         }
 
     }
