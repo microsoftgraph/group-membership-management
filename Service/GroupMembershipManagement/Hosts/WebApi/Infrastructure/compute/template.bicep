@@ -95,7 +95,7 @@ var appSettings = [
   }
   {
     name: 'AzureAd:TenantId'
-    value: tenantId
+    value: graphAppTenantId
   }
   {
     name: 'AzureAd:Instance'
