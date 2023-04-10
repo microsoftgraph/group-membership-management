@@ -8,6 +8,7 @@
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "",
     "jobsStorageAccountConnectionString": "",
+    "notifierTriggerSchedule": "0 */5 * * * *",
     "notificationsTableName": "notifications",
     "graphCredentials:ClientId": "",
     "graphCredentials:ClientSecret": "",

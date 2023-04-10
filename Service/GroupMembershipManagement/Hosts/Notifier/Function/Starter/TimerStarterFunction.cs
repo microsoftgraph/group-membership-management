@@ -24,7 +24,7 @@ namespace Hosts.Notifier
 
         [FunctionName(nameof(TimerStarterFunction))]
         public async Task Run(
-            [TimerTrigger("0 */5 * * * *")] TimerInfo myTimer,
+            [TimerTrigger("%notifierTriggerSchedule%")] TimerInfo myTimer,
             [DurableClient] IDurableOrchestrationClient starter)
         {
             if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
