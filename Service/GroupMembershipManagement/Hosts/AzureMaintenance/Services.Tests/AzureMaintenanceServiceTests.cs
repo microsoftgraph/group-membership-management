@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities.AzureMaintenance;
-using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
@@ -15,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Models.AzureMaintenance;
+using Azure.Data.Tables;
 
 namespace Services.Tests
 {
@@ -47,10 +47,10 @@ namespace Services.Tests
             var mailRespository = new Mock<IMailRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
 
-            var entities = new List<DynamicTableEntity>();
+            var entities = new List<TableEntity>();
             for (int i = 0; i < 5; i++)
             {
-                entities.Add(new DynamicTableEntity());
+                entities.Add(new TableEntity());
             }
             var backups = new List<BackupEntity>() { };
 
@@ -61,7 +61,7 @@ namespace Services.Tests
             azureTableBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[0]))
                                         .ReturnsAsync(backups);
             azureTableBackupRepository.Setup(x => x.GetLatestBackupResultTrackerAsync(It.IsAny<IAzureMaintenanceJob>()))
-                                        .ReturnsAsync((BackupResult) null);
+                                        .ReturnsAsync((BackupResult)null);
 
             azureBlobBackupRepository.Setup(x => x.GetBackupsAsync(backupSettings[1]))
                                         .ReturnsAsync(backups);
@@ -80,8 +80,8 @@ namespace Services.Tests
             await azureTableBackupService.RunBackupServiceAsync(backupSettings[1]);
 
             azureTableBackupRepository.Verify(x => x.GetEntitiesAsync(It.IsAny<IAzureMaintenanceJob>()), Times.Exactly(2));
-            azureTableBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureMaintenanceJob>(), It.IsAny<List<DynamicTableEntity>>()), Times.Once());
-            azureBlobBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureMaintenanceJob>(), It.IsAny<List<DynamicTableEntity>>()), Times.Once());
+            azureTableBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureMaintenanceJob>(), It.IsAny<List<TableEntity>>()), Times.Once());
+            azureBlobBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureMaintenanceJob>(), It.IsAny<List<TableEntity>>()), Times.Once());
         }
 
         [TestMethod]
@@ -110,10 +110,10 @@ namespace Services.Tests
             var mailRespository = new Mock<IMailRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
 
-            var entities = new List<DynamicTableEntity>();
+            var entities = new List<TableEntity>();
             for (int i = 0; i < 5; i++)
             {
-                entities.Add(new DynamicTableEntity());
+                entities.Add(new TableEntity());
             }
             var backups = new List<BackupEntity> { new BackupEntity("backupTableName", "blob") };
 
@@ -143,8 +143,8 @@ namespace Services.Tests
             await azureTableBackupService.RunBackupServiceAsync(backupSettings[1]);
 
             azureTableBackupRepository.Verify(x => x.GetEntitiesAsync(It.IsAny<IAzureMaintenanceJob>()), Times.Exactly(2));
-            azureTableBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureMaintenanceJob>(), It.IsAny<List<DynamicTableEntity>>()), Times.Once());
-            azureBlobBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureMaintenanceJob>(), It.IsAny<List<DynamicTableEntity>>()), Times.Once());
+            azureTableBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureMaintenanceJob>(), It.IsAny<List<TableEntity>>()), Times.Once());
+            azureBlobBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureMaintenanceJob>(), It.IsAny<List<TableEntity>>()), Times.Once());
         }
 
         [TestMethod]
@@ -193,7 +193,7 @@ namespace Services.Tests
             await azureTableBackupService.RunBackupServiceAsync(backupSettings[0]);
             await azureTableBackupService.RunBackupServiceAsync(backupSettings[1]);
 
-            azureTableBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureMaintenanceJob>(), It.IsAny<List<DynamicTableEntity>>()), Times.Exactly(0));
+            azureTableBackupRepository.Verify(x => x.BackupEntitiesAsync(It.IsAny<IAzureMaintenanceJob>(), It.IsAny<List<TableEntity>>()), Times.Exactly(0));
         }
 
         [TestMethod]
@@ -591,7 +591,7 @@ namespace Services.Tests
 
         static async IAsyncEnumerable<SyncJob> GetJob()
         {
-            yield return new SyncJob();
+            yield return await Task.FromResult(new SyncJob());
         }
     }
 }

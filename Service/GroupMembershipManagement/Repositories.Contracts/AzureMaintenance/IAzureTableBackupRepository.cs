@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Data.Tables;
 using Entities.AzureMaintenance;
-using Microsoft.Azure.Cosmos.Table;
 using Models;
 using Models.AzureMaintenance;
 using Services.Entities.Contracts;
@@ -12,7 +12,7 @@ namespace Repositories.Contracts.AzureMaintenance
 {
     public interface IAzureTableBackupRepository : IAzureStorageBackupRepository
     {
-        Task<List<DynamicTableEntity>> GetEntitiesAsync(IAzureMaintenanceJob backupSettings);
+        Task<List<TableEntity>> GetEntitiesAsync(IAzureMaintenanceJob backupSettings);
         Task AddBackupResultTrackerAsync(IAzureMaintenanceJob backupSettings, BackupResult backupResult);
         Task DeleteBackupTrackersAsync(IAzureMaintenanceJob backupSettings, List<(string PartitionKey, string RowKey)> keys);
         Task<BackupResult> GetLatestBackupResultTrackerAsync(IAzureMaintenanceJob backupSettings);

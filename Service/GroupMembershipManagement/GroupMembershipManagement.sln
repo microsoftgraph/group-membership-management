@@ -12,8 +12,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.SyncJobReposit
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.ServiceBusTopics", "Repositories.Topics\Repositories.ServiceBusTopics.csproj", "{176FEE96-E330-42BC-A87F-4A270A161E93}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.TableStorage", "Repositories.TableStorage\Repositories.TableStorage.csproj", "{6FEBFBC3-696C-4385-8F13-7ED1C9E327A2}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.ServiceBusSubscriptions", "Repositories.ServiceBusSubscriptions\Repositories.ServiceBusSubscriptions.csproj", "{213E3500-4FB9-45C3-ACDB-5DC4B05DF2D7}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C1EAAA15-9012-4BAE-A840-D36A40C7B414}"
@@ -87,10 +85,6 @@ Global
 		{176FEE96-E330-42BC-A87F-4A270A161E93}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{176FEE96-E330-42BC-A87F-4A270A161E93}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{176FEE96-E330-42BC-A87F-4A270A161E93}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6FEBFBC3-696C-4385-8F13-7ED1C9E327A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6FEBFBC3-696C-4385-8F13-7ED1C9E327A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6FEBFBC3-696C-4385-8F13-7ED1C9E327A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6FEBFBC3-696C-4385-8F13-7ED1C9E327A2}.Release|Any CPU.Build.0 = Release|Any CPU
 		{213E3500-4FB9-45C3-ACDB-5DC4B05DF2D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{213E3500-4FB9-45C3-ACDB-5DC4B05DF2D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{213E3500-4FB9-45C3-ACDB-5DC4B05DF2D7}.Release|Any CPU.ActiveCfg = Release|Any CPU

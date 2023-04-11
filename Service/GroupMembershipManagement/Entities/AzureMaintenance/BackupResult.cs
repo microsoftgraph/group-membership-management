@@ -1,10 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Cosmos.Table;
 
 namespace Entities.AzureMaintenance
 {
-    public class BackupResult : TableEntity
+    public class BackupResult
     {
         public string BackupTableName { get; set; }
         public string BackedUpTo { get; set; }
