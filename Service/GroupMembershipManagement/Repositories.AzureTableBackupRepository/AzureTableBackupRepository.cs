@@ -38,18 +38,16 @@ namespace Repositories.AzureTableBackupRepository
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Getting backup tables for table {maintenanceJob.SourceStorageSetting.TargetName}" });
 
-            var _tableServiceClient = await GetTableServiceClientAsync(maintenanceJob.DestinationStorageSetting.StorageConnectionString);
-            var tables = new List<TableItem>();
+            var tableServiceClient = await GetTableServiceClientAsync(maintenanceJob.DestinationStorageSetting.StorageConnectionString);
+            List<TableItem> tables = null;
 
             if (maintenanceJob.SourceStorageSetting.TargetName == "*")
             {
-                var queryTableResults = _tableServiceClient.Query().ToList();
-                tables.AddRange(queryTableResults);
+                tables = tableServiceClient.Query().ToList();
             }
             else
             {
-                var queryTableResults = _tableServiceClient.Query(x => x.Name.StartsWith(BACKUP_PREFIX + maintenanceJob.DestinationStorageSetting.TargetName)).ToList();
-                tables.AddRange(queryTableResults);
+                tables = ListTablesByPrefix(tableServiceClient, BACKUP_PREFIX + maintenanceJob.DestinationStorageSetting.TargetName);
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Found {tables.Count} backup tables for table {maintenanceJob.SourceStorageSetting.TargetName}" });
@@ -328,8 +326,8 @@ namespace Repositories.AzureTableBackupRepository
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Getting backup tables containing inactive jobs" });
 
-            var tableClient = await GetTableServiceClientAsync(_storageAccountSecret.ConnectionString);
-            var tables = tableClient.Query(x => x.Name.StartsWith("InactiveJobs")).ToList();
+            var tableServiceClient = await GetTableServiceClientAsync(_storageAccountSecret.ConnectionString);
+            var tables = ListTablesByPrefix(tableServiceClient, "InactiveJobs");
             var backupCloudTables = new List<BackupTable>();
 
             foreach (var table in tables)
@@ -375,6 +373,15 @@ namespace Repositories.AzureTableBackupRepository
         {
             var tableClient = new TableServiceClient(_storageAccountSecret.ConnectionString);
             return tableClient.Query(x => x.Name == tableName).Any();
+        }
+
+        private List<TableItem> ListTablesByPrefix(TableServiceClient tableServiceClient, string prefix)
+        {
+            var prefixQuery = TableClient.CreateQueryFilter<TableItem>(
+                  x => x.Name.CompareTo(prefix) >= 0
+                    && x.Name.CompareTo(prefix + char.MaxValue) <= 0);
+
+            return tableServiceClient.Query(prefixQuery).ToList();
         }
 
         private async Task<TableServiceClient> GetTableServiceClientAsync(string connectionString)
