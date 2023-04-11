@@ -19,9 +19,9 @@ namespace Repositories.Notifications.Tests
             return await Task.FromResult(thresholdNotification);
         }
 
-        public Task SaveNotificationAsync(ThresholdNotification notification)
+        public async Task SaveNotificationAsync(ThresholdNotification notification)
         {
-            throw new NotImplementedException();
+            await Task.CompletedTask;
         }
     }
 }
