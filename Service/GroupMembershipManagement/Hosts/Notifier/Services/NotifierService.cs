@@ -57,7 +57,7 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sent email to recipient addresses." });
         }
 
-        public async Task<List<Models.ThresholdNotifications.ThresholdNotification>> RetrieveQueuedNotifications()
+        public async Task<List<Models.ThresholdNotifications.ThresholdNotification>> RetrieveQueuedNotificationsAsync()
         {
             var allNotifications = new List<Models.ThresholdNotifications.ThresholdNotification>();
             var notifications = _notificationRepository.GetQueuedNotificationsAsync();
@@ -69,7 +69,7 @@ namespace Services
             return allNotifications;
         }
 
-        public async Task UpdateNotificationStatus(Models.ThresholdNotifications.ThresholdNotification notification, ThresholdNotificationStatus status)
+        public async Task UpdateNotificationStatusAsync(Models.ThresholdNotifications.ThresholdNotification notification, ThresholdNotificationStatus status)
         {
             await _notificationRepository.UpdateNotificationStatusAsync(notification, status);
         }

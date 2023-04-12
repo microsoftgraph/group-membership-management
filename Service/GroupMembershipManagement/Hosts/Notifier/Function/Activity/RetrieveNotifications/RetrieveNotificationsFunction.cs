@@ -27,7 +27,7 @@ namespace Hosts.Notifier
         public async Task<List<Models.ThresholdNotifications.ThresholdNotification>> RetrieveNotificationsAsync([ActivityTrigger] object obj)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RetrieveNotificationsFunction)} function started at: {DateTime.UtcNow}" });
-            var notifications = await _notifierService.RetrieveQueuedNotifications();
+            var notifications = await _notifierService.RetrieveQueuedNotificationsAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RetrieveNotificationsFunction)} function completed at: {DateTime.UtcNow}" });
             return notifications;
         }

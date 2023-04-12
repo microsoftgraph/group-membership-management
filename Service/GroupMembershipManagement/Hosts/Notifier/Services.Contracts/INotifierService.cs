@@ -11,7 +11,7 @@ namespace Services.Contracts
     public interface INotifierService
     {
         public Task SendEmailAsync(Guid targetOfficeGroupId);
-        public Task<List<ThresholdNotification>> RetrieveQueuedNotifications();
-        public Task UpdateNotificationStatus(ThresholdNotification notification, ThresholdNotificationStatus status);
+        public Task<List<ThresholdNotification>> RetrieveQueuedNotificationsAsync();
+        public Task UpdateNotificationStatusAsync(ThresholdNotification notification, ThresholdNotificationStatus status);
     }
 }

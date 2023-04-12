@@ -80,14 +80,14 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestRetrieveQueuedNotifications()
         {
-            await _notifierService.RetrieveQueuedNotifications();
+            await _notifierService.RetrieveQueuedNotificationsAsync();
             _notificationRepository.Verify(x => x.GetQueuedNotificationsAsync(), Times.Once());
         }
 
         [TestMethod]
         public async Task TestUpdateNotificationStatus()
         {
-            await _notifierService.UpdateNotificationStatus(_notification, ThresholdNotificationStatus.Queued);
+            await _notifierService.UpdateNotificationStatusAsync(_notification, ThresholdNotificationStatus.Queued);
             _notificationRepository.Verify(x => x.UpdateNotificationStatusAsync(It.IsAny<ThresholdNotification>(), It.IsAny<ThresholdNotificationStatus>()), Times.Once());
         }
 

@@ -26,7 +26,7 @@ namespace Hosts.Notifier
         public async Task UpdateNotificationStatusAsync([ActivityTrigger] UpdateNotificationStatusRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UpdateNotificationStatusFunction)} function started at: {DateTime.UtcNow}" });
-            await _notifierService.UpdateNotificationStatus(request.Notification, request.Status);
+            await _notifierService.UpdateNotificationStatusAsync(request.Notification, request.Status);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UpdateNotificationStatusFunction)} function completed at: {DateTime.UtcNow}" });
         }
     }
