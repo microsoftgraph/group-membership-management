@@ -5,7 +5,6 @@ import { loginRequest, config } from "../authConfig";
 import { msalInstance } from "../index";
 
 export const fetchJobs = createAsyncThunk("jobs/fetchJobs", async () => {
-  console.log("fetchJobs: starting to fetch jobs.");
 
   const account = msalInstance.getActiveAccount();
   if (!account) {
@@ -35,10 +34,8 @@ export const fetchJobs = createAsyncThunk("jobs/fetchJobs", async () => {
 
     const payload: Job[] = response;
 
-    console.log("fetchJobs: fetched the following jobs:");
-    console.dir(payload);
-
     return payload;
+
   } catch (error) {
     console.log(error);
   }

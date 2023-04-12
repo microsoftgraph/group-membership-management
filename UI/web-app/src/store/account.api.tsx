@@ -11,7 +11,6 @@ export const fetchAccount = createAsyncThunk(
 
     if (!account) {
       try {
-        console.log("fetchAccount: No account found, logging user in.");
         context.instance.loginRedirect({
           scopes: ["User.Read"],
         });
@@ -29,16 +28,10 @@ export const fetchAccount = createAsyncThunk(
         return payload;
       }
     } else {
-      console.log(
-        "fetchAccount: Account found in state. Returning account from state."
-      );
-
+      
       const payload: Account = {
         ...account,
       };
-
-      console.log("fetchAccount: This is the account found:");
-      console.dir(payload);
 
       return payload;
     }

@@ -27,7 +27,6 @@ export const AppBase: React.FunctionComponent<IAppProps> = ( props: IAppProps ) 
   const context = useMsal();
 
   useEffect(() => {
-    console.log("Calling fetchAccount from App.base")
     dispatch(fetchAccount(context));
   }, []);
 

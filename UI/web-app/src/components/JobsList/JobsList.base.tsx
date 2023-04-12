@@ -60,7 +60,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   
   useEffect(() => {
     if (!jobs){
-      console.log("Calling fetch Jobs from JobsList.")
       dispatch(fetchJobs())
     }
 }, [dispatch])
