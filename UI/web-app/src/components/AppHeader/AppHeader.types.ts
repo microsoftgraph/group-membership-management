@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import React from 'react';
 import { ICommandBarStyles, IImageStyles, ILinkStyles, IStyle, IStyleFunctionOrObject, ITheme } from '@fluentui/react';
 

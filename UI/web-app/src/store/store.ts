@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import { configureStore } from '@reduxjs/toolkit';
 import jobsReducer from './jobs.slice';
 import accountReducer from './account.slice'

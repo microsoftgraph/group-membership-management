@@ -1,4 +1,6 @@
-import { FontWeights } from '@fluentui/react';
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import { IAppHeaderStyleProps, IAppHeaderStyles } from './AppHeader.types';
 
 export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {

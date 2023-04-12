@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import { Account } from "../models/Account";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { IMsalContext } from "@azure/msal-react";

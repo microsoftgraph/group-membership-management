@@ -1,6 +1,8 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import { Job } from "../models/Job";
 import { createAsyncThunk } from "@reduxjs/toolkit";
-
 import { loginRequest, config } from "../authConfig";
 import { msalInstance } from "../index";
 

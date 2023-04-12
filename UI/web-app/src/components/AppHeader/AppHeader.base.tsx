@@ -1,4 +1,6 @@
-import React from "react";
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.import React from "react";
+
 import { classNamesFunction, IProcessedStyleSet } from "@fluentui/react";
 import { useTheme } from "@fluentui/react/lib/Theme";
 import WelcomeName from "../WelcomeName";

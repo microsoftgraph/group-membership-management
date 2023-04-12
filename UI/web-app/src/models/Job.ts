@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 export type Job = {
   partitionKey: string;
   rowKey: string;

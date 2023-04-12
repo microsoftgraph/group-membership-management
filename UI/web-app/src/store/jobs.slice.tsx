@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Job } from "../models/Job";
 import type { RootState } from "./store";

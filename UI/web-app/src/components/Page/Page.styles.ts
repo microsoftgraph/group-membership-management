@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import { IPageStyleProps, IPageStyles } from './Page.types';
 
 export const getStyles = (props: IPageStyleProps): IPageStyles => {

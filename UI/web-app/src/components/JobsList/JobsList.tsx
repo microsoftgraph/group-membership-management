@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import * as React from 'react';
 import { styled } from '@fluentui/react';
 import { JobsListBase } from './JobsList.base';

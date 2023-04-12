@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import { getGlobalClassNames } from '@fluentui/react';
 import { IAppStyleProps, IAppStyles } from './App.types';
 
