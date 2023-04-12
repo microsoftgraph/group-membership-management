@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Models.ThresholdNotifications;
+using Newtonsoft.Json;
 
 namespace Services.Tests
 {
@@ -137,26 +138,28 @@ namespace Services.Tests
                                                                 ? _numberOfUsersForDestinationPart
                                                                 : _numberOfUsersForSourcePart;
 
+                                        var content = new GroupMembership
+                                        {
+                                            SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                            SyncJobRowKey = _syncJob?.RowKey,
+                                            MembershipObtainerDryRunEnabled = false,
+                                            RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                            Exclusionary = false,
+                                            SourceMembers = Enumerable.Range(0, userCount)
+                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                                         .ToList(),
+                                            Destination = new AzureADGroup
+                                            {
+                                                ObjectId = _syncJob != null
+                                                                ? _syncJob.TargetOfficeGroupId
+                                                                : Guid.Empty
+                                            }
+                                        };
+
                                         _blobResult = new BlobResult
                                         {
                                             BlobStatus = BlobStatus.Found,
-                                            Content = new BinaryData(new GroupMembership
-                                            {
-                                                SyncJobPartitionKey = _syncJob?.PartitionKey,
-                                                SyncJobRowKey = _syncJob?.RowKey,
-                                                MembershipObtainerDryRunEnabled = false,
-                                                RunId = _syncJob?.RunId.Value ?? Guid.Empty,
-                                                Exclusionary = false,
-                                                SourceMembers = Enumerable.Range(0, userCount)
-                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
-                                                                         .ToList(),
-                                                Destination = new AzureADGroup
-                                                {
-                                                    ObjectId = _syncJob != null
-                                                                ? _syncJob.TargetOfficeGroupId
-                                                                : Guid.Empty
-                                                }
-                                            })
+                                            Content = JsonConvert.SerializeObject(content)
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
@@ -165,27 +168,28 @@ namespace Services.Tests
                         .Callback<string>(path =>
                         {
                             var userCount = _membersPerFile[path];
+                            var content = new GroupMembership
+                            {
+                                SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                SyncJobRowKey = _syncJob?.RowKey,
+                                MembershipObtainerDryRunEnabled = false,
+                                RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                Exclusionary = false,
+                                SourceMembers = Enumerable.Range(0, userCount)
+                                                             .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                             .ToList(),
+                                Destination = new AzureADGroup
+                                {
+                                    ObjectId = _syncJob != null
+                                                    ? _syncJob.TargetOfficeGroupId
+                                                    : Guid.Empty
+                                }
+                            };
 
                             _blobResult = new BlobResult
                             {
                                 BlobStatus = BlobStatus.Found,
-                                Content = new BinaryData(new GroupMembership
-                                {
-                                    SyncJobPartitionKey = _syncJob?.PartitionKey,
-                                    SyncJobRowKey = _syncJob?.RowKey,
-                                    MembershipObtainerDryRunEnabled = false,
-                                    RunId = _syncJob?.RunId.Value ?? Guid.Empty,
-                                    Exclusionary = false,
-                                    SourceMembers = Enumerable.Range(0, userCount)
-                                                             .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
-                                                             .ToList(),
-                                    Destination = new AzureADGroup
-                                    {
-                                        ObjectId = _syncJob != null
-                                                    ? _syncJob.TargetOfficeGroupId
-                                                    : Guid.Empty
-                                    }
-                                })
+                                Content = JsonConvert.SerializeObject(content)
                             };
                         })
                         .ReturnsAsync(() => _blobResult);
@@ -615,26 +619,28 @@ namespace Services.Tests
                                                                 ? _numberOfUsersForDestinationPart
                                                                 : _numberOfUsersForSourcePart;
 
+                                        var content = new GroupMembership
+                                        {
+                                            SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                            SyncJobRowKey = _syncJob?.RowKey,
+                                            MembershipObtainerDryRunEnabled = false,
+                                            RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                            Exclusionary = true,
+                                            SourceMembers = Enumerable.Range(0, userCount)
+                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                                         .ToList(),
+                                            Destination = new AzureADGroup
+                                            {
+                                                ObjectId = _syncJob != null
+                                                                ? _syncJob.TargetOfficeGroupId
+                                                                : Guid.Empty
+                                            }
+                                        };
+
                                         _blobResult = new BlobResult
                                         {
                                             BlobStatus = BlobStatus.Found,
-                                            Content = new BinaryData(new GroupMembership
-                                            {
-                                                SyncJobPartitionKey = _syncJob?.PartitionKey,
-                                                SyncJobRowKey = _syncJob?.RowKey,
-                                                MembershipObtainerDryRunEnabled = false,
-                                                RunId = _syncJob?.RunId.Value ?? Guid.Empty,
-                                                Exclusionary = true,
-                                                SourceMembers = Enumerable.Range(0, userCount)
-                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
-                                                                         .ToList(),
-                                                Destination = new AzureADGroup
-                                                {
-                                                    ObjectId = _syncJob != null
-                                                                ? _syncJob.TargetOfficeGroupId
-                                                                : Guid.Empty
-                                                }
-                                            })
+                                            Content = JsonConvert.SerializeObject(content)
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
@@ -659,26 +665,28 @@ namespace Services.Tests
                                                                 ? _numberOfUsersForDestinationPart
                                                                 : _numberOfUsersForSourcePartOne;
 
+                                        var content = new GroupMembership
+                                        {
+                                            SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                            SyncJobRowKey = _syncJob?.RowKey,
+                                            MembershipObtainerDryRunEnabled = false,
+                                            RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                            Exclusionary = false,
+                                            SourceMembers = Enumerable.Range(0, userCount)
+                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                                         .ToList(),
+                                            Destination = new AzureADGroup
+                                            {
+                                                ObjectId = _syncJob != null
+                                                                ? _syncJob.TargetOfficeGroupId
+                                                                : Guid.Empty
+                                            }
+                                        };
+
                                         _blobResult = new BlobResult
                                         {
                                             BlobStatus = BlobStatus.Found,
-                                            Content = new BinaryData(new GroupMembership
-                                            {
-                                                SyncJobPartitionKey = _syncJob?.PartitionKey,
-                                                SyncJobRowKey = _syncJob?.RowKey,
-                                                MembershipObtainerDryRunEnabled = false,
-                                                RunId = _syncJob?.RunId.Value ?? Guid.Empty,
-                                                Exclusionary = false,
-                                                SourceMembers = Enumerable.Range(0, userCount)
-                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
-                                                                         .ToList(),
-                                                Destination = new AzureADGroup
-                                                {
-                                                    ObjectId = _syncJob != null
-                                                                ? _syncJob.TargetOfficeGroupId
-                                                                : Guid.Empty
-                                                }
-                                            })
+                                            Content = JsonConvert.SerializeObject(content)
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
@@ -690,26 +698,28 @@ namespace Services.Tests
                                                                ? _numberOfUsersForDestinationPart
                                                                : _numberOfUsersForSourcePartTwo;
 
+                                       var content = new GroupMembership
+                                       {
+                                           SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                           SyncJobRowKey = _syncJob?.RowKey,
+                                           MembershipObtainerDryRunEnabled = false,
+                                           RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                           Exclusionary = true,
+                                           SourceMembers = Enumerable.Range(0, userCount)
+                                                                        .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                                        .ToList(),
+                                           Destination = new AzureADGroup
+                                           {
+                                               ObjectId = _syncJob != null
+                                                               ? _syncJob.TargetOfficeGroupId
+                                                               : Guid.Empty
+                                           }
+                                       };
+
                                        _blobResult = new BlobResult
                                        {
                                            BlobStatus = BlobStatus.Found,
-                                           Content = new BinaryData(new GroupMembership
-                                           {
-                                               SyncJobPartitionKey = _syncJob?.PartitionKey,
-                                               SyncJobRowKey = _syncJob?.RowKey,
-                                               MembershipObtainerDryRunEnabled = false,
-                                               RunId = _syncJob?.RunId.Value ?? Guid.Empty,
-                                               Exclusionary = true,
-                                               SourceMembers = Enumerable.Range(0, userCount)
-                                                                        .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
-                                                                        .ToList(),
-                                               Destination = new AzureADGroup
-                                               {
-                                                   ObjectId = _syncJob != null
-                                                               ? _syncJob.TargetOfficeGroupId
-                                                               : Guid.Empty
-                                               }
-                                           })
+                                           Content = JsonConvert.SerializeObject(content)
                                        };
                                    })
                                    .ReturnsAsync(() => _blobResult);

@@ -48,8 +48,8 @@ namespace Hosts.MembershipAggregator
                 await _blobStorageRepository.DeleteFileAsync(request.SourceMembershipFilePath);
                 await _blobStorageRepository.DeleteFileAsync(request.DestinationMembershipFilePath);
 
-                sourceMembership = JsonConvert.DeserializeObject<GroupMembership>(sourceBlobResult.Content.ToString());
-                destinationMembership = JsonConvert.DeserializeObject<GroupMembership>(destinationBlobResult.Content.ToString());
+                sourceMembership = JsonConvert.DeserializeObject<GroupMembership>(sourceBlobResult.Content);
+                destinationMembership = JsonConvert.DeserializeObject<GroupMembership>(destinationBlobResult.Content);
             }
             else
             {

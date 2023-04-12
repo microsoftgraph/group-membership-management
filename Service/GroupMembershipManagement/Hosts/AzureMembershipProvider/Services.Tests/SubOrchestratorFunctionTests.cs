@@ -18,6 +18,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace Tests.Services
 {
@@ -63,23 +65,26 @@ namespace Tests.Services
             _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
 
             _userCount = 10;
+
+            var content = new GroupMembership
+            {
+                SyncJobPartitionKey = "PK",
+                SyncJobRowKey = "RK",
+                MembershipObtainerDryRunEnabled = false,
+                RunId = Guid.Empty,
+                SourceMembers = Enumerable.Range(0, _userCount)
+                                            .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                            .ToList(),
+                Destination = new AzureADGroup
+                {
+                    ObjectId = Guid.Empty
+                }
+            };
+
             _blobResult = new BlobResult
             {
                 BlobStatus = BlobStatus.Found,
-                Content = new BinaryData(new GroupMembership
-                {
-                    SyncJobPartitionKey = "PK",
-                    SyncJobRowKey = "RK",
-                    MembershipObtainerDryRunEnabled = false,
-                    RunId = Guid.Empty,
-                    SourceMembers = Enumerable.Range(0, _userCount)
-                                            .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
-                                            .ToList(),
-                    Destination = new AzureADGroup
-                    {
-                        ObjectId = Guid.Empty
-                    }
-                })
+                Content = JsonConvert.SerializeObject(content)
             };
             _groupExists = true;
 

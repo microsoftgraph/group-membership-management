@@ -1,11 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models;
-using Models.Helpers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
+using Models.Helpers;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using System;
 using System.Threading.Tasks;
 
@@ -41,7 +40,7 @@ namespace Hosts.SecurityGroup
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloaded file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
-            var content = blobResult.Content.ToString() ?? string.Empty;
+            var content = blobResult.Content ?? string.Empty;
             return TextCompressor.Compress(content);
         }
     }

@@ -49,7 +49,7 @@ namespace Hosts.GraphUpdater
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloaded file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
-            var content = blobResult.Content.ToString();
+            var content = blobResult.Content;
             return content;
         }
     }

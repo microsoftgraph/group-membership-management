@@ -25,7 +25,7 @@ namespace Services.Tests.Mocks
             if (Files.ContainsKey(path))
             {
                 result.BlobStatus = BlobStatus.Found;
-                result.Content = new BinaryData(Files[path]);
+                result.Content = Files[path];
             }
             else
             {

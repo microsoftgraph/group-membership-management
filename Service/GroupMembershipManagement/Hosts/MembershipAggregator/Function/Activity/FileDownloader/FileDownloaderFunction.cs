@@ -34,7 +34,7 @@ namespace Hosts.MembershipAggregator
                 throw new FileNotFoundException($"File {request.FilePath} was not found");
             }
 
-            var content = blobResult.Content.ToString();
+            var content = blobResult.Content;
             var compressedContent = TextCompressor.Compress(content);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloaded file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);

@@ -1,12 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models;
-using System;
-
-namespace Entities
+namespace Models
 {
     public class BlobResult : BlobMetadataResult
     {
-        public BinaryData Content { get; set; }
+        public string Content { get; set; }
     }
 }
