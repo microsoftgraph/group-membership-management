@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 using Azure.Data.Tables;
-using Entities.AzureMaintenance;
 using Models.AzureMaintenance;
 using Services.Entities.Contracts;
 using System.Collections.Generic;

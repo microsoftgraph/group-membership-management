@@ -1,26 +1,25 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
-using Models.ServiceBus;
 using Hosts.SecurityGroup;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
+using Models.Helpers;
+using Models.ServiceBus;
+using Moq;
+using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.Logging;
 using Repositories.Mocks;
+using SecurityGroup.SubOrchestrator;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Models.Helpers;
-using Newtonsoft.Json;
-using SecurityGroup.SubOrchestrator;
 
 namespace Tests.Services
 {
@@ -189,74 +188,69 @@ namespace Tests.Services
                                  {
                                      var users = new List<AzureADUser>();
                                      var nonUserGraphObjects = new Dictionary<string, int> { { "non-user-object", 1 } };
-                                     var usersPage = new Mock<IGroupTransitiveMembersCollectionWithReferencesPage>();
 
                                      for (var i = 0; i < _userCount; i++)
                                      {
                                          users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                      }
 
-                                     return (users, nonUserGraphObjects, _usersReaderNextPageUrl, usersPage.Object);
+                                     return (users, nonUserGraphObjects, _usersReaderNextPageUrl);
                                  });
 
-            _graphGroupRepository.Setup(x => x.GetNextTransitiveMembersPageAsync(It.IsAny<string>(), It.IsAny<IGroupTransitiveMembersCollectionWithReferencesPage>()))
+            _graphGroupRepository.Setup(x => x.GetNextTransitiveMembersPageAsync(It.IsAny<string>()))
                                  .ReturnsAsync(() =>
                                  {
                                      var users = new List<AzureADUser>();
                                      var nonUserGraphObjects = new Dictionary<string, int> { { "non-user-object", 1 } };
-                                     var usersPage = new Mock<IGroupTransitiveMembersCollectionWithReferencesPage>();
 
                                      for (var i = 0; i < _userCount; i++)
                                      {
                                          users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                      }
 
-                                     return (users, nonUserGraphObjects, null, usersPage.Object);
+                                     return (users, nonUserGraphObjects, null);
                                  });
 
             _graphGroupRepository.Setup(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()))
                                  .ReturnsAsync(() =>
                                  {
                                      var users = new List<AzureADUser>();
-                                     var usersPage = new Mock<IGroupDeltaCollectionPage>();
 
                                      for (var i = 0; i < _userCount; i++)
                                      {
                                          users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                      }
 
-                                     return (users, _usersReaderNextPageUrl, _deltaUrl, usersPage.Object);
+                                     return (users, _usersReaderNextPageUrl, _deltaUrl);
                                  });
 
-            _graphGroupRepository.Setup(x => x.GetNextUsersPageAsync(It.IsAny<string>(), It.IsAny<IGroupDeltaCollectionPage>()))
+            _graphGroupRepository.Setup(x => x.GetNextUsersPageAsync(It.IsAny<string>()))
                                  .ReturnsAsync(() =>
                                  {
                                      var users = new List<AzureADUser>();
-                                     var usersPage = new Mock<IGroupDeltaCollectionPage>();
 
                                      for (var i = 0; i < _userCount; i++)
                                      {
                                          users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                      }
 
-                                     return (users, null, null, usersPage.Object);
+                                     return (users, null, null);
                                  });
 
             _graphGroupRepository.Setup(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<string>()))
                                 .ReturnsAsync(() =>
                                 {
                                     var users = new List<AzureADUser>();
-                                    var usersPage = new Mock<IGroupDeltaCollectionPage>();
 
                                     for (var i = 0; i < _userCount; i++)
                                     {
                                         users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                     }
 
-                                    return (users, users, _usersReaderNextPageUrl, _deltaUrl, usersPage.Object);
+                                    return (users, users, _usersReaderNextPageUrl, _deltaUrl);
                                 });
 
-            _graphGroupRepository.Setup(x => x.GetNextDeltaUsersPageAsync(It.IsAny<string>(), It.IsAny<IGroupDeltaCollectionPage>()))
+            _graphGroupRepository.Setup(x => x.GetNextDeltaUsersPageAsync(It.IsAny<string>()))
                                  .ReturnsAsync(() =>
                                  {
                                      var users = new List<AzureADUser>();
@@ -267,7 +261,7 @@ namespace Tests.Services
                                          users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                      }
 
-                                     return (users, users, null, _deltaUrl, usersPage.Object);
+                                     return (users, users, null, _deltaUrl);
                                  });
         }
 
@@ -788,14 +782,13 @@ namespace Tests.Services
                                 .ReturnsAsync(() =>
                                 {
                                     var users = new List<AzureADUser>();
-                                    var usersPage = new Mock<IGroupDeltaCollectionPage>();
 
                                     for (var i = 0; i < _userCount; i++)
                                     {
                                         users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                     }
 
-                                    return (users, _usersReaderNextPageUrl, _deltaUrl, usersPage.Object);
+                                    return (users, _usersReaderNextPageUrl, _deltaUrl);
                                 });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -803,7 +796,7 @@ namespace Tests.Services
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _graphGroupRepository.Verify(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetNextUsersPageAsync(It.IsAny<string>(), It.IsAny<IGroupDeltaCollectionPage>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetNextUsersPageAsync(It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -822,14 +815,13 @@ namespace Tests.Services
                                 .ReturnsAsync(() =>
                                 {
                                     var users = new List<AzureADUser>();
-                                    var usersPage = new Mock<IGroupDeltaCollectionPage>();
 
                                     for (var i = 0; i < _userCount; i++)
                                     {
                                         users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                     }
 
-                                    return (users, users, _usersReaderNextPageUrl, _deltaUrl, usersPage.Object);
+                                    return (users, users, _usersReaderNextPageUrl, _deltaUrl);
                                 });
 
             _deltaUrl = "http://delta-url";
@@ -846,7 +838,7 @@ namespace Tests.Services
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<string>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetNextDeltaUsersPageAsync(It.IsAny<string>(), It.IsAny<IGroupDeltaCollectionPage>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetNextDeltaUsersPageAsync(It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -868,14 +860,13 @@ namespace Tests.Services
                                  {
                                      var users = new List<AzureADUser>();
                                      var nonUserGraphObjects = new Dictionary<string, int> { { "non-user-object", 1 } };
-                                     var usersPage = new Mock<IGroupTransitiveMembersCollectionWithReferencesPage>();
 
                                      for (var i = 0; i < _userCount; i++)
                                      {
                                          users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                      }
 
-                                     return (users, nonUserGraphObjects, _usersReaderNextPageUrl, usersPage.Object);
+                                     return (users, nonUserGraphObjects, _usersReaderNextPageUrl);
                                  });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -883,7 +874,7 @@ namespace Tests.Services
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _graphGroupRepository.Verify(x => x.GetFirstTransitiveMembersPageAsync(It.IsAny<Guid>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetNextTransitiveMembersPageAsync(It.IsAny<string>(), It.IsAny<IGroupTransitiveMembersCollectionWithReferencesPage>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetNextTransitiveMembersPageAsync(It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]

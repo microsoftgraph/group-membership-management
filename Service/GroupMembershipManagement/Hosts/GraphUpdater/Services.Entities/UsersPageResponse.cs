@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
-using Microsoft.Graph;
 using System.Collections.Generic;
 
 namespace Services.Entities
@@ -11,6 +10,5 @@ namespace Services.Entities
         public string NextPageUrl { get; set; }
         public List<AzureADUser> Members { get; set; }
         public Dictionary<string, int> NonUserGraphObjects { get; set; }
-        public IGroupTransitiveMembersCollectionWithReferencesPage MembersPage { get; set; }
     }
 }

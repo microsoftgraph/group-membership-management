@@ -52,7 +52,7 @@ namespace Hosts.AzureMembershipProvider
                     while (!string.IsNullOrEmpty(userResponse.NextPageUrl))
                     {
                         if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Getting results from next page for url: {request.Url}" });
-                        userResponse = await context.CallActivityAsync<UserInformation>(nameof(SubsequentUsersReaderFunction), new SubsequentUsersReaderRequest { RunId = request.RunId, NextPageUrl = userResponse.NextPageUrl, UsersFromPage = userResponse.UsersFromPage });
+                        userResponse = await context.CallActivityAsync<UserInformation>(nameof(SubsequentUsersReaderFunction), new SubsequentUsersReaderRequest { RunId = request.RunId, NextPageUrl = userResponse.NextPageUrl });
                         allUsers.AddRange(userResponse.Users);
                         userResponse.NonUserGraphObjects.ToList().ForEach(x =>
                         {

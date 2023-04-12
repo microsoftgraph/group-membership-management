@@ -1,18 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
+using System.Text.Json.Serialization;
 
-namespace Entities.AzureMaintenance
+namespace Models.AzureMaintenance
 {
     public class StorageSetting
     {
         public string TargetName { get; set; }
         public string StorageConnectionString { get; set; }
 
-        [JsonConverter(typeof(StringEnumConverter))]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public StorageType StorageType { get; set; }
 
         [JsonConstructor]

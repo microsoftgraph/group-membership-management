@@ -29,7 +29,7 @@ namespace Hosts.SecurityGroup
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentMembersReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 			_calculator.RunId = request.RunId;
-            var response = await _calculator.GetNextTransitiveMembersPageAsync(request.NextPageUrl, request.GroupMembersPage);
+            var response = await _calculator.GetNextTransitiveMembersPageAsync(request.NextPageUrl);
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentMembersReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 			return response;
 		}

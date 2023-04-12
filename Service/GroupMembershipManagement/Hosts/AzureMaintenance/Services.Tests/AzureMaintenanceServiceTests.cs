@@ -1,10 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities.AzureMaintenance;
+
+using Azure.Data.Tables;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
+using Models.AzureMaintenance;
+using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.AzureMaintenance;
 using Repositories.Contracts.InjectConfig;
@@ -13,8 +15,6 @@ using Services.Entities.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Models.AzureMaintenance;
-using Azure.Data.Tables;
 
 namespace Services.Tests
 {

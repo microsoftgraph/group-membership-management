@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Data.Tables;
-using Entities.AzureMaintenance;
 using Models;
 using Models.AzureMaintenance;
 using Services.Entities.Contracts;

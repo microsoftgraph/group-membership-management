@@ -38,7 +38,7 @@ namespace Repositories.Mocks
             return await Task.FromResult(Groups[groupId].DisplayName);
         }
 
-        public Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage membersPage, Guid runId)
+        public Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, Guid runId)
         {
             throw new NotImplementedException();
         }

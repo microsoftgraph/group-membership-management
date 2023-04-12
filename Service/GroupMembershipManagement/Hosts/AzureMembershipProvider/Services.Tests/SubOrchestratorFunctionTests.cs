@@ -26,7 +26,7 @@ namespace Tests.Services
     {
         private const int Number_Of_Pages = 2;
 
-        private Mock<IDryRunValue> _dryRunValue;        
+        private Mock<IDryRunValue> _dryRunValue;
         private Mock<IMailRepository> _mailRepository;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<ISyncJobRepository> _syncJobRepository;
@@ -53,7 +53,7 @@ namespace Tests.Services
         [TestInitialize]
         public void Setup()
         {
-            _dryRunValue = new Mock<IDryRunValue>();           
+            _dryRunValue = new Mock<IDryRunValue>();
             _mailRepository = new Mock<IMailRepository>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<ISyncJobRepository>();
@@ -81,7 +81,7 @@ namespace Tests.Services
                     }
                 })
             };
-            _groupExists = true;       
+            _groupExists = true;
 
             _service = new AzureMembershipProviderService(
                                             _graphGroupRepository.Object,
@@ -122,8 +122,8 @@ namespace Tests.Services
                                             _usersReaderResponse = await CallSubsequentUsersReaderFunctionAsync(request as SubsequentUsersReaderRequest);
                                         })
                                         .ReturnsAsync(() => _usersReaderResponse);
-           
-            _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.IsAny<string>())).ReturnsAsync(() => _blobResult);                       
+
+            _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.IsAny<string>())).ReturnsAsync(() => _blobResult);
         }
 
         [TestMethod]
@@ -152,33 +152,32 @@ namespace Tests.Services
             {
                 users.Add(new AzureADUser
                 {
-                    ObjectId = Guid.NewGuid()                    
+                    ObjectId = Guid.NewGuid()
                 });
             }
 
             _placesReaderResponse = new PlaceInformation
             {
                 Users = users,
-                UsersFromPage = _roomsFromPage
+                NextPageUrl = null
             };
 
             _graphGroupRepository.Setup(x => x.GetRoomsPageAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()))
                                  .ReturnsAsync(() =>
                                  {
                                      var users = new List<AzureADUser>();
-                                     var usersPage = new Mock<IGraphServicePlacesCollectionPage>();
 
                                      for (var i = 0; i < _userCount; i++)
                                      {
                                          users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                      }
 
-                                     return (users, usersPage.Object);
+                                     return (users, null);
                                  });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);                      
+            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                     It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
@@ -188,7 +187,7 @@ namespace Tests.Services
                                 ), Times.Once);
 
             _graphGroupRepository.Verify(x => x.GetRoomsPageAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()), Times.Once);
-           
+
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
                         It.IsAny<VerbosityLevel>(),
@@ -234,21 +233,20 @@ namespace Tests.Services
             _workSpacesReaderResponse = new PlaceInformation
             {
                 Users = users,
-                UsersFromPage = _workSpacesFromPage
+                NextPageUrl = null
             };
 
             _graphGroupRepository.Setup(x => x.GetWorkSpacesPageAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>()))
                                  .ReturnsAsync(() =>
                                  {
                                      var users = new List<AzureADUser>();
-                                     var usersPage = new Mock<IGraphServicePlacesCollectionPage>();
 
                                      for (var i = 0; i < _userCount; i++)
                                      {
                                          users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                      }
 
-                                     return (users, usersPage.Object);
+                                     return (users, null);
                                  });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -278,7 +276,7 @@ namespace Tests.Services
 
         [TestMethod]
         public async Task ProcessUsersRequestTestAsync()
-        {            
+        {
             var syncJob = new SyncJob
             {
                 RowKey = Guid.NewGuid().ToString(),
@@ -307,8 +305,7 @@ namespace Tests.Services
 
             _usersReaderResponse = new UserInformation
             {
-                Users = users,
-                UsersFromPage = _usersFromPage
+                Users = users
             };
 
             _graphGroupRepository.Setup(x => x.GetFirstMembersPageAsync(It.IsAny<string>()))
@@ -316,15 +313,14 @@ namespace Tests.Services
                                   {
                                       var users = new List<AzureADUser>();
                                       var nonUserGraphObjects = new Dictionary<string, int> { { "non-user-object", 1 } };
-                                      var usersPage = new Mock<IGraphServiceUsersCollectionPage>();
 
                                       for (var i = 0; i < _userCount; i++)
                                       {
                                           users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                       }
 
-                                      return (users, nonUserGraphObjects, null, usersPage.Object);
-                                  });           
+                                      return (users, nonUserGraphObjects, null);
+                                  });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
@@ -384,7 +380,6 @@ namespace Tests.Services
             _usersReaderResponse = new UserInformation
             {
                 Users = users,
-                UsersFromPage = _usersFromPage,
                 NonUserGraphObjects = nonUserGraphObjects,
                 NextPageUrl = "next-page-url"
             };
@@ -394,28 +389,26 @@ namespace Tests.Services
                                   {
                                       var users = new List<AzureADUser>();
                                       var nonUserGraphObjects = new Dictionary<string, int> { { "non-user-object", 1 } };
-                                      var usersPage = new Mock<IGraphServiceUsersCollectionPage>();
 
                                       for (var i = 0; i < _userCount; i++)
                                       {
                                           users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                       }
 
-                                      return (users, nonUserGraphObjects, "next-page-url", usersPage.Object);
+                                      return (users, nonUserGraphObjects, "next-page-url");
                                   });
 
-            _graphGroupRepository.Setup(x => x.GetNextMembersPageAsync(It.IsAny<string>(), It.IsAny<IGraphServiceUsersCollectionPage>()))
+            _graphGroupRepository.Setup(x => x.GetNextMembersPageAsync(It.IsAny<string>()))
                                  .ReturnsAsync(() =>
                                  {
                                      var users = new List<AzureADUser>();
                                      var nonUserGraphObjects = new Dictionary<string, int> { { "non-user-object", 1 } };
-                                     var usersPage = new Mock<IGraphServiceUsersCollectionPage>();                                   
-                                     return (users, nonUserGraphObjects, null, usersPage.Object);
+                                     return (users, nonUserGraphObjects, null);
                                  });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
-             var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                     It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
@@ -425,7 +418,7 @@ namespace Tests.Services
                                 ), Times.Once);
 
             _graphGroupRepository.Verify(x => x.GetFirstMembersPageAsync(It.IsAny<string>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetNextMembersPageAsync(It.IsAny<string>(), It.IsAny<IGraphServiceUsersCollectionPage>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetNextMembersPageAsync(It.IsAny<string>()), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),

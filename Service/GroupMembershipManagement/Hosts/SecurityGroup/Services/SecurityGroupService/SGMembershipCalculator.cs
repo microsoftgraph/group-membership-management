@@ -82,22 +82,19 @@ namespace Hosts.SecurityGroup
                 UsersToAdd = result.usersToAdd,
                 UsersToRemove = result.usersToRemove,
                 NextPageUrl = result.nextPageUrl,
-                DeltaUrl = result.deltaUrl,
-                UsersFromGroup = result.usersFromGroup
-
+                DeltaUrl = result.deltaUrl
             };
         }
 
-        public async Task<DeltaGroupInformation> GetNextDeltaUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage page)
+        public async Task<DeltaGroupInformation> GetNextDeltaUsersPageAsync(string nextPageUrl)
         {
-            var result = await _graphGroupRepository.GetNextDeltaUsersPageAsync(nextPageUrl, page);
+            var result = await _graphGroupRepository.GetNextDeltaUsersPageAsync(nextPageUrl);
             return new DeltaGroupInformation
             {
                 UsersToAdd = result.usersToAdd,
                 UsersToRemove = result.usersToRemove,
                 NextPageUrl = result.nextPageUrl,
-                DeltaUrl = result.deltaUrl,
-                UsersFromGroup = result.usersFromGroup
+                DeltaUrl = result.deltaUrl
             };
         }
 
@@ -119,20 +116,18 @@ namespace Hosts.SecurityGroup
             {
                 UsersToAdd = result.users,
                 NextPageUrl = result.nextPageUrl,
-                DeltaUrl = result.deltaUrl,
-                UsersFromGroup = result.usersFromGroup
+                DeltaUrl = result.deltaUrl
             };
         }
 
-        public async Task<DeltaGroupInformation> GetNextUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage usersFromGroup)
+        public async Task<DeltaGroupInformation> GetNextUsersPageAsync(string nextPageUrl)
         {
-            var result = await _graphGroupRepository.GetNextUsersPageAsync(nextPageUrl, usersFromGroup);
+            var result = await _graphGroupRepository.GetNextUsersPageAsync(nextPageUrl);
             return new DeltaGroupInformation
             {
                 UsersToAdd = result.users,
                 NextPageUrl = result.nextPageUrl,
-                DeltaUrl = result.deltaUrl,
-                UsersFromGroup = result.usersFromGroup
+                DeltaUrl = result.deltaUrl
             };
         }
 
@@ -144,29 +139,27 @@ namespace Hosts.SecurityGroup
             {
                 Users = result.users,
                 NonUserGraphObjects = result.nonUserGraphObjects,
-                NextPageUrl = result.nextPageUrl,
-                UsersFromGroup = result.usersFromGroup
+                NextPageUrl = result.nextPageUrl
             };
         }
 
-        public async Task<GroupInformation> GetNextTransitiveMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)
+        public async Task<GroupInformation> GetNextTransitiveMembersPageAsync(string nextPageUrl)
         {
-            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(nextPageUrl, usersFromGroup);
+            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(nextPageUrl);
             return new GroupInformation
             {
                 Users = result.users,
                 NonUserGraphObjects = result.nonUserGraphObjects,
-                NextPageUrl = result.nextPageUrl,
-                UsersFromGroup = result.usersFromGroup
+                NextPageUrl = result.nextPageUrl
             };
         }
 
-        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<AzureADUser> allusers, int currentPart, bool exclusionary)
+        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<AzureADUser> allUsers, int currentPart, bool exclusionary)
         {
             var runId = syncJob.RunId.GetValueOrDefault();
             var groupMembership = new GroupMembership
             {
-                SourceMembers = allusers ?? new List<AzureADUser>(),
+                SourceMembers = allUsers ?? new List<AzureADUser>(),
                 Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
                 RunId = runId,
                 Exclusionary = exclusionary,

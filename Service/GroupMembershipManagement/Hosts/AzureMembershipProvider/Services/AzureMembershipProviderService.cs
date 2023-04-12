@@ -1,11 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
-using Models.ServiceBus;
-using Microsoft.Graph;
 using Models;
+using Models.ServiceBus;
 using Newtonsoft.Json;
-using Polly.Retry;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 
@@ -56,7 +54,7 @@ namespace Services
             return new PlaceInformation
             {
                 Users = response.users,
-                UsersFromPage = response.usersFromGroup
+                NextPageUrl = response.nextPageUrl
             };
         }
 
@@ -66,7 +64,7 @@ namespace Services
             return new PlaceInformation
             {
                 Users = response.users,
-                UsersFromPage = response.usersFromGroup
+                NextPageUrl = response.nextPageUrl
             };
         }
 
@@ -77,29 +75,27 @@ namespace Services
             {
                 Users = result.users,
                 NonUserGraphObjects = result.nonUserGraphObjects,
-                NextPageUrl = result.nextPageUrl,
-                UsersFromPage = result.usersFromGroup
+                NextPageUrl = result.nextPageUrl
             };
         }
 
-        public async Task<UserInformation> GetNextUsersAsync(string nextPageUrl, IGraphServiceUsersCollectionPage usersFromPage)
+        public async Task<UserInformation> GetNextUsersAsync(string nextPageUrl)
         {
-            var result = await _graphGroupRepository.GetNextMembersPageAsync(nextPageUrl, usersFromPage);
+            var result = await _graphGroupRepository.GetNextMembersPageAsync(nextPageUrl);
             return new UserInformation
             {
                 Users = result.users,
                 NonUserGraphObjects = result.nonUserGraphObjects,
-                NextPageUrl = result.nextPageUrl,
-                UsersFromPage = result.usersFromGroup
+                NextPageUrl = result.nextPageUrl
             };
         }
 
-        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<AzureADUser> allusers, int currentPart, bool exclusionary)
+        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<AzureADUser> allUsers, int currentPart, bool exclusionary)
         {
             var runId = syncJob.RunId.GetValueOrDefault();
             var groupMembership = new GroupMembership
             {
-                SourceMembers = allusers ?? new List<AzureADUser>(),
+                SourceMembers = allUsers ?? new List<AzureADUser>(),
                 Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
                 RunId = runId,
                 Exclusionary = exclusionary,

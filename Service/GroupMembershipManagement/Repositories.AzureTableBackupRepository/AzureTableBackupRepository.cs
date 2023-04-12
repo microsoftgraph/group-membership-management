@@ -4,7 +4,6 @@
 using Azure.Data.Tables;
 using Models;
 using Models.AzureMaintenance;
-using Entities.AzureMaintenance;
 using Repositories.Contracts;
 using Repositories.Contracts.AzureMaintenance;
 using Repositories.Contracts.InjectConfig;

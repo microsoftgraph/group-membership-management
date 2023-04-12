@@ -64,21 +64,19 @@ namespace Services
             {
                 NextPageUrl = result.nextPageUrl,
                 Members = result.users,
-                NonUserGraphObjects = result.nonUserGraphObjects,
-                MembersPage = result.usersFromGroup
+                NonUserGraphObjects = result.nonUserGraphObjects
             };
         }
 
-        public async Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup, Guid runId)
+        public async Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, Guid runId)
         {
             _graphGroupRepository.RunId = runId;
-            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(nextPageUrl, usersFromGroup);
+            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(nextPageUrl);
             return new UsersPageResponse
             {
                 NextPageUrl = result.nextPageUrl,
                 Members = result.users,
-                NonUserGraphObjects = result.nonUserGraphObjects,
-                MembersPage = result.usersFromGroup
+                NonUserGraphObjects = result.nonUserGraphObjects
             };
         }
 

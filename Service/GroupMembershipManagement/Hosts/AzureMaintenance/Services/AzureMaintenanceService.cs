@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities.AzureMaintenance;
+
 using Models;
+using Models.AzureMaintenance;
 using Repositories.Contracts;
 using Repositories.Contracts.AzureMaintenance;
 using Repositories.Contracts.InjectConfig;

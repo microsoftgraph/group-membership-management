@@ -1,11 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Graph;
-using Models;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Entities
+namespace Models
 {
     [ExcludeFromCodeCoverage]
     public class DeltaGroupInformation
@@ -14,6 +12,5 @@ namespace Entities
         public List<AzureADUser> UsersToRemove { get; set; }
         public string NextPageUrl { get; set; }
         public string DeltaUrl { get; set; }
-        public IGroupDeltaCollectionPage UsersFromGroup { get; set; }
     }
 }

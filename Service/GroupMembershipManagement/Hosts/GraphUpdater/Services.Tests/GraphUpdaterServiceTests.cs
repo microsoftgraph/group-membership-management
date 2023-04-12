@@ -61,8 +61,7 @@ namespace Services.Tests
             var mockSynJobs = new MockSyncJobRepository();
             var samplePageResponse = GetPageSampleResponse(100, true);
             var userCount = 100;
-            mockGraphGroup.Setup(x => x.GetNextTransitiveMembersPageAsync(It.IsAny<string>(), It.IsAny<IGroupTransitiveMembersCollectionWithReferencesPage>()))
-                            .ReturnsAsync(samplePageResponse);
+            mockGraphGroup.Setup(x => x.GetNextTransitiveMembersPageAsync(It.IsAny<string>())).ReturnsAsync(samplePageResponse);
 
             var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs);
 
@@ -70,7 +69,7 @@ namespace Services.Tests
             var runId = Guid.NewGuid();
             var nextPageUrl = samplePageResponse.nextPageUrl;
 
-            var response = await graphUpdaterService.GetNextMembersPageAsync(nextPageUrl, samplePageResponse.usersFromGroup, runId);
+            var response = await graphUpdaterService.GetNextMembersPageAsync(nextPageUrl, runId);
             Assert.IsNotNull(response.NextPageUrl);
             Assert.AreEqual(userCount, response.Members.Count);
         }
@@ -245,15 +244,13 @@ namespace Services.Tests
         }
 
         private (List<AzureADUser> users,
-                           Dictionary<string, int> nonUserGraphObjects,
-                           string nextPageUrl,
-                           IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup) GetPageSampleResponse(int userCount, bool withNextPage)
+                 Dictionary<string, int> nonUserGraphObjects,
+                 string nextPageUrl) GetPageSampleResponse(int userCount, bool withNextPage)
         {
 
             string nextPageUrl = null;
             var users = new List<AzureADUser>();
-            var nonUserGraphObjects = new Dictionary<string, int>();
-            var mockMembersReferencePage = new Mock<IGroupTransitiveMembersCollectionWithReferencesPage>();
+            var nonUserGraphObjects = new Dictionary<string, int>();            
 
             for (int i = 0; i < userCount; i++)
             {
@@ -265,7 +262,7 @@ namespace Services.Tests
                 nextPageUrl = "http://graph.next.page.url";
             }
 
-            return (users, nonUserGraphObjects, nextPageUrl, mockMembersReferencePage.Object);
+            return (users, nonUserGraphObjects, nextPageUrl);
         }
     }
 }

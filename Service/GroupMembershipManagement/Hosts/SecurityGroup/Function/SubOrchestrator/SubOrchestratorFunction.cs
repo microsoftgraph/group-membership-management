@@ -282,7 +282,7 @@ namespace Hosts.SecurityGroup
             while (!string.IsNullOrEmpty(response.NextPageUrl))
             {
                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Getting results from next page using transitive members query for group {request.SourceGroup.ObjectId}" });
-                response = await context.CallActivityAsync<GroupInformation>(nameof(SubsequentMembersReaderFunction), new SubsequentMembersReaderRequest { RunId = request.RunId, NextPageUrl = response.NextPageUrl, GroupMembersPage = response.UsersFromGroup });
+                response = await context.CallActivityAsync<GroupInformation>(nameof(SubsequentMembersReaderFunction), new SubsequentMembersReaderRequest { RunId = request.RunId, NextPageUrl = response.NextPageUrl });
                 allUsers.AddRange(response.Users);
                 response.NonUserGraphObjects.ToList().ForEach(x =>
                 {
@@ -318,7 +318,7 @@ namespace Hosts.SecurityGroup
             while (!string.IsNullOrEmpty(response.NextPageUrl))
             {
                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Getting results from next page using delta query for group {request.SourceGroup.ObjectId}" });
-                response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(SubsequentUsersReaderFunction), new SubsequentUsersReaderRequest { RunId = request.RunId, NextPageUrl = response.NextPageUrl, GroupUsersPage = response.UsersFromGroup });
+                response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(SubsequentUsersReaderFunction), new SubsequentUsersReaderRequest { RunId = request.RunId, NextPageUrl = response.NextPageUrl });
                 allUsers.AddRange(response.UsersToAdd);
             }
 
@@ -353,7 +353,7 @@ namespace Hosts.SecurityGroup
             while (!string.IsNullOrEmpty(response.NextPageUrl))
             {
                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Getting results from next page using delta link for group {request.SourceGroup.ObjectId}" });
-                response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(SubsequentDeltaUsersReaderFunction), new SubsequentDeltaUsersReaderRequest { RunId = request.RunId, NextPageUrl = response.NextPageUrl, GroupUsersPage = response.UsersFromGroup });
+                response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(SubsequentDeltaUsersReaderFunction), new SubsequentDeltaUsersReaderRequest { RunId = request.RunId, NextPageUrl = response.NextPageUrl });
                 deltaUsersToAdd.AddRange(response.UsersToAdd);
                 deltaUsersToRemove.AddRange(response.UsersToRemove);
             }

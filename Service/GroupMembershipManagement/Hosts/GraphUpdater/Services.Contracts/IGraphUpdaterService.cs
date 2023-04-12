@@ -14,7 +14,7 @@ namespace Services.Contracts
 	{
 		public Guid RunId { get; set; }
 		public Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId);
-		public Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage membersPage, Guid runId);
+		public Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, Guid runId);
 		public Task<PolicyResult<bool>> GroupExistsAsync(Guid groupId, Guid runId);
 		public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "");
 		public Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey);

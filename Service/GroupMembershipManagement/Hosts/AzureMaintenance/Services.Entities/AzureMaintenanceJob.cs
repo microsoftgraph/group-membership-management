@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Entities.AzureMaintenance;
+using Models.AzureMaintenance;
 using Newtonsoft.Json;
 using Services.Entities.Contracts;
 

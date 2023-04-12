@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-namespace Entities.AzureMaintenance
+namespace Models.AzureMaintenance
 {
     public class BackupResult
     {
