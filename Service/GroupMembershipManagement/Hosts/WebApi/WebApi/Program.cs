@@ -21,6 +21,7 @@ using Repositories.GraphGroups;
 using Services.Contracts.Notifications;
 using Services.Notifications;
 using Repositories.NotificationsRepository;
+using Repositories.Localization;
 
 namespace WebApi
 {
@@ -108,6 +109,12 @@ namespace WebApi
             builder.Services.AddApplicationInsightsTelemetry();
 
             builder.Services.InjectMessageHandlers();
+
+            builder.Services.AddLocalization(options =>
+            {
+                options.ResourcesPath = "Resources";
+            });
+            builder.Services.AddSingleton<ILocalizationRepository, LocalizationRepository>();
 
             builder.Services.AddOptions<LogAnalyticsSecret<LoggingRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {
