@@ -129,7 +129,7 @@ GMM leverages infrastructure as code through the use of ARM templates. Most of t
 
 A `GMM environment` is the collection of resource groups, resources, and operating tenant that make a GMM instance.
 
-The code is provided with a sample environment, `env`. The [vsts-cicd.yml](/vsts-cicd.yml) `yaml/deploy-pipeline.yml` template and parameter files for the `env` environment are provided to serve as a guide to create new environments. This name must not be reused.
+The code is provided with a sample environment, `env`. The [vsts-cicd.yml](https://github.com/microsoftgraph/group-membership-management-tenant/blob/main/vsts-cicd.yml) `yaml/deploy-pipeline.yml` template and parameter files for the `env` environment are provided to serve as a guide to create new environments. This name must not be reused.
 
 The steps in this document will setup a single environment i.e. prodv2, if you would like to setup other environments i.e. int and ua, you will need to go through these steps again replacing `<EnvironmentAbbreviation>` accordingly.
 
@@ -295,7 +295,7 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
 ### To add a new GMM environment:
 
 
-1. In your `Private` repo, locate and open file [vsts-cicd.yml](/vsts-cicd.yml)
+1. In your `Private` repo, locate and open file [vsts-cicd.yml](https://github.com/microsoftgraph/group-membership-management-tenant/blob/main/vsts-cicd.yml)
 2. Locate the `yaml/deploy-pipeline.yml` template of the `env` environment. It should look like this:
 
         - template: yaml/deploy-pipeline.yml
@@ -357,7 +357,7 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
 
 ### To remove a GMM environment:
 
-1. Delete the [vsts-cicd.yml](/vsts-cicd.yml) `yaml/deploy-pipeline.yml` template of the environment and save your changes. You might need to update any templates that had a dependency on the deleted template. For instance `dependsOn` and `condition` settings.
+1. Delete the [vsts-cicd.yml](https://github.com/microsoftgraph/group-membership-management-tenant/blob/main/vsts-cicd.yml) `yaml/deploy-pipeline.yml` template of the environment and save your changes. You might need to update any templates that had a dependency on the deleted template. For instance `dependsOn` and `condition` settings.
 
 2. Use the [Remove-ParamFiles.ps1](/scripts/Remove-ParamFiles.ps1) script to remove the parameter files of the given environment:
     * From your PowerShell command prompt navigate to the Scripts folder of your `Public` repo and type these commands.
