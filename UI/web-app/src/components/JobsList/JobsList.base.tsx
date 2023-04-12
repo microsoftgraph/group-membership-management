@@ -70,8 +70,7 @@ const onItemClicked = (item?: any, index?: number, ev?: React.FocusEvent<HTMLEle
 
 if (jobs && jobs.length > 0) {
   return (
-    <div>
-        <br />
+    <div className={classNames.root}>
           <DetailsList
             items={jobs}
             columns={columns}
@@ -83,7 +82,6 @@ if (jobs && jobs.length > 0) {
             checkButtonAriaLabel={selectRow}
             onActiveItemChanged={onItemClicked} 
         />
-        <br />
       </div>
   );
 }

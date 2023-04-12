@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React from 'react';
-import { ICommandBarStyles, IImageStyles, ILinkStyles, IStyle, IStyleFunctionOrObject, ITheme } from '@fluentui/react';
+import { IStyle, IStyleFunctionOrObject, ITheme } from '@fluentui/react';
 
 export interface IAppHeaderStyles {
   root: IStyle;

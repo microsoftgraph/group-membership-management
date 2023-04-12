@@ -6,7 +6,7 @@ import { Page } from "../components/Page";
 import { useLocation } from "react-router-dom";
 import { Text } from "@fluentui/react";
 import { Job } from "../models/Job";
-import { PageHeader } from "../components/PageHeader/PageHeader";
+import { PageHeader } from "../components/PageHeader";
 import {
   Stack,
   IStackStyles,

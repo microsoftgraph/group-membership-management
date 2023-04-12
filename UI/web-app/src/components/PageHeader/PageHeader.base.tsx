@@ -42,7 +42,7 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
   };
 
   return (
-    <Stack>
+    <Stack className={classNames.root}>
       <Stack horizontal styles={stackStyles}>
         <CommandBarButton
           iconProps={addIcon}
