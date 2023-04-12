@@ -2,14 +2,40 @@
 // Licensed under the MIT license.
 
 import { DetailsList, DetailsListLayoutMode } from '@fluentui/react/lib/DetailsList';
-import { IJob } from "../interfaces/IJob.interfaces";
 import { useTranslation } from 'react-i18next';
+import { useEffect } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import { fetchJobs } from '../../store/jobs.api'
+import { selectAllJobs } from '../../store/jobs.slice'
+import { AppDispatch } from "../../store";
+import Loader from '../Loader';
+import { useNavigate } from 'react-router-dom';
+import { classNamesFunction, IProcessedStyleSet } from "@fluentui/react";
+import { useTheme } from "@fluentui/react/lib/Theme";
+import {
+  IJobsListProps,
+  IJobsListStyleProps,
+  IJobsListStyles,
+} from "./JobsList.types";
 
-export interface IDetailsListBasicExampleProps {
-  jobs: IJob[];
-}
+  
+const getClassNames = classNamesFunction<
+  IJobsListStyleProps,
+  IJobsListStyles
+>();
 
-export function Job(props:IDetailsListBasicExampleProps) {
+export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
+  props: IJobsListProps
+) => {
+  const { className, styles } = props;
+
+  const classNames: IProcessedStyleSet<IJobsListStyles> = getClassNames(
+    styles,
+    {
+      className,
+      theme: useTheme(),
+    }
+  );
 
   const { t } = useTranslation();
   var toggleSelection = t('toggleSelection');
@@ -28,11 +54,27 @@ export function Job(props:IDetailsListBasicExampleProps) {
     { key: 'column9', name: 'ThresholdDecrease', fieldName: 'thresholdPercentageForRemovals', minWidth: 100, maxWidth: 200, isResizable: true }
   ];
 
+  const dispatch = useDispatch<AppDispatch>()
+  const jobs = useSelector(selectAllJobs)
+  const navigate = useNavigate()
+  
+  useEffect(() => {
+    if (!jobs){
+      console.log("Calling fetch Jobs from JobsList.")
+      dispatch(fetchJobs())
+    }
+}, [dispatch])
+
+const onItemClicked = (item?: any, index?: number, ev?: React.FocusEvent<HTMLElement>): void => {
+  navigate('/JobDetailsPage', { replace: false, state: {item: item} })
+} 
+
+if (jobs && jobs.length > 0) {
   return (
     <div>
         <br />
           <DetailsList
-            items={props.jobs}
+            items={jobs}
             columns={columns}
             setKey="set"
             layoutMode={DetailsListLayoutMode.justified}
@@ -40,8 +82,18 @@ export function Job(props:IDetailsListBasicExampleProps) {
             ariaLabelForSelectionColumn={toggleSelection}
             ariaLabelForSelectAllCheckbox={toggleAllSelection}
             checkButtonAriaLabel={selectRow}
+            onActiveItemChanged={onItemClicked} 
         />
         <br />
       </div>
   );
+}
+else {
+  return(
+    <div>
+      <Loader />
+    </div>
+  );
+}
+  
 }

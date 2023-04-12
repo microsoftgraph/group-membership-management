@@ -3,6 +3,7 @@
 
 import { useMsal } from "@azure/msal-react";
 import { DefaultButton } from '@fluentui/react/lib/Button';
+import { useEffect } from "react";
 
 export const SignInButton = () => {
     const { instance } = useMsal();
@@ -12,7 +13,7 @@ export const SignInButton = () => {
             scopes: ["User.Read"]
         });
     }
-
+    
     return (
         <div>
             <DefaultButton onClick={handleSignIn}>Sign in</DefaultButton>
