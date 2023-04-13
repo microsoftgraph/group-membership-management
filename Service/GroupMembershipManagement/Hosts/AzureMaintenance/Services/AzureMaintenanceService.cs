@@ -107,7 +107,7 @@ namespace Services
 				return;
 			}
 
-			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Backing up {entities.Count} entites from table {maintenanceJob.SourceStorageSetting.TargetName} to {maintenanceJob.SourceStorageSetting.StorageType} storage." });
+			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Backing up {entities.Count} entities from table {maintenanceJob.SourceStorageSetting.TargetName} to {maintenanceJob.SourceStorageSetting.StorageType} storage." });
 			var backupResult = await backUpTo.BackupEntitiesAsync(maintenanceJob, entities);
 
 			await CompareBackupResults(maintenanceJob, backupResult);

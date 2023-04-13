@@ -1,21 +1,22 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using CsvHelper;
 using Models;
+using Models.AzureMaintenance;
 using Repositories.Contracts;
 using Repositories.Contracts.AzureMaintenance;
 using Services.Entities.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Dynamic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Models.AzureMaintenance;
-using Azure.Data.Tables;
 
 namespace Repositories.AzureBlobBackupRepository
 {
@@ -31,7 +32,7 @@ namespace Repositories.AzureBlobBackupRepository
             _loggingRepository = loggingRepository;
         }
 
-        public async Task<BackupResult> BackupEntitiesAsync(IAzureMaintenanceJob maintenanceJob, List<TableEntity> entities)
+        public async Task<BackupResult> BackupEntitiesAsync(IAzureMaintenanceJob maintenanceJob, List<ImmutableDictionary<string, object>> entities)
         {
 
             if (!entities.Any())
@@ -74,13 +75,13 @@ namespace Repositories.AzureBlobBackupRepository
             return $"{BACKUP_PREFIX}{backupSettings.DestinationStorageSetting.TargetName}".ToLowerInvariant();
         }
 
-        private string SerializeEntities(List<TableEntity> entities)
+        private string SerializeEntities(List<ImmutableDictionary<string, object>> entities)
         {
             var keys = entities[0].Keys;
             using var writer = new StringWriter();
             using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
             {
-                csv.WriteRecords(entities.Select(TableEntityToDynamic));
+                csv.WriteRecords(entities.Select(x => TableEntityToDynamic(new TableEntity(x))));
                 return writer.ToString();
             }
         }

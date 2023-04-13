@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using Azure;
 using Repositories.SyncJobsRepository.Entities;
 using Azure.Data.Tables.Models;
+using System.Collections.Immutable;
 
 namespace Repositories.AzureTableBackupRepository
 {
@@ -54,7 +55,7 @@ namespace Repositories.AzureTableBackupRepository
             return tables.Select(table => new BackupEntity(table.Name, "table")).ToList();
         }
 
-        public async Task<List<TableEntity>> GetEntitiesAsync(IAzureMaintenanceJob backupSettings)
+        public async Task<List<ImmutableDictionary<string, object>>> GetEntitiesAsync(IAzureMaintenanceJob backupSettings)
         {
             if (!TableExists(backupSettings.SourceStorageSetting.TargetName))
             {
@@ -63,7 +64,8 @@ namespace Repositories.AzureTableBackupRepository
             }
 
             var tableClient = new TableClient(backupSettings.SourceStorageSetting.StorageConnectionString, backupSettings.SourceStorageSetting.TargetName);
-            return tableClient.Query<TableEntity>().ToList();
+            var entities = tableClient.Query<TableEntity>().Select(x => x.ToImmutableDictionary()).ToList();
+            return entities;
         }
 
         public async Task DeleteBackupTrackersAsync(IAzureMaintenanceJob backupSettings, List<(string PartitionKey, string RowKey)> entities)
@@ -108,10 +110,11 @@ namespace Repositories.AzureTableBackupRepository
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleted {deletedEntitiesCount} old backup trackers from {backupSettings.SourceStorageSetting.TargetName}" });
         }
 
-        public async Task<BackupResult> BackupEntitiesAsync(IAzureMaintenanceJob maintenanceJob, List<TableEntity> entities)
+        public async Task<BackupResult> BackupEntitiesAsync(IAzureMaintenanceJob maintenanceJob, List<ImmutableDictionary<string, object>> entities)
         {
             var tableName = $"{BACKUP_PREFIX}{maintenanceJob.DestinationStorageSetting.TargetName}{DateTime.UtcNow.ToString(BACKUP_DATE_FORMAT)}";
             var tableClient = new TableClient(maintenanceJob.DestinationStorageSetting.StorageConnectionString, tableName);
+            var tableEntities = entities.Select(x => new TableEntity(x)).ToList();
 
             if (!TableExists(tableName))
             {
@@ -128,7 +131,7 @@ namespace Repositories.AzureTableBackupRepository
             var backupCount = 0;
             var batchSize = 100;
             var currentSize = 0;
-            var groups = entities.GroupBy(x => x.PartitionKey).ToList();
+            var groups = tableEntities.GroupBy(x => x.PartitionKey).ToList();
 
             foreach (var group in groups)
             {
