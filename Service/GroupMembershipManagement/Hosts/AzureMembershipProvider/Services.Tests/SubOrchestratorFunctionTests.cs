@@ -1,33 +1,27 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Models.ServiceBus;
 using Hosts.AzureMembershipProvider;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
+using Models.ServiceBus;
+using Moq;
+using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-//using Repositories.Mocks;
 using Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Text.Json.Serialization;
-using Newtonsoft.Json;
 
 namespace Tests.Services
 {
     [TestClass]
     public class SubOrchestratorFunctionTests
     {
-        private const int Number_Of_Pages = 2;
-
         private Mock<IDryRunValue> _dryRunValue;
         private Mock<IMailRepository> _mailRepository;
         private Mock<ILoggingRepository> _loggingRepository;
@@ -38,19 +32,12 @@ namespace Tests.Services
         private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
 
         private int _userCount;
-        private bool _groupExists;
-        private int _groupCount;
         private BlobResult _blobResult;
-        private string _usersReaderNextPageUrl;
-        private string _nextPageUrl;
         private SubOrchestratorRequest _subOrchestratorRequest;
         private AzureMembershipProviderService _service;
         private UserInformation _usersReaderResponse;
         private PlaceInformation _placesReaderResponse;
         private PlaceInformation _workSpacesReaderResponse;
-        private IGraphServicePlacesCollectionPage _roomsFromPage;
-        private IGraphServicePlacesCollectionPage _workSpacesFromPage;
-        private IGraphServiceUsersCollectionPage _usersFromPage;
 
         [TestInitialize]
         public void Setup()
@@ -86,7 +73,6 @@ namespace Tests.Services
                 BlobStatus = BlobStatus.Found,
                 Content = JsonConvert.SerializeObject(content)
             };
-            _groupExists = true;
 
             _service = new AzureMembershipProviderService(
                                             _graphGroupRepository.Object,
