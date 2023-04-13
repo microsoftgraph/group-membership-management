@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Graph;
 using Models;
 using Polly;
 using Services.Entities;
@@ -10,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Services.Contracts
 {
-	public interface IGraphUpdaterService
+    public interface IGraphUpdaterService
 	{
 		public Guid RunId { get; set; }
 		public Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId);
@@ -23,6 +22,6 @@ namespace Services.Contracts
 		public Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync);
 		public Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound)> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync);
 		public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId);
-		public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0);
+		public Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0);
 	}
 }

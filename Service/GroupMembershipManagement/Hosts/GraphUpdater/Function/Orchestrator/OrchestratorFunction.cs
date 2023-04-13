@@ -151,7 +151,7 @@ namespace Hosts.GraphUpdater
 					var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
 													new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
 
-					var groupOwners = await context.CallActivityAsync<List<User>>(nameof(GroupOwnersReaderFunction),
+					var groupOwners = await context.CallActivityAsync<List<AzureADUser>>(nameof(GroupOwnersReaderFunction),
 													new GroupOwnersReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
 
 					var ownerEmails = string.Join(";", groupOwners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));

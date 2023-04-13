@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Graph;
 using Models;
 using System;
 using System.Collections.Generic;
@@ -19,7 +18,7 @@ namespace Repositories.Contracts
         Task<List<string>> GetGroupEndpointsAsync(Guid groupId);
         Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId);
         Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId);
-        Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0);
+        Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0);
         Task<bool> GroupExists(Guid objectId);
         Task<bool> GroupExists(string groupName);
         Task<AzureADGroup> GetGroup(string groupName);
@@ -30,7 +29,7 @@ namespace Repositories.Contracts
         Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup);
         Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetFirstTransitiveMembersPageAsync(Guid objectId);
         Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetNextTransitiveMembersPageAsync(string nextPageUrl);
-        Task<User> GetUserByEmail(string emailAddress);
+        Task<AzureADUser> GetUserByEmailAsync(string emailAddress);
         Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetFirstMembersPageAsync(string url);
         Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetNextMembersPageAsync(string nextPageUrl);
         Task<(List<AzureADUser> users, string nextPageUrl)> GetRoomsPageAsync(string url, int top, int skip);

@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 using Microsoft.Graph;
 using Models;
-using Models.Entities;
 using Polly;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -103,11 +102,11 @@ namespace Repositories.Mocks
             return Task.FromResult(isOwner);
         }
 
-        public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+        public Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
         {
             var allOwners = Groups[groupObjectId].Owners;
             var userOwners = allOwners == null ? new List<User>() : allOwners.OfType<User>().ToList();
-            return Task.FromResult(userOwners);
+            return Task.FromResult(userOwners.Select(x => new AzureADUser { ObjectId = Guid.Parse(x.Id) }).ToList());
         }
 
         public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)

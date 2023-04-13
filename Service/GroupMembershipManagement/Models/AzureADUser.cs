@@ -10,6 +10,7 @@ namespace Models
 	public class AzureADUser : IAzureADObject, IEquatable<AzureADUser>
 	{
 		public Guid ObjectId { get; set; }
+        public string Mail { get; set; }
 
         public MembershipAction? MembershipAction { get; set; }
 

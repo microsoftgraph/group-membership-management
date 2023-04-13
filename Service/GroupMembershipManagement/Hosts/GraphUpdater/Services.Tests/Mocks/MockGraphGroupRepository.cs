@@ -76,7 +76,7 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
-        public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+        public Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
         {
             throw new NotImplementedException();
         }
@@ -161,7 +161,7 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
-        public Task<User> GetUserByEmail(string emailAddress)
+        public Task<AzureADUser> GetUserByEmailAsync(string emailAddress)
         {
             throw new NotImplementedException();
         }

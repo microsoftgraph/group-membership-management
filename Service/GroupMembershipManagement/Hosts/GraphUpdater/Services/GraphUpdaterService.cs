@@ -199,7 +199,7 @@ namespace Services
             return await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(email, groupObjectId);
         }
 
-        public async Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+        public async Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
         {
             return await _graphGroupRepository.GetGroupOwnersAsync(groupObjectId, top);
         }

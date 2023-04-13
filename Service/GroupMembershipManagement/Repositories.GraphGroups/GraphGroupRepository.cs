@@ -280,7 +280,7 @@ namespace Repositories.GraphGroups
             return await IsGroupOwnerAsync($"id eq '{user.Id}'", groupObjectId);
         }
 
-        public async Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+        public async Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
@@ -314,7 +314,11 @@ namespace Repositories.GraphGroups
                     Message = $"Retrieved{(top > 0 ? " top " : " ")}{owners.Count} owners of group {groupObjectId}."
                 });
 
-                return owners;
+                return owners.Select(x => new AzureADUser
+                {
+                    ObjectId = Guid.Parse(x.Id),
+                    Mail = x.Mail
+                }).ToList();
             }
             catch (ServiceException ex)
             {
@@ -533,8 +537,8 @@ namespace Repositories.GraphGroups
                 foreach (var room in response.CurrentPage)
                 {
                     var emailAddress = (string)room.AdditionalData["emailAddress"];
-                    var user = await GetUserByEmail(emailAddress);
-                    if (user != null) users.Add(new AzureADUser { ObjectId = Guid.Parse((string)user.Id) });
+                    var user = await GetUserByEmailAsync(emailAddress);
+                    if (user != null) users.Add(user);
                 }
             }
 
@@ -552,8 +556,8 @@ namespace Repositories.GraphGroups
                         foreach (var room in response.CurrentPage)
                         {
                             var emailAddress = (string)room.AdditionalData["emailAddress"];
-                            var user = await GetUserByEmail(emailAddress);
-                            if (user != null) users.Add(new AzureADUser { ObjectId = Guid.Parse((string)user.Id) });
+                            var user = await GetUserByEmailAsync(emailAddress);
+                            if (user != null) users.Add(user);
                         }
                     }
                 }
@@ -563,14 +567,14 @@ namespace Repositories.GraphGroups
             return (users, nextPageUrl);
         }
 
-        public async Task<User> GetUserByEmail(string emailAddress)
+        public async Task<AzureADUser> GetUserByEmailAsync(string emailAddress)
         {
-            User userDetails = null;
+            AzureADUser userDetails = null;
 
             try
             {
                 var user = await _graphServiceClient.Users[emailAddress].Request().Select(u => u.Id).GetAsync();
-                if (user != null) userDetails = user;
+                if (user != null) userDetails = new AzureADUser { ObjectId = Guid.Parse(user.Id) };
             }
 
             catch (Exception exception)
@@ -578,7 +582,7 @@ namespace Repositories.GraphGroups
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     RunId = RunId,
-                    Message = $"Exception: {exception}, FailedMethod: {nameof(GetUserByEmail)}, UserEmail: {emailAddress}"
+                    Message = $"Exception: {exception}, FailedMethod: {nameof(GetUserByEmailAsync)}, UserEmail: {emailAddress}"
                 });
             }
 
@@ -594,8 +598,8 @@ namespace Repositories.GraphGroups
                 foreach (var room in response.CurrentPage)
                 {
                     var emailAddress = (string)room.AdditionalData["emailAddress"];
-                    var user = await GetUserByEmail(emailAddress);
-                    if (user != null) users.Add(new AzureADUser { ObjectId = Guid.Parse((string)user.Id) });
+                    var user = await GetUserByEmailAsync(emailAddress);
+                    if (user != null) users.Add(user);
                 }
             }
 
@@ -613,8 +617,8 @@ namespace Repositories.GraphGroups
                         foreach (var room in response.CurrentPage)
                         {
                             var emailAddress = (string)room.AdditionalData["emailAddress"];
-                            var user = await GetUserByEmail(emailAddress);
-                            if (user != null) users.Add(new AzureADUser { ObjectId = Guid.Parse((string)user.Id) });
+                            var user = await GetUserByEmailAsync(emailAddress);
+                            if (user != null) users.Add(user);
                         }
                     }
                 }
@@ -1076,7 +1080,7 @@ namespace Repositories.GraphGroups
             var responses = await Task.WhenAll(Enumerable.Range(0, ConcurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize)));
 
             var status = responses.Any(x => x.ResponseCode == ResponseCode.Error) ? ResponseCode.Error : ResponseCode.Ok;
-            return (status, responses.Sum(x => x.SuccessCount), usersNotFound);
+            return (status, responses.Sum(x => x.SuccessCount), _usersNotFound);
         }
 
         private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessQueue(ConcurrentQueue<ChunkOfUsers> queue, MakeBulkRequest makeRequest, int threadNumber, int batchSize)
@@ -1259,7 +1263,7 @@ namespace Repositories.GraphGroups
             };
 
         private static readonly Regex _userNotFound = new Regex(@"Resource '(?<id>[({]?[a-fA-F0-9]{8}[-]?([a-fA-F0-9]{4}[-]?){3}[a-fA-F0-9]{12}[})]?)' does not exist", RegexOptions.IgnoreCase);
-        private List<AzureADUser> usersNotFound = new List<AzureADUser>();
+        private List<AzureADUser> _usersNotFound = new List<AzureADUser>();
 
         private async IAsyncEnumerable<RetryResponse> GetStepIdsToRetry(Dictionary<string, HttpResponseMessage> responses, Dictionary<string, BatchRequestStep> requests)
         {
@@ -1328,7 +1332,7 @@ namespace Repositories.GraphGroups
                                 RunId = RunId
                             });
 
-                            usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(requestStep.RequestId) });
+                            _usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(requestStep.RequestId) });
                         }
                         else
                         {
@@ -1338,7 +1342,7 @@ namespace Repositories.GraphGroups
                                 RunId = RunId
                             });
 
-                            usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(userId) });
+                            _usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(userId) });
                         }
                     }
 

@@ -93,7 +93,7 @@ namespace Repositories.ServiceBusTopics.Tests
         {
             throw new NotImplementedException();
         }
-        public Task<User> GetUserByEmail(string emailAddress)
+        public Task<AzureADUser> GetUserByEmailAsync(string emailAddress)
         {
             throw new NotImplementedException();
         }
@@ -111,14 +111,14 @@ namespace Repositories.ServiceBusTopics.Tests
             throw new NotImplementedException();
         }
 
-        public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+        public Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
         {
-            var owners = new List<User>();
+            var owners = new List<AzureADUser>();
             for (var i = 0; i < 10; i++)
             {
-                owners.Add(new User
+                owners.Add(new AzureADUser
                 {
-                    Id = Guid.NewGuid().ToString(),
+                    ObjectId = Guid.NewGuid(),
                     Mail = $"user{i}@mydomain.com"
                 });
             }

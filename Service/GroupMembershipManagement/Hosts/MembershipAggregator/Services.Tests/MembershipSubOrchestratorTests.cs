@@ -1,14 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Entities;
-using Models;
-using Models.ServiceBus;
 using Hosts.MembershipAggregator;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Models;
+using Models.ServiceBus;
+using Models.ThresholdNotifications;
 using Moq;
+using Newtonsoft.Json;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -18,8 +18,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Models.ThresholdNotifications;
-using Newtonsoft.Json;
 
 namespace Services.Tests
 {
@@ -194,11 +192,11 @@ namespace Services.Tests
                         })
                         .ReturnsAsync(() => _blobResult);
 
-            var owners = new List<User>
+            var owners = new List<AzureADUser>
             {
-                { new User { Id = Guid.NewGuid().ToString(), Mail = "mail_1@mail.com" } },
-                { new User { Id = Guid.NewGuid().ToString(), Mail = "mail_2@mail.com" } },
-                { new User { Id = Guid.NewGuid().ToString(), Mail = "mail_3@mail.com" } }
+                { new AzureADUser { ObjectId = Guid.NewGuid(), Mail = "mail_1@mail.com" } },
+                { new AzureADUser { ObjectId = Guid.NewGuid(), Mail = "mail_2@mail.com" } },
+                { new AzureADUser { ObjectId = Guid.NewGuid(), Mail = "mail_3@mail.com" } }
             };
 
             _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<string>(), It.IsAny<string>()))

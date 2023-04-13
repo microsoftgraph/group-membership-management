@@ -3,14 +3,13 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.ThresholdNotifications;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Graph;
-using Models.ThresholdNotifications;
 
 namespace Services.Tests
 {
@@ -22,7 +21,7 @@ namespace Services.Tests
         private Mock<IMailRepository> _mailRepository ;
         private Mock<INotificationRepository> _notificationRepository;
         private Mock<IGraphGroupRepository> _graphGroupRepository;
-        private List<User> _users;
+        private List<AzureADUser> _users;
         private Guid _targetOfficeGroupId;
         private NotifierService _notifierService;
         private ThresholdNotification _notification;
@@ -35,7 +34,7 @@ namespace Services.Tests
             _notificationRepository = new Mock<INotificationRepository>();
             _loggerMock = new Mock<ILoggingRepository>();
             _mailAddresses = new Mock<IEmailSenderRecipient>();
-            _users = new List<User>();
+            _users = new List<AzureADUser>();
             _notification = new ThresholdNotification
             {
                 Id = Guid.NewGuid(),
@@ -54,7 +53,7 @@ namespace Services.Tests
 
             for (int i = 0; i < 2; i++)
             {
-                var user = new User
+                var user = new AzureADUser
                 {
                     Mail = $"owner_{i}@email.com"
                 };

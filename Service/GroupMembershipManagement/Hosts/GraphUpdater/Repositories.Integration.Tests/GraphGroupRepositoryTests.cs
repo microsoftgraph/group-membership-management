@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Graph;
 using Microsoft.Graph.Auth;
 using Microsoft.Identity.Client;
@@ -262,7 +263,7 @@ namespace Repositories.Integration.Tests
 
 			var authProvider = new InteractiveAuthenticationProvider(publicClientApp);
 			_graphServiceClient = new GraphServiceClient(authProvider);
-			_groupRepo = new GraphGroupRepository(_graphServiceClient, new TelemetryClient(), new MockLogger());
+			_groupRepo = new GraphGroupRepository(_graphServiceClient, new TelemetryClient(new TelemetryConfiguration()), new MockLogger());
 
 
 			await DeleteOldObjects("microsoft.graph.group");

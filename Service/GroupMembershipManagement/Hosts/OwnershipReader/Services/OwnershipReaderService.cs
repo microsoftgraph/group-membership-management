@@ -52,15 +52,15 @@ namespace Services
         public async Task<List<Guid>> GetGroupOwnersAsync(Guid groupId)
         {
             var owners = await _graphGroupRepository.GetGroupOwnersAsync(groupId, 100);
-            return owners.Select(x => Guid.Parse(x.Id)).ToList();
+            return owners.Select(x => x.ObjectId).ToList();
         }
 
-        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<Guid> allusers, int currentPart, bool exclusionary)
+        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<Guid> allUsers, int currentPart, bool exclusionary)
         {
             var runId = syncJob.RunId.GetValueOrDefault();
             var groupMembership = new GroupMembership
             {
-                SourceMembers = allusers != null ? allusers.Select(x => new AzureADUser { ObjectId = x }).ToList() : new List<AzureADUser>(),
+                SourceMembers = allUsers != null ? allUsers.Select(x => new AzureADUser { ObjectId = x }).ToList() : new List<AzureADUser>(),
                 Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
                 RunId = runId,
                 Exclusionary = exclusionary,

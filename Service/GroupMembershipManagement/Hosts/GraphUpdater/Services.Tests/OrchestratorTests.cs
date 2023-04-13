@@ -1,15 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using DIConcreteTypes;
-using Models.ServiceBus;
 using Hosts.GraphUpdater;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
+using Models.ServiceBus;
+using Moq;
 using Newtonsoft.Json;
 using Repositories.Mocks;
 using Services.Contracts;
@@ -19,8 +19,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Threading;
-using Microsoft.Azure.WebJobs;
 using ExecutionContext = Microsoft.Azure.WebJobs.ExecutionContext;
 
 namespace Services.Tests
@@ -197,12 +195,12 @@ namespace Services.Tests
                 SyncJob = syncJob
             };
 
-            var owners = new List<User>();
+            var owners = new List<AzureADUser>();
             for (int i = 0; i < 10; i++)
             {
-                owners.Add(new User
+                owners.Add(new AzureADUser
                 {
-                    Id = Guid.NewGuid().ToString(),
+                    ObjectId = Guid.NewGuid(),
                     Mail = $"user{i}@mydomain.com"
                 });
             }
@@ -236,7 +234,7 @@ namespace Services.Tests
                     .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<GroupNameReaderRequest>()))
                     .Returns(async () => await CallGroupNameReaderFunctionAsync(mockLoggingRepo, mockGraphUpdaterService, groupNameReaderRequest));
-            context.Setup(x => x.CallActivityAsync<List<User>>(It.IsAny<string>(), It.IsAny<GroupOwnersReaderRequest>()))
+            context.Setup(x => x.CallActivityAsync<List<AzureADUser>>(It.IsAny<string>(), It.IsAny<GroupOwnersReaderRequest>()))
                     .Returns(async () => await CallGroupOwnersReaderFunctionAsync(mockLoggingRepo, graphUpdaterService.Object, groupOwnersReaderRequest));
             context.Setup(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()))
                     .Returns(() => Task.FromResult(new GroupUpdaterSubOrchestratorResponse() { SuccessCount = 1, UsersNotFound = new List<AzureADUser>() }));
@@ -806,7 +804,7 @@ namespace Services.Tests
             return await function.GetGroupNameAsync(request);
         }
 
-        private async Task<List<User>> CallGroupOwnersReaderFunctionAsync(
+        private async Task<List<AzureADUser>> CallGroupOwnersReaderFunctionAsync(
             MockLoggingRepository mockLoggingRepository,
             IGraphUpdaterService graphUpdaterService,
             GroupOwnersReaderRequest request)

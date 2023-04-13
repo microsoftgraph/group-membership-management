@@ -1,14 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Entities;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Mocks;
-using System.Net.Http.Json;
-using System.Text.Json;
 using TeamsChannel.Service;
 using TeamsChannel.Service.Contracts;
 
@@ -17,11 +14,11 @@ namespace Services.Tests
     [TestClass]
     public class TeamsChannelServiceTests
     {
-        private TeamsChannelService _service;
-        private ChannelSyncInfo _syncInfo;
-        private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository;
-        private Mock<IBlobStorageRepository> _mockBlobStorageRepository;
-        private Mock<IHttpClientFactory> _mockHttpClientFactory;
+        private TeamsChannelService _service = null!;
+        private ChannelSyncInfo _syncInfo = null!;
+        private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository = null!;
+        private Mock<IBlobStorageRepository> _mockBlobStorageRepository = null!;
+        private Mock<IHttpClientFactory> _mockHttpClientFactory = null!;
 
         private Dictionary<AzureADTeamsChannel, List<AzureADTeamsUser>> _mockChannels = new Dictionary<AzureADTeamsChannel, List<AzureADTeamsUser>>
         {
@@ -41,8 +38,8 @@ namespace Services.Tests
                 .ReturnsAsync((AzureADTeamsChannel c, Guid g) => _mockChannels[c]);
             _mockTeamsChannelRepository.Setup<Task<string>>(repo => repo.GetChannelTypeAsync(It.IsIn<AzureADTeamsChannel>(_mockChannels.Keys), It.IsAny<Guid>()))
                 .ReturnsAsync((AzureADTeamsChannel tc, Guid _) => tc.ChannelId == "some channel" ? "Private" : "Standard");
-                
-                _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
+
+            _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
             var mockSyncJobRepository = new MockSyncJobRepository();
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
 

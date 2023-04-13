@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Graph;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -24,7 +23,7 @@ namespace Hosts.GraphUpdater
         }
 
         [FunctionName(nameof(GroupOwnersReaderFunction))]
-        public async Task<List<User>> GetGroupOwnersAsync([ActivityTrigger] GroupOwnersReaderRequest request)
+        public async Task<List<AzureADUser>> GetGroupOwnersAsync([ActivityTrigger] GroupOwnersReaderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupOwnersReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             _graphUpdaterService.RunId = request.RunId;
