@@ -24,8 +24,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hosts.FunctionBase", "..\..
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mail", "..\..\..\Repositories.Mail\Repositories.Mail.csproj", "{B0996CFE-AD06-4140-B208-A331FE14F946}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.TableStorage", "..\..\..\Repositories.TableStorage\Repositories.TableStorage.csproj", "{63595D13-DFEA-49C6-9FFD-7DE4B31B313E}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Localization", "..\..\..\Repositories.Localization\Repositories.Localization.csproj", "{FA6F5ACC-DBC3-40FE-8DE8-30482F6B1436}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.SyncJobRepository", "..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj", "{5EAFBF0D-5481-4606-B62F-E895DF9F87B7}"
