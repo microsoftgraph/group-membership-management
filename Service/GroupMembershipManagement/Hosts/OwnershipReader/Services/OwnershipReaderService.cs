@@ -45,7 +45,7 @@ namespace Services
                 return await _syncJobRepository.GetPageableQueryResultAsync(true, JobsBatchSize, SyncStatus.All);
             }
 
-            return await _syncJobRepository.GetSyncJobsSegmentAsync(query, continuationToken, JobsBatchSize, false);
+            return await _syncJobRepository.GetSyncJobsSegmentAsync(query, continuationToken, JobsBatchSize);
 
         }
 
