@@ -34,8 +34,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.GraphAzureADGr
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Logging", "..\..\..\Repositories.Logging\Repositories.Logging.csproj", "{492069EA-5F1B-4902-82A0-7E26C3D0194E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.TableStorage", "..\..\..\Repositories.TableStorage\Repositories.TableStorage.csproj", "{120039C7-76A3-4310-A732-58CC949F86A9}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mail", "..\..\..\Repositories.Mail\Repositories.Mail.csproj", "{C84EAAAB-55A5-471D-B88B-123C59AC5FCB}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Localization", "..\..\..\Repositories.Localization\Repositories.Localization.csproj", "{F0ADC8DC-12EC-41D6-B630-B8CF4548C429}"
@@ -114,10 +112,6 @@ Global
 		{492069EA-5F1B-4902-82A0-7E26C3D0194E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{492069EA-5F1B-4902-82A0-7E26C3D0194E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{492069EA-5F1B-4902-82A0-7E26C3D0194E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{120039C7-76A3-4310-A732-58CC949F86A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{120039C7-76A3-4310-A732-58CC949F86A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{120039C7-76A3-4310-A732-58CC949F86A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{120039C7-76A3-4310-A732-58CC949F86A9}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C84EAAAB-55A5-471D-B88B-123C59AC5FCB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C84EAAAB-55A5-471D-B88B-123C59AC5FCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C84EAAAB-55A5-471D-B88B-123C59AC5FCB}.Release|Any CPU.ActiveCfg = Release|Any CPU

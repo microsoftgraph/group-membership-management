@@ -21,7 +21,7 @@ namespace Repositories.SyncJobs.Tests
             return await Task.FromResult(job);
         }
 
-        public async Task<Page<SyncJob>> GetSyncJobsSegmentAsync(string query, string continuationToken, int batchSize, bool applyFilters = true)
+        public async Task<Page<SyncJob>> GetSyncJobsSegmentAsync(string query, string continuationToken, int batchSize)
         {
             var jobs = Jobs.Where(x => (x.StartDate <= DateTime.UtcNow)
                                         && (DateTime.UtcNow - x.LastRunTime > TimeSpan.FromHours(x.Period))

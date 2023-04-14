@@ -106,16 +106,9 @@ namespace Repositories.SyncJobsRepository
         public async Task<Models.Page<SyncJob>> GetSyncJobsSegmentAsync(
            string query,
            string continuationToken,
-           int batchSize,
-           bool applyJobTriggerFilters = true)
+           int batchSize)
         {
-            var result = await GetPageAsync(query, continuationToken, batchSize);
-            if (applyJobTriggerFilters)
-            {
-                result.Values = ApplyJobTriggerFilters(result.Values).ToList();
-            }
-
-            return result;
+            return await GetPageAsync(query, continuationToken, batchSize);
         }
 
         public async IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync()
@@ -260,14 +253,6 @@ namespace Repositories.SyncJobsRepository
             {
                 await _tableClient.SubmitTransactionAsync(batchOperation);
             }
-        }
-
-        private IEnumerable<SyncJob> ApplyJobTriggerFilters(IEnumerable<SyncJob> jobs)
-        {
-            var allNonDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == false && x.Status != SyncStatus.InProgress.ToString());
-            var allDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.DryRunTimeStamp) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == true && x.Status != SyncStatus.InProgress.ToString());
-            var inProgressSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.LastSuccessfulStartTime) > TimeSpan.FromHours(x.Period)) && x.Status == SyncStatus.InProgress.ToString());
-            return allNonDryRunSyncJobs.Concat(allDryRunSyncJobs).Concat(inProgressSyncJobs);
         }
 
         private IEnumerable<SyncJob> ExcludeFutureStartDatesFromResults(IEnumerable<SyncJob> jobs)

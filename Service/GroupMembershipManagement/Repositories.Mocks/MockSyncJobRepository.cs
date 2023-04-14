@@ -59,7 +59,7 @@ namespace Repositories.Mocks
             return Task.FromResult(new Page<SyncJob>());
         }
 
-        public Task<Page<SyncJob>> GetSyncJobsSegmentAsync(string query, string continuationToken, int batchSize, bool applyFilters = true)
+        public Task<Page<SyncJob>> GetSyncJobsSegmentAsync(string query, string continuationToken, int batchSize)
         {
             return Task.FromResult(new Page<SyncJob>());
         }

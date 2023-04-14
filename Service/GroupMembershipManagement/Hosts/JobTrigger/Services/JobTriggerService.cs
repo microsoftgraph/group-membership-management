@@ -67,10 +67,14 @@ namespace Services
         {
             if (string.IsNullOrWhiteSpace(continuationToken))
             {
-                return await _syncJobRepository.GetPageableQueryResultAsync(false, null, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
+                var firstPage = await _syncJobRepository.GetPageableQueryResultAsync(false, JobsBatchSize, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
+                firstPage.Values = ApplyJobTriggerFilters(firstPage.Values).ToList();
+                return firstPage;
             }
 
-            return await _syncJobRepository.GetSyncJobsSegmentAsync(query, continuationToken, JobsBatchSize);
+            var nextPage = await _syncJobRepository.GetSyncJobsSegmentAsync(query, continuationToken, JobsBatchSize);
+            nextPage.Values = ApplyJobTriggerFilters(nextPage.Values).ToList();
+            return nextPage;
         }
 
         public async Task<string> GetGroupNameAsync(Guid groupId)
@@ -192,6 +196,14 @@ namespace Services
             public string StatusMessage { get; set; }
             public string ErrorMessage { get; set; }
             public string EmailBody { get; set; }
+        }
+
+        private IEnumerable<SyncJob> ApplyJobTriggerFilters(IEnumerable<SyncJob> jobs)
+        {
+            var allNonDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == false && x.Status != SyncStatus.InProgress.ToString());
+            var allDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.DryRunTimeStamp) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == true && x.Status != SyncStatus.InProgress.ToString());
+            var inProgressSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.LastSuccessfulStartTime) > TimeSpan.FromHours(x.Period)) && x.Status == SyncStatus.InProgress.ToString());
+            return allNonDryRunSyncJobs.Concat(allDryRunSyncJobs).Concat(inProgressSyncJobs);
         }
     }
 }

@@ -68,7 +68,7 @@ namespace Services
                 return await _syncJobRepository.GetPageableQueryResultAsync(includeFutureJobs, JobsBatchSize, SyncStatus.All);
             }
 
-            return await _syncJobRepository.GetSyncJobsSegmentAsync(query, continuationToken, JobsBatchSize, false);
+            return await _syncJobRepository.GetSyncJobsSegmentAsync(query, continuationToken, JobsBatchSize);
         }
 
         public async Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> updatedSyncJobs)
