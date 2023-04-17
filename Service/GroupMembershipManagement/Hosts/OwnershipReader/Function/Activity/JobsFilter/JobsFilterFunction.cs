@@ -26,9 +26,9 @@ namespace Hosts.OwnershipReader
         [FunctionName(nameof(JobsFilterFunction))]
         public async Task<List<Guid>> GetJobsAsync([ActivityTrigger] JobsFilterRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupOwnersFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupOwnersFunction)} function started at: {DateTime.UtcNow}", RunId = request.RunId }, VerbosityLevel.DEBUG);
             var filteredJobs = _ownershipReaderService.FilterSyncJobsBySourceTypes(request.RequestedSources, request.SyncJobs);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupOwnersFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupOwnersFunction)} function completed at: {DateTime.UtcNow}", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
             return filteredJobs.ToList();
         }

@@ -25,9 +25,9 @@ namespace Hosts.OwnershipReader
         [FunctionName(nameof(GetGroupOwnersFunction))]
         public async Task<List<Guid>> GetGroupOwnersAsync([ActivityTrigger] GetGroupOwnersRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupOwnersFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupOwnersFunction)} function started at: {DateTime.UtcNow}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
             var ids = await _ownershipReaderService.GetGroupOwnersAsync(request.GroupId);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupOwnersFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupOwnersFunction)} function completed at: {DateTime.UtcNow}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
             return ids;
         }

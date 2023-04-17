@@ -100,7 +100,8 @@ namespace Hosts.OwnershipReader
                                                                                                     new GetJobsSegmentedRequest
                                                                                                     {
                                                                                                         Query = query,
-                                                                                                        ContinuationToken = continuationToken
+                                                                                                        ContinuationToken = continuationToken,
+                                                                                                        RunId = syncJob.RunId,
                                                                                                     });
 
                     syncJobs.AddRange(segmentResponse.ResponsePage.Values);
