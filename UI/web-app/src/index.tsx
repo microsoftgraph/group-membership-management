@@ -6,7 +6,7 @@ import { ThemeProvider } from "@fluentui/react";
 import { Provider } from "react-redux";
 import { store } from "./store";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { JobsPage, JobDetailsPage } from "./pages";
+import { JobsPage, JobDetailsPage, OwnerPage } from "./pages";
 import { App } from "./App";
 import { MsalProvider } from "@azure/msal-react";
 import { initializeIcons } from '@fluentui/font-icons-mdl2';
@@ -49,6 +49,7 @@ ReactDOM.render(
               <Route path="" element={<App />}>
                 <Route path="/" element={<JobsPage />} />
                 <Route path="/JobDetailsPage" element={<JobDetailsPage />} />
+                <Route path="/OwnerPage" element={<OwnerPage />} />
               </Route>
             </Routes>
           </BrowserRouter>

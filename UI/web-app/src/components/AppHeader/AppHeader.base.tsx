@@ -4,6 +4,7 @@
 import { classNamesFunction, IProcessedStyleSet } from "@fluentui/react";
 import { useTheme } from "@fluentui/react/lib/Theme";
 import WelcomeName from "../WelcomeName";
+import AddOwner from "../AddOwner";
 import SignInSignOutButton from "../SignInSignOutButton";
 import {
   IAppHeaderProps,
@@ -32,6 +33,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
     <header>
       <div className={classNames.root} role="banner" aria-label="header">
         <WelcomeName></WelcomeName>
+        <AddOwner />
         <SignInSignOutButton/>
       </div>
     </header>

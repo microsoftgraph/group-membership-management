@@ -14,7 +14,8 @@ export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
         maxWidth: "100%",
         margin: '0 auto',
         borderBottom: '1px solid transparent',
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        display: 'flex'
       },
       className
     ]
