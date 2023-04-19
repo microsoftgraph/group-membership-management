@@ -3,6 +3,7 @@
 
 import { DetailsList, DetailsListLayoutMode } from '@fluentui/react/lib/DetailsList';
 import { useTranslation } from 'react-i18next';
+import '../../i18n/config';
 import { useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchJobs } from '../../store/jobs.api'
