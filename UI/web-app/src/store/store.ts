@@ -4,11 +4,13 @@
 import { configureStore } from '@reduxjs/toolkit';
 import jobsReducer from './jobs.slice';
 import accountReducer from './account.slice'
+import ownerReducer from './owner.slice'
 
 export const store = configureStore({
   reducer: {
     account: accountReducer,
-    jobs: jobsReducer
+    jobs: jobsReducer,
+    owner: ownerReducer
   }
 });
 
