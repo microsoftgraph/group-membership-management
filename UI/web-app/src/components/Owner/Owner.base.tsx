@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 import { useTranslation } from 'react-i18next';
+import '../../i18n/config';
 import { useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { addOwner } from '../../store/owner.api'
@@ -36,6 +37,7 @@ export const OwnerBase: React.FunctionComponent<IOwnerProps> = (
   );
 
   const { t } = useTranslation();
+  let groupIdPlaceHolder = t('groupIdPlaceHolder');
   const dispatch = useDispatch<AppDispatch>()
   const owner = useSelector(selectOwner)
 
@@ -49,16 +51,16 @@ export const OwnerBase: React.FunctionComponent<IOwnerProps> = (
 
   return (
     <div className={classNames.root}>
-      <Text variant="xLarge">New Group Details</Text>
+      <Text variant="large">{t('groupIdHeader')}</Text>
       <p />
       <TextField
-          ariaLabel={"GroupId"}
-          placeholder={"Group Id"}
+          ariaLabel={groupIdPlaceHolder}
+          placeholder={groupIdPlaceHolder}
           onChange={onChangeTextFieldValue}
           tabIndex={0}
         />
       <p />
-      <DefaultButton onClick={onClick}>OK</DefaultButton>
+      <DefaultButton onClick={onClick}>{t('okButton')}</DefaultButton>
       <p />
       {(() => {
         if (owner.status === "") {
@@ -68,19 +70,19 @@ export const OwnerBase: React.FunctionComponent<IOwnerProps> = (
         }
         else if (owner.status === "false 403 Forbidden") {
           return (
-            <div>You do not have permission to complete this operation.</div>
+            <div>{t('addOwner403Message')}</div>
           )
         } else if (owner.status === "false 400 Bad Request") {
           return (
-            <div>GMM is already added as an owner.</div>
+            <div>{t('addOwner400Message')}</div>
           )
         } else if (owner.status === "true 204 No Content") {
           return (
-            <div>Added Successfully.</div>
+            <div>{t('addOwner204Message')}</div>
           )
         } else {
           return (
-            <div>We are having trouble adding GMM as the owner. Please try again later.</div>
+            <div>{t('addOwnerErrorMessage')}</div>
           )
         }
       })()}
