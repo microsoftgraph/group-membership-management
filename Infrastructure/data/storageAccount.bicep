@@ -75,7 +75,7 @@ resource allBlobPolicy 'Microsoft.Storage/storageAccounts/managementPolicies@202
                 'blockBlob'
               ]
               prefixMatch: [
-                'cache/'
+                'membership/cache/'
               ]
             }
           }
