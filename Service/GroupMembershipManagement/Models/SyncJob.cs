@@ -31,6 +31,7 @@ namespace Models
         /// Office group AD id
         /// </summary>
         public Guid TargetOfficeGroupId { get; set; }
+        public string Destination { get; set; }
 
         [IgnoreLogging]
         public string Status { get; set; }
