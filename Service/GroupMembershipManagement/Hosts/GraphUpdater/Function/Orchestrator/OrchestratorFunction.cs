@@ -139,6 +139,7 @@ namespace Hosts.GraphUpdater
                 syncCompleteEvent.MembersAdded = membersAddedResponse.SuccessCount.ToString();
 				sourceUsersNotFound = membersAddedResponse.UsersNotFound;
 				syncCompleteEvent.MembersToAddNotFound = sourceUsersNotFound.Count.ToString();
+				syncCompleteEvent.MembersToAddAlreadyExist = membersAddedResponse.UsersAlreadyExist.Count.ToString();
 
                 var membersRemovedResponse = await context.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(nameof(GroupUpdaterSubOrchestratorFunction),
                                 CreateGroupUpdaterRequest(syncJob, membersToRemove, RequestType.Remove, isInitialSync));
@@ -189,7 +190,7 @@ namespace Hosts.GraphUpdater
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
                 if (!context.IsReplaying)
                 {
-                    if (membersAddedResponse.SuccessCount + membersAddedResponse.UsersNotFound.Count == membersToAdd.Count && 
+                    if (membersAddedResponse.SuccessCount + membersAddedResponse.UsersNotFound.Count + membersAddedResponse.UsersAlreadyExist.Count == membersToAdd.Count && 
 						membersRemovedResponse.SuccessCount + membersRemovedResponse.UsersNotFound.Count == membersToRemove.Count)
                     {
                         TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Success");

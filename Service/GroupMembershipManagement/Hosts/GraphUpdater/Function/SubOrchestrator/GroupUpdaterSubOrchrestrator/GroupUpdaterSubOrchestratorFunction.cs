@@ -31,6 +31,7 @@ namespace Hosts.GraphUpdater
             var request = context.GetInput<GroupUpdaterRequest>();
             var totalSuccessCount = 0;
             var allUsersNotFound = new List<AzureADUser>();
+            var allUsersAlreadyExist = new List<AzureADUser>();
 
             if (request == null)
             {
@@ -54,6 +55,7 @@ namespace Hosts.GraphUpdater
                                            });
                 totalSuccessCount += response.SuccessCount;
                 allUsersNotFound.AddRange(response.UsersNotFound);
+                allUsersAlreadyExist.AddRange(response.UsersAlreadyExist);
 
                 await context.CallActivityAsync(nameof(LoggerFunction),
                                                 new LoggerRequest
@@ -87,7 +89,8 @@ namespace Hosts.GraphUpdater
             {
                 Type = request.Type,
                 SuccessCount = totalSuccessCount,
-                UsersNotFound = allUsersNotFound
+                UsersNotFound = allUsersNotFound,
+                UsersAlreadyExist = allUsersAlreadyExist
             };
         }
     }

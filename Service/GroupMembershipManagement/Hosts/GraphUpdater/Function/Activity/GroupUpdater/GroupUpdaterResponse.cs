@@ -10,5 +10,6 @@ namespace Hosts.GraphUpdater
     {
         public int SuccessCount { get; set; }
         public List<AzureADUser> UsersNotFound { get; set; }
+        public List<AzureADUser> UsersAlreadyExist { get; set; }
     }
 }

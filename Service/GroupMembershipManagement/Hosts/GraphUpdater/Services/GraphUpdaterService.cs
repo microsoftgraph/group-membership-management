@@ -148,7 +148,7 @@ namespace Services
             return await _graphGroupRepository.GetGroupNameAsync(groupId);
         }
 
-        public async Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
+        public async Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
         {
             var stopwatch = Stopwatch.StartNew();
             var graphResponse = await _graphGroupRepository.AddUsersToGroup(members, new AzureADGroup { ObjectId = targetGroupId });
@@ -168,7 +168,7 @@ namespace Services
             _telemetryClient.TrackMetric(nameof(Metric.GraphAddRatePerSecond), members.Count / stopwatch.Elapsed.TotalSeconds);
 
             var status = graphResponse.ResponseCode == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
-            return (status, graphResponse.SuccessCount, graphResponse.UsersNotFound);
+            return (status, graphResponse.SuccessCount, graphResponse.UsersNotFound, graphResponse.UsersAlreadyExist);
         }
 
         public async Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound)> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
