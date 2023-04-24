@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
+using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -32,6 +33,7 @@ namespace Hosts.GraphUpdater
 
             _graphUpdaterService.RunId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
 
+            GraphUpdaterStatus responseStatus;
             var successCount = 0;
             var usersNotFound = new List<AzureADUser>();
             var usersAlreadyExist = new List<AzureADUser>();
@@ -42,6 +44,7 @@ namespace Hosts.GraphUpdater
                 var addUsersToGraphResponse = await _graphUpdaterService.AddUsersToGroupAsync(
                     request.Members, destination.TargetGroupId, request.SyncJob.RunId.GetValueOrDefault(), request.IsInitialSync);
 
+                responseStatus = addUsersToGraphResponse.Status;
                 successCount = addUsersToGraphResponse.SuccessCount;
                 usersNotFound = addUsersToGraphResponse.UsersNotFound;
                 usersAlreadyExist = addUsersToGraphResponse.UsersAlreadyExist;
@@ -51,6 +54,7 @@ namespace Hosts.GraphUpdater
                 var removeUsersFromGraphResponse = await _graphUpdaterService.RemoveUsersFromGroupAsync(
                     request.Members, destination.TargetGroupId, request.SyncJob.RunId.GetValueOrDefault(), request.IsInitialSync);
 
+                responseStatus = removeUsersFromGraphResponse.Status;
                 successCount = removeUsersFromGraphResponse.SuccessCount;
                 usersNotFound = removeUsersFromGraphResponse.UsersNotFound;
             }
@@ -58,11 +62,12 @@ namespace Hosts.GraphUpdater
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
             return new GroupUpdaterResponse()
-            {
-                SuccessCount = successCount,
-                UsersNotFound = usersNotFound,
-                UsersAlreadyExist = usersAlreadyExist
-            };
+                {
+                    Status = responseStatus,
+                    SuccessCount = successCount,
+                    UsersNotFound = usersNotFound,
+                    UsersAlreadyExist = usersAlreadyExist
+                };
         }
     }
 }

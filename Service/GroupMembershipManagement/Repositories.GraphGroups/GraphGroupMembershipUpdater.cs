@@ -110,10 +110,14 @@ namespace Repositories.GraphGroups
                     }));
 
             var responses = await Task.WhenAll(Enumerable.Range(0, ConcurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize, targetGroupId)));
+            var status = responses.Any(x => x.ResponseCode == ResponseCode.GuestError) ?
+                ResponseCode.GuestError :
+                (responses.Any(x => x.ResponseCode == ResponseCode.Error) ?
+                    ResponseCode.Error :
+                    ResponseCode.Ok);
 
-            var status = responses.Any(x => x.ResponseCode == ResponseCode.Error) ? ResponseCode.Error : ResponseCode.Ok;
             return (status, responses.Sum(x => x.SuccessCount), _usersNotFound, _usersAlreadyExist);
-        }
+         }
 
         private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessQueue(ConcurrentQueue<ChunkOfUsers> queue, MakeBulkRequest makeRequest, int threadNumber, int batchSize, Guid targetGroupId)
         {
@@ -148,7 +152,7 @@ namespace Repositories.GraphGroups
 
                     successCount += response.SuccessCount;
 
-                    if (response.ResponseCode == ResponseCode.Error)
+                    if (response.ResponseCode == ResponseCode.Error || response.ResponseCode == ResponseCode.GuestError)
                         return response;
                 }
 
@@ -163,6 +167,7 @@ namespace Repositories.GraphGroups
             int requeued = 0;
             bool hasUnrecoverableErrors = false;
             var successfulRequests = toSend.Where(x => !x.SendAsPostRequest).SelectMany(x => x.ToSend).ToList().Count;
+            var guestUserError = false;
 
             try
             {
@@ -237,6 +242,16 @@ namespace Repositories.GraphGroups
                                 }
                             }
 
+                            else if (chunkToRetry.ToSend.Count == 1 && idToRetry.HttpStatusCode == HttpStatusCode.Forbidden && idToRetry.ResponseCode == ResponseCode.GuestError)
+                            {
+                                await _loggingRepository.LogMessageAsync(new LogMessage
+                                {
+                                    Message = $"{chunkToRetry.Id} was not added because it is a guest user and the destination does not allow guest users",
+                                    RunId = RunId
+                                });
+                                guestUserError = true;
+                            }
+
                             else
                             {
                                 requeued++;
@@ -274,7 +289,7 @@ namespace Repositories.GraphGroups
                 }
             }
 
-            var status = hasUnrecoverableErrors ? ResponseCode.Error : ResponseCode.Ok;
+            var status = guestUserError ? ResponseCode.GuestError : (hasUnrecoverableErrors ? ResponseCode.Error : ResponseCode.Ok);
             return (status, successfulRequests);
         }
 
@@ -351,7 +366,8 @@ namespace Repositories.GraphGroups
 
             return (patchResponse.ResponseCode == ResponseCode.Ok && postResponse.ResponseCode == ResponseCode.Ok
                     ? ResponseCode.Ok
-                    : ResponseCode.Error, patchResponse.SuccessCount + postResponse.SuccessCount);
+                    : (patchResponse.ResponseCode == ResponseCode.GuestError || postResponse.ResponseCode == ResponseCode.GuestError) ?
+                    ResponseCode.GuestError : ResponseCode.Error, patchResponse.SuccessCount + postResponse.SuccessCount);
 
         }
 
@@ -561,8 +577,8 @@ namespace Repositories.GraphGroups
                     retryResponses.Add(new RetryResponse
                     {
                         RequestId = kvp.Key,
-                        ResponseCode = ResponseCode.IndividualRetry,
-                        HttpStatusCode = HttpStatusCode.Forbidden
+                        HttpStatusCode = HttpStatusCode.Forbidden,
+                        ResponseCode = ResponseCode.GuestError
                     });
                 }
                 else if (_shouldRetry.Contains(status))

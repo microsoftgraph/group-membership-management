@@ -155,7 +155,11 @@ namespace Services
             }, VerbosityLevel.DEBUG);
             _telemetryClient.TrackMetric(nameof(Metric.GraphAddRatePerSecond), members.Count / stopwatch.Elapsed.TotalSeconds);
 
-            var status = graphResponse.ResponseCode == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
+            var status = graphResponse.ResponseCode == ResponseCode.GuestError ?
+                GraphUpdaterStatus.GuestError :
+                (graphResponse.ResponseCode == ResponseCode.Error ?
+                    GraphUpdaterStatus.Error :
+                    GraphUpdaterStatus.Ok);
             return (status, graphResponse.SuccessCount, graphResponse.UsersNotFound, graphResponse.UsersAlreadyExist);
         }
 
