@@ -1179,7 +1179,7 @@ namespace Repositories.GraphGroups
 
                         if (chunkToRetry.ToSend.Count > 0)
                         {
-                            if (chunkToRetry.ToSend.Count == 1 && idToRetry.ResponseCode == ResponseCode.IndividualRetry && idToRetry.HttpStatusCode == HttpStatusCode.BadRequest)
+                            if (chunkToRetry.ToSend.Count == 1 && idToRetry.ResponseCode == ResponseCode.Ok && idToRetry.HttpStatusCode == HttpStatusCode.BadRequest)
                             {
                                 await _loggingRepository.LogMessageAsync(new LogMessage
                                 {
@@ -1306,7 +1306,7 @@ namespace Repositories.GraphGroups
                     yield return new RetryResponse
                     {
                         RequestId = kvp.Key,
-                        ResponseCode = ResponseCode.IndividualRetry,
+                        ResponseCode = ResponseCode.Ok,
                         HttpStatusCode = HttpStatusCode.BadRequest
                     };
                 }
