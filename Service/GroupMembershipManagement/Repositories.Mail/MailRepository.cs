@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using Microsoft.Graph;
-using Microsoft.Graph.Auth;
+using Microsoft.Graph.Models;
 using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -19,11 +20,11 @@ namespace Repositories.Mail
     {
         private readonly IMailAdaptiveCardConfig _mailAdaptiveCardConfig;
         private readonly ILocalizationRepository _localizationRepository;
-        private readonly IGraphServiceClient _graphClient;
-		private readonly ILoggingRepository _loggingRepository;
+        private readonly GraphServiceClient _graphClient;
+        private readonly ILoggingRepository _loggingRepository;
         private readonly string _actionableEmailProviderId;
 
-		public MailRepository(IGraphServiceClient graphClient, IMailAdaptiveCardConfig mailAdaptiveCardConfig, ILocalizationRepository localizationRepository, ILoggingRepository loggingRepository, string actionableEmailProviderId)
+        public MailRepository(GraphServiceClient graphClient, IMailAdaptiveCardConfig mailAdaptiveCardConfig, ILocalizationRepository localizationRepository, ILoggingRepository loggingRepository, string actionableEmailProviderId)
         {
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
             _mailAdaptiveCardConfig = mailAdaptiveCardConfig ?? throw new ArgumentNullException(nameof(mailAdaptiveCardConfig));
@@ -62,10 +63,13 @@ namespace Repositories.Mail
 
             try
             {
-                await _graphClient.Me
-                        .SendMail(message, SaveToSentItems: true)
-                        .Request().WithUsernamePassword(emailMessage?.SenderAddress, securePassword)
-                        .PostAsync();
+                var body = new Microsoft.Graph.Me.SendMail.SendMailPostRequestBody
+                {
+                    Message = message,
+                    SaveToSentItems = true
+                };
+
+                await _graphClient.Me.SendMail.PostAsync(body);
             }
             catch (ServiceException ex) when (ex.GetBaseException().GetType().Name == "MsalUiRequiredException")
             {
@@ -139,11 +143,12 @@ namespace Repositories.Mail
 
             return message;
         }
-		public IEnumerable<Recipient> GetEmailAddresses(string emailAddresses)
-		{
-			return emailAddresses.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(address => address.Trim()).ToList()
-									 .Select(address => new Recipient() { EmailAddress = new EmailAddress { Address = address } })
-									 .ToList();
-		}
-	}
+
+        public List<Recipient> GetEmailAddresses(string emailAddresses)
+        {
+            return emailAddresses.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(address => address.Trim()).ToList()
+                                     .Select(address => new Recipient() { EmailAddress = new EmailAddress { Address = address } })
+                                     .ToList();
+        }
+    }
 }
