@@ -10,6 +10,7 @@ using Microsoft.ApplicationInsights;
 using GraphUpdater.Entities;
 using Models;
 using Repositories.Contracts;
+using Services.Entities;
 
 namespace Hosts.GraphUpdater
 {
@@ -32,6 +33,7 @@ namespace Hosts.GraphUpdater
             var totalSuccessCount = 0;
             var allUsersNotFound = new List<AzureADUser>();
             var allUsersAlreadyExist = new List<AzureADUser>();
+            var responseStatus = GraphUpdaterStatus.Ok;
 
             if (request == null)
             {
@@ -64,7 +66,10 @@ namespace Hosts.GraphUpdater
                                                     SyncJob = request.SyncJob
                                                 });
 
-
+                if(response.Status != GraphUpdaterStatus.Ok)
+                {
+                    responseStatus = response.Status;
+                }
                 skip += _batchSize;
                 batch = request.Members.Skip(skip).Take(_batchSize).ToList();
             }
@@ -87,6 +92,7 @@ namespace Hosts.GraphUpdater
 
             return new GroupUpdaterSubOrchestratorResponse()
             {
+                Status = responseStatus,
                 Type = request.Type,
                 SuccessCount = totalSuccessCount,
                 UsersNotFound = allUsersNotFound,

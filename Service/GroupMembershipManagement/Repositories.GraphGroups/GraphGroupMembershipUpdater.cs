@@ -110,8 +110,12 @@ namespace Repositories.GraphGroups
                     }));
 
             var responses = await Task.WhenAll(Enumerable.Range(0, ConcurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize, targetGroupId)));
+            var status = responses.Any(x => x.ResponseCode == ResponseCode.GuestError) ?
+                ResponseCode.GuestError :
+                (responses.Any(x => x.ResponseCode == ResponseCode.Error) ?
+                    ResponseCode.Error :
+                    ResponseCode.Ok);
 
-            var status = responses.Any(x => x.ResponseCode == ResponseCode.Error) ? ResponseCode.Error : ResponseCode.Ok;
             return (status, responses.Sum(x => x.SuccessCount), _usersNotFound, _usersAlreadyExist);
         }
 
@@ -235,6 +239,15 @@ namespace Repositories.GraphGroups
                                         RunId = RunId
                                     });
                                 }
+                            }
+
+                            else if (chunkToRetry.ToSend.Count == 1 && idToRetry.HttpStatusCode == HttpStatusCode.Forbidden && idToRetry.ResponseCode == ResponseCode.GuestError)
+                            {
+                                await _loggingRepository.LogMessageAsync(new LogMessage
+                                {
+                                    Message = $"{chunkToRetry.Id} was not added because it is a guest user and the destination does not allow guest users",
+                                    RunId = RunId
+                                });
                             }
 
                             else
@@ -561,8 +574,7 @@ namespace Repositories.GraphGroups
                     retryResponses.Add(new RetryResponse
                     {
                         RequestId = kvp.Key,
-                        ResponseCode = ResponseCode.IndividualRetry,
-                        HttpStatusCode = HttpStatusCode.Forbidden
+                        ResponseCode = ResponseCode.GuestError
                     });
                 }
                 else if (_shouldRetry.Contains(status))

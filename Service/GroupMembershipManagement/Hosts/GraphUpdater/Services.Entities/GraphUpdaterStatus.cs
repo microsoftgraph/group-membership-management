@@ -6,6 +6,7 @@ namespace Services.Entities
     {
         Ok = 0,
         Error = 1,
-        ThresholdExceeded = 2
+        ThresholdExceeded = 2,
+        GuestError = 3
     }
 }

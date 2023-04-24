@@ -140,6 +140,26 @@ namespace Hosts.GraphUpdater
                 destinationUsersNotFound = membersRemovedResponse.UsersNotFound;
                 syncCompleteEvent.MembersToRemoveNotFound = destinationUsersNotFound.Count.ToString();
 
+                if (membersAddedResponse.Status == GraphUpdaterStatus.GuestError)
+                {
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"", SyncJob = syncJob });
+
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                        CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
+                                                                        SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup, syncJob.ThresholdViolations, groupMembership.RunId));
+
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { 
+						JobStatus = SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup,
+						ResultStatus = ResultStatus.Success,
+						RunId = syncJob.RunId
+					});
+
+                    TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Success");
+
+                    if (syncJob?.RunId.HasValue ?? false)
+                        _loggingRepository.RemoveSyncJobProperties(syncJob.RunId.Value);
+                }
+
                 if (isInitialSync)
                 {
                     var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
