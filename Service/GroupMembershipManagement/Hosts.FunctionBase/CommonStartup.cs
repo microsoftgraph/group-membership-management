@@ -129,26 +129,32 @@ namespace Hosts.FunctionBase
             });
 
             builder.Services.AddSingleton<IMailRepository>(services =>
-                new MailRepository(
-                    new GraphServiceClient(
-                        FunctionAppDI.CreateMailAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value)),
+            {
+                var mailCredentials = services.GetService<IOptions<EmailSenderRecipient>>();
+                var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
+                graphCredentials.EmailSenderUserName = mailCredentials.Value.SenderAddress;
+                graphCredentials.EmailSenderPassword = mailCredentials.Value.SenderPassword;
+
+                return new MailRepository(
+                    new GraphServiceClient(FunctionAppDI.CreateMailAuthProvider(graphCredentials)),
                         services.GetService<IMailAdaptiveCardConfig>(),
                         services.GetService<ILocalizationRepository>(),
                         services.GetService<ILoggingRepository>(),
-                        GetValueOrDefault("actionableEmailProviderId")));
+                        GetValueOrDefault("actionableEmailProviderId"));
+            });
 
             builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
-                settings.TableName = configuration.GetValue<string>("jobsTableName");
-            });
+                {
+                    settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
+                    settings.TableName = configuration.GetValue<string>("jobsTableName");
+                });
 
             builder.Services.AddSingleton<ISyncJobRepository>(services =>
             {
                 var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
                 return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
             });
-            
+
             builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
@@ -166,8 +172,8 @@ namespace Hosts.FunctionBase
                 var creds = services.GetService<IOptions<ThresholdNotificationConfig>>();
                 return new ThresholdNotificationConfig(creds.Value.IsThresholdNotificationEnabled);
             });
-            
-            builder.Services.AddSingleton<TelemetryClient>(sp =>
+
+            builder.Services.AddSingleton(sp =>
             {
                 var telemetryConfiguration = new TelemetryConfiguration();
                 telemetryConfiguration.InstrumentationKey = Environment.GetEnvironmentVariable("APPINSIGHTS_INSTRUMENTATIONKEY");

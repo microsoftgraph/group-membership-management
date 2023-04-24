@@ -3,7 +3,6 @@
 
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Graph;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -29,11 +28,11 @@ namespace Hosts.AzureUserReader
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserCreatorFunction)} function started" }, VerbosityLevel.DEBUG);
 
-            var newUsers = request.PersonnelNumbers.Select(x => new User
+            var newUsers = request.PersonnelNumbers.Select(x => new GraphUser
             {
                 DisplayName = $"{request.TenantInformation.EmailPrefix} {x}",
                 AccountEnabled = true,
-                PasswordProfile = new PasswordProfile { Password = PasswordGenerator.GeneratePassword() },
+                Password = PasswordGenerator.GeneratePassword(),
                 MailNickname = $"{request.TenantInformation.EmailPrefix}{x}",
                 UsageLocation = request.TenantInformation.CountryCode,
                 UserPrincipalName = $"{request.TenantInformation.EmailPrefix}{x}@{request.TenantInformation.TenantDomain}",

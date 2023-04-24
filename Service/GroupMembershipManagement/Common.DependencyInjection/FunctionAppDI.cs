@@ -1,10 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Core;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
-using Microsoft.Graph;
-using Microsoft.Graph.Auth;
-using Microsoft.Identity.Client;
 using System;
 using System.Security.Cryptography.X509Certificates;
 
@@ -12,9 +10,9 @@ namespace Common.DependencyInjection
 {
     public static class FunctionAppDI
     {
-        public static IAuthenticationProvider CreateAuthenticationProvider(GraphCredentials credentials)
+        public static TokenCredential CreateAuthenticationProvider(GraphCredentials credentials)
         {
-            if(!string.IsNullOrWhiteSpace(credentials.ClientCertificateName)
+            if (!string.IsNullOrWhiteSpace(credentials.ClientCertificateName)
                 && credentials.ClientCertificateName != "not-set")
             {
                 return CreateAuthProviderFromCertificate(credentials);
@@ -23,36 +21,19 @@ namespace Common.DependencyInjection
             return CreateAuthProviderFromSecret(credentials);
         }
 
-        private static IAuthenticationProvider CreateAuthProviderFromSecret(GraphCredentials creds)
+        private static TokenCredential CreateAuthProviderFromSecret(GraphCredentials creds)
         {
-            var confidentialClientApplication = ConfidentialClientApplicationBuilder
-            .Create(creds.ClientId)
-            .WithTenantId(creds.TenantId)
-            .WithClientSecret(creds.ClientSecret)
-            .Build();
-
-            return new ClientCredentialProvider(confidentialClientApplication);
+            return new ClientSecretCredential(creds.TenantId, creds.ClientId, creds.ClientSecret);
         }
 
-        private static IAuthenticationProvider CreateAuthProviderFromCertificate(GraphCredentials creds)
+        private static TokenCredential CreateAuthProviderFromCertificate(GraphCredentials creds)
         {
-            var confidentialClientApplication = ConfidentialClientApplicationBuilder
-            .Create(creds.ClientId)
-            .WithTenantId(creds.TenantId)
-            .WithCertificate(GetCertificate(creds.ClientCertificateName, creds.KeyVaultName))
-            .Build();
-
-            return new ClientCredentialProvider(confidentialClientApplication);
+            return new ClientCertificateCredential(creds.TenantId, creds.ClientId, GetCertificate(creds.ClientCertificateName, creds.KeyVaultName));
         }
 
-        public static IAuthenticationProvider CreateMailAuthProvider(GraphCredentials creds)
+        public static TokenCredential CreateMailAuthProvider(GraphCredentials creds)
         {
-            var publicClientApplication = PublicClientApplicationBuilder
-            .Create(creds.ClientId)
-            .WithTenantId(creds.TenantId)
-            .Build();
-
-            return new UsernamePasswordProvider(publicClientApplication);
+            return new UsernamePasswordCredential(creds.EmailSenderUserName, creds.EmailSenderPassword, creds.TenantId, creds.ClientId);
         }
 
         private static X509Certificate2 GetCertificate(string certificateName, string keyVaultName)

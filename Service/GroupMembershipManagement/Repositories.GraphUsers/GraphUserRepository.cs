@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 
 using Microsoft.Graph;
+using Microsoft.Graph.Models;
+using Microsoft.Kiota.Abstractions;
 using Models;
 using Newtonsoft.Json;
 using Polly;
@@ -15,7 +17,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Repositories.GraphAzureADUsers
@@ -30,13 +31,13 @@ namespace Repositories.GraphAzureADUsers
         private const string UserPrincipalNameFieldName = "userPrincipalName";
 
         private readonly Dictionary<string, GraphProfileInformation> _cache;
-        private readonly IGraphServiceClient _graphClient;
+        private readonly GraphServiceClient _graphClient;
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly IGraphServiceAttemptsValue _maxGraphServiceAttempts;
 
         public GraphUserRepository(
                 ILoggingRepository loggingRepository,
-                IGraphServiceClient graphClient,
+                GraphServiceClient graphClient,
                 IGraphServiceAttemptsValue maxGraphServiceAttempts
             )
         {
@@ -63,8 +64,6 @@ namespace Repositories.GraphAzureADUsers
         {
             if (personnelNumbers.Count == 0) return new List<GraphProfileInformation>();
 
-            var graphMemberIdPolicy = GetRetryPolicy(runId);
-
             IList<string> unprocessedPersonnelNumbers = new List<string>();
             var profiles = new List<GraphProfileInformation>();
             if (_cache.Count > 0)
@@ -89,7 +88,7 @@ namespace Repositories.GraphAzureADUsers
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{unprocessedPersonnelNumbers.Count} out of {personnelNumbers.Count} need to be retrieved from graph.", RunId = runId });
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{_cache.Keys.Count} profiles exist in the cache.", RunId = runId });
 
-            var fields = string.Join(",", new[] { IdFieldName, PersonnelNumberFieldName, UserPrincipalNameFieldName });
+            var fields = new[] { IdFieldName, PersonnelNumberFieldName, UserPrincipalNameFieldName };
 
             // Graph currently limits batches to 10 requests per batch
             // Graph currently limits the number of conditions in a $filter expression to 20
@@ -106,7 +105,7 @@ namespace Repositories.GraphAzureADUsers
 
             while (pnQueue.Count > 0)
             {
-                using (var batchRequestContent = new BatchRequestContent())
+                using (var batchRequestContent = new BatchRequestContent(_graphClient))
                 {
                     int limit = pnQueue.Count >= FILTER_CONDITION_LIMIT ? 10 : pnQueue.Count;
 
@@ -122,38 +121,21 @@ namespace Repositories.GraphAzureADUsers
 
                         // build filter expression
                         var filter = $"(onPremisesImmutableId eq '{string.Join("' or onPremisesImmutableId eq '", requestPersonnelNumbers.ToArray())}')";
-                        var requestMessage = _graphClient.Users.Request().Filter(filter).Select(fields).WithPerRequestAuthProvider().GetHttpRequestMessage();
+                        var requestInformation = _graphClient.Users.ToGetRequestInformation(requestConfiguration =>
+                        {
+                            requestConfiguration.QueryParameters.Select = fields;
+                            requestConfiguration.QueryParameters.Filter = filter;
+                        });
                         requestsCreated++;
 
-                        batchRequestContent.AddBatchRequestStep(new BatchRequestStep($"{requestsCreated}", requestMessage, null));
+                        await batchRequestContent.AddBatchRequestStepAsync(requestInformation);
                     }
 
                     // every 20 requests send a batch or if there are no more requests to make
                     batchCount++;
                     batchTimer.Start();
 
-                    HttpResponseMessage httpResponse = null;
-                    await graphMemberIdPolicy.ExecuteAsync(async () =>
-                    {
-                        var batchRequest = new HttpRequestMessage(HttpMethod.Post, "https://graph.microsoft.com/v1.0/$batch")
-                        {
-                            Content = batchRequestContent
-                        };
-                        await _graphClient.AuthenticationProvider.AuthenticateRequestAsync(batchRequest);
-
-                        httpResponse = await _graphClient.HttpProvider.SendAsync(batchRequest);
-
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            Message = $"Graph Response:"
-                                    + $"\nStatusCode {httpResponse.StatusCode}",
-                            RunId = runId
-                        });
-
-                        return httpResponse;
-                    });
-
-                    var batchResponse = new BatchResponseContent(httpResponse);
+                    var batchResponse = await _graphClient.Batch.PostAsync(batchRequestContent);
 
                     // process each request in the batch
                     foreach (var response in await batchResponse.GetResponsesAsync())
@@ -214,39 +196,39 @@ namespace Repositories.GraphAzureADUsers
             return profiles;
         }
 
-        public async Task<List<GraphProfileInformation>> AddUsersAsync(List<User> users, Guid? runId)
+        public async Task<List<GraphProfileInformation>> AddUsersAsync(List<GraphUser> users, Guid? runId)
         {
-            var usersToProccess = new Queue<User>(users);
+            var usersToProcess = new Queue<GraphUser>(users);
             var profiles = new List<GraphProfileInformation>();
 
-            while (usersToProccess.Count > 0)
+            while (usersToProcess.Count > 0)
             {
-                var batchRequestContent = CreateBatchRequestContent(usersToProccess);
+                var batchRequestContent = await CreateBatchRequestContentAsync(usersToProcess);
 
                 if (batchRequestContent.BatchRequestSteps.Count == 0)
                 {
                     return profiles;
                 }
 
-                HttpResponseMessage httpResponse = await SendBatchRequestAsync(batchRequestContent, runId);
-                var batchResponse = new BatchResponseContent(httpResponse);
+                var batchResponse = await SendBatchRequestAsync(batchRequestContent);
                 var allResponses = await batchResponse.GetResponsesAsync();
 
-                var profileResponses = await ProcessIndividualResponsesAsync(allResponses, batchRequestContent);
+                var profileResponses = await ProcessIndividualResponsesAsync(allResponses);
                 profiles.AddRange(profileResponses.Profiles);
 
-                var newProfiles = await RetrySingleRequestsAsync(allResponses, new Queue<BatchRequestStep>(profileResponses.BatchSteps));
+                var usersToRetry = users.Where(u => profileResponses.UserIdsToRetry.Contains(u.OnPremisesImmutableId));
+                var newProfiles = await RetrySingleRequestsAsync(allResponses, new Queue<GraphUser>(usersToRetry));
                 profiles.AddRange(newProfiles);
             }
 
             return profiles;
         }
 
-        private async Task<(List<GraphProfileInformation> Profiles, List<BatchRequestStep> BatchSteps)>
-            ProcessIndividualResponsesAsync(Dictionary<string, HttpResponseMessage> responses, BatchRequestContent batchRequestContent)
+        private async Task<(List<GraphProfileInformation> Profiles, List<string> UserIdsToRetry)>
+            ProcessIndividualResponsesAsync(Dictionary<string, HttpResponseMessage> responses)
         {
             var profiles = new List<GraphProfileInformation>();
-            var stepsToRetry = new List<BatchRequestStep>();
+            var userIdsToRetry = new List<string>();
 
             foreach (var response in responses)
             {
@@ -257,7 +239,7 @@ namespace Repositories.GraphAzureADUsers
                 }
                 else if (response.Value.StatusCode == HttpStatusCode.TooManyRequests)
                 {
-                    stepsToRetry.Add(batchRequestContent.BatchRequestSteps[response.Key]);
+                    userIdsToRetry.Add(response.Key);
                 }
                 else
                 {
@@ -274,30 +256,33 @@ namespace Repositories.GraphAzureADUsers
                 });
             }
 
-            if (stepsToRetry.Count > 0)
+            if (userIdsToRetry.Count > 0)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
-                    Message = $"Too many requests. Requeueed {stepsToRetry.Count} requests.",
+                    Message = $"Too many requests. Requeueed {userIdsToRetry.Count} requests.",
                     RunId = null
                 });
             }
 
-            return (profiles, stepsToRetry);
+            return (profiles, userIdsToRetry);
         }
 
-        private async Task<List<GraphProfileInformation>> RetrySingleRequestsAsync(Dictionary<string, HttpResponseMessage> responses, Queue<BatchRequestStep> stepsToRetry)
+        private async Task<List<GraphProfileInformation>> RetrySingleRequestsAsync(
+            Dictionary<string, HttpResponseMessage> responses,
+            Queue<GraphUser> usersToRetry)
         {
             var profiles = new List<GraphProfileInformation>();
 
-            if (stepsToRetry.Count > 0)
+            if (usersToRetry.Count > 0)
             {
                 var retryAfter = responses
                                         .Where(x => x.Value.Headers.RetryAfter != null && x.Value.Headers.RetryAfter.Delta.HasValue)
-                                        .Select(x => x.Value.Headers.RetryAfter.Delta.Value)
-                                        .Max();
+                                        .Select(x => x.Value.Headers.RetryAfter.Delta.Value);
 
-                var waitTime = (int)retryAfter.TotalMilliseconds + 30000;
+                var maxDelta = retryAfter.Any() ? retryAfter.Max() : TimeSpan.Zero;
+
+                var waitTime = (int)maxDelta.TotalMilliseconds + 30000;
 
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
@@ -308,16 +293,16 @@ namespace Repositories.GraphAzureADUsers
                 await Task.Delay(waitTime);
             }
 
-            while (stepsToRetry.Count > 0)
+            while (usersToRetry.Count > 0)
             {
                 try
                 {
-                    var batchStep = stepsToRetry.Dequeue();
-                    var singleResponse = await SendSingleRequestAsync(batchStep.Request, null);
+                    var user = usersToRetry.Dequeue();
+                    var singleResponse = await SendSingleRequestAsync(user, null);
 
                     if (singleResponse.IsSuccessStatusCode)
                     {
-                        var profile = await ExtractProfileAsync(singleResponse, batchStep.RequestId);
+                        var profile = await ExtractProfileAsync(singleResponse, user.OnPremisesImmutableId);
                         profiles.Add(profile);
 
                         await _loggingRepository.LogMessageAsync(new LogMessage
@@ -344,18 +329,17 @@ namespace Repositories.GraphAzureADUsers
             return profiles;
         }
 
-        private BatchRequestContent CreateBatchRequestContent(Queue<User> usersToProccess)
+        private async Task<BatchRequestContent> CreateBatchRequestContentAsync(Queue<GraphUser> usersToProccess)
         {
-            var batchRequestContent = new BatchRequestContent();
+            var batchRequestContent = new BatchRequestContent(_graphClient);
+
+            while (batchRequestContent.BatchRequestSteps.Count < BATCH_REQUEST_LIMIT && usersToProccess.Count != 0)
             {
-                while (batchRequestContent.BatchRequestSteps.Count < BATCH_REQUEST_LIMIT && usersToProccess.Count != 0)
-                {
-                    var user = usersToProccess.Dequeue();
-                    var requestMessage = _graphClient.Users.Request().WithPerRequestAuthProvider().GetHttpRequestMessage();
-                    requestMessage.Content = new StringContent(JsonConvert.SerializeObject(user), Encoding.UTF8, "application/json");
-                    requestMessage.Method = HttpMethod.Post;
-                    batchRequestContent.AddBatchRequestStep(new BatchRequestStep($"{user.OnPremisesImmutableId}", requestMessage, null));
-                }
+                var graphUser = usersToProccess.Dequeue();
+                var user = MapUserDTOtoEntity(graphUser);
+                var postRequestInformation = _graphClient.Users.ToPostRequestInformation(user);
+                var requestMessage = await _graphClient.RequestAdapter.ConvertToNativeRequestAsync<HttpRequestMessage>(postRequestInformation);
+                batchRequestContent.AddBatchRequestStep(new BatchRequestStep($"{user.OnPremisesImmutableId}", requestMessage, null));
             }
 
             return batchRequestContent;
@@ -375,42 +359,27 @@ namespace Repositories.GraphAzureADUsers
             return profile;
         }
 
-        private async Task<HttpResponseMessage> SendSingleRequestAsync(HttpRequestMessage request, Guid? runId)
+        private async Task<HttpResponseMessage> SendSingleRequestAsync(GraphUser user, Guid? runId)
         {
             var retryPolicy = GetRetryPolicy(runId);
             HttpResponseMessage httpResponse = await retryPolicy.ExecuteAsync(async () =>
             {
-                return await _graphClient.HttpProvider.SendAsync(request);
+                var nativeResponseHandler = new NativeResponseHandler();
+                var postRequest = _graphClient.Users.ToPostRequestInformation(MapUserDTOtoEntity(user), config =>
+                {
+                    config.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                });
+
+                await _graphClient.RequestAdapter.SendNoContentAsync(postRequest);
+                return nativeResponseHandler.Value as HttpResponseMessage;
             });
 
             return httpResponse;
         }
 
-        private async Task<HttpResponseMessage> SendBatchRequestAsync(BatchRequestContent batchRequestContent, Guid? runId)
+        private async Task<BatchResponseContent> SendBatchRequestAsync(BatchRequestContent batchRequestContent)
         {
-            var retryPolicy = GetRetryPolicy(runId);
-            HttpResponseMessage httpResponse = await retryPolicy.ExecuteAsync(async () =>
-            {
-                var batchRequest = new HttpRequestMessage(HttpMethod.Post, "https://graph.microsoft.com/v1.0/$batch")
-                {
-                    Content = batchRequestContent
-                };
-
-                await _graphClient.AuthenticationProvider.AuthenticateRequestAsync(batchRequest);
-
-                var response = await _graphClient.HttpProvider.SendAsync(batchRequest);
-
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Graph Response:"
-                            + $"\nStatusCode {response.StatusCode}",
-                    RunId = runId
-                });
-
-                return response;
-            });
-
-            return httpResponse;
+            return await _graphClient.Batch.PostAsync(batchRequestContent);
         }
 
         private AsyncPolicyWrap<HttpResponseMessage> GetRetryPolicy(Guid? runId)
@@ -468,6 +437,20 @@ namespace Repositories.GraphAzureADUsers
                    + $"\nContent {content}",
                 RunId = runId
             });
+        }
+
+        private User MapUserDTOtoEntity(GraphUser user)
+        {
+            return new User
+            {
+                DisplayName = user.DisplayName,
+                AccountEnabled = user.AccountEnabled,
+                PasswordProfile = new PasswordProfile { Password = user.Password },
+                MailNickname = user.MailNickname,
+                UsageLocation = user.UsageLocation,
+                UserPrincipalName = user.UserPrincipalName,
+                OnPremisesImmutableId = user.OnPremisesImmutableId
+            };
         }
     }
 }
