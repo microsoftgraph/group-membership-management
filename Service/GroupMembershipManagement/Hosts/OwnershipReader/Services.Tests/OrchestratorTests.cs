@@ -336,13 +336,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestGraphAPITimeoutExceptionAsync()
         {
-            var error = new Error
-            {
-                Code = "timeout",
-                Message = "The request timed out"
-            };
-
-            var exception = new Exception(error.Message);
+            var exception = new Exception("The request timed out");
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<List<Guid>>(nameof(GetGroupOwnersFunction), It.IsAny<GetGroupOwnersRequest>()))
                                         .Throws(exception);
@@ -385,7 +379,7 @@ namespace Services.Tests
         {
             _orchestratorRequest.SyncJob.LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-1);
 
-            var exception = new ServiceException(null, null, System.Net.HttpStatusCode.ServiceUnavailable);
+            var exception = new ServiceException(null, null, (int)System.Net.HttpStatusCode.ServiceUnavailable);
             _durableOrchestrationContext.Setup(x => x.CallHttpAsync(It.IsAny<DurableHttpRequest>()))
                                         .Throws(exception);
 
