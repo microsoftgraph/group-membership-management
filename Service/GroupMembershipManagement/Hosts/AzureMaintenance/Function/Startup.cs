@@ -67,7 +67,7 @@ namespace Hosts.AzureMaintenance
 
 
             builder.Services.AddSingleton<IKeyVaultSecret<IAzureMaintenanceService>>(services => new KeyVaultSecret<IAzureMaintenanceService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
-            .AddSingleton<IGraphServiceClient>((services) =>
+            .AddSingleton((services) =>
             {
                 return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
             })
