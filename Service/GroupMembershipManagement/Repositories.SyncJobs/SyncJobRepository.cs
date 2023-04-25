@@ -289,6 +289,7 @@ namespace Repositories.SyncJobsRepository
                 StartDate = job.StartDate,
                 Timestamp = job.Timestamp,
                 TargetOfficeGroupId = job.TargetOfficeGroupId,
+                Destination = job.Destination,
                 RunId = job.RunId,
                 Period = job.Period,
                 ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
@@ -297,7 +298,7 @@ namespace Repositories.SyncJobsRepository
                 ETag = job.ETag.ToString(),
                 Query = job.Query,
                 Requestor = job.Requestor,
-                Status = job.Status,
+                Status = job.Status
             };
         }
 
@@ -319,6 +320,7 @@ namespace Repositories.SyncJobsRepository
                 StartDate = job.StartDate,
                 Timestamp = job.Timestamp,
                 TargetOfficeGroupId = job.TargetOfficeGroupId,
+                Destination = job.Destination,
                 RunId = job.RunId,
                 Period = job.Period,
                 ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
