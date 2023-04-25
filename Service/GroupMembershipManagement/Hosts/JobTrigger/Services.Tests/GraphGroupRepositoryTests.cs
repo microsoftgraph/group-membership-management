@@ -1,19 +1,20 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Graph;
-using Microsoft.Graph.Core.Requests;
+using Microsoft.Graph.Models;
+using Microsoft.Kiota.Abstractions;
+using Microsoft.Kiota.Abstractions.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.GraphGroups;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Services.Tests
@@ -23,98 +24,61 @@ namespace Services.Tests
     {
         private TelemetryClient _telemetryClient = new TelemetryClient(new TelemetryConfiguration("instrumentationkey"));
         private Mock<ILoggingRepository> _loggingRepository;
-        private Mock<IGraphServiceClient> _graphServiceClient;
+        private Mock<GraphServiceClient> _graphServiceClient;
         private GraphGroupRepository _graphGroupRepository;
+        private Mock<IRequestAdapter> _requestAdapter;
+        private Mock<IResponseHandler> _responseHandler;
+        private HttpResponseMessage _response;
 
         [TestInitialize]
         public void InitializeTest()
         {
             _loggingRepository = new Mock<ILoggingRepository>();
-            _graphServiceClient = new Mock<IGraphServiceClient>();
-            _graphGroupRepository = new GraphGroupRepository(_graphServiceClient.Object, _telemetryClient, _loggingRepository.Object);
 
-            var authenticationProvider = new Mock<IAuthenticationProvider>();
-            authenticationProvider.Setup(x => x.AuthenticateRequestAsync(It.IsAny<HttpRequestMessage>()));
-            _graphServiceClient.Setup(x => x.AuthenticationProvider).Returns(authenticationProvider.Object);
+            _requestAdapter = new Mock<IRequestAdapter>();
+            _responseHandler = new Mock<IResponseHandler>();
+
+            _graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, "https://graph.microsoft.com");
+            _graphGroupRepository = new GraphGroupRepository(_graphServiceClient.Object, _telemetryClient, _loggingRepository.Object);
         }
 
         [TestMethod]
         [DynamicData(nameof(GetEndPointsData), DynamicDataSourceType.Method)]
         public async Task TestGetGroupEndpointsAsync(Guid groupId, bool isMailEnabled, bool isSecurityEnabled, string[] groupTypes, string[] providers)
         {
-            var batchRequest = new Mock<IBatchRequest>();
-            var batch = new Mock<IBatchRequestBuilder>();
-            BatchResponseContent batchResponseContent = null;
+            _requestAdapter.Setup(x => x.SendNoContentAsync(It.IsAny<RequestInformation>(),
+                                               It.IsAny<Dictionary<string, ParsableFactory<IParsable>>>(),
+                                               It.IsAny<CancellationToken>()
+                                               )
+                    ).Callback<object, object, object>(
+                    (request, errorMapping, cancellationToken) =>
+                    {
+                        var requestInformation = request as RequestInformation;
+                        var responseHandler = requestInformation.RequestOptions.First(x => x.GetType() == typeof(ResponseHandlerOption)) as ResponseHandlerOption;
+                        var nativeResponseHandler = responseHandler.ResponseHandler as NativeResponseHandler;
+                        var content = GetSampleResponse(isMailEnabled, isSecurityEnabled, groupTypes);
+                        nativeResponseHandler.Value = content;
 
-            batch.Setup(x => x.Request()).Returns(batchRequest.Object);
-            _graphServiceClient.Setup(x => x.Batch).Returns(batch.Object);
+                    });
 
-            batchRequest.Setup(x => x.PostAsync(It.IsAny<BatchRequestContent>()))
-                        .Callback<BatchRequestContent>((request) =>
-                        {
-                            var jsonResponses = new List<string>();
-                            foreach (var step in request.BatchRequestSteps)
+            _requestAdapter.Setup(x => x.SendAsync(
+                                                    It.IsAny<RequestInformation>(),
+                                                    It.IsAny<ParsableFactory<EndpointCollectionResponse>>(),
+                                                    It.IsAny<Dictionary<string, ParsableFactory<IParsable>>>(),
+                                                    It.IsAny<CancellationToken>()
+                                                  )
+                                 )
+                            .ReturnsAsync(() =>
                             {
-                                if (step.Key.Equals("outlook"))
+                                var collectionReponse = new EndpointCollectionResponse() { Value = new List<Endpoint>() };
+                                foreach (var provider in providers)
                                 {
-                                    var query = step.Value.Request.RequestUri.Query.Replace("?$select=", string.Empty);
-                                    var properties = query.Split(",", StringSplitOptions.RemoveEmptyEntries);
-
-                                    if (!properties.Contains("mailEnabled"))
-                                        isMailEnabled = false;
-
-                                    if (!properties.Contains("securityEnabled"))
-                                        isSecurityEnabled = false;
-
-                                    if (!properties.Contains("groupTypes"))
-                                        groupTypes = new string[0];
-                                    else
-                                        groupTypes = groupTypes.Select(x => $"\"{x}\"").ToArray();
-
-                                    var outlookResponse = $"{{ \"id\": \"{step.Key}\", " +
-                                                                $"\"status\": 200,  " +
-                                                                $"\"body\": " +
-                                                                $"{{ " +
-                                                                    $"\"mailEnabled\": {isMailEnabled.ToString().ToLower()}," +
-                                                                    $"\"securityEnabled\": {isSecurityEnabled.ToString().ToLower()}," +
-                                                                    $"\"groupTypes\": [{string.Join(",", groupTypes)}]" +
-                                                                $"}}  " +
-                                                            $"}}";
-
-                                    jsonResponses.Add(outlookResponse);
+                                    collectionReponse.Value.Add(new Endpoint() { ProviderName = provider });
                                 }
-                                else if (step.Key.Equals("sharepoint"))
-                                {
-                                    var sharepointResponse = $"{{ \"id\": \"{step.Key}\", " +
-                                                            $"\"status\": 200,  " +
-                                                            $"\"body\": " +
-                                                            $"{{ " +
-                                                                $"\"webUrl\": \"someUrl\"" +
-                                                            $"}}  " +
-                                                        $"}}";
 
-                                    jsonResponses.Add(sharepointResponse);
-                                }
-                            }
+                                return collectionReponse;
+                            });
 
-                            var jsonResponse = $"{{\"responses\": [{string.Join(",", jsonResponses)}]}}";
-                            batchResponseContent = GenerateBatchResponseContent(jsonResponse);
-                        })
-                        .ReturnsAsync(() => batchResponseContent);
-
-            var httpProvider = new Mock<IHttpProvider>();
-            httpProvider.Setup(x => x.SendAsync(It.IsAny<HttpRequestMessage>())).ReturnsAsync((Func<HttpResponseMessage>)(() =>
-            {
-                var providersJSON = string.Join(",", Enumerable.Select<string, string>(providers, (Func<string, string>)(x => $"{{\"providerName\":\"{x}\"}}")));
-                var content = $"{{ \"value\":[ {providersJSON} ] }}";
-                return new HttpResponseMessage
-                {
-                    Content = new StringContent(content),
-                    StatusCode = System.Net.HttpStatusCode.OK
-                };
-            }));
-
-            _graphServiceClient.Setup(x => x.HttpProvider).Returns(httpProvider.Object);
 
             var endPoints = await _graphGroupRepository.GetGroupEndpointsAsync(groupId);
 
@@ -126,7 +90,40 @@ namespace Services.Tests
             }
         }
 
-        private BatchResponseContent GenerateBatchResponseContent(string httpContent)
+        private HttpResponseMessage GetSampleResponse(bool isMailEnabled,
+                                                      bool isSecurityEnabled,
+                                                      string[] groupTypes)
+        {
+
+            groupTypes = groupTypes.Select(x => $"\"{x}\"").ToArray();
+
+            var jsonResponses = new List<string>();
+            var outlookResponse = $"{{ \"id\": \"outlook\", " +
+                                        $"\"status\": 200,  " +
+                                        $"\"body\": " +
+                                        $"{{ " +
+                                            $"\"mailEnabled\": {isMailEnabled.ToString().ToLower()}," +
+                                            $"\"securityEnabled\": {isSecurityEnabled.ToString().ToLower()}," +
+                                            $"\"groupTypes\": [{string.Join(",", groupTypes)}]" +
+                                        $"}}  " +
+                                    $"}}";
+
+            jsonResponses.Add(outlookResponse);
+
+            var sharepointResponse = $"{{ \"id\": \"sharepoint\", " +
+                                    $"\"status\": 200,  " +
+                                    $"\"body\": " +
+                                    $"{{ " +
+                                        $"\"webUrl\": \"someUrl\"" +
+                                    $"}}  " +
+                                $"}}";
+
+            jsonResponses.Add(sharepointResponse);
+            var jsonResponse = $"{{\"responses\": [{string.Join(",", jsonResponses)}]}}";
+            return GenerateHttpResponseMessage(jsonResponse);
+        }
+
+        private HttpResponseMessage GenerateHttpResponseMessage(string httpContent)
         {
             var httpResponse = new HttpResponseMessage
             {
@@ -134,7 +131,7 @@ namespace Services.Tests
                 Content = new StringContent(httpContent)
             };
 
-            return new BatchResponseContent(httpResponse);
+            return httpResponse;
         }
 
         private static IEnumerable<object> GetEndPointsData()

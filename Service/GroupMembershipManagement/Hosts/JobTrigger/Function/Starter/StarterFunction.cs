@@ -1,14 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models;
-using Hosts.JobTrigger;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Models;
 using Repositories.Contracts;
 using System;
-using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace Hosts.JobTrigger
