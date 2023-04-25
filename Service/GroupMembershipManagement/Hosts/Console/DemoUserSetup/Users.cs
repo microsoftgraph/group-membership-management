@@ -10,6 +10,9 @@ using System.Threading;
 using System.Diagnostics;
 using System.IO;
 using Models;
+using Microsoft.Graph.Models;
+using Microsoft.Kiota.Abstractions;
+using Microsoft.Graph.Models.ODataErrors;
 
 namespace DemoUserSetup
 {
@@ -26,37 +29,55 @@ namespace DemoUserSetup
         public async Task AddUsers()
         {
             await DeleteOldObjects("microsoft.graph.user");
-            var users = await _graphServiceClient.Users.Request().Filter("startswith(MailNickname, 'testuser')").Select("OnPremisesImmutableId,DisplayName,Id").GetAsync();
-            HandleExistingUsers(users.CurrentPage);
-            while (users.NextPageRequest != null)
+            var usersResponse = await _graphServiceClient
+                                .Users
+                                .GetAsync(requestConfiguration =>
+                                {
+                                    requestConfiguration.QueryParameters.Filter = "startswith(MailNickname, 'testuser')";
+                                    requestConfiguration.QueryParameters.Select = new[] { "OnPremisesImmutableId", "DisplayName", "Id" };
+                                });
+
+            HandleExistingUsers(usersResponse.Value);
+            while (usersResponse.OdataNextLink != null)
             {
-                users = await users.NextPageRequest.GetAsync();
-                HandleExistingUsers(users.CurrentPage);
+                var nextPageRequest = new RequestInformation
+                {
+                    HttpMethod = Method.GET,
+                    UrlTemplate = usersResponse.OdataNextLink
+                };
+
+                usersResponse = await _graphServiceClient
+                                                .RequestAdapter
+                                                .SendAsync(nextPageRequest,
+                                                           UserCollectionResponse.CreateFromDiscriminatorValue);
+
+
+                HandleExistingUsers(usersResponse.Value);
             }
 
-			try
-			{
-				Stopwatch timer = Stopwatch.StartNew();
-				for (int i = 0; i < _testUsers.Length; i++)
-				{
-					if (_testUsers[i] == null)
-						await AddNewUser(i);
+            try
+            {
+                Stopwatch timer = Stopwatch.StartNew();
+                for (int i = 0; i < _testUsers.Length; i++)
+                {
+                    if (_testUsers[i] == null)
+                        await AddNewUser(i);
 
-					if (i % 500 == 0)
-					{
-						var rate = timer.ElapsedMilliseconds / 500.0;
-						var millisecondsLeft = rate * (_testUsers.Length - i);
-						Console.WriteLine($"Added {i}/{_testUsers.Length} users ({i * 100.0 / _testUsers.Length:0.00}%). ETA: {TimeSpan.FromMilliseconds(millisecondsLeft)}");
-						timer.Restart();
-					}
-				}
+                    if (i % 500 == 0)
+                    {
+                        var rate = timer.ElapsedMilliseconds / 500.0;
+                        var millisecondsLeft = rate * (_testUsers.Length - i);
+                        Console.WriteLine($"Added {i}/{_testUsers.Length} users ({i * 100.0 / _testUsers.Length:0.00}%). ETA: {TimeSpan.FromMilliseconds(millisecondsLeft)}");
+                        timer.Restart();
+                    }
+                }
 
-				Console.WriteLine("Done!");
-			}
-			catch (ServiceException ex)
-			{
-				Console.WriteLine(ex);
-			}
+                Console.WriteLine("Done!");
+            }
+            catch (ODataError ex)
+            {
+                Console.WriteLine(ex);
+            }
 
 
             using var sw = new StreamWriter("memberids.csv", false);
@@ -67,42 +88,50 @@ namespace DemoUserSetup
             }
             sw.Flush();
             sw.Close();
-		}
+        }
 
-		private int _permanentlyDeleted = 0;
-		private Task PermanentlyDeleteItems(IEnumerable<DirectoryObject> toDelete)
-		{
-			return Task.WhenAll(toDelete.Select(async obj =>
-			{
-				await _graphServiceClient.Directory.DeletedItems[obj.Id].Request().DeleteAsync();
-				Interlocked.Increment(ref _permanentlyDeleted);
-			}));
-		}
+        private int _permanentlyDeleted = 0;
+        private Task PermanentlyDeleteItems(IEnumerable<DirectoryObject> toDelete)
+        {
+            return Task.WhenAll(toDelete.Select(async obj =>
+            {
+                await _graphServiceClient.Directory.DeletedItems[obj.Id].DeleteAsync();
+                Interlocked.Increment(ref _permanentlyDeleted);
+            }));
+        }
 
-		private async Task DeleteOldObjects(string type)
-		{
-			var deletedItemsUrl = _graphServiceClient.Directory.DeletedItems.AppendSegmentToRequestUrl(type);
-			var builder = new DirectoryDeletedItemsCollectionRequestBuilder(deletedItemsUrl, _graphServiceClient);
-			var deletedItems = await builder.Request().GetAsync();
+        private async Task DeleteOldObjects(string type)
+        {
+            var deletedItems = await _graphServiceClient.Directory.DeletedItems.GraphUser.GetAsync();
 
-            await PermanentlyDeleteItems(deletedItems);
+            await PermanentlyDeleteItems(deletedItems.Value);
 
-			while (deletedItems.NextPageRequest != null)
-			{
-				deletedItems = await deletedItems.NextPageRequest.GetAsync();
-				await PermanentlyDeleteItems(deletedItems);
-				Console.WriteLine($"Cleaned up {_permanentlyDeleted} deleted items so far.");
-			}
-		}
+            while (deletedItems.OdataNextLink != null)
+            {
+                var nextPageRequest = new RequestInformation
+                {
+                    HttpMethod = Method.GET,
+                    UrlTemplate = deletedItems.OdataNextLink
+                };
+
+                deletedItems = await _graphServiceClient
+                                               .RequestAdapter
+                                               .SendAsync(nextPageRequest,
+                                                          UserCollectionResponse.CreateFromDiscriminatorValue);
+
+                await PermanentlyDeleteItems(deletedItems.Value);
+                Console.WriteLine($"Cleaned up {_permanentlyDeleted} deleted items so far.");
+            }
+        }
 
         private static int _existingUsers = 0;
-		private void HandleExistingUsers(IEnumerable<User> users)
-		{
-			foreach (var user in users)
-			{
-				var userNumber = int.Parse(user.DisplayName.Substring("Test User ".Length));
-				if (userNumber < _testUsers.Length)
-					_testUsers[userNumber] = ToEntity(user);
+        private void HandleExistingUsers(IEnumerable<User> users)
+        {
+            foreach (var user in users)
+            {
+                var userNumber = int.Parse(user.DisplayName.Substring("Test User ".Length));
+                if (userNumber < _testUsers.Length)
+                    _testUsers[userNumber] = ToEntity(user);
                 _userIds.Add(user.OnPremisesImmutableId, user.Id);
 
                 _existingUsers++;
@@ -110,8 +139,8 @@ namespace DemoUserSetup
                 {
                     Console.WriteLine($"Got {_existingUsers} existing users.");
                 }
-			}
-		}
+            }
+        }
 
         private static readonly DemoData _preprodGraphUsers = new DemoData();
         private async Task AddNewUser(int number)
@@ -128,7 +157,7 @@ namespace DemoUserSetup
                 OnPremisesImmutableId = csvUser.ImmutableId
             };
 
-            var graphUser = await _graphServiceClient.Users.Request().WithMaxRetry(5).AddAsync(user);
+            var graphUser = await _graphServiceClient.Users.PostAsync(user);
             _testUsers[number] = ToEntity(graphUser);
 
             if (!_userIds.ContainsKey(csvUser.ImmutableId))
