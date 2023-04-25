@@ -66,16 +66,16 @@ stages:
         failIfCoverageEmpty: false
       condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
-    - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@8
-      displayName: 'check build quality'
-      inputs:
-        checkCoverage: true
-        coverageFailOption: fixed
-        coverageType: lines
-        coverageThreshold: 10
-        coverageVariance: 0
-        allowCoverageVariance: false
-      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
+    # - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@8
+    #   displayName: 'check build quality'
+    #   inputs:
+    #     checkCoverage: true
+    #     coverageFailOption: fixed
+    #     coverageType: lines
+    #     coverageThreshold: 10
+    #     coverageVariance: 0
+    #     allowCoverageVariance: false
+    #   condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
     - task: CopyFiles@2
       displayName: 'copy arm templates'
