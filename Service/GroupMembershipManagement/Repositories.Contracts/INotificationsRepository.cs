@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Graph;
 using Models.ThresholdNotifications;
 using System;
 using System.Collections.Generic;

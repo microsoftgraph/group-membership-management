@@ -187,11 +187,11 @@ namespace Hosts.OwnershipReader
             }
             catch (ServiceException ex)
             {
-                if ((ex.StatusCode == HttpStatusCode.ServiceUnavailable || ex.StatusCode == HttpStatusCode.BadGateway)
+                if ((ex.ResponseStatusCode == (int)HttpStatusCode.ServiceUnavailable || ex.ResponseStatusCode == (int)HttpStatusCode.BadGateway)
                     && ((context.CurrentUtcDateTime - syncJob.LastSuccessfulRunTime).TotalHours < syncJob.Period + 2))
                 {
                     syncJob.StartDate = context.CurrentUtcDateTime.AddMinutes(30);
-                    var httpStatus = Enum.GetName(ex.StatusCode);
+                    var httpStatus = Enum.GetName(typeof(HttpStatusCode), ex.ResponseStatusCode);
                     await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { SyncJob = syncJob, Message = $"Rescheduling job at {syncJob.StartDate} due to {httpStatus} exception" });
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Idle });
                     return;

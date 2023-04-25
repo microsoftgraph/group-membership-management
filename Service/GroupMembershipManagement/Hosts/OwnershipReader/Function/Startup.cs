@@ -26,7 +26,7 @@ namespace Hosts.OwnershipReader
         {
             base.Configure(builder);
 
-            builder.Services.AddSingleton<IGraphServiceClient>((services) =>
+            builder.Services.AddSingleton((services) =>
             {
                 var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
                 return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(graphCredentials));
