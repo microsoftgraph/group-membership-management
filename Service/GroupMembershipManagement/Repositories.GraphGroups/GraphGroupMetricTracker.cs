@@ -5,7 +5,6 @@ using Microsoft.Graph;
 using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts;
-using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -16,8 +15,6 @@ namespace Repositories.GraphGroups
     {
         private const string ResourceUnitHeader = "x-ms-resource-unit";
         private const string ThrottlePercentageHeader = "x-ms-throttle-limit-percentage";
-        private const string ThrottleInfoHeader = "x-ms-throttle-information";
-        private const string ThrottleScopeHeader = "x-ms-throttle-scope";
 
         private readonly GraphServiceClient _graphServiceClient;
         private readonly TelemetryClient _telemetryClient;
@@ -71,7 +68,12 @@ namespace Repositories.GraphGroups
                 _telemetryClient.GetMetric(nameof(Services.Entities.Metric.ThrottleLimitPercentage)).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
         }
 
-        private void TrackResourceUnitsUsedByTypeEvent(int ruu, QueryType queryType, Guid? runId)
+        public Metric GetMetric(string metric)
+        {
+            return _telemetryClient.GetMetric(metric);
+        }
+
+        public void TrackResourceUnitsUsedByTypeEvent(int ruu, QueryType queryType, Guid? runId)
         {
             var ruuByTypeEvent = new Dictionary<string, string>
                     {
@@ -83,8 +85,8 @@ namespace Repositories.GraphGroups
             _telemetryClient.TrackEvent("ResourceUnitsUsedByType", ruuByTypeEvent);
         }
 
-        delegate bool TryParseFunction<T>(string str, out T parsed);
-        private static T ParseFirst<T>(IEnumerable<string> toParse, TryParseFunction<T> tryParse)
+        public delegate bool TryParseFunction<T>(string str, out T parsed);
+        public static T ParseFirst<T>(IEnumerable<string> toParse, TryParseFunction<T> tryParse)
         {
             foreach (var str in toParse)
             {

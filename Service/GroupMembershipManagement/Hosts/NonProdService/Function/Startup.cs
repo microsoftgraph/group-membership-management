@@ -1,17 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
-using Services;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Microsoft.Graph;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Services.Contracts;
-using Common.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Repositories.GraphGroups;
-using Microsoft.Graph;
+using Services.Contracts;
 
 [assembly: FunctionsStartup(typeof(Hosts.NonProdService.Startup))]
 
@@ -27,7 +26,7 @@ namespace Hosts.NonProdService
             base.Configure(builder);
 
             builder.Services.AddSingleton<IKeyVaultSecret<INonProdService>>(services => new KeyVaultSecret<INonProdService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
-           .AddSingleton<IGraphServiceClient>((services) =>
+           .AddSingleton((services) =>
            {
                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
            })

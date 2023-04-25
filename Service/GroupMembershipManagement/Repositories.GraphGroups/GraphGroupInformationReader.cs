@@ -16,15 +16,15 @@ using System.Threading.Tasks;
 
 namespace Repositories.GraphGroups
 {
-    internal class GraphGroupInformationReader
+    internal class GraphGroupInformationRepository
     {
         private readonly ILoggingRepository _loggingRepository;
         private readonly GraphServiceClient _graphServiceClient;
         private readonly GraphGroupMetricTracker _graphGroupMetricTracker;
 
-        public GraphGroupInformationReader(GraphServiceClient graphServiceClient,
-                                           ILoggingRepository loggingRepository,
-                                           GraphGroupMetricTracker graphGroupMetricTracker)
+        public GraphGroupInformationRepository(GraphServiceClient graphServiceClient,
+                                               ILoggingRepository loggingRepository,
+                                               GraphGroupMetricTracker graphGroupMetricTracker)
         {
             _graphServiceClient = graphServiceClient ?? throw new ArgumentNullException(nameof(graphServiceClient));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
@@ -208,6 +208,30 @@ namespace Repositories.GraphGroups
             }
 
             return endpoints;
+        }
+
+        public async Task CreateGroupAsync(string newGroupName, Guid? runId)
+        {
+            try
+            {
+                if (await GroupExistsAsync(newGroupName, runId))
+                {
+                    return;
+                }
+
+                var group = await _graphServiceClient.Groups.PostAsync(new Group
+                {
+                    DisplayName = newGroupName,
+                    Description = $"Integration test group: {newGroupName}",
+                    MailNickname = new Guid().ToString(),
+                    MailEnabled = false,
+                    SecurityEnabled = true
+                });
+            }
+            catch (Exception e)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error creating group: {e}" });
+            }
         }
     }
 }

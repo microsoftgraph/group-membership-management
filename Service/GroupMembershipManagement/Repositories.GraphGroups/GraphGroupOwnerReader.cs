@@ -101,7 +101,6 @@ namespace Repositories.GraphGroups
             }
         }
 
-
         private async Task<bool> IsGroupOwnerAsync(string query, Guid groupObjectId, Guid? runId)
         {
             try
