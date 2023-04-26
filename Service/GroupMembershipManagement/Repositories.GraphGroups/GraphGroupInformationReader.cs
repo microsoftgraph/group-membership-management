@@ -137,7 +137,6 @@ namespace Repositories.GraphGroups
         public async Task<List<string>> GetGroupEndpointsAsync(Guid groupId, Guid? runId)
         {
             var endpoints = new List<string>();
-            var baseUrl = "https://graph.microsoft.com";
 
             try
             {
@@ -153,12 +152,10 @@ namespace Repositories.GraphGroups
 
                 var sharepointRequestInformation = _graphServiceClient
                                     .Groups[groupId.ToString()].Sites["root"]
-                                    .ToGetRequestInformation(requestConfiguration =>
-                                    {
-                                        requestConfiguration.QueryParameters.Select = new[] { "id", "siteCollection", "webUrl", "name" };
-                                    });
+                                    .ToGetRequestInformation();
 
                 var sharepointRequestId = await batchRequest.AddBatchRequestStepAsync(sharepointRequestInformation);
+
                 var batchResponse = await _graphServiceClient.Batch.PostAsync(batchRequest);
 
                 var group = await batchResponse.GetResponseByIdAsync<Group>(outlookRequestId);
@@ -191,10 +188,11 @@ namespace Repositories.GraphGroups
 
             try
             {
-                var endpointsUrl = $"{baseUrl}/beta/groups/{groupId}/endpoints";
+                var baseUrl = "https://graph.microsoft.com/beta";
+                var endpointsUrl = $"{baseUrl}/groups/{groupId}/endpoints";
                 var getRequestInformation = _graphServiceClient.Groups.ToGetRequestInformation();
                 getRequestInformation.URI = new Uri(endpointsUrl);
-                getRequestInformation.PathParameters["baseurl"] = "https://graph.microsoft.com/beta";
+                getRequestInformation.PathParameters["baseurl"] = baseUrl;
 
                 var endpointCollectionResponse = await _graphServiceClient
                                                             .RequestAdapter
