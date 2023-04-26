@@ -1,18 +1,18 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Azure;
-using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Graph;
+using Microsoft.Kiota.Abstractions;
+using Microsoft.Kiota.Abstractions.Serialization;
 using Models;
 using Moq;
 using Repositories.Contracts;
 using Repositories.GraphGroups;
-using WebApi.Models.Responses;
-using Microsoft.Graph;
-using Microsoft.Graph.Core.Requests;
 using WebApi.Controllers.v1.Jobs;
+using WebApi.Models.Responses;
 
 namespace Services.Tests
 {
@@ -20,24 +20,32 @@ namespace Services.Tests
     public class JobsControllerTests
     {
         private int _jobCount = 1000;
+
         private List<string> _groupTypes = null!;
         private List<SyncJob> _jobEntities = null!;
         private List<AzureADGroup> _groups = null!;
         private JobsController _jobsController = null!;
         private GetJobsHandler _getJobsHandler = null!;
         private TelemetryClient _telemetryClient = null!;
+        private Mock<IRequestAdapter> _requestAdapter = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<ISyncJobRepository> _syncJobRepository = null!;
-        private Mock<IGraphServiceClient> _graphServiceClient = null!;
+        private Mock<GraphServiceClient> _graphServiceClient = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
 
         [TestInitialize]
         public void Initialize()
         {
             _groups = new List<AzureADGroup>();
+            _requestAdapter = new Mock<IRequestAdapter>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<ISyncJobRepository>();
-            _graphServiceClient = new Mock<IGraphServiceClient>();
+
+            _requestAdapter.SetupProperty(x => x.BaseUrl).SetReturnsDefault("https://graph.microsoft.com/v1.0");
+
+            _graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object,
+                                                               "https://graph.microsoft.com/v1.0");
+
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
 
             _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
@@ -111,13 +119,17 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetJobsTestWithGraphAPIFailureAsync()
         {
-            var batchRequest = new Mock<IBatchRequest>();
-            var batch = new Mock<IBatchRequestBuilder>();
+            _requestAdapter.Setup(x => x.ConvertToNativeRequestAsync<HttpRequestMessage>(It.IsAny<RequestInformation>(), It.IsAny<CancellationToken>()))
+                           .ReturnsAsync(() => new HttpRequestMessage());
 
-            batch.Setup(x => x.Request()).Returns(batchRequest.Object);
-            _graphServiceClient.Setup(x => x.Batch).Returns(batch.Object);
-            batchRequest.Setup(x => x.PostAsync(It.IsAny<BatchRequestContent>()))
-                        .ThrowsAsync(new Exception("GraphAPI exception"));
+            _requestAdapter.Setup(x => x.SendNoContentAsync(
+                                                It.IsAny<RequestInformation>(),
+                                                It.IsAny<Dictionary<string, ParsableFactory<IParsable>>>(),
+                                                It.IsAny<CancellationToken>()
+                                 )).ThrowsAsync(new ApiException("GraphAPI exception"));
+
+            _graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object,
+                                                               "https://graph.microsoft.com/v1.0");
 
             var graphGroupRepository = new GraphGroupRepository(
                                                 _graphServiceClient.Object,

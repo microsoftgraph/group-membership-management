@@ -4,14 +4,13 @@
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
+using Microsoft.Kiota.Abstractions;
 using Models;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace Repositories.GraphGroups
@@ -143,24 +142,31 @@ namespace Repositories.GraphGroups
             try
             {
                 var batchRequest = new BatchRequestContent(_graphServiceClient);
-                var outlookRequest = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/v1.0/groups/{groupId}?$select=mailEnabled,groupTypes,securityEnabled");
-                var outlookStep = new BatchRequestStep("outlook", outlookRequest);
-                var sharepointRequest = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/v1.0/groups/{groupId}/sites/root");
-                var sharepointStep = new BatchRequestStep("sharepoint", sharepointRequest);
+                var outlookRequestInformation = _graphServiceClient
+                                                    .Groups[groupId.ToString()]
+                                                    .ToGetRequestInformation(requestConfiguration =>
+                                                    {
+                                                        requestConfiguration.QueryParameters.Select = new[] { "mailEnabled", "groupTypes", "securityEnabled" };
+                                                    });
 
-                batchRequest.AddBatchRequestStep(outlookStep);
-                batchRequest.AddBatchRequestStep(sharepointStep);
+                var outlookRequestId = await batchRequest.AddBatchRequestStepAsync(outlookRequestInformation);
 
+                var sharepointRequestInformation = _graphServiceClient
+                                    .Groups[groupId.ToString()].Sites["root"]
+                                    .ToGetRequestInformation(requestConfiguration =>
+                                    {
+                                        requestConfiguration.QueryParameters.Select = new[] { "id", "siteCollection", "webUrl", "name" };
+                                    });
+
+                var sharepointRequestId = await batchRequest.AddBatchRequestStepAsync(sharepointRequestInformation);
                 var batchResponse = await _graphServiceClient.Batch.PostAsync(batchRequest);
-                var individualResponses = await batchResponse.GetResponsesAsync();
 
-                if (individualResponses.ContainsKey("outlook") && individualResponses["outlook"].IsSuccessStatusCode)
+                var group = await batchResponse.GetResponseByIdAsync<Group>(outlookRequestId);
+                if (group != null)
                 {
-                    var content = await individualResponses["outlook"].Content.ReadAsStringAsync();
-                    var jObject = JObject.Parse(content);
-                    var isMailEnabled = jObject.Value<bool>("mailEnabled");
-                    var isSecurityEnabled = jObject.Value<bool>("securityEnabled");
-                    var groupTypes = jObject.Value<JArray>("groupTypes").Values<string>().ToList();
+                    var isMailEnabled = group.MailEnabled ?? false;
+                    var groupTypes = group.GroupTypes ?? new List<string>();
+                    var isSecurityEnabled = group.SecurityEnabled ?? false;
 
                     if (isMailEnabled && groupTypes.Contains("Unified"))
                         endpoints.Add("Outlook");
@@ -168,12 +174,13 @@ namespace Repositories.GraphGroups
                         endpoints.Add("SecurityGroup");
                 }
 
-                if (individualResponses.ContainsKey("sharepoint") && individualResponses["sharepoint"].IsSuccessStatusCode)
+                var siteResponse = await batchResponse.GetResponseByIdAsync(sharepointRequestId);
+                if (siteResponse.IsSuccessStatusCode)
                 {
                     endpoints.Add("SharePoint");
                 }
             }
-            catch (ODataError ex)
+            catch (ApiException ex)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
@@ -232,6 +239,76 @@ namespace Repositories.GraphGroups
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error creating group: {e}" });
             }
+        }
+
+        public async Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds, Guid? runId)
+        {
+            var groups = new List<AzureADGroup>();
+
+            try
+            {
+                foreach (var groupIdsChunk in groupIds.Distinct().Chunk(20))
+                {
+                    var batchRequest = new BatchRequestContent(_graphServiceClient);
+                    var requestIds = new Dictionary<string, Guid>();
+
+                    foreach (var groupId in groupIdsChunk)
+                    {
+                        var getRequestInformation = _graphServiceClient.Groups[groupId.ToString()].ToGetRequestInformation(requestConfiguration =>
+                        {
+                            requestConfiguration.QueryParameters.Select = new[] { "id", "mailEnabled", "groupTypes", "securityEnabled" };
+                        });
+
+                        var requestId = await batchRequest.AddBatchRequestStepAsync(getRequestInformation);
+                        requestIds.Add(requestId, groupId);
+                    }
+
+                    var batchResponse = await _graphServiceClient.Batch.PostAsync(batchRequest);
+
+                    foreach (var requestId in requestIds.Keys)
+                    {
+                        var group = new AzureADGroup
+                        {
+                            ObjectId = requestIds[requestId],
+                            Type = "Unknown"
+                        };
+
+                        var graphGroup = await batchResponse.GetResponseByIdAsync<Group>(requestId);
+
+                        if (graphGroup != null)
+                        {
+                            var isMailEnabled = graphGroup.MailEnabled ?? false;
+                            var groupTypes = graphGroup.GroupTypes ?? new List<string>();
+                            var isSecurityEnabled = graphGroup.SecurityEnabled ?? false;
+
+                            //table defining group types can be found here
+                            // https://learn.microsoft.com/en-us/graph/api/resources/groups-overview
+                            // ?view=graph-rest-1.0&tabs=http#group-types-in-azure-ad-and-microsoft-graph
+                            if (groupTypes.Contains("Unified") && isMailEnabled)
+                                group.Type = "Microsoft 365";
+                            else if (!groupTypes.Any() && !isMailEnabled && isSecurityEnabled)
+                                group.Type = "Security";
+                            else if (!groupTypes.Any() && isMailEnabled && isSecurityEnabled)
+                                group.Type = "Mail enabled security";
+                            else if (!groupTypes.Any() && isMailEnabled && !isSecurityEnabled)
+                                group.Type = "Distribution";
+                        }
+
+                        groups.Add(group);
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Unable to retrieve group types\n{ex.GetBaseException()}",
+                    RunId = runId
+                });
+            }
+
+            return groups;
         }
     }
 }

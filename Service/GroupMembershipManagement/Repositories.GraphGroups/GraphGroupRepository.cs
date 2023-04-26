@@ -186,9 +186,9 @@ namespace Repositories.GraphGroups
             throw new NotImplementedException();
         }
 
-        public Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds)
+        public async Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds)
         {
-            throw new NotImplementedException();
+            return await _graphGroupInformationReader.GetGroupsAsync(groupIds, RunId);
         }
     }
 }
