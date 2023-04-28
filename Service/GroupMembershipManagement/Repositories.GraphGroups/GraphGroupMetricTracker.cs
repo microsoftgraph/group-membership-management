@@ -7,15 +7,13 @@ using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Repositories.GraphGroups
 {
     internal class GraphGroupMetricTracker
     {
-        private const string ResourceUnitHeader = "x-ms-resource-unit";
-        private const string ThrottlePercentageHeader = "x-ms-throttle-limit-percentage";
-
         private readonly GraphServiceClient _graphServiceClient;
         private readonly TelemetryClient _telemetryClient;
         private readonly ILoggingRepository _loggingRepository;
@@ -29,7 +27,13 @@ namespace Repositories.GraphGroups
             _loggingRepository = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task TrackMetricsAsync(IDictionary<string, object> additionalData, QueryType queryType, Guid? runId)
+        public async Task TrackMetricsAsync(IDictionary<string, object> headers, QueryType queryType, Guid? runId)
+        {
+            //TODO: DELETE THIS METHOD
+            //replace it with TrackMetricsAsync2
+        }
+
+        public async Task TrackMetricsAsync2(IDictionary<string, IEnumerable<string>> headers, QueryType queryType, Guid? runId)
         {
             int ruu = 0;
 
@@ -42,18 +46,7 @@ namespace Repositories.GraphGroups
                 return;
             }
 
-            // some replies just don't have the response headers
-            // i suspect those either aren't throttled the same way or it's a different kind of call
-            if (!additionalData.TryGetValue("responseHeaders", out var headers))
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} is not available", RunId = runId });
-                return;
-            }
-
-            // see https://github.com/microsoftgraph/msgraph-sdk-dotnet/blob/dev/docs/headers.md#reading-response-headers
-            var responseHeaders = JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(headers.ToString());
-
-            if (!responseHeaders.TryGetValue(ResourceUnitHeader, out var resourceValues))
+            if (!headers.TryGetValue(GraphResponseHeader.ResourceUnitHeader, out var resourceValues))
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} is not available", RunId = runId });
                 return;
@@ -64,7 +57,7 @@ namespace Repositories.GraphGroups
             TrackResourceUnitsUsedByTypeEvent(ruu, queryType, runId);
             _telemetryClient.GetMetric(nameof(Services.Entities.Metric.ResourceUnitsUsed)).TrackValue(ruu);
 
-            if (responseHeaders.TryGetValue(ThrottlePercentageHeader, out var throttleValues))
+            if (headers.TryGetValue(GraphResponseHeader.ThrottlePercentageHeader, out var throttleValues))
                 _telemetryClient.GetMetric(nameof(Services.Entities.Metric.ThrottleLimitPercentage)).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
         }
 
@@ -83,6 +76,40 @@ namespace Repositories.GraphGroups
                     };
 
             _telemetryClient.TrackEvent("ResourceUnitsUsedByType", ruuByTypeEvent);
+        }
+
+
+        public async Task TrackRequestAsync(IDictionary<string, object> additionalData, Guid? runId)
+        {
+            //TODO: DELETE THIS METHOD
+            //replace it with TrackRequestAsync2
+        }
+
+        public async Task TrackRequestAsync2(IDictionary<string, IEnumerable<string>> headers, Guid? runId)
+        {
+            string requestId = "";
+            string clientRequestId = "";
+            string diagnosticValue = "";
+            string dateValue = "";
+
+            if (headers.TryGetValue("request-id", out var request))
+                requestId = request.FirstOrDefault();
+
+            if (headers.TryGetValue("client-request-id", out var clientRequest))
+                clientRequestId = clientRequest.FirstOrDefault();
+
+            if (headers.TryGetValue("x-ms-ags-diagnostic", out var diagnostic))
+                diagnosticValue = diagnostic.FirstOrDefault();
+
+            if (headers.TryGetValue("Date", out var date))
+                dateValue = date.FirstOrDefault();
+
+            await _loggingRepository.LogMessageAsync(
+                new LogMessage
+                {
+                    Message = $"Request Id - {requestId}, Client Request Id - {clientRequestId}, Diagnostic - {diagnosticValue}, Date - {dateValue}",
+                    RunId = runId
+                });
         }
 
         public delegate bool TryParseFunction<T>(string str, out T parsed);

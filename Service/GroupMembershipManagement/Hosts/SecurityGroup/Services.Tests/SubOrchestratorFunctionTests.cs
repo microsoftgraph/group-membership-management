@@ -256,7 +256,6 @@ namespace Tests.Services
                                  .ReturnsAsync(() =>
                                  {
                                      var users = new List<AzureADUser>();
-                                     var usersPage = new Mock<IGroupDeltaCollectionPage>();
 
                                      for (var i = 0; i < _userCount; i++)
                                      {

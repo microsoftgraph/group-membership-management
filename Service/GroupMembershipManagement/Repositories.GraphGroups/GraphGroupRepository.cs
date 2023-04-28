@@ -6,6 +6,7 @@ using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Repositories.GraphGroups
@@ -19,6 +20,7 @@ namespace Repositories.GraphGroups
         private readonly GraphUserReader _graphUserReader;
         private readonly GraphGroupMembershipReader _graphGroupMembershipReader;
         private readonly GraphGroupMembershipUpdater _graphGroupMembershipUpdater;
+        private readonly GraphGroupDeltaReader _graphGroupDeltaReader;
 
         public Guid RunId { get; set; }
 
@@ -36,6 +38,7 @@ namespace Repositories.GraphGroups
             _graphUserReader = new GraphUserReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
             _graphGroupMembershipReader = new GraphGroupMembershipReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
             _graphGroupMembershipUpdater = new GraphGroupMembershipUpdater(graphServiceClient, loggingRepository, graphGroupMetricTracker);
+            _graphGroupDeltaReader = new GraphGroupDeltaReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
         }
 
         public async Task<bool> GroupExists(Guid objectId)
@@ -76,9 +79,12 @@ namespace Repositories.GraphGroups
             return await _graphGroupOwnerReader.IsAppIDOwnerOfGroupAsync(appId, groupObjectId, RunId);
         }
 
-        public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
+        public async Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
         {
-            throw new NotImplementedException();
+            var groupExists = await _graphGroupInformationReader.GroupExistsAsync(groupObjectId, RunId);
+            if (!groupExists) return false;
+
+            return await _graphGroupOwnerReader.IsEmailRecipientOwnerOfGroupAsync(email, groupObjectId, RunId);
         }
 
         public async Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
@@ -115,16 +121,16 @@ namespace Repositories.GraphGroups
             return await _graphGroupMembershipUpdater.RemoveUsersFromGroup(users, targetGroup);
         }
 
-        public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)>
-            GetFirstTransitiveMembersPageAsync(Guid objectId)
+        public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)>
+            GetFirstTransitiveMembersPageAsync(Guid groupId)
         {
-            throw new NotImplementedException();
+            return await _graphGroupMembershipReader.GetFirstTransitiveMembersPageAsync(groupId, RunId);
         }
 
-        public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)>
+        public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)>
             GetNextTransitiveMembersPageAsync(string nextPageUrl)
         {
-            throw new NotImplementedException();
+            return await _graphGroupMembershipReader.GetNextTransitiveMembersPageAsync(nextPageUrl, RunId);
         }
 
         public Task<AzureADUser> GetUserByEmailAsync(string emailAddress)
@@ -154,36 +160,52 @@ namespace Repositories.GraphGroups
             throw new NotImplementedException();
         }
 
-        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>
+        public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>
             GetFirstDeltaUsersPageAsync(string deltaLink)
         {
-            throw new NotImplementedException();
+            var (usersToAdd, usersToRemove, nextPageUrl, deltaUrl) = await _graphGroupDeltaReader.GetNextDeltaUsersPageAsync(deltaLink, RunId);
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Number of users from first page using delta link - {usersToAdd.Count + usersToRemove.Count}",
+                RunId = RunId
+            });
+
+            return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl);
         }
 
-        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>
-            GetNextDeltaUsersPageAsync(string nextPageUrl)
+        public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>
+            GetNextDeltaUsersPageAsync(string deltaLink)
         {
-            throw new NotImplementedException();
+            var (usersToAdd, usersToRemove, nextPageUrl, deltaUrl) = await _graphGroupDeltaReader.GetNextDeltaUsersPageAsync(deltaLink, RunId);
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Number of users from next page using delta link - {usersToAdd.Count + usersToRemove.Count}",
+                RunId = RunId
+            });
+
+            return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl);
         }
 
-        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstUsersPageAsync(Guid objectId)
+        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstUsersPageAsync(Guid groupId)
         {
-            throw new NotImplementedException();
+            return await _graphGroupDeltaReader.GetFirstUsersPageAsync(groupId, RunId);
         }
 
-        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextUsersPageAsync(string nextPageUrl)
+        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextUsersPageAsync(string nextPageUrl)
         {
-            throw new NotImplementedException();
+            return await _graphGroupDeltaReader.GetNextUsersPageAsync(nextPageUrl, RunId);
         }
 
-        public Task<int> GetGroupsCountAsync(Guid objectId)
+        public async Task<int> GetGroupsCountAsync(Guid objectId)
         {
-            throw new NotImplementedException();
+            return await _graphGroupMembershipReader.GetGroupsCountAsync(objectId, RunId);
         }
 
-        public Task<int> GetUsersCountAsync(Guid objectId)
+        public async Task<int> GetUsersCountAsync(Guid objectId)
         {
-            throw new NotImplementedException();
+            return await _graphGroupMembershipReader.GetUsersCountAsync(objectId, RunId);
         }
 
         public async Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds)

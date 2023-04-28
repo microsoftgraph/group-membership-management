@@ -101,6 +101,38 @@ namespace Repositories.GraphGroups
             }
         }
 
+        public async Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId, Guid? runId)
+        {
+
+            User user = null;
+
+            try
+            {
+                user = await _graphServiceClient.Users[email].GetAsync();
+            }
+            catch (ServiceException ex)
+            {
+                if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+                    return false;
+
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = runId
+                });
+
+                throw;
+            }
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                RunId = runId,
+                Message = $"Checking if email owns the group {groupObjectId}."
+            });
+
+            return await IsGroupOwnerAsync($"id eq '{user.Id}'", groupObjectId, runId);
+        }
+
         private async Task<bool> IsGroupOwnerAsync(string query, Guid groupObjectId, Guid? runId)
         {
             try

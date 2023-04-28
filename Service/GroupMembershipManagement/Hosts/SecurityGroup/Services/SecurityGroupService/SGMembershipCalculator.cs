@@ -1,9 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Models.ServiceBus;
-using Microsoft.Graph;
 using Models;
+using Models.ServiceBus;
 using Newtonsoft.Json;
 using Polly;
 using Polly.Retry;

@@ -138,11 +138,11 @@ namespace Hosts.SecurityGroup
             }
             catch (ServiceException ex)
             {
-                if ((ex.StatusCode == HttpStatusCode.ServiceUnavailable || ex.StatusCode == HttpStatusCode.BadGateway)
+                if ((ex.ResponseStatusCode == (int)HttpStatusCode.ServiceUnavailable || ex.ResponseStatusCode == (int)HttpStatusCode.BadGateway)
                     && ((context.CurrentUtcDateTime - syncJob.LastSuccessfulRunTime).TotalHours < syncJob.Period + 2))
                 {
                     syncJob.StartDate = context.CurrentUtcDateTime.AddMinutes(30);
-                    var httpStatus = Enum.GetName(ex.StatusCode);
+                    var httpStatus = Enum.GetName(typeof(HttpStatusCode), ex.ResponseStatusCode);
 
                     _ = _log.LogMessageAsync(new LogMessage { Message = $"Rescheduling job at {syncJob.StartDate} due to {httpStatus} exception", RunId = runId });
 

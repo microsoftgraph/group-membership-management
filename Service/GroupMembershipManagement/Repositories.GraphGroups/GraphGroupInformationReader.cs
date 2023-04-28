@@ -15,20 +15,13 @@ using System.Threading.Tasks;
 
 namespace Repositories.GraphGroups
 {
-    internal class GraphGroupInformationRepository
+    internal class GraphGroupInformationRepository : GraphGroupRepositoryBase
     {
-        private readonly ILoggingRepository _loggingRepository;
-        private readonly GraphServiceClient _graphServiceClient;
-        private readonly GraphGroupMetricTracker _graphGroupMetricTracker;
-
         public GraphGroupInformationRepository(GraphServiceClient graphServiceClient,
-                                               ILoggingRepository loggingRepository,
-                                               GraphGroupMetricTracker graphGroupMetricTracker)
-        {
-            _graphServiceClient = graphServiceClient ?? throw new ArgumentNullException(nameof(graphServiceClient));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _graphGroupMetricTracker = graphGroupMetricTracker ?? throw new ArgumentNullException(nameof(graphGroupMetricTracker));
-        }
+                                  ILoggingRepository loggingRepository,
+                                  GraphGroupMetricTracker graphGroupMetricTracker)
+                                  : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
+        { }
 
         public async Task<bool> GroupExistsAsync(Guid groupId, Guid? runId)
         {

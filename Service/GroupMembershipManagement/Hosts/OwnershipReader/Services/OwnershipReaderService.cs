@@ -51,6 +51,13 @@ namespace Services
 
         public async Task<List<Guid>> GetGroupOwnersAsync(Guid groupId)
         {
+            var groupExists = await _graphGroupRepository.GroupExists(groupId);
+            if (!groupExists)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Group {groupId} does not exist" });
+                return new List<Guid>();
+            }
+
             var owners = await _graphGroupRepository.GetGroupOwnersAsync(groupId, 100);
             return owners.Select(x => x.ObjectId).ToList();
         }

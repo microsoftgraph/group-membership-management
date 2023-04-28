@@ -21,10 +21,6 @@ namespace Repositories.GraphGroups
     {
         private const int GraphBatchLimit = 20;
         private const int ConcurrentRequests = 10;
-        private const string ResourceUnitHeader = "x-ms-resource-unit";
-        private const string ThrottleScopeHeader = "x-ms-throttle-scope";
-        private const string ThrottleInfoHeader = "x-ms-throttle-information";
-        private const string ThrottlePercentageHeader = "x-ms-throttle-limit-percentage";
 
         private static readonly HttpStatusCode[] _shouldRetry = new[]
             { HttpStatusCode.ServiceUnavailable, HttpStatusCode.GatewayTimeout, HttpStatusCode.BadGateway, HttpStatusCode.InternalServerError };
@@ -330,7 +326,7 @@ namespace Repositories.GraphGroups
                 var status = response.StatusCode;
                 var content = await response.Content.ReadAsStringAsync();
 
-                if (response.Headers.TryGetValues(ResourceUnitHeader, out var resourceValues))
+                if (response.Headers.TryGetValues(GraphResponseHeader.ResourceUnitHeader, out var resourceValues))
                 {
                     int ruu = GraphGroupMetricTracker.ParseFirst<int>(resourceValues, int.TryParse);
                     await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), QueryType.Other)} - {ruu}", RunId = RunId });
@@ -338,7 +334,7 @@ namespace Repositories.GraphGroups
                     resourceUnitsUsed.TrackValue(ruu);
                 }
 
-                if (response.Headers.TryGetValues(ThrottlePercentageHeader, out var throttleValues))
+                if (response.Headers.TryGetValues(GraphResponseHeader.ThrottlePercentageHeader, out var throttleValues))
                     throttleLimitPercentage.TrackValue(GraphGroupMetricTracker.ParseFirst<double>(throttleValues, double.TryParse));
 
                 await _loggingRepository.LogMessageAsync(new LogMessage
@@ -434,8 +430,8 @@ namespace Repositories.GraphGroups
                         var throttleWait = CalculateThrottleWait(response.Headers.RetryAfter) + TimeSpan.FromSeconds(10);
 
                         var startThrottling = Task.Delay(throttleWait);
-                        var gotThrottleInfo = response.Headers.TryGetValues(ThrottleInfoHeader, out var throttleInfo);
-                        var gotThrottleScope = response.Headers.TryGetValues(ThrottleScopeHeader, out var throttleScope);
+                        var gotThrottleInfo = response.Headers.TryGetValues(GraphResponseHeader.ThrottleInfoHeader, out var throttleInfo);
+                        var gotThrottleScope = response.Headers.TryGetValues(GraphResponseHeader.ThrottleScopeHeader, out var throttleScope);
                         await _loggingRepository.LogMessageAsync(new LogMessage
                         {
                             Message = string.Format("Got 429 throttled. Waiting {0} seconds. Delta: {1} Date: {2} Reason: {3} Scope: {4}",

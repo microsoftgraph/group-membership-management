@@ -289,13 +289,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestGraphAPITimeoutExceptionAsync()
         {
-            var error = new Error
-            {
-                Code = "timeout",
-                Message = "The request timed out"
-            };
-
-            var exception = new Exception(error.Message);
+            var exception = new Exception("The request timed out");
 
             _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
                                         .Throws(exception);
@@ -347,14 +341,9 @@ namespace Tests.Services
 
             _durableOrchestrationContext.Setup(x => x.GetInput<OrchestratorRequest>())
                                         .Returns(() => _orchestratorRequest);
-            var error = new Error
-            {
-                Code = "502",
-                Message = "Bad Gateway"
-            };
 
             _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
-                                        .Throws(new ServiceException(error, null, HttpStatusCode.BadGateway));
+                                        .Throws(new ServiceException("Bad Gateway", null, (int)HttpStatusCode.BadGateway));
 
 
             var orchestratorFunction = new OrchestratorFunction(
@@ -382,7 +371,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestMembershipAggregatorCallFailsAsync()
         {
-            _membershipAgregatorResponse = new DurableHttpResponse(System.Net.HttpStatusCode.ServiceUnavailable);
+            _membershipAgregatorResponse = new DurableHttpResponse(HttpStatusCode.ServiceUnavailable);
 
             var orchestratorFunction = new OrchestratorFunction(
                                             _loggingRepository.Object,

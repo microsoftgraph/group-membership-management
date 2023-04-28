@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Graph;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -14,7 +13,6 @@ namespace Tests.FunctionApps.Mocks
     {
         public Dictionary<Guid, List<AzureADUser>> GroupsToUsers { get; set; }
         public Dictionary<string, int> nonUserGraphObjects { get; set; }
-        public IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup { get; set; }
         public int ThrowSocketExceptionsFromGroupExistsBeforeSuccess { get; set; } = 0;
         public bool ThrowNonSocketExceptionFromGroupExists { get; set; } = false;
         public int ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess { get; set; } = 0;
@@ -77,26 +75,12 @@ namespace Tests.FunctionApps.Mocks
         {
             throw new NotImplementedException();
         }
-        public Task<IGraphServicePlacesCollectionPage> GetRoomsAsync(string url, int top, int skip)
-        {
-            throw new NotImplementedException();
-        }
         public Task<(List<AzureADUser> users, string nextPageUrl)> GetRoomsPageAsync(string url, int top, int skip)
         {
             throw new NotImplementedException();
         }
 
         public Task<(List<AzureADUser> users, string nextPageUrl)> GetWorkSpacesPageAsync(string url, int top, int skip)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<IGroupDeltaCollectionPage> GetGroupUsersPageByIdAsync(string groupId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<IGroupDeltaCollectionPage> GetGroupUsersPageByLinkAsync(string deltaLink)
         {
             throw new NotImplementedException();
         }

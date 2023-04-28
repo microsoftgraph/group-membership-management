@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Graph;
 using Models;
 using Polly;
 using Repositories.Contracts;
