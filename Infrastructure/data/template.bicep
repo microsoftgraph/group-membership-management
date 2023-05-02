@@ -279,6 +279,33 @@ param notifierProviderId string
 @description('JSON string with an array listing the existing data resources [{Name: string, ResourceType: string}]')
 param existingDataResources string = '[]'
 
+@description('Administrators Azure AD Group Object Id')
+param sqlAdministratorsGroupId string
+
+@description('Administrators Azure AD Group Name')
+param sqlAdministratorsGroupName string
+
+@description('Administrator user name')
+param sqlAdminUserName string = 'SQLDBAdmin'
+
+@secure()
+@description('Administrator password')
+param sqlAdminPassword string = 'ADMN${toLower(newGuid())}!$#'
+
+module sqlServer 'sqlServer.bicep' =  {
+  name: 'sqlServerTemplate'
+  params: {
+    environmentAbbreviation: environmentAbbreviation
+    location: location
+    solutionAbbreviation: solutionAbbreviation
+    sqlAdministratorsGroupId: sqlAdministratorsGroupId
+    sqlAdministratorsGroupName: sqlAdministratorsGroupName
+    sqlAdminPassword: sqlAdminPassword
+    sqlAdminUserName:  sqlAdminUserName
+    tenantId: tenantId
+  }
+}
+
 var isDataKVPresent = !empty(existingDataResources) ? !empty(filter(json(existingDataResources), x => x.Name == keyVaultName && x.ResourceType == 'Microsoft.KeyVault/vaults')) : false
 
 module dataKeyVaultTemplate 'keyVault.bicep' = if(!isDataKVPresent) {
