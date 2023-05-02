@@ -77,7 +77,7 @@ namespace Repositories.GraphGroups
             var nonUserGraphObjects = new Dictionary<string, int>();
             var usersResponse = await GetFirstMembersAsync(url);
 
-            await _graphGroupMetricTracker.TrackMetricsAsync2(usersResponse.Headers, QueryType.Other, runId);
+            await _graphGroupMetricTracker.TrackMetricsAsync(usersResponse.Headers, QueryType.Other, runId);
 
             users.AddRange(ToUsers(usersResponse.Response.Value, nonUserGraphObjects));
 
@@ -92,7 +92,7 @@ namespace Repositories.GraphGroups
             var nonUserGraphObjects = new Dictionary<string, int>();
             var usersResponse = await GetNextMembersAsync(nextPageUrl);
 
-            await _graphGroupMetricTracker.TrackMetricsAsync2(usersResponse.Headers, QueryType.Other, runId);
+            await _graphGroupMetricTracker.TrackMetricsAsync(usersResponse.Headers, QueryType.Other, runId);
 
             users.AddRange(ToUsers(usersResponse.Response.Value, nonUserGraphObjects));
             return (users, nonUserGraphObjects, usersResponse.Response.OdataNextLink);

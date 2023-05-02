@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
@@ -9,9 +10,13 @@ using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
+using static Microsoft.Graph.CoreConstants;
 
 namespace Repositories.GraphGroups
 {
@@ -27,8 +32,23 @@ namespace Repositories.GraphGroups
         {
             try
             {
-                var group = await _graphServiceClient.Groups[groupId.ToString()].GetAsync();
-                await _graphGroupMetricTracker.TrackMetricsAsync(group.AdditionalData, QueryType.Other, runId);
+                var nativeResponseHandler = new NativeResponseHandler();
+                var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
+                Group group = null;
+
+                await _graphServiceClient.Groups[groupId.ToString()].GetAsync(requestConfiguration =>
+                {
+                    requestConfiguration.Options.Add(responseHandlerOption);
+                });
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+                if (nativeResponse.IsSuccessStatusCode)
+                {
+                    group = await DeserializeResponseAsync(nativeResponse, Group.CreateFromDiscriminatorValue);
+                }
+
+                var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
 
                 return group != null;
             }
@@ -107,8 +127,23 @@ namespace Repositories.GraphGroups
         {
             try
             {
-                var group = await _graphServiceClient.Groups[groupId.ToString()].GetAsync();
-                await _graphGroupMetricTracker.TrackMetricsAsync(group.AdditionalData, QueryType.Other, runId);
+                var nativeResponseHandler = new NativeResponseHandler();
+                var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
+                Group group = null;
+
+                await _graphServiceClient.Groups[groupId.ToString()].GetAsync(requestConfiguration =>
+                {
+                    requestConfiguration.Options.Add(responseHandlerOption);
+                });
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+                if (nativeResponse.IsSuccessStatusCode)
+                {
+                    group = await DeserializeResponseAsync(nativeResponse, Group.CreateFromDiscriminatorValue);
+                }
+
+                var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
 
                 return group != null ? group.DisplayName : string.Empty;
             }

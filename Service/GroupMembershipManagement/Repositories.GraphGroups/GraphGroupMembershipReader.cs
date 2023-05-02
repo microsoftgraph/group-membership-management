@@ -29,47 +29,32 @@ namespace Repositories.GraphGroups
 
         public async Task<List<AzureADUser>> GetUsersInGroupTransitivelyAsync(Guid groupId, Guid? runId)
         {
-            var nonUserGraphObjects = new Dictionary<string, int>();
+            var nonUserGraphObjects = new List<KeyValuePair<string, int>>();
+            var transitiveMembers = new List<AzureADUser>();
 
             try
             {
-                var membersResponse = await _graphServiceClient
-                                                   .Groups[groupId.ToString()]
-                                                   .TransitiveMembers
-                                                   .GetAsync(requestConfiguration =>
-                                                   {
-                                                       requestConfiguration.QueryParameters.Top = 999;
-                                                       requestConfiguration.QueryParameters.Select = new[] { "id" };
-                                                   });
+                var response = await GetFirstTransitiveMembersPageAsync(groupId, runId);
+                transitiveMembers.AddRange(response.users);
+                nonUserGraphObjects.AddRange(response.nonUserGraphObjects);
 
-                await _graphGroupMetricTracker.TrackMetricsAsync(membersResponse.AdditionalData, QueryType.Other, runId);
-
-                var members = new List<AzureADUser>(ToUsers(membersResponse.Value, nonUserGraphObjects));
-                var nextPageLink = membersResponse.OdataNextLink;
-
-                while (nextPageLink != null)
+                var nextPageUrl = response.nextPageUrl;
+                while (nextPageUrl != null)
                 {
-                    var nextPageRequest = new RequestInformation
-                    {
-                        HttpMethod = Method.GET,
-                        UrlTemplate = nextPageLink
-                    };
-
-                    var nextPageResult = await _graphServiceClient
-                                                    .RequestAdapter
-                                                    .SendAsync(nextPageRequest,
-                                                               DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
-
-                    members.AddRange(ToUsers(nextPageResult.Value, nonUserGraphObjects));
-
-                    nextPageLink = nextPageResult.OdataNextLink;
-
-                    await _graphGroupMetricTracker.TrackMetricsAsync(nextPageResult.AdditionalData, QueryType.Other, runId);
+                    var nextPageResult = await GetNextTransitiveMembersPageAsync(nextPageUrl, runId);
+                    transitiveMembers.AddRange(nextPageResult.users);
+                    nonUserGraphObjects.AddRange(nextPageResult.nonUserGraphObjects);
+                    nextPageUrl = nextPageResult.nextPageUrl;
                 }
 
                 var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, nonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
-                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = runId, Message = $"From group {groupId}, read {members.Count} users, and the following other directory objects:\n{nonUserGraphObjectsSummary}\n" });
-                return members;
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = $"From group {groupId}, read {transitiveMembers.Count} users, and the following other directory objects:\n{nonUserGraphObjectsSummary}\n"
+                });
+
+                return transitiveMembers;
             }
             catch (ODataError ex)
             {
@@ -122,8 +107,8 @@ namespace Repositories.GraphGroups
 
             var usersResponse = await GetGroupTransitiveMembersPageByIdAsync(groupId.ToString());
 
-            await _graphGroupMetricTracker.TrackMetricsAsync2(usersResponse.Headers, QueryType.Transitive, runId);
-            await _graphGroupMetricTracker.TrackRequestAsync2(usersResponse.Headers, runId);
+            await _graphGroupMetricTracker.TrackMetricsAsync(usersResponse.Headers, QueryType.Transitive, runId);
+            await _graphGroupMetricTracker.TrackRequestAsync(usersResponse.Headers, runId);
 
             users.AddRange(ToUsers(usersResponse.Response.Value, nonUserGraphObjects));
             return (users, nonUserGraphObjects, usersResponse.Response.OdataNextLink);
@@ -138,8 +123,8 @@ namespace Repositories.GraphGroups
 
             var usersResponse = await GetGroupTransitiveMembersNextPageAsync(nextPageUrl);
 
-            await _graphGroupMetricTracker.TrackMetricsAsync2(usersResponse.Headers, QueryType.Transitive, runId);
-            await _graphGroupMetricTracker.TrackRequestAsync2(usersResponse.Headers, runId);
+            await _graphGroupMetricTracker.TrackMetricsAsync(usersResponse.Headers, QueryType.Transitive, runId);
+            await _graphGroupMetricTracker.TrackRequestAsync(usersResponse.Headers, runId);
 
             users.AddRange(ToUsers(usersResponse.Response.Value, nonUserGraphObjects));
             return (users, nonUserGraphObjects, usersResponse.Response.OdataNextLink);
@@ -153,13 +138,13 @@ namespace Repositories.GraphGroups
                 var membersResponse = await GetGroupMembersPageByIdAsync(groupId.ToString());
                 members.AddRange(ToEntities(membersResponse.Response.Value));
 
-                await _graphGroupMetricTracker.TrackMetricsAsync2(membersResponse.Headers, QueryType.Other, runId);
+                await _graphGroupMetricTracker.TrackMetricsAsync(membersResponse.Headers, QueryType.Other, runId);
 
                 while (membersResponse.Response.OdataNextLink != null)
                 {
                     membersResponse = await GetGroupMembersNextPageAsync(membersResponse.Response.OdataNextLink);
                     members.AddRange(ToEntities(membersResponse.Response.Value));
-                    await _graphGroupMetricTracker.TrackMetricsAsync2(membersResponse.Headers, QueryType.Other, runId);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(membersResponse.Headers, QueryType.Other, runId);
                 }
 
                 return members;

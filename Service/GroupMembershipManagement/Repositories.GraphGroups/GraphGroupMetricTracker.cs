@@ -26,13 +26,7 @@ namespace Repositories.GraphGroups
             _loggingRepository = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task TrackMetricsAsync(IDictionary<string, object> headers, QueryType queryType, Guid? runId)
-        {
-            //TODO: DELETE THIS METHOD
-            //replace it with TrackMetricsAsync2
-        }
-
-        public async Task TrackMetricsAsync2(IDictionary<string, IEnumerable<string>> headers, QueryType queryType, Guid? runId)
+        public async Task TrackMetricsAsync(IDictionary<string, IEnumerable<string>> headers, QueryType queryType, Guid? runId)
         {
             int ruu = 0;
 
@@ -45,7 +39,7 @@ namespace Repositories.GraphGroups
                 return;
             }
 
-            if (!headers.TryGetValue(GraphResponseHeader.ResourceUnitHeader, out var resourceValues))
+            if (headers == null || !headers.TryGetValue(GraphResponseHeader.ResourceUnitHeader, out var resourceValues))
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} is not available", RunId = runId });
                 return;
@@ -77,14 +71,7 @@ namespace Repositories.GraphGroups
             _telemetryClient.TrackEvent("ResourceUnitsUsedByType", ruuByTypeEvent);
         }
 
-
-        public async Task TrackRequestAsync(IDictionary<string, object> additionalData, Guid? runId)
-        {
-            //TODO: DELETE THIS METHOD
-            //replace it with TrackRequestAsync2
-        }
-
-        public async Task TrackRequestAsync2(IDictionary<string, IEnumerable<string>> headers, Guid? runId)
+        public async Task TrackRequestAsync(IDictionary<string, IEnumerable<string>> headers, Guid? runId)
         {
             string requestId = "";
             string clientRequestId = "";

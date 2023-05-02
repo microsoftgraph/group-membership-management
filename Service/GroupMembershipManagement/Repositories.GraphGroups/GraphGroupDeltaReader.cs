@@ -30,8 +30,8 @@ namespace Repositories.GraphGroups
         {
             var deltaResponse = await GetGroupUsersPageByIdAsync(groupId.ToString());
 
-            await _graphGroupMetricTracker.TrackMetricsAsync2(deltaResponse.Headers, QueryType.Delta, runId);
-            await _graphGroupMetricTracker.TrackRequestAsync2(deltaResponse.Headers, runId);
+            await _graphGroupMetricTracker.TrackMetricsAsync(deltaResponse.Headers, QueryType.Delta, runId);
+            await _graphGroupMetricTracker.TrackRequestAsync(deltaResponse.Headers, runId);
 
             var users = ExtractDeltaMembers(deltaResponse.Response.Value.FirstOrDefault());
 
@@ -48,8 +48,8 @@ namespace Repositories.GraphGroups
         {
             var deltaResponse = await GetGroupUsersNextPageAsync(nextPageUrl);
 
-            await _graphGroupMetricTracker.TrackMetricsAsync2(deltaResponse.Headers, QueryType.Delta, runId);
-            await _graphGroupMetricTracker.TrackRequestAsync2(deltaResponse.Headers, runId);
+            await _graphGroupMetricTracker.TrackMetricsAsync(deltaResponse.Headers, QueryType.Delta, runId);
+            await _graphGroupMetricTracker.TrackRequestAsync(deltaResponse.Headers, runId);
 
             var users = ExtractDeltaMembers(deltaResponse.Response.Value.FirstOrDefault());
 
@@ -66,8 +66,8 @@ namespace Repositories.GraphGroups
 
             var deltaResponse = await GetGroupUsersNextPageAsync(deltaLink);
 
-            await _graphGroupMetricTracker.TrackMetricsAsync2(deltaResponse.Headers, QueryType.DeltaLink, runId);
-            await _graphGroupMetricTracker.TrackRequestAsync2(deltaResponse.Headers, runId);
+            await _graphGroupMetricTracker.TrackMetricsAsync(deltaResponse.Headers, QueryType.DeltaLink, runId);
+            await _graphGroupMetricTracker.TrackRequestAsync(deltaResponse.Headers, runId);
 
             var users = ExtractDeltaMembers(deltaResponse.Response.Value.FirstOrDefault(), includeMembersToRemove: true);
 
