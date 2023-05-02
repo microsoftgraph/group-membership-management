@@ -17,7 +17,7 @@ using System.Threading.Tasks;
 
 namespace Repositories.GraphGroups
 {
-    internal class GraphGroupMembershipUpdater
+    internal class GraphGroupMembershipUpdater : GraphGroupRepositoryBase
     {
         private const int GraphBatchLimit = 20;
         private const int ConcurrentRequests = 10;
@@ -40,22 +40,15 @@ namespace Repositories.GraphGroups
 
         private delegate HttpRequestMessage MakeBulkRequest(List<AzureADUser> batch);
 
-        private readonly ILoggingRepository _loggingRepository;
-        private readonly GraphServiceClient _graphServiceClient;
-        private readonly GraphGroupMetricTracker _graphGroupMetricTracker;
-
         private List<AzureADUser> _usersNotFound = new List<AzureADUser>();
 
         public Guid? RunId { get; set; }
 
         public GraphGroupMembershipUpdater(GraphServiceClient graphServiceClient,
-                               ILoggingRepository loggingRepository,
-                               GraphGroupMetricTracker graphGroupMetricTracker)
-        {
-            _graphServiceClient = graphServiceClient ?? throw new ArgumentNullException(nameof(graphServiceClient));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _graphGroupMetricTracker = graphGroupMetricTracker ?? throw new ArgumentNullException(nameof(graphGroupMetricTracker));
-        }
+                                  ILoggingRepository loggingRepository,
+                                  GraphGroupMetricTracker graphGroupMetricTracker)
+                                  : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
+        { }
 
 
         public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)>

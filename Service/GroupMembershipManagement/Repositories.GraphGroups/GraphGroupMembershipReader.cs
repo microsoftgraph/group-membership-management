@@ -14,6 +14,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using static Microsoft.Graph.Chats.Item.Members.MembersRequestBuilder;
 using static Microsoft.Graph.Groups.Item.TransitiveMembers.TransitiveMembersRequestBuilder;
 
 namespace Repositories.GraphGroups
@@ -24,7 +25,7 @@ namespace Repositories.GraphGroups
                                           ILoggingRepository loggingRepository,
                                           GraphGroupMetricTracker graphGroupMetricTracker)
                                           : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
-        {}
+        { }
 
         public async Task<List<AzureADUser>> GetUsersInGroupTransitivelyAsync(Guid groupId, Guid? runId)
         {
@@ -119,7 +120,7 @@ namespace Repositories.GraphGroups
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
 
-            var usersResponse = await GetGroupMembersPageByIdAsync(groupId.ToString());
+            var usersResponse = await GetGroupTransitiveMembersPageByIdAsync(groupId.ToString());
 
             await _graphGroupMetricTracker.TrackMetricsAsync2(usersResponse.Headers, QueryType.Transitive, runId);
             await _graphGroupMetricTracker.TrackRequestAsync2(usersResponse.Headers, runId);
@@ -135,13 +136,44 @@ namespace Repositories.GraphGroups
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
 
-            var usersResponse = await GetGroupMembersNextPageAsync(nextPageUrl);
+            var usersResponse = await GetGroupTransitiveMembersNextPageAsync(nextPageUrl);
 
             await _graphGroupMetricTracker.TrackMetricsAsync2(usersResponse.Headers, QueryType.Transitive, runId);
             await _graphGroupMetricTracker.TrackRequestAsync2(usersResponse.Headers, runId);
 
             users.AddRange(ToUsers(usersResponse.Response.Value, nonUserGraphObjects));
             return (users, nonUserGraphObjects, usersResponse.Response.OdataNextLink);
+        }
+
+        public async Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid groupId, Guid? runId)
+        {
+            try
+            {
+                var members = new List<IAzureADObject>();
+                var membersResponse = await GetGroupMembersPageByIdAsync(groupId.ToString());
+                members.AddRange(ToEntities(membersResponse.Response.Value));
+
+                await _graphGroupMetricTracker.TrackMetricsAsync2(membersResponse.Headers, QueryType.Other, runId);
+
+                while (membersResponse.Response.OdataNextLink != null)
+                {
+                    membersResponse = await GetGroupMembersNextPageAsync(membersResponse.Response.OdataNextLink);
+                    members.AddRange(ToEntities(membersResponse.Response.Value));
+                    await _graphGroupMetricTracker.TrackMetricsAsync2(membersResponse.Headers, QueryType.Other, runId);
+                }
+
+                return members;
+            }
+            catch (ServiceException ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = "Unable to retrieve group members.\n" + ex.GetBaseException().ToString(),
+                    RunId = runId
+                });
+
+                throw;
+            }
         }
 
         private async Task<int> GetGroupDirectoryObjectMembersCount(RequestInformation request, Guid? runId)
@@ -178,7 +210,7 @@ namespace Repositories.GraphGroups
             return int.Parse(responseContent);
         }
 
-        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupMembersPageByIdAsync(string groupId)
+        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupTransitiveMembersPageByIdAsync(string groupId)
         {
             var retryPolicy = GetRetryPolicy();
             var response = new GraphObjectResponse<DirectoryObjectCollectionResponse>();
@@ -214,7 +246,7 @@ namespace Repositories.GraphGroups
             return response;
         }
 
-        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupMembersNextPageAsync(string nextPageUrl)
+        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupTransitiveMembersNextPageAsync(string nextPageUrl)
         {
             var retryPolicy = GetRetryPolicy();
             var response = new GraphObjectResponse<DirectoryObjectCollectionResponse>();
@@ -260,7 +292,90 @@ namespace Repositories.GraphGroups
             return response;
         }
 
-        private IEnumerable<AzureADUser> ToUsers(IEnumerable<DirectoryObject> fromGraph, Dictionary<string, int> nonUserGraphObjects)
+        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupMembersPageByIdAsync(string groupId)
+        {
+            var retryPolicy = GetRetryPolicy();
+            var response = new GraphObjectResponse<DirectoryObjectCollectionResponse>();
+
+            await retryPolicy.ExecuteAsync(async () =>
+            {
+                var nativeResponseHandler = new NativeResponseHandler();
+                var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
+
+                await _graphServiceClient
+                       .Groups[groupId]
+                       .Members
+                       .GetAsync(requestConfiguration =>
+                       {
+                           requestConfiguration.QueryParameters.Top = MaxResultCount;
+                           requestConfiguration.QueryParameters.Select = new[] { "id" };
+                           requestConfiguration.Options.Add(responseHandlerOption);
+                       });
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse.IsSuccessStatusCode)
+                {
+                    var directoryObjectCollectionResponse = await DeserializeResponseAsync(nativeResponse,
+                                                                                       DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
+
+                    response.Response = directoryObjectCollectionResponse;
+                    response.Headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                }
+
+                return nativeResponse;
+            });
+
+            return response;
+        }
+
+        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupMembersNextPageAsync(string nextPageUrl)
+        {
+            var retryPolicy = GetRetryPolicy();
+            var response = new GraphObjectResponse<DirectoryObjectCollectionResponse>();
+
+            await retryPolicy.ExecuteAsync(async () =>
+            {
+                var nativeResponseHandler = new NativeResponseHandler();
+                var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
+
+                var requestInformation = new RequestInformation
+                {
+                    HttpMethod = Method.GET,
+                    UrlTemplate = nextPageUrl,
+                };
+
+                var requestConfig = new MembersRequestBuilderGetRequestConfiguration
+                {
+                    Options = new List<IRequestOption> { responseHandlerOption }
+                };
+
+                requestInformation.AddRequestOptions(requestConfig.Options);
+                requestInformation.Headers.Add("Accept", "application/json");
+
+                await _graphServiceClient
+                        .RequestAdapter
+                        .SendAsync(requestInformation,
+                                    DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse.IsSuccessStatusCode)
+                {
+                    var directoryObjectCollectionResponse = await DeserializeResponseAsync(nativeResponse,
+                                                                                           DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
+
+                    response.Response = directoryObjectCollectionResponse;
+                    response.Headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                }
+
+                return nativeResponse;
+            });
+
+            return response;
+        }
+
+        private IEnumerable<IAzureADObject> ToEntities(IEnumerable<DirectoryObject> fromGraph)
         {
             if (fromGraph == null)
                 yield break;
@@ -272,14 +387,10 @@ namespace Repositories.GraphGroups
                     case User user:
                         yield return new AzureADUser { ObjectId = Guid.Parse(user.Id) };
                         break;
-                    // We only care about users
-                    // I'd prefer to be able to filter these out from the results on Graph's side, but the library doesn't support that yet.
-                    // we do want to log the count of non-user graph objects, though
+                    case Group group:
+                        yield return new AzureADGroup { ObjectId = Guid.Parse(group.Id) };
+                        break;
                     default:
-                        if (nonUserGraphObjects.TryGetValue(directoryObj.OdataType, out int count))
-                            nonUserGraphObjects[directoryObj.OdataType] = count + 1;
-                        else
-                            nonUserGraphObjects[directoryObj.OdataType] = 1;
                         break;
                 }
             }

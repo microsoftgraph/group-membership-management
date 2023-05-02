@@ -6,7 +6,6 @@ using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Repositories.GraphGroups
@@ -21,6 +20,7 @@ namespace Repositories.GraphGroups
         private readonly GraphGroupMembershipReader _graphGroupMembershipReader;
         private readonly GraphGroupMembershipUpdater _graphGroupMembershipUpdater;
         private readonly GraphGroupDeltaReader _graphGroupDeltaReader;
+        private readonly GraphGroupPlacesReader _graphGroupPlacesReader;
 
         public Guid RunId { get; set; }
 
@@ -34,11 +34,12 @@ namespace Repositories.GraphGroups
 
             var graphGroupMetricTracker = new GraphGroupMetricTracker(graphServiceClient, telemetryClient, loggingRepository);
             _graphGroupInformationReader = new GraphGroupInformationRepository(graphServiceClient, loggingRepository, graphGroupMetricTracker);
-            _graphGroupOwnerReader = new GraphGroupOwnerReader(graphServiceClient, telemetryClient, loggingRepository);
+            _graphGroupOwnerReader = new GraphGroupOwnerReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
             _graphUserReader = new GraphUserReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
             _graphGroupMembershipReader = new GraphGroupMembershipReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
             _graphGroupMembershipUpdater = new GraphGroupMembershipUpdater(graphServiceClient, loggingRepository, graphGroupMetricTracker);
             _graphGroupDeltaReader = new GraphGroupDeltaReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
+            _graphGroupPlacesReader = new GraphGroupPlacesReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
         }
 
         public async Task<bool> GroupExists(Guid objectId)
@@ -66,9 +67,9 @@ namespace Repositories.GraphGroups
             return _graphGroupInformationReader.GetGroupEndpointsAsync(groupId, RunId);
         }
 
-        public Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid objectId)
+        public async Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid groupId)
         {
-            throw new NotImplementedException();
+            return await _graphGroupMembershipReader.GetChildrenOfGroup(groupId, RunId);
         }
 
         public async Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId)
@@ -133,31 +134,31 @@ namespace Repositories.GraphGroups
             return await _graphGroupMembershipReader.GetNextTransitiveMembersPageAsync(nextPageUrl, RunId);
         }
 
-        public Task<AzureADUser> GetUserByEmailAsync(string emailAddress)
+        public async Task<AzureADUser> GetUserByEmailAsync(string emailAddress)
         {
-            throw new NotImplementedException();
+            return await _graphUserReader.GetUserByEmailAsync(emailAddress, RunId);
         }
 
-        public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)>
+        public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)>
             GetFirstMembersPageAsync(string url)
         {
-            throw new NotImplementedException();
+            return await _graphUserReader.GetFirstMembersPageAsync(url, RunId);
         }
 
-        public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)>
+        public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)>
             GetNextMembersPageAsync(string nextPageUrl)
         {
-            throw new NotImplementedException();
+            return await _graphUserReader.GetNextMembersPageAsync(nextPageUrl, RunId);
         }
 
-        public Task<(List<AzureADUser> users, string nextPageUrl)> GetRoomsPageAsync(string url, int top, int skip)
+        public async Task<(List<AzureADUser> users, string nextPageUrl)> GetRoomsPageAsync(string url, int top, int skip)
         {
-            throw new NotImplementedException();
+            return await _graphGroupPlacesReader.GetRoomsPageAsync(url, top, skip, RunId);
         }
 
-        public Task<(List<AzureADUser> users, string nextPageUrl)> GetWorkSpacesPageAsync(string url, int top, int skip)
+        public async Task<(List<AzureADUser> users, string nextPageUrl)> GetWorkSpacesPageAsync(string url, int top, int skip)
         {
-            throw new NotImplementedException();
+            return await _graphGroupPlacesReader.GetWorkSpacesPageAsync(url, top, skip, RunId);
         }
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>

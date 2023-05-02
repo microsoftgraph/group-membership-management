@@ -3,29 +3,25 @@
 
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
+using Microsoft.Kiota.Abstractions;
 using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace Repositories.GraphGroups
 {
-    internal class GraphUserReader
+    internal class GraphUserReader : GraphGroupRepositoryBase
     {
-        private readonly ILoggingRepository _loggingRepository;
-        private readonly GraphServiceClient _graphServiceClient;
-        private readonly GraphGroupMetricTracker _graphGroupMetricTracker;
-
         public GraphUserReader(GraphServiceClient graphServiceClient,
-                               ILoggingRepository loggingRepository,
-                               GraphGroupMetricTracker graphGroupMetricTracker)
-        {
-            _graphServiceClient = graphServiceClient ?? throw new ArgumentNullException(nameof(graphServiceClient));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _graphGroupMetricTracker = graphGroupMetricTracker ?? throw new ArgumentNullException(nameof(graphGroupMetricTracker));
-        }
+                                          ILoggingRepository loggingRepository,
+                                          GraphGroupMetricTracker graphGroupMetricTracker)
+                                          : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
+        { }
 
         public async Task<List<AzureADUser>> GetTenantUsersAsync(int userCount, Guid? runId)
         {
@@ -51,5 +47,131 @@ namespace Repositories.GraphGroups
             return tenantUsers.ToList();
         }
 
+        public async Task<AzureADUser> GetUserByEmailAsync(string emailAddress, Guid? runId)
+        {
+            AzureADUser userDetails = null;
+
+            try
+            {
+                var user = await _graphServiceClient.Users[emailAddress].GetAsync();
+                if (user != null) userDetails = new AzureADUser { ObjectId = Guid.Parse(user.Id) };
+            }
+
+            catch (Exception exception)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = $"Exception: {exception}, FailedMethod: {nameof(GetUserByEmailAsync)}, UserEmail: {emailAddress}"
+                });
+            }
+
+            return userDetails;
+        }
+
+        public async Task<(List<AzureADUser> users,
+                   Dictionary<string, int> nonUserGraphObjects,
+                   string nextPageUrl)> GetFirstMembersPageAsync(string url, Guid? runId)
+        {
+            var users = new List<AzureADUser>();
+            var nonUserGraphObjects = new Dictionary<string, int>();
+            var usersResponse = await GetFirstMembersAsync(url);
+
+            await _graphGroupMetricTracker.TrackMetricsAsync2(usersResponse.Headers, QueryType.Other, runId);
+
+            users.AddRange(ToUsers(usersResponse.Response.Value, nonUserGraphObjects));
+
+            return (users, nonUserGraphObjects, usersResponse.Response.OdataNextLink);
+        }
+
+        public async Task<(List<AzureADUser> users,
+                   Dictionary<string, int> nonUserGraphObjects,
+                   string nextPageUrl)> GetNextMembersPageAsync(string nextPageUrl, Guid? runId)
+        {
+            var users = new List<AzureADUser>();
+            var nonUserGraphObjects = new Dictionary<string, int>();
+            var usersResponse = await GetNextMembersAsync(nextPageUrl);
+
+            await _graphGroupMetricTracker.TrackMetricsAsync2(usersResponse.Headers, QueryType.Other, runId);
+
+            users.AddRange(ToUsers(usersResponse.Response.Value, nonUserGraphObjects));
+            return (users, nonUserGraphObjects, usersResponse.Response.OdataNextLink);
+        }
+
+        private async Task<GraphObjectResponse<UserCollectionResponse>> GetFirstMembersAsync(string url)
+        {
+            var response = new GraphObjectResponse<UserCollectionResponse>();
+            var nativeResponseHandler = new NativeResponseHandler();
+            var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
+
+            var requestInformation = new RequestInformation
+            {
+                HttpMethod = Method.GET,
+                UrlTemplate = url,
+            };
+
+            requestInformation.AddRequestOptions(new List<IRequestOption> { responseHandlerOption });
+            requestInformation.Headers.Add("Accept", "application/json");
+            requestInformation.Headers.Add("ConsistencyLevel", "eventual");
+
+            await _graphServiceClient
+                        .RequestAdapter
+                        .SendAsync(requestInformation,
+                                   UserCollectionResponse.CreateFromDiscriminatorValue);
+
+            var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+            if (nativeResponse.IsSuccessStatusCode)
+            {
+                var x = await nativeResponse.Content.ReadAsStringAsync();
+                var directoryObjectCollectionResponse = await DeserializeResponseAsync(nativeResponse,
+                                                                                       UserCollectionResponse.CreateFromDiscriminatorValue);
+
+                response.Response = directoryObjectCollectionResponse;
+                response.Headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+            }
+
+            return response;
+        }
+
+        private async Task<GraphObjectResponse<UserCollectionResponse>> GetNextMembersAsync(string nextPageUrl)
+        {
+            var retryPolicy = GetRetryPolicy();
+            var response = new GraphObjectResponse<UserCollectionResponse>();
+
+            await retryPolicy.ExecuteAsync(async () =>
+            {
+                var nativeResponseHandler = new NativeResponseHandler();
+                var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
+
+                var requestInformation = new RequestInformation
+                {
+                    HttpMethod = Method.GET,
+                    UrlTemplate = nextPageUrl,
+                };
+
+                requestInformation.AddRequestOptions(new List<IRequestOption> { responseHandlerOption });
+
+                await _graphServiceClient
+                       .RequestAdapter
+                       .SendAsync(requestInformation,
+                                   UserCollectionResponse.CreateFromDiscriminatorValue);
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse.IsSuccessStatusCode)
+                {
+                    var usersResponse = await DeserializeResponseAsync(nativeResponse,
+                                                                       UserCollectionResponse.CreateFromDiscriminatorValue);
+
+                    response.Response = usersResponse;
+                    response.Headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                }
+
+                return nativeResponse;
+            });
+
+            return response;
+        }
     }
 }

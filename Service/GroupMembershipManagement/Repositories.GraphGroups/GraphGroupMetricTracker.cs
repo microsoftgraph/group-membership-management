@@ -3,7 +3,6 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
 using Models;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;

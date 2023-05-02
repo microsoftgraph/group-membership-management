@@ -39,7 +39,7 @@ namespace Hosts.GraphUpdater
                 return new DeltaCachingConfig(services.GetService<IOptions<DeltaCachingConfig>>().Value.DeltaCacheEnabled);
             });
 
-            builder.Services.AddSingleton<IGraphServiceClient>((services) =>
+            builder.Services.AddSingleton((services) =>
             {
                 return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
             })

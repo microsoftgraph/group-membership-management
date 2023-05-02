@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
@@ -14,21 +13,13 @@ using System.Threading.Tasks;
 
 namespace Repositories.GraphGroups
 {
-    internal class GraphGroupOwnerReader
+    internal class GraphGroupOwnerReader : GraphGroupRepositoryBase
     {
-        private readonly GraphServiceClient _graphServiceClient;
-        private readonly ILoggingRepository _loggingRepository;
-        private readonly GraphGroupMetricTracker _graphGroupMetricTracker;
-
         public GraphGroupOwnerReader(GraphServiceClient graphServiceClient,
-                                                    TelemetryClient telemetryClient,
-                                                    ILoggingRepository loggingRepository)
-        {
-            _graphServiceClient = graphServiceClient ?? throw new ArgumentNullException(nameof(graphServiceClient));
-            _ = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _graphGroupMetricTracker = new GraphGroupMetricTracker(graphServiceClient, telemetryClient, loggingRepository);
-        }
+                                      ILoggingRepository loggingRepository,
+                                      GraphGroupMetricTracker graphGroupMetricTracker)
+                                      : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
+        { }
 
         public async Task<bool> IsAppIDOwnerOfGroupAsync(string appId, Guid groupObjectId, Guid? runId)
         {

@@ -11,6 +11,8 @@ using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Models;
+using Microsoft.Graph.Models;
+using System.Collections.Generic;
 
 namespace Repositories.GraphGroups
 {
@@ -76,6 +78,32 @@ namespace Repositories.GraphGroups
             if (rootNode == null) return default;
             var result = rootNode.GetObjectValue(factory);
             return result;
+        }
+
+        protected IEnumerable<AzureADUser> ToUsers(IEnumerable<DirectoryObject> fromGraph, Dictionary<string, int> nonUserGraphObjects)
+        {
+            if (fromGraph == null)
+                yield break;
+
+            foreach (var directoryObj in fromGraph)
+            {
+                switch (directoryObj)
+                {
+                    case User user:
+                        yield return new AzureADUser { ObjectId = Guid.Parse(user.Id) };
+                        break;
+                    // We only care about users
+                    // I'd prefer to be able to filter these out from the results on Graph's side, but the library doesn't support that yet.
+                    // we do want to log the count of non-user graph objects, though
+                    default:
+                        var dataType = directoryObj.OdataType ?? "Unknown";
+                        if (nonUserGraphObjects.TryGetValue(dataType, out int count))
+                            nonUserGraphObjects[directoryObj.OdataType] = count + 1;
+                        else
+                            nonUserGraphObjects[directoryObj.OdataType] = 1;
+                        break;
+                }
+            }
         }
 
         private async Task<IParseNode> GetRootParseNodeAsync(HttpResponseMessage response)

@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Graph;
 
 namespace Services.Tests.Mocks
 {
@@ -51,16 +50,6 @@ namespace Services.Tests.Mocks
             GroupsToUsers[targetGroup.ObjectId].RemoveAll(x => users.Contains(x));
             return Task.FromResult((ResponseCode.Ok, users.ToList().Count, new List<AzureADUser>(), new List<AzureADUser>()));
         }
-        public Task<IGroupTransitiveMembersCollectionWithReferencesPage> GetGroupMembersPageByIdAsync(string groupId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<IGroupTransitiveMembersCollectionWithReferencesPage> GetGroupMembersNextPageAsync(IGroupTransitiveMembersCollectionWithReferencesPage groupMembersRef, string nextPageUrl)
-        {
-            throw new NotImplementedException();
-        }
-
         public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetFirstTransitiveMembersPageAsync(Guid objectId)
         {
             throw new NotImplementedException();
@@ -100,15 +89,7 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
-        public Task<IGraphServiceUsersCollectionPage> GetFirstMembersAsync(string url)
-        {
-            throw new NotImplementedException();
-        }
         public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetFirstMembersPageAsync(string url)
-        {
-            throw new NotImplementedException();
-        }
-        public Task<IGraphServiceUsersCollectionPage> GetNextMembersAsync(IGraphServiceUsersCollectionPage groupMembersRef, string nextPageUrl)
         {
             throw new NotImplementedException();
         }
@@ -116,32 +97,11 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
-        public Task<IGraphServicePlacesCollectionPage> GetRoomsAsync(string url, int top, int skip)
-        {
-            throw new NotImplementedException();
-        }
         public Task<(List<AzureADUser> users, string nextPageUrl)> GetRoomsPageAsync(string url, int top, int skip)
         {
             throw new NotImplementedException();
         }
-        public Task<IGraphServicePlacesCollectionPage> GetWorkSpacesAsync(string url, int top, int skip)
-        {
-            throw new NotImplementedException();
-        }
         public Task<(List<AzureADUser> users, string nextPageUrl)> GetWorkSpacesPageAsync(string url, int top, int skip)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<IGroupDeltaCollectionPage> GetGroupUsersPageByIdAsync(string groupId)
-        {
-            throw new NotImplementedException();
-        }
-        public Task<IGroupDeltaCollectionPage> GetGroupUsersNextPageAsync(IGroupDeltaCollectionPage groupMembersRef, string nextPageUrl)
-        {
-            throw new NotImplementedException();
-        }
-        public Task<IGroupDeltaCollectionPage> GetGroupUsersPageByLinkAsync(string deltaLink)
         {
             throw new NotImplementedException();
         }
