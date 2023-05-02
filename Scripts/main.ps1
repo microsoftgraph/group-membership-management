@@ -25,4 +25,13 @@ function Set-UpdateQuery {
                                  	 -Verbose
 
   	Write-Verbose "Set-UpdateQuery completed."
+
+	Write-Verbose "Set-UpdateDestination starting..."
+	. ($scriptsDirectory + '\Scripts\Set-UpdateDestination.ps1')
+	Set-UpdateDestination -SubscriptionName $SubscriptionName `
+		-SolutionAbbreviation $SolutionAbbreviation `
+		-EnvironmentAbbreviation $EnvironmentAbbreviation `
+		-Verbose
+
+	Write-Verbose "Set-UpdateDestination completed."
 }
