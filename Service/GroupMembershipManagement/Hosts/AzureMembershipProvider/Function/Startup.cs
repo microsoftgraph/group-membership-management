@@ -26,7 +26,7 @@ namespace Hosts.AzureMembershipProvider
         {
             base.Configure(builder);
 
-            builder.Services.AddSingleton<IGraphServiceClient>((services) =>
+            builder.Services.AddSingleton((services) =>
             {
                 return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
             })
