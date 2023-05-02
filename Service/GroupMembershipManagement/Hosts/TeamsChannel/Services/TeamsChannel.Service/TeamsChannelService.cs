@@ -1,14 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Microsoft.Graph;
+using Microsoft.Graph.Models;
 using Models;
 using Models.Entities;
 using Models.ServiceBus;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
-using System.Net.Http;
 using System.Net.Http.Json;
 using TeamsChannel.Service.Contracts;
 
@@ -79,7 +77,7 @@ namespace TeamsChannel.Service
             // for now, convert it to a list of regular AzureADUsers. I think it'll be more useful to get the IDs for removes later on in the chain
             // If need be, I can modify GroupMembership to take either an AzureADUser or AzureADTeamsUser and send that along
             // either with a subclass or something called ChannelMembership or with a generic <T> parameter. The generic parameter would be annoying,
-            // since you'd have to change it everywhere someone uses a GroupMembership. 
+            // since you'd have to change it everywhere someone uses a GroupMembership.
             var groupMembership = new GroupMembership
             {
                 SourceMembers = new List<AzureADUser>(users) ?? new List<AzureADUser>(),

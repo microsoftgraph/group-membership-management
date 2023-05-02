@@ -31,10 +31,10 @@ namespace Hosts.Notifier
             [DurableClient] IDurableOrchestrationClient starter)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
-            
+
             HttpResponseMessage response;
             var result = await ValidateRequestAsync(req);
-            
+
             if (result.StatusCode == HttpStatusCode.OK)
             {
                 var instanceId =  await starter.StartNewAsync(nameof(OrchestratorFunction), result.Request);
