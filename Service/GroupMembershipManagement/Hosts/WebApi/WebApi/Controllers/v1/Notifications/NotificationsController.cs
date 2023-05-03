@@ -14,7 +14,6 @@ using WebApi.Models.Requests;
 namespace WebApi.Controllers.v1.Notifications
 {
     [ApiController]
-    [Authorize]
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/notifications")]
     public class NotificationsController : ControllerBase
