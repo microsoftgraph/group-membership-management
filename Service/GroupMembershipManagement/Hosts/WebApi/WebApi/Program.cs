@@ -22,6 +22,7 @@ using Services.Contracts.Notifications;
 using Services.Notifications;
 using Repositories.NotificationsRepository;
 using Repositories.Localization;
+using Microsoft.O365.ActionableMessages.Utilities;
 
 namespace WebApi
 {
@@ -42,20 +43,45 @@ namespace WebApi
             {
                 var appConfigurationEndpoint = builder.Configuration.GetValue<string>("Settings:appConfigurationEndpoint");
                 options.Connect(new Uri(appConfigurationEndpoint), new DefaultAzureCredential())
-                       .Select("WebAPI:*")
-                       .ConfigureRefresh(refreshOptions =>
-                        {
-                            refreshOptions.Register("WebAPI:Settings:Sentinel", refreshAll: true);
-                        });
+                    .Select("WebAPI:*")
+                    .ConfigureRefresh(refreshOptions =>
+                    {
+                        refreshOptions.Register("WebAPI:Settings:Sentinel", refreshAll: true);
+                    });
             });
 
             // Add services to the container.
             builder.Services.AddAzureAppConfiguration();
 
             builder.Services
-               .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-               .AddMicrosoftIdentityWebApi(azureADConfigSection);
+                .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddMicrosoftIdentityWebApi(azureADConfigSection);
 
+            builder.Services.AddSingleton<ActionableMessageTokenValidator>();
+/*
+            builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, async options =>
+            {
+                var openIdConfigManager = new ConfigurationManager<OpenIdConnectConfiguration>(
+                    "https://substrate.office.com/sts/common/.well-known/openid-configuration",
+                    new OpenIdConnectConfigurationRetriever(),
+                    new HttpDocumentRetriever());
+
+                var config = await openIdConfigManager.GetConfigurationAsync();
+
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateAudience = true,
+                    ValidAudience = "https://gmm-compute-dl-webapi.azurewebsites.net",
+                    ValidateIssuer = true,
+                    ValidIssuers = new[] {
+                        $"https://sts.windows.net/{tenantId}/",
+                        "https://substrate.office.com/sts/"
+                    },
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKeys = config.SigningKeys
+                };
+            });
+*/
             builder.Services.AddApiVersioning(opt =>
                 {
                     opt.DefaultApiVersion = new ApiVersion(1, 0);
