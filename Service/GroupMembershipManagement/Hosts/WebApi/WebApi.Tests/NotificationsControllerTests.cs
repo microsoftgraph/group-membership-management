@@ -148,7 +148,7 @@ namespace Services.Tests
 
             _thresholdNotificationServiceConfig = new ThresholdNotificationServiceConfig
             {
-                Hostname = _hostname,
+                ApiHostname = _hostname,
                 ActionableEmailProviderId = _providerId
             };
 

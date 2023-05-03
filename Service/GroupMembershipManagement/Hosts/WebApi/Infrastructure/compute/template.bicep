@@ -26,7 +26,7 @@ param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassific
 param appServiceName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-webapi'
 
 @description('Enter the hostname for the api')
-param hostname string = '${appServiceName}.azurewebsites.net'
+param apiHostname string = '${appServiceName}.azurewebsites.net'
 
 @description('Service plan sku')
 @allowed([
@@ -153,8 +153,8 @@ var appSettings = [
     value: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
   }
   {
-    name: 'Settings:Hostname'
-    value: hostname
+    name: 'Settings:ApiHostname'
+    value: apiHostname
   }
   {
     name: 'Settings:GraphCredentials:KeyVaultName'
