@@ -184,9 +184,8 @@ namespace Repositories.GraphGroups
                 await _graphServiceClient.Groups[groupObjectId.ToString()]
                                             .Owners.GetAsync(requestConfiguration =>
                                             {
-                                                requestConfiguration
-                                                .QueryParameters
-                                                .Filter = query;
+                                                requestConfiguration.QueryParameters.Filter = query;
+                                                requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
                                             });
 
                 var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
