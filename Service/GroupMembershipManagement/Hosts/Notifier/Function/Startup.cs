@@ -45,8 +45,8 @@ namespace Hosts.Notifier
 
             builder.Services.AddOptions<ThresholdNotificationServiceConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
-                settings.ActionableEmailProviderId = configuration.GetValue<Guid>("Settings:ActionableEmailProviderId");
-                settings.ApiHostname = configuration.GetValue<string>("Settings:ApiHostname");
+                settings.ActionableEmailProviderId = configuration.GetValue<Guid>("actionableEmailProviderId");
+                settings.ApiHostname = configuration.GetValue<string>("apiHostname");
             });
             builder.Services.AddScoped<IThresholdNotificationConfig>((sp) =>
             {
