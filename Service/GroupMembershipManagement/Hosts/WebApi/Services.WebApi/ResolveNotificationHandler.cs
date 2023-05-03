@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Models;
 using Models.ThresholdNotifications;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -13,15 +14,18 @@ namespace Services
     public class ResolveNotificationHandler : RequestHandlerBase<ResolveNotificationRequest, ResolveNotificationResponse>
     {
         private readonly INotificationRepository _notificationRepository;
+        private readonly ISyncJobRepository _syncJobRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IThresholdNotificationService _thresholdNotificationService;
 
         public ResolveNotificationHandler(ILoggingRepository loggingRepository,
                               INotificationRepository notificationRepository,
+                              ISyncJobRepository syncJobRepository,
                               IGraphGroupRepository graphGroupRepository,
                               IThresholdNotificationService thresholdNotificationService) : base(loggingRepository)
         {
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
+            _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _thresholdNotificationService = thresholdNotificationService ?? throw new ArgumentNullException(nameof(thresholdNotificationService));
         }
@@ -51,11 +55,30 @@ namespace Services
                 thresholdNotification.Resolution = resolution;
                 thresholdNotification.ResolvedByUPN = request.UserUPN;
                 thresholdNotification.ResolvedTime = DateTime.UtcNow;
+
+                await handleSyncJobResolution(thresholdNotification);
                 await _notificationRepository.SaveNotificationAsync(thresholdNotification);
             }
 
             response.CardJson = await _thresholdNotificationService.CreateResolvedNotificationCardAsync(thresholdNotification);
             return response;
+        }
+
+        private async Task handleSyncJobResolution(ThresholdNotification notification)
+        {
+            var job = await _syncJobRepository.GetSyncJobAsync(notification.SyncJobPartitionKey, notification.SyncJobRowKey);
+
+            if (notification.Resolution == ThresholdNotificationResolution.IgnoreOnce)
+            {
+                job.IgnoreThresholdOnce = true;
+                job.Status = SyncStatus.Idle.ToString();
+            }
+            else if (notification.Resolution == ThresholdNotificationResolution.Paused)
+            {
+                job.Status = SyncStatus.CustomerPaused.ToString();
+            }
+
+            await _syncJobRepository.UpdateSyncJobsAsync(new[] { job });
         }
     }
 }
