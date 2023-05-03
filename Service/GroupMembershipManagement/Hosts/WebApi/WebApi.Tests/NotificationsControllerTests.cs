@@ -18,6 +18,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Repositories.Localization;
 using DIConcreteTypes;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.Azure.ServiceBus.Primitives;
+using Microsoft.IdentityModel.Tokens;
+using Azure.Core;
 
 namespace Services.Tests
 {
@@ -164,9 +168,11 @@ namespace Services.Tests
                 _thresholdNotificationService);
 
             _notificationsController = new NotificationsController(_resolveNotificationsHandler, _notificationCardHandler);
-            var identity = new ClaimsIdentity(new List<Claim> { new Claim(ClaimTypes.Upn, _userUPN) }, "test");
-            var principal = new ClaimsPrincipal(identity);
-            _notificationsController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = principal } };
+
+            _notificationsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = getHttpContextForUpn(_userUPN)
+            };
         }
         /// <summary>
         /// /notifications/{id}/resolve - Resolve notification with Ignore Once
@@ -227,9 +233,10 @@ namespace Services.Tests
         [TestMethod]
         public async Task ResolveNotification_HandleUserNotGroupOwnerTestAsync()
         {
-            var identity = new ClaimsIdentity(new List<Claim> { new Claim(ClaimTypes.Upn, "not-an-owner@contoso.net") }, "test");
-            var principal = new ClaimsPrincipal(identity);
-            _notificationsController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = principal } };
+            _notificationsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = getHttpContextForUpn("not-an-owner@contoso.net")
+            };
 
             var response = await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
             var result = response.Result as ContentResult;
@@ -301,9 +308,10 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetNotificationCard_HandleUserNotGroupOwnerTestAsync()
         {
-            var identity = new ClaimsIdentity(new List<Claim> { new Claim(ClaimTypes.Upn, "not-an-owner@contoso.net") }, "test");
-            var principal = new ClaimsPrincipal(identity);
-            _notificationsController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = principal } };
+            _notificationsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = getHttpContextForUpn("not-an-owner@contoso.net")
+            };
 
             var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
             var result = response.Result as ContentResult;
@@ -369,6 +377,29 @@ namespace Services.Tests
             Assert.IsTrue(cardJson.Contains("Notification Not Found"));
             Assert.IsTrue(cardJson.Contains($"{_nonExistantNotificationId}"));
             Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
+        }
+
+        private static HttpContext getHttpContextForUpn(string userUpn)
+        {
+            var claimList = new List<Claim> { new Claim("sub", userUpn) };
+
+            // Create a SecurityTokenDescriptor with the claims and signing key
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claimList),
+                Expires = DateTime.UtcNow.AddDays(7)
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var jwtToken = tokenHandler.CreateToken(tokenDescriptor);
+            var tokenString = tokenHandler.WriteToken(jwtToken);
+
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Method = "POST";
+            httpContext.Request.ContentType = "application/json";
+            httpContext.Request.Headers.Add("Authorization", $"Bearer {tokenString}");
+
+            return httpContext;
         }
     }
 }
