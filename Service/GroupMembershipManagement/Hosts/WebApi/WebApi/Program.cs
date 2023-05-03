@@ -23,6 +23,10 @@ using Services.Notifications;
 using Repositories.NotificationsRepository;
 using Repositories.Localization;
 using Microsoft.O365.ActionableMessages.Utilities;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Configuration;
 
 namespace WebApi
 {
@@ -32,11 +36,15 @@ namespace WebApi
         {
             var builder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder(args);
 
-            var azureADConfigSection = builder.Configuration.GetSection("AzureAd");
-            var tenantId = azureADConfigSection.GetValue<string>("TenantId");
-            var clientId = azureADConfigSection.GetValue<string>("ClientId");
-            var instanceUrl = azureADConfigSection.GetValue<string>("Instance");
-            instanceUrl += instanceUrl.Last() == '/' ? string.Empty : "/";
+            var azureAdConfigSection = builder.Configuration.GetSection("AzureAd");
+            var azureAdTenantId = azureAdConfigSection.GetValue<string>("TenantId");
+            var azureAdClientId = azureAdConfigSection.GetValue<string>("ClientId");
+            var azureAdInstanceUrl = azureAdConfigSection.GetValue<string>("Instance");
+            azureAdInstanceUrl += azureAdInstanceUrl.Last() == '/' ? string.Empty : "/";
+            var azureAdAudience = azureAdConfigSection.GetValue<string>("Audience");
+
+            var apiHostName = builder.Configuration.GetValue<string>("Settings:ApiHostname");
+            var secureApiHostName = $"https://{apiHostName}";
 
             builder.Services.Configure<WebAPISettings>(builder.Configuration.GetSection("WebAPI:Settings"));
             builder.Configuration.AddAzureAppConfiguration(options =>
@@ -55,33 +63,33 @@ namespace WebApi
 
             builder.Services
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddMicrosoftIdentityWebApi(azureADConfigSection);
+                .AddMicrosoftIdentityWebApi(azureAdConfigSection);
 
             builder.Services.AddSingleton<ActionableMessageTokenValidator>();
-/*
+
             builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, async options =>
             {
-                var openIdConfigManager = new ConfigurationManager<OpenIdConnectConfiguration>(
-                    "https://substrate.office.com/sts/common/.well-known/openid-configuration",
-                    new OpenIdConnectConfigurationRetriever(),
-                    new HttpDocumentRetriever());
-
-                var config = await openIdConfigManager.GetConfigurationAsync();
+                var tenantSigningKeys = await getSigningKeysFromUrlAsync($"{azureAdInstanceUrl}{azureAdTenantId}/.well-known/openid-configuration");
+                var tenantSigningKeysv2 = await getSigningKeysFromUrlAsync($"{azureAdInstanceUrl}{azureAdTenantId}/v2.0/.well-known/openid-configuration");
+                var officeSigningKeys = await getSigningKeysFromUrlAsync("https://substrate.office.com/sts/common/.well-known/openid-configuration");
 
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateAudience = true,
-                    ValidAudience = "https://gmm-compute-dl-webapi.azurewebsites.net",
+                    ValidAudiences = new[] {
+                        azureAdAudience,
+                        secureApiHostName
+                    },
                     ValidateIssuer = true,
                     ValidIssuers = new[] {
-                        $"https://sts.windows.net/{tenantId}/",
+                        $"https://sts.windows.net/{azureAdTenantId}/",
                         "https://substrate.office.com/sts/"
                     },
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKeys = config.SigningKeys
+                    IssuerSigningKeys = tenantSigningKeys.Concat(tenantSigningKeysv2).Concat(officeSigningKeys)
                 };
             });
-*/
+
             builder.Services.AddApiVersioning(opt =>
                 {
                     opt.DefaultApiVersion = new ApiVersion(1, 0);
@@ -110,8 +118,8 @@ namespace WebApi
                     {
                         Implicit = new OpenApiOAuthFlow()
                         {
-                            AuthorizationUrl = new Uri($"{instanceUrl}{tenantId}/oauth2/authorize"),
-                            TokenUrl = new Uri($"{instanceUrl}{tenantId}/oauth2/token")
+                            AuthorizationUrl = new Uri($"{azureAdInstanceUrl}{azureAdTenantId}/oauth2/authorize"),
+                            TokenUrl = new Uri($"{azureAdInstanceUrl}{azureAdTenantId}/oauth2/token")
                         }
                     }
                 });
@@ -182,7 +190,7 @@ namespace WebApi
             builder.Services.AddOptions<ThresholdNotificationServiceConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.ActionableEmailProviderId = configuration.GetValue<Guid>("Settings:ActionableEmailProviderId");
-                settings.ApiHostname = configuration.GetValue<string>("Settings:ApiHostname");
+                settings.ApiHostname = apiHostName;
             });
             builder.Services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
 
@@ -204,12 +212,12 @@ namespace WebApi
                         var url = $"/swagger/{description.GroupName}/swagger.json";
                         options.SwaggerEndpoint(url, description.GroupName.ToUpperInvariant());
                         options.OAuthAppName("Swagger Client");
-                        options.OAuthClientId(clientId);
+                        options.OAuthClientId(azureAdClientId);
                         options.OAuthUseBasicAuthenticationWithAccessCodeGrant();
                         options.OAuthAdditionalQueryStringParams(new Dictionary<string, string> {
-                                { "scope", $"https://{clientId}/.default" },
+                                { "scope", $"https://{azureAdClientId}/.default" },
                                 { "nonce", Guid.NewGuid().ToString() },
-                                { "resource", clientId }
+                                { "resource", azureAdClientId }
                             });
                     }
                 });
@@ -238,6 +246,18 @@ namespace WebApi
             app.MapControllers();
 
             app.Run();
+        }
+
+        private static async Task<ICollection<SecurityKey>> getSigningKeysFromUrlAsync(string url)
+        {
+            var openIdConfigManager = new ConfigurationManager<OpenIdConnectConfiguration>(
+                url,
+                new OpenIdConnectConfigurationRetriever(),
+                new HttpDocumentRetriever());
+
+            var config = await openIdConfigManager.GetConfigurationAsync();
+
+            return config.SigningKeys;
         }
     }
 }
