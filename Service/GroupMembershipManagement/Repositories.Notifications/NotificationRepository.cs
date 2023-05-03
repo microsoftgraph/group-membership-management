@@ -76,6 +76,8 @@ namespace Repositories.NotificationsRepository
             return new ThresholdNotification
             {
                 Id = entity.Id,
+                SyncJobPartitionKey = entity.SyncJobPartitionKey,
+                SyncJobRowKey = entity.SyncJobRowKey,
                 ChangePercentageForAdditions = entity.ChangePercentageForAdditions,
                 ChangePercentageForRemovals = entity.ChangePercentageForRemovals,
                 ChangeQuantityForAdditions = entity.ChangeQuantityForAdditions,
@@ -98,6 +100,8 @@ namespace Repositories.NotificationsRepository
                 PartitionKey = _thresholdNotificationPartitionKey,
                 RowKey = entity.Id.ToString(),
                 Id = entity.Id,
+                SyncJobPartitionKey = entity.SyncJobPartitionKey,
+                SyncJobRowKey = entity.SyncJobRowKey,
                 ChangePercentageForAdditions = entity.ChangePercentageForAdditions,
                 ChangePercentageForRemovals = entity.ChangePercentageForRemovals,
                 CreatedTime = entity.CreatedTime,

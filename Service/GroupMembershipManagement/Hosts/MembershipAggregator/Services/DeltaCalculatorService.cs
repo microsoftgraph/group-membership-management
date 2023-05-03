@@ -140,8 +140,10 @@ namespace Services
                     {
                         if(_thresholdNotificationConfig.IsThresholdNotificationEnabled)
                         {
-                            var thresholdNotification = new Models.ThresholdNotifications.ThresholdNotification { 
+                            var thresholdNotification = new ThresholdNotification { 
                                 Id = Guid.NewGuid(),
+                                SyncJobPartitionKey = job.PartitionKey,
+                                SyncJobRowKey = job.RowKey,
                                 ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage,
                                 ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage,
                                 ChangeQuantityForAdditions = delta.Delta.ToAdd.Count,
