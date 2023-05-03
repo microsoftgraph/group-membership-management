@@ -121,7 +121,7 @@
     <value>{
     "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
     "type": "AdaptiveCard",
-    "version": "1.4",
+    "version": "1.0",
     "originator": "${$root.providerId}",
     "body": [
       {
@@ -214,7 +214,7 @@
           },
           {
             "type": "TextBlock",
-            "text": "Do you want to proceed with the changes to **${$root.groupName}**?",
+            "text": "Do YOU want to proceed with the changes to **${$root.groupName}**?",
             "wrap": true,
             "color": "Accent",
             "size": "Default",
@@ -227,7 +227,7 @@
                 "type": "Action.Http",
                 "title": "No, Pause Sync Job",
                 "method": "POST",
-                "url": "https://${$root.apiHostname}/api/v1/${$root.notificationId}/resolve",
+                "url": "https://api.ag.gmm.microsoft.com/api/v1/${$root.notificationId}/resolve",
                 "body": "{\"resolution\":\"Paused\"}",
                 "isPrimary": true,
                 "style": "positive"
@@ -236,7 +236,7 @@
                 "type": "Action.Http",
                 "title": "Yes, Apply Changes",
                 "method": "POST",
-                "url": "https://${$root.apiHostname}/api/v1/${$root.notificationId}/resolve",
+                "url": "https://${$root.apiHostname}/v1/${$root.notificationId}/resolve",
                 "body": "{\"resolution\":\"IgnoreOnce\"}"
               }
             ],
@@ -283,7 +283,7 @@
     <value>{
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
   "type": "AdaptiveCard",
-  "version": "1.5",
+  "version": "1.0",
   "body": [
     {
       "type": "Container",
@@ -489,7 +489,7 @@
             },
             {
               "type": "TextBlock",
-              "text": "This notification was resolved by **${$root.resolvedByUPN}** on **${$root.resolvedTime}**.",
+              "text": "This notification was resolved by **${$root.resolvedByUPN}** on **${$root.resolvedTime}** UTC.",
               "wrap": true,
               "spacing": "Small",
               "color": "Good"
@@ -530,7 +530,7 @@
     <value>{
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
   "type": "AdaptiveCard",
-  "version": "1.5",
+  "version": "1.0",
   "body": [
     {
       "type": "Container",

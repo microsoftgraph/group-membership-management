@@ -15,5 +15,6 @@ namespace Models
         public string CcEmailAddresses { get; set; }
         public string[] AdditionalContentParams { get; set; }
         public string[] AdditionalSubjectParams { get; set; }
+        public bool IsHTML { get; set; }
     }
 }

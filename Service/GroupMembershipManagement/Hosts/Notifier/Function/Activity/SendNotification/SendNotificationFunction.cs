@@ -7,7 +7,8 @@ using Microsoft.Azure.WebJobs;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
-using Services.Contracts;
+using Services.Notifier.Contracts;
+using Models.ThresholdNotifications;
 
 namespace Hosts.Notifier
 {
@@ -23,10 +24,10 @@ namespace Hosts.Notifier
         }
 
         [FunctionName(nameof(SendNotificationFunction))]
-        public async Task SendNotificationAsync([ActivityTrigger] Guid targetOfficeGroupId)
+        public async Task SendNotificationAsync([ActivityTrigger] ThresholdNotification notification)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SendNotificationFunction)} function started at: {DateTime.UtcNow}" });
-            await _notifierService.SendEmailAsync(targetOfficeGroupId);
+            await _notifierService.SendEmailAsync(notification);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SendNotificationFunction)} function completed at: {DateTime.UtcNow}" });
         }
     }

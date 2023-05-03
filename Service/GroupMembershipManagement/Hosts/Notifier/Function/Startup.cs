@@ -8,9 +8,15 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.Contracts;
+using Services.Notifier;
+using Services.Notifier.Contracts;
+using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
-using Services;
-using Services.Contracts;
+using Microsoft.Extensions.Configuration;
+using DIConcreteTypes;
+using Services.Notifications;
+using Services.Contracts.Notifications;
+using System;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 
@@ -30,8 +36,23 @@ namespace Hosts.Notifier
             {
                 return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
             })
+            .AddLocalization(options =>
+            {
+                options.ResourcesPath = "Resources";
+            })
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
             .AddScoped<INotifierService, NotifierService>();
+
+            builder.Services.AddOptions<ThresholdNotificationServiceConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.ActionableEmailProviderId = configuration.GetValue<Guid>("Settings:ActionableEmailProviderId");
+                settings.ApiHostname = configuration.GetValue<string>("Settings:ApiHostname");
+            });
+            builder.Services.AddScoped<IThresholdNotificationConfig>((sp) =>
+            {
+                return new ThresholdNotificationConfig(true);
+            });
+            builder.Services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
 
             builder.Services.AddHttpClient();
         }

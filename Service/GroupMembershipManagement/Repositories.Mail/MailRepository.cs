@@ -42,7 +42,11 @@ namespace Repositories.Mail
 
             Message message;
 
-            if (_mailAdaptiveCardConfig.IsAdaptiveCardEnabled)
+            if (emailMessage.IsHTML)
+            {
+                message = GetHTMLMessage(emailMessage);
+            }
+            else if (_mailAdaptiveCardConfig.IsAdaptiveCardEnabled)
             {
                 message = GetAdaptiveCardMessage(emailMessage, adaptiveCardTemplateDirectory);
             }
@@ -96,6 +100,13 @@ namespace Repositories.Mail
                 });
             }
 
+        }
+
+        private Message GetHTMLMessage(EmailMessage emailMessage)
+        {
+            var message = GetSimpleMessage(emailMessage);
+            message.Body.ContentType = BodyType.Html;
+            return message;
         }
 
         public Message GetAdaptiveCardMessage(EmailMessage emailMessage, string templateDirectory)

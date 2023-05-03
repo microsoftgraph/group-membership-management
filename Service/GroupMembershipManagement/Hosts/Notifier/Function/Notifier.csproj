@@ -14,7 +14,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
     <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
-    <ProjectReference Include="..\Services\Services.csproj" />
+    <ProjectReference Include="..\..\..\Services.Notifications\Services.Notifications.csproj" />
+    <ProjectReference Include="..\Services.Notifier\Services.Notifier.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">

@@ -6,7 +6,7 @@ using Microsoft.Azure.WebJobs;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
-using Services.Contracts;
+using Services.Notifier.Contracts;
 using Models;
 
 namespace Hosts.Notifier

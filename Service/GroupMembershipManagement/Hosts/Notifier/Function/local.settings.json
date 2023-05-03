@@ -17,6 +17,8 @@
     "graphCredentials:TenantId": "",
     "senderAddress": "",
     "senderPassword": "",
-    "supportEmailAddresses": ""
+    "supportEmailAddresses": "",
+    "Settings:ApiHostname": "",
+    "Settings:ActionableEmailProviderId": "" 
   }
 }

@@ -7,7 +7,7 @@ namespace DIConcreteTypes
 {
     public class ThresholdNotificationServiceConfig
     {
-        public string Hostname { get; set; }
+        public string ApiHostname { get; set; }
         public Guid ActionableEmailProviderId { get; set; }
     }
 }

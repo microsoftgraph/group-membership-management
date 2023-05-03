@@ -156,7 +156,7 @@ namespace WebApi
             builder.Services.AddOptions<ThresholdNotificationServiceConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.ActionableEmailProviderId = configuration.GetValue<Guid>("Settings:ActionableEmailProviderId");
-                settings.Hostname = configuration.GetValue<string>("Settings:Hostname");
+                settings.ApiHostname = configuration.GetValue<string>("Settings:Hostname");
             });
             builder.Services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
 

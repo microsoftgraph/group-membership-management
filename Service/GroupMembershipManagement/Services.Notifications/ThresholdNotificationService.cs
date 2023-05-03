@@ -15,7 +15,7 @@ namespace Services.Notifications
     {
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ILocalizationRepository _localizationRepository;
-        private readonly string _hostname;
+        private readonly string _apiHostname;
         private readonly Guid _providerId;
 
         public ThresholdNotificationService(
@@ -25,7 +25,7 @@ namespace Services.Notifications
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
-            _hostname = config.Value.Hostname;
+            _apiHostname = config.Value.ApiHostname;
             _providerId = config.Value.ActionableEmailProviderId;
         }
 
@@ -43,7 +43,7 @@ namespace Services.Notifications
                 ChangePercentageForRemovals = notification.ChangePercentageForRemovals,
                 ThresholdPercentageForAdditions = notification.ThresholdPercentageForAdditions,
                 ThresholdPercentageForRemovals = notification.ThresholdPercentageForRemovals,
-                ApiHostname = _hostname,
+                ApiHostname = _apiHostname,
                 NotificationId = $"{notification.Id}",
                 ProviderId = $"{_providerId}"
             };

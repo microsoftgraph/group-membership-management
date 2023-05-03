@@ -6,11 +6,11 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Services.Contracts
+namespace Services.Notifier.Contracts
 {
     public interface INotifierService
     {
-        public Task SendEmailAsync(Guid targetOfficeGroupId);
+        public Task SendEmailAsync(ThresholdNotification notification);
         public Task<List<ThresholdNotification>> RetrieveQueuedNotificationsAsync();
         public Task UpdateNotificationStatusAsync(ThresholdNotification notification, ThresholdNotificationStatus status);
     }
