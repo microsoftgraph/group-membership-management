@@ -19,6 +19,7 @@
     "senderPassword": "",
     "supportEmailAddresses": "",
     "Settings:ApiHostname": "",
-    "Settings:ActionableEmailProviderId": "" 
+    "Settings:ActionableEmailProviderId": "",
+    "actionableEmailProviderId": ""
   }
 }

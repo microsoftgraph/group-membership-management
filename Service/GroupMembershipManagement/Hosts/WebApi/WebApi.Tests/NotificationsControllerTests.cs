@@ -340,7 +340,7 @@ namespace Services.Tests
             Assert.IsTrue(cardJson.Contains($"A recent synchronization attempt of **{_groupName}**"));
             Assert.IsTrue(cardJson.Contains($"GMM has identified **{_thresholdNotification.ChangeQuantityForAdditions}** members to be added, increasing the group size by **{_thresholdNotification.ChangePercentageForAdditions}%**, which is more than the current additions threshold of **{_thresholdNotification.ThresholdPercentageForAdditions}%**."));
             Assert.IsTrue(cardJson.Contains($"GMM has identified **{_thresholdNotification.ChangeQuantityForRemovals}** members to be removed, decreasing the group size by **{_thresholdNotification.ChangePercentageForRemovals}%**, which is more than the current removals threshold of **{_thresholdNotification.ThresholdPercentageForRemovals}%**."));
-            Assert.IsTrue(cardJson.Contains($"https://{_hostname}/api/v1/{_thresholdNotification.Id}/resolve"));
+            Assert.IsTrue(cardJson.Contains($"https://{_hostname}/api/v1/notifications/{_thresholdNotification.Id}/resolve"));
             Assert.IsTrue(cardJson.Contains($"\\\"resolution\\\":\\\"{ThresholdNotificationResolution.Paused}\\\""));
             Assert.IsTrue(cardJson.Contains($"\\\"resolution\\\":\\\"{ThresholdNotificationResolution.IgnoreOnce}\\\""));
             Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.Id}"));

@@ -214,7 +214,7 @@
           },
           {
             "type": "TextBlock",
-            "text": "Do YOU want to proceed with the changes to **${$root.groupName}**?",
+            "text": "Do you want to proceed with the changes to **${$root.groupName}**?",
             "wrap": true,
             "color": "Accent",
             "size": "Default",
@@ -227,7 +227,7 @@
                 "type": "Action.Http",
                 "title": "No, Pause Sync Job",
                 "method": "POST",
-                "url": "https://api.ag.gmm.microsoft.com/api/v1/${$root.notificationId}/resolve",
+                "url": "https://${$root.apiHostname}/api/v1/notifications/${$root.notificationId}/resolve",
                 "body": "{\"resolution\":\"Paused\"}",
                 "isPrimary": true,
                 "style": "positive"
@@ -236,7 +236,7 @@
                 "type": "Action.Http",
                 "title": "Yes, Apply Changes",
                 "method": "POST",
-                "url": "https://${$root.apiHostname}/v1/${$root.notificationId}/resolve",
+                "url": "https://${$root.apiHostname}/api/v1/notifications/${$root.notificationId}/resolve",
                 "body": "{\"resolution\":\"IgnoreOnce\"}"
               }
             ],
@@ -273,7 +273,7 @@
     ],
     "autoInvokeAction": {
       "method": "POST",
-      "url": "https://${$root.apiHostname}/api/v1/${$root.notificationId}/card",
+      "url": "https://${$root.apiHostname}/api/v1/notifications/${$root.notificationId}/card",
       "body": "",
       "type": "Action.Http"
     }
