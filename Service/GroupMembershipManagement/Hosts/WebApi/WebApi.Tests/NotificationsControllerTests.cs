@@ -42,6 +42,7 @@ namespace Services.Tests
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<INotificationRepository> _notificationRepository = null!;
+        private Mock<ISyncJobRepository> _syncJobRepository = null!;
         private ILocalizationRepository _localizationRepository = null!;
         private IThresholdNotificationService _thresholdNotificationService = null!;
         private ThresholdNotificationServiceConfig _thresholdNotificationServiceConfig = null!;
@@ -73,6 +74,7 @@ namespace Services.Tests
             _loggingRepository = new Mock<ILoggingRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _notificationRepository = new Mock<INotificationRepository>();
+            _syncJobRepository = new Mock<ISyncJobRepository>();
 
             _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
                                     .ReturnsAsync(() => _groups);
@@ -117,6 +119,8 @@ namespace Services.Tests
                     CreatedTime = DateTime.UtcNow,
                     Resolution = ThresholdNotificationResolution.Unresolved,
                     Id = Guid.NewGuid(),
+                    SyncJobPartitionKey = Guid.NewGuid().ToString(),
+                    SyncJobRowKey = Guid.NewGuid().ToString(),
                     ResolvedByUPN = string.Empty,
                     ResolvedTime = DateTime.UtcNow,
                     Status = ThresholdNotificationStatus.AwaitingResponse,
@@ -145,6 +149,13 @@ namespace Services.Tests
             _notificationRepository.Setup(x => x.GetThresholdNotificationByIdAsync(It.IsAny<Guid>()))
                 .Returns<Guid>((id) => Task.FromResult(_thresholdNotifications.FirstOrDefault(notification => notification.Id == id)));
 
+            var syncJob = new SyncJob();
+            _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(() => syncJob);
+
+            _syncJobRepository.Setup(x => x.UpdateSyncJobsAsync(It.IsAny<List<SyncJob>>(), null))
+                .Returns(() => Task.CompletedTask );
+
             // Items for testing
             _thresholdNotification = _thresholdNotifications[Random.Shared.Next(0, _notificationCount)];
             _groupId = _thresholdNotification.TargetOfficeGroupId;
@@ -160,6 +171,7 @@ namespace Services.Tests
 
             _resolveNotificationsHandler = new ResolveNotificationHandler(_loggingRepository.Object,
                 _notificationRepository.Object,
+                _syncJobRepository.Object,
                 _graphGroupRepository.Object,
                 _thresholdNotificationService);
             _notificationCardHandler = new NotificationCardHandler(_loggingRepository.Object,
@@ -359,7 +371,7 @@ namespace Services.Tests
         {
             var resolutionString = _localizationRepository.TranslateSetting(_thresholdNotification.Resolution);
             Assert.IsTrue(cardJson.Contains($"A recent synchronization attempt of **{_groupName}**"));
-            Assert.IsTrue(cardJson.Contains($"This notification was resolved by **{_userUPN}** on **{_thresholdNotification.ResolvedTime:U}**."));
+            Assert.IsTrue(cardJson.Contains($"This notification was resolved by **{_userUPN}** on **{_thresholdNotification.ResolvedTime:U}** UTC."));
             Assert.IsTrue(cardJson.Contains($"Action taken: **{resolutionString}**."));
             Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.Id}"));
             Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
