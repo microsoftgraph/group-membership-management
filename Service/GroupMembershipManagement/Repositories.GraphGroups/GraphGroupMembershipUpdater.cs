@@ -41,6 +41,7 @@ namespace Repositories.GraphGroups
         private delegate HttpRequestMessage MakeBulkRequest(List<AzureADUser> batch);
 
         private List<AzureADUser> _usersNotFound = new List<AzureADUser>();
+        private List<AzureADUser> _usersAlreadyExist = new List<AzureADUser>();
 
         public Guid? RunId { get; set; }
 
@@ -51,7 +52,7 @@ namespace Repositories.GraphGroups
         { }
 
 
-        public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)>
+        public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)>
             AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
             //You can, in theory, send batches of 20 requests of 20 group adds each
@@ -77,7 +78,7 @@ namespace Repositories.GraphGroups
             return body.ToString(Newtonsoft.Json.Formatting.None);
         }
 
-        public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)>
+        public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)>
             RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
             // This, however, is the most we can send per delete batch, and it works pretty well.
@@ -97,10 +98,10 @@ namespace Repositories.GraphGroups
 
         private string GetNewChunkId() => $"{Guid.NewGuid().ToString().Replace("-", string.Empty)}-";
 
-        private async Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)>
+        private async Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)>
             BatchAndSend(IEnumerable<AzureADUser> users, MakeBulkRequest makeRequest, int requestMax, int batchSize)
         {
-            if (!users.Any()) { return (ResponseCode.Ok, 0, new List<AzureADUser>()); }
+            if (!users.Any()) { return (ResponseCode.Ok, 0, new List<AzureADUser>(), new List<AzureADUser>()); }
 
             var queuedBatches = new ConcurrentQueue<ChunkOfUsers>(
                     users.Chunk(requestMax) // Chop up the users into chunks of how many per graph request (20 for add, 1 for remove)
@@ -113,7 +114,7 @@ namespace Repositories.GraphGroups
             var responses = await Task.WhenAll(Enumerable.Range(0, ConcurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize)));
 
             var status = responses.Any(x => x.ResponseCode == ResponseCode.Error) ? ResponseCode.Error : ResponseCode.Ok;
-            return (status, responses.Sum(x => x.SuccessCount), _usersNotFound);
+            return (status, responses.Sum(x => x.SuccessCount), _usersNotFound, _usersAlreadyExist);
         }
 
         private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessQueue(ConcurrentQueue<ChunkOfUsers> queue, MakeBulkRequest makeRequest, int threadNumber, int batchSize)
@@ -215,13 +216,15 @@ namespace Repositories.GraphGroups
 
                         if (chunkToRetry.ToSend.Count > 0)
                         {
-                            if (chunkToRetry.ToSend.Count == 1 && idToRetry.ResponseCode == ResponseCode.IndividualRetry && idToRetry.HttpStatusCode == HttpStatusCode.BadRequest)
+                            if (chunkToRetry.ToSend.Count == 1 && idToRetry.ResponseCode == ResponseCode.Ok && idToRetry.HttpStatusCode == HttpStatusCode.BadRequest)
                             {
                                 await _loggingRepository.LogMessageAsync(new LogMessage
                                 {
                                     Message = $"{chunkToRetry.Id} already exists",
                                     RunId = RunId
                                 });
+
+                                _usersAlreadyExist.Add(chunkToRetry.ToSend[0]);
                             }
 
                             else
@@ -343,7 +346,7 @@ namespace Repositories.GraphGroups
                     yield return new RetryResponse
                     {
                         RequestId = kvp.Key,
-                        ResponseCode = ResponseCode.IndividualRetry,
+                        ResponseCode = ResponseCode.Ok,
                         HttpStatusCode = HttpStatusCode.BadRequest
                     };
                 }
@@ -367,7 +370,7 @@ namespace Repositories.GraphGroups
                         {
                             await _loggingRepository.LogMessageAsync(new LogMessage
                             {
-                                Message = $"Removing {requestStep.RequestId} failed as this resource does not exit",
+                                Message = $"Removing {requestStep.RequestId} failed as this resource does not exists.",
                                 RunId = RunId
                             });
 
@@ -377,7 +380,7 @@ namespace Repositories.GraphGroups
                         {
                             await _loggingRepository.LogMessageAsync(new LogMessage
                             {
-                                Message = $"Adding {userId} failed as this resource does not exit",
+                                Message = $"Adding {userId} failed as this resource does not exists.",
                                 RunId = RunId
                             });
 

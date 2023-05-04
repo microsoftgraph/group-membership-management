@@ -108,14 +108,14 @@ namespace Repositories.GraphGroups
             return await _graphGroupMembershipReader.GetUsersInGroupTransitivelyAsync(groupId, RunId);
         }
 
-        public async Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)>
+        public async Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)>
             AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
             _graphGroupMembershipUpdater.RunId = RunId;
             return await _graphGroupMembershipUpdater.AddUsersToGroup(users, targetGroup);
         }
 
-        public async Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)>
+        public async Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)>
             RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
             _graphGroupMembershipUpdater.RunId = RunId;
