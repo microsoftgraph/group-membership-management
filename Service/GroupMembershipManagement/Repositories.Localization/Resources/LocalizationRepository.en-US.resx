@@ -123,6 +123,7 @@
     "type": "AdaptiveCard",
     "version": "1.0",
     "originator": "${$root.providerId}",
+    "createdUtc": "${$root.cardCreatedTime}",
     "body": [
       {
         "type": "Container",

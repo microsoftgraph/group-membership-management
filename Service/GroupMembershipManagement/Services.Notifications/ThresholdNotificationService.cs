@@ -45,7 +45,8 @@ namespace Services.Notifications
                 ThresholdPercentageForRemovals = notification.ThresholdPercentageForRemovals,
                 ApiHostname = _apiHostname,
                 NotificationId = $"{notification.Id}",
-                ProviderId = $"{_providerId}"
+                ProviderId = $"{_providerId}",
+                CardCreatedTime = DateTime.UtcNow
             };
 
             var template = new AdaptiveCardTemplate(cardJson);
