@@ -156,12 +156,10 @@ var stagingSettings = {
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}NotifierStaging'
   'AzureWebJobs.StarterFunction.Disabled': 1
   'AzureWebJobs.OrchestratorFunction.Disabled': 1
-  'AzureWebJobs.LoggerFunction.Disabled': 11
-  'AzureWebJobs.PipelineInvocationStarterFunction.Disabled': 1
-  'AzureWebJobs.TimerStarterFunction.Disabled': 1
-  'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.CheckNotifierStatusFunction.Disabled': 1
-  'AzureWebJobs.PostCallbackFunction.Disabled': 1
+  'AzureWebJobs.RetrieveNotificationsFunction.Disabled': 1
+  'AzureWebJobs.LoggerFunction.Disabled': 1
+  'AzureWebJobs.UpdateNotificationStatusFunction.Disabled': 1
+  'AzureWebJobs.SendNotificationFunction.Disabled': 1
 }
 
 var productionSettings = {
@@ -169,12 +167,10 @@ var productionSettings = {
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}Notifier'
   'AzureWebJobs.StarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
+  'AzureWebJobs.RetrieveNotificationsFunction.Disabled': 0
   'AzureWebJobs.LoggerFunction.Disabled': 0
-  'AzureWebJobs.PipelineInvocationStarterFunction.Disabled': 0
-  'AzureWebJobs.TimerStarterFunction.Disabled': 0
-  'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.CheckNotifierStatusFunction.Disabled': 0
-  'AzureWebJobs.PostCallbackFunction.Disabled': 0
+  'AzureWebJobs.UpdateNotificationStatusFunction.Disabled': 0
+  'AzureWebJobs.SendNotificationFunction.Disabled': 0
 }
 
 module functionAppTemplate_Notifier 'functionApp.bicep' = {

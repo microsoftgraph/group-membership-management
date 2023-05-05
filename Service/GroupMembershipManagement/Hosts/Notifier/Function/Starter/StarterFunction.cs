@@ -2,89 +2,37 @@
 // Licensed under the MIT license.
 
 using System;
-using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
-using Azure;
-using Azure.Core;
-using Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Newtonsoft.Json;
+using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 
 namespace Hosts.Notifier
 {
     public class StarterFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
+        private readonly IThresholdNotificationConfig _thresholdNotificationConfig;
 
-        public StarterFunction(ILoggingRepository loggingRepository)
+        public StarterFunction(ILoggingRepository loggingRepository, IThresholdNotificationConfig thresholdNotificationConfig)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _thresholdNotificationConfig = thresholdNotificationConfig ?? throw new ArgumentNullException(nameof(thresholdNotificationConfig));
         }
 
         [FunctionName(nameof(StarterFunction))]
-        public async Task<HttpResponseMessage> RunAsync(
-            [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestMessage req,
+        public async Task Run(
+            [TimerTrigger("%notifierTriggerSchedule%")] TimerInfo myTimer,
             [DurableClient] IDurableOrchestrationClient starter)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
-
-            HttpResponseMessage response;
-            var result = await ValidateRequestAsync(req);
-
-            if (result.StatusCode == HttpStatusCode.OK)
+            if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
             {
-                var instanceId =  await starter.StartNewAsync(nameof(OrchestratorFunction), result.Request);
-                response = starter.CreateCheckStatusResponse(req, instanceId);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
+                var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction));
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
             }
-            else
-            {
-                response = new HttpResponseMessage { StatusCode = result.StatusCode };
-            }
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
-
-            return response;
-        }
-
-        private async Task<(HttpStatusCode StatusCode, NotifierRequest Request)> ValidateRequestAsync(HttpRequestMessage request)
-        {
-            NotifierRequest notifierRequest = null;
-
-            try
-            {
-                var content = await request.Content.ReadAsStringAsync();
-
-                if (string.IsNullOrWhiteSpace(content))
-                {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request body was not provided." });
-                    return (HttpStatusCode.BadRequest, null);
-                }
-
-                notifierRequest = JsonConvert.DeserializeObject<NotifierRequest>(content);
-
-                if (string.IsNullOrWhiteSpace(notifierRequest.RecipientAddresses))
-                {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request body is not valid." });
-                    return (HttpStatusCode.BadRequest, null);
-                }
-
-            }
-            catch (Exception ex) when (ex.GetType() == typeof(JsonReaderException) || ex.GetType() == typeof(JsonSerializationException))
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request body is not valid." });
-                return (HttpStatusCode.BadRequest, null);
-            }
-            catch (Exception ex)
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unexpected error occured when processing the request.\n{ex}" });
-                return (HttpStatusCode.InternalServerError, null);
-            }
-
-            return (HttpStatusCode.OK, notifierRequest);
         }
     }
 }
