@@ -21,7 +21,7 @@ namespace Tests.FunctionApps.Mocks
         public bool ThrowNonSocketExceptionFromGetUsersInGroup { get; set; } = false;
         public Guid RunId { get; set; }
 
-        public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+        public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
             throw new NotImplementedException();
         }
@@ -63,7 +63,7 @@ namespace Tests.FunctionApps.Mocks
             throw new NotImplementedException();
         }
 
-        public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound)> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
+        public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)> RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
             throw new NotImplementedException();
         }
