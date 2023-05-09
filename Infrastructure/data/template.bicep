@@ -292,6 +292,13 @@ param sqlAdminUserName string = 'SQLDBAdmin'
 @description('Administrator password')
 param sqlAdminPassword string = 'ADMN${toLower(newGuid())}!$#'
 
+@description('Read Only SQL Administrator user name')
+param readOnlySqlAdminUserName string = 'RSQLDBAdmin'
+
+@secure()
+@description('Read Only SQL Administrator password')
+param readOnlySqlAdminPassword string = 'RADMN${toLower(newGuid())}!$#'
+
 module sqlServer 'sqlServer.bicep' =  {
   name: 'sqlServerTemplate'
   params: {
@@ -302,6 +309,8 @@ module sqlServer 'sqlServer.bicep' =  {
     sqlAdministratorsGroupName: sqlAdministratorsGroupName
     sqlAdminPassword: sqlAdminPassword
     sqlAdminUserName:  sqlAdminUserName
+    readOnlySqlAdminPassword: readOnlySqlAdminPassword
+    readOnlySqlAdminUserName:  readOnlySqlAdminUserName
     tenantId: tenantId
   }
 }

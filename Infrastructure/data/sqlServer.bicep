@@ -27,8 +27,16 @@ param sqlAdminUserName string
 @description('Administrator password')
 param sqlAdminPassword string
 
+@description('Read Only SQL Administrator user name')
+param readOnlySqlAdminUserName string
+
+@secure()
+@description('Read Only SQL Administrator password')
+param readOnlySqlAdminPassword string
+
 var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var sqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
+var sqlDatabaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var logAnalyticsName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var sqlServerUrl = 'Server=tcp:${solutionAbbreviation}-data-${environmentAbbreviation}${environment().suffixes.sqlServerHostname},1433;'
 var sqlServerDataBaseName = 'Initial Catalog=${solutionAbbreviation}-data-${environmentAbbreviation};'
@@ -77,7 +85,7 @@ resource sqlServer 'Microsoft.Sql/servers@2021-02-01-preview' = {
 }
 
 resource primaryDatabase 'Microsoft.Sql/servers/databases@2021-02-01-preview' = {
-  name: 'jobs'
+  name: '${sqlDatabaseName}-jobs'
   parent: sqlServer
   location: location
   properties: {
@@ -102,8 +110,8 @@ resource replicaSqlServer 'Microsoft.Sql/servers@2021-11-01-preview' = {
     primaryDatabase
   ]
   properties: {
-    administratorLogin: sqlServer.properties.administratorLogin
-    administratorLoginPassword: sqlAdminPassword
+    administratorLogin: readOnlySqlAdminUserName
+    administratorLoginPassword: readOnlySqlAdminPassword
     administrators: {
       administratorType: 'ActiveDirectory'
       principalType: 'Group'
@@ -115,7 +123,7 @@ resource replicaSqlServer 'Microsoft.Sql/servers@2021-11-01-preview' = {
 }
 
 resource readReplicaDb 'Microsoft.Sql/servers/databases@2021-11-01-preview' = {
-  name: primaryDatabase.name
+  name: '${primaryDatabase.name}-R'
   parent: replicaSqlServer
   location: location
   dependsOn:[
@@ -161,7 +169,6 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2017-05-01-pr
   ]
 }
 
-// Long term backup
 resource longTermBackup 'Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies@2022-05-01-preview' = {
   parent: primaryDatabase
   name: 'default'
@@ -186,6 +193,14 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
         {
           name: 'sqlServerAdminPassword'
           value: sqlAdminPassword
+        }
+        {
+          name: 'readOnlySqlAdminUserName'
+          value: readOnlySqlAdminUserName
+        }
+        {
+          name: 'readOnlySqlAdminPassword'
+          value: readOnlySqlAdminPassword
         }
         {
           name: 'sqlServerManagedIdentity'
