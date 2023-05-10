@@ -25,6 +25,7 @@ namespace Repositories.NotificationsRepository
             _log = logger ?? throw new ArgumentNullException(nameof(logger));
             _tableClient = new TableClient(notificationRepoCredentials.Value.ConnectionString, notificationRepoCredentials.Value.TableName);
         }
+
         public async Task<ThresholdNotification> GetThresholdNotificationByIdAsync(Guid notificationId)
         {
             try
@@ -39,6 +40,23 @@ namespace Repositories.NotificationsRepository
                     throw ex;
                 }
             }
+            return null;
+        }
+
+        public async Task<ThresholdNotification> GetThresholdNotificationBySyncJobKeysAsync(string syncJobPartitionKey, string syncJobRowKey)
+        {
+            var queryResult = _tableClient.QueryAsync<ThresholdNotificationEntity>(x =>
+                x.SyncJobPartitionKey == syncJobPartitionKey && x.SyncJobRowKey == syncJobRowKey);
+
+            await foreach (var segmentResult in queryResult.AsPages())
+            {
+                var results = segmentResult.Values.Where(x => x.ResolutionName == ThresholdNotificationResolution.Unresolved.ToString());
+                if (results.Count() > 0)
+                {
+                    return ToModel(results.ElementAt(0));
+                }
+            }
+
             return null;
         }
 

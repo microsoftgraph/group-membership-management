@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.Amqp.Framing;
 
 namespace Services
 {
@@ -138,35 +139,14 @@ namespace Services
                         await LogIgnoreThresholdOnceAsync(job, sourceMembership.RunId);
                     else
                     {
-                        if(_thresholdNotificationConfig.IsThresholdNotificationEnabled)
-                        {
-                            var thresholdNotification = new ThresholdNotification { 
-                                Id = Guid.NewGuid(),
-                                SyncJobPartitionKey = job.PartitionKey,
-                                SyncJobRowKey = job.RowKey,
-                                ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage,
-                                ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage,
-                                ChangeQuantityForAdditions = delta.Delta.ToAdd.Count,
-                                ChangeQuantityForRemovals = delta.Delta.ToRemove.Count,
-                                CreatedTime = DateTime.UtcNow,
-                                Resolution = ThresholdNotificationResolution.Unresolved,
-                                ResolvedByUPN = string.Empty,
-                                ResolvedTime = DateTime.FromFileTimeUtc(0),
-                                Status = ThresholdNotificationStatus.Queued,
-                                TargetOfficeGroupId = job.TargetOfficeGroupId,
-                                ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
-                                ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals
-                            };
-
-                            await _notificationRepository.SaveNotificationAsync(thresholdNotification);
-                        }
-                        else
-                        {
-                            await SendThresholdNotificationAsync(threshold, job, sourceMembership.RunId);
-                        }
+                        await SendThresholdNotificationAsync(threshold, job, sourceMembership.RunId, delta.Delta);
                     }
 
                     return deltaResponse;
+                }
+                else if(job.ThresholdViolations > 0)
+                {
+                    await CloseUnresolvedThresholdNotificationAsync(threshold, job, sourceMembership.RunId, delta.Delta);
                 }
 
                 if (isDryRunSync)
@@ -280,7 +260,7 @@ namespace Services
             });
         }
 
-        private async Task SendThresholdNotificationAsync(ThresholdResult threshold, SyncJob job, Guid runId)
+        private async Task SendThresholdNotificationAsync(ThresholdResult threshold, SyncJob job, Guid runId, MembershipDelta<AzureADUser> delta)
         {
             var currentThresholdViolations = job.ThresholdViolations + 1;
             var followUpLimit = _thresholdConfig.NumberOfThresholdViolationsToNotify + _thresholdConfig.NumberOfThresholdViolationsFollowUps;
@@ -299,46 +279,108 @@ namespace Services
                 return;
             }
 
-            var emailSubject = SyncThresholdEmailSubject;
-
-            string contentTemplate;
-            string[] additionalContent;
-            string[] additionalSubjectContent = new[] { job.TargetOfficeGroupId.ToString(), groupName };
-
-            var thresholdEmail = GetThresholdEmail(groupName, threshold, job);
-            contentTemplate = thresholdEmail.ContentTemplate;
-            additionalContent = thresholdEmail.AdditionalContent;
-
-            var recipients = _emailSenderAndRecipients.SupportEmailAddresses ?? _emailSenderAndRecipients.SyncDisabledCCAddresses;
-
-            if (!string.IsNullOrWhiteSpace(job.Requestor))
+            if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
             {
-                var recipientList = await GetThresholdRecipientsAsync(job.Requestor, job.TargetOfficeGroupId);
-                if (recipientList.Count > 0)
-                    recipients = string.Join(",", recipientList);
+                await SendActionableEmailNotification(job, threshold, delta);
             }
-
-            if (sendDisableJobNotification)
+            else
             {
-                emailSubject = SyncThresholdDisablingJobEmailSubject;
-                contentTemplate = SyncJobDisabledEmailBody;
-                additionalContent = new[]
+                var emailSubject = SyncThresholdEmailSubject;
+
+                string contentTemplate;
+                string[] additionalContent;
+                string[] additionalSubjectContent = new[] { job.TargetOfficeGroupId.ToString(), groupName };
+
+                var thresholdEmail = GetThresholdEmail(groupName, threshold, job);
+                contentTemplate = thresholdEmail.ContentTemplate;
+                additionalContent = thresholdEmail.AdditionalContent;
+
+                var recipients = _emailSenderAndRecipients.SupportEmailAddresses ?? _emailSenderAndRecipients.SyncDisabledCCAddresses;
+
+                if (!string.IsNullOrWhiteSpace(job.Requestor))
                 {
+                    var recipientList = await GetThresholdRecipientsAsync(job.Requestor, job.TargetOfficeGroupId);
+                    if (recipientList.Count > 0)
+                        recipients = string.Join(",", recipientList);
+                }
+
+                if (sendDisableJobNotification)
+                {
+                    emailSubject = SyncThresholdDisablingJobEmailSubject;
+                    contentTemplate = SyncJobDisabledEmailBody;
+                    additionalContent = new[]
+                    {
                     job.TargetOfficeGroupId.ToString(),
                     groupName,
                     _gmmResources.LearnMoreAboutGMMUrl,
                     _emailSenderAndRecipients.SupportEmailAddresses
                 };
+                }
+
+                await _graphAPIService.SendEmailAsync(
+                        recipients,
+                        contentTemplate,
+                        additionalContent,
+                        runId,
+                        ccEmail: _emailSenderAndRecipients.SupportEmailAddresses,
+                        emailSubject: emailSubject,
+                        additionalSubjectParams: additionalSubjectContent);
+            }
+        }
+
+        private async Task SendActionableEmailNotification(SyncJob job, ThresholdResult threshold, MembershipDelta<AzureADUser> delta)
+        {
+            var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobKeysAsync(job.PartitionKey, job.RowKey);
+            if (thresholdNotification == null)
+            {
+                thresholdNotification = new ThresholdNotification
+                {
+                    Id = Guid.NewGuid(),
+                    SyncJobPartitionKey = job.PartitionKey,
+                    SyncJobRowKey = job.RowKey,
+                    ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage,
+                    ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage,
+                    ChangeQuantityForAdditions = delta.ToAdd.Count,
+                    ChangeQuantityForRemovals = delta.ToRemove.Count,
+                    CreatedTime = DateTime.UtcNow,
+                    Resolution = ThresholdNotificationResolution.Unresolved,
+                    ResolvedByUPN = string.Empty,
+                    ResolvedTime = DateTime.FromFileTimeUtc(0),
+                    Status = ThresholdNotificationStatus.Queued,
+                    TargetOfficeGroupId = job.TargetOfficeGroupId,
+                    ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
+                    ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals
+                };
+            }
+            else
+            {
+                thresholdNotification.ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage;
+                thresholdNotification.ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage;
+                thresholdNotification.ChangeQuantityForAdditions = delta.ToAdd.Count;
+                thresholdNotification.ChangeQuantityForRemovals = delta.ToRemove.Count;
+                thresholdNotification.ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions;
+                thresholdNotification.ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals;
+                thresholdNotification.Status = ThresholdNotificationStatus.Queued;
             }
 
-            await _graphAPIService.SendEmailAsync(
-                    recipients,
-                    contentTemplate,
-                    additionalContent,
-                    runId,
-                    ccEmail: _emailSenderAndRecipients.SupportEmailAddresses,
-                    emailSubject: emailSubject,
-                    additionalSubjectParams: additionalSubjectContent);
+            await _notificationRepository.SaveNotificationAsync(thresholdNotification);
+        }
+
+        private async Task CloseUnresolvedThresholdNotificationAsync(ThresholdResult threshold, SyncJob job, Guid runId, MembershipDelta<AzureADUser> delta)
+        {
+            if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
+            {
+                var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobKeysAsync(job.PartitionKey, job.RowKey);
+                if (thresholdNotification != null && thresholdNotification.Status != ThresholdNotificationStatus.Resolved)
+                {
+                    thresholdNotification.Resolution = ThresholdNotificationResolution.SelfCorrected;
+                    thresholdNotification.ResolvedByUPN = "N/A";
+                    thresholdNotification.ResolvedTime = DateTime.UtcNow;
+                    thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
+
+                    await _notificationRepository.SaveNotificationAsync(thresholdNotification);
+                }
+            }
         }
 
         private (string ContentTemplate, string[] AdditionalContent) GetThresholdEmail(string groupName, ThresholdResult threshold, SyncJob job)

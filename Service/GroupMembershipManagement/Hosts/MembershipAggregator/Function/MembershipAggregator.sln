@@ -31,6 +31,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DIConcreteTypes", "..\..\..
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.NotificationRepository", "..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj", "{63C840D2-CE0C-4308-BEB6-35B49AF7B276}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Common.DependencyInjection", "..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj", "{44D425F3-7883-4014-A3A7-108807522C51}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -93,6 +95,10 @@ Global
 		{63C840D2-CE0C-4308-BEB6-35B49AF7B276}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{63C840D2-CE0C-4308-BEB6-35B49AF7B276}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{63C840D2-CE0C-4308-BEB6-35B49AF7B276}.Release|Any CPU.Build.0 = Release|Any CPU
+		{44D425F3-7883-4014-A3A7-108807522C51}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{44D425F3-7883-4014-A3A7-108807522C51}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{44D425F3-7883-4014-A3A7-108807522C51}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{44D425F3-7883-4014-A3A7-108807522C51}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

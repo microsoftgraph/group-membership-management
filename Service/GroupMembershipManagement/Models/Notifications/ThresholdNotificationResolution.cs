@@ -20,6 +20,10 @@ namespace Models.ThresholdNotifications
         /// <summary>
         /// The notification was resolved by pausing the sync job
         /// </summary>
-        Paused = 3
+        Paused = 3,
+        /// <summary>
+        /// The notification was resolved without intervention necessary
+        /// </summary>
+        SelfCorrected = 4
     }
 }
