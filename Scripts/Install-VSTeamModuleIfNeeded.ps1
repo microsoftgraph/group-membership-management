@@ -17,5 +17,5 @@ function Install-VSTeamModuleIfNeeded {
         $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
         . ($scriptsDirectory + '\Scripts\Install-ModuleIfNeeded.ps1')
-        Install-ModuleIfNeeded -Name VSTeam -Version "6.1.3" -Verbose
+        Install-ModuleIfNeeded -Name VSTeam -Version "7.11.0" -Verbose
 }

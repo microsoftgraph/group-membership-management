@@ -10,7 +10,7 @@ Basically, this script is designed to create an Azure AD app and write its crede
 This should be able to work when the AD app and the target key vault are in the same tenant. Just pass the same tenant ID to both
 parameters.
 
-To find the tenant ID for a tenant, you can run Connect-AzureAD in Powershell, or open the Azure portal, click on "Azure Active Directory",
+To find the tenant ID for a tenant, you can run Connect-AzAccount in Powershell, or open the Azure portal, click on "Azure Active Directory",
 and it should be there.
 
 You'll be promped to sign in twice. First as someone who can create the Azure AD app in the given tenant and assign it permissions,

@@ -17,5 +17,5 @@ function Install-AzTableModuleIfNeeded {
         $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
         . ($scriptsDirectory + '\Scripts\Install-ModuleIfNeeded.ps1')
-        Install-ModuleIfNeeded -Name AzTable -Version "2.0.1" -Verbose
+        Install-ModuleIfNeeded -Name AzTable -Version "2.1.0" -Verbose
 }

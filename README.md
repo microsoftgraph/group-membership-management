@@ -53,9 +53,8 @@ This section aims to provide the background information needed to understand the
 -   Azure DevOps - [Try Azure DevOps Services](https://azure.microsoft.com/en-us/pricing/details/devops/azure-devops-services/)
 
     Note: to follow these steps you will need to sign in to [Azure Portal](https://portal.azure.com/) and [Azure DevOps Portal](https://dev.azure.com/.) with an account that has permissions to create new Azure resources.
--   Powershell v5.x [Download and install Windows PowerShell 5.1](https://docs.microsoft.com/en-us/skypeforbusiness/set-up-your-computer-for-windows-powershell/download-and-install-windows-powershell-5-1)
 
--   Powershell Core v7.x [Download and install Windows PowerShell 7.2](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows)
+-   Powershell Core v7.x [Download and install Windows PowerShell 7.x](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows)
 
 - [Visual Studio](https://visualstudio.microsoft.com/downloads/) or [Visual Studio Code](https://visualstudio.microsoft.com/downloads/)
 - [.NET SDK Version 6](https://dotnet.microsoft.com/en-us/download/dotnet/6.0)
@@ -179,7 +178,7 @@ See [Resource Groups](##Resource-groups-overview) and [Prereqs Keyvault](##Prere
 
 The following script is going to create the Azure resource groups and the prereqs keyvault required to set up GMM. We create these resource groups and keyvault in order for the ARM templates to be able to create additional resources and deploy the code.
 
-From your `PowerShell Core 7.2.x` command prompt navigate to the Scripts folder of your `Public` repo and type these commands:
+From your `PowerShell Core 7.x` command prompt navigate to the Scripts folder of your `Public` repo and type these commands:
 
     1. . ./Set-Environment.ps1
     2. Set-Environment  -solutionAbbreviation "<solutionAbbreviation>" `
@@ -206,7 +205,7 @@ The following PowerShell script will create a new application, `<solutionAbbrevi
 
 Note that this script will create an new application and authentication will be done using a client id and client secret pair. If you prefer to use a certificate skip to the next section.
 
-From your `PowerShell 5.x` command prompt navigate to the `Scripts` folder of your `Public` repo and run these commands:
+From your `PowerShell 7.x` command prompt navigate to the `Scripts` folder of your `Public` repo and run these commands:
 
     1. . ./Set-GraphCredentialsAzureADApplication.ps1
     2. Set-GraphCredentialsAzureADApplication	-SubscriptionName "<SubscriptionName>" `
@@ -235,7 +234,7 @@ The script will create these settings in your prereqs keyvault.
 -   graphAppClientSecret
 -   graphAppCertificateName
 
-From your `PowerShell 5.x` command prompt navigate to the `Scripts` folder of your `Public` repo and run these commands:
+From your `PowerShell 7.x` command prompt navigate to the `Scripts` folder of your `Public` repo and run these commands:
 
     1. . ./Set-GraphCredentialsAzureADApplication.ps1
     2. Set-GraphCredentialsAzureADApplication	-SubscriptionName "<SubscriptionName>" `
@@ -377,7 +376,7 @@ The following PowerShell scripts create a Service Principal and set up a Service
 
     This script will create a new service principal for your environment.
 
-    From your `PowerShell 5.x` command prompt navigate to the `Scripts` folder of your `Public` repo and type these commands.
+    From your `PowerShell 7.x` command prompt navigate to the `Scripts` folder of your `Public` repo and type these commands.
 
         1. . ./Set-ServicePrincipal.ps1
         2. Set-ServicePrincipal -SolutionAbbreviation "<SolutionAbbreviation>"  `
@@ -392,7 +391,7 @@ The following PowerShell scripts create a Service Principal and set up a Service
 
     This script will grant the service principal `Contributor` role over all resource groups for GMM. This script must be run by someone with the <b>Owner role on the subscription.</b>
 
-    From your `PowerShell 5.x` command prompt navigate to the `Scripts` folder of your `Public` repo and type these commands.
+    From your `PowerShell 7.x` command prompt navigate to the `Scripts` folder of your `Public` repo and type these commands.
 
         1. . ./Set-ServicePrincipalManagedIdentityRoles.ps1
         2. Set-ServicePrincipalManagedIdentityRoles -SolutionAbbreviation "<SolutionAbbreviation>"  `
@@ -403,7 +402,7 @@ The following PowerShell scripts create a Service Principal and set up a Service
 
     This script sets up the service connection for your environment. You must be an owner of the the service pricipal created in step 1 to run this script.
 
-    From your `PowerShell 5.x` command prompt navigate to the `Scripts` folder of your `Public` repo, run these commands, and follow the instructions on the screen:
+    From your `PowerShell 7.x` command prompt navigate to the `Scripts` folder of your `Public` repo, run these commands, and follow the instructions on the screen:
 
         1. . ./Set-ServiceConnection.ps1
         2. Set-ServiceConnection -SolutionAbbreviation "<SolutionAbbreviation>"  `
@@ -514,7 +513,7 @@ The following script:
 1. Grants all functions access to App Configuration.
 2. Grants SecurityGroup, MembershipAggregator, and GraphUpdater functions access to storage account.
 
-From your `PowerShell 7.2.x` command prompt navigate to the `Scripts/PostDeployment` folder of your `Public` repo, run these commands, and follow the instructions on the screen:
+From your `PowerShell 7.x` command prompt navigate to the `Scripts/PostDeployment` folder of your `Public` repo, run these commands, and follow the instructions on the screen:
 
         1. . ./Set-PostDeploymentRoles.ps1
         2. Set-PostDeploymentRoles  -SolutionAbbreviation "<solutionAbbreviation>" `

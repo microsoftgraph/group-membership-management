@@ -11,7 +11,7 @@ Basically, this script is designed to create an Azure AD app with the appropriat
 This should be able to work when the AD app and the target key vault are in the same tenant. Just pass the same tenant ID to both
 parameters.
 
-To find the tenant ID for a tenant, you can run Connect-AzureAD in Powershell, or open the Azure portal, click on "Azure Active Directory",
+To find the tenant ID for a tenant, you can run Connect-AzAccount in Powershell, or open the Azure portal, click on "Azure Active Directory",
 and it should be there.
 
 You'll be promped to sign in twice. First as someone who can create the Azure AD app in the given tenant and assign it permissions,
@@ -96,7 +96,7 @@ function Set-GraphCredentialsAzureADApplication {
         $displayName = $_.DisplayName;
         $objectId = $_.Id;
         try {
-            Remove-AzureADApplication -ObjectId $objectId
+            Remove-AzADApplication -ObjectId $objectId
             Write-Host "Removed $displayName..." -ForegroundColor Green;
         }
         catch {
@@ -110,46 +110,51 @@ function Set-GraphCredentialsAzureADApplication {
         ForEach-Object { "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$_.azurewebsites.net"};
     $replyUrls += "http://localhost";
 
-	# get the azure AD module here because you can only set permissions with this guy
-	. ($scriptsDirectory + '\Scripts\Install-AzureADModuleIfNeeded.ps1')
-	Install-AzureADModuleIfNeeded
-	Write-Host "Please sign in again as an account that can make Azure AD Apps in your target tenant."
-	Connect-AzureAD -TenantId $TenantIdToCreateAppIn
+	$requiredResourceAccess = @{
+		ResourceAppId = "00000003-0000-0000-c000-000000000000";
+		ResourceAccess = @()
+	}
 
-    # Basically, read the app permissions ("AppRoles" is what this API calls application permissions) Microsoft Graph has,
-	# then filter out the ones we want so we can give them to our AD app.
-	# If you assign them to the AppRoles on New-AzureADApplication, it goes somewhere else. The magic key is
-	# RequiredResourceAccess for some reason. The GUIDs are the same, though, they just need a little massaging.
-	# see: https://stackoverflow.com/questions/42164581/how-to-configure-a-new-azure-ad-application-through-powershell
-	$requiredResourceAccess = New-Object -TypeName "Microsoft.Open.AzureAD.Model.RequiredResourceAccess"
-	$requiredResourceAccess.ResourceAccess = (Get-AzureADServicePrincipal -Filter "AppId eq '00000003-0000-0000-c000-000000000000'").AppRoles `
+	$permissions = (Get-AzADServicePrincipal -Filter "AppId eq '00000003-0000-0000-c000-000000000000'").AppRole `
 		| Where-Object { ($_.Value -eq "User.Read.All") -or ($_.Value -eq "GroupMember.Read.All") -or ($_.Value -eq "ChannelMember.ReadWrite.All")} `
-		| ForEach-Object { New-Object -TypeName "Microsoft.Open.AzureAD.Model.ResourceAccess" -ArgumentList $_.Id,"Role" }
-	$requiredResourceAccess.ResourceAppId = "00000003-0000-0000-c000-000000000000"
+        | ForEach-Object { @{Id = $_.Id; Type = "Role" } }
+
+	$requiredResourceAccess.ResourceAccess = $permissions
 
 	#region Create Appplication
 	if($null -eq $graphApp)
 	{
 		Write-Verbose "Creating Azure AD app $graphAppDisplayName"
-		$graphApp = New-AzureADApplication	-DisplayName $graphAppDisplayName `
-                                            -ReplyUrls $replyUrls `
-                                            -RequiredResourceAccess $requiredResourceAccess `
-											-AvailableToOtherTenants $false `
-											-Oauth2AllowImplicitFlow $false `
-											-PublicClient $false
+		$graphApp = New-AzADApplication	-DisplayName $graphAppDisplayName `
+                                        -ReplyUrls $replyUrls `
+                                        -RequiredResourceAccess $requiredResourceAccess `
+										-AvailableToOtherTenants $false `
+										-IsFallbackPublicClient
 
-        Set-AzureADApplication -ObjectId $graphApp.ObjectId -IdentifierUris "api://$($graphApp.AppId)"
+        New-AzADServicePrincipal -ApplicationId $graphApp.AppId
+
+		$webSettings = $graphApp.Web
+		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
+		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $true
+
+		Update-AzADApplication -ObjectId $graphApp.Id `
+		                       -IdentifierUris "api://$($graphApp.AppId)" `
+							   -Web $webSettings
 	}
 	else
 	{
 		Write-Verbose "Updating Azure AD app $graphAppDisplayName"
-		Set-AzureADApplication	-ObjectId $($graphApp.ObjectId) `
+
+		$webSettings = $graphApp.Web
+		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
+		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $true
+
+		Update-AzADApplication	-ObjectId $($graphApp.Id) `
                                 -DisplayName $graphAppDisplayName `
                                 -ReplyUrls $replyUrls `
                                 -RequiredResourceAccess $requiredResourceAccess `
 								-AvailableToOtherTenants $false `
-								-Oauth2AllowImplicitFlow $true `
-								-PublicClient $false
+								-Web $webSettings
     }
 
 	# These need to go into the key vault
