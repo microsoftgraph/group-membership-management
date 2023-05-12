@@ -45,8 +45,8 @@ namespace Services.Notifications
                 ThresholdPercentageForRemovals = notification.ThresholdPercentageForRemovals,
                 ApiHostname = _apiHostname,
                 NotificationId = $"{notification.Id}",
-                ProviderId = $"{_providerId}",
-                CardCreatedTime = DateTime.UtcNow
+                ProviderId = $"{_providerId}", 
+                DeletionDate = notification.CreatedTime.AddDays(30) // TODO: Make this configurable in future story
             };
 
             var template = new AdaptiveCardTemplate(cardJson);
@@ -111,6 +111,32 @@ namespace Services.Notifications
                 GroupName = groupName,
                 NotificationId = $"{notification.Id}",
                 ProviderId = $"{_providerId}"
+            };
+
+            var template = new AdaptiveCardTemplate(cardJson);
+            var card = template.Expand(cardData);
+
+            return card;
+        }
+
+        /// <inheritdoc />
+        public async Task<string> CreateFinalNotificationCardAsync(ThresholdNotification notification)
+        {
+            var groupName = await _graphGroupRepository.GetGroupNameAsync(notification.TargetOfficeGroupId);
+            var cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdFinalNotification);
+            var cardData = new ThesholdNotificationCardData
+            {
+                GroupName = groupName,
+                ChangeQuantityForAdditions = notification.ChangeQuantityForAdditions,
+                ChangeQuantityForRemovals = notification.ChangeQuantityForRemovals,
+                ChangePercentageForAdditions = notification.ChangePercentageForAdditions,
+                ChangePercentageForRemovals = notification.ChangePercentageForRemovals,
+                ThresholdPercentageForAdditions = notification.ThresholdPercentageForAdditions,
+                ThresholdPercentageForRemovals = notification.ThresholdPercentageForRemovals,
+                ApiHostname = _apiHostname,
+                NotificationId = $"{notification.Id}",
+                ProviderId = $"{_providerId}",
+                DeletionDate = notification.DeletionDate
             };
 
             var template = new AdaptiveCardTemplate(cardJson);
