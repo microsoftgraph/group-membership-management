@@ -59,7 +59,7 @@ Note: Individual users can be added and granted the proper permission, if you de
 
 ## Grant Permissions
 
-This step needs to be completed after all the resources have beend deployed to your Azure tenant.
+This step needs to be completed after all the resources have been deployed to your Azure tenant.
 
 See [Post-Deployment tasks](../../../../../README.md#post-deployment-tasks)
 

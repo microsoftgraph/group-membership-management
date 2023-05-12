@@ -81,11 +81,19 @@ function Set-ServicePrincipal {
     Write-Host "`n"
 
     $subscriptionId = Read-Host -Prompt "If you would like to use other subscription than '$($currentSubscription.Name)' `nprovide the subscription id, otherwise press enter to continue."
+    if ([string]::IsNullOrEmpty($subscriptionId)){
+        $subscriptionId = $currentSubscription.Id
+    }
+
     if ($subscriptionId)
     {
         Set-AzContext -SubscriptionId $subscriptionId
         $currentSubscription = (Get-AzContext).Subscription
         Write-Host "Selected subscription: $($currentSubscription.Name) -  $($currentSubscription.Id)"
+    }
+    else {
+        Write-Host "No subscription has been selected."
+        return
     }
 
     Write-Host "Please ensure you have ownership permissions on this subscription."

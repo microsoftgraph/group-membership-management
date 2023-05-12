@@ -266,9 +266,11 @@ function Set-WebApiAzureADApplication {
 		Write-Verbose "$webApiAppCertificateName added to vault for $webApiAppDisplayName."
 	}
 
-	Start-Process "https://login.microsoftonline.com/$AppTenantId/oauth2/authorize?client_id=$($webApiApp.AppId)&response_type=code&prompt=admin_consent&redirect_uri=$($replyUrls[0])"
-	Write-Host "Your default browser has been launched and directed to a site (link below) that will prompt for admin consent. Make sure to login with you tenant admin account."
-	Write-Host "https://login.microsoftonline.com/$AppTenantId/oauth2/authorize?client_id=$($webApiApp.AppId)&response_type=code&prompt=admin_consent&redirect_uri=$($replyUrls[0])"
+	if($AppTenantId -ne $KeyVaultTenantId){
+		Start-Process "https://login.microsoftonline.com/$AppTenantId/oauth2/authorize?client_id=$($webApiApp.AppId)&response_type=code&prompt=admin_consent&redirect_uri=$($replyUrls[0])"
+		Write-Host "Your default browser has been launched and directed to a site (link below) that will prompt for admin consent. Make sure to login with you tenant admin account."
+		Write-Host "https://login.microsoftonline.com/$AppTenantId/oauth2/authorize?client_id=$($webApiApp.AppId)&response_type=code&prompt=admin_consent&redirect_uri=$($replyUrls[0])"
+	}
 
 	Write-Verbose "Set-WebApiAzureADApplication completed."
 }
