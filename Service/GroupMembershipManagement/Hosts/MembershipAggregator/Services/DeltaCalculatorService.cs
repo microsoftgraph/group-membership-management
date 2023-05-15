@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Amqp.Framing;
+using System.Text;
 
 namespace Services
 {
@@ -146,7 +147,7 @@ namespace Services
                 }
                 else if(job.ThresholdViolations > 0)
                 {
-                    await CloseUnresolvedThresholdNotificationAsync(threshold, job, sourceMembership.RunId, delta.Delta);
+                    await CloseUnresolvedThresholdNotificationAsync(job);
                 }
 
                 if (isDryRunSync)
@@ -263,8 +264,7 @@ namespace Services
         private async Task SendThresholdNotificationAsync(ThresholdResult threshold, SyncJob job, Guid runId, MembershipDelta<AzureADUser> delta)
         {
             var currentThresholdViolations = job.ThresholdViolations + 1;
-            var followUpLimit = _thresholdConfig.NumberOfThresholdViolationsToNotify + _thresholdConfig.NumberOfThresholdViolationsFollowUps;
-            var sendNotification = currentThresholdViolations >= _thresholdConfig.NumberOfThresholdViolationsToNotify && currentThresholdViolations <= followUpLimit;
+            var sendNotification = currentThresholdViolations >= _thresholdConfig.NumberOfThresholdViolationsToNotify;
             var sendDisableJobNotification = currentThresholdViolations == _thresholdConfig.NumberOfThresholdViolationsToDisableJob;
 
             var groupName = await _graphAPIService.GetGroupNameAsync(job.TargetOfficeGroupId);
@@ -281,56 +281,18 @@ namespace Services
 
             if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
             {
-                await SendActionableEmailNotification(job, threshold, delta);
+                await SendActionableEmailNotification(threshold, job, delta, sendDisableJobNotification);
             }
             else
             {
-                var emailSubject = SyncThresholdEmailSubject;
-
-                string contentTemplate;
-                string[] additionalContent;
-                string[] additionalSubjectContent = new[] { job.TargetOfficeGroupId.ToString(), groupName };
-
-                var thresholdEmail = GetThresholdEmail(groupName, threshold, job);
-                contentTemplate = thresholdEmail.ContentTemplate;
-                additionalContent = thresholdEmail.AdditionalContent;
-
-                var recipients = _emailSenderAndRecipients.SupportEmailAddresses ?? _emailSenderAndRecipients.SyncDisabledCCAddresses;
-
-                if (!string.IsNullOrWhiteSpace(job.Requestor))
-                {
-                    var recipientList = await GetThresholdRecipientsAsync(job.Requestor, job.TargetOfficeGroupId);
-                    if (recipientList.Count > 0)
-                        recipients = string.Join(",", recipientList);
-                }
-
-                if (sendDisableJobNotification)
-                {
-                    emailSubject = SyncThresholdDisablingJobEmailSubject;
-                    contentTemplate = SyncJobDisabledEmailBody;
-                    additionalContent = new[]
-                    {
-                    job.TargetOfficeGroupId.ToString(),
-                    groupName,
-                    _gmmResources.LearnMoreAboutGMMUrl,
-                    _emailSenderAndRecipients.SupportEmailAddresses
-                };
-                }
-
-                await _graphAPIService.SendEmailAsync(
-                        recipients,
-                        contentTemplate,
-                        additionalContent,
-                        runId,
-                        ccEmail: _emailSenderAndRecipients.SupportEmailAddresses,
-                        emailSubject: emailSubject,
-                        additionalSubjectParams: additionalSubjectContent);
+                await SendNormalThresholdEmail(threshold, job, runId, groupName, sendDisableJobNotification);
             }
         }
 
-        private async Task SendActionableEmailNotification(SyncJob job, ThresholdResult threshold, MembershipDelta<AzureADUser> delta)
+        private async Task SendActionableEmailNotification(ThresholdResult threshold, SyncJob job, MembershipDelta<AzureADUser> delta, bool sendDisableJobNotification)
         {
             var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobKeysAsync(job.PartitionKey, job.RowKey);
+
             if (thresholdNotification == null)
             {
                 thresholdNotification = new ThresholdNotification
@@ -361,12 +323,61 @@ namespace Services
                 thresholdNotification.ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions;
                 thresholdNotification.ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals;
                 thresholdNotification.Status = ThresholdNotificationStatus.Queued;
+
+                if (sendDisableJobNotification)
+                {
+                    // TODO: Add some kind of status to verify we send the job disable message
+                }
             }
 
             await _notificationRepository.SaveNotificationAsync(thresholdNotification);
         }
 
-        private async Task CloseUnresolvedThresholdNotificationAsync(ThresholdResult threshold, SyncJob job, Guid runId, MembershipDelta<AzureADUser> delta)
+        private async Task SendNormalThresholdEmail(ThresholdResult threshold, SyncJob job, Guid runId, string groupName, bool sendDisableJobNotification)
+        {
+            var emailSubject = SyncThresholdEmailSubject;
+
+            string contentTemplate;
+            string[] additionalContent;
+            string[] additionalSubjectContent = new[] { job.TargetOfficeGroupId.ToString(), groupName };
+
+            var thresholdEmail = GetNormalThresholdEmail(groupName, threshold, job);
+            contentTemplate = thresholdEmail.ContentTemplate;
+            additionalContent = thresholdEmail.AdditionalContent;
+
+            var recipients = _emailSenderAndRecipients.SupportEmailAddresses ?? _emailSenderAndRecipients.SyncDisabledCCAddresses;
+
+            if (!string.IsNullOrWhiteSpace(job.Requestor))
+            {
+                var recipientList = await GetThresholdRecipientsAsync(job.Requestor, job.TargetOfficeGroupId);
+                if (recipientList.Count > 0)
+                    recipients = string.Join(",", recipientList);
+            }
+
+            if (sendDisableJobNotification)
+            {
+                emailSubject = SyncThresholdDisablingJobEmailSubject;
+                contentTemplate = SyncJobDisabledEmailBody;
+                additionalContent = new[]
+                {
+                    job.TargetOfficeGroupId.ToString(),
+                    groupName,
+                    _gmmResources.LearnMoreAboutGMMUrl,
+                    _emailSenderAndRecipients.SupportEmailAddresses
+                };
+            }
+
+            await _graphAPIService.SendEmailAsync(
+                    recipients,
+                    contentTemplate,
+                    additionalContent,
+                    runId,
+                    ccEmail: _emailSenderAndRecipients.SupportEmailAddresses,
+                    emailSubject: emailSubject,
+                    additionalSubjectParams: additionalSubjectContent);
+        }
+
+        private async Task CloseUnresolvedThresholdNotificationAsync(SyncJob job)
         {
             if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
             {
@@ -383,7 +394,7 @@ namespace Services
             }
         }
 
-        private (string ContentTemplate, string[] AdditionalContent) GetThresholdEmail(string groupName, ThresholdResult threshold, SyncJob job)
+        private (string ContentTemplate, string[] AdditionalContent) GetNormalThresholdEmail(string groupName, ThresholdResult threshold, SyncJob job)
         {
             string increasedThresholdMessage;
             string decreasedThresholdMessage;
