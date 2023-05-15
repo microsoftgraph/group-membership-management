@@ -176,15 +176,7 @@ param appConfigurationKeyData array = [
   }
   {
     key: 'MembershipAggregator:NumberOfThresholdViolationsToNotify'
-    value: '3'
-    contentType: 'integer'
-    tag: {
-      tag1: 'MembershipAggregator'
-    }
-  }
-  {
-    key: 'MembershipAggregator:NumberOfThresholdViolationsFollowUps'
-    value: '3'
+    value: '2'
     contentType: 'integer'
     tag: {
       tag1: 'MembershipAggregator'
@@ -192,7 +184,7 @@ param appConfigurationKeyData array = [
   }
   {
     key: 'MembershipAggregator:NumberOfThresholdViolationsToDisableJob'
-    value: '10'
+    value: '7'
     contentType: 'integer'
     tag: {
       tag1: 'MembershipAggregator'
