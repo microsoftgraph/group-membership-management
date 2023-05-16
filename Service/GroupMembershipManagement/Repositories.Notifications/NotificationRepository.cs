@@ -45,12 +45,13 @@ namespace Repositories.NotificationsRepository
 
         public async Task<ThresholdNotification> GetThresholdNotificationBySyncJobKeysAsync(string syncJobPartitionKey, string syncJobRowKey)
         {
+            var resolutionNameString = ThresholdNotificationResolution.Unresolved.ToString();
             var queryResult = _tableClient.QueryAsync<ThresholdNotificationEntity>(x =>
-                x.SyncJobPartitionKey == syncJobPartitionKey && x.SyncJobRowKey == syncJobRowKey);
+                x.SyncJobPartitionKey == syncJobPartitionKey && x.SyncJobRowKey == syncJobRowKey && x.ResolutionName == resolutionNameString);
 
             await foreach (var segmentResult in queryResult.AsPages())
             {
-                var results = segmentResult.Values.Where(x => x.ResolutionName == ThresholdNotificationResolution.Unresolved.ToString());
+                var results = segmentResult.Values;
                 if (results.Count() > 0)
                 {
                     return ToModel(results.ElementAt(0));
@@ -105,9 +106,11 @@ namespace Repositories.NotificationsRepository
                 ResolvedByUPN = entity.ResolvedByUPN,
                 ResolvedTime = entity.ResolvedTime,
                 Status = entity.Status.GetValueOrDefault(),
+                CardState = entity.CardState.GetValueOrDefault(),
                 TargetOfficeGroupId = entity.TargetOfficeGroupId,
                 ThresholdPercentageForAdditions = entity.ThresholdPercentageForAdditions,
-                ThresholdPercentageForRemovals = entity.ThresholdPercentageForRemovals
+                ThresholdPercentageForRemovals = entity.ThresholdPercentageForRemovals,
+                LastUpdatedTime = entity.Timestamp?.UtcDateTime ?? DateTime.MinValue
             };
         }
 
@@ -122,11 +125,14 @@ namespace Repositories.NotificationsRepository
                 SyncJobRowKey = entity.SyncJobRowKey,
                 ChangePercentageForAdditions = entity.ChangePercentageForAdditions,
                 ChangePercentageForRemovals = entity.ChangePercentageForRemovals,
+                ChangeQuantityForAdditions = entity.ChangeQuantityForAdditions,
+                ChangeQuantityForRemovals = entity.ChangeQuantityForRemovals,
                 CreatedTime = entity.CreatedTime,
                 Resolution = entity.Resolution,
                 ResolvedByUPN = entity.ResolvedByUPN,
                 ResolvedTime = entity.ResolvedTime,
                 Status = entity.Status,
+                CardState = entity.CardState,
                 TargetOfficeGroupId = entity.TargetOfficeGroupId,
                 ThresholdPercentageForAdditions = entity.ThresholdPercentageForAdditions,
                 ThresholdPercentageForRemovals = entity.ThresholdPercentageForRemovals

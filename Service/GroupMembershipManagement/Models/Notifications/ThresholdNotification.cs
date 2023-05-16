@@ -73,6 +73,11 @@ namespace Models.ThresholdNotifications
         public DateTime ResolvedTime { get; set; } = DateTime.FromFileTimeUtc(0);
 
         /// <summary>
+        /// The time the notification was resolved.
+        /// </summary>
+        public DateTime LastUpdatedTime { get; set; } = DateTime.FromFileTimeUtc(0);
+
+        /// <summary>
         /// The UPN of the person who resolved the notification.
         /// </summary>
         public string ResolvedByUPN { get; set; } = string.Empty;
@@ -81,6 +86,11 @@ namespace Models.ThresholdNotifications
         /// The action taken to resolve the notification.
         /// </summary>
         public ThresholdNotificationResolution Resolution { get; set; } = ThresholdNotificationResolution.Unresolved;
+
+        /// <summary>
+        /// The state of the notification card and what type of card should be sent out in the next email
+        /// </summary>
+        public ThresholdNotificationCardState CardState { get; set; } = ThresholdNotificationCardState.NoCard;
 
     }
 }

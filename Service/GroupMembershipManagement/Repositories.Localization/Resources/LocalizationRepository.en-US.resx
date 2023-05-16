@@ -1,17 +1,17 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
-  <!-- 
-    Microsoft ResX Schema 
-    
+  <!--
+    Microsoft ResX Schema
+
     Version 2.0
-    
-    The primary goals of this format is to allow a simple XML format 
-    that is mostly human readable. The generation and parsing of the 
-    various data types are done through the TypeConverter classes 
+
+    The primary goals of this format is to allow a simple XML format
+    that is mostly human readable. The generation and parsing of the
+    various data types are done through the TypeConverter classes
     associated with the data types.
-    
+
     Example:
-    
+
     ... ado.net/XML headers & schema ...
     <resheader name="resmimetype">text/microsoft-resx</resheader>
     <resheader name="version">2.0</resheader>
@@ -26,36 +26,36 @@
         <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
         <comment>This is a comment</comment>
     </data>
-                
-    There are any number of "resheader" rows that contain simple 
+
+    There are any number of "resheader" rows that contain simple
     name/value pairs.
-    
-    Each data row contains a name, and value. The row also contains a 
-    type or mimetype. Type corresponds to a .NET class that support 
-    text/value conversion through the TypeConverter architecture. 
-    Classes that don't support this are serialized and stored with the 
+
+    Each data row contains a name, and value. The row also contains a
+    type or mimetype. Type corresponds to a .NET class that support
+    text/value conversion through the TypeConverter architecture.
+    Classes that don't support this are serialized and stored with the
     mimetype set.
-    
-    The mimetype is used for serialized objects, and tells the 
-    ResXResourceReader how to depersist the object. This is currently not 
+
+    The mimetype is used for serialized objects, and tells the
+    ResXResourceReader how to depersist the object. This is currently not
     extensible. For a given mimetype the value must be set accordingly:
-    
-    Note - application/x-microsoft.net.object.binary.base64 is the format 
-    that the ResXResourceWriter will generate, however the reader can 
+
+    Note - application/x-microsoft.net.object.binary.base64 is the format
+    that the ResXResourceWriter will generate, however the reader can
     read any of the formats listed below.
-    
+
     mimetype: application/x-microsoft.net.object.binary.base64
-    value   : The object must be serialized with 
+    value   : The object must be serialized with
             : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
             : and then encoded with base64 encoding.
-    
+
     mimetype: application/x-microsoft.net.object.soap.base64
-    value   : The object must be serialized with 
+    value   : The object must be serialized with
             : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
             : and then encoded with base64 encoding.
 
     mimetype: application/x-microsoft.net.object.bytearray.base64
-    value   : The object must be serialized into a byte array 
+    value   : The object must be serialized into a byte array
             : using a System.ComponentModel.TypeConverter
             : and then encoded with base64 encoding.
     -->
@@ -155,7 +155,7 @@
                 "items": [
                   {
                     "type": "TextBlock",
-                    "text": "Group Threshold Exceeded",
+                    "text": "Membership Change Alert",
                     "wrap": true,
                     "weight": "Bolder"
                   },
@@ -199,7 +199,7 @@
           },
           {
             "type": "TextBlock",
-            "text": "**${$root.changeQuantityForAdditions}** members will be added, which will increase the group size by **${$root.changePercentageForAdditions}%**.",
+            "text": "${$root.changeQuantityForAdditions} members will be **added**, which will increase the group size by **${$root.changePercentageForAdditions}%**.",
             "wrap": true,
             "spacing": "Small",
             "color": "Accent",
@@ -207,7 +207,7 @@
           },
           {
             "type": "TextBlock",
-            "text": "**${$root.changeQuantityForRemovals}** members will be removed, which will decrease the group size by **${$root.changePercentageForRemovals}%**.",
+            "text": "${$root.changeQuantityForRemovals} members will be **removed**, which will decrease the group size by **${$root.changePercentageForRemovals}%**.",
             "wrap": true,
             "spacing": "Small",
             "color": "Accent",
@@ -250,7 +250,7 @@
             "items": [
               {
                 "type": "TextBlock",
-                "text": "**${$root.thresholdPercentageForAdditions}%** increase and **${$root.thresholdPercentageForRemovals}%** alerts are configured for this group. If you would like to change these alert percentages or disable them, please pause the sync and contact GMM support for further inquiry.",
+                "text": "**${$root.thresholdPercentageForAdditions}% increase** and **${$root.thresholdPercentageForRemovals}% decrease** alerts are configured for this group. If you would like to change these alert percentages or disable them, please pause the sync and contact GMM support for further inquiry.",
                 "wrap": true
               },
               {
@@ -281,7 +281,7 @@
     }
   }</value>
   </data>
-  <data name="CardTemplate.ThresholdFinalNotification" xml:space="preserve">
+  <data name="CardTemplate.ThresholdNotificationDisabled" xml:space="preserve">
     <value>{
     "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
     "type": "AdaptiveCard",
@@ -319,7 +319,7 @@
                 "items": [
                   {
                     "type": "TextBlock",
-                    "text": "Group Threshold Exceeded",
+                    "text": "Membership Change Alert",
                     "wrap": true,
                     "weight": "Bolder"
                   },
@@ -357,13 +357,13 @@
         "items": [
           {
             "type": "TextBlock",
-            "text": "Synchronization of your GMM group **${$root.groupName}** has been disabled. If no action is taken, the sync will be deleted on **${$root.deletionDate}%** UTC. After this period, if you wish to reenable the sync, you will need to follow GMM's onboarding process again.",
+            "text": "Synchronization of your GMM group **${$root.groupName}** has been disabled. If no action is taken, the sync will be deleted on **${$root.jobExpirationDate}** UTC. After this period, if you wish to reenable the sync, you will need to follow GMM's onboarding process again.",
             "wrap": true,
             "color": "Attention"
           },
           {
             "type": "TextBlock",
-            "text": "**${$root.changeQuantityForAdditions}** members will be added, which will increase the group size by **${$root.changePercentageForAdditions}%**.",
+            "text": "${$root.changeQuantityForAdditions} members will be **added**, which will increase the group size by **${$root.changePercentageForAdditions}%**.",
             "wrap": true,
             "spacing": "Small",
             "color": "Accent",
@@ -371,7 +371,7 @@
           },
           {
             "type": "TextBlock",
-            "text": "**${$root.changeQuantityForRemovals}** members will be removed, which will decrease the group size by **${$root.changePercentageForRemovals}%**.",
+            "text": "${$root.changeQuantityForRemovals} members will be **removed**, which will decrease the group size by **${$root.changePercentageForRemovals}%**.",
             "wrap": true,
             "spacing": "Small",
             "color": "Accent",
@@ -414,7 +414,7 @@
             "items": [
               {
                 "type": "TextBlock",
-                "text": "**${$root.thresholdPercentageForAdditions}%** increase and **${$root.thresholdPercentageForRemovals}%** alerts are configured for this group. If you would like to change these alert percentages or disable them, please pause the sync and contact GMM support for further inquiry.",
+                "text": "**${$root.thresholdPercentageForAdditions}% increase** and **${$root.thresholdPercentageForRemovals}% decrease** alerts are configured for this group. If you would like to change these alert percentages or disable them, please pause the sync and contact GMM support for further inquiry.",
                 "wrap": true
               },
               {
@@ -450,6 +450,7 @@
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
   "type": "AdaptiveCard",
   "version": "1.0",
+  "createdUtc": "${$root.cardCreatedTime}",
   "body": [
     {
       "type": "Container",
@@ -550,6 +551,7 @@
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
   "type": "AdaptiveCard",
   "version": "1.0",
+  "createdUtc": "${$root.cardCreatedTime}",
   "body": [
     {
       "type": "Container",
@@ -578,7 +580,7 @@
               "items": [
                 {
                   "type": "TextBlock",
-                  "text": "Threshold Violation Exception",
+                  "text": "Membership Change Alert",
                   "wrap": true,
                   "weight": "Bolder"
                 },
@@ -697,6 +699,7 @@
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
   "type": "AdaptiveCard",
   "version": "1.0",
+  "createdUtc": "${$root.cardCreatedTime}",
   "body": [
     {
       "type": "Container",
@@ -725,7 +728,7 @@
               "items": [
                 {
                   "type": "TextBlock",
-                  "text": "Threshold Violation Exception",
+                  "text": "Membership Change Alert",
                   "wrap": true,
                   "weight": "Bolder"
                 },
@@ -768,7 +771,7 @@
           "type": "TextBlock",
           "text": "Error: You are no longer authorized to view notifications for **${$root.groupName}** because you are not an owner of the group.",
           "wrap": true
-        }   
+        }
       ],
       "separator": true
     },
@@ -797,11 +800,11 @@ Your group {0} with Id {1} is currently offboarded from Group Membership Managem
 
 •	Group Owner Requested a Pause for more than 30 days.
 •	Source or Destination group has been deleted by group owner
-•	No response from group owner about membership adding/removal threshold hitting 
+•	No response from group owner about membership adding/removal threshold hitting
 
-If you believe this group should be continued managed by Group Membership Management (GMM), please reach out to GMM support before {2} to restore the current onboarding details. Otherwise, you may submit a new GMM onboarding request after the deadline if GMM is still needed. 
+If you believe this group should be continued managed by Group Membership Management (GMM), please reach out to GMM support before {2} to restore the current onboarding details. Otherwise, you may submit a new GMM onboarding request after the deadline if GMM is still needed.
 
-Please feel free to contact GMMSupport if you have any questions. 
+Please feel free to contact GMMSupport if you have any questions.
 
 Thank you,
 GMM Team</value>
@@ -827,7 +830,7 @@ GMM Team</value>
 The group sync will be PAUSED since there is no data to sync to group {0}.
 
 Please reach out to your GMM team to get this issue resolved.
- 
+
 Regards,
 GMM Team</value>
   </data>
@@ -841,7 +844,7 @@ GMM onboarding is requested by {4} to systematically manage the group membership
 
 The group {1} with Id: {0} has completed its initial sync. Added {2} users and removed {3} users.
 
-This is an auto-generated email. Please reach out to the onboarding requestor {4} for any specific questions about this group and reach out to {6} for GMM inquires. 
+This is an auto-generated email. Please reach out to the onboarding requestor {4} for any specific questions about this group and reach out to {6} for GMM inquires.
 
 Regards,
 GMM Team</value>
@@ -867,7 +870,7 @@ This is an auto-generated email. Please reach out to {2} if you have further que
   <data name="SyncJobDisabledEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group. Please visit {3} to learn more about GMM.
 
-The synchronization job for group {0} with Id: {1} has been disabled. 
+The synchronization job for group {0} with Id: {1} has been disabled.
 
 If you would like to have it re-enabled please reach out to {2}.
 
@@ -883,7 +886,7 @@ GMM onboarding is requested by {4} to systematically manage the group membership
 
 The group {1} with Id: {0} has started its initial sync.
 
-This is an auto-generated email. Please reach out to the onboarding requestor {4} for any specific questions about this group and reach out to {2} for GMM inquires. 
+This is an auto-generated email. Please reach out to the onboarding requestor {4} for any specific questions about this group and reach out to {2} for GMM inquires.
 
 Regards,
 GMM Team</value>
@@ -909,7 +912,7 @@ Actions needed - Please 'Reply All' indicating what GMM should do about the thre
 4. The projected increase or decrease does not look right to me. Please do not allow the sync to exceed the threshold. I will contact GMMSupport to follow up.
 
 The group sync will be PAUSED until your response is received.
- 
+
 Regards,
 GMM Team</value>
   </data>

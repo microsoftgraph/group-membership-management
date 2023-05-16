@@ -44,6 +44,9 @@ namespace Services.WebApi
             var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserUPN, notification.TargetOfficeGroupId);
             if (!isGroupOwner)
             {
+                // Check if user is in the list of GMM Admins
+
+
                 // Unauthorized
                 response.CardJson = await _thresholdNotificationService.CreateUnauthorizedNotificationCardAsync(notification);
             }

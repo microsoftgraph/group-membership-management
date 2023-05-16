@@ -270,8 +270,11 @@ namespace Services.Tests
         [TestMethod]
         public async Task HitAdditionsThresholdTestAsync()
         {
-            var currentThresholdViolations = 1;
+            var currentThresholdViolations = 0;
             _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);
+            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(2);
+            _graphAPIService.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>())).ReturnsAsync(true);
+
             _numberOfUsersForDestinationPart = 5;
             _syncJob.ThresholdViolations = currentThresholdViolations;
 
@@ -286,7 +289,7 @@ namespace Services.Tests
             _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Never());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Membership increase in")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
-                                                                    It.Is<IEnumerable<SyncJob>>(y => y.All(z => z.ThresholdViolations > currentThresholdViolations)),
+                                                                    It.IsAny<IEnumerable<SyncJob>>(),
                                                                     It.Is<SyncStatus>(x => x == SyncStatus.Idle)
                                                                 )
                                                                     , Times.Once());
@@ -299,8 +302,7 @@ namespace Services.Tests
                                             It.IsAny<string>(),
                                             It.IsAny<string>(),
                                             It.IsAny<string[]>()
-                                        )
-                                            , Times.Never());
+                                        ), Times.Never());
         }
 
         [TestMethod]

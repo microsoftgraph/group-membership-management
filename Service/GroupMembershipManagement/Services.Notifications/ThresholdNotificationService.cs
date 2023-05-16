@@ -32,9 +32,22 @@ namespace Services.Notifications
         /// <inheritdoc />
         public async Task<string> CreateNotificationCardAsync(ThresholdNotification notification)
         {
-            var cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdNotification);
+            string cardJson;
+            if (notification.CardState == ThresholdNotificationCardState.DefaultCard)
+            {
+                cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdNotification);
+            }
+            else if (notification.CardState == ThresholdNotificationCardState.DisabledCard)
+            {
+                cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdNotificationDisabled);
+            }
+            else
+            {
+                throw new NotSupportedException("Currently the Notifier trigger only supports NextCardState of DefaultCard and DisabledCard. Please check on this card");
+            }
+
             var groupName = await _graphGroupRepository.GetGroupNameAsync(notification.TargetOfficeGroupId);
-            var cardData = new ThesholdNotificationCardData
+            var cardData = new ThresholdNotificationCardData
             {
                 GroupName = groupName,
                 ChangeQuantityForAdditions = notification.ChangeQuantityForAdditions,
@@ -46,7 +59,9 @@ namespace Services.Notifications
                 ApiHostname = _apiHostname,
                 NotificationId = $"{notification.Id}",
                 ProviderId = $"{_providerId}", 
-                DeletionDate = notification.CreatedTime.AddDays(30) // TODO: Make this configurable in future story
+                CardCreatedTime = DateTime.UtcNow,
+                JobExpirationDate = notification.CardState == ThresholdNotificationCardState.DisabledCard ?
+                    notification.LastUpdatedTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion) : DateTime.MinValue
             };
 
             var template = new AdaptiveCardTemplate(cardJson);
@@ -62,7 +77,8 @@ namespace Services.Notifications
             var cardData = new ThesholdNotificationNotFoundCardData
             {
                 NotificationId = $"{notificationId}",
-                ProviderId = $"{_providerId}"
+                ProviderId = $"{_providerId}",
+                CardCreatedTime = DateTime.UtcNow
             };
 
             var template = new AdaptiveCardTemplate(cardJson);
@@ -91,7 +107,8 @@ namespace Services.Notifications
                 ResolvedTime = notification.ResolvedTime.ToString("U"),
                 Resolution = resolution,
                 NotificationId = $"{notification.Id}",
-                ProviderId = $"{_providerId}"
+                ProviderId = $"{_providerId}",
+                CardCreatedTime = DateTime.UtcNow
             };
 
             var template = new AdaptiveCardTemplate(cardJson);
@@ -106,37 +123,12 @@ namespace Services.Notifications
 
             var groupName = await _graphGroupRepository.GetGroupNameAsync(notification.TargetOfficeGroupId);
             var cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdNotificationUnauthorized);
-            var cardData = new ThesholdNotificationUnauthorizedCardData
+            var cardData = new ThresholdNotificationUnauthorizedCardData
             {
                 GroupName = groupName,
-                NotificationId = $"{notification.Id}",
-                ProviderId = $"{_providerId}"
-            };
-
-            var template = new AdaptiveCardTemplate(cardJson);
-            var card = template.Expand(cardData);
-
-            return card;
-        }
-
-        /// <inheritdoc />
-        public async Task<string> CreateFinalNotificationCardAsync(ThresholdNotification notification)
-        {
-            var groupName = await _graphGroupRepository.GetGroupNameAsync(notification.TargetOfficeGroupId);
-            var cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdFinalNotification);
-            var cardData = new ThesholdNotificationCardData
-            {
-                GroupName = groupName,
-                ChangeQuantityForAdditions = notification.ChangeQuantityForAdditions,
-                ChangeQuantityForRemovals = notification.ChangeQuantityForRemovals,
-                ChangePercentageForAdditions = notification.ChangePercentageForAdditions,
-                ChangePercentageForRemovals = notification.ChangePercentageForRemovals,
-                ThresholdPercentageForAdditions = notification.ThresholdPercentageForAdditions,
-                ThresholdPercentageForRemovals = notification.ThresholdPercentageForRemovals,
-                ApiHostname = _apiHostname,
                 NotificationId = $"{notification.Id}",
                 ProviderId = $"{_providerId}",
-                DeletionDate = notification.DeletionDate
+                CardCreatedTime = DateTime.UtcNow
             };
 
             var template = new AdaptiveCardTemplate(cardJson);

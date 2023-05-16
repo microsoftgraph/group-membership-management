@@ -82,7 +82,7 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
     keyVaultName: dataKeyVaultName
     keyVaultSecrets: {
       secrets: [
-        { 
+        {
           name: 'notifierFunctionKey'
           value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
         }
@@ -99,12 +99,10 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureFunctionsJobHost__extensions__durableTask__hubName'
       'AzureWebJobs.StarterFunction.Disabled'
       'AzureWebJobs.OrchestratorFunction.Disabled'
+      'AzureWebJobs.RetrieveNotificationsFunction.Disabled'
       'AzureWebJobs.LoggerFunction.Disabled'
-      'AzureWebJobs.PipelineInvocationStarterFunction.Disabled'
-      'AzureWebJobs.TimerStarterFunction.Disabled'
-      'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled'
-      'AzureWebJobs.CheckNotifierStatusFunction.Disabled'
-      'AzureWebJobs.PostCallbackFunction.Disabled'
+      'AzureWebJobs.UpdateNotificationStatusFunction.Disabled'
+      'AzureWebJobs.SendNotificationFunction.Disabled'
     ]
   }
 }

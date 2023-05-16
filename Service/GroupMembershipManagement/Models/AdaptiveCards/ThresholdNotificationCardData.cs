@@ -5,7 +5,7 @@ using System;
 
 namespace Models.AdaptiveCards
 {
-    public class ThesholdNotificationCardData
+    public class ThresholdNotificationCardData
     {
         public string GroupName { get; set; }
         public int ChangeQuantityForAdditions { get; set; }
@@ -17,6 +17,7 @@ namespace Models.AdaptiveCards
         public string NotificationId { get; set; }
         public string ApiHostname { get; set; }
         public string ProviderId { get; set; }
-        public DateTime DeletionDate { get; set; }
+        public DateTime JobExpirationDate { get; set; }
+        public DateTime CardCreatedTime { get; set; }
     }
 }

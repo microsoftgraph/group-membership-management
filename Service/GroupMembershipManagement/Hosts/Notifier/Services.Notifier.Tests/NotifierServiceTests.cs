@@ -54,6 +54,7 @@ namespace Services.Notifier.Tests
                 ResolvedByUPN = string.Empty,
                 ResolvedTime = DateTime.UtcNow,
                 Status = ThresholdNotificationStatus.Unknown,
+                CardState = ThresholdNotificationCardState.DefaultCard,
                 TargetOfficeGroupId = _targetOfficeGroupId,
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,

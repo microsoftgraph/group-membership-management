@@ -62,17 +62,17 @@ namespace Repositories.NotificationsRepository
         {
             get
             {
-                if (string.IsNullOrEmpty(this.StatusName))
+                if (string.IsNullOrEmpty(StatusName))
                 {
                     return null;
                 }
 
-                return (ThresholdNotificationStatus)Enum.Parse(typeof(ThresholdNotificationStatus), this.StatusName);
+                return (ThresholdNotificationStatus)Enum.Parse(typeof(ThresholdNotificationStatus), StatusName);
             }
 
             set
             {
-                this.StatusName = value?.ToString();
+                StatusName = value?.ToString();
             }
         }
 
@@ -132,17 +132,41 @@ namespace Repositories.NotificationsRepository
         {
             get
             {
-                if (string.IsNullOrEmpty(this.ResolutionName))
+                if (string.IsNullOrEmpty(ResolutionName))
                 {
                     return null;
                 }
 
-                return (ThresholdNotificationResolution)Enum.Parse(typeof(ThresholdNotificationResolution), this.ResolutionName);
+                return (ThresholdNotificationResolution)Enum.Parse(typeof(ThresholdNotificationResolution), ResolutionName);
             }
 
             set
             {
-                this.ResolutionName = value?.ToString();
+                ResolutionName = value?.ToString();
+            }
+        }
+
+        /// <summary>
+        /// The state of the notification card and what type of card should be sent out in the next email
+        /// </summary>
+        public string CardStateName { get; set; }
+
+        [IgnoreDataMember]
+        public ThresholdNotificationCardState? CardState
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(CardStateName))
+                {
+                    return null;
+                }
+
+                return (ThresholdNotificationCardState)Enum.Parse(typeof(ThresholdNotificationCardState), CardStateName);
+            }
+
+            set
+            {
+                CardStateName = value?.ToString();
             }
         }
 

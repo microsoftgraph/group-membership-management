@@ -12,8 +12,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.Amqp.Framing;
-using System.Text;
 
 namespace Services
 {
@@ -309,6 +307,7 @@ namespace Services
                     ResolvedByUPN = string.Empty,
                     ResolvedTime = DateTime.FromFileTimeUtc(0),
                     Status = ThresholdNotificationStatus.Queued,
+                    CardState = ThresholdNotificationCardState.DefaultCard,
                     TargetOfficeGroupId = job.TargetOfficeGroupId,
                     ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
                     ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals
@@ -326,7 +325,7 @@ namespace Services
 
                 if (sendDisableJobNotification)
                 {
-                    // TODO: Add some kind of status to verify we send the job disable message
+                    thresholdNotification.CardState = ThresholdNotificationCardState.DisabledCard;
                 }
             }
 

@@ -52,6 +52,7 @@ namespace Services
             {
                 var resolution = Enum.Parse<ThresholdNotificationResolution>(request.Resolution);
                 thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
+                thresholdNotification.CardState = ThresholdNotificationCardState.NoCard;
                 thresholdNotification.Resolution = resolution;
                 thresholdNotification.ResolvedByUPN = request.UserUPN;
                 thresholdNotification.ResolvedTime = DateTime.UtcNow;

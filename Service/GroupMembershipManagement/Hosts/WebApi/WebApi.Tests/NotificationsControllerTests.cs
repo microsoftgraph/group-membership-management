@@ -359,7 +359,7 @@ namespace Services.Tests
         {
             Assert.IsTrue(cardJson.Contains($"The last synchronization attempt of your GMM group **{_groupName}**"));
             Assert.IsTrue(cardJson.Contains($"**{_thresholdNotification.ChangeQuantityForAdditions}** members will be added, which will increase the group size by **{_thresholdNotification.ChangePercentageForAdditions}%**."));
-            Assert.IsTrue(cardJson.Contains($"**{_thresholdNotification.ChangeQuantityForRemovals}** members will be removed, which will decease the group size by **{_thresholdNotification.ChangePercentageForRemovals}%**."));
+            Assert.IsTrue(cardJson.Contains($"**{_thresholdNotification.ChangeQuantityForRemovals}** members will be removed, which will decrease the group size by **{_thresholdNotification.ChangePercentageForRemovals}%**."));
             Assert.IsTrue(cardJson.Contains($"https://{_hostname}/api/v1/notifications/{_thresholdNotification.Id}/resolve"));
             Assert.IsTrue(cardJson.Contains($"\\\"resolution\\\":\\\"{ThresholdNotificationResolution.Paused}\\\""));
             Assert.IsTrue(cardJson.Contains($"\\\"resolution\\\":\\\"{ThresholdNotificationResolution.IgnoreOnce}\\\""));
@@ -370,7 +370,7 @@ namespace Services.Tests
         private void ValidateResolvedCard(string cardJson)
         {
             var resolutionString = _localizationRepository.TranslateSetting(_thresholdNotification.Resolution);
-            Assert.IsTrue(cardJson.Contains($"The last synchronization attempt of your GMM group **{_groupName}**"));
+            Assert.IsTrue(cardJson.Contains($"Notification Resolved"));
             Assert.IsTrue(cardJson.Contains($"This notification was resolved by **{_userUPN}** on **{_thresholdNotification.ResolvedTime:U}** UTC."));
             Assert.IsTrue(cardJson.Contains($"Action taken: **{resolutionString}**."));
             Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.Id}"));
