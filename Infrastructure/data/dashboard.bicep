@@ -4731,6 +4731,480 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
+          '49': {
+            position: {
+              x: 1
+              y: 66
+              colSpan: 10
+              rowSpan: 2
+            }
+            metadata: {
+              inputs: []
+              type: 'Extension/HubsExtension/PartType/MarkdownPart'
+              settings: {
+                content: {
+                  content: '# <span style="color:MediumPurple">Notification Dashboard</span>\r\n\r\n## <span style="color:MediumPurple">Summary</span>\r\n\r\nUse this dashboard to view insights about the notification system and threshold violations.'
+                  title: ''
+                  subtitle: ''
+                  markdownSource: 1
+                  markdownUri: null
+                }
+              }
+            }
+          }
+          '50': {
+            position: {
+              x: 1
+              y: 68
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: ''
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "NotificationSent"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"])\n| summarize by TargetOfficeGroupId, Bin = bin(timestamp, 1d)\n| summarize count() by Bin\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'Notifications Sent'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'Bin'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'count_'
+                        type: 'long'
+                      }
+                    ]
+                    splitBy: []
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+            }
+          }
+          '51': {
+            position: {
+              x: 7
+              y: 68
+              colSpan: 14
+              rowSpan: 2
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '15bd1362-68dd-413e-a9fd-87c931d2c932'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'customEvents\n| where name == "NotificationResponseReceived"\n| project Hours = todouble(customDimensions["ResponseTimeSeconds"]) / 3600 * 1h| project Hours, tostring(Type)\n| summarize percentiles(Hours, 50, 75, 95, 99, 100) by Type\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  GridColumnsWidth: {
+                    percentile_Hours_50: '169px'
+                    percentile_Hours_75: '173px'
+                    percentile_Hours_95: '175px'
+                    percentile_Hours_99: '169px'
+                    percentile_Hours_100: '183px'
+                    Type: '105px'
+                  }
+                  Query: 'customEvents\n| where name == "NotificationResponseReceived"\n| project Hours = todouble(customDimensions["ResponseTimeSeconds"]) / 3600 * 1h\n| project Hours\n| summarize percentiles(Hours, 50, 75, 95, 99, 100)\n'
+                  PartTitle: 'Notification Response Times'
+                  PartSubTitle: resourceGroup
+                }
+              }
+            }
+          }
+          '52': {
+            position: {
+              x: 1
+              y: 72
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: ''
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "NotificationResponseReceived"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"])\n| summarize by TargetOfficeGroupId, Bin = bin(timestamp, 1d)\n| summarize count() by Bin\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'Notifications Responses Received'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'Bin'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'count_'
+                        type: 'long'
+                      }
+                    ]
+                    splitBy: []
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+            }
+          }
+          '53': {
+            position: {
+              x: 7
+              y: 72
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: ''
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "ThresholdViolation"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"])\n| summarize by TargetOfficeGroupId, Bin = bin(timestamp, 1d)\n| summarize count() by Bin\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'Threshold Violations Created'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'Bin'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'count_'
+                        type: 'long'
+                      }
+                    ]
+                    splitBy: []
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

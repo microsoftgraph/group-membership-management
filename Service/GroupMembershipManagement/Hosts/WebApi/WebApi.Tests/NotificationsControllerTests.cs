@@ -19,7 +19,8 @@ using Services.WebApi;
 using System.Security.Claims;
 using WebApi.Controllers.v1.Notifications;
 using WebApi.Models.Requests;
-
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 namespace Services.Tests
 {
     [TestClass]
@@ -49,6 +50,7 @@ namespace Services.Tests
         private NotificationsController _notificationsController = null!;
         private List<ThresholdNotification> _thresholdNotifications = null!;
         private ResolveNotification _resolveNotificationModel = null!;
+        private TelemetryClient _telemetryClient = null!;
 
         [TestInitialize]
         public void Initialize()
@@ -73,6 +75,7 @@ namespace Services.Tests
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _notificationRepository = new Mock<INotificationRepository>();
             _syncJobRepository = new Mock<ISyncJobRepository>();
+            _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
 
             _groupTypes = new List<string>
             {
@@ -172,6 +175,7 @@ namespace Services.Tests
                 _notificationRepository.Object,
                 _syncJobRepository.Object,
                 _graphGroupRepository.Object,
+                _telemetryClient,
                 _thresholdNotificationService);
             _notificationCardHandler = new NotificationCardHandler(_loggingRepository.Object,
                 _notificationRepository.Object,

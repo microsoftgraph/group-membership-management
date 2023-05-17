@@ -28,6 +28,8 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Configuration;
 using Repositories.Contracts.InjectConfig;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights;
 
 namespace WebApi
 {
@@ -61,6 +63,16 @@ namespace WebApi
 
             // Add services to the container.
             builder.Services.AddAzureAppConfiguration();
+
+            builder.Services.AddSingleton(sp =>
+            {
+                var telemetryConfiguration = new TelemetryConfiguration();
+                telemetryConfiguration.InstrumentationKey = builder.Configuration.GetValue<string>("Settings:APPINSIGHTS_INSTRUMENTATIONKEY");
+                telemetryConfiguration.TelemetryInitializers.Add(new OperationCorrelationTelemetryInitializer());
+                var tc = new TelemetryClient(telemetryConfiguration);
+                tc.Context.Operation.Name = "WebAPI";
+                return tc;
+            });
 
             builder.Services
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
