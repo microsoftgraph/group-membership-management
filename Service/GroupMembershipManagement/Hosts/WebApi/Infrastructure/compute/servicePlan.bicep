@@ -1,3 +1,8 @@
+@description('Enter an abbreviation for the environment.')
+@minLength(2)
+@maxLength(6)
+param environmentAbbreviation string
+
 @description('Service plan name.')
 @minLength(1)
 param name string
@@ -31,6 +36,8 @@ param location string
 @description('Maximum elastic worker count.')
 param maximumElasticWorkerCount int = 1
 
+var isDevEnv = (environmentAbbreviation == 'prodv2' || environmentAbbreviation == 'int' || environmentAbbreviation == 'ua') ? false : true
+
 resource servicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
   name: name
   location: location
@@ -39,7 +46,7 @@ resource servicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
     targetWorkerCount: maximumElasticWorkerCount
   }
   sku: {
-    name: sku
+    name: isDevEnv ? sku : 'B1'
     tier: 'Free'
   }
 }

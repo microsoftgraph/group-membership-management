@@ -64,3 +64,49 @@ This step needs to be completed after all the resources have been deployed to yo
 See [Post-Deployment tasks](../../../../../README.md#post-deployment-tasks)
 
 Running the script mentioned in the Post-Deployment tasks section will grant the WebAPI system identity access to the resources it needs.
+
+To properly setup the WebAPI you will need to configure the parameters in the `WebApi/Infrastructure/compute/parameters` for your environment.
+If you have a custom domain, follow the instructions [here](WebApiSetup.md/#setting-up-a-custom-domain). If not, skip on to the instructions [here](WebApiSetup.md/#using-the-default).
+
+## Setting up a custom domain
+If you have a custom domain ('contoso.com', for example) and want to use it, you will need to upgrade your App Service Plan. You can set the API custom domain in the `apiHostname` parameter as `api.contoso.com`.
+This way, your parameter file will look like this 
+```
+    {
+        "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+        "contentVersion": "1.0.0.0",
+        "parameters": {
+            "apiHostname": {
+                "value": "api.contoso.com"
+            }
+        }
+    }
+```
+Then, once the deployment finishes, follow these steps:
+
+1. Go to your App Service resource and select `Custom domains`.
+1. There, click on `+ Add custom domain` and enter your custom domain details. You can choose to include your own TLS/SSL certificate, or use an App Service Managed Certificate. 
+1. Once you have completed and validated the custom domain. Click `Add`. 
+
+Finally, you will need to update your App registration to include this custom domain. To do so, make sure you:
+1. Login and follow these steps in the tenant where the application was created.
+1. From the Azure Portal locate and open "Azure Active Directory"
+1. On the left menu, select "App registrations"
+1. Search for the webapi application, the name follows this convention `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>` i.e. gmm-webapi-int.
+1. Click on the name of your application.
+1. On the left menu, select "Expose an API"
+1. In the Application ID URI, set your custom domain here. i.e. `api://api.contoso.com`.
+
+## Using the default domain
+If you do not wish to set up a custom domain, you can leverage the one included in the F1 service plan, set the `apiHostname` parameter value to `<solutionAbbreviation>-<resourceGroupClassification>-<solutionAbbreviation>-webapi.azurewebsites.net`, for example
+```
+    {
+        "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+        "contentVersion": "1.0.0.0",
+        "parameters": {
+            "apiHostname": {
+                "value": "gmm-compute-int-webapi.azurewebsites.net"
+            }
+        }
+    }
+```

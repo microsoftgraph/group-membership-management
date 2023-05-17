@@ -26,7 +26,7 @@ param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassific
 param appServiceName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-webapi'
 
 @description('Enter the hostname for the api')
-param apiHostname string = '${appServiceName}.azurewebsites.net'
+param apiHostname string
 
 @description('Service plan sku')
 @allowed([
@@ -169,6 +169,7 @@ var appSettings = [
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-WebApi'
   params: {
+    environmentAbbreviation: environmentAbbreviation
     name: servicePlanName
     sku: servicePlanSku
     location: location
@@ -178,13 +179,13 @@ module servicePlanTemplate 'servicePlan.bicep' = {
 
 module appService 'appService.bicep' = {
   name: 'appServiceTemplate-WebApi'
-  params:{
+  params: {
     name: appServiceName
     location: location
     servicePlanName: servicePlanName
     appSettings: appSettings
   }
-  dependsOn:[
+  dependsOn: [
     appInsights
     servicePlanTemplate
   ]
