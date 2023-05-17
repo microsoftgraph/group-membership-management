@@ -27,6 +27,7 @@ using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Configuration;
+using Repositories.Contracts.InjectConfig;
 
 namespace WebApi
 {
@@ -187,6 +188,19 @@ namespace WebApi
             })
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
+
+            builder.Services.AddOptions<HandleInactiveJobsConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.HandleInactiveJobsEnabled = GetBoolSetting(configuration, "AzureMaintenance:HandleInactiveJobsEnabled", false);
+                settings.NumberOfDaysBeforeDeletion = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforeDeletion", 0);
+            });
+            builder.Services.AddSingleton<IHandleInactiveJobsConfig>(services =>
+            {
+                return new HandleInactiveJobsConfig(
+                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.HandleInactiveJobsEnabled,
+                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforeDeletion);
+            });
+
             builder.Services.AddOptions<ThresholdNotificationServiceConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.ActionableEmailProviderId = configuration.GetValue<Guid>("Settings:ActionableEmailProviderId");
@@ -258,6 +272,22 @@ namespace WebApi
             var config = await openIdConfigManager.GetConfigurationAsync();
 
             return config.SigningKeys;
+        }
+
+        private static bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)
+        {
+            var checkParse = bool.TryParse(configuration[settingName], out bool value);
+            if (checkParse)
+                return value;
+            return defaultValue;
+        }
+
+        private static int GetIntSetting(IConfiguration configuration, string settingName, int defaultValue)
+        {
+            var checkParse = int.TryParse(configuration[settingName], out int value);
+            if (checkParse)
+                return value;
+            return defaultValue;
         }
     }
 }

@@ -22,6 +22,7 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.Azure.ServiceBus.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using Azure.Core;
+using Repositories.Contracts.InjectConfig;
 
 namespace Services.Tests
 {
@@ -45,6 +46,7 @@ namespace Services.Tests
         private Mock<ISyncJobRepository> _syncJobRepository = null!;
         private ILocalizationRepository _localizationRepository = null!;
         private IThresholdNotificationService _thresholdNotificationService = null!;
+        private IHandleInactiveJobsConfig _handleInactiveJobsConfig = null!;
         private ThresholdNotificationServiceConfig _thresholdNotificationServiceConfig = null!;
         private NotificationCardHandler _notificationCardHandler = null!;
         private ResolveNotificationHandler _resolveNotificationsHandler = null!;
@@ -126,7 +128,8 @@ namespace Services.Tests
                     Status = ThresholdNotificationStatus.AwaitingResponse,
                     TargetOfficeGroupId = group.ObjectId,
                     ThresholdPercentageForAdditions = Random.Shared.Next(1, 50),
-                    ThresholdPercentageForRemovals = Random.Shared.Next(1, 50)
+                    ThresholdPercentageForRemovals = Random.Shared.Next(1, 50),
+                    CardState = ThresholdNotificationCardState.DefaultCard
                 };
 
                 _groups.Add(group);
@@ -167,7 +170,13 @@ namespace Services.Tests
                 ActionableEmailProviderId = _providerId
             };
 
-            _thresholdNotificationService = new ThresholdNotificationService(Options.Create(_thresholdNotificationServiceConfig), _graphGroupRepository.Object, _localizationRepository);
+            _handleInactiveJobsConfig = new HandleInactiveJobsConfig
+            {
+                HandleInactiveJobsEnabled = true,
+                NumberOfDaysBeforeDeletion = 30
+            };
+
+            _thresholdNotificationService = new ThresholdNotificationService(Options.Create(_thresholdNotificationServiceConfig), _graphGroupRepository.Object, _localizationRepository, _handleInactiveJobsConfig);
 
             _resolveNotificationsHandler = new ResolveNotificationHandler(_loggingRepository.Object,
                 _notificationRepository.Object,
@@ -358,8 +367,8 @@ namespace Services.Tests
         private void ValidateUnresolvedCard(string cardJson)
         {
             Assert.IsTrue(cardJson.Contains($"The last synchronization attempt of your GMM group **{_groupName}**"));
-            Assert.IsTrue(cardJson.Contains($"**{_thresholdNotification.ChangeQuantityForAdditions}** members will be added, which will increase the group size by **{_thresholdNotification.ChangePercentageForAdditions}%**."));
-            Assert.IsTrue(cardJson.Contains($"**{_thresholdNotification.ChangeQuantityForRemovals}** members will be removed, which will decrease the group size by **{_thresholdNotification.ChangePercentageForRemovals}%**."));
+            Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.ChangeQuantityForAdditions} members will be **added**, which will increase the group size by **{_thresholdNotification.ChangePercentageForAdditions}%**."));
+            Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.ChangeQuantityForRemovals} members will be **removed**, which will decrease the group size by **{_thresholdNotification.ChangePercentageForRemovals}%**."));
             Assert.IsTrue(cardJson.Contains($"https://{_hostname}/api/v1/notifications/{_thresholdNotification.Id}/resolve"));
             Assert.IsTrue(cardJson.Contains($"\\\"resolution\\\":\\\"{ThresholdNotificationResolution.Paused}\\\""));
             Assert.IsTrue(cardJson.Contains($"\\\"resolution\\\":\\\"{ThresholdNotificationResolution.IgnoreOnce}\\\""));

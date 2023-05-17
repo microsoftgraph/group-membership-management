@@ -8,6 +8,7 @@ using Models.AdaptiveCards;
 using AdaptiveCards.Templating;
 using DIConcreteTypes;
 using Microsoft.Extensions.Options;
+using Repositories.Contracts.InjectConfig;
 
 namespace Services.Notifications
 {
@@ -15,18 +16,21 @@ namespace Services.Notifications
     {
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ILocalizationRepository _localizationRepository;
+        private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig;
         private readonly string _apiHostname;
         private readonly Guid _providerId;
 
         public ThresholdNotificationService(
             IOptions<ThresholdNotificationServiceConfig> config,
             IGraphGroupRepository graphGroupRepository,
-            ILocalizationRepository localizationRepository)
+            ILocalizationRepository localizationRepository,
+            IHandleInactiveJobsConfig handleInactiveJobsConfig)
         {
-            _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
-            _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _apiHostname = config.Value.ApiHostname;
             _providerId = config.Value.ActionableEmailProviderId;
+            _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
+            _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
+            _handleInactiveJobsConfig = handleInactiveJobsConfig ?? throw new ArgumentNullException( nameof(handleInactiveJobsConfig));
         }
 
         /// <inheritdoc />

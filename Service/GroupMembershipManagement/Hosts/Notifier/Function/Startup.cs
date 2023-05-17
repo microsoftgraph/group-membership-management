@@ -32,6 +32,18 @@ namespace Hosts.Notifier
         {
             base.Configure(builder);
 
+            builder.Services.AddOptions<HandleInactiveJobsConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.HandleInactiveJobsEnabled = GetBoolSetting(configuration, "AzureMaintenance:HandleInactiveJobsEnabled", false);
+                settings.NumberOfDaysBeforeDeletion = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforeDeletion", 0);
+            });
+            builder.Services.AddSingleton<IHandleInactiveJobsConfig>(services =>
+            {
+                return new HandleInactiveJobsConfig(
+                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.HandleInactiveJobsEnabled,
+                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforeDeletion);
+            });
+
             builder.Services.AddSingleton((services) =>
             {
                 return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
@@ -55,6 +67,22 @@ namespace Hosts.Notifier
             builder.Services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
 
             builder.Services.AddHttpClient();
+        }
+
+        private bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)
+        {
+            var checkParse = bool.TryParse(configuration[settingName], out bool value);
+            if (checkParse)
+                return value;
+            return defaultValue;
+        }
+
+        private int GetIntSetting(IConfiguration configuration, string settingName, int defaultValue)
+        {
+            var checkParse = int.TryParse(configuration[settingName], out int value);
+            if (checkParse)
+                return value;
+            return defaultValue;
         }
     }
 }
