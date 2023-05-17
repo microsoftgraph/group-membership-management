@@ -75,6 +75,7 @@ param dataResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbr
 @description('Enter application insights name.')
 param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
+var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var webapiClientId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'webapiClientId')
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
@@ -92,6 +93,10 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
 }
 
 var appSettings = [
+  {
+    name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
+    value:'@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
+  }
   {
     name: 'AzureAd:ClientId'
     value: '@Microsoft.KeyVault(SecretUri=${reference(webapiClientId, '2019-09-01').secretUriWithVersion})'

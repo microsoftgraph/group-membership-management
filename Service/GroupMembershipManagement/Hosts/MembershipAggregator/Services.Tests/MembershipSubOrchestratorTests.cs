@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 
 using Hosts.MembershipAggregator;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
@@ -38,6 +40,7 @@ namespace Services.Tests
         private DeltaCalculatorResponse _deltaCalculatorResponse;
         private (string FilePath, string Content) _downloaderResponse;
         private MembershipSubOrchestratorRequest _membershipSubOrchestratorRequest;
+        private TelemetryClient _telemetryClient;
 
         private Mock<IDryRunValue> _dryRun;
         private Mock<IGMMResources> _gmmResources;
@@ -67,6 +70,7 @@ namespace Services.Tests
             _localizationRepository = new Mock<ILocalizationRepository>();
             _notificationRepository = new Mock<INotificationRepository>();
             _dryRun = new Mock<IDryRunValue>();
+            _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             _deltaCalculatorService = new DeltaCalculatorService
                                             (
@@ -79,7 +83,8 @@ namespace Services.Tests
                                                 _thresholdNotificationConfig.Object,
                                                 _gmmResources.Object,
                                                 _localizationRepository.Object,
-                                                _notificationRepository.Object
+                                                _notificationRepository.Object,
+                                                _telemetryClient
                                             );
 
 
@@ -489,7 +494,8 @@ namespace Services.Tests
                                     _thresholdNotificationConfig.Object,
                                     _gmmResources.Object,
                                     _localizationRepository.Object,
-                                    _notificationRepository.Object
+                                    _notificationRepository.Object,
+                                    _telemetryClient
                                 );
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
@@ -523,7 +529,8 @@ namespace Services.Tests
                                     _thresholdNotificationConfig.Object,
                                     _gmmResources.Object,
                                     _localizationRepository.Object,
-                                    _notificationRepository.Object
+                                    _notificationRepository.Object,
+                                    _telemetryClient
                                 );
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
@@ -552,7 +559,8 @@ namespace Services.Tests
                                     _thresholdNotificationConfig.Object,
                                     _gmmResources.Object,
                                     _localizationRepository.Object,
-                                    _notificationRepository.Object
+                                    _notificationRepository.Object,
+                                    _telemetryClient
                                 );
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);

@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.ApplicationInsights;
 using Models;
 using Models.ThresholdNotifications;
 using Repositories.Contracts;
@@ -17,17 +18,20 @@ namespace Services
         private readonly ISyncJobRepository _syncJobRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IThresholdNotificationService _thresholdNotificationService;
+        private readonly TelemetryClient _telemetryClient;
 
         public ResolveNotificationHandler(ILoggingRepository loggingRepository,
                               INotificationRepository notificationRepository,
                               ISyncJobRepository syncJobRepository,
                               IGraphGroupRepository graphGroupRepository,
+                              TelemetryClient telemetryClient,
                               IThresholdNotificationService thresholdNotificationService) : base(loggingRepository)
         {
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _thresholdNotificationService = thresholdNotificationService ?? throw new ArgumentNullException(nameof(thresholdNotificationService));
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         protected override async Task<ResolveNotificationResponse> ExecuteCoreAsync(ResolveNotificationRequest request)
@@ -60,6 +64,8 @@ namespace Services
                 await handleSyncJobResolution(thresholdNotification);
                 await _notificationRepository.SaveNotificationAsync(thresholdNotification);
             }
+            var timeElapsedForResponse = ((thresholdNotification.ResolvedTime - thresholdNotification.CreatedTime).TotalSeconds).ToString();
+            TrackNotificationResponseEvent(thresholdNotification.Id, timeElapsedForResponse);
 
             response.CardJson = await _thresholdNotificationService.CreateResolvedNotificationCardAsync(thresholdNotification);
             return response;
@@ -80,6 +86,15 @@ namespace Services
             }
 
             await _syncJobRepository.UpdateSyncJobsAsync(new[] { job });
+        }
+        private void TrackNotificationResponseEvent(Guid groupId, string timeElapsedForResponse)
+        {
+            var notificationResponseEvent = new Dictionary<string, string>
+            {
+                { "TargetGroupId", groupId.ToString() },
+                { "ResponseTimeSeconds", timeElapsedForResponse }
+            };
+            _telemetryClient.TrackEvent("NotificationResponseReceived", notificationResponseEvent);
         }
     }
 }

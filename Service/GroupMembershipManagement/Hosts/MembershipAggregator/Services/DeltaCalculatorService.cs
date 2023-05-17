@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.ApplicationInsights;
 
 namespace Services
 {
@@ -34,6 +35,7 @@ namespace Services
         private readonly INotificationRepository _notificationRepository;
         private readonly bool _isDryRunEnabled;
         private readonly IThresholdNotificationConfig _thresholdNotificationConfig;
+        private readonly TelemetryClient _telemetryClient;
 
         private Guid _runId;
         public Guid RunId
@@ -56,7 +58,8 @@ namespace Services
             IThresholdNotificationConfig thresholdNotificationConfig,
             IGMMResources gmmResources,
             ILocalizationRepository localizationRepository,
-            INotificationRepository notificationRepository
+            INotificationRepository notificationRepository,
+            TelemetryClient telemetryClient
             )
         {
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
@@ -69,6 +72,7 @@ namespace Services
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _isDryRunEnabled = dryRun != null && dryRun.DryRunEnabled;
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         public async Task<DeltaResponse> CalculateDifferenceAsync(GroupMembership sourceMembership, GroupMembership destinationMembership)
@@ -133,6 +137,7 @@ namespace Services
                 if (threshold.IsThresholdExceeded)
                 {
                     deltaResponse.MembershipDeltaStatus = job.IgnoreThresholdOnce ? MembershipDeltaStatus.Ok : MembershipDeltaStatus.ThresholdExceeded;
+                    TrackThresholdViolationEvent(job.TargetOfficeGroupId);
 
                     if (job.IgnoreThresholdOnce)
                         await LogIgnoreThresholdOnceAsync(job, sourceMembership.RunId);
@@ -471,6 +476,14 @@ namespace Services
             }
 
             return recipients;
+        }
+        private void TrackThresholdViolationEvent(Guid groupId)
+        {
+            var thresholdViolationEvent = new Dictionary<string, string>
+            {
+                { "TargetGroupId", groupId.ToString() }
+            };
+            _telemetryClient.TrackEvent("ThresholdViolation", thresholdViolationEvent);
         }
     }
 }
