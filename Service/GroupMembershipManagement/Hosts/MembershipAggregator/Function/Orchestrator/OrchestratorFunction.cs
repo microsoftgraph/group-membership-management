@@ -1,5 +1,6 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
@@ -82,41 +83,7 @@ namespace Hosts.MembershipAggregator
                             ProjectedMemberCount = membershipResponse.ProjectedMemberCount
                         };
 
-                        var updateRequest = new DurableHttpRequest(HttpMethod.Post,
-                                                                    new Uri(_configuration["graphUpdaterUrl"]),
-                                                                    content: JsonConvert.SerializeObject(updateRequestContent),
-                                                                    headers: new Dictionary<string, StringValues>
-                                                                                { { "x-functions-key", _configuration["graphUpdaterFunctionKey"] } },
-                                                                    httpRetryOptions: new HttpRetryOptions(TimeSpan.FromSeconds(30), 3));
-
-                        await context.CallActivityAsync(nameof(LoggerFunction),
-                            new LoggerRequest
-                            {
-                                Message = new LogMessage
-                                {
-                                    Message = "Calling GraphUpdater",
-                                    RunId = runId
-                                }
-                            });
-
-                        var response = await context.CallHttpAsync(updateRequest);
-
-                        await context.CallActivityAsync(nameof(LoggerFunction),
-                            new LoggerRequest
-                            {
-                                Message = new LogMessage
-                                {
-                                    Message = $"GraphUpdater response Code: {response.StatusCode}, Content: {response.Content}",
-                                    RunId = runId
-                                }
-                            });
-
-                        if (response.StatusCode != HttpStatusCode.NoContent)
-                        {
-                            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                                            new JobStatusUpdaterRequest { SyncJob = request.SyncJob, Status = SyncStatus.Error });
-                            await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
-                        }
+                        await context.CallActivityAsync(nameof(TopicMessageSenderFunction), updateRequestContent);
                     }
 
                     await context.CallActivityAsync(nameof(LoggerFunction),

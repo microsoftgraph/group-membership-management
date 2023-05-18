@@ -41,6 +41,23 @@
     },
     "sqlAdministratorsGroupName": {
       "value": ""
+    },
+    "serviceBusMembershipUpdatersTopicSubscriptions": {
+      "value": {
+        "topicName": "membershipUpdaters",
+        "subscriptions": [
+          {
+            "name": "GraphUpdater",
+            "ruleName": "syncType",
+            "ruleSqlExpression": "Type IN ('SecurityGroup', 'GroupOwnership')"
+          },
+          {
+            "name": "TeamsChannelUpdater",
+            "ruleName": "syncType",
+            "ruleSqlExpression": "Type = 'TeamsChannel'"
+          }
+        ]
+      }
     }
   }
 }
