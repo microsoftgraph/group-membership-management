@@ -39,6 +39,22 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
   }
 }
 
+resource snScmBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-09-01' = {
+  parent: functionApp
+  name: 'scm'
+  properties: {
+    allow: false
+  }
+}
+
+resource snFtpBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-09-01' = {
+  parent: functionApp
+  name: 'ftp'
+  properties: {
+    allow: false
+  }
+}
+
 resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
   name: 'slotConfigNames'
   parent: functionApp
