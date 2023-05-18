@@ -87,7 +87,7 @@ namespace Repositories.GraphGroups
             try
             {
                 var nativeResponseHandler = new NativeResponseHandler();
-                var groupOwnersResponse = new ServicePrincipalCollectionResponse();
+                var groupOwnersResponse = new DirectoryObjectCollectionResponse();
 
                 await _graphServiceClient.Groups[groupObjectId.ToString()].Owners.GetAsync(requestConfiguration =>
                 {
@@ -100,7 +100,7 @@ namespace Repositories.GraphGroups
                 if (nativeResponse.IsSuccessStatusCode)
                 {
                     groupOwnersResponse = await DeserializeResponseAsync(nativeResponse,
-                                                                         ServicePrincipalCollectionResponse.CreateFromDiscriminatorValue);
+                                                                         DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
 
                     var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
 
