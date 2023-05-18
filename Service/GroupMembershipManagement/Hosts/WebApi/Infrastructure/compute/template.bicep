@@ -26,7 +26,7 @@ param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassific
 param appServiceName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-webapi'
 
 @description('Enter the hostname for the api')
-param apiHostname string
+param apiHostname string = '${appServiceName}.azurewebsites.net'
 
 @description('Service plan sku')
 @allowed([
