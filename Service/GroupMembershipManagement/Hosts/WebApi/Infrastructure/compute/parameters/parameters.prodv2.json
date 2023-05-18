@@ -3,7 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "apiHostname": {
-      "value": "<custom-domain-name> OR <<solutionAbbreviation>-<resourceGroupClassification>-<environmentAbbreviation>-webapi.azurewebsites.net>"
+      "value": "<custom-domain-name> OR delete this parameter to leverage default one"
     }
   }
 }

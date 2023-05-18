@@ -98,15 +98,4 @@ Finally, you will need to update your App registration to include this custom do
 1. In the Application ID URI, set your custom domain here. i.e. `api://api.contoso.com`.
 
 ## Using the default domain
-If you do not wish to set up a custom domain, you can leverage the one included in the F1 service plan, set the `apiHostname` parameter value to `<solutionAbbreviation>-<resourceGroupClassification>-<solutionAbbreviation>-webapi.azurewebsites.net`, for example
-```
-    {
-        "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
-        "contentVersion": "1.0.0.0",
-        "parameters": {
-            "apiHostname": {
-                "value": "gmm-compute-int-webapi.azurewebsites.net"
-            }
-        }
-    }
-```
+If you do not wish to set up a custom domain, you can leverage the one included in the F1 service plan, remove the `apiHostname` parameter file to use the default `<solutionAbbreviation>-<resourceGroupClassification>-<solutionAbbreviation>-webapi.azurewebsites.net`, for example
