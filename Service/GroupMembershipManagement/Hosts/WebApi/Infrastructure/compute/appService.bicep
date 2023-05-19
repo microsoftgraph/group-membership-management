@@ -31,4 +31,20 @@ resource websiteTemplate 'Microsoft.Web/sites@2022-03-01' = {
   }
 }
 
+resource sites_ftp 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-09-01' = {
+  parent: websiteTemplate
+  name: 'ftp'
+  properties: {
+    allow: false
+  }
+}
+
+resource sites_scm 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-09-01' = {
+  parent: websiteTemplate
+  name: 'scm'
+  properties: {
+    allow: false
+  }
+}
+
 output principalId string = websiteTemplate.identity.principalId
