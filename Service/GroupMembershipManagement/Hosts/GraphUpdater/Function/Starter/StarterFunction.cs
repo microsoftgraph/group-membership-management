@@ -23,7 +23,7 @@ namespace Hosts.GraphUpdater
 
         [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
-             [ServiceBusTrigger("%serviceBusMembershipUpdatersTopic%", "GraphUpdater", Connection = "serviceBusTopicConnection")] ServiceBusReceivedMessage message,
+             [ServiceBusTrigger("%serviceBusMembershipUpdatersTopic%", "GraphUpdater", Connection = "serviceBusConnectionString")] ServiceBusReceivedMessage message,
              [DurableClient] IDurableOrchestrationClient starter)
         {
             var request = JsonConvert.DeserializeObject<MembershipHttpRequest>(Encoding.UTF8.GetString(message.Body));

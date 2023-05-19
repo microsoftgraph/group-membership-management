@@ -76,7 +76,7 @@ namespace Services.Tests
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
                 Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
-                RunId = Guid.NewGuid()
+                RunId = groupMembership.RunId
             };
 
             mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
@@ -125,6 +125,11 @@ namespace Services.Tests
                     .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
             context.Setup(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()))
                 .Returns(() => Task.FromResult(new GroupUpdaterSubOrchestratorResponse() { SuccessCount = 1, UsersNotFound = new List<AzureADUser>(), UsersAlreadyExist = new List<AzureADUser>() }));
+            context.Setup(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdaterRequest>()))
+                   .Callback<string, object>(async (name, request) =>
+                   {
+                       await CallJobStatusUpdaterFunctionAsync(mockLoggingRepo, mockGraphUpdaterService, request as JobStatusUpdaterRequest);
+                   });
 
             var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
             var response = await orchestrator.RunOrchestratorAsync(context.Object, executionContext.Object);
@@ -140,6 +145,7 @@ namespace Services.Tests
             Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
             Assert.AreEqual(logProperties["PartitionKey"], syncJob.PartitionKey);
             Assert.AreEqual(logProperties["RowKey"], syncJob.RowKey);
+            Assert.AreEqual(SyncStatus.Idle.ToString(), mockGraphUpdaterService.Jobs[(syncJob.PartitionKey, syncJob.RowKey)].Status);
         }
 
         [TestMethod]
@@ -802,6 +808,15 @@ namespace Services.Tests
         {
             var function = new GroupOwnersReaderFunction(mockLoggingRepository, graphUpdaterService);
             return await function.GetGroupOwnersAsync(request);
+        }
+
+        private async Task CallJobStatusUpdaterFunctionAsync(
+            MockLoggingRepository mockLoggingRepository,
+            MockGraphUpdaterService mockGraphUpdaterService,
+            JobStatusUpdaterRequest request)
+        {
+            var function = new JobStatusUpdaterFunction(mockLoggingRepository, mockGraphUpdaterService);
+            await function.UpdateJobStatusAsync(request);
         }
     }
 }
