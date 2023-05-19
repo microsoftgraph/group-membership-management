@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Entities;
+using Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -48,14 +48,16 @@ namespace Hosts.JobScheduler
             var responseDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(await response.Content.ReadAsStringAsync());
             var statusQueryGetUri = responseDict.GetValueOrDefault("statusQueryGetUri");
 
-            await starter.StartNewAsync(nameof(StatusCallbackOrchestratorFunction), GetCallbackRequest(req, statusQueryGetUri));
+            if (req.Headers.Contains("PlanUrl"))
+                await starter.StartNewAsync(nameof(StatusCallbackOrchestratorFunction), GetCallbackRequest(req, statusQueryGetUri));
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PipelineInvocationStarterFunction)} function completed" }, VerbosityLevel.DEBUG);
 
             return response;
         }
 
-        private StatusCallbackOrchestratorRequest GetCallbackRequest(HttpRequestMessage req, string statusUrl) {
+        private StatusCallbackOrchestratorRequest GetCallbackRequest(HttpRequestMessage req, string statusUrl)
+        {
             var url = req.Headers.GetValues("PlanUrl").FirstOrDefault("NULL");
             var projectId = req.Headers.GetValues("ProjectId").FirstOrDefault("NULL");
             var hubName = req.Headers.GetValues("HubName").FirstOrDefault("NULL");

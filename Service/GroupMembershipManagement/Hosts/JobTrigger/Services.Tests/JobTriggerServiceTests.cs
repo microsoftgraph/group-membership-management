@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using DIConcreteTypes;
-using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Models;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -10,7 +10,6 @@ using Repositories.Mocks;
 using Repositories.ServiceBusTopics.Tests;
 using Services.Contracts;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Tests.Repositories;
@@ -32,6 +31,9 @@ namespace Services.Tests
 
         private const string Organization = "Organization";
         private const string SecurityGroup = "SecurityGroup";
+        private const string EmailSubject = "EmailSubject";
+        private const string SyncStartedEmailBody = "SyncStartedEmailBody";
+        private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
 
         [TestInitialize]
         public void InitializeTest()
@@ -126,7 +128,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync();
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync("some-query", "continuation-token");
+            var jobs = bulkSegment.Values;
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -145,7 +148,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync();
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync("some-query", "continuation-token");
+            var jobs = bulkSegment.Values;
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -167,6 +171,25 @@ namespace Services.Tests
                 var canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
                 await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
                 Assert.AreEqual(job.Status, SyncStatus.InProgress.ToString());
+            }
+        }
+
+        [TestMethod]
+        public async Task VerifyJobStatusIsUpdatedToStuckInProgress()
+        {
+            var jobs = 2;
+
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobs, Organization));
+
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
+
+            foreach (var job in _syncJobRepository.Jobs)
+            {
+                job.Status = SyncStatus.InProgress.ToString();
+                var canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
+                await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup ? SyncStatus.StuckInProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
+                Assert.AreEqual(job.Status, SyncStatus.StuckInProgress.ToString());
             }
         }
 
@@ -243,7 +266,7 @@ namespace Services.Tests
         public async Task VerifyInitialSyncEmailNotificationIsSent()
         {
             var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
 
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
@@ -265,12 +288,14 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync();
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync("some-query", "continuation-token");
+            var jobs = bulkSegment.Values;
+
             foreach (var job in jobs)
             {
                 _jobTriggerService.RunId = job.RunId.Value;
                 var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
-                await _jobTriggerService.SendEmailAsync(job, groupName);
+                await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
 
                 Assert.IsNotNull(_jobTriggerService.RunId);
                 Assert.IsNotNull(_graphGroupRepository.RunId);
@@ -278,14 +303,14 @@ namespace Services.Tests
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
-            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Exactly(validStartDateJobs));
+            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""), Times.Exactly(validStartDateJobs));
         }
 
         [TestMethod]
         public async Task VerifyJobsAreProcessedWithMissingMailSendPermission()
         {
             var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
 
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
@@ -307,11 +332,13 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync();
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync("some-query", "continuation-token");
+            var jobs = bulkSegment.Values;
+
             foreach (var job in jobs)
             {
                 var groupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
-                await _jobTriggerService.SendEmailAsync(job, groupName);
+                await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
@@ -321,7 +348,7 @@ namespace Services.Tests
         public async Task VerifyJobsAreProcessedWithMissingMailLicenses()
         {
             var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
 
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
@@ -343,10 +370,12 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync();
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync("some-query", "continuation-token");
+            var jobs = bulkSegment.Values;
+
             foreach (var job in jobs)
             {
-                await _jobTriggerService.SendEmailAsync(job, "GroupName");
+                await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
@@ -356,7 +385,7 @@ namespace Services.Tests
         public async Task VerifyJobsAreProcessedMailingExceptions()
         {
             var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
 
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
@@ -378,10 +407,12 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var jobs = await _jobTriggerService.GetSyncJobsAsync();
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync("some-query", "continuation-token");
+            var jobs = bulkSegment.Values;
+
             foreach (var job in jobs)
             {
-                await _jobTriggerService.SendEmailAsync(job, "GroupName");
+                await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);

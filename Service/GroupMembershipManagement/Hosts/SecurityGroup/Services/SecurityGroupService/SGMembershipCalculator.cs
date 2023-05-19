@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Entities.ServiceBus;
-using Microsoft.Graph;
+using Models;
+using Models.ServiceBus;
 using Newtonsoft.Json;
 using Polly;
 using Polly.Retry;
@@ -10,7 +9,6 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
@@ -82,26 +80,23 @@ namespace Hosts.SecurityGroup
                 UsersToAdd = result.usersToAdd,
                 UsersToRemove = result.usersToRemove,
                 NextPageUrl = result.nextPageUrl,
-                DeltaUrl = result.deltaUrl,
-                UsersFromGroup = result.usersFromGroup
-
+                DeltaUrl = result.deltaUrl
             };
         }
 
-        public async Task<DeltaGroupInformation> GetNextDeltaUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage page)
+        public async Task<DeltaGroupInformation> GetNextDeltaUsersPageAsync(string nextPageUrl)
         {
-            var result = await _graphGroupRepository.GetNextDeltaUsersPageAsync(nextPageUrl, page);
+            var result = await _graphGroupRepository.GetNextDeltaUsersPageAsync(nextPageUrl);
             return new DeltaGroupInformation
             {
                 UsersToAdd = result.usersToAdd,
                 UsersToRemove = result.usersToRemove,
                 NextPageUrl = result.nextPageUrl,
-                DeltaUrl = result.deltaUrl,
-                UsersFromGroup = result.usersFromGroup
+                DeltaUrl = result.deltaUrl
             };
         }
 
-        public async Task<int> GetGroupsCountAsync(Guid objectId, Guid runId)
+        public async Task<int> GetGroupsCountAsync(Guid objectId)
         {
             return await _graphGroupRepository.GetGroupsCountAsync(objectId);
         }
@@ -119,20 +114,18 @@ namespace Hosts.SecurityGroup
             {
                 UsersToAdd = result.users,
                 NextPageUrl = result.nextPageUrl,
-                DeltaUrl = result.deltaUrl,
-                UsersFromGroup = result.usersFromGroup
+                DeltaUrl = result.deltaUrl
             };
         }
 
-        public async Task<DeltaGroupInformation> GetNextUsersPageAsync(string nextPageUrl, IGroupDeltaCollectionPage usersFromGroup)
+        public async Task<DeltaGroupInformation> GetNextUsersPageAsync(string nextPageUrl)
         {
-            var result = await _graphGroupRepository.GetNextUsersPageAsync(nextPageUrl, usersFromGroup);
+            var result = await _graphGroupRepository.GetNextUsersPageAsync(nextPageUrl);
             return new DeltaGroupInformation
             {
                 UsersToAdd = result.users,
                 NextPageUrl = result.nextPageUrl,
-                DeltaUrl = result.deltaUrl,
-                UsersFromGroup = result.usersFromGroup
+                DeltaUrl = result.deltaUrl
             };
         }
 
@@ -144,29 +137,27 @@ namespace Hosts.SecurityGroup
             {
                 Users = result.users,
                 NonUserGraphObjects = result.nonUserGraphObjects,
-                NextPageUrl = result.nextPageUrl,
-                UsersFromGroup = result.usersFromGroup
+                NextPageUrl = result.nextPageUrl
             };
         }
 
-        public async Task<GroupInformation> GetNextTransitiveMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup)
+        public async Task<GroupInformation> GetNextTransitiveMembersPageAsync(string nextPageUrl)
         {
-            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(nextPageUrl, usersFromGroup);
+            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(nextPageUrl);
             return new GroupInformation
             {
                 Users = result.users,
                 NonUserGraphObjects = result.nonUserGraphObjects,
-                NextPageUrl = result.nextPageUrl,
-                UsersFromGroup = result.usersFromGroup
+                NextPageUrl = result.nextPageUrl
             };
         }
 
-        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<AzureADUser> allusers, int currentPart, bool exclusionary)
+        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<AzureADUser> allUsers, int currentPart, bool exclusionary)
         {
             var runId = syncJob.RunId.GetValueOrDefault();
             var groupMembership = new GroupMembership
             {
-                SourceMembers = allusers ?? new List<AzureADUser>(),
+                SourceMembers = allUsers ?? new List<AzureADUser>(),
                 Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
                 RunId = runId,
                 Exclusionary = exclusionary,
@@ -183,7 +174,7 @@ namespace Hosts.SecurityGroup
             return fileName;
         }
 
-        public async Task SaveDeltaUsersAsync(SyncJob syncJob, Guid id,  List<AzureADUser> users, string deltaLink)
+        public async Task SaveDeltaUsersAsync(SyncJob syncJob, Guid id, List<AzureADUser> users, string deltaLink)
         {
             var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
             var fileName = $"/cache/delta_{id}_{timeStamp}.json";
@@ -196,23 +187,28 @@ namespace Hosts.SecurityGroup
             await _blobStorageRepository.UploadFileAsync(datafileName, JsonConvert.SerializeObject(groupMembership));
         }
 
-        public async Task SendEmailAsync(SyncJob job, Guid runId, string content, string[] additionalContentParams)
+        public async Task SendEmailAsync(SyncJob job, Guid runId, string subject, string content, string[] additionalContentParams, string adaptiveCardTemplateDirectory = "")
         {
             await _mail.SendMailAsync(new EmailMessage
             {
-                Subject = EmailSubject,
+                Subject = subject ?? EmailSubject,
                 Content = content,
                 SenderAddress = _emailSenderAndRecipients.SenderAddress,
                 SenderPassword = _emailSenderAndRecipients.SenderPassword,
                 ToEmailAddresses = job.Requestor,
                 CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
                 AdditionalContentParams = additionalContentParams
-            }, runId);
+            }, runId, adaptiveCardTemplateDirectory);
         }
 
         public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status)
         {
             await _syncJob.UpdateSyncJobStatusAsync(new[] { job }, status);
+        }
+
+        public async Task<string> GetGroupNameAsync(Guid groupId)
+        {
+            return await _graphGroupRepository.GetGroupNameAsync(groupId);
         }
     }
 }

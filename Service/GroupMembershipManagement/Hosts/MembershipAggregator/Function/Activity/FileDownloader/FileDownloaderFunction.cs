@@ -1,8 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
+using Models;
+using Models.Helpers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
 using System.IO;
@@ -32,8 +34,11 @@ namespace Hosts.MembershipAggregator
                 throw new FileNotFoundException($"File {request.FilePath} was not found");
             }
 
+            var content = blobResult.Content;
+            var compressedContent = TextCompressor.Compress(content);
+
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloaded file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-            return (request.FilePath, blobResult.Content.ToString());
+            return (request.FilePath, compressedContent);
         }
     }
 }

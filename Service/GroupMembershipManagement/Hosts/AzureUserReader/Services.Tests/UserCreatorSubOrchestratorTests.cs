@@ -1,11 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Entities;
 using Hosts.AzureUserReader;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Models;
 using Moq;
 using Repositories.Contracts;
 using System;
@@ -59,8 +58,8 @@ namespace Services.Tests
                  .ReturnsAsync(() => currentProfilePage);
 
             var addedUsers = default(List<GraphProfileInformation>);
-            graphUserRepository.Setup(x => x.AddUsersAsync(It.IsAny<List<User>>(), It.IsAny<Guid?>()))
-                .Callback<List<User>, Guid?>((users, runId) =>
+            graphUserRepository.Setup(x => x.AddUsersAsync(It.IsAny<List<GraphUser>>(), It.IsAny<Guid?>()))
+                .Callback<List<GraphUser>, Guid?>((users, runId) =>
                {
                    addedUsers = new List<GraphProfileInformation>();
                    foreach (var user in users)

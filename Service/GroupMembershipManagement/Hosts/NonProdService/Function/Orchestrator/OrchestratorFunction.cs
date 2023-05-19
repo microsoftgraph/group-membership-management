@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Entities;
@@ -57,7 +57,7 @@ namespace Hosts.NonProdService
                     RunId = runId
                 });
 
-            if(tenantUsers == null)
+            if (tenantUsers == null)
             {
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Error with {nameof(TenantUserReaderFunction)}, check exception" });
 
@@ -80,7 +80,7 @@ namespace Hosts.NonProdService
                         RunId = runId
                     });
 
-                if(groupResponse == null)
+                if (groupResponse == null)
                 {
                     await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Error with {nameof(GroupCreatorAndRetrieverFunction)}, check exception" });
 
@@ -103,10 +103,10 @@ namespace Hosts.NonProdService
                             Type = RequestType.Add,
                             TargetGroup = groupResponse.TargetGroup,
                             Members = membershipDifference.UsersToAdd,
-                            RunId=runId
+                            RunId = runId
                         });
 
-                if(membershipDifference.UsersToRemove.Count > 0)
+                if (membershipDifference.UsersToRemove.Count > 0)
                     await context.CallSubOrchestratorAsync<GraphUpdaterStatus>(
                         nameof(GroupUpdaterSubOrchestratorFunction),
                         new GroupUpdaterRequest

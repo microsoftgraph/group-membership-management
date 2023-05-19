@@ -5,17 +5,25 @@
     "jobsTableName": {
       "value": "syncJobs"
     },
+    "notificationsTableName": {
+      "value": "notifications"
+    },
     "serviceBusTopicSubscriptions": {
       "value": [
-        {
-          "name": "Organization",
-          "ruleName": "syncType",
-          "ruleSqlExpression": "Type = 'Organization'"
-        },
         {
           "name": "SecurityGroup",
           "ruleName": "syncType",
           "ruleSqlExpression": "Type = 'SecurityGroup'"
+        },
+        {
+          "name": "TeamsChannel",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'TeamsChannel'"
+        },
+        {
+          "name": "GroupOwnership",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'GroupOwnership'"
         }
       ]
     },
@@ -24,6 +32,9 @@
     },
     "serviceBusQueueName": {
       "value": "membership"
-    }    
+    },
+    "notifierProviderId": {
+      "value": ""
+    }
   }
 }

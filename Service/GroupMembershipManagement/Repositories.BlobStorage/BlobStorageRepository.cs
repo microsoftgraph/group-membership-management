@@ -4,6 +4,7 @@ using Azure.Identity;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Entities;
+using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
@@ -36,7 +37,7 @@ namespace Repositories.BlobStorage
                 var content = await blobClient.DownloadContentAsync();
                 return new BlobResult
                 {
-                    Content = content.Value.Content,
+                    Content = content.Value.Content == null ? string.Empty : content.Value.Content.ToString(),
                     Metadata = content.Value.Details.Metadata,
                     BlobStatus = BlobStatus.Found
                 };
@@ -48,7 +49,7 @@ namespace Repositories.BlobStorage
         public async Task<BlobResult> DownloadCacheFileAsync(string path)
         {
             var latest = _containerClient.GetBlobs(prefix: path).OrderByDescending(m => m.Properties.LastModified).FirstOrDefault();
-            if (latest == null ) return new BlobResult { BlobStatus = BlobStatus.NotFound };
+            if (latest == null) return new BlobResult { BlobStatus = BlobStatus.NotFound };
             var name = latest.Name;
             var blobClient = _containerClient.GetBlobClient(name);
             var blobExists = await blobClient.ExistsAsync();
@@ -57,7 +58,7 @@ namespace Repositories.BlobStorage
                 var content = await blobClient.DownloadContentAsync();
                 return new BlobResult
                 {
-                    Content = content.Value.Content,
+                    Content = content.Value.Content == null ? string.Empty : content.Value.Content.ToString(),
                     Metadata = content.Value.Details.Metadata,
                     BlobStatus = BlobStatus.Found
                 };

@@ -17,6 +17,11 @@ Format:
     StartTimeDelayMinutes: int
     DelayBetweenSyncsSeconds: int
     DefaultRuntimeSeconds: int
+    GetRunTimeFromLogs: bool
+    RunTimeMetric: string
+    RunTimeQuery: string
+    RunTimeRangeInDays: int
+    WorkspaceId: string
 }
 ```
 Note: Only enabled jobs will be included in these operations
@@ -38,3 +43,25 @@ Note: If ResetJobs and DistributeJobs are both true, then jobs will be reset and
 * StartTimeDelayMinutes : The delay in minutes to wait before running the first of the scheduled / distributed jobs
 * DelayBetweenSyncsSeconds: The delay in seconds to wait between each scheduled / distributed job
 * DefaultRuntimeSeconds: The approximate runtime in seconds of each job (the app will base its scheduling on this runtime so choose carefully)
+* GetRunTimeFromLogs: If true, runtimes will be retrieved from log analytics logs otherwise default values will be used.
+* RunTimeMetric: valid values are avg and max, which stand for average or maximum runtime. maximum is the default.
+* RunTimeQuery: defines the query used to retrive the average or maximum runtimes.
+* RunTimeRangeInDays: positive number which defines how many days in the past the query is going to look to retrieve data.
+* WorkspaceId: log analytics workspace id contaning the data.
+
+### Grant "Log Analytic Reader" permission
+* Navigate to your Log Analytics resource.
+* Under "Access control (IAM)" click on "Add", then "Add role assignment".
+* Select "Log Analytics Reader" role, then click "Next"
+* Click on "Select members" and search for your `<solution>-compute-<environment>-JobScheduler` function, then click on "Select".
+
+Alternatively you can grant the permission by running this PowerShell cmdlet
+
+```
+New-AzRoleAssignment -ObjectId <object-id> `
+-RoleDefinitionName "Log Analytics Reader" `
+-Scope /subscriptions/<subscriptionId>/resourcegroups/<resourceGroupName>/providers/<providerName>/<resourceType>/<resourceSubType>/<resourceName>
+```
+
+ObjectId: This is JobScheduler function identity id.  
+Scope: This is Log Analytics Workspace resource id.

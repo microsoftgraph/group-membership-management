@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities.ServiceBus;
+using Models.ServiceBus;
 using System;
 using System.Collections.Generic;
 using System.Text;

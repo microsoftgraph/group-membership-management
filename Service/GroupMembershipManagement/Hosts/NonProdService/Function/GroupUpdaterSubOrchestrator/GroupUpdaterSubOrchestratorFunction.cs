@@ -1,6 +1,5 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using System.Threading.Tasks;
@@ -9,6 +8,7 @@ using System.Collections.Generic;
 using System;
 using Microsoft.ApplicationInsights;
 using Repositories.Contracts;
+using Models;
 
 namespace Hosts.NonProdService
 {

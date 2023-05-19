@@ -34,6 +34,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Contracts", "..\Se
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mocks", "..\..\..\Repositories.Mocks\Repositories.Mocks.csproj", "{FA82892F-FE10-4452-84E8-95B9E33770F9}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\Models.csproj", "{64340013-33EF-4BDE-8736-04B3EB9F0DF1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -104,6 +106,10 @@ Global
 		{FA82892F-FE10-4452-84E8-95B9E33770F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FA82892F-FE10-4452-84E8-95B9E33770F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FA82892F-FE10-4452-84E8-95B9E33770F9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{64340013-33EF-4BDE-8736-04B3EB9F0DF1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{64340013-33EF-4BDE-8736-04B3EB9F0DF1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{64340013-33EF-4BDE-8736-04B3EB9F0DF1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{64340013-33EF-4BDE-8736-04B3EB9F0DF1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

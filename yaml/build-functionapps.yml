@@ -9,6 +9,8 @@ parameters:
   type: object
 - name: condition
   type: object
+- name: buildRelease
+  type: boolean
 
 stages:
 
@@ -19,13 +21,17 @@ stages:
   jobs:
   - ${{ each app in parameters.functionApps }}:
       - job: Build_${{ app.function.name }}
-        strategy:
-          maxParallel: 2
-          matrix:
-            debug:
-              BuildConfiguration: debug
-            release:
-              BuildConfiguration: release
+        ${{ if parameters.buildRelease }}:
+          strategy:
+              maxParallel: 2
+              matrix:
+                debug:
+                  BuildConfiguration: debug
+                release:
+                  BuildConfiguration: release
+        ${{ else }}:
+          variables:
+            BuildConfiguration: 'debug'
 
         steps:
 
@@ -60,7 +66,7 @@ stages:
                         /p:thresholdType=line
                         /p:thresholdStat=total
                         /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\${{ app.function.name }}\
-                        /p:Exclude=[Repositories.*]*%2c[Entities]*%2c[*.Entities]*%2c[*.Tests]*%2c[*.Mocks]*%2c[Common.DependencyInjection]*%2c[Hosts.FunctionBase]*%2c[DIConcreteTypes]*'
+                        /p:Exclude=[Repositories.*]*%2c[Entities]*%2c[*.Entities]*%2c[Models]*%2c[*.Models]*%2c[*.Tests]*%2c[*.Mocks]*%2c[Common.DependencyInjection]*%2c[Hosts.FunctionBase]*%2c[DIConcreteTypes]*'
           condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
         - task: PublishCodeCoverageResults@1

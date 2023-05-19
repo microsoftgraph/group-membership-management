@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
+using Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Polly;
@@ -53,7 +53,7 @@ namespace Hosts.GraphUpdater
                             syncJob.Requestor,
                             SyncDisabledNoGroupEmailBody,
                             new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses },
-                            request.RunId);
+                            request.RunId, null, null, null, request.AdaptiveCardTemplateDirectory);
                 }
                 else if (groupExistsResult.FaultType == FaultType.ExceptionHandledByThisPolicy)
                     await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Exceeded {NumberOfGraphRetries} while trying to determine if a group exists." });

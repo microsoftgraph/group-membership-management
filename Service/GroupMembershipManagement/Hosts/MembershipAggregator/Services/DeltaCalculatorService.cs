@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Entities.ServiceBus;
+using Models.ServiceBus;
+using Models;
+using Models.ThresholdNotifications;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -30,7 +31,9 @@ namespace Services
         private readonly IThresholdConfig _thresholdConfig;
         private readonly IGMMResources _gmmResources;
         private readonly ILocalizationRepository _localizationRepository;
+        private readonly INotificationRepository _notificationRepository;
         private readonly bool _isDryRunEnabled;
+        private readonly IThresholdNotificationConfig _thresholdNotificationConfig;
 
         private Guid _runId;
         public Guid RunId
@@ -50,8 +53,10 @@ namespace Services
             IGraphAPIService graphAPIService,
             IDryRunValue dryRun,
             IThresholdConfig thresholdConfig,
+            IThresholdNotificationConfig thresholdNotificationConfig,
             IGMMResources gmmResources,
-            ILocalizationRepository localizationRepository
+            ILocalizationRepository localizationRepository,
+            INotificationRepository notificationRepository
             )
         {
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
@@ -59,8 +64,10 @@ namespace Services
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService));
             _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
+            _thresholdNotificationConfig = thresholdNotificationConfig ?? throw new ArgumentNullException(nameof(thresholdNotificationConfig));
             _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
+            _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _isDryRunEnabled = dryRun != null && dryRun.DryRunEnabled;
         }
 
@@ -125,8 +132,38 @@ namespace Services
 
                 if (threshold.IsThresholdExceeded)
                 {
-                    deltaResponse.MembershipDeltaStatus = MembershipDeltaStatus.ThresholdExceeded;
-                    await SendThresholdNotificationAsync(threshold, job, sourceMembership.RunId);
+                    deltaResponse.MembershipDeltaStatus = job.IgnoreThresholdOnce ? MembershipDeltaStatus.Ok : MembershipDeltaStatus.ThresholdExceeded;
+
+                    if (job.IgnoreThresholdOnce)
+                        await LogIgnoreThresholdOnceAsync(job, sourceMembership.RunId);
+                    else
+                    {
+                        if(_thresholdNotificationConfig.IsThresholdNotificationEnabled)
+                        {
+                            var thresholdNotification = new Models.ThresholdNotifications.ThresholdNotification { 
+                                Id = Guid.NewGuid(),
+                                ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage,
+                                ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage,
+                                ChangeQuantityForAdditions = delta.Delta.ToAdd.Count,
+                                ChangeQuantityForRemovals = delta.Delta.ToRemove.Count,
+                                CreatedTime = DateTime.UtcNow,
+                                Resolution = ThresholdNotificationResolution.Unresolved,
+                                ResolvedByUPN = string.Empty,
+                                ResolvedTime = DateTime.FromFileTimeUtc(0),
+                                Status = ThresholdNotificationStatus.Queued,
+                                TargetOfficeGroupId = job.TargetOfficeGroupId,
+                                ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
+                                ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals
+                            };
+
+                            await _notificationRepository.SaveNotificationAsync(thresholdNotification);
+                        }
+                        else
+                        {
+                            await SendThresholdNotificationAsync(threshold, job, sourceMembership.RunId);
+                        }
+                    }
+
                     return deltaResponse;
                 }
 
@@ -232,6 +269,15 @@ namespace Services
             };
         }
 
+        private async Task LogIgnoreThresholdOnceAsync(SyncJob job, Guid runId)
+        {
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Going to sync the job even though threshold exceeded because IgnoreThresholdOnce is currently set to {job.IgnoreThresholdOnce}.",
+                RunId = runId
+            });
+        }
+
         private async Task SendThresholdNotificationAsync(ThresholdResult threshold, SyncJob job, Guid runId)
         {
             var currentThresholdViolations = job.ThresholdViolations + 1;
@@ -255,7 +301,7 @@ namespace Services
 
             string contentTemplate;
             string[] additionalContent;
-            string[] additionalSubjectContent = new[] { groupName };
+            string[] additionalSubjectContent = new[] { job.TargetOfficeGroupId.ToString(), groupName };
 
             var thresholdEmail = GetThresholdEmail(groupName, threshold, job);
             contentTemplate = thresholdEmail.ContentTemplate;
@@ -276,8 +322,8 @@ namespace Services
                 contentTemplate = SyncJobDisabledEmailBody;
                 additionalContent = new[]
                 {
-                    groupName,
                     job.TargetOfficeGroupId.ToString(),
+                    groupName,
                     _gmmResources.LearnMoreAboutGMMUrl,
                     _emailSenderAndRecipients.SupportEmailAddresses
                 };
@@ -314,8 +360,8 @@ namespace Services
             {
                 additionalContent = new[]
                 {
-                      groupName,
                       job.TargetOfficeGroupId.ToString(),
+                      groupName,
                       $"{increasedThresholdMessage}\n{decreasedThresholdMessage}",
                       _gmmResources.LearnMoreAboutGMMUrl,
                       _emailSenderAndRecipients.SupportEmailAddresses
@@ -325,8 +371,8 @@ namespace Services
             {
                 additionalContent = new[]
                 {
+                      job.TargetOfficeGroupId.ToString(), 
                       groupName,
-                      job.TargetOfficeGroupId.ToString(),
                       $"{increasedThresholdMessage}\n",
                       _gmmResources.LearnMoreAboutGMMUrl,
                       _emailSenderAndRecipients.SupportEmailAddresses
@@ -336,8 +382,8 @@ namespace Services
             {
                 additionalContent = new[]
                 {
-                      groupName,
                       job.TargetOfficeGroupId.ToString(),
+                      groupName,
                       $"{decreasedThresholdMessage}\n",
                       _gmmResources.LearnMoreAboutGMMUrl,
                       _emailSenderAndRecipients.SupportEmailAddresses

@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Microsoft.ApplicationInsights;
-using Microsoft.Graph;
+using Models;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -64,21 +63,19 @@ namespace Services
             {
                 NextPageUrl = result.nextPageUrl,
                 Members = result.users,
-                NonUserGraphObjects = result.nonUserGraphObjects,
-                MembersPage = result.usersFromGroup
+                NonUserGraphObjects = result.nonUserGraphObjects
             };
         }
 
-        public async Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage usersFromGroup, Guid runId)
+        public async Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, Guid runId)
         {
             _graphGroupRepository.RunId = runId;
-            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(nextPageUrl, usersFromGroup);
+            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(nextPageUrl);
             return new UsersPageResponse
             {
                 NextPageUrl = result.nextPageUrl,
                 Members = result.users,
-                NonUserGraphObjects = result.nonUserGraphObjects,
-                MembersPage = result.usersFromGroup
+                NonUserGraphObjects = result.nonUserGraphObjects
             };
         }
 
@@ -98,7 +95,7 @@ namespace Services
             return await graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(groupId));
         }
 
-        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)
+        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
         {
             await _mailRepository.SendMailAsync(new EmailMessage
             {
@@ -110,7 +107,7 @@ namespace Services
                 CcEmailAddresses = ccEmail,
                 AdditionalContentParams = additionalContentParams,
                 AdditionalSubjectParams = additionalSubjectParams
-            }, runId);
+            }, runId, adaptiveCardTemplateDirectory);
         }
 
         public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)
@@ -150,7 +147,7 @@ namespace Services
             return await _graphGroupRepository.GetGroupNameAsync(groupId);
         }
 
-        public async Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
+        public async Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
         {
             var stopwatch = Stopwatch.StartNew();
             var graphResponse = await _graphGroupRepository.AddUsersToGroup(members, new AzureADGroup { ObjectId = targetGroupId });
@@ -170,7 +167,7 @@ namespace Services
             _telemetryClient.TrackMetric(nameof(Metric.GraphAddRatePerSecond), members.Count / stopwatch.Elapsed.TotalSeconds);
 
             var status = graphResponse.ResponseCode == ResponseCode.Error ? GraphUpdaterStatus.Error : GraphUpdaterStatus.Ok;
-            return (status, graphResponse.SuccessCount, graphResponse.UsersNotFound);
+            return (status, graphResponse.SuccessCount, graphResponse.UsersNotFound, graphResponse.UsersAlreadyExist);
         }
 
         public async Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound)> RemoveUsersFromGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync)
@@ -201,7 +198,7 @@ namespace Services
             return await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(email, groupObjectId);
         }
 
-        public async Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+        public async Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
         {
             return await _graphGroupRepository.GetGroupOwnersAsync(groupObjectId, top);
         }

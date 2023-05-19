@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure;
+
 using Entities;
+using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
@@ -20,33 +21,18 @@ namespace Repositories.SyncJobs.Tests
             return await Task.FromResult(job);
         }
 
-        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool applyFilters = true)
+        public async Task<Page<SyncJob>> GetSyncJobsSegmentAsync(string query, string continuationToken, int batchSize)
         {
-            var jobs = Jobs.Where(x => x.StartDate <= DateTime.UtcNow);
+            var jobs = Jobs.Where(x => (x.StartDate <= DateTime.UtcNow)
+                                        && (DateTime.UtcNow - x.LastRunTime > TimeSpan.FromHours(x.Period))
+                                        && (x.Status == SyncStatus.Idle.ToString() || x.Status == SyncStatus.InProgress.ToString() || x.Status == SyncStatus.StuckInProgress.ToString()));
 
-            if (status != SyncStatus.All)
+            var result = new Models.Page<SyncJob>
             {
-                jobs = jobs.Where(x => x.Status == status.ToString());
-            }
+                Values = new List<SyncJob>(jobs)
+            };
 
-            if (applyFilters)
-            {
-                jobs = jobs.Where(x => DateTime.UtcNow - x.LastRunTime > TimeSpan.FromHours(x.Period));
-            }
-
-            foreach (var job in await Task.FromResult(jobs))
-            {
-                yield return job;
-            }
-        }
-
-        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(IEnumerable<(string partitionKey, string rowKey)> jobIds)
-        {
-            foreach (var (partitionKey, rowKey) in jobIds)
-            {
-                var job = Jobs.Single(x => x.PartitionKey == partitionKey && x.RowKey == rowKey);
-                yield return await Task.FromResult(job);
-            }
+            return await Task.FromResult(result);
         }
 
         public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status)
@@ -60,11 +46,6 @@ namespace Repositories.SyncJobs.Tests
             await Task.CompletedTask;
         }
 
-        public Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, bool applyFilters = true)
-        {
-            throw new NotImplementedException();
-        }
-
         public Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null)
         {
             throw new NotImplementedException();
@@ -75,7 +56,31 @@ namespace Repositories.SyncJobs.Tests
             throw new NotImplementedException();
         }
 
-        public AsyncPageable<SyncJob> GetPageableQueryResult(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false)
+        public async IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync()
+        {
+            var jobs = Jobs.Where(x => x.StartDate <= DateTime.UtcNow);
+
+            jobs = jobs.Where(x => x.Status != SyncStatus.Idle.ToString() &&
+                                   x.Status != SyncStatus.InProgress.ToString() &&
+                                   x.Status != SyncStatus.Error.ToString());
+
+            foreach (var job in await Task.FromResult(jobs))
+            {
+                yield return job;
+            }
+        }
+
+        public Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<Page<SyncJob>> GetPageableQueryResultAsync(bool includeFutureJobs, int? pageSize, params SyncStatus[] statusFilters)
+        {
+            return Task.FromResult(new Page<SyncJob>());
+        }
+
+        public IAsyncEnumerable<SyncJob> GetSyncJobsAsync(bool includeFutureJobs = false, params SyncStatus[] statusFilters)
         {
             throw new NotImplementedException();
         }

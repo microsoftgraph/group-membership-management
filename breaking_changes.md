@@ -1,5 +1,48 @@
 # Breaking Changes
 
+## 11/23/2022
+
+### Updated keyVaultReaders_nonprod and keyVaultReaders_prod JSON schema
+
+See section [Create an Azure DevOps pipeline](README.md#create-an-azure-devops-pipeline) for more information.
+
+Previously only one set of permissions were supported, these were assigned to KeyVault 'secrets'.  
+With this change it now supports KeyVault 'secrets' and 'certificates' permissions.
+
+Old schema:
+```
+[
+    {
+        "objectId": "<user-object-id>",
+        "permissions": [ "get", "set", "list" ]
+    }
+]
+```
+New schema:
+```
+[
+    {
+        "objectId": "<user-object-id>",
+        "secrets": [ "get", "set", "list" ],
+        "certificates": [ "get", "set", "list" ]
+    }
+]
+```
+
+If no certificate permissions are needed, you can omit the 'certificates' property.
+```
+[
+    {
+        "objectId": "<user-object-id>",
+        "secrets": [ "get", "set", "list" ]
+    }
+]
+```
+
+Existing GMM pipelines will need to update these variables:
+- keyVaultReaders_nonprod
+- keyVaultReaders_prod
+
 ## 09/22/2022
 
 ### - SecurityGroup query format has changed to JSON

@@ -11,6 +11,8 @@ using Repositories.Contracts.InjectConfig;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Azure.Identity;
+using Azure.Monitor.Query;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 
@@ -32,19 +34,22 @@ namespace Hosts.JobScheduler
                 {
                     settings.Value = configuration[JobSchedulerConfigSettingName];
                 }
-
             });
 
             builder.Services.AddScoped<IJobSchedulerConfig>(services =>
             {
                 var jsonString = services.GetService<IOptions<JobSchedulerConfigString>>().Value.Value;
                 var jobSchedulerConfig = JsonConvert.DeserializeObject<JobSchedulerConfig>(jsonString);
+                jobSchedulerConfig.WorkspaceId = GetValueOrThrow("logAnalyticsCustomerId");
                 return jobSchedulerConfig;
             });
 
             builder.Services.AddScoped<IRuntimeRetrievalService>(services =>
             {
-                return new DefaultRuntimeRetrievalService(services.GetService<IJobSchedulerConfig>().DefaultRuntimeSeconds);
+                var config = services.GetService<IJobSchedulerConfig>();
+                return config.GetRunTimeFromLogs
+                ? new LogsRuntimeRetrievalService(config, new LogsQueryClient(new DefaultAzureCredential()))
+                : new DefaultRuntimeRetrievalService(config.DefaultRuntimeSeconds);
             });
 
             builder.Services.AddScoped<IJobSchedulingService>(services =>

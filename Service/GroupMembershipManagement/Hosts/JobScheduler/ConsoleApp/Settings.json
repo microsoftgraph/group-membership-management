@@ -10,5 +10,10 @@
   "defaultRuntime": "",
   "startTimeDelayMinutes": "",
   "delayBetweenSyncsSeconds": "",
+  "getRunTimeFromLogs": "",
+  "runTimeMetric": "",
+  "runTimeQuery": "",
+  "runTimeRangeInDays": "",
+  "workspaceId": "",
   "APPINSIGHTS_INSTRUMENTATIONKEY": ""
 }

@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Azure;
 using Entities;
+using Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -10,13 +10,14 @@ namespace Repositories.Contracts
 {
     public interface ISyncJobRepository
     {
-        AsyncPageable<SyncJob> GetPageableQueryResult(SyncStatus status = SyncStatus.All, bool includeFutureJobs = false);
-        Task<TableSegmentBulkResult<DistributionSyncJob>> GetSyncJobsSegmentAsync(AsyncPageable<SyncJob> pageableQueryResult, string continuationToken, bool applyFilters = true);
+        IAsyncEnumerable<SyncJob> GetSyncJobsAsync(bool includeFutureJobs = false, params SyncStatus[] statusFilters);
+        Task<Page<SyncJob>> GetPageableQueryResultAsync(bool includeFutureJobs = false, int? pageSize = null, params SyncStatus[] statusFilters);
+        Task<Page<SyncJob>> GetSyncJobsSegmentAsync(string query, string continuationToken, int batchSize);
         Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey);
-        IAsyncEnumerable<SyncJob> GetSyncJobsAsync(SyncStatus status = SyncStatus.All, bool applyFilters = true);
-        IAsyncEnumerable<SyncJob> GetSyncJobsAsync(IEnumerable<(string partitionKey, string rowKey)> jobIds);
+        IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync();
         Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status);
         Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null);
         Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> jobs);
+        Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs);
     }
 }

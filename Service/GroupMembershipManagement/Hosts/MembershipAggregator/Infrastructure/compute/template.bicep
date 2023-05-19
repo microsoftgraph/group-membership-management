@@ -93,6 +93,7 @@ var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVa
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountConnectionString')
 var jobsTableName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsTableName')
+var notificationsTableName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notificationsTableName')
 var membershipStorageAccountName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountName')
 var membershipContainerName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipContainerName')
 var graphUpdaterUrl = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUpdaterUrl')
@@ -102,6 +103,7 @@ var graphUpdaterStagingFunctionKey = resourceId(subscription().subscriptionId, d
 var functionAppFullName = '${functionAppName}-MembershipAggregator'
 var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
 var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientSecret')
+var graphAppCertificateName = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppCertificateName')
 var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppTenantId')
 var senderUsername = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'senderUsername')
 var senderPassword = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'senderPassword')
@@ -110,6 +112,7 @@ var syncDisabledCCEmailAddresses = resourceId(subscription().subscriptionId, pre
 var supportEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'supportEmailAddresses')
 var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
+var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-MembershipAggregator'
@@ -137,9 +140,11 @@ var appSettings = {
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
   jobsStorageAccountConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   jobsTableName: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
+  notificationsTableName: '@Microsoft.KeyVault(SecretUri=${reference(notificationsTableName, '2019-09-01').secretUriWithVersion})'
   membershipStorageAccountName: '@Microsoft.KeyVault(SecretUri=${reference(membershipStorageAccountName, '2019-09-01').secretUriWithVersion})'
   membershipContainerName: '@Microsoft.KeyVault(SecretUri=${reference(membershipContainerName, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
+  'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
@@ -150,6 +155,7 @@ var appSettings = {
   syncCompletedCCEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(syncCompletedCCEmailAddresses, '2019-09-01').secretUriWithVersion})'
   syncDisabledCCEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(syncDisabledCCEmailAddresses, '2019-09-01').secretUriWithVersion})'
   supportEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(supportEmailAddresses, '2019-09-01').secretUriWithVersion})'
+  actionableEmailProviderId: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
 }
 
 var stagingSettings = {
@@ -226,14 +232,14 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
     policies: [
       {
         objectId: functionAppTemplate_MembershipAggregator.outputs.msi
-        permissions: [
+        secrets: [
           'get'
           'list'
         ]
       }
       {
         objectId: functionAppSlotTemplate_MembershipAggregator.outputs.msi
-        permissions: [
+        secrets: [
           'get'
           'list'
         ]
@@ -247,25 +253,29 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   ]
 }
 
-module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'PrereqsKeyVaultPoliciesTemplate-MembershipAggregator'
+module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
+  name: 'prereqsKeyVaultPoliciesTemplate-MembershipAggregator'
   scope: resourceGroup(prereqsKeyVaultResourceGroup)
   params: {
     name: prereqsKeyVaultName
     policies: [
       {
         objectId: functionAppTemplate_MembershipAggregator.outputs.msi
-        permissions: [
+        secrets: [
           'get'
         ]
-        type: 'secrets'
+        certificates: [
+          'get'
+        ]
       }
       {
         objectId: functionAppSlotTemplate_MembershipAggregator.outputs.msi
-        permissions: [
+        secrets: [
           'get'
         ]
-        type: 'secrets'
+        certificates: [
+          'get'
+        ]
       }
     ]
     tenantId: tenantId

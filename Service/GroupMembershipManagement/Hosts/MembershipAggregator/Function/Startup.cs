@@ -36,9 +36,9 @@ namespace Hosts.MembershipAggregator
                 settings.NumberOfThresholdViolationsToDisableJob = GetIntSetting(configuration, "MembershipAggregator:NumberOfThresholdViolationsToDisableJob", 10);
             });
 
-            builder.Services.AddSingleton<IGraphServiceClient>((services) =>
+            builder.Services.AddSingleton((services) =>
             {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value));
+                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
             })
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
             .AddScoped<IGraphAPIService, GraphAPIService>()

@@ -5,11 +5,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Data.Tables" Version="12.6.1" />
+    <PackageReference Include="Azure.Data.Tables" Version="12.8.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.14.1" />
-    <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
-    <PackageReference Include="Microsoft.Graph" Version="3.35.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Models\Models.csproj" />
   </ItemGroup>
 
 </Project>

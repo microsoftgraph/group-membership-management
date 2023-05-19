@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
-using Entities.ServiceBus;
+using Models.ServiceBus;
 using Hosts.GraphUpdater;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.Mocks;
@@ -16,6 +17,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace Services.Tests
 {
@@ -43,23 +46,26 @@ namespace Services.Tests
             _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
 
             _userCount = 10;
+
+            var content = new GroupMembership
+            {
+                SyncJobPartitionKey = "PK",
+                SyncJobRowKey = "RK",
+                MembershipObtainerDryRunEnabled = false,
+                RunId = Guid.Empty,
+                SourceMembers = Enumerable.Range(0, _userCount)
+                                            .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                            .ToList(),
+                Destination = new AzureADGroup
+                {
+                    ObjectId = Guid.Empty
+                }
+            };
+
             _blobResult = new BlobResult
             {
                 BlobStatus = BlobStatus.Found,
-                Content = new BinaryData(new GroupMembership
-                {
-                    SyncJobPartitionKey = "PK",
-                    SyncJobRowKey = "RK",
-                    MembershipObtainerDryRunEnabled = false,
-                    RunId = Guid.Empty,
-                    SourceMembers = Enumerable.Range(0, _userCount)
-                                            .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
-                                            .ToList(),
-                    Destination = new AzureADGroup
-                    {
-                        ObjectId = Guid.Empty
-                    }
-                })
+                Content = JsonConvert.SerializeObject(content)
             };
 
             var syncJob = new SyncJob

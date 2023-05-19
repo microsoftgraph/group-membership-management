@@ -1,0 +1,115 @@
+parameters:
+- name: repoToCheckout
+  type: string
+- name: checkoutPath
+  type: string
+- name: buildRelease
+  type: boolean
+
+stages:
+
+- stage: Build_WebAPI
+  dependsOn: Build_Common
+  jobs:
+  - job: Build_WebAPI
+    ${{ if parameters.buildRelease }}:
+      strategy:
+        maxParallel: 2
+        matrix:
+          debug:
+            BuildConfiguration: debug
+          release:
+            BuildConfiguration: release
+    ${{ else }}:
+      variables:
+        BuildConfiguration: 'debug'
+
+    steps:
+
+    - ${{ if ne(parameters.repoToCheckout, '') }}:
+      - checkout: ${{ parameters.repoToCheckout }}
+        path: ${{ parameters.checkoutPath }}
+
+    - task: CopyFiles@2
+      displayName: 'copy global.json file'
+      inputs:
+        SourceFolder:  Service/GroupMembershipManagement/
+        Contents: 'global.json'
+        TargetFolder: 'Service\GroupMembershipManagement\Hosts\WebApi\'
+
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        useGlobalJson: true
+        workingDirectory: 'Service\GroupMembershipManagement\Hosts\WebApi\'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet build webapi'
+      retryCountOnTaskFailure: 3
+      inputs:
+        command: build
+        projects: 'Service/GroupMembershipManagement/Hosts/WebApi/WebApi/*.csproj'
+        arguments: '--configuration $(buildConfiguration)'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet test webapi'
+      retryCountOnTaskFailure: 3
+      inputs:
+        command: test
+        projects: 'Service/GroupMembershipManagement/Hosts/WebApi/WebApi.Tests'
+        arguments: '--configuration $(BuildConfiguration)
+                    /p:CollectCoverage=true
+                    /p:CoverletOutputFormat=cobertura
+                    /p:threshold=90
+                    /p:thresholdType=line
+                    /p:thresholdStat=total
+                    /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\webapi\
+                    /p:Exclude=[WebApi]WebApi.Program%2c[WebApi]WebApi.Configuration*%2c[*Entities]*%2c[*Contracts]*%2c[Services.Messages*]*%2c[WebApi.Models]*%2c[Repositories*]*%2c[Models]*%2c[Common.DependencyInjection]*%2c[DIConcreteTypes]*
+                   '
+      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
+
+    - task: PublishCodeCoverageResults@1
+      displayName: 'collect code coverage'
+      inputs:
+        codeCoverageTool: 'cobertura'
+        summaryFileLocation: $(Build.SourcesDirectory)/TestResults/Coverage/webapi/coverage.cobertura.xml
+        reportDirectory: $(Build.SourcesDirectory)/TestResults/Coverage/webapi/Reports
+        failIfCoverageEmpty: false
+      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
+
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet publish webapi package'
+      inputs:
+        command: publish
+        arguments: '--configuration $(BuildConfiguration) --output webapi'
+        projects: 'Service/GroupMembershipManagement/Hosts/WebApi/WebApi/*.csproj'
+        publishWebProjects: true
+        modifyOutputPath: false
+        zipAfterPublish: false
+
+    - task: ArchiveFiles@2
+      displayName: 'archive webapi function'
+      inputs:
+        rootFolderOrFile: "$(System.DefaultWorkingDirectory)/webapi"
+        includeRootFolder: false
+        archiveFile: "$(System.DefaultWorkingDirectory)/webapi/webapi.zip"
+
+    - task: CopyFiles@2
+      displayName: 'copy webapi function package'
+      inputs:
+        SourceFolder: $(System.DefaultWorkingDirectory)/webapi
+        Contents: webapi.zip
+        TargetFolder: '$(build.artifactstagingdirectory)/webapi_package/'
+
+    - task: CopyFiles@2
+      displayName: 'copy webapi arm templates'
+      inputs:
+        SourceFolder: Service/GroupMembershipManagement/Hosts/WebApi
+        Contents: '**\Infrastructure\**'
+        TargetFolder: '$(build.artifactstagingdirectory)/webapi_arm_templates'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'publish webapi artifacts'
+      inputs:
+        PathtoPublish: '$(build.artifactstagingdirectory)'
+        ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'

@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Services.Contracts;
 using Repositories.Contracts;
 using System.Collections.Generic;
+using Models;
 
 namespace Hosts.JobScheduler
 {

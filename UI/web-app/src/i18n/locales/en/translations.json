@@ -1,0 +1,20 @@
+{
+    "edit": "Edit",
+    "saveToReload": "and save to reload",
+    "learnReact": "Learn React!!",
+    "english": "English",
+    "spanish": "Spanish",
+    "emptyList": "There are no GMM managed groups",
+    "loading": "Loading",
+    "toggleSelection": "Toggle selection",
+    "toggleAllSelection": "Toggle selection for all items",
+    "selectRow": "select row",
+    "addOwner204Message": "Added Successfully.",
+    "addOwner400Message": "GMM is already added as an owner.",
+    "addOwner403Message": "You do not have permission to complete this operation.",
+    "addOwnerErrorMessage": "We are having trouble adding GMM as the owner. Please try again later.",
+    "okButton": "OK",
+    "groupIdHeader": "Enter Group ID",
+    "groupIdPlaceHolder": "Group ID",
+    "addOwnerButton": "Add GMM as an owner"
+}

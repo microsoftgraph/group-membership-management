@@ -13,16 +13,12 @@ The abbreviation for your solution.
 .PARAMETER EnvironmentAbbreviation
 A 2-6 character abbreviation for your environment.
 
-.PARAMETER StorageAccountName
-Storage account name
-
 .PARAMETER ErrorActionPreference
 Parameter description
 
 .EXAMPLE
 Set-StorageAccountContainerManagedIdentityRoles	-SolutionAbbreviation "gmm" `
 												-EnvironmentAbbreviation "<env>" `
-												-StorageAccountName "<name>" `
 												-Verbose
 #>
 
@@ -34,13 +30,11 @@ function Set-StorageAccountContainerManagedIdentityRoles
 		[string] $SolutionAbbreviation,
 		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation,
-		[Parameter(Mandatory = $True)]
-		[string] $StorageAccountName,
 		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
 	)
 
-	$functionApps = @("SecurityGroup","MembershipAggregator","GraphUpdater")
+	$functionApps = @("SecurityGroup","MembershipAggregator","GraphUpdater","TeamsChannel","OwnershipReader")
 
 
 	foreach ($functionApp in $functionApps)
@@ -59,25 +53,37 @@ function Set-StorageAccountContainerManagedIdentityRoles
 			$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $fa;
 
 			# Grant the app service access to the storage account blobs
-			if (![string]::IsNullOrEmpty($StorageAccountName) -and $appServicePrincipal)
+			if ($appServicePrincipal)
 			{
-				$storageAccountObject = Get-AzStorageAccount -ResourceGroupName $resourceGroupName -Name $StorageAccountName;
+				$resources = Get-AzResource -ResourceGroupName $resourceGroupName
+
+				$filteredStorageAccountsList = $resources | Where-Object {
+					$_.ResourceType -eq "Microsoft.Storage/storageAccounts" -and $_.Name -like "jobs$EnvironmentAbbreviation*"
+				}
+
+				$storageAccountObject = $filteredStorageAccountsList[0]
+				$storageAccountName = $storageAccountObject.Name
 
 				if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $storageAccountObject.Id))
 				{
-					New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $storageAccountObject.Id -RoleDefinitionName "Storage Blob Data Contributor";
-					Write-Host "Added role assignment to allow $fa to access on the $StorageAccountName blobs.";
+					$assignment = New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $storageAccountObject.Id -RoleDefinitionName "Storage Blob Data Contributor";
+					if ($assignment) {
+						Write-Host "Added role assignment to allow $fa to access on the $storageAccountName blobs.";
+					}
+					else {
+						Write-Host "Failed to add role assignment to allow $fa to access on the $storageAccountName blobs. Please double check that you have permission to perform this operation";
+					}
 				}
 				else
 				{
-					Write-Host "$fa already has access to $StorageAccountName blobs.";
+					Write-Host "$fa already has access to $storageAccountName blobs.";
 				}
 			}
 			elseif ($null -eq $appServicePrincipal) {
 				Write-Host "Function $fa was not found!"
 			}
-
-			Write-Host "Done.";
 		}
 	}
+
+	Write-Host "Done attempting to add Storage Blob Data Contributor role assignments.";
 }

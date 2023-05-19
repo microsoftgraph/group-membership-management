@@ -93,6 +93,7 @@ var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVa
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
 var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientSecret')
+var graphAppCertificateName = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppCertificateName')
 var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppTenantId')
 var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
@@ -121,6 +122,7 @@ var appSettings =  {
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
@@ -193,19 +195,17 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
     policies: [
       {
         objectId: functionAppTemplate_NonProdService.outputs.msi
-        permissions: [
+        secrets: [
           'get'
           'list'
         ]
-        type: 'secrets'
       }
       {
         objectId: functionAppSlotTemplate_NonProdService.outputs.msi
-        permissions: [
+        secrets: [
           'get'
           'list'
         ]
-        type: 'secrets'
       }
     ]
     tenantId: tenantId
@@ -216,25 +216,29 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   ]
 }
 
-module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'PrereqsKeyVaultPoliciesTemplate-NonProdService'
+module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
+  name: 'prereqsKeyVaultPoliciesTemplate-NonProdService'
   scope: resourceGroup(prereqsKeyVaultResourceGroup)
   params: {
     name: prereqsKeyVaultName
     policies: [
       {
         objectId: functionAppTemplate_NonProdService.outputs.msi
-        permissions: [
+        secrets: [
           'get'
         ]
-        type: 'secrets'
+        certificates: [
+          'get'
+        ]
       }
       {
         objectId: functionAppSlotTemplate_NonProdService.outputs.msi
-        permissions: [
+        secrets: [
           'get'
         ]
-        type: 'secrets'
+        certificates: [
+          'get'
+        ]
       }
     ]
     tenantId: tenantId

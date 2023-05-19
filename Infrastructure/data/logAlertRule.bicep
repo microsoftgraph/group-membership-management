@@ -2,7 +2,7 @@
 param sourceId string = ''
 
 @description('Location for the alert. Must be the same location as the workspace.')
-param location string = ''
+param location string
 
 @description('The ID of the action group that is triggered when the alert is activated.')
 param actionGroupId string = ''

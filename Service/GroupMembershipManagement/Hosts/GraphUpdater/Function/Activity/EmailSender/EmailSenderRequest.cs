@@ -11,5 +11,6 @@ namespace Hosts.GraphUpdater
         public string ContentTemplate { get; set; }
         public string[] AdditionalContentParams { get; set; }
         public string CcEmail { get; set; }
+        public string AdaptiveCardTemplateDirectory { get; set; }
     }
 }

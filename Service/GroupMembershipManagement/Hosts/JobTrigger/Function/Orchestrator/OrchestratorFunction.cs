@@ -1,8 +1,8 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
@@ -22,9 +22,45 @@ namespace Hosts.JobTrigger
         [FunctionName(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            if (!context.IsReplaying)
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started" }, VerbosityLevel.DEBUG);
-            var syncJobs = await context.CallActivityAsync<List<SyncJob>>(nameof(SyncJobsReaderFunction), null);
+
+            var runId = context.NewGuid();
+
+            await context.CallActivityAsync(nameof(LoggerFunction),
+                new LoggerRequest
+                {
+                    RunId = runId,
+                    Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
+                    Verbosity = VerbosityLevel.DEBUG
+                });
+
+            string query = null;
+            string continuationToken = null;
+            var syncJobs = new List<SyncJob>();
+
+            do
+            {
+                var segmentResponse = await context.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction),
+                    new GetJobsSegmentedRequest
+                    {
+                        Query = query,
+                        ContinuationToken = continuationToken
+                    });
+
+                syncJobs.AddRange(segmentResponse.JobsSegment);
+
+                query = segmentResponse.Query;
+                continuationToken = segmentResponse.ContinuationToken;
+
+            } while (continuationToken != null);
+
+            await context.CallActivityAsync(nameof(LoggerFunction),
+             new LoggerRequest
+             {
+                 RunId = runId,
+                 Message = $"{nameof(OrchestratorFunction)} number of jobs in the syncJobs List: {syncJobs.Count}",
+                 Verbosity = VerbosityLevel.DEBUG
+             });
+
             if (syncJobs != null && syncJobs.Count > 0)
             {
                 // Run multiple sync job processing flows in parallel
@@ -46,8 +82,14 @@ namespace Hosts.JobTrigger
                     _loggingRepository.RemoveSyncJobProperties(x.RunId.Value);
             });
 
-            if (!context.IsReplaying)
-                _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed" }, VerbosityLevel.DEBUG);
+            await context.CallActivityAsync(nameof(LoggerFunction),
+               new LoggerRequest
+               {
+                   RunId = runId,
+                   Message = $"{nameof(OrchestratorFunction)} function completed at: {context.CurrentUtcDateTime}",
+                   Verbosity = VerbosityLevel.DEBUG
+               });
+
         }
     }
 }

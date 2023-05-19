@@ -12,5 +12,10 @@ namespace Repositories.Contracts.InjectConfig
         public int StartTimeDelayMinutes { get; set; }
         public int DelayBetweenSyncsSeconds { get; }
         public int DefaultRuntimeSeconds { get; }
+        public bool GetRunTimeFromLogs { get; }
+        public string RunTimeMetric { get; }
+        public string RunTimeQuery { get; }
+        public int RunTimeRangeInDays { get; }
+        public string WorkspaceId { get; }
     }
 }

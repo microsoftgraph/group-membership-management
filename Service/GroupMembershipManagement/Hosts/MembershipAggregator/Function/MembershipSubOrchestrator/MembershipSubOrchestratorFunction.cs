@@ -1,10 +1,10 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Entities.Helpers;
-using Entities.ServiceBus;
+using Models.Helpers;
+using Models.ServiceBus;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts.InjectConfig;
 using Services.Entities;
@@ -40,7 +40,8 @@ namespace Hosts.MembershipAggregator
                 downloadFileTasks.Add(context.CallActivityAsync<(string FilePath, string Content)>(nameof(FileDownloaderFunction), downloadRequest));
             }
 
-            var (SourceMembership, DestinationMembership) = (await Task.WhenAll(ExtractMembershipInformationAsync(downloadFileTasks, state.DestinationPart))).First();
+            var completedDownloadTasks = await Task.WhenAll(downloadFileTasks);
+            var (SourceMembership, DestinationMembership) = ExtractMembershipInformationAsync(completedDownloadTasks, state.DestinationPart);
             var deltaCalculatorRequest = new DeltaCalculatorRequest
             {
                 RunId = request.SyncJob.RunId
@@ -109,6 +110,7 @@ namespace Hosts.MembershipAggregator
                                                     Status = status,
                                                     ThresholdViolations = currentThresholdViolations
                                                 });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = status, ResultStatus = ResultStatus.Success, RunId = runId });
             }
             else if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.DryRun)
             {
@@ -128,6 +130,7 @@ namespace Hosts.MembershipAggregator
                                                     Status = SyncStatus.Idle,
                                                     IsDryRun = true
                                                 });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = runId });
             }
             else if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.Error)
             {
@@ -137,6 +140,7 @@ namespace Hosts.MembershipAggregator
                                                     SyncJob = request.SyncJob,
                                                     Status = SyncStatus.Error
                                                 });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
             }
 
             return new MembershipSubOrchestratorResponse
@@ -145,13 +149,12 @@ namespace Hosts.MembershipAggregator
             };
         }
 
-        private async Task<(GroupMembership SourceMembership, GroupMembership DestinationMembership)>
-                ExtractMembershipInformationAsync(List<Task<(string FilePath, string Content)>> membershipTasks, string destinationPath)
+        private (GroupMembership SourceMembership, GroupMembership DestinationMembership)
+                ExtractMembershipInformationAsync((string FilePath, string Content)[] allGroupMemberships, string destinationPath)
         {
-            var allGroupMemberships = await Task.WhenAll(membershipTasks);
             var sourceGroupsMemberships = allGroupMemberships
                                             .Where(x => x.FilePath != destinationPath)
-                                            .Select(x => JsonConvert.DeserializeObject<GroupMembership>(x.Content))
+                                            .Select(x => JsonConvert.DeserializeObject<GroupMembership>(TextCompressor.Decompress(x.Content)))
                                             .ToList();
 
             var sourceGroupMembership = sourceGroupsMemberships[0];
@@ -169,7 +172,8 @@ namespace Hosts.MembershipAggregator
 
             sourceGroupMembership.SourceMembers = sourceMembers;
 
-            var destinationGroupMembership = JsonConvert.DeserializeObject<GroupMembership>(allGroupMemberships.First(x => x.FilePath == destinationPath).Content);
+            var destinationMembershipFile = allGroupMemberships.First(x => x.FilePath == destinationPath);
+            var destinationGroupMembership = JsonConvert.DeserializeObject<GroupMembership>(TextCompressor.Decompress(destinationMembershipFile.Content));
 
             return (sourceGroupMembership, destinationGroupMembership);
         }

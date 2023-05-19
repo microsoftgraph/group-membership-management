@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Hosts.SecurityGroup;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Polly;
 using Repositories.Contracts.InjectConfig;
@@ -12,6 +13,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Tests.FunctionApps.Mocks;
 using Tests.Services;
+using Models;
 
 namespace Tests.FunctionApps
 {
@@ -54,6 +56,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
             var testJob = new SyncJob
             {
@@ -112,6 +115,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
             var testJob = new SyncJob
             {
@@ -169,6 +173,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
             var testJob = new SyncJob
             {
@@ -185,7 +190,7 @@ namespace Tests.FunctionApps
             var groupExistsResult = await calc.GroupExistsAsync(partOneSource, Guid.NewGuid());
             var response = await calc.GetFirstTransitiveMembersPageAsync(partOneSource, Guid.NewGuid());
             Assert.IsNotNull(response.NextPageUrl);
-            response = await calc.GetNextTransitiveMembersPageAsync("nextPageLink", response.UsersFromGroup);
+            response = await calc.GetNextTransitiveMembersPageAsync("nextPageLink");
             Assert.AreEqual("", response.NextPageUrl);
             Assert.AreEqual(OutcomeType.Successful, groupExistsResult.Outcome);
             Assert.AreEqual(true, groupExistsResult.Result);
@@ -228,6 +233,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
@@ -246,7 +252,7 @@ namespace Tests.FunctionApps
             var partIndex = 0;
             var partOneSource = sampleQuery.GetSourceId(partIndex);
 
-            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Content", null);
+            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Subject", "Content", null);
             Assert.AreEqual(0, blobRepository.Sent.Count);
         }
 
@@ -287,6 +293,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
@@ -297,14 +304,15 @@ namespace Tests.FunctionApps
                 PartitionKey = "partition",
                 TargetOfficeGroupId = destinationGroup,
                 Query = sampleQuery.GetQuery(),
-                Status = "InProgress"
+                Status = "InProgress",
+                RunId = new Guid()
             };
 
             syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
 
-            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Content", null);
+            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Subject", "Content", null);
             Assert.AreEqual(0, blobRepository.Sent.Count);
         }
 
@@ -346,6 +354,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
@@ -363,7 +372,7 @@ namespace Tests.FunctionApps
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
 
-            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Content", null);
+            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Subject", "Content", null);
             Assert.AreEqual(0, blobRepository.Sent.Count);
         }
 
@@ -388,6 +397,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
@@ -447,6 +457,7 @@ namespace Tests.FunctionApps
             var syncJobs = new MockSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
 
@@ -463,7 +474,7 @@ namespace Tests.FunctionApps
             syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
-            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Content", null);
+            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Subject", "Content", null);
             Assert.AreEqual(0, blobRepository.Sent.Count);
         }
     }

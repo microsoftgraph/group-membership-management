@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "branch": {
+      "value": "<webapp-source-branch>"
+    },
+    "repositoryUrl": {
+      "value": "<repository-Url>"
+    },
+    "customDomainName": {
+      "value": "<custom-domain-name>"
+    }
+  }
+}

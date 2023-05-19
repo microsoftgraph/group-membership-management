@@ -69,14 +69,14 @@ param serviceBusTopicName string = 'syncJobs'
 @description('Enter service bus topic\'s subscriptions.')
 param serviceBusTopicSubscriptions array = [
   {
-    name: 'Organization'
-    ruleName: 'syncType'
-    ruleSqlExpression: 'Type = \'Organization\''
-  }
-  {
     name: 'SecurityGroup'
     ruleName: 'syncType'
     ruleSqlExpression: 'Type = \'SecurityGroup\''
+  }
+  {
+    name: 'AzureMembershipProvider'
+    ruleName: 'syncType'
+    ruleSqlExpression: 'Type = \'AzureMembershipProvider\''
   }
 ]
 
@@ -105,6 +105,11 @@ param membershipContainerName string = 'membership'
 @description('Enter jobs table name.')
 @minLength(1)
 param jobsTableName string
+
+@description('Enter notifications table name.')
+@minLength(1)
+param notificationsTableName string = 'notifications'
+
 param logAnalyticsName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
 
 @allowed([
@@ -202,8 +207,24 @@ param appConfigurationKeyData array = [
     }
   }
   {
+    key: 'AzureMaintenance:HandleInactiveJobsEnabled'
+    value: 'false'
+    contentType: 'boolean'
+    tag: {
+      tag1: 'AzureMaintenance'
+    }
+  }
+  {
+    key: 'AzureMaintenance:NumberOfDaysBeforeDeletion'
+    value: 35
+    contentType: 'int'
+    tag: {
+      tag1: 'AzureMaintenance'
+    }
+  }
+  {
     key: 'JobScheduler:JobSchedulerConfiguration'
-    value: '{ "ResetJobs": false, "DaysToAddForReset": 0, "DistributeJobs": true, "IncludeFutureJobs": false, "StartTimeDelayMinutes": 5, "DelayBetweenSyncsSeconds": 5, "DefaultRuntimeSeconds": 60 }'
+    value: '{"ResetJobs":false,"DaysToAddForReset":0,"DistributeJobs":true,"IncludeFutureJobs":false,"StartTimeDelayMinutes":5,"DelayBetweenSyncsSeconds":5,"DefaultRuntimeSeconds":60,"GetRunTimeFromLogs":true,"RunTimeMetric":"Max","RunTimeRangeInDays":7,"RuntimeQuery":"AppEvents | where Name == \'SyncComplete\' | project TimeElapsed = todouble(Properties[\'SyncJobTimeElapsedSeconds\']), Destination = tostring(Properties[\'TargetOfficeGroupId\']), RunId = Properties[\'RunId\'], Result = Properties[\'Result\'], DryRun = Properties[\'IsDryRunEnabled\'] | where Result == \'Success\' and DryRun == \'False\' | project TimeElapsed, Destination, RunId | summarize MaxProcessingTime=max(TimeElapsed), AvgProcessingTime=avg(TimeElapsed) by Destination"}'
     contentType: 'string'
     tag: {
       tag1: 'JobScheduler'
@@ -215,6 +236,22 @@ param appConfigurationKeyData array = [
     contentType: 'string'
     tag: {
       tag1: 'GMM'
+    }
+  }
+  {
+    key: 'Mail:IsAdaptiveCardEnabled'
+    value: 'false'
+    contentType: 'bool'
+    tag: {
+      tag1: 'Mail'
+    }
+  }
+  {
+    key: 'ThresholdNotification:IsThresholdNotificationEnabled'
+    value: 'false'
+    contentType: 'bool'
+    tag: {
+      tag1: 'ThresholdNotification'
     }
   }
 ]
@@ -234,7 +271,17 @@ param emailReceivers array = [
   }
 ]
 
-module dataKeyVaultTemplate 'keyVault.bicep' = {
+@description('Enter actionable email notifier provider id.')
+@minLength(0)
+@maxLength(36)
+param notifierProviderId string
+
+@description('JSON string with an array listing the existing data resources [{Name: string, ResourceType: string}]')
+param existingDataResources string = '[]'
+
+var isDataKVPresent = !empty(existingDataResources) ? !empty(filter(json(existingDataResources), x => x.Name == keyVaultName && x.ResourceType == 'Microsoft.KeyVault/vaults')) : false
+
+module dataKeyVaultTemplate 'keyVault.bicep' = if(!isDataKVPresent) {
   name: 'dataKeyVaultTemplate'
   params: {
     name: keyVaultName
@@ -245,8 +292,8 @@ module dataKeyVaultTemplate 'keyVault.bicep' = {
   }
 }
 
-module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'keyVaultPoliciesTemplate'
+module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
+  name: 'dataKeyVaultPoliciesTemplate'
   params: {
     name: keyVaultName
     policies: keyVaultReaders
@@ -296,6 +343,7 @@ module storageAccountTemplate 'storageAccount.bicep' = {
     name: storageAccountName
     sku: storageAccountSku
     keyVaultName: keyVaultName
+    location: location
   }
 }
 
@@ -305,6 +353,8 @@ module jobsStorageAccountTemplate 'storageAccount.bicep' = {
     name: jobsStorageAccountName
     sku: storageAccountSku
     keyVaultName: keyVaultName
+    addJobsStorageAccountPolicies: true
+    location: location
   }
 }
 
@@ -386,6 +436,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: jobsTableName
       }
       {
+        name: 'notificationsTableName'
+        value: notificationsTableName
+      }
+      {
         name: 'appInsightsAppId'
         value: appInsightsTemplate.outputs.appId
       }
@@ -400,6 +454,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'logAnalyticsCustomerId'
         value: logAnalyticsTemplate.outputs.customerId
+      }
+      {
+        name: 'notifierProviderId'
+        value: notifierProviderId
       }
     ]
   }

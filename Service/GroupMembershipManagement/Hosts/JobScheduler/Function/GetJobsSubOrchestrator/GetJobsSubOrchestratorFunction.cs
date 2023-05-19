@@ -1,11 +1,9 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Azure;
-using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Newtonsoft.Json;
+using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System.Collections.Generic;
@@ -40,24 +38,24 @@ namespace Hosts.JobScheduler
                     Message = "Retrieving enabled sync jobs" + (_jobSchedulerConfig.IncludeFutureJobs ? " including those with future StartDate values" : "")
                 });
 
-            AsyncPageable<SyncJob> pageableQueryResult = null;
+            string query = null;
             string continuationToken = null;
-
             var jobs = new List<DistributionSyncJob>();
+
             do
             {
                 var segmentResponse = await context.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction),
                     new GetJobsSegmentedRequest
                     {
-                        PageableQueryResult = pageableQueryResult,
+                        Query = query,
                         ContinuationToken = continuationToken,
                         IncludeFutureJobs = _jobSchedulerConfig.IncludeFutureJobs
                     });
 
                 jobs.AddRange(segmentResponse.JobsSegment);
-
-                pageableQueryResult = segmentResponse.PageableQueryResult;
+                query = segmentResponse.Query;
                 continuationToken = segmentResponse.ContinuationToken;
+
             } while (continuationToken != null);
 
             await context.CallActivityAsync(nameof(LoggerFunction),

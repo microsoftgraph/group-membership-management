@@ -1,13 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Entities;
-using Entities.ServiceBus;
 using Hosts.MembershipAggregator;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Models;
+using Models.ServiceBus;
+using Models.ThresholdNotifications;
 using Moq;
+using Newtonsoft.Json;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -42,17 +43,20 @@ namespace Services.Tests
         private Mock<IGMMResources> _gmmResources;
         private Mock<IGraphAPIService> _graphAPIService;
         private Mock<IThresholdConfig> _thresholdConfig;
+        private Mock<IThresholdNotificationConfig> _thresholdNotificationConfig;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<ISyncJobRepository> _syncJobRepository;
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IDurableOrchestrationContext> _durableContext;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
         private Mock<ILocalizationRepository> _localizationRepository;
+        private Mock<INotificationRepository> _notificationRepository;
 
         [TestInitialize]
         public void SetupTest()
         {
             _thresholdConfig = new Mock<IThresholdConfig>();
+            _thresholdNotificationConfig = new Mock<IThresholdNotificationConfig>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<ISyncJobRepository>();
             _durableContext = new Mock<IDurableOrchestrationContext>();
@@ -61,6 +65,7 @@ namespace Services.Tests
             _graphAPIService = new Mock<IGraphAPIService>();
             _gmmResources = new Mock<IGMMResources>();
             _localizationRepository = new Mock<ILocalizationRepository>();
+            _notificationRepository = new Mock<INotificationRepository>();
             _dryRun = new Mock<IDryRunValue>();
 
             _deltaCalculatorService = new DeltaCalculatorService
@@ -71,8 +76,10 @@ namespace Services.Tests
                                                 _graphAPIService.Object,
                                                 _dryRun.Object,
                                                 _thresholdConfig.Object,
+                                                _thresholdNotificationConfig.Object,
                                                 _gmmResources.Object,
-                                                _localizationRepository.Object
+                                                _localizationRepository.Object,
+                                                _notificationRepository.Object
                                             );
 
 
@@ -129,26 +136,28 @@ namespace Services.Tests
                                                                 ? _numberOfUsersForDestinationPart
                                                                 : _numberOfUsersForSourcePart;
 
+                                        var content = new GroupMembership
+                                        {
+                                            SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                            SyncJobRowKey = _syncJob?.RowKey,
+                                            MembershipObtainerDryRunEnabled = false,
+                                            RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                            Exclusionary = false,
+                                            SourceMembers = Enumerable.Range(0, userCount)
+                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                                         .ToList(),
+                                            Destination = new AzureADGroup
+                                            {
+                                                ObjectId = _syncJob != null
+                                                                ? _syncJob.TargetOfficeGroupId
+                                                                : Guid.Empty
+                                            }
+                                        };
+
                                         _blobResult = new BlobResult
                                         {
                                             BlobStatus = BlobStatus.Found,
-                                            Content = new BinaryData(new GroupMembership
-                                            {
-                                                SyncJobPartitionKey = _syncJob?.PartitionKey,
-                                                SyncJobRowKey = _syncJob?.RowKey,
-                                                MembershipObtainerDryRunEnabled = false,
-                                                RunId = _syncJob?.RunId.Value ?? Guid.Empty,
-                                                Exclusionary = false,
-                                                SourceMembers = Enumerable.Range(0, userCount)
-                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
-                                                                         .ToList(),
-                                                Destination = new AzureADGroup
-                                                {
-                                                    ObjectId = _syncJob != null
-                                                                ? _syncJob.TargetOfficeGroupId
-                                                                : Guid.Empty
-                                                }
-                                            })
+                                            Content = JsonConvert.SerializeObject(content)
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
@@ -157,36 +166,37 @@ namespace Services.Tests
                         .Callback<string>(path =>
                         {
                             var userCount = _membersPerFile[path];
+                            var content = new GroupMembership
+                            {
+                                SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                SyncJobRowKey = _syncJob?.RowKey,
+                                MembershipObtainerDryRunEnabled = false,
+                                RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                Exclusionary = false,
+                                SourceMembers = Enumerable.Range(0, userCount)
+                                                             .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                             .ToList(),
+                                Destination = new AzureADGroup
+                                {
+                                    ObjectId = _syncJob != null
+                                                    ? _syncJob.TargetOfficeGroupId
+                                                    : Guid.Empty
+                                }
+                            };
 
                             _blobResult = new BlobResult
                             {
                                 BlobStatus = BlobStatus.Found,
-                                Content = new BinaryData(new GroupMembership
-                                {
-                                    SyncJobPartitionKey = _syncJob?.PartitionKey,
-                                    SyncJobRowKey = _syncJob?.RowKey,
-                                    MembershipObtainerDryRunEnabled = false,
-                                    RunId = _syncJob?.RunId.Value ?? Guid.Empty,
-                                    Exclusionary = false,
-                                    SourceMembers = Enumerable.Range(0, userCount)
-                                                             .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
-                                                             .ToList(),
-                                    Destination = new AzureADGroup
-                                    {
-                                        ObjectId = _syncJob != null
-                                                    ? _syncJob.TargetOfficeGroupId
-                                                    : Guid.Empty
-                                    }
-                                })
+                                Content = JsonConvert.SerializeObject(content)
                             };
                         })
                         .ReturnsAsync(() => _blobResult);
 
-            var owners = new List<User>
+            var owners = new List<AzureADUser>
             {
-                { new User { Id = Guid.NewGuid().ToString(), Mail = "mail_1@mail.com" } },
-                { new User { Id = Guid.NewGuid().ToString(), Mail = "mail_2@mail.com" } },
-                { new User { Id = Guid.NewGuid().ToString(), Mail = "mail_3@mail.com" } }
+                { new AzureADUser { ObjectId = Guid.NewGuid(), Mail = "mail_1@mail.com" } },
+                { new AzureADUser { ObjectId = Guid.NewGuid(), Mail = "mail_2@mail.com" } },
+                { new AzureADUser { ObjectId = Guid.NewGuid(), Mail = "mail_3@mail.com" } }
             };
 
             _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<string>(), It.IsAny<string>()))
@@ -291,6 +301,22 @@ namespace Services.Tests
                                             It.IsAny<string[]>()
                                         )
                                             , Times.Never());
+        }
+
+        [TestMethod]
+        public async Task IgnoreThresholdOnceTestAsync()
+        {
+            var currentThresholdViolations = 1;
+            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);
+            _numberOfUsersForDestinationPart = 5;
+            _syncJob.ThresholdViolations = currentThresholdViolations;
+            _syncJob.IgnoreThresholdOnce = true;
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Going to sync the job")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
         }
 
         [TestMethod]
@@ -458,8 +484,10 @@ namespace Services.Tests
                                     _graphAPIService.Object,
                                     _dryRun.Object,
                                     _thresholdConfig.Object,
+                                    _thresholdNotificationConfig.Object,
                                     _gmmResources.Object,
-                                    _localizationRepository.Object
+                                    _localizationRepository.Object,
+                                    _notificationRepository.Object
                                 );
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
@@ -490,8 +518,10 @@ namespace Services.Tests
                                     _graphAPIService.Object,
                                     _dryRun.Object,
                                     _thresholdConfig.Object,
+                                    _thresholdNotificationConfig.Object,
                                     _gmmResources.Object,
-                                    _localizationRepository.Object
+                                    _localizationRepository.Object,
+                                    _notificationRepository.Object
                                 );
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
@@ -517,8 +547,10 @@ namespace Services.Tests
                                     _graphAPIService.Object,
                                     _dryRun.Object,
                                     _thresholdConfig.Object,
+                                    _thresholdNotificationConfig.Object,
                                     _gmmResources.Object,
-                                    _localizationRepository.Object
+                                    _localizationRepository.Object,
+                                    _notificationRepository.Object
                                 );
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
@@ -585,26 +617,28 @@ namespace Services.Tests
                                                                 ? _numberOfUsersForDestinationPart
                                                                 : _numberOfUsersForSourcePart;
 
+                                        var content = new GroupMembership
+                                        {
+                                            SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                            SyncJobRowKey = _syncJob?.RowKey,
+                                            MembershipObtainerDryRunEnabled = false,
+                                            RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                            Exclusionary = true,
+                                            SourceMembers = Enumerable.Range(0, userCount)
+                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                                         .ToList(),
+                                            Destination = new AzureADGroup
+                                            {
+                                                ObjectId = _syncJob != null
+                                                                ? _syncJob.TargetOfficeGroupId
+                                                                : Guid.Empty
+                                            }
+                                        };
+
                                         _blobResult = new BlobResult
                                         {
                                             BlobStatus = BlobStatus.Found,
-                                            Content = new BinaryData(new GroupMembership
-                                            {
-                                                SyncJobPartitionKey = _syncJob?.PartitionKey,
-                                                SyncJobRowKey = _syncJob?.RowKey,
-                                                MembershipObtainerDryRunEnabled = false,
-                                                RunId = _syncJob?.RunId.Value ?? Guid.Empty,
-                                                Exclusionary = true,
-                                                SourceMembers = Enumerable.Range(0, userCount)
-                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
-                                                                         .ToList(),
-                                                Destination = new AzureADGroup
-                                                {
-                                                    ObjectId = _syncJob != null
-                                                                ? _syncJob.TargetOfficeGroupId
-                                                                : Guid.Empty
-                                                }
-                                            })
+                                            Content = JsonConvert.SerializeObject(content)
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
@@ -629,26 +663,28 @@ namespace Services.Tests
                                                                 ? _numberOfUsersForDestinationPart
                                                                 : _numberOfUsersForSourcePartOne;
 
+                                        var content = new GroupMembership
+                                        {
+                                            SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                            SyncJobRowKey = _syncJob?.RowKey,
+                                            MembershipObtainerDryRunEnabled = false,
+                                            RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                            Exclusionary = false,
+                                            SourceMembers = Enumerable.Range(0, userCount)
+                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                                         .ToList(),
+                                            Destination = new AzureADGroup
+                                            {
+                                                ObjectId = _syncJob != null
+                                                                ? _syncJob.TargetOfficeGroupId
+                                                                : Guid.Empty
+                                            }
+                                        };
+
                                         _blobResult = new BlobResult
                                         {
                                             BlobStatus = BlobStatus.Found,
-                                            Content = new BinaryData(new GroupMembership
-                                            {
-                                                SyncJobPartitionKey = _syncJob?.PartitionKey,
-                                                SyncJobRowKey = _syncJob?.RowKey,
-                                                MembershipObtainerDryRunEnabled = false,
-                                                RunId = _syncJob?.RunId.Value ?? Guid.Empty,
-                                                Exclusionary = false,
-                                                SourceMembers = Enumerable.Range(0, userCount)
-                                                                         .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
-                                                                         .ToList(),
-                                                Destination = new AzureADGroup
-                                                {
-                                                    ObjectId = _syncJob != null
-                                                                ? _syncJob.TargetOfficeGroupId
-                                                                : Guid.Empty
-                                                }
-                                            })
+                                            Content = JsonConvert.SerializeObject(content)
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
@@ -660,26 +696,28 @@ namespace Services.Tests
                                                                ? _numberOfUsersForDestinationPart
                                                                : _numberOfUsersForSourcePartTwo;
 
+                                       var content = new GroupMembership
+                                       {
+                                           SyncJobPartitionKey = _syncJob?.PartitionKey,
+                                           SyncJobRowKey = _syncJob?.RowKey,
+                                           MembershipObtainerDryRunEnabled = false,
+                                           RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                           Exclusionary = true,
+                                           SourceMembers = Enumerable.Range(0, userCount)
+                                                                        .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                                        .ToList(),
+                                           Destination = new AzureADGroup
+                                           {
+                                               ObjectId = _syncJob != null
+                                                               ? _syncJob.TargetOfficeGroupId
+                                                               : Guid.Empty
+                                           }
+                                       };
+
                                        _blobResult = new BlobResult
                                        {
                                            BlobStatus = BlobStatus.Found,
-                                           Content = new BinaryData(new GroupMembership
-                                           {
-                                               SyncJobPartitionKey = _syncJob?.PartitionKey,
-                                               SyncJobRowKey = _syncJob?.RowKey,
-                                               MembershipObtainerDryRunEnabled = false,
-                                               RunId = _syncJob?.RunId.Value ?? Guid.Empty,
-                                               Exclusionary = true,
-                                               SourceMembers = Enumerable.Range(0, userCount)
-                                                                        .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
-                                                                        .ToList(),
-                                               Destination = new AzureADGroup
-                                               {
-                                                   ObjectId = _syncJob != null
-                                                               ? _syncJob.TargetOfficeGroupId
-                                                               : Guid.Empty
-                                               }
-                                           })
+                                           Content = JsonConvert.SerializeObject(content)
                                        };
                                    })
                                    .ReturnsAsync(() => _blobResult);
@@ -687,6 +725,23 @@ namespace Services.Tests
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
             Assert.AreEqual(50000, response.ProjectedMemberCount);
+        }
+
+        [TestMethod]
+        public async Task SendThresholdNotificationIfEnabled()
+        {
+            _syncJob.ThresholdViolations = 2;
+            _thresholdNotificationConfig.Setup(x => x.IsThresholdNotificationEnabled).Returns(true);
+            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsFollowUps).Returns(3);
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
+
+            _notificationRepository.Verify(x => x.SaveNotificationAsync(It.IsAny<Models.ThresholdNotifications.ThresholdNotification>()), Times.Once());
+            _notificationRepository.Verify(x => x.SaveNotificationAsync(
+                It.Is<Models.ThresholdNotifications.ThresholdNotification>(n => n.Status.Equals(ThresholdNotificationStatus.Queued))));
         }
 
         private async Task<(string FilePath, string Content)> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)

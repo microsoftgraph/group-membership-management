@@ -1,12 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Hosts.SecurityGroup;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
@@ -14,6 +16,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using SecurityGroup.SubOrchestrator;
+using Microsoft.Azure.WebJobs;
+using Models.Helpers;
 
 namespace Tests.Services
 {
@@ -29,12 +35,14 @@ namespace Tests.Services
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
         private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
+        private Mock<ExecutionContext> _executionContext;
         private int _usersToReturn;
         private QuerySample _querySample;
         private OrchestratorRequest _orchestratorRequest;
         private SyncStatus _subOrchestratorResponseStatus;
         private SGMembershipCalculator _membershipCalculator;
         private DurableHttpResponse _membershipAgregatorResponse;
+        private TelemetryClient _telemetryClient;
 
         [TestInitialize]
         public void Setup()
@@ -48,6 +56,8 @@ namespace Tests.Services
             _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _executionContext = new Mock<ExecutionContext>();
+            _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             _usersToReturn = 10;
             _querySample = QuerySample.GenerateQuerySample("SecurityGroup");
@@ -95,6 +105,14 @@ namespace Tests.Services
                                         });
 
             AzureADGroup sourceGroup = null;
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        var telemetryRequest = request as TelemetryTrackerRequest;
+                        await CallTelemetryTrackerFunctionAsync(telemetryRequest);
+                    });
+
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<AzureADGroup>(It.IsAny<string>(), It.IsAny<SourceGroupsReaderRequest>()))
                                         .Callback<string, object>(async (name, request) =>
                                         {
@@ -103,7 +121,7 @@ namespace Tests.Services
                                         .ReturnsAsync(() => sourceGroup);
 
             _subOrchestratorResponseStatus = SyncStatus.InProgress;
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
                                         .ReturnsAsync(() =>
                                         {
                                             var users = new List<AzureADUser>();
@@ -112,7 +130,12 @@ namespace Tests.Services
                                                 users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                             }
 
-                                            return (users, _subOrchestratorResponseStatus);
+                                            return TextCompressor.Compress(JsonConvert.SerializeObject(new SubOrchestratorResponse
+                                            {
+                                                Users = users,
+                                                Status = _subOrchestratorResponseStatus
+                                            }));
+
                                         });
 
             string _filePath = null;
@@ -144,7 +167,7 @@ namespace Tests.Services
                                             _configuration.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains("Found invalid value for CurrentPart or TotalParts")),
@@ -171,7 +194,7 @@ namespace Tests.Services
                                            _configuration.Object
                                            );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains($"Marking job as {SyncStatus.QueryNotValid}")),
@@ -185,7 +208,7 @@ namespace Tests.Services
                                                 It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid)
                                             ), Times.Once);
 
-            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once);
+            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -200,7 +223,7 @@ namespace Tests.Services
                                            _configuration.Object
                                            );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains($"Marking job as {SyncStatus.QueryNotValid}")),
@@ -214,7 +237,7 @@ namespace Tests.Services
                                                 It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid)
                                             ), Times.Once);
 
-            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once);
+            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -228,7 +251,7 @@ namespace Tests.Services
                                             _configuration.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
                                                 It.IsAny<IEnumerable<SyncJob>>(),
@@ -239,7 +262,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestUnhandledExceptionAsync()
         {
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
                                         .Throws<Exception>();
 
             var orchestratorFunction = new OrchestratorFunction(
@@ -248,7 +271,7 @@ namespace Tests.Services
                                             _configuration.Object
                                             );
 
-            await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object));
+            await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.StartsWith("Caught unexpected exception")),
@@ -266,15 +289,9 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestGraphAPITimeoutExceptionAsync()
         {
-            var error = new Error
-            {
-                Code = "timeout",
-                Message = "The request timed out"
-            };
+            var exception = new Exception("The request timed out");
 
-            var exception = new Exception(error.Message);
-
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
                                         .Throws(exception);
 
             var orchestratorFunction = new OrchestratorFunction(
@@ -283,7 +300,7 @@ namespace Tests.Services
                                             _configuration.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.StartsWith("Rescheduling job at")),
@@ -324,14 +341,9 @@ namespace Tests.Services
 
             _durableOrchestrationContext.Setup(x => x.GetInput<OrchestratorRequest>())
                                         .Returns(() => _orchestratorRequest);
-            var error = new Error
-            {
-                Code = "502",
-                Message = "Bad Gateway"
-            };
 
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
-                                        .Throws(new ServiceException(error, null, HttpStatusCode.BadGateway));
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<SecurityGroupRequest>()))
+                                        .Throws(new ServiceException("Bad Gateway", null, (int)HttpStatusCode.BadGateway));
 
 
             var orchestratorFunction = new OrchestratorFunction(
@@ -340,7 +352,7 @@ namespace Tests.Services
                                             _configuration.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.StartsWith("Rescheduling job at")),
@@ -359,7 +371,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestMembershipAggregatorCallFailsAsync()
         {
-            _membershipAgregatorResponse = new DurableHttpResponse(System.Net.HttpStatusCode.ServiceUnavailable);
+            _membershipAgregatorResponse = new DurableHttpResponse(HttpStatusCode.ServiceUnavailable);
 
             var orchestratorFunction = new OrchestratorFunction(
                                             _loggingRepository.Object,
@@ -367,7 +379,7 @@ namespace Tests.Services
                                             _configuration.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains($"Read {_usersToReturn} users from source groups")),
@@ -405,13 +417,15 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestValidPartRequestAsync()
         {
+            _usersToReturn = 100000;
+
             var orchestratorFunction = new OrchestratorFunction(
                                             _loggingRepository.Object,
                                             _membershipCalculator,
                                             _configuration.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains($"Read {_usersToReturn} users from source groups")),
@@ -419,6 +433,13 @@ namespace Tests.Services
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
                                             ), Times.Once);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                    It.Is<LogMessage>(m => m.Message.Contains($"Successfully uploaded {_usersToReturn} users")),
+                                    It.IsAny<VerbosityLevel>(),
+                                    It.IsAny<string>(),
+                                    It.IsAny<string>()
+                                ), Times.Once);
 
             _blobStorageRepository.Verify(x => x.UploadFileAsync(
                                                 It.IsAny<string>(),
@@ -439,6 +460,12 @@ namespace Tests.Services
                                             ), Times.Never);
 
 
+        }
+
+        private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request)
+        {
+            var telemetryTrackerFunction = new TelemetryTrackerFunction(_loggingRepository.Object, _telemetryClient);
+            await telemetryTrackerFunction.TrackEventAsync(request);
         }
 
         private async Task CallJobStatusUpdaterFunctionAsync(JobStatusUpdaterRequest request)

@@ -78,9 +78,9 @@ function New-GmmSecurityGroupSyncJob {
 		[DateTime] $StartDate,
 		[Parameter(Mandatory=$False)]
 		[int] $Period = 6,
-		[Parameter(Mandatory=$True)]
+		[Parameter(Mandatory=$False)]
 		[int] $ThresholdPercentageForAdditions = 100,
-		[Parameter(Mandatory=$True)]
+		[Parameter(Mandatory=$False)]
 		[int] $ThresholdPercentageForRemovals = 10,
 		[Parameter(Mandatory=$False)]
 		[string] $ErrorActionPreference = $Stop,
@@ -117,6 +117,14 @@ function New-GmmSecurityGroupSyncJob {
 
 	$targetGroup = Get-AzADGroup -ObjectId $TargetOfficeGroupId
 	$sourceGroups = $Query.Split(";") | ForEach-Object { Get-AzADGroup -ObjectId $_ } | ForEach-Object { "$($_.DisplayName) ($($_.Id))" }
+	$sourceGroupJson = $Query.Split(";") | ForEach-Object { @{"type"="SecurityGroup"; "source"=$_} } | ConvertTo-Json -Compress
+	
+	# Some versions of Powershell don't have the AsArray parameter on ConvertTo-Json, which means we have to add the array brackets ourselves
+	# especially if there's just one group
+	if (-not $sourceGroupJson.StartsWith('['))
+	{
+		$sourceGroupJson = "[$sourceGroupJson]";
+	}
 
 	# set the context back even if they cancel out of this
 	Set-AzContext -Context $jobTableContext | Out-Null
@@ -128,7 +136,7 @@ function New-GmmSecurityGroupSyncJob {
 	}
 	else
 	{
-		Write-Host "Syncing the group(s) $($sourceGroups -join ", ") into the destination: $($targetGroup.DisplayName) ($($targetGroup.Id))."
+		Write-Host "Syncing the group(s) $($sourceGroups -join ", ") ($sourceGroupJson) into the destination: $($targetGroup.DisplayName) ($($targetGroup.Id))."
 	}
 
 	$response = Read-Host -Prompt "Are these groups correct? [y/n]"
@@ -157,7 +165,7 @@ function New-GmmSecurityGroupSyncJob {
 			"Status"="Idle";
 			"LastRunTime"=$lastRunTime;
 			"Period"=$Period;  # in hours, integers only
-			"Query"=$Query;
+			"Query"=$sourceGroupJson;
 			"StartDate"=$StartDate;
 			"ThresholdPercentageForAdditions"=$ThresholdPercentageForAdditions; # integers only
 			"ThresholdPercentageForRemovals"=$ThresholdPercentageForRemovals;   # integers only

@@ -1,9 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
+using Models.Helpers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
+using Newtonsoft.Json;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.SecurityGroup
@@ -26,12 +30,13 @@ namespace Hosts.SecurityGroup
 
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
-            filePath = await _calculator.SendMembershipAsync(request.SyncJob, request.Users, request.CurrentPart, request.Exclusionary);
+            var users = JsonConvert.DeserializeObject<List<AzureADUser>>(TextCompressor.Decompress(request.Users));
+            filePath = await _calculator.SendMembershipAsync(request.SyncJob, users, request.CurrentPart, request.Exclusionary);
 
             await _log.LogMessageAsync(new LogMessage
             {
                 RunId = request.RunId,
-                Message = $"Successfully uploaded {request.Users.Count} users from source groups {request.SyncJob.Query} to blob storage to be put into the destination group {request.SyncJob.TargetOfficeGroupId}."
+                Message = $"Successfully uploaded {users.Count} users from source groups {request.SyncJob.Query} to blob storage to be put into the destination group {request.SyncJob.TargetOfficeGroupId}."
             });
 
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);

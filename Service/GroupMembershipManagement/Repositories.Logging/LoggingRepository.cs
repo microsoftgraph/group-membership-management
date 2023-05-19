@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
+using Models;
 using Newtonsoft.Json;
 using Polly;
 using Repositories.Contracts;
@@ -22,7 +22,7 @@ namespace Repositories.Logging
 {
     public class LoggingRepository : ILoggingRepository
     {
-        private readonly IAppConfigVerbosity _appConfigVerbosity;
+        //private readonly IAppConfigVerbosity _appConfigVerbosity;
         private readonly string _workSpaceId;
         private readonly string _sharedKey;
         private readonly string _location;
@@ -37,14 +37,14 @@ namespace Repositories.Logging
         public Dictionary<Guid, LogProperties> SyncJobProperties { get; private set; } = new Dictionary<Guid, LogProperties>();
         public bool DryRun { get; set; } = false;
 
-        public LoggingRepository(ILogAnalyticsSecret<LoggingRepository> logAnalytics, IAppConfigVerbosity appConfigVerbosity)
+        public LoggingRepository(ILogAnalyticsSecret<LoggingRepository> logAnalytics)
         {
             if (logAnalytics == null) throw new ArgumentNullException(nameof(logAnalytics));
             _workSpaceId = logAnalytics.WorkSpaceId ?? throw new ArgumentNullException(nameof(logAnalytics.WorkSpaceId));
             _sharedKey = logAnalytics.SharedKey ?? throw new ArgumentNullException(nameof(logAnalytics.SharedKey));
             _location = logAnalytics.Location ?? throw new ArgumentNullException(nameof(logAnalytics.Location));
 
-            _appConfigVerbosity = appConfigVerbosity ?? throw new ArgumentNullException(nameof(appConfigVerbosity));
+            //_appConfigVerbosity = appConfigVerbosity ?? throw new ArgumentNullException(nameof(appConfigVerbosity));
         }
 
         private static HttpClient MakeClient(string logType)
@@ -88,10 +88,10 @@ namespace Repositories.Logging
 
         public async Task LogMessageAsync(LogMessage logMessage, VerbosityLevel verbosityLevel = VerbosityLevel.INFO, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
         {
-            if (verbosityLevel <= _appConfigVerbosity.Verbosity)
-            {
+            //if (verbosityLevel <= _appConfigVerbosity.Verbosity)
+            //{
                 await CommonLogMessageAsync(logMessage, _httpClient, caller, file);
-            }
+            //}
         }
 
         public async Task LogPIIMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")

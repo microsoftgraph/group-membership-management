@@ -8,6 +8,7 @@
     "logAnalyticsPrimarySharedKey": "",
     "jobsStorageAccountConnectionString": "",
     "jobsTableName": "syncJobs",
+    "notificationsTableName": "notifications",
     "graphUpdaterUrl": "",
     "graphUpdaterFunctionKey": "",
     "membershipStorageAccountName": "",
@@ -21,7 +22,8 @@
     "senderPassword": "",
     "syncCompletedCCEmailAddresses": "",
     "syncDisabledCCEmailAddresses": "",
-    "supportEmailAddresses": ""
+    "supportEmailAddresses": "",
+    "actionableEmailProviderId": ""
   },
   "ConnectionStrings": {}
 }

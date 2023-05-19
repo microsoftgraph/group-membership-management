@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Models;
 using Repositories.Mocks;
 using Services.Contracts;
 using System;

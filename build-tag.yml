@@ -1,0 +1,19 @@
+parameters:
+- name: tagName
+  type: string
+
+stages:
+- stage: Build_Tag
+
+  jobs:
+  - job: Build_Tag
+
+    steps:
+    - checkout: self
+      persistCredentials: true
+
+    - script: |
+        git tag ${{ parameters.tagName }}
+        git push origin ${{ parameters.tagName }}
+      workingDirectory: $(Build.SourcesDirectory)
+      displayName: 'Build Git Tag'

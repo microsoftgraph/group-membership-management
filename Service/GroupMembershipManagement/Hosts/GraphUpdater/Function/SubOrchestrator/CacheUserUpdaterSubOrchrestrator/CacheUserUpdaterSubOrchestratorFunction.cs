@@ -1,12 +1,12 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Entities.ServiceBus;
+using Models.ServiceBus;
 using GraphUpdater.Entities;
 using Hosts.GraphUpdater;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
@@ -108,6 +108,7 @@ namespace Hosts.GraphUpdater
                                                 {
                                                     Status = SyncStatus.FileNotFound
                                                 });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.FileNotFound, ResultStatus = ResultStatus.Failure, RunId = request.RunId });
 
                 throw;
             }

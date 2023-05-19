@@ -12,5 +12,5 @@ namespace Repositories.Contracts
     public interface IAppConfigVerbosity
     {
         public VerbosityLevel Verbosity { get; }
-	}
+    }
 }

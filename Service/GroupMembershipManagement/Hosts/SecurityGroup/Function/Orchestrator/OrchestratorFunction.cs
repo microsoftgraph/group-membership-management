@@ -1,13 +1,17 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
+using Azure;
+using Models.Helpers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Graph;
+using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
+using SecurityGroup.SubOrchestrator;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,7 +38,7 @@ namespace Hosts.SecurityGroup
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
         {
             var mainRequest = context.GetInput<OrchestratorRequest>();
             var syncJob = mainRequest.SyncJob;
@@ -47,6 +51,7 @@ namespace Hosts.SecurityGroup
                 {
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Found invalid value for CurrentPart or TotalParts" });
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
                     return;
                 }
 
@@ -63,13 +68,14 @@ namespace Hosts.SecurityGroup
                 if (sourceGroup.ObjectId == Guid.Empty)
                 {
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Source group id is not a valid, Part# {mainRequest.CurrentPart} {syncJob.Query}. Marking job as {SyncStatus.QueryNotValid}." });
-                    await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest { SyncJob = syncJob, RunId = runId });
+                    await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest { SyncJob = syncJob, RunId = runId, AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory });
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.QueryNotValid });
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.QueryNotValid, ResultStatus = ResultStatus.Failure, RunId = runId });
                     return;
                 }
                 else
                 {
-                    var sgResponse = await context.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(nameof(SubOrchestratorFunction),
+                    var compressedResponse = await context.CallSubOrchestratorAsync<string>(nameof(SubOrchestratorFunction),
                                                                                                                     new SecurityGroupRequest
                                                                                                                     {
                                                                                                                         SyncJob = syncJob,
@@ -77,20 +83,21 @@ namespace Hosts.SecurityGroup
                                                                                                                         RunId = runId
                                                                                                                     });
 
+                    var sgResponse = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
+
                     if (sgResponse.Status == SyncStatus.SecurityGroupNotFound)
                     {
                         await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.SecurityGroupNotFound });
+                        await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.SecurityGroupNotFound, ResultStatus = ResultStatus.Success, RunId = runId });
                         return;
                     }
 
-                    var users = sgResponse.Users;
-                    distinctUsers = users.GroupBy(user => user.ObjectId).Select(userGrp => userGrp.First()).ToList();
+                    distinctUsers = sgResponse.Users;
 
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage
                     {
                         RunId = runId,
-                        Message = $"Found {users.Count - distinctUsers.Count} duplicate user(s). " +
-                                    $"Read {distinctUsers.Count} users from source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
+                        Message = $"Read {distinctUsers.Count} users from source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
                     });
 
                     var filePath = await context.CallActivityAsync<string>(nameof(UsersSenderFunction),
@@ -98,7 +105,7 @@ namespace Hosts.SecurityGroup
                                                                             {
                                                                                 SyncJob = syncJob,
                                                                                 RunId = runId,
-                                                                                Users = distinctUsers,
+                                                                                Users = TextCompressor.Compress(JsonConvert.SerializeObject(distinctUsers)),
                                                                                 CurrentPart = mainRequest.CurrentPart,
                                                                                 Exclusionary = mainRequest.Exclusionary
                                                                             });
@@ -125,20 +132,22 @@ namespace Hosts.SecurityGroup
                     if (response.StatusCode != HttpStatusCode.NoContent)
                     {
                         await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
+                        if (!context.IsReplaying) await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
                     }
                 }
             }
             catch (ServiceException ex)
             {
-                if ((ex.StatusCode == HttpStatusCode.ServiceUnavailable || ex.StatusCode == HttpStatusCode.BadGateway)
+                if ((ex.ResponseStatusCode == (int)HttpStatusCode.ServiceUnavailable || ex.ResponseStatusCode == (int)HttpStatusCode.BadGateway)
                     && ((context.CurrentUtcDateTime - syncJob.LastSuccessfulRunTime).TotalHours < syncJob.Period + 2))
                 {
                     syncJob.StartDate = context.CurrentUtcDateTime.AddMinutes(30);
-                    var httpStatus = Enum.GetName(ex.StatusCode);
+                    var httpStatus = Enum.GetName(typeof(HttpStatusCode), ex.ResponseStatusCode);
 
                     _ = _log.LogMessageAsync(new LogMessage { Message = $"Rescheduling job at {syncJob.StartDate} due to {httpStatus} exception", RunId = runId });
 
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Idle });
+                    if (!context.IsReplaying) await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = runId });
                     return;
                 }
             }
@@ -149,12 +158,14 @@ namespace Hosts.SecurityGroup
                     syncJob.StartDate = context.CurrentUtcDateTime.AddMinutes(30);
                     _ = _log.LogMessageAsync(new LogMessage { Message = $"Rescheduling job at {syncJob.StartDate} due to Graph API timeout.", RunId = runId });
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Idle });
+                    if (!context.IsReplaying) await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = runId });
                     return;
                 }
 
                 _ = _log.LogMessageAsync(new LogMessage { Message = $"Caught unexpected exception in Part# {mainRequest.CurrentPart}, marking sync job as errored. Exception:\n{ex}", RunId = runId });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
+                if (!context.IsReplaying) await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
 
                 // make sure this gets thrown to where App Insights will handle it
                 throw;

@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Entities;
+using Models;
 using System.Collections.Generic;
 
 namespace Hosts.GraphUpdater
@@ -10,5 +10,6 @@ namespace Hosts.GraphUpdater
     {
         public int SuccessCount { get; set; }
         public List<AzureADUser> UsersNotFound { get; set; }
+        public List<AzureADUser> UsersAlreadyExist { get; set; }
     }
 }

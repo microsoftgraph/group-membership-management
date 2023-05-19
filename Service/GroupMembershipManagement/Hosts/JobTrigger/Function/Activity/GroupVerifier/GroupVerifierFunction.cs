@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
+using Models;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -25,22 +25,24 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName(nameof(GroupVerifierFunction))]
-        public async Task<bool> VerifyGroupAsync([ActivityTrigger] SyncJob syncJob)
+        public async Task<bool> VerifyGroupAsync([ActivityTrigger] GroupVerifierRequest request)
         {
+            var syncJob = request.SyncJob;
             var canWriteToGroup = false;
+
             if (syncJob != null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupVerifierFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
                 _jobTriggerService.RunId = syncJob.RunId ?? Guid.Empty;
-                canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(syncJob);
+                canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(syncJob, request.FunctionDirectory);
 
                 if (canWriteToGroup)
                 {
                     var endpoints = await _jobTriggerService.GetGroupEndpointsAsync(syncJob.TargetOfficeGroupId);
-                    endpoints.ForEach(x =>
+                    await _loggingRepository.LogMessageAsync(new LogMessage
                     {
-                        var metric = _telemetryClient.GetMetric("Endpoints", "EndPointName", "GroupId");
-                        metric.TrackValue(1, x, syncJob.TargetOfficeGroupId.ToString());
+                        RunId = syncJob.RunId,
+                        Message = $"Linked services: {string.Join(",", endpoints)}"
                     });
                 }
 

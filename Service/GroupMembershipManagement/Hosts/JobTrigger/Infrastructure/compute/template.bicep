@@ -97,6 +97,7 @@ var serviceBusConnectionString = resourceId(subscription().subscriptionId, dataK
 var serviceBusSyncJobTopic = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusSyncJobTopic')
 var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
 var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientSecret')
+var graphAppCertificateName = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppCertificateName')
 var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppTenantId')
 var senderUsername = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'senderUsername')
 var senderPassword = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'senderPassword')
@@ -104,6 +105,7 @@ var syncDisabledCCEmailAddresses = resourceId(subscription().subscriptionId, pre
 var supportEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'supportEmailAddresses')
 var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
+var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-JobTrigger'
@@ -132,6 +134,7 @@ var appSettings = {
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
   jobsStorageAccountConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   jobsTableName: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
@@ -144,6 +147,7 @@ var appSettings = {
   syncDisabledCCEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(syncDisabledCCEmailAddresses, '2019-09-01').secretUriWithVersion})'
   supportEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(supportEmailAddresses, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
+  actionableEmailProviderId: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
 }
 
 var stagingSettings = {
@@ -202,22 +206,22 @@ module functionAppSlotTemplate_JobTrigger 'functionAppSlot.bicep' = {
   ]
 }
 
-module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'keyVaultPoliciesTemplate-JobTrigger'
+module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
+  name: 'dataKeyVaultPoliciesTemplate-JobTrigger'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     name: dataKeyVaultName
     policies: [
       {
         objectId: functionAppTemplate_JobTrigger.outputs.msi
-        permissions: [
+        secrets: [
           'get'
           'list'
         ]
       }
       {
         objectId: functionAppSlotTemplate_JobTrigger.outputs.msi
-        permissions: [
+        secrets: [
           'get'
           'list'
         ]
@@ -231,25 +235,29 @@ module keyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   ]
 }
 
-module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'PrereqsKeyVaultPoliciesTemplate-JobTrigger'
+module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
+  name: 'prereqsKeyVaultPoliciesTemplate-JobTrigger'
   scope: resourceGroup(prereqsKeyVaultResourceGroup)
   params: {
     name: prereqsKeyVaultName
     policies: [
       {
         objectId: functionAppTemplate_JobTrigger.outputs.msi
-        permissions: [
+        secrets: [
           'get'
         ]
-        type: 'secrets'
+        certificates: [
+          'get'
+        ]
       }
       {
         objectId: functionAppSlotTemplate_JobTrigger.outputs.msi
-        permissions: [
+        secrets: [
           'get'
         ]
-        type: 'secrets'
+        certificates: [
+          'get'
+        ]
       }
     ]
     tenantId: tenantId
@@ -266,7 +274,7 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppTemplate_JobTrigger
-    keyVaultPoliciesTemplate
+    dataKeyVaultPoliciesTemplate
   ]
 }
 
@@ -276,6 +284,6 @@ resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
     functionAppSlotTemplate_JobTrigger
-    keyVaultPoliciesTemplate
+    dataKeyVaultPoliciesTemplate
   ]
 }

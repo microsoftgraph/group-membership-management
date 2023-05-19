@@ -40,9 +40,9 @@ namespace Hosts.JobTrigger
             });
 
             builder.Services.AddSingleton<IKeyVaultSecret<IJobTriggerService>>(services => new KeyVaultSecret<IJobTriggerService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
-            .AddSingleton<IGraphServiceClient>((services) =>
+            .AddSingleton((services) =>
             {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value));
+                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
             })
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 

@@ -1,13 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Core;
-using Entities;
-using Entities.ServiceBus;
+using Models.ServiceBus;
 using GraphUpdater.Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
+using Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
@@ -23,7 +23,7 @@ using System.Threading.Tasks;
 
 namespace Hosts.GraphUpdater
 {
-	public class OrchestratorFunction
+    public class OrchestratorFunction
 	{
 		private const string SyncCompletedEmailBody = "SyncCompletedEmailBody";
 		private readonly TelemetryClient _telemetryClient;
@@ -56,7 +56,7 @@ namespace Hosts.GraphUpdater
 		}
 
 		[FunctionName(nameof(OrchestratorFunction))]
-		public async Task<OrchestrationRuntimeStatus> RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+		public async Task<OrchestrationRuntimeStatus> RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
 		{
 			GroupMembership groupMembership = null;
 			MembershipHttpRequest graphRequest = null;
@@ -112,7 +112,8 @@ namespace Hosts.GraphUpdater
 											   RunId = groupMembership.RunId,
 											   GroupId = groupMembership.Destination.ObjectId,
 											   JobPartitionKey = groupMembership.SyncJobPartitionKey,
-											   JobRowKey = groupMembership.SyncJobRowKey
+											   JobRowKey = groupMembership.SyncJobRowKey,
+											   AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory
 										   });
 
 				if (!isValidGroup)
@@ -120,8 +121,8 @@ namespace Hosts.GraphUpdater
 					await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
 									CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
 																	SyncStatus.DestinationGroupNotFound, syncJob.ThresholdViolations, groupMembership.RunId));
-
-					await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function did not complete", SyncJob = syncJob });
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationGroupNotFound, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function did not complete", SyncJob = syncJob });
 
 					return OrchestrationRuntimeStatus.Completed;
 				}
@@ -137,27 +138,29 @@ namespace Hosts.GraphUpdater
                                 CreateGroupUpdaterRequest(syncJob, membersToAdd, RequestType.Add, isInitialSync));
                 syncCompleteEvent.MembersAdded = membersAddedResponse.SuccessCount.ToString();
 				sourceUsersNotFound = membersAddedResponse.UsersNotFound;
+				syncCompleteEvent.MembersToAddNotFound = sourceUsersNotFound.Count.ToString();
+				syncCompleteEvent.MembersToAddAlreadyExist = membersAddedResponse.UsersAlreadyExist.Count.ToString();
 
                 var membersRemovedResponse = await context.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(nameof(GroupUpdaterSubOrchestratorFunction),
                                 CreateGroupUpdaterRequest(syncJob, membersToRemove, RequestType.Remove, isInitialSync));
                 syncCompleteEvent.MembersRemoved = membersRemovedResponse.SuccessCount.ToString();
                 destinationUsersNotFound = membersRemovedResponse.UsersNotFound;
-
+				syncCompleteEvent.MembersToRemoveNotFound = destinationUsersNotFound.Count.ToString();
 
                 if (isInitialSync)
 				{
 					var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
 													new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
 
-					var groupOwners = await context.CallActivityAsync<List<User>>(nameof(GroupOwnersReaderFunction),
+					var groupOwners = await context.CallActivityAsync<List<AzureADUser>>(nameof(GroupOwnersReaderFunction),
 													new GroupOwnersReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
 
 					var ownerEmails = string.Join(";", groupOwners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
 
 					var additionalContent = new[]
-					{
-								groupName,
-								groupMembership.Destination.ObjectId.ToString(),
+                    {
+                                groupMembership.Destination.ObjectId.ToString(),
+                                groupName,
 								membersToAdd.Count.ToString(),
 								membersToRemove.Count.ToString(),
 								syncJob.Requestor,
@@ -172,7 +175,8 @@ namespace Hosts.GraphUpdater
 														CcEmail = _emailSenderAndRecipients.SyncCompletedCCAddresses,
 														ContentTemplate = SyncCompletedEmailBody,
 														AdditionalContentParams = additionalContent,
-														RunId = groupMembership.RunId
+														RunId = groupMembership.RunId,
+														AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory
 													});
 				}
 
@@ -183,12 +187,10 @@ namespace Hosts.GraphUpdater
 				await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
 									CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
 																	SyncStatus.Idle, 0, groupMembership.RunId));
-
-				if (_deltaCachingConfig.DeltaCacheEnabled) await UpdateCacheAsync(context, sourceUsersNotFound, destinationUsersNotFound, syncJob, groupMembership.SourceMembers);
-
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
                 if (!context.IsReplaying)
                 {
-                    if (membersAddedResponse.SuccessCount + membersAddedResponse.UsersNotFound.Count == membersToAdd.Count && 
+                    if (membersAddedResponse.SuccessCount + membersAddedResponse.UsersNotFound.Count + membersAddedResponse.UsersAlreadyExist.Count == membersToAdd.Count && 
 						membersRemovedResponse.SuccessCount + membersRemovedResponse.UsersNotFound.Count == membersToRemove.Count)
                     {
                         TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Success");
@@ -199,7 +201,9 @@ namespace Hosts.GraphUpdater
                     }
                 }
 
-				await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
+                if (_deltaCachingConfig.DeltaCacheEnabled) await UpdateCacheAsync(context, sourceUsersNotFound, destinationUsersNotFound, syncJob, groupMembership.SourceMembers);
+
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
 
 				return OrchestrationRuntimeStatus.Completed;
 			}
@@ -218,7 +222,8 @@ namespace Hosts.GraphUpdater
 					await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
 									CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
 																	SyncStatus.Error, syncJob.ThresholdViolations, groupMembership.RunId));
-				}
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                }
 
                 TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Failure");
 

@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Entities.Helpers;
-using Entities.ServiceBus;
+using Models;
+using Models.Helpers;
+using Models.ServiceBus;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Newtonsoft.Json;
@@ -48,8 +48,8 @@ namespace Hosts.MembershipAggregator
                 await _blobStorageRepository.DeleteFileAsync(request.SourceMembershipFilePath);
                 await _blobStorageRepository.DeleteFileAsync(request.DestinationMembershipFilePath);
 
-                sourceMembership = JsonConvert.DeserializeObject<GroupMembership>(sourceBlobResult.Content.ToString());
-                destinationMembership = JsonConvert.DeserializeObject<GroupMembership>(destinationBlobResult.Content.ToString());
+                sourceMembership = JsonConvert.DeserializeObject<GroupMembership>(sourceBlobResult.Content);
+                destinationMembership = JsonConvert.DeserializeObject<GroupMembership>(destinationBlobResult.Content);
             }
             else
             {

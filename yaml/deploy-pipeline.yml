@@ -5,6 +5,8 @@ parameters:
   type: string
 - name: subscriptionId
   type: string
+- name: subscriptionName
+  type: string
 - name: keyVaultReaders
   type: object
 - name: environmentAbbreviation
@@ -36,7 +38,7 @@ stages:
       variables:
         ${{ if in(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
           buildType: 'release'
-        ${{ if notIn(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
+        ${{ else }}:
           buildType: 'debug'
       environment: ${{ parameters.solutionAbbreviation }}-${{ parameters.environmentAbbreviation }}
       strategy:
@@ -51,6 +53,7 @@ stages:
                root: $(Pipeline.Workspace)/$(Build.BuildNumber)_$(buildType)
                location: ${{ parameters.location }}
                tenantId: ${{ parameters.tenantId }}
+               subscriptionName: ${{ parameters.subscriptionName }}
                subscriptionId: ${{ parameters.subscriptionId }}
                keyVaultReaders: ${{ parameters.keyVaultReaders }}
 
@@ -65,7 +68,7 @@ stages:
           data_storageAccountName: $[ dependencies.${{ parameters.stageName }}_DeployResources.outputs['${{ parameters.stageName }}_DeployResources.dataVariables.data_storageAccountName'] ]
           ${{ if in(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
             buildType: 'release'
-          ${{ if notIn(parameters.stageName, 'Prod_production', 'NonProd_ua') }}:
+          ${{ else }}:
             buildType: 'debug'
         steps:
 

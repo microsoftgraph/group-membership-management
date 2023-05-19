@@ -27,8 +27,8 @@ namespace Hosts.AzureUserReader
         {
             base.Configure(builder);
 
-            builder.Services.AddSingleton<IGraphServiceClient>(services =>
-                new GraphServiceClient(FunctionAppDI.CreateAuthProviderFromSecret(services.GetService<IOptions<GraphCredentials>>().Value)));
+            builder.Services.AddSingleton(services =>
+                new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value)));
 
             builder.Services.AddSingleton<IGraphServiceAttemptsValue>(services =>
             {

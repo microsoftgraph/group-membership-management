@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Microsoft.Azure.ServiceBus;
+using Models;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using System.Collections.Generic;

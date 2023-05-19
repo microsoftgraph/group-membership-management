@@ -6,15 +6,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.8.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Graph" Version="4.30.0" />
-    <PackageReference Include="Microsoft.Graph.Auth" Version="1.0.0-preview.7" />
-    <PackageReference Include="Microsoft.Identity.Client" Version="4.44.0" />
+    <PackageReference Include="Microsoft.Graph" Version="5.8.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Entities\Entities.csproj" />
+    <ProjectReference Include="..\..\..\Models\Models.csproj" />
   </ItemGroup>
 
   <ItemGroup>

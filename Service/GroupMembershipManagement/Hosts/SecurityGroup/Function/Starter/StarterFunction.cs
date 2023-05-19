@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
-using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;

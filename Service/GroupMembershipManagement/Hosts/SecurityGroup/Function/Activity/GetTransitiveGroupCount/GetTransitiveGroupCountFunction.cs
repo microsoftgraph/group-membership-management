@@ -1,10 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
+using Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -26,7 +27,8 @@ namespace Hosts.SecurityGroup
 		public async Task<int> GetGroupsAsync([ActivityTrigger] GetTransitiveGroupCountRequest request)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GetTransitiveGroupCountFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-			var response = await _calculator.GetGroupsCountAsync(request.GroupId, request.RunId);
+            _calculator.RunId = request.RunId;
+            var response = await _calculator.GetGroupsCountAsync(request.GroupId);
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GetTransitiveGroupCountFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 			return response;
 		}

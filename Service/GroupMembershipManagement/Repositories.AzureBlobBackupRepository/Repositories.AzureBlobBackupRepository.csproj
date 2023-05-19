@@ -5,10 +5,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Data.Tables" Version="12.8.0" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.16.0" />
     <PackageReference Include="CsvHelper" Version="27.2.1" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Hosts\AzureMaintenance\Services.Entities\Services.Entities.csproj" />
     <ProjectReference Include="..\Repositories.Contracts\Repositories.Contracts.csproj" />
   </ItemGroup>
 

@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Microsoft.Graph;
+using Models;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -66,7 +65,7 @@ namespace Services
             return await graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(groupId));
         }
 
-        public async Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+        public async Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
         {
             return await _graphGroupRepository.GetGroupOwnersAsync(groupObjectId, top);
         }

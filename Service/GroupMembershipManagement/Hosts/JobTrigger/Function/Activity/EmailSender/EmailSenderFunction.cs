@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
+using Models;
+using JobTrigger.Activity.EmailSender;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
@@ -21,15 +22,14 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName(nameof(EmailSenderFunction))]
-        public async Task SendEmailAsync([ActivityTrigger] SyncJobGroup group)
+        public async Task SendEmailAsync([ActivityTrigger] EmailSenderRequest request)
         {
-            if (group != null)
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = group.SyncJob.RunId }, VerbosityLevel.DEBUG);
-                _jobTriggerService.RunId = group.SyncJob.RunId ?? Guid.Empty;
-                await _jobTriggerService.SendEmailAsync(group.SyncJob, group.Name);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = group.SyncJob.RunId }, VerbosityLevel.DEBUG);
-            }
+            var job = request.SyncJobGroup.SyncJob;
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = job.RunId }, VerbosityLevel.DEBUG);
+            _jobTriggerService.RunId = job.RunId ?? Guid.Empty;
+            await _jobTriggerService.SendEmailAsync(job, request.EmailSubjectTemplateName, request.EmailContentTemplateName, request.AdditionalContentParams, request.FunctionDirectory);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = job.RunId }, VerbosityLevel.DEBUG);
+
         }
     }
 }

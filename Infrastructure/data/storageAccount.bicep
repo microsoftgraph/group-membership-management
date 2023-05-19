@@ -14,9 +14,15 @@ param keyVaultName string
 ])
 param sku string = 'Standard_LRS'
 
+@description('Key vault name.')
+param addJobsStorageAccountPolicies bool = false
+
+@description('Specifies the Azure location where the storage account will be created.')
+param location string
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
   name: name
-  location: resourceGroup().location
+  location: location
   kind: 'StorageV2'
   sku: {
     name: sku
@@ -27,6 +33,58 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
   }
   identity: {
     type: 'SystemAssigned'
+  }
+}
+
+resource allBlobPolicy 'Microsoft.Storage/storageAccounts/managementPolicies@2022-05-01' = if (addJobsStorageAccountPolicies) {
+  name: 'default'
+  parent: storageAccount
+  properties: {
+    policy: {
+      rules: [
+        {
+          definition: {
+            actions: {
+              baseBlob: {
+                delete: {
+                  daysAfterModificationGreaterThan: 30
+                }
+              }
+            }
+            filters: {
+              blobTypes: [
+                'blockBlob'
+              ]
+            }
+          }
+          enabled: true
+          name: '30-Day Blob Deletion Policy'
+          type: 'Lifecycle'
+        }
+        {
+          definition: {
+            actions: {
+              baseBlob: {
+                delete: {
+                  daysAfterModificationGreaterThan: 7
+                }
+              }
+            }
+            filters: {
+              blobTypes: [
+                'blockBlob'
+              ]
+              prefixMatch: [
+                'membership/cache/'
+              ]
+            }
+          }
+          enabled: true
+          name: '7-Day Cache Blob Deletion Policy'
+          type: 'Lifecycle'
+        }
+      ]
+    }
   }
 }
 

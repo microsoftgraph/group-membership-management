@@ -1,14 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Microsoft.Azure.ServiceBus;
+using Models;
+using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
-using System.Threading.Tasks;
+using System;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
-using Newtonsoft.Json.Linq;
-using System.Linq;
-using System;
+using System.Threading.Tasks;
 
 namespace Repositories.ServiceBusTopics
 {

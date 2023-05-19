@@ -1,13 +1,27 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure;
+using Azure.Core;
+using Azure.Monitor.Query;
+using Azure.Monitor.Query.Models;
 using Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Moq;
+using Models;
+using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Tests.Mocks;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using MockSyncJobRepository = Repositories.SyncJobs.Tests.MockSyncJobRepository;
 
 namespace Services.Tests
@@ -22,13 +36,18 @@ namespace Services.Tests
         private JobSchedulingService _jobSchedulingService = null;
         private MockSyncJobRepository _mockSyncJobRepository = null;
         private DefaultRuntimeRetrievalService _defaultRuntimeRetrievalService = null;
+        private LogsRuntimeRetrievalService _logsRuntimeRetrievalService = null;
         private MockLoggingRepository _mockLoggingRepository = null;
+        private Mock<IJobSchedulerConfig> _jobSchedulerConfig = new Mock<IJobSchedulerConfig>();
+        private Mock<LogsQueryClient> _logsQueryClient = new Mock<LogsQueryClient>();
 
         [TestInitialize]
         public void InitializeTest()
         {
+            _jobSchedulerConfig.Setup(x => x.DefaultRuntimeSeconds).Returns(DEFAULT_RUNTIME_SECONDS);
             _mockSyncJobRepository = new MockSyncJobRepository();
-            _defaultRuntimeRetrievalService = new DefaultRuntimeRetrievalService(DEFAULT_RUNTIME_SECONDS);
+            _defaultRuntimeRetrievalService = new DefaultRuntimeRetrievalService(_jobSchedulerConfig.Object.DefaultRuntimeSeconds);
+            _logsRuntimeRetrievalService = new LogsRuntimeRetrievalService(_jobSchedulerConfig.Object, _logsQueryClient.Object);
             _mockLoggingRepository = new MockLoggingRepository();
 
             _jobSchedulingService = new JobSchedulingService(
@@ -130,9 +149,19 @@ namespace Services.Tests
         public async Task ScheduleJobsWithConcurrency()
         {
             int defaultTenMinuteRuntime = 600;
-            var longerDefaultRuntimeService = new DefaultRuntimeRetrievalService(defaultTenMinuteRuntime);
+            _jobSchedulerConfig.Setup(x => x.DefaultRuntimeSeconds).Returns(defaultTenMinuteRuntime);
+            var longerDefaultRuntimeService = new DefaultRuntimeRetrievalService(_jobSchedulerConfig.Object.DefaultRuntimeSeconds);
 
-            JobSchedulerConfig jobSchedulerConfig = new JobSchedulerConfig(true, 0, true, false, START_TIME_DELAY_MINUTES, BUFFER_SECONDS, DEFAULT_RUNTIME_SECONDS); ;
+            JobSchedulerConfig jobSchedulerConfig = new JobSchedulerConfig(
+                                                        true, 0, true, false,
+                                                        START_TIME_DELAY_MINUTES,
+                                                        BUFFER_SECONDS,
+                                                        DEFAULT_RUNTIME_SECONDS,
+                                                        false,
+                                                        "max",
+                                                        "query",
+                                                        7,
+                                                        "workspace-id");
             JobSchedulingService jobSchedulingService = new JobSchedulingService(
                 _mockSyncJobRepository,
                 longerDefaultRuntimeService,
@@ -200,6 +229,61 @@ namespace Services.Tests
             }
         }
 
+        [TestMethod]
+        public async Task ScheduleJobsOneFromLogs_MaxMetric()
+        {
+            _jobSchedulerConfig.Setup(x => x.GetRunTimeFromLogs).Returns(true);
+            _jobSchedulingService = new JobSchedulingService(
+                                        _mockSyncJobRepository,
+                                        _logsRuntimeRetrievalService,
+                                        _mockLoggingRepository);
+
+            var numberOfJobs = 5;
+            var periodInHours = 1;
+            var jobs = CreateSampleSyncJobs(numberOfJobs, periodInHours);
+            var groupRuntimes = new List<(Guid Id, double Max, double Avg)>();
+            var max = 100.0;
+            var avg = 5.0;
+            foreach (var job in jobs)
+            {
+                groupRuntimes.Add((job.TargetOfficeGroupId, max++, avg++));
+            }
+
+            var queryResult = CreateLogsQueryResult(groupRuntimes);
+            _logsQueryClient.Setup(x => x.QueryWorkspaceAsync(
+                                            It.IsAny<string>(),
+                                            It.IsAny<string>(),
+                                            It.IsAny<QueryTimeRange>(),
+                                            It.IsAny<LogsQueryOptions>(),
+                                            It.IsAny<CancellationToken>()
+                                            )
+                                  ).ReturnsAsync(queryResult);
+
+            DateTime dateTimeNow = DateTime.UtcNow;
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
+
+            double totalTimeInSeconds = groupRuntimes.Select(x => x.Max).Sum() + (jobs.Count - groupRuntimes.Count) * DEFAULT_RUNTIME_SECONDS;
+            int concurrencyNumber = (int)Math.Ceiling(totalTimeInSeconds / (periodInHours * 3600));
+
+            Assert.AreEqual(concurrencyNumber, 1);
+            Assert.AreEqual(updatedJobs.Count, numberOfJobs);
+            Assert.IsTrue(updatedJobs[0].StartDate > dateTimeNow);
+
+            var baseStartDate = updatedJobs.First().StartDate;
+            var currentJobIndex = 0;
+            foreach (var updateJob in updatedJobs)
+            {
+                if (currentJobIndex > 0)
+                {
+                    var previousJobRunTime = groupRuntimes.First(x => x.Id == updatedJobs[currentJobIndex - 1].TargetOfficeGroupId);
+                    baseStartDate = baseStartDate.AddSeconds(BUFFER_SECONDS + previousJobRunTime.Max);
+                }
+
+                Assert.AreEqual(updateJob.StartDate, baseStartDate);
+                currentJobIndex++;
+            }
+        }
+
         private List<DistributionSyncJob> CreateSampleSyncJobs(int numberOfJobs, int period, DateTime? startDateBase = null, DateTime? lastRunTimeBase = null)
         {
             var jobs = new List<DistributionSyncJob>();
@@ -224,6 +308,54 @@ namespace Services.Tests
 
             return jobs;
         }
+
+        private Response<LogsQueryResult> CreateLogsQueryResult(List<(Guid Id, double Max, double Avg)> groupRuntimes)
+        {
+            var columns = new List<LogsTableColumn>();
+            var columnNames = new[] { "Destination", "MaxProcessingTime", "AvgProcessingTime" };
+            var logsTableColumnConstructor = typeof(LogsTableColumn).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic,
+                                                                                    new[] { typeof(string), typeof(LogsColumnType) });
+
+            foreach (var name in columnNames)
+            {
+                var columnType = name == "Destination" ? LogsColumnType.Guid : LogsColumnType.Real;
+                columns.Add(logsTableColumnConstructor.Invoke(new object[] { name, columnType }) as LogsTableColumn);
+            }
+
+            var rowsList = new List<string>();
+            foreach (var group in groupRuntimes)
+            {
+                rowsList.Add($"[\"{group.Id}\",{group.Max},{group.Avg}]");
+            }
+
+            var tableJSON = $"{{\"name\":\"PrimaryResult\"," +
+                            $"\"columns\":[{{\"name\":\"Destination\",\"type\":\"string\"}},{{\"name\":\"MaxProcessingTime\",\"type\":\"real\"}},{{\"name\":\"AvgProcessingTime\",\"type\":\"real\"}}]," +
+                            $"\"rows\":[{string.Join(",", rowsList)}]}}";
+
+            var jsonDocument = JsonDocument.Parse(tableJSON);
+            var jsonElementConstructor = typeof(JsonElement).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic,
+                                                                        new[] { typeof(JsonDocument), typeof(int) });
+
+            var tableJsonElement = (JsonElement)jsonElementConstructor.Invoke(new object[] { jsonDocument, 0 });
+            var logsTableConstructor = typeof(LogsTable).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic,
+                                                                        new[] { typeof(string), typeof(IEnumerable<LogsTableColumn>), typeof(JsonElement) });
+
+            JsonElement rows = default;
+            foreach (var property in tableJsonElement.EnumerateObject())
+            {
+                if (property.NameEquals("rows"))
+                {
+                    rows = property.Value.Clone();
+                    break;
+                }
+            }
+
+            var logsTable = logsTableConstructor.Invoke(new object[] { "table", columns, rows }) as LogsTable;
+            var logsQueryResultConstructor = typeof(LogsQueryResult).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic, new[] { typeof(IEnumerable<LogsTable>) });
+            var logsQueryResult = logsQueryResultConstructor.Invoke(new object[] { new List<LogsTable> { logsTable } }) as LogsQueryResult;
+
+            return Response.FromValue(logsQueryResult, new TestResponse());
+        }
     }
 
     public class PeriodComparer : Comparer<DistributionSyncJob>
@@ -236,6 +368,45 @@ namespace Services.Tests
             }
 
             return x.CompareTo(y);
+        }
+    }
+
+    public class TestResponse : Response
+    {
+        public TestResponse()
+        {
+        }
+
+        public override int Status { get; }
+
+        public override string ReasonPhrase { get; }
+
+        public override Stream ContentStream { get; set; }
+        public override string ClientRequestId { get; set; }
+
+        public override void Dispose()
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override bool ContainsHeader(string name)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override IEnumerable<HttpHeader> EnumerateHeaders()
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override bool TryGetHeader(string name, [NotNullWhen(true)] out string value)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override bool TryGetHeaderValues(string name, [NotNullWhen(true)] out IEnumerable<string> values)
+        {
+            throw new NotImplementedException();
         }
     }
 }

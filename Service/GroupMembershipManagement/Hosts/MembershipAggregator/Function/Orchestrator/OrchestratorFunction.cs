@@ -1,10 +1,10 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
+using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Services.Entities;
@@ -115,6 +115,7 @@ namespace Hosts.MembershipAggregator
                         {
                             await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                             new JobStatusUpdaterRequest { SyncJob = request.SyncJob, Status = SyncStatus.Error });
+                            await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
                         }
                     }
 
@@ -146,6 +147,7 @@ namespace Hosts.MembershipAggregator
                                                     Status = SyncStatus.FileNotFound,
                                                     SyncJob = request.SyncJob
                                                 });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.FileNotFound, ResultStatus = ResultStatus.Failure, RunId = runId });
 
                 throw;
             }
@@ -165,6 +167,7 @@ namespace Hosts.MembershipAggregator
                                                     Status = SyncStatus.Error,
                                                     SyncJob = request.SyncJob
                                                 });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
 
                 throw;
             }

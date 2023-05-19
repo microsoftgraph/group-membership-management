@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Microsoft.Graph;
+using Microsoft.Graph.Models;
+using Models;
 using Polly;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -27,7 +27,7 @@ namespace Repositories.Mocks
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
         }
 
-        public Task<Services.Entities.UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId)
+        public Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId)
         {
             throw new NotImplementedException();
         }
@@ -37,7 +37,7 @@ namespace Repositories.Mocks
             return await Task.FromResult(Groups[groupId].DisplayName);
         }
 
-        public Task<Services.Entities.UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, IGroupTransitiveMembersCollectionWithReferencesPage membersPage, Guid runId)
+        public Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, Guid runId)
         {
             throw new NotImplementedException();
         }
@@ -55,7 +55,7 @@ namespace Repositories.Mocks
             return await Task.FromResult(result);
         }
 
-        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)
+        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
         {
             var message = new EmailMessage
             {
@@ -85,7 +85,7 @@ namespace Repositories.Mocks
             return Task.CompletedTask;
         }
 
-        public Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isinitialSync)
+        public Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isinitialSync)
         {
             throw new NotImplementedException();
         }
@@ -102,11 +102,16 @@ namespace Repositories.Mocks
             return Task.FromResult(isOwner);
         }
 
-        public Task<List<User>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+        public Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
         {
             var allOwners = Groups[groupObjectId].Owners;
             var userOwners = allOwners == null ? new List<User>() : allOwners.OfType<User>().ToList();
-            return Task.FromResult(userOwners);
+            return Task.FromResult(userOwners.Select(x => new AzureADUser { ObjectId = Guid.Parse(x.Id) }).ToList());
+        }
+
+        public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)
+        {
+            throw new NotImplementedException();
         }
     }
 }

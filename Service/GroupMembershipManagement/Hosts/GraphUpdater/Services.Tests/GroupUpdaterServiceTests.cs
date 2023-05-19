@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using DIConcreteTypes;
-using Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Models;
 using Repositories.Mocks;
 using Services.Entities;
 using Services.Tests.Mocks;

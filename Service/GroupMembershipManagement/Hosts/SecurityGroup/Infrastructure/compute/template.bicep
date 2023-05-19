@@ -77,6 +77,7 @@ var serviceBusConnectionString = resourceId(subscription().subscriptionId, dataK
 var serviceBusSyncJobTopic = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusSyncJobTopic')
 var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
 var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientSecret')
+var graphAppCertificateName = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppCertificateName')
 var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppTenantId')
 var senderUsername = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'senderUsername')
 var senderPassword = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'senderPassword')
@@ -90,6 +91,7 @@ var membershipAggregatorStagingUrl = resourceId(subscription().subscriptionId, d
 var membershipAggregatorStagingFunctionKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipAggregatorStagingFunctionKey')
 var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
+var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-SecurityGroup'
@@ -116,6 +118,7 @@ var appSettings = {
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   serviceBusSyncJobTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobTopic, '2019-09-01').secretUriWithVersion})'
   serviceBusTopicConnection: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusConnectionString, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
@@ -132,6 +135,7 @@ var appSettings = {
   membershipStorageAccountName: '@Microsoft.KeyVault(SecretUri=${reference(membershipStorageAccountName, '2019-09-01').secretUriWithVersion})'
   membershipContainerName: '@Microsoft.KeyVault(SecretUri=${reference(membershipContainerName, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
+  actionableEmailProviderId: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
 }
 
 var stagingSettings = {
@@ -218,19 +222,17 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
     policies: [
       {
         objectId: functionAppTemplate_SecurityGroup.outputs.msi
-        permissions: [
+        secrets: [
           'get'
           'list'
         ]
-        type: 'secrets'
       }
       {
         objectId: functionAppSlotTemplate_SecurityGroup.outputs.msi
-        permissions: [
+        secrets: [
           'get'
           'list'
         ]
-        type: 'secrets'
       }
     ]
     tenantId: tenantId
@@ -241,27 +243,31 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   ]
 }
 
-module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'PrereqsKeyVaultPoliciesTemplate-SecurityGroup'
+module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
+  name: 'prereqsKeyVaultPoliciesTemplate-SecurityGroup'
   scope: resourceGroup(prereqsKeyVaultResourceGroup)
   params: {
     name: prereqsKeyVaultName
     policies: [
       {
         objectId: functionAppTemplate_SecurityGroup.outputs.msi
-        permissions: [
+        secrets: [
           'get'
           'list'
         ]
-        type: 'secrets'
+        certificates: [
+          'get'
+        ]
       }
       {
         objectId: functionAppSlotTemplate_SecurityGroup.outputs.msi
-        permissions: [
+        secrets: [
           'get'
           'list'
         ]
-        type: 'secrets'
+        certificates: [
+          'get'
+        ]
       }
     ]
     tenantId: tenantId

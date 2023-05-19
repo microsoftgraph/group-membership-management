@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 using System;
 using System.Threading.Tasks;
-using Entities;
+using Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
@@ -21,7 +21,7 @@ namespace Hosts.AzureMaintenance
 
         [FunctionName(nameof(StarterFunction))]
         public async Task Run(
-            [TimerTrigger("%backupTriggerSchedule%")] TimerInfo myTimer,
+            [TimerTrigger("%maintenanceTriggerSchedule%")] TimerInfo myTimer,
             [DurableClient] IDurableOrchestrationClient starter,
             ILogger log)
         {

@@ -33,16 +33,20 @@ Azure tenant id where the application is going to be created.
 .PARAMETER TenantIdWithKeyVault
 Azure tenant id where the prereqs keyvault was created.
 
+.PARAMETER CertificateName
+Certificate name
+Optional
+
 .PARAMETER Clean
 When re-running the script, this flag is used to indicate if we need to recreate the application or use the existing one.
 
 .EXAMPLE
 # these are arbitrary guids and subscription names, you'll have to change them.
-Set-GraphCredentialsAzureADApplication	-SubscriptionName "GMM-Preprod" `
-									-SolutionAbbreviation "gmm" `
-									-EnvironmentAbbreviation "<env>" `
-									-TenantIdToCreateAppIn "19589c67-5cfd-4863-a0b6-2fb6726ab368" `
-									-TenantIdWithKeyVault "8b7e3ea9-d3b0-410e-b4b1-77e1280842cc" `
+Set-GraphCredentialsAzureADApplication	-SubscriptionName "<subscription-name>" `
+									-SolutionAbbreviation "<solution-abbreviation>" `
+									-EnvironmentAbbreviation "<environment-abbreviation>" `
+									-TenantIdToCreateAppIn "<app-tenant-id>" `
+									-TenantIdWithKeyVault "<keyvault-tenant-id>" `
 									-Clean $false `
 									-Verbose
 #>
@@ -60,6 +64,8 @@ function Set-GraphCredentialsAzureADApplication {
 		[Guid] $TenantIdToCreateAppIn,
 		[Parameter(Mandatory=$True)]
 		[Guid] $TenantIdWithKeyVault,
+		[Parameter(Mandatory=$False)]
+		[string] $CertificateName,
 		[Parameter(Mandatory=$False)]
 		[boolean] $Clean = $False,
 		[Parameter(Mandatory=$False)]
@@ -86,7 +92,7 @@ function Set-GraphCredentialsAzureADApplication {
 	$graphApps = (Get-AzADApplication -DisplayName $graphAppDisplayName)
 
 	$graphApps | ForEach-Object {
-    
+
         $displayName = $_.DisplayName;
         $objectId = $_.Id;
         try {
@@ -117,7 +123,7 @@ function Set-GraphCredentialsAzureADApplication {
 	# see: https://stackoverflow.com/questions/42164581/how-to-configure-a-new-azure-ad-application-through-powershell
 	$requiredResourceAccess = New-Object -TypeName "Microsoft.Open.AzureAD.Model.RequiredResourceAccess"
 	$requiredResourceAccess.ResourceAccess = (Get-AzureADServicePrincipal -Filter "AppId eq '00000003-0000-0000-c000-000000000000'").AppRoles `
-		| Where-Object { ($_.Value -eq "User.Read.All") -or ($_.Value -eq "GroupMember.Read.All") } `
+		| Where-Object { ($_.Value -eq "User.Read.All") -or ($_.Value -eq "GroupMember.Read.All") -or ($_.Value -eq "ChannelMember.ReadWrite.All")} `
 		| ForEach-Object { New-Object -TypeName "Microsoft.Open.AzureAD.Model.ResourceAccess" -ArgumentList $_.Id,"Role" }
 	$requiredResourceAccess.ResourceAppId = "00000003-0000-0000-c000-000000000000"
 
@@ -194,6 +200,26 @@ function Set-GraphCredentialsAzureADApplication {
 						 -Name $graphTenantSecretName `
 						 -SecretValue $graphTenantSecret
     Write-Verbose "$graphTenantSecretName added to vault for $graphAppDisplayName."
+
+	# Store certificate name in KeyVault
+	$graphAppCertificateName = "graphAppCertificateName"
+	$graphAppCertificate = Get-AzKeyVaultSecret -VaultName $keyVault.VaultName -Name $graphAppCertificateName
+    $setGraphAppCertificate = $false
+
+	if(!$graphAppCertificate -and !$CertificateName){
+		$CertificateName = "not-set"
+		$setGraphAppCertificate = $true
+	} elseif ($CertificateName) {
+		$setGraphAppCertificate = $true
+	}
+
+	if($setGraphAppCertificate){
+		$graphAppCertificateSecret = ConvertTo-SecureString -AsPlainText -Force $CertificateName
+		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
+								-Name $graphAppCertificateName `
+								-SecretValue $graphAppCertificateSecret
+		Write-Verbose "$graphAppCertificateName added to vault for $graphAppDisplayName."
+	}
 
 	Write-Verbose "Set-GraphCredentialsAzureADApplication completed."
 }

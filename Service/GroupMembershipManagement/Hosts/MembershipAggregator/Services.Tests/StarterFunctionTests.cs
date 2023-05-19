@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Entities;
 using Hosts.MembershipAggregator;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Models;
 using Moq;
 using Newtonsoft.Json;
 using Repositories.Contracts;

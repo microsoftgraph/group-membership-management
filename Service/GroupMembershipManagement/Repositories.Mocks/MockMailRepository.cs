@@ -1,11 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
+using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
 namespace Repositories.Mocks
@@ -13,7 +12,7 @@ namespace Repositories.Mocks
 	public class MockMailRepository : IMailRepository
 	{
 		public List<EmailMessage> SentEmails { get; set; } = new List<EmailMessage>();
-		public Task SendMailAsync(EmailMessage emailMessage, Guid? runId)
+		public Task SendMailAsync(EmailMessage emailMessage, Guid? runId, string templateDirectory = "")
 		{
 			SentEmails.Add(emailMessage);
 			return Task.CompletedTask;

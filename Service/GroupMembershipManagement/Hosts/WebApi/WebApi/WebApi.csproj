@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.21.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.14" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="6.0.14" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Versioning" Version="5.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer" Version="5.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OData" Version="8.0.12" />
+    <PackageReference Include="Microsoft.Azure.AppConfiguration.AspNetCore" Version="5.2.0" />
+    <PackageReference Include="Microsoft.Identity.Web" Version="2.5.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj" />
+    <ProjectReference Include="..\..\..\DIConcreteTypes\DIConcreteTypes.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Localization\Repositories.Localization.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Logging\Repositories.Logging.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj" />
+    <ProjectReference Include="..\..\..\Services.Notifications\Services.Notifications.csproj" />
+    <ProjectReference Include="..\Services.Messages\Services.Messages.csproj" />
+	<ProjectReference Include="..\Services.WebApi.Contracts\Services.WebApi.Contracts.csproj" />
+    <ProjectReference Include="..\Services.WebApi\Services.WebApi.csproj" />
+    <ProjectReference Include="..\WebApi.Models\WebApi.Models.csproj" />
+  </ItemGroup>
+
+</Project>

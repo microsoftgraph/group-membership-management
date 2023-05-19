@@ -3,10 +3,22 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet",
-    "backupTriggerSchedule": "0 0 0 * * *",
+    "maintenanceTriggerSchedule": "0 0 0 * * *",
     "logAnalyticsCustomerId": "<customer-id>",
     "logAnalyticsPrimarySharedKey": "<primary-shared-key>",
-    "tablesToBackup": "[ { 'SourceTableName':'<table-name>', 'SourceConnectionString':'<connection-string>', 'DestinationConnectionString':'<connection-string>', 'BackupType': 'table', 'CleanupOnly': false, 'DeleteAfterDays': 7 } ]",
-    "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io"
+    "maintenanceJobs": "[{'SourceStorageSetting':{'TargetName':'<target-name>','StorageConnectionString':'<connection-string>','StorageType':'table'},'DestinationStorageSetting':{'TargetName':'<target-name>','StorageConnectionString':'<connection-string>','StorageType':'table'},'Backup':true,'Cleanup':true,'DeleteAfterDays':30}]",
+    "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
+    "jobsStorageAccountConnectionString": "",
+    "jobsTableName": "",
+    "graphCredentials:ClientId": "",
+    "graphCredentials:ClientSecret": "",
+    "graphCredentials:KeyVaultName": "",
+    "graphCredentials:KeyVaultTenantId": "",
+    "graphCredentials:TenantId": "",
+    "senderAddress": "",
+    "senderPassword": "",
+    "supportEmailAddresses": "",
+    "AzureMaintenance:NumberOfDaysBeforeDeletion": 30,
+    "AzureMaintenance:HandleInactiveJobsEnabled":  true
   }
 }

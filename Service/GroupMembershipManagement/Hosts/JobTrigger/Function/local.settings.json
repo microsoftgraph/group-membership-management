@@ -20,6 +20,7 @@
     "graphCredentials:KeyVaultTenantId": "<demo-tenant-id>",
     "graphCredentials:TenantId": "<demo-tenant-id>",
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
-    "APPINSIGHTS_INSTRUMENTATIONKEY": ""
+    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+    "actionableEmailProviderId": ""
   }
 }

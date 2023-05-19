@@ -3,22 +3,27 @@ parameters:
   type: string
 - name: checkoutPath
   type: string
+- name: buildRelease
+  type: boolean
 
 stages:
 
 - stage: Build_Common
   jobs:
   - job: Build_Common
-    strategy:
-      maxParallel: 2
-      matrix:
-        debug:
-          BuildConfiguration: debug
-        release:
-          BuildConfiguration: release
+    ${{ if parameters.buildRelease }}:
+      strategy:
+          maxParallel: 2
+          matrix:
+            debug:
+              BuildConfiguration: debug
+            release:
+              BuildConfiguration: release
+    ${{ else }}:
+      variables:
+        BuildConfiguration: 'debug'
 
     steps:
-
     - ${{ if ne(parameters.repoToCheckout, '') }}:
       - checkout: ${{ parameters.repoToCheckout }}
         path: ${{ parameters.checkoutPath }}
@@ -53,25 +58,6 @@ stages:
         arguments: '--configuration $(BuildConfiguration) /p:CollectCoverage=true /p:MergeWith="$(Build.SourcesDirectory)/Coverage/coverage.json" /p:CoverletOutputFormat="cobertura" /p:CoverletOutput="$(Build.SourcesDirectory)/Coverage/" -m:1'
       condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
 
-    - task: PublishCodeCoverageResults@1
-      displayName: 'collect code coverage'
-      inputs:
-        codeCoverageTool: 'cobertura'
-        summaryFileLocation: $(Build.SourcesDirectory)\Coverage\coverage.cobertura.xml
-        failIfCoverageEmpty: false
-      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
-
-    - task: mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks@8
-      displayName: 'check build quality'
-      inputs:
-        checkCoverage: true
-        coverageFailOption: fixed
-        coverageType: lines
-        coverageThreshold: 10
-        coverageVariance: 0
-        allowCoverageVariance: false
-      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
-
     - task: CopyFiles@2
       displayName: 'copy arm templates'
       inputs:
@@ -89,3 +75,9 @@ stages:
       inputs:
         PathtoPublish: '$(build.artifactstagingdirectory)'
         ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'
+
+- template: yaml/build-webapi.yml
+  parameters:
+    repoToCheckout: ${{ parameters.repoToCheckout }}
+    checkoutPath: ${{ parameters.checkoutPath }}
+    buildRelease: ${{ parameters.buildRelease }}

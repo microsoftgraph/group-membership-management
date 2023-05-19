@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Entities.ServiceBus;
+using Models.ServiceBus;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Models;
 using Newtonsoft.Json;
 using Services.Tests.Mocks;
 using System;

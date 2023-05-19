@@ -3,6 +3,7 @@
 using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 using Repositories.Contracts;
 using System;
 using System.IO;
@@ -48,7 +49,7 @@ namespace Hosts.GraphUpdater
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloaded file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
-            var content = blobResult.Content.ToString();
+            var content = blobResult.Content;
             return content;
         }
     }

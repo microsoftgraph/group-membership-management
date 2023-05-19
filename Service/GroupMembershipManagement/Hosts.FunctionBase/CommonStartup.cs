@@ -3,11 +3,11 @@
 using Azure.Identity;
 using Common.DependencyInjection;
 using DIConcreteTypes;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
-using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -18,6 +18,7 @@ using Repositories.Localization;
 using Repositories.Logging;
 using Repositories.Mail;
 using Repositories.SyncJobsRepository;
+using Repositories.NotificationsRepository;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -117,17 +118,36 @@ namespace Hosts.FunctionBase
                     creds.Value.SupportEmailAddresses);
             });
 
+            builder.Services.AddOptions<MailAdaptiveCardConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.IsAdaptiveCardEnabled = configuration.GetValue<bool>("Mail:IsAdaptiveCardEnabled");
+            });
+            builder.Services.AddSingleton<IMailAdaptiveCardConfig>(services =>
+            {
+                var creds = services.GetService<IOptions<MailAdaptiveCardConfig>>();
+                return new MailAdaptiveCardConfig(creds.Value.IsAdaptiveCardEnabled);
+            });
+
             builder.Services.AddSingleton<IMailRepository>(services =>
-                new MailRepository(new GraphServiceClient(
-                                                    FunctionAppDI.CreateMailAuthProvider(services.GetService<IOptions<GraphCredentials>>().Value)),
-                                                    services.GetService<ILocalizationRepository>(),
-                                                    services.GetService<ILoggingRepository>()));
+            {
+                var mailCredentials = services.GetService<IOptions<EmailSenderRecipient>>();
+                var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
+                graphCredentials.EmailSenderUserName = mailCredentials.Value.SenderAddress;
+                graphCredentials.EmailSenderPassword = mailCredentials.Value.SenderPassword;
+
+                return new MailRepository(
+                    new GraphServiceClient(FunctionAppDI.CreateMailAuthProvider(graphCredentials)),
+                        services.GetService<IMailAdaptiveCardConfig>(),
+                        services.GetService<ILocalizationRepository>(),
+                        services.GetService<ILoggingRepository>(),
+                        GetValueOrDefault("actionableEmailProviderId"));
+            });
 
             builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
-                settings.TableName = configuration.GetValue<string>("jobsTableName");
-            });
+                {
+                    settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
+                    settings.TableName = configuration.GetValue<string>("jobsTableName");
+                });
 
             builder.Services.AddSingleton<ISyncJobRepository>(services =>
             {
@@ -135,7 +155,25 @@ namespace Hosts.FunctionBase
                 return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
             });
 
-            builder.Services.AddSingleton<TelemetryClient>(sp =>
+            builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
+                settings.TableName = configuration.GetValue<string>("notificationsTableName");
+            });
+
+            builder.Services.AddSingleton<INotificationRepository, NotificationRepository>();
+
+            builder.Services.AddOptions<ThresholdNotificationConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.IsThresholdNotificationEnabled = configuration.GetValue<bool>("ThresholdNotification:IsThresholdNotificationEnabled");
+            });
+            builder.Services.AddSingleton<IThresholdNotificationConfig>(services =>
+            {
+                var creds = services.GetService<IOptions<ThresholdNotificationConfig>>();
+                return new ThresholdNotificationConfig(creds.Value.IsThresholdNotificationEnabled);
+            });
+
+            builder.Services.AddSingleton(sp =>
             {
                 var telemetryConfiguration = new TelemetryConfiguration();
                 telemetryConfiguration.InstrumentationKey = Environment.GetEnvironmentVariable("APPINSIGHTS_INSTRUMENTATIONKEY");

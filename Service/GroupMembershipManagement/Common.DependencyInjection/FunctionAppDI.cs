@@ -1,10 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Core;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
-using Microsoft.Graph;
-using Microsoft.Graph.Auth;
-using Microsoft.Identity.Client;
 using System;
 using System.Security.Cryptography.X509Certificates;
 
@@ -12,25 +10,42 @@ namespace Common.DependencyInjection
 {
     public static class FunctionAppDI
     {
-        public static IAuthenticationProvider CreateAuthProviderFromSecret(GraphCredentials creds)
+        public static TokenCredential CreateAuthenticationProvider(GraphCredentials credentials)
         {
-            var confidentialClientApplication = ConfidentialClientApplicationBuilder
-            .Create(creds.ClientId)
-            .WithTenantId(creds.TenantId)
-            .WithClientSecret(creds.ClientSecret)
-            .Build();
+            if (!string.IsNullOrWhiteSpace(credentials.ClientCertificateName)
+                && credentials.ClientCertificateName != "not-set")
+            {
+                return CreateAuthProviderFromCertificate(credentials);
+            }
 
-            return new ClientCredentialProvider(confidentialClientApplication);
+            return CreateAuthProviderFromSecret(credentials);
         }
 
-        public static IAuthenticationProvider CreateMailAuthProvider(GraphCredentials creds)
+        private static TokenCredential CreateAuthProviderFromSecret(GraphCredentials creds)
         {
-            var publicClientApplication = PublicClientApplicationBuilder
-            .Create(creds.ClientId)
-            .WithTenantId(creds.TenantId)
-            .Build();
+            return new ClientSecretCredential(creds.TenantId, creds.ClientId, creds.ClientSecret);
+        }
 
-            return new UsernamePasswordProvider(publicClientApplication);
+        private static TokenCredential CreateAuthProviderFromCertificate(GraphCredentials creds)
+        {
+            return new ClientCertificateCredential(creds.TenantId, creds.ClientId, GetCertificate(creds.ClientCertificateName, creds.KeyVaultName));
+        }
+
+        public static TokenCredential CreateMailAuthProvider(GraphCredentials creds)
+        {
+            return new UsernamePasswordCredential(creds.EmailSenderUserName, creds.EmailSenderPassword, creds.TenantId, creds.ClientId);
+        }
+
+        private static X509Certificate2 GetCertificate(string certificateName, string keyVaultName)
+        {
+            var options = new DefaultAzureCredentialOptions();
+            var defaultCredential = new DefaultAzureCredential(options);
+            var keyVaultBaseUrl = new Uri($"https://{keyVaultName}.vault.azure.net/");
+            var secretClient = new SecretClient(keyVaultBaseUrl, defaultCredential);
+            var privateKey = secretClient.GetSecret(certificateName);
+            var privateKeyDecoded = Convert.FromBase64String(privateKey.Value.Value);
+            var certificate = new X509Certificate2(privateKeyDecoded, (string)null, X509KeyStorageFlags.MachineKeySet);
+            return certificate;
         }
     }
 }

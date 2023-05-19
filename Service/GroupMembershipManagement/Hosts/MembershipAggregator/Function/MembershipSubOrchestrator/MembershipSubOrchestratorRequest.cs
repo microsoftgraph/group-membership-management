@@ -1,7 +1,8 @@
-﻿// Copyright(c) Microsoft Corporation.
+// Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
+
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 
 namespace Hosts.MembershipAggregator
 {

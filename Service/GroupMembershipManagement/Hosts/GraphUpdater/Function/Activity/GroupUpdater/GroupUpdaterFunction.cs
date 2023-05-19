@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
@@ -33,6 +33,7 @@ namespace Hosts.GraphUpdater
 
             var successCount = 0;
             var usersNotFound = new List<AzureADUser>();
+            var usersAlreadyExist = new List<AzureADUser>();
 
             if (request.Type == RequestType.Add)
             {
@@ -41,7 +42,7 @@ namespace Hosts.GraphUpdater
 
                 successCount = addUsersToGraphResponse.SuccessCount;
                 usersNotFound = addUsersToGraphResponse.UsersNotFound;
-
+                usersAlreadyExist = addUsersToGraphResponse.UsersAlreadyExist;
             }
             else
             {
@@ -57,7 +58,8 @@ namespace Hosts.GraphUpdater
             return new GroupUpdaterResponse()
                 {
                     SuccessCount = successCount,
-                    UsersNotFound = usersNotFound
+                    UsersNotFound = usersNotFound,
+                    UsersAlreadyExist = usersAlreadyExist
                 };
         }
     }
