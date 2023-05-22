@@ -151,11 +151,13 @@ namespace Repositories.GraphGroups
             {
                 user = await _graphServiceClient.Users[email].GetAsync();
             }
-            catch (ServiceException ex)
+            catch (ODataError ex)
             {
                 if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
                     return false;
-
+            }
+            catch (Exception ex)
+            {
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = ex.GetBaseException().ToString(),
@@ -164,6 +166,7 @@ namespace Repositories.GraphGroups
 
                 throw;
             }
+
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
@@ -198,7 +201,8 @@ namespace Repositories.GraphGroups
 
                 var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
                 await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
-                return groupOwnersResponse.Value.Any();
+
+                return groupOwnersResponse.Value?.Any() ?? false;
             }
             catch (ODataError ex)
             {
