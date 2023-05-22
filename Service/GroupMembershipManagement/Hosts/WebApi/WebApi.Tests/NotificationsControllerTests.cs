@@ -23,6 +23,7 @@ using Microsoft.Azure.ServiceBus.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using Azure.Core;
 using Repositories.Contracts.InjectConfig;
+using Microsoft.Graph.Models;
 
 namespace Services.Tests
 {
@@ -77,9 +78,6 @@ namespace Services.Tests
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _notificationRepository = new Mock<INotificationRepository>();
             _syncJobRepository = new Mock<ISyncJobRepository>();
-
-            _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
-                                    .ReturnsAsync(() => _groups);
 
             _groupTypes = new List<string>
             {
@@ -155,9 +153,6 @@ namespace Services.Tests
             var syncJob = new SyncJob();
             _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<string>(), It.IsAny<string>()))
                 .ReturnsAsync(() => syncJob);
-
-            _syncJobRepository.Setup(x => x.UpdateSyncJobsAsync(It.IsAny<List<SyncJob>>(), null))
-                .Returns(() => Task.CompletedTask );
 
             // Items for testing
             _thresholdNotification = _thresholdNotifications[Random.Shared.Next(0, _notificationCount)];
@@ -309,6 +304,32 @@ namespace Services.Tests
         }
 
         /// <summary>
+        /// /notifications/{id}/card - Get card for an unresolved notification that has been disabled
+        /// </summary>
+        [TestMethod]
+        public async Task GetNotificationCard_HandleDisabledTestAsync()
+        {
+            _thresholdNotification.CardState = ThresholdNotificationCardState.DisabledCard;
+            var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
+            var result = response.Result as ContentResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result?.Content);
+            Assert.AreEqual("application/json", result.ContentType);
+            ValidateDisabledCard(result.Content);
+        }
+
+        /// <summary>
+        /// /notifications/{id}/card - Get card for an unresolved notification that has been disabled
+        /// </summary>
+        [TestMethod]
+        public async Task GetNotificationCard_HandleNoCardStateExceptionTestAsync()
+        {
+            _thresholdNotification.CardState = ThresholdNotificationCardState.NoCard;
+            await Assert.ThrowsExceptionAsync<NotSupportedException>(async () => await _notificationsController.GetCardAsync(_thresholdNotification.Id));
+        }
+
+        /// <summary>
         /// /notifications/{id}/card - Get card for a notification that no longer exists
         /// </summary>
         [TestMethod]
@@ -372,6 +393,15 @@ namespace Services.Tests
             Assert.IsTrue(cardJson.Contains($"https://{_hostname}/api/v1/notifications/{_thresholdNotification.Id}/resolve"));
             Assert.IsTrue(cardJson.Contains($"\\\"resolution\\\":\\\"{ThresholdNotificationResolution.Paused}\\\""));
             Assert.IsTrue(cardJson.Contains($"\\\"resolution\\\":\\\"{ThresholdNotificationResolution.IgnoreOnce}\\\""));
+            Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.Id}"));
+            Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
+        }
+
+        private void ValidateDisabledCard(string cardJson)
+        {
+            Assert.IsTrue(cardJson.Contains($"Synchronization of your GMM group **{_groupName}** has been disabled. If no action is taken, the sync will be deleted on "));
+            Assert.IsTrue(cardJson.Contains("After this period, if you wish to reenable the sync, you will need to follow GMM's onboarding process again.")) ;
+            Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.ChangeQuantityForAdditions} members will be **added**, which will increase the group size by **{_thresholdNotification.ChangePercentageForAdditions}%**."));
             Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.Id}"));
             Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
         }
