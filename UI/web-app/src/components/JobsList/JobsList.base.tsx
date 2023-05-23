@@ -44,15 +44,10 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   var selectRow = t('selectRow');
 
   var columns = [
-    { key: 'column1', name: 'Identifier', fieldName: 'targetGroupId', minWidth: 100, maxWidth: 200, isResizable: true },
-    { key: 'column2', name: 'ObjectType', fieldName: 'targetGroupType', minWidth: 100, maxWidth: 200, isResizable: true },
-    { key: 'column3', name: 'InitialOnboardingTime', fieldName: 'startDate', minWidth: 100, maxWidth: 200, isResizable: true },
-    { key: 'column4', name: 'Status', fieldName: 'status', minWidth: 100, maxWidth: 200, isResizable: true },
-    { key: 'column5', name: 'LastSuccessfulStartTime', fieldName: 'lastSuccessfulStartTime', minWidth: 100, maxWidth: 200, isResizable: true },
-    { key: 'column6', name: 'LastSuccessfulRunTime', fieldName: 'lastSuccessfulRunTime', minWidth: 100, maxWidth: 200, isResizable: true },
-    { key: 'column7', name: 'EstimatedNextRunTime', fieldName: 'estimatedNextRunTime', minWidth: 100, maxWidth: 200, isResizable: true },
-    { key: 'column8', name: 'ThresholdIncrease', fieldName: 'thresholdPercentageForAdditions', minWidth: 100, maxWidth: 200, isResizable: true },
-    { key: 'column9', name: 'ThresholdDecrease', fieldName: 'thresholdPercentageForRemovals', minWidth: 100, maxWidth: 200, isResizable: true }
+    { key: 'column1', name: 'Type', fieldName: 'targetGroupType', minWidth: 100, maxWidth: 200, isResizable: true },
+    { key: 'column2', name: 'Last Run', fieldName: 'lastSuccessfulRunTime', minWidth: 100, maxWidth: 200, isResizable: true },
+    { key: 'column3', name: 'Next Run', fieldName: 'estimatedNextRunTime', minWidth: 100, maxWidth: 200, isResizable: true },
+    { key: 'column4', name: 'Status', fieldName: 'status', minWidth: 100, maxWidth: 200, isResizable: true }
   ];
 
   const dispatch = useDispatch<AppDispatch>()
@@ -93,5 +88,5 @@ else {
     </div>
   );
 }
-  
+
 }
