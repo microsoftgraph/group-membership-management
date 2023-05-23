@@ -9,6 +9,8 @@ export type Job = {
   startDate: string;
   lastSuccessfulStartTime: string;
   lastSuccessfulRunTime: string;
+  ago: string;
+  left: string;
   estimatedNextRunTime: string;
   thresholdPercentageForAdditions: number;
   thresholdPercentageForRemovals: number;

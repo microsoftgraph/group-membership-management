@@ -5,6 +5,7 @@ import { Job } from "../models/Job";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { loginRequest, config } from "../authConfig";
 import { msalInstance } from "../index";
+import moment from "moment";
 
 export const fetchJobs = createAsyncThunk("jobs/fetchJobs", async () => {
 
@@ -36,7 +37,21 @@ export const fetchJobs = createAsyncThunk("jobs/fetchJobs", async () => {
 
     const payload: Job[] = response;
 
-    return payload;
+    const mapped = payload.map((index)=> {
+
+      const currentTime = moment.utc();
+      var lastRunTime = moment(index['lastSuccessfulRunTime']);
+      var hoursAgo = currentTime.diff(lastRunTime, "hours");
+      index['lastSuccessfulRunTime'] = moment.utc(index["lastSuccessfulRunTime"]).local().format("MM/DD/YYYY") + " " + hoursAgo.toString() + " hrs ago";
+
+      var nextRunTime = moment(index['estimatedNextRunTime']);
+      var hoursLeft = currentTime.diff(nextRunTime, "hours");
+      index['estimatedNextRunTime'] = moment.utc(index["estimatedNextRunTime"]).local().format("MM/DD/YYYY") + " " + hoursLeft.toString() + " hrs left";
+
+      return index;
+    });
+
+    return mapped;
 
   } catch (error) {
     console.log(error);

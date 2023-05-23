@@ -45,9 +45,9 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
 
   var columns = [
     { key: 'column1', name: 'Type', fieldName: 'targetGroupType', minWidth: 100, maxWidth: 200, isResizable: true },
-    { key: 'column2', name: 'Last Run', fieldName: 'lastSuccessfulRunTime', minWidth: 100, maxWidth: 200, isResizable: true },
-    { key: 'column3', name: 'Next Run', fieldName: 'estimatedNextRunTime', minWidth: 100, maxWidth: 200, isResizable: true },
-    { key: 'column4', name: 'Status', fieldName: 'status', minWidth: 100, maxWidth: 200, isResizable: true }
+    { key: 'column2', name: 'Last Run', fieldName: 'lastSuccessfulRunTime', minWidth: 100, maxWidth: 200, isResizable: true },    
+    { key: 'column4', name: 'Next Run', fieldName: 'estimatedNextRunTime', minWidth: 100, maxWidth: 200, isResizable: true },
+    { key: 'column6', name: 'Status', fieldName: 'status', minWidth: 100, maxWidth: 200, isResizable: true }
   ];
 
   const dispatch = useDispatch<AppDispatch>()
@@ -76,7 +76,7 @@ if (jobs && jobs.length > 0) {
             ariaLabelForSelectionColumn={toggleSelection}
             ariaLabelForSelectAllCheckbox={toggleAllSelection}
             checkButtonAriaLabel={selectRow}
-            onActiveItemChanged={onItemClicked} 
+            onActiveItemChanged={onItemClicked}
         />
       </div>
   );
