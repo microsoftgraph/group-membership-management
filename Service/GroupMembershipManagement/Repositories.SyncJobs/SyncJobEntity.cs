@@ -34,6 +34,8 @@ namespace Repositories.SyncJobsRepository.Entities
         public Guid TargetOfficeGroupId { get; set; }
         public string Destination { get; set; }
 
+        public string DestinationType { get; set; }
+
         [IgnoreLogging]
         public string Status { get; set; }
 
