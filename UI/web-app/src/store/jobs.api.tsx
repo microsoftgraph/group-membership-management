@@ -48,10 +48,29 @@ export const fetchJobs = createAsyncThunk("jobs/fetchJobs", async () => {
       var hoursLeft = currentTime.diff(nextRunTime, "hours");
       index['estimatedNextRunTime'] = moment.utc(index["estimatedNextRunTime"]).local().format("MM/DD/YYYY") + " " + hoursLeft.toString() + " hrs left";
 
+      index["enabledOrNot"] = index["status"] === "CustomerPaused" ? "Disabled" : "Enabled"
+
       return index;
     });
 
-    return mapped;
+    const newPayload = mapped.map((index)=> {
+     if (index["status"] === "ThresholdExceeded") {
+      index["actionRequired"] = "Threshold Exceeded"
+     } else if (index["status"] === "CustomerPaused") {
+      index["actionRequired"] = "Customer Paused"
+     } else if (index["status"] === "CustomMembershipDataNotFound") {
+      index["actionRequired"] = "No users in the source"
+     } else if (index["status"] === "DestinationGroupNotFound") {
+      index["actionRequired"] = "Destination Group Not Found"
+     } else if (index["status"] === "NotOwnerOfDestinationGroup") {
+      index["actionRequired"] = "Not Owner Of Destination Group"
+     } else if (index["status"] === "SecurityGroupNotFound") {
+      index["actionRequired"] = "Security Group Not Found"
+     }
+      return index;
+    });
+
+    return newPayload;
 
   } catch (error) {
     console.log(error);

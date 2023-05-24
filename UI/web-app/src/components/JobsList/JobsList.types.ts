@@ -6,6 +6,9 @@ import { IStyle, IStyleFunctionOrObject, ITheme } from '@fluentui/react';
 
 export interface IJobsListStyles {
   root: IStyle;
+  enabled: IStyle;
+  disabled: IStyle;
+  actionRequired: IStyle;
 }
 
 export interface IJobsListStyleProps {

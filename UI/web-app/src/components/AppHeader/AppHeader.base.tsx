@@ -4,8 +4,7 @@
 import { classNamesFunction, IProcessedStyleSet } from "@fluentui/react";
 import { useTheme } from "@fluentui/react/lib/Theme";
 import WelcomeName from "../WelcomeName";
-import AddOwner from "../AddOwner";
-import SignInSignOutButton from "../SignInSignOutButton";
+import { SettingsIcon } from "@fluentui/react-icons-mdl2";
 import {
   IAppHeaderProps,
   IAppHeaderStyleProps,
@@ -31,10 +30,19 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
 
   return (
     <header>
+      <div className={classNames.whole}>
       <div className={classNames.root} role="banner" aria-label="header">
-        <WelcomeName></WelcomeName>
-        <AddOwner />
-        <SignInSignOutButton/>
+        <div className={classNames.left}> Membership Management </div>
+        <div className={classNames.right}><SettingsIcon /></div>
+      </div>
+      <br />
+      <div className={classNames.welcome} role="banner" aria-label="header">
+        <WelcomeName />
+      </div>
+      <div className={classNames.learn} role="banner" aria-label="header">
+        <br/> Learn how Membership Management works in your organization <br />
+      </div>
+      < br/>
       </div>
     </header>
   );

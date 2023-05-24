@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { DetailsList, DetailsListLayoutMode } from '@fluentui/react/lib/DetailsList';
+import { DetailsList, DetailsListLayoutMode, IColumn } from '@fluentui/react/lib/DetailsList';
 import { useTranslation } from 'react-i18next';
 import '../../i18n/config';
 import { useEffect } from 'react'
@@ -18,8 +18,8 @@ import {
   IJobsListStyleProps,
   IJobsListStyles,
 } from "./JobsList.types";
+import {ReportHackedIcon } from '@fluentui/react-icons-mdl2';
 
-  
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
   IJobsListStyles
@@ -44,16 +44,17 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   var selectRow = t('selectRow');
 
   var columns = [
-    { key: 'column1', name: 'Type', fieldName: 'targetGroupType', minWidth: 100, maxWidth: 200, isResizable: true },
-    { key: 'column2', name: 'Last Run', fieldName: 'lastSuccessfulRunTime', minWidth: 100, maxWidth: 200, isResizable: true },    
-    { key: 'column4', name: 'Next Run', fieldName: 'estimatedNextRunTime', minWidth: 100, maxWidth: 200, isResizable: true },
-    { key: 'column6', name: 'Status', fieldName: 'status', minWidth: 100, maxWidth: 200, isResizable: true }
+    { key: 'type', name: 'Type', fieldName: 'targetGroupType', minWidth: 100, maxWidth: 100, isResizable: false },
+    { key: 'lastRun', name: 'Last Run', fieldName: 'lastSuccessfulRunTime', minWidth: 100, maxWidth: 100, isResizable: false },
+    { key: 'nextRun', name: 'Next Run', fieldName: 'estimatedNextRunTime', minWidth: 100, maxWidth: 100, isResizable: false },
+    { key: 'status', name: 'Status', fieldName: 'enabledOrNot', minWidth: 75, maxWidth: 75, isResizable: false },
+    { key: 'actionRequired', name: 'Action Required', fieldName: 'actionRequired', minWidth: 100, maxWidth: 200, isResizable: false }
   ];
 
   const dispatch = useDispatch<AppDispatch>()
   const jobs = useSelector(selectAllJobs)
   const navigate = useNavigate()
-  
+
   useEffect(() => {
     if (!jobs){
       dispatch(fetchJobs())
@@ -62,7 +63,48 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
 
 const onItemClicked = (item?: any, index?: number, ev?: React.FocusEvent<HTMLElement>): void => {
   navigate('/JobDetailsPage', { replace: false, state: {item: item} })
-} 
+}
+
+const _renderItemColumn = (item?: any, index?: number, column?: IColumn): JSX.Element => {
+  const fieldContent = item[column?.fieldName as keyof any] as string;
+
+  switch (column?.key) {
+    case 'lastRun':
+    case 'nextRun':
+      const spaceIndex = fieldContent.indexOf(" ");
+      return (
+        <div>
+            <div> {fieldContent.substring(0, spaceIndex)}</div>
+            <div> {fieldContent.substring(spaceIndex + 1)}</div>
+        </div>
+      );
+
+    case 'status':
+      return (
+        <div>
+          {fieldContent === "Disabled" ? (
+            <div className={classNames.disabled}> {fieldContent}</div>
+          ) : (
+            <div className={classNames.enabled}> {fieldContent}</div>
+          )}
+        </div>
+      );
+
+      case 'actionRequired':
+      return (
+        <div>
+          {fieldContent ? (
+            <div className={classNames.actionRequired}>  <ReportHackedIcon /> {fieldContent}</div>
+          ) : (
+            <div className={classNames.actionRequired}> {fieldContent}</div>
+          )}
+        </div>
+      );
+
+    default:
+      return <span>{fieldContent}</span>;
+  }
+};
 
 if (jobs && jobs.length > 0) {
   return (
@@ -77,6 +119,7 @@ if (jobs && jobs.length > 0) {
             ariaLabelForSelectAllCheckbox={toggleAllSelection}
             checkButtonAriaLabel={selectRow}
             onActiveItemChanged={onItemClicked}
+            onRenderItemColumn={_renderItemColumn}
         />
       </div>
   );

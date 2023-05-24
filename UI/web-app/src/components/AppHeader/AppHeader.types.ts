@@ -6,6 +6,11 @@ import { IStyle, IStyleFunctionOrObject, ITheme } from '@fluentui/react';
 
 export interface IAppHeaderStyles {
   root: IStyle;
+  welcome: IStyle;
+  learn: IStyle;
+  whole: IStyle;
+  left: IStyle;
+  right: IStyle;
 }
 
 export interface IAppHeaderStyleProps {

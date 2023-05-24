@@ -11,6 +11,9 @@ export type Job = {
   lastSuccessfulRunTime: string;
   ago: string;
   left: string;
+  actionRequired: string;
+  enabledOrNot: string;
+  status: string;
   estimatedNextRunTime: string;
   thresholdPercentageForAdditions: number;
   thresholdPercentageForRemovals: number;

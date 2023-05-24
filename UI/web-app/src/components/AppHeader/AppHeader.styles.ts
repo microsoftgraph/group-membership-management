@@ -10,14 +10,36 @@ export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
     root: [
       {
         backgroundColor: theme.palette.themePrimary,
-        height: 54,
+        height: 40,
+        color: 'white',
         maxWidth: "100%",
         margin: '0 auto',
         borderBottom: '1px solid transparent',
         boxSizing: 'border-box',
-        display: 'flex'
+        paddingLeft: 20,
+        paddingTop: 10
       },
       className
-    ]
+    ],
+    left: {
+      float: 'left'
+    },
+    right: {
+      paddingRight: 10,
+      fontSize: 15,
+      float: 'right'
+    },
+    welcome: {
+      fontWeight: 'bold',
+      fontSize: 25,
+      paddingLeft: 20
+    },
+    learn: {
+      paddingLeft: 20
+
+    },
+    whole: {
+      backgroundColor: theme.palette.neutralLight
+    }
   };
 };

@@ -4,7 +4,7 @@
 import { IPageHeaderStyleProps, IPageHeaderStyles } from './PageHeader.types';
 
 export const getStyles = (props: IPageHeaderStyleProps): IPageHeaderStyles => {
-  const { className, theme } = props;
+  const { className } = props;
 
   return {
     root: [

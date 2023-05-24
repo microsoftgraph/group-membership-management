@@ -9,9 +9,26 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
   return {
     root: [
       {
-        
+
       },
       className
-    ]
+    ],
+    enabled: {
+      color: 'black',
+      backgroundColor: 'lightGreen',
+      borderRadius: 50,
+      textAlign: 'center',
+      height: 20
+    },
+    disabled: {
+      color: 'black',
+      backgroundColor: 'lightGrey',
+      borderRadius: 50,
+      textAlign: 'center',
+      height: 20
+    },
+    actionRequired: {
+      color: 'darkRed'
+    }
   };
 };
