@@ -6,13 +6,15 @@ import { configureStore } from '@reduxjs/toolkit';
 import accountReducer from './account.slice';
 import jobsReducer from './jobs.slice';
 import ownerReducer from './owner.slice';
+import profileReducer from './profile.slice';
 
 export const store = configureStore({
   reducer: {
     account: accountReducer,
     jobs: jobsReducer,
     owner: ownerReducer,
-  },
+    profile: profileReducer
+  }
 });
 
 // Infer the `RootState` and `AppDispatch` types from the store itself

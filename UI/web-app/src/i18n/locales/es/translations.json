@@ -16,5 +16,20 @@
   "okButton": "Aceptar",
   "groupIdHeader": "Introduzca el ID de grupo",
   "groupIdPlaceHolder": "ID de grupo",
-  "addOwnerButton": "Agregar GMM como propietario"
+  "addOwnerButton": "Agregar GMM como propietario",
+  "welcome": "Bienvenido",
+  "signIn": "Iniciar sesión",
+  "signOut": "Cerrar sesión",
+  "identifier": "ID",
+  "objectType": "Tipo de objeto",
+  "initialOnboardingTime": "Hora de integración inicial",
+  "status": "Estado",
+  "lastSuccessfulStartTime": "Último inicio exitoso",
+  "lastSuccessfulRunTime": "Última ejecución exitosa",
+  "estimatedNextRunTime": "Próxima ejecución estimada",
+  "thresholdIncrease": "Aumento del límite",
+  "thresholdDecrease": "Decremento del límite",
+  "membershipDetails": "Detalles de membresía",
+  "membershipManagement": "Manejo de Membresía",
+  "learnMembershipManagement": "Aprenda cómo funciona Manejo de Membresía en su organización."
 }

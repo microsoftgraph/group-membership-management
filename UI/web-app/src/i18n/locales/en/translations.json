@@ -14,6 +14,8 @@
     "groupIdHeader": "Enter Group ID",
     "groupIdPlaceHolder": "Group ID",
     "addOwnerButton": "Add GMM as an owner",
+    "membershipManagement": "Membership Management",
+    "learnMembershipManagement": "Learn how Membership Management works in your organization",
     "JobDetailsPage": {
         "labels": {
             "pageTitle": "Membership Details",
@@ -73,5 +75,6 @@
         "MessageBar": {
             "dismissButtonAriaLabel": "Close"
         }
-    }
+    },
+    "welcome": "Welcome"
 }

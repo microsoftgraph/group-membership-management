@@ -48,6 +48,7 @@ const itemAlignmentsStackTokens: IStackTokens = {
 const stackStyles: Partial<IStackStyles> = { root: { height: 44 } };
 
 export const JobDetailsPage: React.FunctionComponent = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const job: Job = location.state.item;
 

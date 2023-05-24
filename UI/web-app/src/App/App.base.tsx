@@ -5,17 +5,16 @@ import { useMsal } from '@azure/msal-react';
 import { classNamesFunction, type IProcessedStyleSet } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import React, { useEffect } from 'react';
-import { I18nextProvider } from 'react-i18next';
+import { I18nextProvider, useTranslation } from 'react-i18next';
 import { useSelector, useDispatch } from 'react-redux';
 import { Outlet } from 'react-router-dom';
-
+import { selectProfile } from '../store/profile.slice';
 import {
   type IAppProps,
   type IAppStyleProps,
   type IAppStyles,
 } from './App.types';
 import { AppHeader } from '../components/AppHeader';
-import i18n from '../i18n/config';
 import { type AppDispatch } from '../store';
 import { fetchAccount } from '../store/account.api';
 import { selectAccount } from '../store/account.slice';
@@ -31,6 +30,11 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
     className,
     theme,
   });
+  const { t, i18n } = useTranslation();
+
+
+  const profile = useSelector(selectProfile)
+  i18n.changeLanguage(profile.userPreferredLanguage);
 
   const account = useSelector(selectAccount);
   const dispatch = useDispatch<AppDispatch>();
@@ -54,6 +58,8 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
       </I18nextProvider>
     );
   } else {
-    return <div> loading </div>;
+    return (
+      <div> {t('loading')} </div>
+    );
   }
 };
