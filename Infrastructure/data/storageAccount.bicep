@@ -30,6 +30,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
   properties: {
     supportsHttpsTrafficOnly: true
     allowBlobPublicAccess: false
+    minimumTlsVersion: 'TLS1_2'
   }
   identity: {
     type: 'SystemAssigned'
