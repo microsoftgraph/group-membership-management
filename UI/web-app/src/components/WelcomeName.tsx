@@ -8,10 +8,9 @@ import { selectAccountName } from '../store/account.slice'
 const WelcomeName = () => {
 
     const name: string | undefined = useSelector(selectAccountName);
-    const firstName: string | undefined = name ? name.split(" ")[0] : undefined;
 
-    if (firstName) {
-        return <div>Welcome, {firstName}</div>;
+    if (name) {
+        return <div>Welcome, {name}</div>;
     } else {
         return null;
     }
