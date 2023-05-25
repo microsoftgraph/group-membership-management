@@ -25,6 +25,51 @@ const getClassNames = classNamesFunction<
   IJobsListStyles
 >();
 
+const buildColumns = (): IColumn[] => {
+  const columns: IColumn[] = [];
+  columns.push({
+    key: "type",
+    name: "Type",
+    fieldName: "targetGroupType",
+    minWidth: 100,
+    maxWidth: 100,
+    isResizable: false
+  });
+  columns.push({
+    key: "lastRun",
+    name: "Last Run",
+    fieldName: "lastSuccessfulRunTime",
+    minWidth: 100,
+    maxWidth: 100,
+    isResizable: false
+  });
+  columns.push({
+    key: "nextRun",
+    name: "Next Run",
+    fieldName: "estimatedNextRunTime",
+    minWidth: 100,
+    maxWidth: 100,
+    isResizable: false
+  });
+  columns.push({
+    key: "status",
+    name: "Status",
+    fieldName: "enabledOrNot",
+    minWidth: 75,
+    maxWidth: 75,
+    isResizable: false
+  });
+  columns.push({
+    key: "actionRequired",
+    name: "Action Required",
+    fieldName: "actionRequired",
+    minWidth: 200,
+    maxWidth: 200,
+    isResizable: false
+  });
+  return columns;
+}
+
 export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   props: IJobsListProps
 ) => {
@@ -42,14 +87,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   var toggleSelection = t('toggleSelection');
   var toggleAllSelection = t('toggleAllSelection');
   var selectRow = t('selectRow');
-
-  var columns = [
-    { key: 'type', name: 'Type', fieldName: 'targetGroupType', minWidth: 100, maxWidth: 100, isResizable: false },
-    { key: 'lastRun', name: 'Last Run', fieldName: 'lastSuccessfulRunTime', minWidth: 100, maxWidth: 100, isResizable: false },
-    { key: 'nextRun', name: 'Next Run', fieldName: 'estimatedNextRunTime', minWidth: 100, maxWidth: 100, isResizable: false },
-    { key: 'status', name: 'Status', fieldName: 'enabledOrNot', minWidth: 75, maxWidth: 75, isResizable: false },
-    { key: 'actionRequired', name: 'Action Required', fieldName: 'actionRequired', minWidth: 100, maxWidth: 200, isResizable: false }
-  ];
+  var columns = buildColumns();
 
   const dispatch = useDispatch<AppDispatch>()
   const jobs = useSelector(selectAllJobs)
