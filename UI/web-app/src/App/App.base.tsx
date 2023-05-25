@@ -31,7 +31,7 @@ export const AppBase: React.FunctionComponent<IAppProps> = ( props: IAppProps ) 
 
   useEffect(() => {
     dispatch(fetchAccount(context));
-  }, []);
+  }, [context, dispatch]);
 
   if (account) {
     return (

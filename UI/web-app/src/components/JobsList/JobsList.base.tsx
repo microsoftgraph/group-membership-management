@@ -59,7 +59,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     if (!jobs){
       dispatch(fetchJobs())
     }
-}, [dispatch])
+}, [dispatch, jobs]);
 
 const onItemClicked = (item?: any, index?: number, ev?: React.FocusEvent<HTMLElement>): void => {
   navigate('/JobDetailsPage', { replace: false, state: {item: item} })
