@@ -48,12 +48,12 @@
         "subscriptions": [
           {
             "name": "GraphUpdater",
-            "ruleName": "syncType",
+            "ruleName": "updaterType",
             "ruleSqlExpression": "Type = 'GraphUpdater'"
           },
           {
             "name": "TeamsChannelUpdater",
-            "ruleName": "syncType",
+            "ruleName": "updaterType",
             "ruleSqlExpression": "Type = 'TeamsChannelUpdater'"
           }
         ]
