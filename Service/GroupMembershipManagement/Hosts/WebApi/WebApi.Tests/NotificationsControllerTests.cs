@@ -183,12 +183,12 @@ namespace Services.Tests
                 _graphGroupRepository.Object,
                 _thresholdNotificationService);
 
-            _notificationsController = new NotificationsController(_resolveNotificationsHandler, _notificationCardHandler);
-
-            _notificationsController.ControllerContext = new ControllerContext
+            var claims = new List<Claim>
             {
-                HttpContext = getHttpContextForUpn(_userUPN)
+                new Claim(ClaimTypes.Upn, _userUPN),
             };
+            _notificationsController = new NotificationsController(_resolveNotificationsHandler, _notificationCardHandler);
+            _notificationsController.ControllerContext = CreateControllerContext(claims);
         }
         /// <summary>
         /// /notifications/{id}/resolve - Resolve notification with Ignore Once
@@ -249,10 +249,12 @@ namespace Services.Tests
         [TestMethod]
         public async Task ResolveNotification_HandleUserNotGroupOwnerTestAsync()
         {
-            _notificationsController.ControllerContext = new ControllerContext
+            var claims = new List<Claim>
             {
-                HttpContext = getHttpContextForUpn("not-an-owner@contoso.net")
+                new Claim(ClaimTypes.Upn, "notAnOwner@contoso.net")
             };
+
+            _notificationsController.ControllerContext = CreateControllerContext(claims);
 
             var response = await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
             var result = response.Result as ContentResult;
@@ -350,10 +352,12 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetNotificationCard_HandleUserNotGroupOwnerTestAsync()
         {
-            _notificationsController.ControllerContext = new ControllerContext
+            var claims = new List<Claim>
             {
-                HttpContext = getHttpContextForUpn("not-an-owner@contoso.net")
+                new Claim(ClaimTypes.Upn, "notAnOwner@contoso.com"),
             };
+
+            _notificationsController.ControllerContext = CreateControllerContext(claims);
 
             var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
             var result = response.Result as ContentResult;
@@ -430,27 +434,15 @@ namespace Services.Tests
             Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
         }
 
-        private static HttpContext getHttpContextForUpn(string userUpn)
+
+        private ControllerContext CreateControllerContext(List<Claim> claims)
         {
-            var claimList = new List<Claim> { new Claim("sub", userUpn) };
-
-            // Create a SecurityTokenDescriptor with the claims and signing key
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(claimList),
-                Expires = DateTime.UtcNow.AddDays(7)
-            };
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.CreateToken(tokenDescriptor);
-            var tokenString = tokenHandler.WriteToken(jwtToken);
-
+            var identity = new ClaimsIdentity(claims, "TestAuthType");
+            var principal = new ClaimsPrincipal(identity);
             var httpContext = new DefaultHttpContext();
-            httpContext.Request.Method = "POST";
-            httpContext.Request.ContentType = "application/json";
-            httpContext.Request.Headers.Add("Authorization", $"Bearer {tokenString}");
+            httpContext.User = principal;
 
-            return httpContext;
+            return new ControllerContext { HttpContext = httpContext };
         }
     }
 }
