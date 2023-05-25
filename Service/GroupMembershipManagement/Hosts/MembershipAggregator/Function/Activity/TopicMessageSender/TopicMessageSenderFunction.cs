@@ -35,20 +35,23 @@ namespace Hosts.MembershipAggregator
 
             var allQueries = JArray.Parse(request.SyncJob.Query);
             var queryType = allQueries.SelectTokens("$..type").Select(x => x.Value<string>()).First();
+            var destinations = JArray.Parse(request.SyncJob.Destination);
+            var destinationType = destinations.SelectTokens("$..type").Select(x => x.Value<string>()).First();
+            var body = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
 
             var message = new ServiceBusMessage
             {
-                MessageId = $"{request.SyncJob.PartitionKey}_{request.SyncJob.RowKey}_{request.SyncJob.RunId}",
-                Body = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request))
+                MessageId = $"{request.SyncJob.PartitionKey}_{request.SyncJob.RowKey}_{request.SyncJob.RunId}_{destinationType}",
+                Body = body
             };
 
-            message.UserProperties.Add("Type", queryType);
+            message.UserProperties.Add("Type", destinationType);
 
             await _serviceBusTopicsRepository.AddMessageAsync(message);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"Sent message to membership updaters topic",
+                Message = $"Sent message to {destinationType} membership updater",
                 RunId = request.SyncJob.RunId
             }, VerbosityLevel.INFO);
 
@@ -57,7 +60,6 @@ namespace Hosts.MembershipAggregator
                 Message = $"{nameof(TopicMessageSenderFunction)} function completed",
                 RunId = request.SyncJob.RunId
             }, VerbosityLevel.DEBUG);
-
         }
     }
 }

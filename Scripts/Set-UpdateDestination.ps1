@@ -67,13 +67,12 @@ function Set-UpdateDestination {
 
     foreach ($job in $jobs) {
         if (!$job.Destination) {
-
             $job | Add-Member NoteProperty "Destination" ""
         }
 
-        $targetOfficeId = $job.TargetOfficeGroupId;
+        $targetOfficeId = $job.TargetOfficeGroupId.ToString();
 
-        $job.Destination = (@{type = "AzureADGroup"; value = $targetOfficeId.ToString() }) | ConvertTo-Json
+        $job.Destination = (@{type = "GraphUpdater"; value = $targetOfficeId }) | ConvertTo-Json -AsArray -Compress
         $job | Update-AzTableRow -table $cloudTable
     }
 

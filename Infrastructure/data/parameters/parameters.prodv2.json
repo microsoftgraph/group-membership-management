@@ -49,12 +49,12 @@
           {
             "name": "GraphUpdater",
             "ruleName": "syncType",
-            "ruleSqlExpression": "Type IN ('SecurityGroup', 'GroupOwnership')"
+            "ruleSqlExpression": "Type = 'GraphUpdater'"
           },
           {
             "name": "TeamsChannelUpdater",
             "ruleName": "syncType",
-            "ruleSqlExpression": "Type = 'TeamsChannel'"
+            "ruleSqlExpression": "Type = 'TeamsChannelUpdater'"
           }
         ]
       }

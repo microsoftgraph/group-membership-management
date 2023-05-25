@@ -22,7 +22,6 @@ namespace Services.Tests
     public class OrchestratorTests
     {
         private SyncJob _syncJob;
-        private DurableHttpResponse _durableHttpResponse;
         private MembershipAggregatorHttpRequest _membershipAggregatorHttpRequest;
         private MembershipSubOrchestratorResponse _membershipSubOrchestratorResponse;
         private TelemetryClient _telemetryClient;
@@ -45,11 +44,12 @@ namespace Services.Tests
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _serviceBusTopicsRepository = new Mock<IServiceBusTopicsRepository>();
 
+            var targetOfficeGroupId = Guid.NewGuid();
             _syncJob = new SyncJob
             {
                 PartitionKey = "00-00-0000",
                 RowKey = Guid.NewGuid().ToString(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                TargetOfficeGroupId = targetOfficeGroupId,
                 ThresholdPercentageForAdditions = 80,
                 ThresholdPercentageForRemovals = 20,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
@@ -57,6 +57,7 @@ namespace Services.Tests
                 RunId = Guid.NewGuid(),
                 ThresholdViolations = 0,
                 Query = "[{\"type\":\"SecurityGroup\",\"source\":\"9e9b029b-52a7-467a-94fb-325b6241022b\"},{\"type\":\"GroupOwnership\",\"source\":[\"SecurityGroup\"]}]",
+                Destination = $"[{{\"value\":\"{targetOfficeGroupId}\",\"type\":\"GraphUpdater\"}}]"
             };
 
             _membershipAggregatorHttpRequest = new MembershipAggregatorHttpRequest
@@ -130,7 +131,7 @@ namespace Services.Tests
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Sent message to membership updaters topic"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
@@ -144,7 +145,7 @@ namespace Services.Tests
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Sent message to membership updaters topic"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Never());
         }
@@ -159,7 +160,7 @@ namespace Services.Tests
 
             Assert.IsNotNull(_jobTrackerEntity.Object.JobState.DestinationPart);
             Assert.AreEqual(_membershipAggregatorHttpRequest.FilePath, _jobTrackerEntity.Object.JobState.DestinationPart);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Sent message to membership updaters topic"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }

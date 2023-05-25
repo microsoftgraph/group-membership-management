@@ -33,12 +33,6 @@ namespace Models
         public Guid TargetOfficeGroupId { get; set; }
         public string Destination { get; set; }
 
-        /// <summary>
-        /// Membership updater to use.
-        /// Comma separated list of membership updaters.
-        /// </summary>
-        public string DestinationType { get; set; }
-
         [IgnoreLogging]
         public string Status { get; set; }
 

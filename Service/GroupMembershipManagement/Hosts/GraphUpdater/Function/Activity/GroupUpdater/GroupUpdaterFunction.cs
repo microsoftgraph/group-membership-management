@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using GraphUpdater.Helpers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
@@ -34,11 +35,12 @@ namespace Hosts.GraphUpdater
             var successCount = 0;
             var usersNotFound = new List<AzureADUser>();
             var usersAlreadyExist = new List<AzureADUser>();
+            var destination = JsonParser.GetDestination(request.SyncJob.Destination);
 
             if (request.Type == RequestType.Add)
             {
                 var addUsersToGraphResponse = await _graphUpdaterService.AddUsersToGroupAsync(
-                    request.Members, request.SyncJob.TargetOfficeGroupId, request.SyncJob.RunId.GetValueOrDefault(), request.IsInitialSync);
+                    request.Members, destination.TargetGroupId, request.SyncJob.RunId.GetValueOrDefault(), request.IsInitialSync);
 
                 successCount = addUsersToGraphResponse.SuccessCount;
                 usersNotFound = addUsersToGraphResponse.UsersNotFound;
@@ -47,7 +49,7 @@ namespace Hosts.GraphUpdater
             else
             {
                 var removeUsersFromGraphResponse = await _graphUpdaterService.RemoveUsersFromGroupAsync(
-                    request.Members, request.SyncJob.TargetOfficeGroupId, request.SyncJob.RunId.GetValueOrDefault(), request.IsInitialSync);
+                    request.Members, destination.TargetGroupId, request.SyncJob.RunId.GetValueOrDefault(), request.IsInitialSync);
 
                 successCount = removeUsersFromGraphResponse.SuccessCount;
                 usersNotFound = removeUsersFromGraphResponse.UsersNotFound;
@@ -56,11 +58,11 @@ namespace Hosts.GraphUpdater
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
             return new GroupUpdaterResponse()
-                {
-                    SuccessCount = successCount,
-                    UsersNotFound = usersNotFound,
-                    UsersAlreadyExist = usersAlreadyExist
-                };
+            {
+                SuccessCount = successCount,
+                UsersNotFound = usersNotFound,
+                UsersAlreadyExist = usersAlreadyExist
+            };
         }
     }
 }
