@@ -97,77 +97,76 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     if (!jobs){
       dispatch(fetchJobs())
     }
-}, [dispatch, jobs]);
+  }, [dispatch, jobs]);
 
-const onItemClicked = (item?: any, index?: number, ev?: React.FocusEvent<HTMLElement>): void => {
-  navigate('/JobDetailsPage', { replace: false, state: {item: item} })
-}
-
-const _renderItemColumn = (item?: any, index?: number, column?: IColumn): JSX.Element => {
-  const fieldContent = item[column?.fieldName as keyof any] as string;
-
-  switch (column?.key) {
-    case 'lastRun':
-    case 'nextRun':
-      const spaceIndex = fieldContent.indexOf(" ");
-      return (
-        <div>
-            <div> {fieldContent.substring(0, spaceIndex)}</div>
-            <div> {fieldContent.substring(spaceIndex + 1)}</div>
-        </div>
-      );
-
-    case 'status':
-      return (
-        <div>
-          {fieldContent === "Disabled" ? (
-            <div className={classNames.disabled}> {fieldContent}</div>
-          ) : (
-            <div className={classNames.enabled}> {fieldContent}</div>
-          )}
-        </div>
-      );
-
-      case 'actionRequired':
-      return (
-        <div>
-          {fieldContent ? (
-            <div className={classNames.actionRequired}>  <ReportHackedIcon /> {fieldContent}</div>
-          ) : (
-            <div className={classNames.actionRequired}> {fieldContent}</div>
-          )}
-        </div>
-      );
-
-    default:
-      return <span>{fieldContent}</span>;
+  const onItemClicked = (item?: any, index?: number, ev?: React.FocusEvent<HTMLElement>): void => {
+    navigate('/JobDetailsPage', { replace: false, state: {item: item} })
   }
-};
 
-if (jobs && jobs.length > 0) {
-  return (
-    <div className={classNames.root}>
-          <DetailsList
-            items={jobs}
-            columns={columns}
-            setKey="set"
-            layoutMode={DetailsListLayoutMode.justified}
-            selectionPreservedOnEmptyClick={true}
-            ariaLabelForSelectionColumn={toggleSelection}
-            ariaLabelForSelectAllCheckbox={toggleAllSelection}
-            checkButtonAriaLabel={selectRow}
-            onActiveItemChanged={onItemClicked}
-            onRenderItemColumn={_renderItemColumn}
-        />
+  const _renderItemColumn = (item?: any, index?: number, column?: IColumn): JSX.Element => {
+    const fieldContent = item[column?.fieldName as keyof any] as string;
+
+    switch (column?.key) {
+      case 'lastRun':
+      case 'nextRun':
+        const spaceIndex = fieldContent.indexOf(" ");
+        return (
+          <div>
+              <div> {fieldContent.substring(0, spaceIndex)}</div>
+              <div> {fieldContent.substring(spaceIndex + 1)}</div>
+          </div>
+        );
+
+      case 'status':
+        return (
+          <div>
+            {fieldContent === "Disabled" ? (
+              <div className={classNames.disabled}> {fieldContent}</div>
+            ) : (
+              <div className={classNames.enabled}> {fieldContent}</div>
+            )}
+          </div>
+        );
+
+        case 'actionRequired':
+        return (
+          <div>
+            {fieldContent ? (
+              <div className={classNames.actionRequired}>  <ReportHackedIcon /> {fieldContent}</div>
+            ) : (
+              <div className={classNames.actionRequired}> {fieldContent}</div>
+            )}
+          </div>
+        );
+
+      default:
+        return <span>{fieldContent}</span>;
+    }
+  };
+
+  if (jobs && jobs.length > 0) {
+    return (
+      <div className={classNames.root}>
+            <DetailsList
+              items={jobs}
+              columns={columns}
+              setKey="set"
+              layoutMode={DetailsListLayoutMode.justified}
+              selectionPreservedOnEmptyClick={true}
+              ariaLabelForSelectionColumn={toggleSelection}
+              ariaLabelForSelectAllCheckbox={toggleAllSelection}
+              checkButtonAriaLabel={selectRow}
+              onActiveItemChanged={onItemClicked}
+              onRenderItemColumn={_renderItemColumn}
+          />
+        </div>
+    );
+  }
+  else {
+    return(
+      <div>
+        <Loader />
       </div>
-  );
-}
-else {
-  return(
-    <div>
-      <Loader />
-    </div>
-  );
-}
-
+    );
+  }
 }
