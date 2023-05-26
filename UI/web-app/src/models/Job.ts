@@ -9,8 +9,6 @@ export type Job = {
   startDate: string;
   lastSuccessfulStartTime: string;
   lastSuccessfulRunTime: string;
-  ago: string;
-  left: string;
   actionRequired: string;
   enabledOrNot: string;
   status: string;
