@@ -11,7 +11,7 @@ export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
       {
         backgroundColor: theme.palette.themePrimary,
         height: 40,
-        color: 'white',
+        color: theme.palette.white,
         maxWidth: "100%",
         margin: '0 auto',
         borderBottom: '1px solid transparent',
@@ -24,7 +24,7 @@ export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
     circle: {
       border: 'solid 2px',
       borderRadius: '50%',
-      background: 'white',
+      background: theme.palette.white,
       height: 20,
       width: 20,
       display: 'flex',
@@ -32,7 +32,7 @@ export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
       alignItems: 'center'
     },
     tabContent: {
-      color: 'white',
+      color: theme.palette.white,
       float: 'left',
       border: 'none',
       outline: 'none',
@@ -40,7 +40,7 @@ export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
       paddingLeft: 15
     },
     icon: {
-      color: '#0078d7',
+      color: theme.palette.themePrimary,
       paddingBottom: 5,
       paddingRight: 0.5
     },

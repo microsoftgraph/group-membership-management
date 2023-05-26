@@ -4,7 +4,7 @@
 import { IJobsListStyleProps, IJobsListStyles } from './JobsList.types';
 
 export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
-  const { className } = props;
+  const { className, theme } = props;
 
   return {
     root: [
@@ -14,21 +14,21 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       className
     ],
     enabled: {
-      color: 'black',
-      backgroundColor: 'lightGreen',
+      color: theme.palette.black,
+      backgroundColor: theme.palette.greenLight,
       borderRadius: 50,
       textAlign: 'center',
       height: 20
     },
     disabled: {
       color: 'black',
-      backgroundColor: 'lightGrey',
+      backgroundColor: theme.palette.themeLighterAlt,
       borderRadius: 50,
       textAlign: 'center',
       height: 20
     },
     actionRequired: {
-      color: 'darkRed'
+      color: theme.palette.redDark
     }
   };
 };
