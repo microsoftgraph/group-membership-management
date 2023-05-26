@@ -4,7 +4,7 @@
 import { classNamesFunction, IProcessedStyleSet } from "@fluentui/react";
 import { useTheme } from "@fluentui/react/lib/Theme";
 import WelcomeName from "../WelcomeName";
-import { SettingsIcon } from "@fluentui/react-icons-mdl2";
+import { AccountManagementIcon, SettingsIcon } from "@fluentui/react-icons-mdl2";
 import {
   IAppHeaderProps,
   IAppHeaderStyleProps,
@@ -32,7 +32,8 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
     <header>
       <div className={classNames.whole}>
       <div className={classNames.root} role="banner" aria-label="header">
-        <div className={classNames.left}> Membership Management </div>
+        <div className={classNames.tabContent}> <div className={classNames.circle}><div className={classNames.icon}><AccountManagementIcon /></div> </div> </div>
+        <div className={classNames.tabContent}> Membership Management </div>
         <div className={classNames.right}><SettingsIcon /></div>
       </div>
       <br />

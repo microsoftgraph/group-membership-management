@@ -21,8 +21,28 @@ export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
       },
       className
     ],
-    left: {
-      float: 'left'
+    circle: {
+      border: 'solid 2px',
+      borderRadius: '50%',
+      background: 'white',
+      height: 20,
+      width: 20,
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center'
+    },
+    tabContent: {
+      color: 'white',
+      float: 'left',
+      border: 'none',
+      outline: 'none',
+      cursor: 'pointer',
+      paddingLeft: 15
+    },
+    icon: {
+      color: '#0078d7',
+      paddingBottom: 5,
+      paddingRight: 0.5
     },
     right: {
       paddingRight: 10,

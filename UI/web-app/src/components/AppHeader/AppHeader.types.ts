@@ -9,8 +9,10 @@ export interface IAppHeaderStyles {
   welcome: IStyle;
   learn: IStyle;
   whole: IStyle;
-  left: IStyle;
   right: IStyle;
+  circle: IStyle;
+  icon: IStyle;
+  tabContent: IStyle;
 }
 
 export interface IAppHeaderStyleProps {
