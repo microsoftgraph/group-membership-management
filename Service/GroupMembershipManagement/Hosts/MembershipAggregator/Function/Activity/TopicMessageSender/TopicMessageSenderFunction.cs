@@ -33,8 +33,6 @@ namespace Hosts.MembershipAggregator
                 RunId = request.SyncJob.RunId
             }, VerbosityLevel.DEBUG);
 
-            var allQueries = JArray.Parse(request.SyncJob.Query);
-            var queryType = allQueries.SelectTokens("$..type").Select(x => x.Value<string>()).First();
             var destinations = JArray.Parse(request.SyncJob.Destination);
             var destinationType = destinations.SelectTokens("$..type").Select(x => x.Value<string>()).First();
             var body = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
