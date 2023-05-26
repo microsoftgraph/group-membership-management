@@ -45,7 +45,7 @@ export const fetchJobs = createAsyncThunk("jobs/fetchJobs", async () => {
       index['lastSuccessfulRunTime'] = moment.utc(index["lastSuccessfulRunTime"]).local().format("MM/DD/YYYY") + " " + hoursAgo.toString() + " hrs ago";
 
       var nextRunTime = moment(index['estimatedNextRunTime']);
-      var hoursLeft = currentTime.diff(nextRunTime, "hours");
+      var hoursLeft = Math.abs(currentTime.diff(nextRunTime, "hours"));
       index['estimatedNextRunTime'] = moment.utc(index["estimatedNextRunTime"]).local().format("MM/DD/YYYY") + " " + hoursLeft.toString() + " hrs left";
 
       index["enabledOrNot"] = index["status"] === "CustomerPaused" ? "Disabled" : "Enabled"
