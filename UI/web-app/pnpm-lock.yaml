@@ -10,9 +10,6 @@ dependencies:
   '@azure/msal-react':
     specifier: 1.5.4
     version: 1.5.4(@azure/msal-browser@2.34.0)(react@18.2.0)
-  '@fluentui/font-icons-mdl2':
-    specifier: ^8.5.13
-    version: 8.5.13(@types/react@18.0.27)(react@18.2.0)
   '@fluentui/react':
     specifier: 8.106.1
     version: 8.106.1(@types/react-dom@18.0.10)(@types/react@18.0.27)(react-dom@18.2.0)(react@18.2.0)

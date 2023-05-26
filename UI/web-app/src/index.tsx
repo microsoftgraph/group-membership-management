@@ -9,10 +9,6 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { JobsPage, JobDetailsPage, OwnerPage } from "./pages";
 import { App } from "./App";
 import { MsalProvider } from "@azure/msal-react";
-import { initializeIcons } from '@fluentui/font-icons-mdl2';
-
-
-
 import {
   PublicClientApplication,
   EventType,
@@ -36,8 +32,6 @@ msalInstance.addEventCallback((event: EventMessage) => {
     msalInstance.setActiveAccount(account);
   }
 });
-
-initializeIcons();
 
 ReactDOM.render(
   <ThemeProvider>
