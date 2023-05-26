@@ -6,6 +6,7 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import { loginRequest, config } from "../authConfig";
 import { msalInstance } from "../index";
 import moment from "moment";
+import { SyncStatus, ActionRequired } from "../models/Status";
 
 export const fetchJobs = createAsyncThunk("jobs/fetchJobs", async () => {
 
@@ -53,20 +54,27 @@ export const fetchJobs = createAsyncThunk("jobs/fetchJobs", async () => {
       return index;
     });
 
-    const newPayload = mapped.map((index)=> {
-     if (index["status"] === "ThresholdExceeded") {
-      index["actionRequired"] = "Threshold Exceeded"
-     } else if (index["status"] === "CustomerPaused") {
-      index["actionRequired"] = "Customer Paused"
-     } else if (index["status"] === "CustomMembershipDataNotFound") {
-      index["actionRequired"] = "No users in the source"
-     } else if (index["status"] === "DestinationGroupNotFound") {
-      index["actionRequired"] = "Destination Group Not Found"
-     } else if (index["status"] === "NotOwnerOfDestinationGroup") {
-      index["actionRequired"] = "Not Owner Of Destination Group"
-     } else if (index["status"] === "SecurityGroupNotFound") {
-      index["actionRequired"] = "Security Group Not Found"
-     }
+    const newPayload = mapped.map((index) => {
+      switch (index["status"]) {
+        case SyncStatus.ThresholdExceeded:
+          index["actionRequired"] = ActionRequired.ThresholdExceeded;
+          break;
+        case SyncStatus.CustomerPaused:
+          index["actionRequired"] = ActionRequired.CustomerPaused;
+          break;
+        case SyncStatus.CustomMembershipDataNotFound:
+          index["actionRequired"] = ActionRequired.CustomMembershipDataNotFound;
+          break;
+        case SyncStatus.DestinationGroupNotFound:
+          index["actionRequired"] = ActionRequired.DestinationGroupNotFound;
+          break;
+        case SyncStatus.NotOwnerOfDestinationGroup:
+          index["actionRequired"] = ActionRequired.NotOwnerOfDestinationGroup;
+          break;
+        case SyncStatus.SecurityGroupNotFound:
+          index["actionRequired"] = ActionRequired.SecurityGroupNotFound;
+          break;
+      }
       return index;
     });
 
