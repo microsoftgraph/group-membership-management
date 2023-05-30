@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-// import { Profile } from '../models/Profile';
 import type { RootState } from './store';
 import { getProfile } from './profile.api';
 

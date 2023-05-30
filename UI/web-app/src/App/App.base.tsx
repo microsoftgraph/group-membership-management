@@ -9,6 +9,7 @@ import { I18nextProvider, useTranslation } from 'react-i18next';
 import { useSelector, useDispatch } from 'react-redux';
 import { Outlet } from 'react-router-dom';
 import { selectProfile } from '../store/profile.slice';
+import { getProfile } from "../store/profile.api";
 import {
   type IAppProps,
   type IAppStyleProps,
@@ -31,18 +32,16 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
     theme,
   });
   const { t, i18n } = useTranslation();
-
-
-  const profile = useSelector(selectProfile)
-  i18n.changeLanguage(profile.userPreferredLanguage);
-
   const account = useSelector(selectAccount);
+  const profile = useSelector(selectProfile)
   const dispatch = useDispatch<AppDispatch>();
   const context = useMsal();
 
   useEffect(() => {
     dispatch(fetchAccount(context));
-  }, [dispatch]);
+    dispatch(getProfile());
+    i18n.changeLanguage(profile.userPreferredLanguage);
+  }, [dispatch, profile]);
 
   if (account != null) {
     return (

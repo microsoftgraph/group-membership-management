@@ -56,8 +56,6 @@ export const JobDetailsPage: React.FunctionComponent = () => {
   const jobDetails = useSelector(selectSelectedJobDetails);
   const error = useSelector(selectGetJobDetailsError);
 
-  const { t } = useTranslation();
-
   const OpenInNewWindowIcon: IIconProps = { iconName: 'OpenInNewWindow' };
 
   const onMessageBarDismiss = (): void => {
@@ -182,7 +180,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
                   allowDisabledFocus
                   onClick={openInAzure}
                 >
-                  Open in Azure
+                  {t('JobDetailsPage.openInAzure')}
                 </ActionButton>
               </Stack.Item>
             </Stack>

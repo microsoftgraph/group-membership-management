@@ -5,7 +5,7 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import { graphRequest} from "../authConfig";
 import { msalInstance } from "../index";
 
-export const getProfile = createAsyncThunk("owner/getProfile", async () => {
+export const getProfile = createAsyncThunk("profile/getProfile", async () => {
 
   const account = msalInstance.getActiveAccount();
   if (!account) {
@@ -33,8 +33,9 @@ export const getProfile = createAsyncThunk("owner/getProfile", async () => {
   try {
     let url = `https://graph.microsoft.com/v1.0/users/${account.localAccountId}?$select=preferredLanguage`;
     let response = await fetch(url, options).then((response) => response);
-    const payload: string = response.ok + " " +response.status.toString() + " " +response.statusText;
-    return payload;
+    const json = await response.json();
+    const preferredLanguage = json.preferredLanguage;
+    return preferredLanguage;
   } catch (error) {
     console.log(error);
   }

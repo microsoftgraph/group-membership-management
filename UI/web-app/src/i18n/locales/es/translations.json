@@ -1,14 +1,6 @@
 {
-  "edit": "Edita",
-  "saveToReload": "y guarda para actualizar",
-  "learnReact": "Aprende React",
-  "english": "Inglés",
-  "spanish": "Español",
   "emptyList": "No hay grupos administrados por GMM",
   "loading": "Cargando",
-  "toggleSelection": "Cambiar selección",
-  "toggleAllSelection": "Cambiar selección para todo",
-  "selectRow": "Seleccionar fila",
   "addOwner204Message": "Agregado correctamente.",
   "addOwner400Message": "GMM ya está agregado como propietario.",
   "addOwner403Message": "No tiene permiso para completar esta operación.",
@@ -17,19 +9,69 @@
   "groupIdHeader": "Introduzca el ID de grupo",
   "groupIdPlaceHolder": "ID de grupo",
   "addOwnerButton": "Agregar GMM como propietario",
-  "welcome": "Bienvenido",
-  "signIn": "Iniciar sesión",
-  "signOut": "Cerrar sesión",
-  "identifier": "ID",
-  "objectType": "Tipo de objeto",
-  "initialOnboardingTime": "Hora de integración inicial",
-  "status": "Estado",
-  "lastSuccessfulStartTime": "Último inicio exitoso",
-  "lastSuccessfulRunTime": "Última ejecución exitosa",
-  "estimatedNextRunTime": "Próxima ejecución estimada",
-  "thresholdIncrease": "Aumento del límite",
-  "thresholdDecrease": "Decremento del límite",
-  "membershipDetails": "Detalles de membresía",
-  "membershipManagement": "Manejo de Membresía",
-  "learnMembershipManagement": "Aprenda cómo funciona Manejo de Membresía en su organización."
+  "membershipManagement": "Membership Management",
+  "learnMembershipManagement": "Aprenda cómo funciona Membership Management en su organización",
+  "JobDetailsPage": {
+    "labels": {
+        "pageTitle": "Detalle de Membresía",
+        "sectionTitle": "Detalle de Membresía",
+        "lastModifiedby": "Última vez modificado por",
+        "groupLinks": "Links del grupo",
+        "destination": "Destino",
+        "type": "Tipo",
+        "name": "Nombre",
+        "ID": "ID",
+        "configuration": "Configuración",
+        "startDate": "Fecha de inicio",
+        "endDate": "Fecha de terminación",
+        "lastRun": "Última sincronización",
+        "nextRun": "Próxima sincronización",
+        "frequency": "Frecuencia",
+        "requestor": "Solicitante",
+        "increaseThreshold": "Aumentar límite",
+        "decreaseThreshold": "Disminuir límite",
+        "thresholdViolations": "Violaciones del límite",
+        "sourceParts": "Partes de origen"
+    },
+    "descriptions": {
+        "lastModifiedby": "Usuario quien hizo el último cambio a este grupo.",
+        "startDate": "Fecha en la que este grupo fue integrado a GMM.",
+        "endDate": "Fecha de la última sincronización de este grupo.",
+        "type": "Tipo de sincronización.",
+        "id": "ID de objecto del grupo destino.",
+        "lastRun": "Fecha de la última sincronización de este grupo.",
+        "nextRun": "Fecha de la próxima sincronización de este grupo.",
+        "frequency": "Frecuencia de la sincronización de este grupo.",
+        "requestor": "Usuario quien solicitó la integración a GMM.",
+        "increaseThreshold": "Número de usuarios que pueden ser añadidos al grupo destino, expresados como porcentaje del tamaño actual del grupo.",
+        "decreaseThreshold": "Número de usuarios que pueden ser removidos del grupo destino, expresados como porcentaje del tamaño actual del grupo.",
+        "thresholdViolations": "Número de ocasiones en las que se han excedido los límites."
+    },
+    "MessageBar": {
+        "dismissButtonAriaLabel": "Cerrar"
+    },
+    "openInAzure": "Abrir en Azure"
+},
+"JobsList": {
+    "ShimmeredDetailsList": {
+        "toggleSelection": "Alternar selección",
+        "toggleAllSelection": "Alternar selecciones para todo",
+        "selectRow": "seleccionar fila",
+        "ariaLabelForShimmer": "Recuperando contenido",
+        "ariaLabelForGrid": "Detalles de contenido",
+        "columnNames": {
+            "name": "Nombre",
+            "type": "Tipo",
+            "lastRun": "Última sincronización",
+            "nextRun": "Próxima sincronización",
+            "status": "Status",
+            "actionRequired": "Acción requerida"
+        }
+    },
+    "MessageBar": {
+        "dismissButtonAriaLabel": "Cerrar"
+    }
+},
+"welcome": "Bienvenido",
+"back": "Regresar"
 }
