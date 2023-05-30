@@ -30,7 +30,7 @@ namespace Repositories.GraphGroups
         {
             // get the service principal ID by its app ID
             var nativeResponseHandler = new NativeResponseHandler();
-            var response = new ServicePrincipalCollectionResponse();
+            var response = new DirectoryObjectCollectionResponse();
 
             IDictionary<string, IEnumerable<string>> headers = null;
 
@@ -51,7 +51,7 @@ namespace Repositories.GraphGroups
             if (nativeResponse.IsSuccessStatusCode)
             {
                 response = await DeserializeResponseAsync(nativeResponse,
-                                                          ServicePrincipalCollectionResponse.CreateFromDiscriminatorValue);
+                                                          DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
 
                 headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
 
