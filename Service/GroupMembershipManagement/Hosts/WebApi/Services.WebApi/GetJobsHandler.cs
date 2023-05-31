@@ -33,6 +33,7 @@ namespace Services
                     rowKey: job.RowKey,
                     targetGroupId: job.TargetOfficeGroupId,
                     status: job.Status,
+                    period: job.Period,
                     startDate: job.StartDate,
                     lastSuccessfulStartTime: job.LastSuccessfulStartTime,
                     lastSuccessfulRunTime: job.LastSuccessfulRunTime,

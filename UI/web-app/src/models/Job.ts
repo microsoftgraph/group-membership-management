@@ -12,6 +12,7 @@ export type Job = {
   actionRequired: string;
   enabledOrNot: string;
   status: string;
+  period: number;
   estimatedNextRunTime: string;
   thresholdPercentageForAdditions: number;
   thresholdPercentageForRemovals: number;
