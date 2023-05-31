@@ -10,6 +10,7 @@ namespace WebApi.Models.DTOs
             string rowKey,
             Guid targetGroupId,
             string status,
+            int period,
             DateTime startDate,
             DateTime lastSuccessfulStartTime,
             DateTime lastSuccessfulRunTime,
@@ -21,6 +22,7 @@ namespace WebApi.Models.DTOs
             RowKey = rowKey;
             TargetGroupId = targetGroupId;
             Status = status;
+            Period = period;
             StartDate = startDate;
             LastSuccessfulStartTime = lastSuccessfulStartTime;
             LastSuccessfulRunTime = lastSuccessfulRunTime;
@@ -34,6 +36,7 @@ namespace WebApi.Models.DTOs
         public Guid TargetGroupId { get; set; }
         public string? TargetGroupType { get; set; }
         public string Status { get; set; }
+        public int Period { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime LastSuccessfulStartTime { get; set; }
         public DateTime LastSuccessfulRunTime { get; set; }
