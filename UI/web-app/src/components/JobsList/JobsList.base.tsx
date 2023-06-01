@@ -111,13 +111,13 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       case 'nextRun':
         const spaceIndex = fieldContent.indexOf(" ");
         const isEmpty = fieldContent === "";
-        const firstPart = isEmpty ? "-" : fieldContent.substring(0, spaceIndex);
-        const remainingPart = isEmpty ? "" : fieldContent.substring(spaceIndex + 1);
+        const lastOrNextRunDate = isEmpty ? "-" : fieldContent.substring(0, spaceIndex);
+        const hoursAgoOrHoursLeft = isEmpty ? "" : fieldContent.substring(spaceIndex + 1);
 
         return (
           <div>
-            <div>{firstPart}</div>
-            <div>{remainingPart}</div>
+            <div>{lastOrNextRunDate}</div>
+            <div>{hoursAgoOrHoursLeft}</div>
           </div>
         );
 
