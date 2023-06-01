@@ -43,7 +43,7 @@ export const fetchJobs = createAsyncThunk("jobs/fetchJobs", async () => {
       const currentTime = moment.utc();
       var lastRunTime = moment(index['lastSuccessfulRunTime']);
       var hoursAgo = currentTime.diff(lastRunTime, "hours");
-      index['lastSuccessfulRunTime'] = moment.utc(index["lastSuccessfulRunTime"]).local().format("MM/DD/YYYY") + " " + hoursAgo.toString() + " hrs ago";
+      index['lastSuccessfulRunTime'] = hoursAgo > index["period"] ? moment.utc(index["lastSuccessfulRunTime"]).local().format("MM/DD/YYYY") + " >" + index["period"] + " hrs ago" : moment.utc(index["lastSuccessfulRunTime"]).local().format("MM/DD/YYYY") + " " + hoursAgo.toString() + " hrs ago";
 
       var nextRunTime = moment(index['estimatedNextRunTime']);
       var hoursLeft = Math.abs(currentTime.diff(nextRunTime, "hours"));
