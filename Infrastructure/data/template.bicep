@@ -83,6 +83,9 @@ param serviceBusTopicSubscriptions array = [
 @description('Enter service bus membership updaters topic\'s and subscriptions details.')
 param serviceBusMembershipUpdatersTopicSubscriptions object
 
+@description('Enter membership aggregator service bus queue name')
+param serviceBusMembershipAggregatorQueue string = 'membershipAggregator'
+
 @description('Enter storage account name.')
 @minLength(1)
 @maxLength(24)
@@ -391,6 +394,19 @@ module serviceBusMembershipUpdatersSubscriptionsTemplate 'serviceBusSubscription
   }
   dependsOn: [
     serviceBusMembershipUpdatersTopicTemplate
+  ]
+}
+
+module membershipAggregatorQueue 'serviceBusQueue.bicep' = {
+  name: 'membershipAggregatorQueue'
+  params: {
+    queueName: serviceBusMembershipAggregatorQueue
+    serviceBusName: serviceBusName
+    requiresSession: false
+    maxDeliveryCount: 5
+  }
+  dependsOn:[
+    serviceBusTemplate
   ]
 }
 
