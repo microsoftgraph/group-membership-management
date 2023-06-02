@@ -251,6 +251,9 @@ param appConfigurationKeyData array = [
   }
 ]
 
+@description('Array of feature flags objects. {id:"value", description:"description", enabled:true, label:"label" }')
+param appConfigurationfeatureFlags array = []
+
 @description('Unique name within the resource group for the Action group.')
 param actionGroupName string = 'PIILogAlerts'
 
@@ -443,6 +446,7 @@ module appConfigurationTemplate 'appConfiguration.bicep' = {
     appConfigurationSku: appConfigurationSku
     location: location
     appConfigurationKeyData: appConfigurationKeyData
+    featureFlags: appConfigurationfeatureFlags
   }
 }
 
