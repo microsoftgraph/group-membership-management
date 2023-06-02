@@ -9,6 +9,8 @@ export interface IJobsListStyles {
   enabled: IStyle;
   disabled: IStyle;
   actionRequired: IStyle;
+  tabContent: IStyle;
+  refresh: IStyle;
 }
 
 export interface IJobsListStyleProps {

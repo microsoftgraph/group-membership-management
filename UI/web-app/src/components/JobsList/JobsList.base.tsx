@@ -11,7 +11,7 @@ import { selectAllJobs } from '../../store/jobs.slice'
 import { AppDispatch } from "../../store";
 import Loader from '../Loader';
 import { useNavigate } from 'react-router-dom';
-import { classNamesFunction, IProcessedStyleSet } from "@fluentui/react";
+import { classNamesFunction, IconButton, IIconProps, initializeIcons, IProcessedStyleSet } from "@fluentui/react";
 import { useTheme } from "@fluentui/react/lib/Theme";
 import {
   IJobsListProps,
@@ -24,6 +24,8 @@ const getClassNames = classNamesFunction<
   IJobsListStyleProps,
   IJobsListStyles
 >();
+
+initializeIcons();
 
 const buildColumns = (): IColumn[] => {
   const columns: IColumn[] = [];
@@ -103,6 +105,12 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     navigate('/JobDetailsPage', { replace: false, state: {item: item} })
   }
 
+  const onRefreshClicked = (item?: any, index?: number, ev?: React.FocusEvent<HTMLElement>): void => {
+    dispatch(fetchJobs())
+  }
+
+  const refreshIcon: IIconProps = { iconName: 'Refresh' };
+
   const _renderItemColumn = (item?: any, index?: number, column?: IColumn): JSX.Element => {
     const fieldContent = item[column?.fieldName as keyof any] as string;
 
@@ -151,19 +159,29 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   if (jobs && jobs.length > 0) {
     return (
       <div className={classNames.root}>
-            <DetailsList
-              items={jobs}
-              columns={columns}
-              setKey="set"
-              layoutMode={DetailsListLayoutMode.justified}
-              selectionPreservedOnEmptyClick={true}
-              ariaLabelForSelectionColumn={toggleSelection}
-              ariaLabelForSelectAllCheckbox={toggleAllSelection}
-              checkButtonAriaLabel={selectRow}
-              onActiveItemChanged={onItemClicked}
-              onRenderItemColumn={_renderItemColumn}
+        <div className={classNames.tabContent}>
+          <DetailsList
+            items={jobs}
+            columns={columns}
+            setKey="set"
+            layoutMode={DetailsListLayoutMode.justified}
+            selectionPreservedOnEmptyClick={true}
+            ariaLabelForSelectionColumn={toggleSelection}
+            ariaLabelForSelectAllCheckbox={toggleAllSelection}
+            checkButtonAriaLabel={selectRow}
+            onActiveItemChanged={onItemClicked}
+            onRenderItemColumn={_renderItemColumn}
           />
         </div>
+        <div className={classNames.tabContent}> <div className={classNames.refresh}>
+          <IconButton
+            iconProps={refreshIcon}
+            title="Refresh"
+            ariaLabel="Refresh"
+            onClick={onRefreshClicked}
+          />
+        </div></div>
+      </div>
     );
   }
   else {
