@@ -21,7 +21,7 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       height: 20
     },
     disabled: {
-      color: 'black',
+      color: theme.palette.black,
       backgroundColor: theme.palette.themeLighterAlt,
       borderRadius: 50,
       textAlign: 'center',
@@ -29,6 +29,14 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
     },
     actionRequired: {
       color: theme.palette.redDark
+    },
+    tabContent: {
+      float: 'left',
+      cursor: 'pointer',
+      paddingLeft: 15
+    },
+    refresh: {
+      padding: 22.5
     }
   };
 };
