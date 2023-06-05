@@ -27,19 +27,17 @@ namespace Services
 
             await foreach (var job in jobs)
             {
+                String targetGroupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
+
                 var dto = new SyncJobDTO
                 (
                     partitionKey: job.PartitionKey,
                     rowKey: job.RowKey,
                     targetGroupId: job.TargetOfficeGroupId,
+                    targetGroupName: targetGroupName,
                     status: job.Status,
-                    period: job.Period,
-                    startDate: job.StartDate,
-                    lastSuccessfulStartTime: job.LastSuccessfulStartTime,
                     lastSuccessfulRunTime: job.LastSuccessfulRunTime,
-                    estimatedNextRunTime: job.StartDate > job.LastSuccessfulRunTime ? job.StartDate : job.LastSuccessfulRunTime.AddHours(job.Period),
-                    thresholdPercentageForAdditions: job.ThresholdPercentageForAdditions,
-                    thresholdPercentageForRemovals: job.ThresholdPercentageForRemovals
+                    estimatedNextRunTime: job.StartDate > job.LastSuccessfulRunTime ? job.StartDate : job.LastSuccessfulRunTime.AddHours(job.Period)
                 );
 
                 response.Model.Add(dto);
@@ -56,5 +54,6 @@ namespace Services
 
             return response;
         }
+
     }
 }
