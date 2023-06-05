@@ -25,8 +25,11 @@ function Copy-SyncJobsToSQL {
         [bool] $Overwrite
     )
 
-    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
-    . ($scriptsDirectory + '\Scripts\Install-AzTableModuleIfNeeded.ps1')
+    Write-Host "Copy-SyncJobsToSQL starting..."
+    
+    $infrastructureDirectory = Split-Path $PSScriptRoot -Parent
+    $rootDirectory = Split-Path $infrastructureDirectory -Parent
+    . ($rootDirectory + '\Scripts\Install-AzTableModuleIfNeeded.ps1')
     Install-AzTableModuleIfNeeded | Out-Null
 
     $resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
@@ -49,6 +52,7 @@ function Copy-SyncJobsToSQL {
 
     if ($null -eq $storageAccountContext) {
         Write-Host "Skipping... Could not find storage account starting with '$storageAccountPrefix' in resource group '$resourceGroupName'."
+        Write-Host "Copy-SyncJobsToSQL completed."
         return
     }
 
@@ -60,6 +64,7 @@ function Copy-SyncJobsToSQL {
     # Ensure that data exists in the source table
     if (0 -eq $syncJobs.Length) {
         Write-Host "Skipping... Source table contains (0) records."
+        Write-Host "Copy-SyncJobsToSQL completed."
         return
     } else {
         Write-Host "Source table contains ($sourceTableLength) records."
@@ -83,6 +88,7 @@ function Copy-SyncJobsToSQL {
     if (0 -ne $count) {
         if ($true -ne $Overwrite) {
             Write-Host "Skipping... Destination table contains ($existingCount) records and `$Overwrite is set to `$false."
+            Write-Host "Copy-SyncJobsToSQL completed."
             return
         } else {
             Write-Host "Destination table contains ($existingCount) records that will be deleted."
@@ -112,7 +118,7 @@ function Copy-SyncJobsToSQL {
     }
     $conn.Close()
 
-    Write-Host "Done."
+    Write-Host "Copy-SyncJobsToSQL completed."
 }
 
 function Get-InsertStatement {

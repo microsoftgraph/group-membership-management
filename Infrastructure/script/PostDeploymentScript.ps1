@@ -24,7 +24,13 @@ function PostDeploymentScript {
 	)
 	Write-Host "PostDeploymentScript starting..."
 
-	VerifyKeyVaultSecrets
+	$verbose = ($true -eq $PSBoundParameters.Verbose)
+
+	. ($PSScriptRoot + '\Confirm-KeyVaultSecrets.ps1')
+	Confirm-KeyVaultSecrets -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation -Verbose:$verbose
+
+	. ($PSScriptRoot + '\Copy-SyncJobsToSQL.ps1')
+	Copy-SyncJobsToSQL -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation -Verbose:$verbose
 
 	Write-Host "PostDeploymentScript completed."
 }
