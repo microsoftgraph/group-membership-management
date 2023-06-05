@@ -7,8 +7,7 @@ import {
   type AuthenticationResult
 } from '@azure/msal-browser'
 import { MsalProvider } from '@azure/msal-react'
-import { initializeIcons } from '@fluentui/font-icons-mdl2'
-import { ThemeProvider } from '@fluentui/react'
+import { ThemeProvider, initializeIcons } from '@fluentui/react'
 import React from 'react'
 import ReactDOM from 'react-dom'
 import { Provider } from 'react-redux'
