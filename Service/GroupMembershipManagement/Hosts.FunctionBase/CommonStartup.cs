@@ -23,6 +23,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using Microsoft.FeatureManagement;
 
 namespace Hosts.FunctionBase
 {
@@ -35,12 +36,16 @@ namespace Hosts.FunctionBase
         {
             builder.ConfigurationBuilder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(new Uri(GetValueOrThrow("appConfigurationEndpoint")), new DefaultAzureCredential());
+                options.Connect(new Uri(GetValueOrThrow("appConfigurationEndpoint")), new DefaultAzureCredential())
+                       .UseFeatureFlags();
             });
         }
 
         public override void Configure(IFunctionsHostBuilder builder)
         {
+            builder.Services.AddAzureAppConfiguration();
+            builder.Services.AddFeatureManagement();
+
             builder.Services.AddLocalization(opts => { opts.ResourcesPath = "Resources"; });
             builder.Services.Configure<RequestLocalizationOptions>(opts =>
             {
