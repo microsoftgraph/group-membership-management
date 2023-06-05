@@ -1,8 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { type IStyle, type IStyleFunctionOrObject, type ITheme } from '@fluentui/react'
-import type React from 'react'
+import {
+  type IStyle,
+  type IStyleFunctionOrObject,
+  type ITheme,
+} from '@fluentui/react';
+import type React from 'react';
 
 export interface IJobsListStyles {
   root: IStyle;
@@ -14,18 +18,19 @@ export interface IJobsListStyles {
 }
 
 export interface IJobsListStyleProps {
-  className?: string
-  theme: ITheme
+  className?: string;
+  theme: ITheme;
 }
 
-export interface IJobsListProps extends React.AllHTMLAttributes<HTMLDivElement> {
+export interface IJobsListProps
+  extends React.AllHTMLAttributes<HTMLDivElement> {
   /**
    * Optional className to apply to the root of the component.
    */
-  className?: string
+  className?: string;
 
   /**
    * Call to provide customized styling that will layer on top of the variant rules.
    */
-  styles?: IStyleFunctionOrObject<IJobsListStyleProps, IJobsListStyles>
+  styles?: IStyleFunctionOrObject<IJobsListStyleProps, IJobsListStyles>;
 }

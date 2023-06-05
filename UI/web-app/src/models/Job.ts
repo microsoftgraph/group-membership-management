@@ -17,4 +17,4 @@ export type Job = {
   estimatedNextRunTime: string;
   thresholdPercentageForAdditions: number;
   thresholdPercentageForRemovals: number;
-  }
+};
