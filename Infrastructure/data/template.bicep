@@ -254,7 +254,7 @@ param appConfigurationKeyData array = [
   }
 ]
 
-@description('Array of feature flags objects. {id:"value", description:"description", enabled:true, label:"label" }')
+@description('Array of feature flags objects. {id:"value", description:"description", enabled:true }')
 param appConfigurationfeatureFlags array = []
 
 @description('Unique name within the resource group for the Action group.')
@@ -536,6 +536,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'notifierProviderId'
         value: notifierProviderId
+      }
+      {
+        name: 'serviceBusMembershipAggregatorQueue'
+        value: serviceBusMembershipAggregatorQueue
       }
     ]
   }

@@ -10,7 +10,7 @@ param appConfigurationSku string = 'Standard'
 @description('Array of Objects that contain the key name, value, tag and contentType')
 param appConfigurationKeyData array
 
-@description('Array of feature flags objects. {id:"value", description:"description", enabled:true, label:"label" }')
+@description('Array of feature flags objects. {id:"value", description:"description", enabled:true }')
 param featureFlags array
 
 resource configurationStore 'Microsoft.AppConfiguration/configurationStores@2023-03-01' = {
@@ -37,7 +37,7 @@ resource configurationStoreKeyValues 'Microsoft.AppConfiguration/configurationSt
 
 resource configurationStoreFeatureFlags 'Microsoft.AppConfiguration/configurationStores/keyValues@2023-03-01' = [for flag in featureFlags: {
   parent: configurationStore
-  name: '.appconfig.featureflag~2F${flag.id}$${flag.label}'
+  name: '.appconfig.featureflag~2F${flag.id}'
   properties: {
     contentType: 'application/vnd.microsoft.appconfig.ff+json;charset=utf-8'
     value: string({

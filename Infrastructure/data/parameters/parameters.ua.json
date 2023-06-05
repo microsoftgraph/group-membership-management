@@ -58,16 +58,6 @@
           }
         ]
       }
-    },
-    "appConfigurationfeatureFlags": {
-      "value": [
-        {
-          "id": "UseServiceBusQueue",
-          "description": "Use queue to process messages. Falls back to HTTP calls.",
-          "enabled": true,
-          "label": "GMM"
-        }
-      ]
     }
   }
 }
