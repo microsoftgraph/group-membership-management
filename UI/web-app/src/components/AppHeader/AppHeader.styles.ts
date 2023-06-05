@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { IAppHeaderStyleProps, IAppHeaderStyles } from './AppHeader.types';
+import { type IAppHeaderStyleProps, type IAppHeaderStyles } from './AppHeader.types'
 
 export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
-  const { className, theme } = props;
+  const { className, theme } = props
 
   return {
     root: [

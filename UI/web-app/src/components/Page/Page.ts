@@ -1,11 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import * as React from 'react';
-import { styled } from '@fluentui/react';
-import { PageBase } from './Page.base';
-import { IPageProps, IPageStyleProps, IPageStyles } from './Page.types';
-import { getStyles } from './Page.styles';
+import { styled } from '@fluentui/react'
+import type * as React from 'react'
+
+import { PageBase } from './Page.base'
+import { getStyles } from './Page.styles'
+import { type IPageProps, type IPageStyleProps, type IPageStyles } from './Page.types'
 
 export const Page: React.FunctionComponent<IPageProps> = styled<IPageProps, IPageStyleProps, IPageStyles>(
   PageBase,
@@ -14,4 +15,4 @@ export const Page: React.FunctionComponent<IPageProps> = styled<IPageProps, IPag
   {
     scope: 'Page'
   }
-);
+)

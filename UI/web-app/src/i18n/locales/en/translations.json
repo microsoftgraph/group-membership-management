@@ -6,9 +6,6 @@
     "spanish": "Spanish",
     "emptyList": "There are no GMM managed groups",
     "loading": "Loading",
-    "toggleSelection": "Toggle selection",
-    "toggleAllSelection": "Toggle selection for all items",
-    "selectRow": "select row",
     "addOwner204Message": "Added Successfully.",
     "addOwner400Message": "GMM is already added as an owner.",
     "addOwner403Message": "You do not have permission to complete this operation.",
@@ -16,5 +13,66 @@
     "okButton": "OK",
     "groupIdHeader": "Enter Group ID",
     "groupIdPlaceHolder": "Group ID",
-    "addOwnerButton": "Add GMM as an owner"
+    "addOwnerButton": "Add GMM as an owner",
+    "JobDetailsPage": {
+        "labels": {
+            "pageTitle": "Membership Details",
+            "sectionTitle": "Membership Details",
+            "lastModifiedby": "Last Modified by",
+            "groupLinks": "Group Links",
+            "destination": "Destination",
+            "type": "Type",
+            "name": "Name",
+            "ID": "ID",
+            "configuration": "Configuration",
+            "startDate": "Start Date",
+            "endDate": "End Date",
+            "lastRun": "Last Run",
+            "nextRun": "Next Run",
+            "frequency": "Frequency",
+            "requestor": "Requestor",
+            "increaseThreshold": "Increase Threshold",
+            "decreaseThreshold": "Decrease Threshold",
+            "thresholdViolations": "Threshold Violations",
+            "sourceParts": "Source Parts"
+        },
+        "descriptions": {
+            "lastModifiedby": "User who made the last change to this job.",
+            "startDate": "Date of the onboarding of this job into GMM.",
+            "endDate": "Date of the last run of this job.",
+            "type": "Sync type.",
+            "id": "Object ID of the destination group.",
+            "lastRun": "Time of the last run of this job.",
+            "nextRun": "Next run time for this job.",
+            "frequency": "How often this job runs.",
+            "requestor": "User who requested this job to be onboarded into GMM.",
+            "increaseThreshold": "Number of users that can be added from the target group expressed as a percentage of the current size of the group.",
+            "decreaseThreshold": "Number of users that can be removed from the target group expressed as a percentage of the current size of the group.",
+            "thresholdViolations": "Number of times a threhold was exceeded."
+        },
+        "MessageBar": {
+            "dismissButtonAriaLabel": "Close"
+        }
+    },
+    "JobsList": {
+        "ShimmeredDetailsList": {
+            "toggleSelection": "Toggle selection",
+            "toggleAllSelection": "Toggle selection for all items",
+            "selectRow": "select row",
+            "ariaLabelForShimmer": "Content is being fetched",
+            "ariaLabelForGrid": "Item details",
+            "columnNames": {
+                "ID": "ID",
+                "destinationName": "Destination Name",
+                "destinationType": "Destination Type",
+                "lastRun": "Last Run",
+                "nextRun": "Next Run",
+                "status": "Status",
+                "actionRequired": "Action Required"
+            }
+        },
+        "MessageBar": {
+            "dismissButtonAriaLabel": "Close"
+        }
+    }
 }

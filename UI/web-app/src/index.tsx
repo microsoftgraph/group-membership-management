@@ -1,37 +1,40 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-import React from "react";
-import ReactDOM from "react-dom";
-import { ThemeProvider } from "@fluentui/react";
-import { Provider } from "react-redux";
-import { store } from "./store";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { JobsPage, JobDetailsPage, OwnerPage } from "./pages";
-import { App } from "./App";
-import { MsalProvider } from "@azure/msal-react";
 import {
   PublicClientApplication,
   EventType,
-  EventMessage,
-  AuthenticationResult,
-} from "@azure/msal-browser";
-import { msalConfig } from "./authConfig";
+  type EventMessage,
+  type AuthenticationResult
+} from '@azure/msal-browser'
+import { MsalProvider } from '@azure/msal-react'
+import { initializeIcons } from '@fluentui/font-icons-mdl2'
+import { ThemeProvider } from '@fluentui/react'
+import React from 'react'
+import ReactDOM from 'react-dom'
+import { Provider } from 'react-redux'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 
+import { App } from './App'
+import { msalConfig } from './authConfig'
+import { JobsPage, JobDetailsPage, OwnerPage } from './pages'
+import { store } from './store'
 
-export const msalInstance = new PublicClientApplication(msalConfig);
+export const msalInstance = new PublicClientApplication(msalConfig)
 
-const accounts = msalInstance.getAllAccounts();
+const accounts = msalInstance.getAllAccounts()
 if (accounts.length > 0) {
-  msalInstance.setActiveAccount(accounts[0]);
+  msalInstance.setActiveAccount(accounts[0])
 }
 
 msalInstance.addEventCallback((event: EventMessage) => {
-  if (event.eventType === EventType.LOGIN_SUCCESS && event.payload) {
-    const payload = event.payload as AuthenticationResult;
-    const account = payload.account;
-    msalInstance.setActiveAccount(account);
+  if (event.eventType === EventType.LOGIN_SUCCESS && (event.payload != null)) {
+    const payload = event.payload as AuthenticationResult
+    const account = payload.account
+    msalInstance.setActiveAccount(account)
   }
-});
+})
+
+initializeIcons()
 
 ReactDOM.render(
   <ThemeProvider>
@@ -52,5 +55,5 @@ ReactDOM.render(
     </MsalProvider>
   </ThemeProvider>,
 
-  document.getElementById("root")
-);
+  document.getElementById('root')
+)

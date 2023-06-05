@@ -6,6 +6,7 @@ parameters:
   root: ''
   tenantId: ''
 
+
 steps:
   - task: AzureResourceManagerTemplateDeployment@3
     displayName: 'Deploy WebApp compute resources'

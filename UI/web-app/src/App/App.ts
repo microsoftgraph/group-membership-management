@@ -1,11 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import * as React from 'react';
-import { styled } from '@fluentui/react';
-import { AppBase } from './App.base';
-import { IAppProps, IAppStyleProps, IAppStyles } from './App.types';
-import { getStyles } from './App.styles';
+import { styled } from '@fluentui/react'
+import type * as React from 'react'
+
+import { AppBase } from './App.base'
+import { getStyles } from './App.styles'
+import { type IAppProps, type IAppStyleProps, type IAppStyles } from './App.types'
 
 export const App: React.FunctionComponent<IAppProps> = styled<IAppProps, IAppStyleProps, IAppStyles>(
   AppBase,
@@ -14,4 +15,4 @@ export const App: React.FunctionComponent<IAppProps> = styled<IAppProps, IAppSty
   {
     scope: 'App'
   }
-);
+)

@@ -1,40 +1,39 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { Job } from "../models/Job";
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { loginRequest, config } from "../authConfig";
-import { msalInstance } from "../index";
 import moment from "moment";
 import { SyncStatus, ActionRequired } from "../models/Status";
+import { loginRequest, config } from '../authConfig'
+import { msalInstance } from '../index'
+import { type Job } from '../models/Job'
 
-export const fetchJobs = createAsyncThunk("jobs/fetchJobs", async () => {
-
-  const account = msalInstance.getActiveAccount();
-  if (!account) {
+export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async () => {
+  const account = msalInstance.getActiveAccount()
+  if (account == null) {
     throw Error(
-      "No active account! Verify a user has been signed in and setActiveAccount has been called."
-    );
+      'No active account! Verify a user has been signed in and setActiveAccount has been called.'
+    )
   }
 
   const authResult = await msalInstance.acquireTokenSilent({
     ...loginRequest,
-    account: account,
-  });
+    account
+  })
 
-  const headers = new Headers();
-  const bearer = `Bearer ${authResult.accessToken}`;
-  headers.append("Authorization", bearer);
+  const headers = new Headers()
+  const bearer = `Bearer ${authResult.accessToken}`
+  headers.append('Authorization', bearer)
 
   const options = {
-    method: "GET",
-    headers: headers,
-  };
+    method: 'GET',
+    headers
+  }
 
   try {
-    let response = await fetch(config.endpoint, options).then((response) =>
-      response.json()
-    );
+    const response = await fetch(config.getJobs, options).then(async (response) =>
+      await response.json()
+    )
 
     const payload: Job[] = response;
 
@@ -80,7 +79,8 @@ export const fetchJobs = createAsyncThunk("jobs/fetchJobs", async () => {
 
     return newPayload;
 
+    return payload
   } catch (error) {
-    console.log(error);
+    throw new Error('Failed to fetch jobs!')
   }
-});
+})
