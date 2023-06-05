@@ -6,27 +6,29 @@ import { useTheme } from "@fluentui/react/lib/Theme";
 import WelcomeName from "../WelcomeName";
 import { AccountManagementIcon, SettingsIcon } from "@fluentui/react-icons-mdl2";
 import {
-  IAppHeaderProps,
-  IAppHeaderStyleProps,
-  IAppHeaderStyles,
-} from "./AppHeader.types";
+  type IAppHeaderProps,
+  type IAppHeaderStyleProps,
+  type IAppHeaderStyles
+} from './AppHeader.types'
+import AddOwner from '../AddOwner'
+import SignInSignOutButton from '../SignInSignOutButton'
 
 const getClassNames = classNamesFunction<
-  IAppHeaderStyleProps,
-  IAppHeaderStyles
->();
+IAppHeaderStyleProps,
+IAppHeaderStyles
+>()
 
 export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
   props: IAppHeaderProps
 ) => {
-  const { className, styles } = props;
+  const { className, styles } = props
   const classNames: IProcessedStyleSet<IAppHeaderStyles> = getClassNames(
     styles,
     {
       className,
-      theme: useTheme(),
+      theme: useTheme()
     }
-  );
+  )
 
   return (
     <header>
@@ -46,5 +48,5 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
       < br/>
       </div>
     </header>
-  );
-};
+  )
+}

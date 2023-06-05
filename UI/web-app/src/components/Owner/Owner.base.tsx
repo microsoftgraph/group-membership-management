@@ -1,43 +1,45 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { useTranslation } from 'react-i18next';
-import '../../i18n/config';
+import { useTranslation } from 'react-i18next'
+import '../../i18n/config'
 import { useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
+
+import {
+  type IOwnerProps,
+  type IOwnerStyleProps,
+  type IOwnerStyles
+} from './Owner.types'
+import { type AppDispatch } from '../../store'
 import { addOwner } from '../../store/owner.api'
 import { selectOwner } from '../../store/owner.slice'
-import { AppDispatch } from "../../store";
-import { classNamesFunction, DefaultButton, Text,IProcessedStyleSet } from "@fluentui/react";
-import { useTheme } from "@fluentui/react/lib/Theme";
-import { TextField } from '@fluentui/react/lib/TextField';
-import {
-  IOwnerProps,
-  IOwnerStyleProps,
-  IOwnerStyles,
-} from "./Owner.types";
+
+import { classNamesFunction, DefaultButton, Text, type IProcessedStyleSet } from '@fluentui/react'
+import { useTheme } from '@fluentui/react/lib/Theme'
+import { TextField } from '@fluentui/react/lib/TextField'
 
 const getClassNames = classNamesFunction<
-  IOwnerStyleProps,
-  IOwnerStyles
->();
+IOwnerStyleProps,
+IOwnerStyles
+>()
 
 export const OwnerBase: React.FunctionComponent<IOwnerProps> = (
   props: IOwnerProps
 ) => {
-  const { className, styles } = props;
-  const [textFieldValue, setTextFieldValue] = useState('');
+  const { className, styles } = props
+  const [textFieldValue, setTextFieldValue] = useState('')
 
   const classNames: IProcessedStyleSet<IOwnerStyles> = getClassNames(
     styles,
     {
       className,
-      theme: useTheme(),
+      theme: useTheme()
     }
-  );
+  )
 
-  const { t } = useTranslation();
-  let groupIdPlaceHolder = t('groupIdPlaceHolder');
+  const { t } = useTranslation()
+  const groupIdPlaceHolder = t('groupIdPlaceHolder')
   const dispatch = useDispatch<AppDispatch>()
   const owner = useSelector(selectOwner)
 
@@ -46,7 +48,7 @@ export const OwnerBase: React.FunctionComponent<IOwnerProps> = (
   }
 
   const onChangeTextFieldValue = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-    setTextFieldValue(newValue || '');
+    setTextFieldValue(newValue || '')
   }
 
   return (
@@ -63,20 +65,19 @@ export const OwnerBase: React.FunctionComponent<IOwnerProps> = (
       <DefaultButton onClick={onClick}>{t('okButton')}</DefaultButton>
       <p />
       {(() => {
-        if (owner.status === "") {
+        if (owner.status === '') {
           return (
             <div />
           )
-        }
-        else if (owner.status === "false 403 Forbidden") {
+        } else if (owner.status === 'false 403 Forbidden') {
           return (
             <div>{t('addOwner403Message')}</div>
           )
-        } else if (owner.status === "false 400 Bad Request") {
+        } else if (owner.status === 'false 400 Bad Request') {
           return (
             <div>{t('addOwner400Message')}</div>
           )
-        } else if (owner.status === "true 204 No Content") {
+        } else if (owner.status === 'true 204 No Content') {
           return (
             <div>{t('addOwner204Message')}</div>
           )
@@ -87,5 +88,5 @@ export const OwnerBase: React.FunctionComponent<IOwnerProps> = (
         }
       })()}
     </div>
-  );
+  )
 }

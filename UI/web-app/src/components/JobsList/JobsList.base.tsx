@@ -1,18 +1,28 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { DetailsList, DetailsListLayoutMode, IColumn } from '@fluentui/react/lib/DetailsList';
+import { DetailsListLayoutMode, IColumn } from '@fluentui/react/lib/DetailsList';
 import { useTranslation } from 'react-i18next';
 import '../../i18n/config';
 import { useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchJobs } from '../../store/jobs.api'
-import { selectAllJobs } from '../../store/jobs.slice'
+import {
+  selectAllJobs,
+  selectGetJobsError,
+  setGetJobsError,
+} from "../../store/jobs.slice";
 import { AppDispatch } from "../../store";
-import Loader from '../Loader';
-import { useNavigate } from 'react-router-dom';
-import { classNamesFunction, IconButton, IIconProps, initializeIcons, IProcessedStyleSet } from "@fluentui/react";
+
+import { useNavigate } from "react-router-dom";
+import {
+  classNamesFunction,
+  IProcessedStyleSet,
+  MessageBar,
+  MessageBarType,IconButton, IIconProps,
+} from "@fluentui/react";
 import { useTheme } from "@fluentui/react/lib/Theme";
+import { ShimmeredDetailsList } from "@fluentui/react/lib/ShimmeredDetailsList";
 import {
   IJobsListProps,
   IJobsListStyleProps,
@@ -25,52 +35,6 @@ const getClassNames = classNamesFunction<
   IJobsListStyles
 >();
 
-initializeIcons();
-
-const buildColumns = (): IColumn[] => {
-  const columns: IColumn[] = [];
-  columns.push({
-    key: "type",
-    name: "Type",
-    fieldName: "targetGroupType",
-    minWidth: 100,
-    maxWidth: 100,
-    isResizable: false
-  });
-  columns.push({
-    key: "lastRun",
-    name: "Last Run",
-    fieldName: "lastSuccessfulRunTime",
-    minWidth: 100,
-    maxWidth: 100,
-    isResizable: false
-  });
-  columns.push({
-    key: "nextRun",
-    name: "Next Run",
-    fieldName: "estimatedNextRunTime",
-    minWidth: 100,
-    maxWidth: 100,
-    isResizable: false
-  });
-  columns.push({
-    key: "status",
-    name: "Status",
-    fieldName: "enabledOrNot",
-    minWidth: 75,
-    maxWidth: 75,
-    isResizable: false
-  });
-  columns.push({
-    key: "actionRequired",
-    name: "Action Required",
-    fieldName: "actionRequired",
-    minWidth: 200,
-    maxWidth: 200,
-    isResizable: false
-  });
-  return columns;
-}
 
 export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   props: IJobsListProps
@@ -86,18 +50,63 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   );
 
   const { t } = useTranslation();
-  var toggleSelection = t('toggleSelection');
-  var toggleAllSelection = t('toggleAllSelection');
-  var selectRow = t('selectRow');
-  var columns = buildColumns();
-
   const dispatch = useDispatch<AppDispatch>()
   const jobs = useSelector(selectAllJobs)
   const navigate = useNavigate()
 
+  const columns = [
+    {
+      key: "type",
+      name: t('JobsList.ShimmeredDetailsList.columnNames.destinationType'),
+      fieldName: "targetGroupType",
+      minWidth: 100,
+      maxWidth: 100,
+      isResizable: false
+    }, 
+    {
+      key: "lastRun",
+      name: t('JobsList.ShimmeredDetailsList.columnNames.lastRun'),
+      fieldName: "lastSuccessfulRunTime",
+      minWidth: 100,
+      maxWidth: 100,
+      isResizable: false
+    },
+    {
+      key: "nextRun",
+      name: t('JobsList.ShimmeredDetailsList.columnNames.nextRun'),
+      fieldName: "estimatedNextRunTime",
+      minWidth: 100,
+      maxWidth: 100,
+      isResizable: false
+    },
+    {
+      key: "status",
+      name: t('JobsList.ShimmeredDetailsList.columnNames.status'),
+      fieldName: "enabledOrNot",
+      minWidth: 75,
+      maxWidth: 75,
+      isResizable: false
+    },
+    {
+      key: "actionRequired",
+      name: t('JobsList.ShimmeredDetailsList.columnNames.actionRequired'),
+      fieldName: "actionRequired",
+      minWidth: 200,
+      maxWidth: 200,
+      isResizable: false
+    }
+  ]
+
+  
+  const error = useSelector(selectGetJobsError);
+
+  const onDismiss = (): void => {
+    dispatch(setGetJobsError());
+  };
+
   useEffect(() => {
-    if (!jobs){
-      dispatch(fetchJobs())
+    if (!jobs) {
+      dispatch(fetchJobs());
     }
   }, [dispatch, jobs]);
 
@@ -156,39 +165,46 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     }
   };
 
-  if (jobs && jobs.length > 0) {
-    return (
-      <div className={classNames.root}>
-        <div className={classNames.tabContent}>
-          <DetailsList
-            items={jobs}
-            columns={columns}
-            setKey="set"
-            layoutMode={DetailsListLayoutMode.justified}
-            selectionPreservedOnEmptyClick={true}
-            ariaLabelForSelectionColumn={toggleSelection}
-            ariaLabelForSelectAllCheckbox={toggleAllSelection}
-            checkButtonAriaLabel={selectRow}
-            onActiveItemChanged={onItemClicked}
-            onRenderItemColumn={_renderItemColumn}
-          />
-        </div>
-        <div className={classNames.tabContent}> <div className={classNames.refresh}>
+  return (
+    <div className={classNames.root}>
+      {error && (
+        <MessageBar
+          messageBarType={MessageBarType.error}
+          isMultiline={false}
+          onDismiss={onDismiss}
+          dismissButtonAriaLabel={t('JobsList.MessageBar.dismissButtonAriaLabel') as string | undefined}
+        >
+          {error}
+        </MessageBar>
+      )}
+
+      <ShimmeredDetailsList
+        setKey="set"
+        items={jobs || []}
+        columns={columns}
+        enableShimmer={!jobs || jobs.length === 0}
+        layoutMode={DetailsListLayoutMode.justified}
+        ariaLabelForShimmer="Content is being fetched"
+        ariaLabelForGrid="Item details"
+        selectionPreservedOnEmptyClick={true}
+        ariaLabelForSelectionColumn={t('JobsList.ShimmeredDetailsList.toggleSelection') as string | undefined}
+        ariaLabelForSelectAllCheckbox={t('JobsList.ShimmeredDetailsList.toggleAllSelection') as string | undefined}
+        checkButtonAriaLabel={t('JobsList.ShimmeredDetailsList.selectRow') as string | undefined}
+        onActiveItemChanged={onItemClicked}
+        onRenderItemColumn={_renderItemColumn}
+      />
+      <div className={classNames.tabContent}> 
+        <div className={classNames.refresh}>
           <IconButton
             iconProps={refreshIcon}
             title="Refresh"
             ariaLabel="Refresh"
             onClick={onRefreshClicked}
           />
-        </div></div>
+        </div>
       </div>
-    );
-  }
-  else {
-    return(
-      <div>
-        <Loader />
-      </div>
-    );
-  }
+    </div>
+  );
+
 }
+

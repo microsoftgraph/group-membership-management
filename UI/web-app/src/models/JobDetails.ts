@@ -1,16 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-export interface IJob {
-  partitionKey: string
-  rowKey: string
-  targetGroupId: string
-  targetGroupType: string
+export interface JobDetails {
   startDate: string
-  status: string
   lastSuccessfulStartTime: string
-  lastSuccessfulRunTime: string
-  estimatedNextRunTime: string
+  source: string
+  period: string
+  requestor: string
+  thresholdViolations: number
   thresholdPercentageForAdditions: number
   thresholdPercentageForRemovals: number
 }

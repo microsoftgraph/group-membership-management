@@ -1,13 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next'
 
 const Loader = () => {
+  const { t } = useTranslation()
 
-    const { t } = useTranslation();
-
-    return (<>
+  return (<>
         {t('loading')}
     </>)
 }

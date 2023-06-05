@@ -6,6 +6,7 @@ export type Job = {
   rowKey: string;
   targetGroupId: string;
   targetGroupType: string;
+  targetGroupName: string;
   startDate: string;
   lastSuccessfulStartTime: string;
   lastSuccessfulRunTime: string;

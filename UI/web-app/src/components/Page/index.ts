@@ -1,5 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-export * from './Page';
-export * from './Page.types';
+export * from './Page'
+export * from './Page.types'
