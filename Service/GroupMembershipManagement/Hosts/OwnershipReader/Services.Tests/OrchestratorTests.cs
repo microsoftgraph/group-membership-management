@@ -5,9 +5,12 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.FeatureManagement;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.ServiceBus;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -19,14 +22,18 @@ namespace Services.Tests
     [TestClass]
     public class OrchestratorTests
     {
+        private bool _isFeatureFlagEnabled = false;
         private Mock<IDryRunValue> _dryRunSettings = null!;
         private Mock<IConfiguration> _configuration = null!;
+        private Mock<IFeatureManager> _featureManager = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<ISyncJobRepository> _syncJobRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<IBlobStorageRepository> _blobStorageRepository = null!;
         private Mock<IOwnershipReaderService> _ownershipReaderService = null!;
+        private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository = null!;
         private Mock<IDurableOrchestrationContext> _durableOrchestrationContext = null!;
+        private Mock<IConfigurationRefresherProvider> _configurationRefresherProvider = null!;
 
         private List<SyncJob> _sampleSyncJobs = null!;
         private SyncJob _ownershipReaderSyncJob = null!;
@@ -40,12 +47,15 @@ namespace Services.Tests
         {
             _dryRunSettings = new Mock<IDryRunValue>();
             _configuration = new Mock<IConfiguration>();
+            _featureManager = new Mock<IFeatureManager>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<ISyncJobRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _ownershipReaderService = new Mock<IOwnershipReaderService>();
+            _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
 
             var telemetryConfiguration = new TelemetryConfiguration();
             _telemetryClient = new TelemetryClient(telemetryConfiguration);
@@ -184,6 +194,28 @@ namespace Services.Tests
 
             _ownershipReaderService.Setup(x => x.GetGroupOwnersAsync(It.IsAny<Guid>()))
                                    .ReturnsAsync(() => ownerIds);
+
+            _featureManager.Setup(x => x.IsEnabledAsync(It.IsAny<string>()))
+                            .ReturnsAsync(() => _isFeatureFlagEnabled);
+
+            var configurationRefresher = new Mock<IConfigurationRefresher>();
+            configurationRefresher.Setup(x => x.TryRefreshAsync()).ReturnsAsync(true);
+
+            _configurationRefresherProvider.Setup(x => x.Refreshers)
+                                            .Returns(() => new List<IConfigurationRefresher> { configurationRefresher.Object });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(FeatureFlagFunction), It.IsAny<FeatureFlagRequest>()))
+                             .Callback<string, object>(async (name, request) =>
+                             {
+                                 _isFeatureFlagEnabled = await CallFeatureFlagFunctionAsync((FeatureFlagRequest)request);
+                             })
+                            .ReturnsAsync(() => _isFeatureFlagEnabled);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(QueueMessageSenderFunction), It.IsAny<MembershipAggregatorHttpRequest>()))
+                                        .Callback<string, object>(async (name, request) =>
+                                        {
+                                            await CallQueueMessageSenderFunctionAsync((MembershipAggregatorHttpRequest)request);
+                                        });
         }
 
         [TestMethod]
@@ -412,6 +444,26 @@ namespace Services.Tests
 
         }
 
+        [TestMethod]
+        public async Task TestMAQueueFeatureFlagEnabledAsync()
+        {
+            _isFeatureFlagEnabled = true;
+
+            List<Guid> filteredGroupIds = new List<Guid>();
+            _ownershipReaderService.Setup(x => x.FilterSyncJobsBySourceTypes(It.IsAny<HashSet<string>>(), It.IsAny<List<JobsFilterSyncJob>>()))
+                                   .Callback<HashSet<string>, List<JobsFilterSyncJob>>((requestedSourceTypes, syncJobs) =>
+                                   {
+                                       filteredGroupIds = _realOwnershipReaderService.FilterSyncJobsBySourceTypes(requestedSourceTypes, syncJobs);
+                                   }).
+                                   Returns(() => filteredGroupIds);
+
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            _featureManager.Verify(x => x.IsEnabledAsync(It.IsAny<string>()), Times.Once);
+            _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
+        }
+
         private async Task CallLoggerFunctionAsync(LoggerRequest request)
         {
             var function = new LoggerFunction(_loggingRepository.Object);
@@ -452,6 +504,20 @@ namespace Services.Tests
         {
             var function = new TelemetryTrackerFunction(_loggingRepository.Object, _telemetryClient);
             await function.TrackEventAsync(request);
+        }
+
+        private async Task<bool> CallFeatureFlagFunctionAsync(FeatureFlagRequest request)
+        {
+            var function = new FeatureFlagFunction(
+                                _loggingRepository.Object, _featureManager.Object, _configurationRefresherProvider.Object);
+
+            return await function.CheckFeatureFlagStateAsync(request);
+        }
+
+        private async Task CallQueueMessageSenderFunctionAsync(MembershipAggregatorHttpRequest request)
+        {
+            var function = new QueueMessageSenderFunction(_loggingRepository.Object, _serviceBusQueueRepository.Object);
+            await function.SendMessageAsync(request);
         }
     }
 }

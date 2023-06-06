@@ -47,6 +47,7 @@ namespace Hosts.OwnershipReader
                     await context.CallActivityAsync(nameof(LoggerFunction),
                                                 new LoggerRequest
                                                 {
+                                                    SyncJob = syncJob,
                                                     Message = $"Found invalid value for CurrentPart or TotalParts"
                                                 });
 
@@ -127,6 +128,7 @@ namespace Hosts.OwnershipReader
                     await context.CallActivityAsync(nameof(LoggerFunction),
                                                    new LoggerRequest
                                                    {
+                                                       SyncJob = syncJob,
                                                        Message = $"There are no jobs matching the requested sources {string.Join(",", sources)}",
                                                        Verbosity = VerbosityLevel.DEBUG
                                                    });
@@ -139,6 +141,7 @@ namespace Hosts.OwnershipReader
                 await context.CallActivityAsync(nameof(LoggerFunction),
                                                 new LoggerRequest
                                                 {
+                                                    SyncJob = syncJob,
                                                     Message = $"{nameof(OrchestratorFunction)} number of jobs in the syncJobs List: {filteredJobs.Count}",
                                                     Verbosity = VerbosityLevel.DEBUG
                                                 });
@@ -160,7 +163,14 @@ namespace Hosts.OwnershipReader
                                                                            Exclusionary = mainRequest.Exclusionary
                                                                        });
 
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { SyncJob = syncJob, Message = $"Calling MembershipAggregator" });
+                var useServiceBusQueue = await context.CallActivityAsync<bool>(nameof(FeatureFlagFunction),
+                                                            new FeatureFlagRequest
+                                                            {
+                                                                RunId = syncJob.RunId,
+                                                                FeatureFlagName = "UseServiceBusQueue",
+                                                                RefreshAppConfigurationValues = true
+                                                            });
+
                 var content = new MembershipAggregatorHttpRequest
                 {
                     FilePath = filePath,
@@ -169,19 +179,28 @@ namespace Hosts.OwnershipReader
                     SyncJob = mainRequest.SyncJob
                 };
 
-                var request = new DurableHttpRequest(HttpMethod.Post,
-                                    new Uri(_configuration["membershipAggregatorUrl"]),
-                                    content: JsonConvert.SerializeObject(content),
-                                    headers: new Dictionary<string, StringValues> { { "x-functions-key", _configuration["membershipAggregatorFunctionKey"] } },
-                                    httpRetryOptions: new HttpRetryOptions(TimeSpan.FromSeconds(30), 3));
-
-                var response = await context.CallHttpAsync(request);
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { SyncJob = syncJob, Message = $"MembershipAggregator response Code:{response.StatusCode}, Content: {response.Content}" });
-
-                if (response.StatusCode != HttpStatusCode.NoContent)
+                if (useServiceBusQueue)
                 {
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
-                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                    await context.CallActivityAsync(nameof(QueueMessageSenderFunction), content);
+                }
+                else
+                {
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { SyncJob = syncJob, Message = $"Calling MembershipAggregator" });
+
+                    var request = new DurableHttpRequest(HttpMethod.Post,
+                                        new Uri(_configuration["membershipAggregatorUrl"]),
+                                        content: JsonConvert.SerializeObject(content),
+                                        headers: new Dictionary<string, StringValues> { { "x-functions-key", _configuration["membershipAggregatorFunctionKey"] } },
+                                        httpRetryOptions: new HttpRetryOptions(TimeSpan.FromSeconds(30), 3));
+
+                    var response = await context.CallHttpAsync(request);
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { SyncJob = syncJob, Message = $"MembershipAggregator response Code:{response.StatusCode}, Content: {response.Content}" });
+
+                    if (response.StatusCode != HttpStatusCode.NoContent)
+                    {
+                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
+                        await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                    }
                 }
 
             }

@@ -11,12 +11,15 @@
           "extendedSessionIdleTimeoutInSeconds": 30
         }
     },
-    "logging": {
-        "applicationInsights": {
-            "samplingSettings": {
-                "isEnabled": true,
-                "excludedTypes": "Request"
-            }
-        }
+  "logging": {
+    "logLevel": {
+      "Host.Concurrency": "Trace"
+    },
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "excludedTypes": "Request"
+      }
     }
+  }
 }
