@@ -8,35 +8,35 @@ import {
   MessageBar,
   MessageBarType,
   IIconProps,
-} from "@fluentui/react";
+} from '@fluentui/react';
 import {
   Stack,
   type IStackStyles,
   type IStackTokens,
   type IStackItemStyles,
-} from "@fluentui/react/lib/Stack";
-import React, { useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { useSelector, useDispatch } from "react-redux";
-import { useLocation } from "react-router-dom";
-import { ActionButton } from "@fluentui/react/lib/Button";
+} from '@fluentui/react/lib/Stack';
+import React, { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useSelector, useDispatch } from 'react-redux';
+import { useLocation } from 'react-router-dom';
+import { ActionButton } from '@fluentui/react/lib/Button';
 
-import { InfoLabel } from "../components/InfoLabel";
-import { Page } from "../components/Page";
-import { PageHeader } from "../components/PageHeader";
-import { type Job } from "../models/Job";
-import { type AppDispatch } from "../store";
-import { fetchJobDetails } from "../store/jobDetails.api";
+import { InfoLabel } from '../components/InfoLabel';
+import { Page } from '../components/Page';
+import { PageHeader } from '../components/PageHeader';
+import { type Job } from '../models/Job';
+import { type AppDispatch } from '../store';
+import { fetchJobDetails } from '../store/jobDetails.api';
 import {
   selectSelectedJobDetails,
   setGetJobDetailsError,
   selectGetJobDetailsError,
-} from "../store/jobs.slice";
+} from '../store/jobs.slice';
 
 const titleStackItemStyles: IStackItemStyles = {
   root: {
     fontSize: 15,
-    fontWeight: "bold",
+    fontWeight: 'bold',
   },
 };
 
@@ -57,7 +57,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
 
   const { t } = useTranslation();
 
-  const OpenInNewWindowIcon: IIconProps = { iconName: "OpenInNewWindow" };
+  const OpenInNewWindowIcon: IIconProps = { iconName: 'OpenInNewWindow' };
 
   const onMessageBarDismiss = (): void => {
     dispatch(setGetJobDetailsError());
@@ -65,7 +65,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
 
   const openInAzure = (): void => {
     var url = `https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/${job.targetGroupId}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   useEffect(() => {
@@ -89,7 +89,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
             isMultiline={false}
             onDismiss={onMessageBarDismiss}
             dismissButtonAriaLabel={
-              t("JobDetailsPage.MessageBar.dismissButtonAriaLabel") as string
+              t('JobDetailsPage.MessageBar.dismissButtonAriaLabel') as string
             }
           >
             {error}
@@ -98,7 +98,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
       </div>
 
       <Text variant="xxLarge" block>
-        {t("JobDetailsPage.labels.pageTitle")}
+        {t('JobDetailsPage.labels.pageTitle')}
       </Text>
 
       <div>
@@ -109,7 +109,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
         >
           <Stack.Item align="start" styles={titleStackItemStyles}>
             <Text variant="mediumPlus" block>
-              {t("JobDetailsPage.labels.sectionTitle")}
+              {t('JobDetailsPage.labels.sectionTitle')}
             </Text>
             <Separator />
           </Stack.Item>
@@ -117,8 +117,8 @@ export const JobDetailsPage: React.FunctionComponent = () => {
           {/* Last Modified by */}
           <Stack.Item align="start" styles={titleStackItemStyles}>
             <InfoLabel
-              label={t("JobDetailsPage.labels.lastModifiedby")}
-              description={t("JobDetailsPage.descriptions.lastModifiedby")}
+              label={t('JobDetailsPage.labels.lastModifiedby')}
+              description={t('JobDetailsPage.descriptions.lastModifiedby')}
             />
             <Text variant="medium" block>
               DATA UNAVAILABLE
@@ -128,7 +128,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
           {/* Group Links */}
           <Stack.Item align="start" styles={titleStackItemStyles}>
             <Text variant="mediumPlus" block>
-              {t("JobDetailsPage.labels.groupLinks")}
+              {t('JobDetailsPage.labels.groupLinks')}
             </Text>
             <Text variant="medium" block>
               DATA UNAVAILABLE
@@ -138,7 +138,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
           {/* Destination */}
           <Stack.Item align="start" styles={titleStackItemStyles}>
             <Text variant="mediumPlus" block>
-              {t("JobDetailsPage.labels.destination")}
+              {t('JobDetailsPage.labels.destination')}
             </Text>
 
             <Stack
@@ -148,8 +148,8 @@ export const JobDetailsPage: React.FunctionComponent = () => {
             >
               <Stack.Item align="start" styles={titleStackItemStyles}>
                 <InfoLabel
-                  label={t("JobDetailsPage.labels.type")}
-                  description={t("JobDetailsPage.descriptions.type")}
+                  label={t('JobDetailsPage.labels.type')}
+                  description={t('JobDetailsPage.descriptions.type')}
                 />
                 <Text variant="medium" block>
                   {job.targetGroupType}
@@ -158,7 +158,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
 
               <Stack.Item align="start" styles={titleStackItemStyles}>
                 <Text variant="mediumPlus" block>
-                  {t("JobDetailsPage.labels.name")}
+                  {t('JobDetailsPage.labels.name')}
                 </Text>
                 <Text variant="medium" block>
                   {job.targetGroupName}
@@ -167,8 +167,8 @@ export const JobDetailsPage: React.FunctionComponent = () => {
 
               <Stack.Item align="start" styles={titleStackItemStyles}>
                 <InfoLabel
-                  label={t("JobDetailsPage.labels.ID")}
-                  description={t("JobDetailsPage.descriptions.id")}
+                  label={t('JobDetailsPage.labels.ID')}
+                  description={t('JobDetailsPage.descriptions.id')}
                 />
                 <Text variant="medium" block>
                   {job.targetGroupId}
@@ -190,7 +190,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
           {/* Configuration */}
           <Stack.Item align="start" styles={titleStackItemStyles}>
             <Text variant="mediumPlus" block>
-              {t("JobDetailsPage.labels.configuration")}
+              {t('JobDetailsPage.labels.configuration')}
             </Text>
 
             <Stack
@@ -200,8 +200,8 @@ export const JobDetailsPage: React.FunctionComponent = () => {
             >
               <Stack.Item align="start" styles={titleStackItemStyles}>
                 <InfoLabel
-                  label={t("JobDetailsPage.labels.startDate")}
-                  description={t("JobDetailsPage.descriptions.startDate")}
+                  label={t('JobDetailsPage.labels.startDate')}
+                  description={t('JobDetailsPage.descriptions.startDate')}
                 />
                 {jobDetails != null ? (
                   <Text variant="medium" block>
@@ -214,8 +214,8 @@ export const JobDetailsPage: React.FunctionComponent = () => {
 
               <Stack.Item align="start" styles={titleStackItemStyles}>
                 <InfoLabel
-                  label={t("JobDetailsPage.labels.endDate")}
-                  description={t("JobDetailsPage.descriptions.endDate")}
+                  label={t('JobDetailsPage.labels.endDate')}
+                  description={t('JobDetailsPage.descriptions.endDate')}
                 />
                 <Text variant="medium" block>
                   DATA UNAVAILABLE
@@ -224,8 +224,8 @@ export const JobDetailsPage: React.FunctionComponent = () => {
 
               <Stack.Item align="start" styles={titleStackItemStyles}>
                 <InfoLabel
-                  label={t("JobDetailsPage.labels.lastRun")}
-                  description={t("JobDetailsPage.descriptions.lastRun")}
+                  label={t('JobDetailsPage.labels.lastRun')}
+                  description={t('JobDetailsPage.descriptions.lastRun')}
                 />
                 <Text variant="medium" block>
                   {job.lastSuccessfulRunTime}
@@ -234,8 +234,8 @@ export const JobDetailsPage: React.FunctionComponent = () => {
 
               <Stack.Item align="start" styles={titleStackItemStyles}>
                 <InfoLabel
-                  label={t("JobDetailsPage.labels.nextRun")}
-                  description={t("JobDetailsPage.descriptions.nextRun")}
+                  label={t('JobDetailsPage.labels.nextRun')}
+                  description={t('JobDetailsPage.descriptions.nextRun')}
                 />
                 <Text variant="medium" block>
                   {job.estimatedNextRunTime}
@@ -244,8 +244,8 @@ export const JobDetailsPage: React.FunctionComponent = () => {
 
               <Stack.Item align="start" styles={titleStackItemStyles}>
                 <InfoLabel
-                  label={t("JobDetailsPage.labels.frequency")}
-                  description={t("JobDetailsPage.descriptions.frequency")}
+                  label={t('JobDetailsPage.labels.frequency')}
+                  description={t('JobDetailsPage.descriptions.frequency')}
                 />
                 {jobDetails != null ? (
                   <Text variant="medium" block>
@@ -258,8 +258,8 @@ export const JobDetailsPage: React.FunctionComponent = () => {
 
               <Stack.Item align="start" styles={titleStackItemStyles}>
                 <InfoLabel
-                  label={t("JobDetailsPage.labels.requestor")}
-                  description={t("JobDetailsPage.descriptions.requestor")}
+                  label={t('JobDetailsPage.labels.requestor')}
+                  description={t('JobDetailsPage.descriptions.requestor')}
                 />
                 {jobDetails != null ? (
                   <Text variant="medium" block>
@@ -272,9 +272,9 @@ export const JobDetailsPage: React.FunctionComponent = () => {
 
               <Stack.Item align="start" styles={titleStackItemStyles}>
                 <InfoLabel
-                  label={t("JobDetailsPage.labels.increaseThreshold")}
+                  label={t('JobDetailsPage.labels.increaseThreshold')}
                   description={t(
-                    "JobDetailsPage.descriptions.increaseThreshold"
+                    'JobDetailsPage.descriptions.increaseThreshold'
                   )}
                 />
                 {jobDetails != null ? (
@@ -288,9 +288,9 @@ export const JobDetailsPage: React.FunctionComponent = () => {
 
               <Stack.Item align="start" styles={titleStackItemStyles}>
                 <InfoLabel
-                  label={t("JobDetailsPage.labels.decreaseThreshold")}
+                  label={t('JobDetailsPage.labels.decreaseThreshold')}
                   description={t(
-                    "JobDetailsPage.descriptions.decreaseThreshold"
+                    'JobDetailsPage.descriptions.decreaseThreshold'
                   )}
                 />
                 {jobDetails != null ? (
@@ -304,9 +304,9 @@ export const JobDetailsPage: React.FunctionComponent = () => {
 
               <Stack.Item align="start" styles={titleStackItemStyles}>
                 <InfoLabel
-                  label={t("JobDetailsPage.labels.thresholdViolations")}
+                  label={t('JobDetailsPage.labels.thresholdViolations')}
                   description={t(
-                    "JobDetailsPage.descriptions.thresholdViolations"
+                    'JobDetailsPage.descriptions.thresholdViolations'
                   )}
                 />
                 {jobDetails != null ? (
@@ -323,7 +323,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
           {/* Source Parts */}
           <Stack.Item align="start" styles={titleStackItemStyles}>
             <Text variant="mediumPlus" block>
-              {t("JobDetailsPage.labels.sourceParts")}
+              {t('JobDetailsPage.labels.sourceParts')}
             </Text>
             <Separator />
             {jobDetails != null ? (
