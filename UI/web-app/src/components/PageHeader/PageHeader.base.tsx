@@ -1,44 +1,49 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { classNamesFunction, type IProcessedStyleSet, type IIconProps, Separator } from '@fluentui/react'
-import { CommandBarButton } from '@fluentui/react/lib/Button'
-import { Stack, type IStackStyles } from '@fluentui/react/lib/Stack'
-import { useTheme } from '@fluentui/react/lib/Theme'
-import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import {
+  classNamesFunction,
+  type IProcessedStyleSet,
+  type IIconProps,
+  Separator,
+} from '@fluentui/react';
+import { CommandBarButton } from '@fluentui/react/lib/Button';
+import { Stack, type IStackStyles } from '@fluentui/react/lib/Stack';
+import { useTheme } from '@fluentui/react/lib/Theme';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import {
   type IPageHeaderProps,
   type IPageHeaderStyleProps,
-  type IPageHeaderStyles
-} from './PageHeader.types'
+  type IPageHeaderStyles,
+} from './PageHeader.types';
 
 const getClassNames = classNamesFunction<
-IPageHeaderStyleProps,
-IPageHeaderStyles
->()
+  IPageHeaderStyleProps,
+  IPageHeaderStyles
+>();
 
-const stackStyles: Partial<IStackStyles> = { root: { height: 44 } }
-const leftArrowIcon: IIconProps = { iconName: 'ChevronLeftMed' }
+const stackStyles: Partial<IStackStyles> = { root: { height: 44 } };
+const leftArrowIcon: IIconProps = { iconName: 'ChevronLeftMed' };
 
 export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
   props: IPageHeaderProps
 ) => {
-  const { className, styles } = props
+  const { className, styles } = props;
   const classNames: IProcessedStyleSet<IPageHeaderStyles> = getClassNames(
     styles,
     {
       className,
-      theme: useTheme()
+      theme: useTheme(),
     }
-  )
+  );
 
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const backButtonOnClick = (): void => {
-    navigate(-1)
-  }
+    navigate(-1);
+  };
 
   return (
     <Stack className={classNames.root}>
@@ -51,5 +56,5 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
       </Stack>
       <Separator></Separator>
     </Stack>
-  )
-}
+  );
+};

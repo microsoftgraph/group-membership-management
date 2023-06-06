@@ -1,24 +1,26 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { classNamesFunction, type IProcessedStyleSet } from '@fluentui/react'
-import { useTheme } from '@fluentui/react/lib/Theme'
-import React from 'react'
+import { classNamesFunction, type IProcessedStyleSet } from '@fluentui/react';
+import { useTheme } from '@fluentui/react/lib/Theme';
+import React from 'react';
 
-import { type IPageProps, type IPageStyleProps, type IPageStyles } from './Page.types'
+import {
+  type IPageProps,
+  type IPageStyleProps,
+  type IPageStyles,
+} from './Page.types';
 
-const getClassNames = classNamesFunction<IPageStyleProps, IPageStyles>()
+const getClassNames = classNamesFunction<IPageStyleProps, IPageStyles>();
 
-export const PageBase: React.FunctionComponent<IPageProps> = (props: IPageProps) => {
-  const { children, className, styles } = props
+export const PageBase: React.FunctionComponent<IPageProps> = (
+  props: IPageProps
+) => {
+  const { children, className, styles } = props;
   const classNames: IProcessedStyleSet<IPageStyles> = getClassNames(styles, {
     className,
-    theme: useTheme()
-  })
+    theme: useTheme(),
+  });
 
-  return (
-    <div className={classNames.root}>
-      {children}
-    </div>
-  )
-}
+  return <div className={classNames.root}>{children}</div>;
+};
