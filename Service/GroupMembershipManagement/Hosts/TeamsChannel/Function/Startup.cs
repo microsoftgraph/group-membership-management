@@ -4,6 +4,7 @@
 using Common.DependencyInjection;
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
+using Microsoft.Azure.ServiceBus;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -12,6 +13,7 @@ using Polly;
 using Polly.Extensions.Http;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
+using Repositories.ServiceBusQueue;
 using Repositories.TeamsChannel;
 using System;
 using System.Collections.Generic;
@@ -56,7 +58,14 @@ namespace Hosts.TeamsChannel
                 return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
             })
             .AddTransient<ITeamsChannelService, TeamsChannelService>()
-            .AddTransient<ITeamsChannelRepository, TeamsChannelRepository>();
+            .AddTransient<ITeamsChannelRepository, TeamsChannelRepository>()
+            .AddSingleton<IQueueClient>((s) =>
+            {
+                var configuration = s.GetService<IConfiguration>();
+                var serviceBusConnectionString = configuration["serviceBusTopicConnection"];
+                var membershipAggregatorQueue = configuration["serviceBusMembershipAggregatorQueue"];
+                return new QueueClient(serviceBusConnectionString, membershipAggregatorQueue);
+            }).AddScoped<IServiceBusQueueRepository, ServiceBusQueueRepository>();
         }
 
         // see https://learn.microsoft.com/en-us/dotnet/architecture/microservices/implement-resilient-applications/implement-http-call-retries-exponential-backoff-polly

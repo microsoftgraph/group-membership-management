@@ -1,11 +1,17 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.FeatureManagement;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Entities;
+using Models.ServiceBus;
 using Moq;
+using Moq.Protected;
 using Repositories.Contracts;
 using Repositories.Mocks;
+using System.Net;
+using System.Net.Http.Json;
 using TeamsChannel.Service;
 using TeamsChannel.Service.Contracts;
 
@@ -19,6 +25,14 @@ namespace Services.Tests
         private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository = null!;
         private Mock<IBlobStorageRepository> _mockBlobStorageRepository = null!;
         private Mock<IHttpClientFactory> _mockHttpClientFactory = null!;
+        private Mock<IFeatureManager> _featureManager = null!;
+        private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository = null!;
+        private Mock<IConfigurationRefresherProvider> _configurationRefresherProvider = null!;
+        private Mock<ILoggingRepository> _loggingRepository = null!;
+        private Mock<HttpMessageHandler> _messageHandler = null!;
+        private bool _isFeatureFlagEnabled = false;
+        private HttpStatusCode _responseStatusCode = HttpStatusCode.NoContent;
+
 
         private Dictionary<AzureADTeamsChannel, List<AzureADTeamsUser>> _mockChannels = new Dictionary<AzureADTeamsChannel, List<AzureADTeamsUser>>
         {
@@ -42,8 +56,44 @@ namespace Services.Tests
             _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
             var mockSyncJobRepository = new MockSyncJobRepository();
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
+            _loggingRepository = new Mock<ILoggingRepository>();
 
-            _service = new TeamsChannelService(_mockTeamsChannelRepository.Object, _mockBlobStorageRepository.Object, _mockHttpClientFactory.Object, mockSyncJobRepository, new MockLoggingRepository());
+            _featureManager = new Mock<IFeatureManager>();
+            _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
+
+            _messageHandler = new Mock<HttpMessageHandler>();
+            _messageHandler
+                .Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                        "SendAsync",
+                        ItExpr.IsAny<HttpRequestMessage>(),
+                        ItExpr.IsAny<CancellationToken>())
+                               .ReturnsAsync(() => new HttpResponseMessage
+                               {
+                                   StatusCode = _responseStatusCode
+                               });
+
+            var httpClient = new HttpClient(_messageHandler.Object) { BaseAddress = new Uri("https://graph.microsoft.com/v1.0/") };
+            _mockHttpClientFactory.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
+
+            _featureManager.Setup(x => x.IsEnabledAsync(It.IsAny<string>()))
+                           .ReturnsAsync(() => _isFeatureFlagEnabled);
+
+            var configurationRefresher = new Mock<IConfigurationRefresher>();
+            configurationRefresher.Setup(x => x.TryRefreshAsync()).ReturnsAsync(true);
+
+            _configurationRefresherProvider.Setup(x => x.Refreshers)
+                                            .Returns(() => new List<IConfigurationRefresher> { configurationRefresher.Object });
+
+            _service = new TeamsChannelService(_mockTeamsChannelRepository.Object,
+                                                _mockBlobStorageRepository.Object,
+                                                _mockHttpClientFactory.Object,
+                                                mockSyncJobRepository,
+                                                _loggingRepository.Object,
+                                                _featureManager.Object,
+                                                _configurationRefresherProvider.Object,
+                                                _serviceBusQueueRepository.Object);
 
             _syncInfo = new ChannelSyncInfo
             {
@@ -144,6 +194,64 @@ namespace Services.Tests
         {
             await _service.MarkSyncJobAsErroredAsync(_syncInfo.SyncJob);
             Assert.AreEqual(SyncStatus.Error.ToString(), _syncInfo.SyncJob.Status);
+        }
+
+        [TestMethod]
+        public async Task SendMembershipRequestViaServiceBus()
+        {
+            _isFeatureFlagEnabled = true;
+            await _service.MakeMembershipAggregatorRequestAsync(_syncInfo, "blob-path");
+
+            _featureManager.Verify(x => x.IsEnabledAsync(It.IsAny<string>()), Times.Once);
+            _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task SendMembershipRequestViaHTTP_Success()
+        {
+            _isFeatureFlagEnabled = false;
+            _responseStatusCode = HttpStatusCode.NoContent;
+            await _service.MakeMembershipAggregatorRequestAsync(_syncInfo, "blob-path");
+
+            _featureManager.Verify(x => x.IsEnabledAsync(It.IsAny<string>()), Times.Once);
+            _messageHandler.Protected().Verify(
+                       "SendAsync",
+                       Times.Once(),
+                       ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Post),
+                       ItExpr.IsAny<CancellationToken>()
+                    );
+
+            _loggingRepository
+                .Verify(x => x.LogMessageAsync(
+                                    It.Is<LogMessage>(x => x.Message.StartsWith("In Service, successfully made POST request")),
+                                    It.IsAny<VerbosityLevel>(),
+                                    It.IsAny<string>(),
+                                    It.IsAny<string>()),
+                                    Times.Once);
+        }
+
+        [TestMethod]
+        public async Task SendMembershipRequestViaHTTP_Failure()
+        {
+            _isFeatureFlagEnabled = false;
+            _responseStatusCode = HttpStatusCode.BadRequest;
+            await _service.MakeMembershipAggregatorRequestAsync(_syncInfo, "blob-path");
+
+            _featureManager.Verify(x => x.IsEnabledAsync(It.IsAny<string>()), Times.Once);
+            _messageHandler.Protected().Verify(
+                       "SendAsync",
+                       Times.Once(),
+                       ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Post),
+                       ItExpr.IsAny<CancellationToken>()
+                    );
+
+            _loggingRepository
+                .Verify(x => x.LogMessageAsync(
+                                    It.Is<LogMessage>(x => x.Message.StartsWith("In Service, POST request failed")),
+                                    It.IsAny<VerbosityLevel>(),
+                                    It.IsAny<string>(),
+                                    It.IsAny<string>()),
+                                    Times.Once);
         }
     }
 }
