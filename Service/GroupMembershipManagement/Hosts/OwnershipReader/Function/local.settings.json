@@ -24,7 +24,8 @@
     "membershipContainerName": "",
     "actionableEmailProviderId": "",
     "membershipAggregatorUrl": "",
-    "membershipAggregatorFunctionKey": ""
+    "membershipAggregatorFunctionKey": "",
+    "serviceBusMembershipAggregatorQueue": ""
   },
   "ConnectionStrings": {}
 }
