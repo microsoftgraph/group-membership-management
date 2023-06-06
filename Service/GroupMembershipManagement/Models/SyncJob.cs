@@ -19,6 +19,8 @@ namespace Models
             PartitionKey = partitionKey;
             RowKey = rowKey;
         }
+
+        public Guid Id { get; set; }
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
 
