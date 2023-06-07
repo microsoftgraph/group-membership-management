@@ -24,6 +24,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using Microsoft.FeatureManagement;
+using Azure.Messaging.ServiceBus;
 
 namespace Hosts.FunctionBase
 {
@@ -186,6 +187,18 @@ namespace Hosts.FunctionBase
                 var tc = new TelemetryClient(telemetryConfiguration);
                 tc.Context.Operation.Name = FunctionName;
                 return tc;
+            });
+
+            builder.Services.AddSingleton(services =>
+            {
+                var serviceBusConnectionString = GetValueOrDefault("serviceBusConnectionString");
+                if (string.IsNullOrWhiteSpace(serviceBusConnectionString))
+                    serviceBusConnectionString = GetValueOrDefault("serviceBusTopicConnection");
+
+                if (string.IsNullOrWhiteSpace(serviceBusConnectionString))
+                    throw new ArgumentNullException($"Could not start because of missing configuration option: servicebus connection string");
+
+                return new ServiceBusClient(serviceBusConnectionString);
             });
         }
 

@@ -32,7 +32,6 @@ namespace Services.Tests
         private GraphGroupRepository _graphGroupRepository;
         private Mock<IRequestAdapter> _requestAdapter;
         private Mock<IResponseHandler> _responseHandler;
-        private HttpResponseMessage _response;
 
         [TestInitialize]
         public void InitializeTest()

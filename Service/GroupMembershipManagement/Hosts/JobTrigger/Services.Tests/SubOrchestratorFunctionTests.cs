@@ -4,7 +4,6 @@ using Hosts.JobTrigger;
 using JobTrigger.Activity.EmailSender;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
@@ -18,6 +17,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
+using Azure.Messaging.ServiceBus;
+using System.Threading;
 
 namespace Services.Tests
 {
@@ -27,7 +28,7 @@ namespace Services.Tests
         Mock<IJobTriggerService> _jobTriggerService;
         Mock<ILoggingRepository> _loggingRespository;
         Mock<IDurableOrchestrationContext> _context;
-        Mock<ExecutionContext> _executionContext;
+        Mock<Microsoft.Azure.WebJobs.ExecutionContext> _executionContext;
         Mock<IEmailSenderRecipient> _emailSenderAndRecipients;
         Mock<IGMMResources> _gmmResources;
         SyncStatus _syncStatus = SyncStatus.Idle;
@@ -46,7 +47,7 @@ namespace Services.Tests
             _gmmResources = new Mock<IGMMResources>();
             _jobTriggerService = new Mock<IJobTriggerService>();
             _context = new Mock<IDurableOrchestrationContext>();
-            _executionContext = new Mock<ExecutionContext>();
+            _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
             _loggingRespository = new Mock<ILoggingRepository>();
             _emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
             _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -208,7 +209,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task ProcessIdleJob()
         {
-            var topicClient = new Mock<ITopicClient>();
+            var serviceBusSender = new Mock<ServiceBusSender>();
 
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
             _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()))
@@ -221,7 +222,7 @@ namespace Services.Tests
                         var graphGroupRepository = new Mock<IGraphGroupRepository>();
                         var gmmAppId = new Mock<IKeyVaultSecret<IJobTriggerService>>();
                         var emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
-                        var serviceBusTopicsRepository = new ServiceBusTopicsRepository(topicClient.Object);
+                        var serviceBusTopicsRepository = new ServiceBusTopicsRepository(serviceBusSender.Object);
                         var jobTriggerService = new JobTriggerService(
                                                         _loggingRespository.Object,
                                                         syncJobRepository.Object,
@@ -259,17 +260,23 @@ namespace Services.Tests
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<SyncStatus>(s => s == SyncStatus.InProgress), It.IsAny<SyncJob>()), Times.Once());
 
-            topicClient.Verify(x => x.SendAsync(It.IsAny<Message>()), Times.Exactly(2));
-            topicClient.Verify(x => x.SendAsync(It.Is<Message>(m => (string)m.UserProperties["Type"] == "SecurityGroup")), Times.Exactly(2));
-            topicClient.Verify(x => x.SendAsync(It.Is<Message>(m => m.UserProperties.ContainsKey("IsDestinationPart")
-                                                                    && (bool)m.UserProperties["IsDestinationPart"] == true)), Times.Once());
+            serviceBusSender.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            serviceBusSender.Verify(x => x.SendMessageAsync(
+                It.Is<ServiceBusMessage>(m => (string)m.ApplicationProperties["Type"] == "SecurityGroup"),
+                It.IsAny<CancellationToken>()),
+                Times.Exactly(2));
+            serviceBusSender.Verify(x => x.SendMessageAsync(
+                It.Is<ServiceBusMessage>(m => m.ApplicationProperties.ContainsKey("IsDestinationPart")
+                                              && (bool)m.ApplicationProperties["IsDestinationPart"]),
+                It.IsAny<CancellationToken>()),
+                Times.Once());
 
             Assert.AreEqual(SyncStatus.InProgress, _syncStatus);
         }
         [TestMethod]
         public async Task ProcessInProgressJob()
         {
-            var topicClient = new Mock<ITopicClient>();
+            var serviceBusSender = new Mock<ServiceBusSender>();
 
             var inProgressSyncJob = SampleDataHelper.CreateSampleSyncJobs(1, "SecurityGroup").First();
             inProgressSyncJob.Status = SyncStatus.InProgress.ToString();
@@ -285,7 +292,7 @@ namespace Services.Tests
                         var graphGroupRepository = new Mock<IGraphGroupRepository>();
                         var gmmAppId = new Mock<IKeyVaultSecret<IJobTriggerService>>();
                         var emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
-                        var serviceBusTopicsRepository = new ServiceBusTopicsRepository(topicClient.Object);
+                        var serviceBusTopicsRepository = new ServiceBusTopicsRepository(serviceBusSender.Object);
                         var jobTriggerService = new JobTriggerService(
                                                         _loggingRespository.Object,
                                                         syncJobRepository.Object,
@@ -323,10 +330,14 @@ namespace Services.Tests
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<SyncStatus>(s => s == SyncStatus.StuckInProgress), It.IsAny<SyncJob>()), Times.Once());
 
-            topicClient.Verify(x => x.SendAsync(It.IsAny<Message>()), Times.Exactly(2));
-            topicClient.Verify(x => x.SendAsync(It.Is<Message>(m => (string)m.UserProperties["Type"] == "SecurityGroup")), Times.Exactly(2));
-            topicClient.Verify(x => x.SendAsync(It.Is<Message>(m => m.UserProperties.ContainsKey("IsDestinationPart")
-                                                                    && (bool)m.UserProperties["IsDestinationPart"] == true)), Times.Once());
+            serviceBusSender.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            serviceBusSender.Verify(x => x.SendMessageAsync(
+                It.Is<ServiceBusMessage>(m => (string)m.ApplicationProperties["Type"] == "SecurityGroup"),
+                It.IsAny<CancellationToken>()), Times.Exactly(2));
+            serviceBusSender.Verify(x => x.SendMessageAsync(
+                It.Is<ServiceBusMessage>(m => m.ApplicationProperties.ContainsKey("IsDestinationPart")
+                                              && (bool)m.ApplicationProperties["IsDestinationPart"]),
+                It.IsAny<CancellationToken>()), Times.Once());
 
             Assert.AreEqual(SyncStatus.StuckInProgress, _syncStatus);
         }
