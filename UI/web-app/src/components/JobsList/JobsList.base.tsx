@@ -4,7 +4,7 @@
 import { DetailsList, DetailsListLayoutMode, IColumn } from '@fluentui/react/lib/DetailsList';
 import { useTranslation } from 'react-i18next';
 import '../../i18n/config';
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchJobs } from '../../store/jobs.api'
 import { selectAllJobs } from '../../store/jobs.slice'
@@ -27,55 +27,115 @@ const getClassNames = classNamesFunction<
 
 initializeIcons();
 
-const buildColumns = (): IColumn[] => {
-  const columns: IColumn[] = [];
-  columns.push({
-    key: "type",
-    name: "Type",
-    fieldName: "targetGroupType",
-    minWidth: 100,
-    maxWidth: 100,
-    isResizable: false
-  });
-  columns.push({
-    key: "lastRun",
-    name: "Last Run",
-    fieldName: "lastSuccessfulRunTime",
-    minWidth: 100,
-    maxWidth: 100,
-    isResizable: false
-  });
-  columns.push({
-    key: "nextRun",
-    name: "Next Run",
-    fieldName: "estimatedNextRunTime",
-    minWidth: 100,
-    maxWidth: 100,
-    isResizable: false
-  });
-  columns.push({
-    key: "status",
-    name: "Status",
-    fieldName: "enabledOrNot",
-    minWidth: 75,
-    maxWidth: 75,
-    isResizable: false
-  });
-  columns.push({
-    key: "actionRequired",
-    name: "Action Required",
-    fieldName: "actionRequired",
-    minWidth: 200,
-    maxWidth: 200,
-    isResizable: false
-  });
-  return columns;
-}
-
 export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   props: IJobsListProps
 ) => {
   const { className, styles } = props;
+
+  const dispatch = useDispatch<AppDispatch>()
+  const jobs = useSelector(selectAllJobs)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!jobs){
+      dispatch(fetchJobs())
+    }
+  }, [dispatch, jobs]);
+
+  const [sortKey, setSortKey] = useState<string | undefined>(undefined);
+  const [isSortedDescending, setIsSortedDescending] = useState(false);
+  const items = jobs;
+  const columns: IColumn[] = [
+    {
+      key: "type",
+      name: "Type",
+      fieldName: "targetGroupType",
+      minWidth: 100,
+      maxWidth: 100,
+      isResizable: false,
+      isSorted: sortKey === "type",
+      isSortedDescending
+    },
+    {
+      key: "lastRun",
+      name: "Last Run",
+      fieldName: "lastSuccessfulRunTime",
+      minWidth: 100,
+      maxWidth: 100,
+      isResizable: false,
+      isSorted: sortKey === "lastRun",
+      isSortedDescending
+    },
+    {
+      key: "nextRun",
+      name: "Next Run",
+      fieldName: "estimatedNextRunTime",
+      minWidth: 100,
+      maxWidth: 100,
+      isResizable: false,
+      isSorted: sortKey === "nextRun",
+      isSortedDescending
+    },
+    {
+      key: "status",
+      name: "Status",
+      fieldName: "enabledOrNot",
+      minWidth: 75,
+      maxWidth: 75,
+      isResizable: false,
+      isSorted: sortKey === "status",
+      isSortedDescending
+    },
+    {
+      key: "actionRequired",
+      name: "Action Required",
+      fieldName: "actionRequired",
+      minWidth: 200,
+      maxWidth: 200,
+      isResizable: false,
+      isSorted: sortKey === "actionRequired",
+      isSortedDescending
+    }
+  ];
+
+  const sortedItems = [...items ? items : []].sort((a, b) => {
+    if (sortKey === "status") {
+      return isSortedDescending
+      ? (b.enabledOrNot || "").localeCompare(a.enabledOrNot || "")
+      : (a.enabledOrNot || "").localeCompare(b.enabledOrNot || "");
+    }
+    if (sortKey === "lastRun") {
+      return isSortedDescending
+      ? (b.lastSuccessfulRunTime || "").localeCompare(a.lastSuccessfulRunTime || "")
+      : (a.lastSuccessfulRunTime || "").localeCompare(b.lastSuccessfulRunTime || "");
+    }
+    if (sortKey === "nextRun") {
+      return isSortedDescending
+      ? (b.estimatedNextRunTime || "").localeCompare(a.estimatedNextRunTime || "")
+      : (a.estimatedNextRunTime || "").localeCompare(b.estimatedNextRunTime || "");
+    }
+    if (sortKey === "type") {
+      return isSortedDescending
+      ? (b.targetGroupType || "").localeCompare(a.targetGroupType || "")
+      : (a.targetGroupType || "").localeCompare(b.targetGroupType || "");
+    }
+    if (sortKey === "actionRequired") {
+      return isSortedDescending
+        ? (b.actionRequired || "").localeCompare(a.actionRequired || "")
+        : (a.actionRequired || "").localeCompare(b.actionRequired || "");
+    }
+    return 0;
+  });
+
+  function onColumnHeaderClick(
+    event?: any,
+    column?: IColumn
+  ) {
+    if (column) {
+      setIsSortedDescending(!!column.isSorted && !column.isSortedDescending);
+      setSortKey(column.key);
+    }
+  }
 
   const classNames: IProcessedStyleSet<IJobsListStyles> = getClassNames(
     styles,
@@ -89,17 +149,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   var toggleSelection = t('toggleSelection');
   var toggleAllSelection = t('toggleAllSelection');
   var selectRow = t('selectRow');
-  var columns = buildColumns();
-
-  const dispatch = useDispatch<AppDispatch>()
-  const jobs = useSelector(selectAllJobs)
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    if (!jobs){
-      dispatch(fetchJobs())
-    }
-  }, [dispatch, jobs]);
 
   const onItemClicked = (item?: any, index?: number, ev?: React.FocusEvent<HTMLElement>): void => {
     navigate('/JobDetailsPage', { replace: false, state: {item: item} })
@@ -160,18 +209,19 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     return (
       <div className={classNames.root}>
         <div className={classNames.tabContent}>
-          <DetailsList
-            items={jobs}
-            columns={columns}
-            setKey="set"
-            layoutMode={DetailsListLayoutMode.justified}
-            selectionPreservedOnEmptyClick={true}
-            ariaLabelForSelectionColumn={toggleSelection}
-            ariaLabelForSelectAllCheckbox={toggleAllSelection}
-            checkButtonAriaLabel={selectRow}
-            onActiveItemChanged={onItemClicked}
-            onRenderItemColumn={_renderItemColumn}
-          />
+        <DetailsList
+          onColumnHeaderClick={onColumnHeaderClick}
+          items={sortedItems}
+          columns={columns}
+          setKey="set"
+          layoutMode={DetailsListLayoutMode.justified}
+          selectionPreservedOnEmptyClick={true}
+          ariaLabelForSelectionColumn={toggleSelection}
+          ariaLabelForSelectAllCheckbox={toggleAllSelection}
+          checkButtonAriaLabel={selectRow}
+          onActiveItemChanged={onItemClicked}
+          onRenderItemColumn={_renderItemColumn}
+        />
         </div>
         <div className={classNames.tabContent}> <div className={classNames.refresh}>
           <IconButton
