@@ -7,7 +7,7 @@ import {
 } from '@fluentui/react/lib/DetailsList';
 import { useTranslation } from 'react-i18next';
 import '../../i18n/config';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchJobs } from '../../store/jobs.api';
 import {
@@ -58,38 +58,50 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const jobs = useSelector(selectAllJobs);
   const navigate = useNavigate();
 
+  const [sortKey, setSortKey] = useState<string | undefined>(undefined);
+  const [isSortedDescending, setIsSortedDescending] = useState(false);
+  const items = jobs;
+
   const columns = [
     {
-      key: 'type',
+      key: 'targetGroupType',
       name: t('JobsList.ShimmeredDetailsList.columnNames.destinationType'),
       fieldName: 'targetGroupType',
       minWidth: 100,
       maxWidth: 100,
       isResizable: false,
+      isSorted: sortKey === "targetGroupType",
+      isSortedDescending
     },
     {
-      key: 'lastRun',
+      key: 'lastSuccessfulRunTime',
       name: t('JobsList.ShimmeredDetailsList.columnNames.lastRun'),
       fieldName: 'lastSuccessfulRunTime',
       minWidth: 100,
       maxWidth: 100,
       isResizable: false,
+      isSorted: sortKey === "lastSuccessfulRunTime",
+      isSortedDescending
     },
     {
-      key: 'nextRun',
+      key: 'estimatedNextRunTime',
       name: t('JobsList.ShimmeredDetailsList.columnNames.nextRun'),
       fieldName: 'estimatedNextRunTime',
       minWidth: 100,
       maxWidth: 100,
       isResizable: false,
+      isSorted: sortKey === "estimatedNextRunTime",
+      isSortedDescending
     },
     {
-      key: 'status',
+      key: 'enabledOrNot',
       name: t('JobsList.ShimmeredDetailsList.columnNames.status'),
       fieldName: 'enabledOrNot',
       minWidth: 75,
       maxWidth: 75,
       isResizable: false,
+      isSorted: sortKey === "enabledOrNot",
+      isSortedDescending
     },
     {
       key: 'actionRequired',
@@ -98,8 +110,33 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       minWidth: 200,
       maxWidth: 200,
       isResizable: false,
-    },
+      isSorted: sortKey === "actionRequired",
+      isSortedDescending
+    }
   ];
+
+  const sortedItems = [...items ? items : []].sort((a, b) => {
+    if (sortKey === "enabledOrNot" ||
+        sortKey === "lastSuccessfulRunTime" ||
+        sortKey === "estimatedNextRunTime" ||
+        sortKey === "targetGroupType" ||
+        sortKey === "actionRequired") {
+      return isSortedDescending
+      ? (b[sortKey] || "").localeCompare(a[sortKey] || "")
+      : (a[sortKey] || "").localeCompare(b[sortKey] || "");
+    }
+    return 0;
+  });
+
+  function onColumnHeaderClick(
+    event?: any,
+    column?: IColumn
+  ) {
+    if (column) {
+      setIsSortedDescending(!!column.isSorted && !column.isSortedDescending);
+      setSortKey(column.key);
+    }
+  }
 
   const error = useSelector(selectGetJobsError);
 
@@ -139,8 +176,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     const fieldContent = item[column?.fieldName as keyof any] as string;
 
     switch (column?.key) {
-      case 'lastRun':
-      case 'nextRun':
+      case 'lastSuccessfulRunTime':
+      case 'estimatedNextRunTime':
         const spaceIndex = fieldContent.indexOf(' ');
         const isEmpty = fieldContent === '';
         const lastOrNextRunDate = isEmpty
@@ -157,7 +194,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           </div>
         );
 
-      case 'status':
+      case 'enabledOrNot':
         return (
           <div>
             {fieldContent === 'Disabled' ? (
@@ -207,7 +244,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       <div className={classNames.tabContent}>
         <ShimmeredDetailsList
           setKey="set"
-          items={jobs || []}
+          onColumnHeaderClick={onColumnHeaderClick}
+          items={sortedItems || []}
           columns={columns}
           enableShimmer={!jobs || jobs.length === 0}
           layoutMode={DetailsListLayoutMode.justified}
