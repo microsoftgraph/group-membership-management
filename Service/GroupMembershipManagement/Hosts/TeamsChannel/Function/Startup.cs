@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
-using Microsoft.Azure.ServiceBus;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -16,11 +16,7 @@ using Repositories.Contracts;
 using Repositories.ServiceBusQueue;
 using Repositories.TeamsChannel;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
 using TeamsChannel.Service;
 using TeamsChannel.Service.Contracts;
 using Constants = TeamsChannel.Service.Constants;
@@ -59,13 +55,14 @@ namespace Hosts.TeamsChannel
             })
             .AddTransient<ITeamsChannelService, TeamsChannelService>()
             .AddTransient<ITeamsChannelRepository, TeamsChannelRepository>()
-            .AddSingleton<IQueueClient>((s) =>
+            .AddScoped<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
             {
-                var configuration = s.GetService<IConfiguration>();
-                var serviceBusConnectionString = configuration["serviceBusTopicConnection"];
+                var configuration = services.GetService<IConfiguration>();
                 var membershipAggregatorQueue = configuration["serviceBusMembershipAggregatorQueue"];
-                return new QueueClient(serviceBusConnectionString, membershipAggregatorQueue);
-            }).AddScoped<IServiceBusQueueRepository, ServiceBusQueueRepository>();
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(membershipAggregatorQueue);
+                return new ServiceBusQueueRepository(sender);
+            });
         }
 
         // see https://learn.microsoft.com/en-us/dotnet/architecture/microservices/implement-resilient-applications/implement-http-call-retries-exponential-backoff-polly
