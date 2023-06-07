@@ -5,25 +5,24 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
+using Microsoft.FeatureManagement;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
+using Models.Helpers;
+using Models.ServiceBus;
+using Moq;
+using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using SecurityGroup.SubOrchestrator;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using SecurityGroup.SubOrchestrator;
-using Microsoft.Azure.WebJobs;
-using Models.Helpers;
-using Microsoft.FeatureManagement;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Repositories.ServiceBusQueue;
-using Models.ServiceBus;
 
 namespace Tests.Services
 {
@@ -42,7 +41,7 @@ namespace Tests.Services
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
         private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
         private Mock<IConfigurationRefresherProvider> _configurationRefresherProvider;
-        private Mock<ExecutionContext> _executionContext;
+        private Mock<Microsoft.Azure.WebJobs.ExecutionContext> _executionContext;
         private int _usersToReturn;
         private QuerySample _querySample;
         private OrchestratorRequest _orchestratorRequest;
@@ -67,7 +66,7 @@ namespace Tests.Services
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
             _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
-            _executionContext = new Mock<ExecutionContext>();
+            _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             _usersToReturn = 10;
@@ -108,7 +107,7 @@ namespace Tests.Services
                             .ReturnsAsync(() => _isFeatureFlagEnabled);
 
             var configurationRefresher = new Mock<IConfigurationRefresher>();
-            configurationRefresher.Setup(x => x.TryRefreshAsync()).ReturnsAsync(true);
+            configurationRefresher.Setup(x => x.TryRefreshAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
             _configurationRefresherProvider.Setup(x => x.Refreshers)
                                             .Returns(() => new List<IConfigurationRefresher> { configurationRefresher.Object });

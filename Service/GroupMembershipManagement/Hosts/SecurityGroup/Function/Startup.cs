@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
-using Microsoft.Azure.ServiceBus;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -51,13 +51,15 @@ namespace Hosts.SecurityGroup
                 var containerName = configuration["membershipContainerName"];
 
                 return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
-            }).AddSingleton<IQueueClient>((s) =>
+            })
+            .AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
             {
-                var configuration = s.GetService<IConfiguration>();
-                var serviceBusConnectionString = configuration["serviceBusTopicConnection"];
+                var configuration = services.GetRequiredService<IConfiguration>();
                 var membershipAggregatorQueue = configuration["serviceBusMembershipAggregatorQueue"];
-                return new QueueClient(serviceBusConnectionString, membershipAggregatorQueue);
-            }).AddScoped<IServiceBusQueueRepository, ServiceBusQueueRepository>();
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(membershipAggregatorQueue);
+                return new ServiceBusQueueRepository(sender);
+            });
         }
 
         private bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)

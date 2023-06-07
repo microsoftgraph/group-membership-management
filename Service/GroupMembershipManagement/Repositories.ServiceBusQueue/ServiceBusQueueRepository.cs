@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.ServiceBus;
-using Models.ServiceBus;
+using Azure.Messaging.ServiceBus;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -10,18 +9,18 @@ namespace Repositories.ServiceBusQueue
 {
     public class ServiceBusQueueRepository : IServiceBusQueueRepository
     {
-        private readonly IQueueClient _queueClient;
+        private ServiceBusSender _serviceBusSender;
 
-        public ServiceBusQueueRepository(IQueueClient queueClient)
+        public ServiceBusQueueRepository(ServiceBusSender serviceBusSender)
         {
-            _queueClient = queueClient ?? throw new ArgumentNullException(nameof(queueClient));
+            _serviceBusSender = serviceBusSender ?? throw new ArgumentNullException(nameof(serviceBusSender));
         }
 
-        public async Task SendMessageAsync(ServiceBusMessage message)
+        public async Task SendMessageAsync(Models.ServiceBus.ServiceBusMessage message)
         {
-            var serviceBusmessage = new Message
+            var serviceBusmessage = new ServiceBusMessage
             {
-                Body = message.Body,
+                Body = new BinaryData(message.Body),
                 MessageId = message.MessageId
             };
 
@@ -29,11 +28,11 @@ namespace Repositories.ServiceBusQueue
             {
                 foreach (var property in message.UserProperties)
                 {
-                    serviceBusmessage.UserProperties.Add(property.Key, property.Value);
+                    serviceBusmessage.ApplicationProperties.Add(property.Key, property.Value);
                 }
             }
 
-            await _queueClient.SendAsync(serviceBusmessage);
+            await _serviceBusSender.SendMessageAsync(serviceBusmessage);
         }
     }
 }
