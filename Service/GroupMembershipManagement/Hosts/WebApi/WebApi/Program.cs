@@ -28,8 +28,9 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Configuration;
 using Repositories.Contracts.InjectConfig;
-using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.ApplicationInsights;
+using Repositories.EntityFramework.Contexts;
+using Microsoft.EntityFrameworkCore;
+using Repositories.EntityFramework;
 
 namespace WebApi
 {
@@ -48,6 +49,9 @@ namespace WebApi
 
             var apiHostName = builder.Configuration.GetValue<string>("Settings:ApiHostname");
             var secureApiHostName = $"https://{apiHostName}";
+
+            builder.Services.AddDbContext<GMMContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DbContext")));
 
             builder.Services.Configure<WebAPISettings>(builder.Configuration.GetSection("WebAPI:Settings"));
             builder.Configuration.AddAzureAppConfiguration(options =>
@@ -219,7 +223,7 @@ namespace WebApi
                 settings.ApiHostname = apiHostName;
             });
             builder.Services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
-
+            builder.Services.AddScoped<IDatabaseMigrationsRepository, DatabaseMigrationsRepository>();
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.

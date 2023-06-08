@@ -41,6 +41,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.NotificationRe
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Localization", "..\..\..\Repositories.Localization\Repositories.Localization.csproj", "{EF7436BD-26A1-49D8-AFCB-1803EB24C4CB}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework.Contexts", "..\..\..\Repositories.EntityFramework.Contexts\Repositories.EntityFramework.Contexts.csproj", "{D4E9D493-2DD5-499D-B011-80B386FDB759}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework", "..\..\..\Repositories.EntityFramework\Repositories.EntityFramework.csproj", "{712150B2-ADAB-4EA8-AA1D-DAA537BC1037}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -123,6 +127,14 @@ Global
 		{EF7436BD-26A1-49D8-AFCB-1803EB24C4CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EF7436BD-26A1-49D8-AFCB-1803EB24C4CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EF7436BD-26A1-49D8-AFCB-1803EB24C4CB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4E9D493-2DD5-499D-B011-80B386FDB759}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4E9D493-2DD5-499D-B011-80B386FDB759}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4E9D493-2DD5-499D-B011-80B386FDB759}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4E9D493-2DD5-499D-B011-80B386FDB759}.Release|Any CPU.Build.0 = Release|Any CPU
+		{712150B2-ADAB-4EA8-AA1D-DAA537BC1037}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{712150B2-ADAB-4EA8-AA1D-DAA537BC1037}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{712150B2-ADAB-4EA8-AA1D-DAA537BC1037}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{712150B2-ADAB-4EA8-AA1D-DAA537BC1037}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
