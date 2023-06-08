@@ -23,7 +23,8 @@
     "syncCompletedCCEmailAddresses": "",
     "syncDisabledCCEmailAddresses": "",
     "supportEmailAddresses": "",
-    "actionableEmailProviderId": ""
+    "actionableEmailProviderId": "",
+    "serviceBusMembershipAggregatorQueue": ""
   },
   "ConnectionStrings": {}
 }
