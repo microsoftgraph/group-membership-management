@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.14.0" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.15.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.2.0" />
     <PackageReference Include="Moq" Version="4.18.1" />
     <PackageReference Include="MSTest.TestAdapter" Version="2.2.10" />
@@ -23,8 +23,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Entities\Entities.csproj" />   
-    <ProjectReference Include="..\Function\AzureMembershipProvider.csproj" />    
+    <ProjectReference Include="..\..\..\Entities\Entities.csproj" />
+    <ProjectReference Include="..\Function\AzureMembershipProvider.csproj" />
   </ItemGroup>
 
 </Project>
