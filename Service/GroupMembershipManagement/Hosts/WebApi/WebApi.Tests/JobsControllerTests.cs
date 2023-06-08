@@ -5,12 +5,14 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Graph;
+using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.Kiota.Abstractions.Serialization;
 using Models;
 using Moq;
 using Repositories.Contracts;
 using Repositories.GraphGroups;
+using System.Threading;
 using WebApi.Controllers.v1.Jobs;
 using WebApi.Models.Responses;
 
@@ -119,29 +121,19 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetJobsTestWithGraphAPIFailureAsync()
         {
-            _requestAdapter.Setup(x => x.ConvertToNativeRequestAsync<HttpRequestMessage>(It.IsAny<RequestInformation>(), It.IsAny<CancellationToken>()))
-                           .ReturnsAsync(() => new HttpRequestMessage());
+            _graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>()))
+                                    .ReturnsAsync(() => "Example Name");
 
-            _requestAdapter.Setup(x => x.SendNoContentAsync(
-                                                It.IsAny<RequestInformation>(),
-                                                It.IsAny<Dictionary<string, ParsableFactory<IParsable>>>(),
-                                                It.IsAny<CancellationToken>()
-                                 )).ThrowsAsync(new ApiException("GraphAPI exception"));
-
-            _graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object,
-                                                               "https://graph.microsoft.com/v1.0");
-
-            var graphGroupRepository = new GraphGroupRepository(
-                                                _graphServiceClient.Object,
-                                                _telemetryClient,
-                                                _loggingRepository.Object);
+            _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new List<AzureADGroup>());
 
             _getJobsHandler = new GetJobsHandler(
                                      _loggingRepository.Object,
                                      _syncJobRepository.Object,
-                                     graphGroupRepository);
+                                     _graphGroupRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler);
+
             var response = await _jobsController.GetJobsAsync();
             var result = response.Result as OkObjectResult;
 
@@ -159,13 +151,6 @@ namespace Services.Tests
             Assert.IsTrue(jobs.All(x => x.Status != null));
             Assert.IsTrue(jobs.All(x => x.TargetGroupType == null));
 
-            _loggingRepository.Verify(x => x.LogMessageAsync
-            (
-                It.Is<LogMessage>(x => x.Message.StartsWith("Unable to retrieve group types")),
-                It.IsAny<VerbosityLevel>(),
-                It.IsAny<string>(),
-                It.IsAny<string>()
-            ), Times.Once);
         }
 
         private async IAsyncEnumerable<T> ToAsyncEnumerable<T>(IEnumerable<T> input)

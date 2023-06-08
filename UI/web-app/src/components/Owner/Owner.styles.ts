@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { IOwnerStyleProps, IOwnerStyles } from './Owner.types';
+import { type IOwnerStyleProps, type IOwnerStyles } from './Owner.types';
 
 export const getStyles = (props: IOwnerStyleProps): IOwnerStyles => {
   const { className } = props;
@@ -9,9 +9,9 @@ export const getStyles = (props: IOwnerStyleProps): IOwnerStyles => {
   return {
     root: [
       {
-        maxWidth: "20%"
+        maxWidth: '20%',
       },
-      className
-    ]
+      className,
+    ],
   };
 };

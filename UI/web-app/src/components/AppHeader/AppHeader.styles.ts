@@ -1,7 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { IAppHeaderStyleProps, IAppHeaderStyles } from './AppHeader.types';
+import {
+  type IAppHeaderStyleProps,
+  type IAppHeaderStyles,
+} from './AppHeader.types';
 
 export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
   const { className, theme } = props;
@@ -12,14 +15,14 @@ export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
         backgroundColor: theme.palette.themePrimary,
         height: 40,
         color: theme.palette.white,
-        maxWidth: "100%",
+        maxWidth: '100%',
         margin: '0 auto',
         borderBottom: '1px solid transparent',
         boxSizing: 'border-box',
         paddingLeft: 20,
-        paddingTop: 10
+        paddingTop: 10,
       },
-      className
+      className,
     ],
     circle: {
       border: 'solid 2px',
@@ -29,7 +32,7 @@ export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
       width: 20,
       display: 'flex',
       justifyContent: 'center',
-      alignItems: 'center'
+      alignItems: 'center',
     },
     tabContent: {
       color: theme.palette.white,
@@ -37,29 +40,28 @@ export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
       border: 'none',
       outline: 'none',
       cursor: 'pointer',
-      paddingLeft: 15
+      paddingLeft: 15,
     },
     icon: {
       color: theme.palette.themePrimary,
       paddingBottom: 5,
-      paddingRight: 0.5
+      paddingRight: 0.5,
     },
     right: {
       paddingRight: 10,
       fontSize: 15,
-      float: 'right'
+      float: 'right',
     },
     welcome: {
       fontWeight: 'bold',
       fontSize: 25,
-      paddingLeft: 20
+      paddingLeft: 20,
     },
     learn: {
-      paddingLeft: 20
-
+      paddingLeft: 20,
     },
     whole: {
-      backgroundColor: theme.palette.neutralLight
-    }
+      backgroundColor: theme.palette.neutralLight,
+    },
   };
 };

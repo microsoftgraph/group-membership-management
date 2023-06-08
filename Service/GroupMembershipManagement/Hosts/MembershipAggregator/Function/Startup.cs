@@ -4,6 +4,7 @@ using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
+using Microsoft.Azure.ServiceBus;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -12,6 +13,7 @@ using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
+using Repositories.ServiceBusTopics;
 using Services;
 using Services.Contracts;
 
@@ -60,7 +62,11 @@ namespace Hosts.MembershipAggregator
                 var containerName = configuration["membershipContainerName"];
 
                 return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
-            });
+            })
+            .AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(
+                                                            new TopicClient(
+                                                                GetValueOrThrow("serviceBusConnectionString"),
+                                                                GetValueOrThrow("serviceBusMembershipUpdatersTopic"))));
         }
 
         private int GetIntSetting(IConfiguration configuration, string settingName, int defaultValue)

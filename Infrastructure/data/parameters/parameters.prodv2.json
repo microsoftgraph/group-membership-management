@@ -41,6 +41,23 @@
     },
     "sqlAdministratorsGroupName": {
       "value": ""
+    },
+    "serviceBusMembershipUpdatersTopicSubscriptions": {
+      "value": {
+        "topicName": "membershipUpdaters",
+        "subscriptions": [
+          {
+            "name": "GraphUpdater",
+            "ruleName": "updaterType",
+            "ruleSqlExpression": "Type = 'GraphUpdater'"
+          },
+          {
+            "name": "TeamsChannelUpdater",
+            "ruleName": "updaterType",
+            "ruleSqlExpression": "Type = 'TeamsChannelUpdater'"
+          }
+        ]
+      }
     }
   }
 }

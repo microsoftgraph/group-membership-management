@@ -1,19 +1,19 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models.ServiceBus;
+using Azure.Messaging.ServiceBus;
 using Hosts.GraphUpdater;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Models;
+using Models.ServiceBus;
 using Moq;
 using Newtonsoft.Json;
 using Repositories.Mocks;
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
-using Models;
 
 namespace Services.Tests
 {
@@ -60,69 +60,19 @@ namespace Services.Tests
                 SyncJob = _syncJob
             };
 
-            var request = new HttpRequestMessage
+            var contentBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(content));
+            var properties = new Dictionary<string, object>
             {
-                Method = HttpMethod.Post,
-                Content = new StringContent(JsonConvert.SerializeObject(content)),
+                { "Type", "SecurityGroup"}
             };
 
-            var response = await starterFunction.RunAsync(request, _durableClientMock.Object);
+            var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(contentBytes), properties: properties);
 
-            Assert.AreEqual(HttpStatusCode.NoContent, response.StatusCode);
+            await starterFunction.RunAsync(message, _durableClientMock.Object);
+
             Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message.Contains("function started")));
             Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message.Contains("InstanceId:")));
             Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message.Contains("function complete")));
-        }
-
-        [TestMethod]
-        public async Task ProcessEmptyRequestTest()
-        {
-            _durableClientMock
-                  .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<MembershipHttpRequest>()))
-                  .ReturnsAsync(_instanceId);
-
-            var starterFunction = new StarterFunction(_loggerMock);
-            var request = new HttpRequestMessage
-            {
-                Method = HttpMethod.Post
-            };
-
-            var response = await starterFunction.RunAsync(request, _durableClientMock.Object);
-            var responseContent = await response.Content.ReadAsStringAsync();
-
-            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
-            Assert.AreEqual("Request content is empty.", responseContent);
-            Assert.AreEqual(0, _loggerMock.MessagesLogged.Count(x => x.Message.Contains("function started")));
-            Assert.AreEqual(0, _loggerMock.MessagesLogged.Count(x => x.Message.Contains("function complete")));
-        }
-
-        [TestMethod]
-        public async Task ProcessInvalidRequestTest()
-        {
-            _durableClientMock
-                  .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<MembershipHttpRequest>()))
-                  .ReturnsAsync(_instanceId);
-
-            var starterFunction = new StarterFunction(_loggerMock);
-            var groupMembership = GetGroupMembership();
-            var content = new MembershipHttpRequest
-            {
-                FilePath = null,
-                SyncJob = _syncJob
-            };
-
-            var request = new HttpRequestMessage
-            {
-                Content = new StringContent(JsonConvert.SerializeObject(content)),
-            };
-
-            var response = await starterFunction.RunAsync(request, _durableClientMock.Object);
-            var responseContent = await response.Content.ReadAsStringAsync();
-
-            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
-            Assert.AreEqual("Request is not valid, FilePath is missing.", responseContent);
-            Assert.AreEqual(0, _loggerMock.MessagesLogged.Count(x => x.Message.Contains("function started")));
-            Assert.AreEqual(0, _loggerMock.MessagesLogged.Count(x => x.Message.Contains("function complete")));
         }
 
         private string GetMembershipBody(int totalMessageCount = 1)

@@ -80,6 +80,9 @@ param serviceBusTopicSubscriptions array = [
   }
 ]
 
+@description('Enter service bus membership updaters topic\'s and subscriptions details.')
+param serviceBusMembershipUpdatersTopicSubscriptions object
+
 @description('Enter storage account name.')
 @minLength(1)
 @maxLength(24)
@@ -365,6 +368,29 @@ module serviceBusSubscriptionsTemplate 'serviceBusSubscription.bicep' = {
   ]
 }
 
+module serviceBusMembershipUpdatersTopicTemplate 'serviceBusTopic.bicep' = {
+  name: 'serviceBusMembershipUpdatersTopicTemplate'
+  params: {
+    serviceBusName: serviceBusName
+    topicName: serviceBusMembershipUpdatersTopicSubscriptions.topicName
+  }
+  dependsOn: [
+    serviceBusTemplate
+  ]
+}
+
+module serviceBusMembershipUpdatersSubscriptionsTemplate 'serviceBusSubscription.bicep' = {
+  name: 'serviceBusMembershipUpdatersSubscriptionsTemplate'
+  params: {
+    serviceBusName: serviceBusName
+    topicName: serviceBusMembershipUpdatersTopicSubscriptions.topicName
+    topicSubscriptions: serviceBusMembershipUpdatersTopicSubscriptions.subscriptions
+  }
+  dependsOn: [
+    serviceBusMembershipUpdatersTopicTemplate
+  ]
+}
+
 module storageAccountTemplate 'storageAccount.bicep' = {
   name: 'storageAccountTemplate'
   params: {
@@ -480,6 +506,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: serviceBusTopicName
       }
       {
+        name: 'serviceBusMembershipUpdatersTopic'
+        value: serviceBusMembershipUpdatersTopicSubscriptions.topicName
+      }
+      {
         name: 'logAnalyticsCustomerId'
         value: logAnalyticsTemplate.outputs.customerId
       }
@@ -518,3 +548,4 @@ module dashboardTemplate 'dashboard.bicep' = {
 output storageAccountName string = storageAccountName
 output serviceBusName string = serviceBusName
 output serviceBusTopicName string = serviceBusTopicName
+output isDataKVPresent bool = isDataKVPresent

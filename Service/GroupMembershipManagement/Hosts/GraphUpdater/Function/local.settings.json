@@ -20,6 +20,8 @@
     "supportEmailAddresses": "",
     "membershipStorageAccountName": "",
     "membershipContainerName": "",
-    "actionableEmailProviderId": ""
+    "actionableEmailProviderId": "",
+    "serviceBusConnectionString": "",
+    "serviceBusMembershipUpdatersTopic": ""
   }
 }

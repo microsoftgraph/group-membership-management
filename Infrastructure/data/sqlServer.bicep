@@ -50,6 +50,7 @@ resource sqlServer 'Microsoft.Sql/servers@2021-02-01-preview' = {
     type: 'SystemAssigned'
   }
   properties: {
+    minimalTlsVersion: '1.2'
     administratorLogin: sqlAdminUserName
     administratorLoginPassword: sqlAdminPassword
     administrators: {
@@ -118,6 +119,7 @@ resource replicaSqlServer 'Microsoft.Sql/servers@2021-11-01-preview' = {
     primaryDatabase
   ]
   properties: {
+    minimalTlsVersion: '1.2'
     administratorLogin: readOnlySqlAdminUserName
     administratorLoginPassword: readOnlySqlAdminPassword
     administrators: {

@@ -1,19 +1,23 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React from "react";
-import { classNamesFunction, IProcessedStyleSet } from "@fluentui/react";
-import { useTheme } from "@fluentui/react/lib/Theme";
-import { useNavigate } from "react-router-dom";
-import { IIconProps } from "@fluentui/react";
-import { CommandBarButton } from "@fluentui/react/lib/Button";
-import { Stack, IStackStyles } from "@fluentui/react/lib/Stack";
-import { Separator } from "@fluentui/react";
 import {
-  IPageHeaderProps,
-  IPageHeaderStyleProps,
-  IPageHeaderStyles,
-} from "./PageHeader.types";
+  classNamesFunction,
+  type IProcessedStyleSet,
+  type IIconProps,
+  Separator,
+} from '@fluentui/react';
+import { CommandBarButton } from '@fluentui/react/lib/Button';
+import { Stack, type IStackStyles } from '@fluentui/react/lib/Stack';
+import { useTheme } from '@fluentui/react/lib/Theme';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+
+import {
+  type IPageHeaderProps,
+  type IPageHeaderStyleProps,
+  type IPageHeaderStyles,
+} from './PageHeader.types';
 
 const getClassNames = classNamesFunction<
   IPageHeaderStyleProps,
@@ -21,7 +25,7 @@ const getClassNames = classNamesFunction<
 >();
 
 const stackStyles: Partial<IStackStyles> = { root: { height: 44 } };
-const addIcon: IIconProps = { iconName: "ChevronLeftMed" };
+const leftArrowIcon: IIconProps = { iconName: 'ChevronLeftMed' };
 
 export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
   props: IPageHeaderProps
@@ -45,7 +49,7 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
     <Stack className={classNames.root}>
       <Stack horizontal styles={stackStyles}>
         <CommandBarButton
-          iconProps={addIcon}
+          iconProps={leftArrowIcon}
           text="Back"
           onClick={backButtonOnClick}
         />

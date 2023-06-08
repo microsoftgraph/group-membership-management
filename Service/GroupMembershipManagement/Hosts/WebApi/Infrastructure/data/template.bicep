@@ -15,7 +15,7 @@ param appConfigurationName string = '${solutionAbbreviation}-appConfig-${environ
 
 param appConfigurationKeyData array = [
   {
-    key: 'WebAPI:Settings:Sentinel$WebAPI'
+    key: 'WebAPI:Settings:Sentinel'
     value: '1'
     contentType: 'string'
     tag: {

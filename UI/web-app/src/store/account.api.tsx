@@ -1,21 +1,22 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { Account } from "../models/Account";
-import { createAsyncThunk } from "@reduxjs/toolkit";
-import { IMsalContext } from "@azure/msal-react";
-import { msalInstance } from "../index";
-import { AccountInfo } from "@azure/msal-browser";
+import { type AccountInfo } from '@azure/msal-browser';
+import { type IMsalContext } from '@azure/msal-react';
+import { createAsyncThunk } from '@reduxjs/toolkit';
+
+import { msalInstance } from '../index';
+import { type Account } from '../models/Account';
 
 export const fetchAccount = createAsyncThunk(
-  "account/fetchAccount",
+  'account/fetchAccount',
   async (context: IMsalContext) => {
-    var account: AccountInfo | null = msalInstance.getActiveAccount();
+    const account: AccountInfo | null = msalInstance.getActiveAccount();
 
-    if (!account) {
+    if (account == null) {
       try {
         context.instance.loginRedirect({
-          scopes: ["User.Read"],
+          scopes: ['User.Read'],
         });
       } catch (error) {
         console.log(error);
@@ -31,7 +32,6 @@ export const fetchAccount = createAsyncThunk(
         return payload;
       }
     } else {
-      
       const payload: Account = {
         ...account,
       };

@@ -1,8 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React from 'react';
-import { IStyle, IStyleFunctionOrObject, ITheme } from '@fluentui/react';
+import {
+  type IStyle,
+  type IStyleFunctionOrObject,
+  type ITheme,
+} from '@fluentui/react';
+import type React from 'react';
 
 export interface IAppHeaderStyles {
   root: IStyle;
@@ -20,7 +24,8 @@ export interface IAppHeaderStyleProps {
   theme: ITheme;
 }
 
-export interface IAppHeaderProps extends React.AllHTMLAttributes<HTMLDivElement> {
+export interface IAppHeaderProps
+  extends React.AllHTMLAttributes<HTMLDivElement> {
   /**
    * Optional className to apply to the root of the component.
    */

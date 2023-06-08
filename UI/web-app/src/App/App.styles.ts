@@ -2,10 +2,11 @@
 // Licensed under the MIT license.
 
 import { getGlobalClassNames } from '@fluentui/react';
-import { IAppStyleProps, IAppStyles } from './App.types';
+
+import { type IAppStyleProps, type IAppStyles } from './App.types';
 
 const GlobalClassNames = {
-  root: 'gmm-app'
+  root: 'gmm-app',
 };
 
 export const getStyles = (props: IAppStyleProps): IAppStyles => {
@@ -14,25 +15,24 @@ export const getStyles = (props: IAppStyleProps): IAppStyles => {
   const classNames = getGlobalClassNames(GlobalClassNames, theme);
 
   return {
-    root: [{
-    }, classNames.root, className],
+    root: [{}, classNames.root, className],
     body: {
       display: 'flex',
       flexDirection: 'row',
       flexGrow: 1,
       justifyContent: 'center',
       boxSizing: 'border-box',
-      margin: '0 auto'
+      margin: '0 auto',
     },
     nav: {
-      width: 324
+      width: 324,
     },
     content: {
       backgroundColor: theme.palette.white,
       paddingLeft: 40,
       paddingRight: 40,
       position: 'relative',
-      width: '100%'
-    }
+      width: '100%',
+    },
   };
 };

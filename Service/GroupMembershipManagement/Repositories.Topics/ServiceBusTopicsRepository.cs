@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.ServiceBus;
 using Models;
+using Models.ServiceBus;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using System;
@@ -52,6 +53,25 @@ namespace Repositories.ServiceBusTopics
             destinationGroupMessage.UserProperties.Add("IsDestinationPart", true);
             destinationGroupMessage.MessageId += $"_{index}";
             await _topicClient.SendAsync(destinationGroupMessage);
+        }
+
+        public async Task AddMessageAsync(ServiceBusMessage message)
+        {
+            var serviceBusmessage = new Message
+            {
+                Body = message.Body,
+                MessageId = message.MessageId
+            };
+
+            if (message.UserProperties != null)
+            {
+                foreach (var property in message.UserProperties)
+                {
+                    serviceBusmessage.UserProperties.Add(property.Key, property.Value);
+                }
+            }
+
+            await _topicClient.SendAsync(serviceBusmessage);
         }
 
         private Message CreateMessage(SyncJob job)

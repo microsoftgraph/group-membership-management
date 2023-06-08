@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-export type Account = {
+export interface Account {
   homeAccountId: string;
   environment: string;
   tenantId: string;
@@ -10,5 +10,4 @@ export type Account = {
   name?: string;
   idToken?: string;
   nativeAccountId?: string;
-};
-
+}

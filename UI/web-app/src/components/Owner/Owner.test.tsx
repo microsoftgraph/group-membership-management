@@ -1,14 +1,15 @@
-import React from 'react';
 import { render, fireEvent } from '@testing-library/react';
+import React from 'react';
 import { Provider, useSelector } from 'react-redux';
 import configureStore from 'redux-mock-store';
+
 import { OwnerBase } from './Owner.base';
+import { type RootState } from '../../store';
 import { addOwner } from '../../store/owner.api';
-import { OwnerState, selectOwner } from '../../store/owner.slice';
-import { RootState } from '../../store';
+import { type OwnerState, selectOwner } from '../../store/owner.slice';
 
 const mockStore = configureStore([]);
-const initialState = { owner: { status: "" } };
+const initialState = { owner: { status: '' } };
 const store = mockStore(initialState);
 
 describe('OwnerBase component', () => {
@@ -45,7 +46,10 @@ describe('OwnerBase component', () => {
 
     const selectOwner = (state: { owner: OwnerState }) => state.owner;
     const owner = useSelector((state: RootState) => selectOwner(state));
-    const action = { type: owner.status, payload: { status: 'false 403 Forbidden' } };
+    const action = {
+      type: owner.status,
+      payload: { status: 'false 403 Forbidden' },
+    };
     store.dispatch(action);
     expect(getByText('addOwner403Message')).toBeInTheDocument();
   });
@@ -59,7 +63,10 @@ describe('OwnerBase component', () => {
 
     const selectOwner = (state: { owner: OwnerState }) => state.owner;
     const owner = useSelector((state: RootState) => selectOwner(state));
-    const action = { type: owner.status, payload: { status: 'false 400 Bad Request' } };
+    const action = {
+      type: owner.status,
+      payload: { status: 'false 400 Bad Request' },
+    };
     store.dispatch(action);
     expect(getByText('addOwner400Message')).toBeInTheDocument();
   });
@@ -73,9 +80,11 @@ describe('OwnerBase component', () => {
 
     const selectOwner = (state: { owner: OwnerState }) => state.owner;
     const owner = useSelector((state: RootState) => selectOwner(state));
-    const action = { type: owner.status, payload: { status: 'true 204 No Content' } };
+    const action = {
+      type: owner.status,
+      payload: { status: 'true 204 No Content' },
+    };
     store.dispatch(action);
     expect(getByText('addOwner204Message')).toBeInTheDocument();
   });
-
 });

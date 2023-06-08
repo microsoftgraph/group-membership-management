@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.ServiceBus;
 using Models;
+using Models.ServiceBus;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using System.Collections.Generic;
@@ -38,6 +39,11 @@ namespace Tests.Repositories
             }
 
             await Task.CompletedTask;
+        }
+
+        public Task AddMessageAsync(ServiceBusMessage message)
+        {
+            throw new System.NotImplementedException();
         }
 
         public Message CreateMessage(SyncJob job)

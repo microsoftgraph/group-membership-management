@@ -1,17 +1,21 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import * as React from 'react';
 import { styled } from '@fluentui/react';
-import { OwnerBase } from './Owner.base';
-import { IOwnerProps, IOwnerStyleProps, IOwnerStyles } from './Owner.types';
-import { getStyles } from './Owner.styles';
+import type * as React from 'react';
 
-export const Owner: React.FunctionComponent<IOwnerProps> = styled<IOwnerProps, IOwnerStyleProps, IOwnerStyles>(
-  OwnerBase,
-  getStyles,
-  undefined,
-  {
-    scope: 'Owner'
-  }
-);
+import { OwnerBase } from './Owner.base';
+import { getStyles } from './Owner.styles';
+import {
+  type IOwnerProps,
+  type IOwnerStyleProps,
+  type IOwnerStyles,
+} from './Owner.types';
+
+export const Owner: React.FunctionComponent<IOwnerProps> = styled<
+  IOwnerProps,
+  IOwnerStyleProps,
+  IOwnerStyles
+>(OwnerBase, getStyles, undefined, {
+  scope: 'Owner',
+});
