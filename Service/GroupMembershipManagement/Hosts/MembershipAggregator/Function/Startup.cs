@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
-using Microsoft.Azure.ServiceBus;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -63,10 +63,14 @@ namespace Hosts.MembershipAggregator
 
                 return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
             })
-            .AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(
-                                                            new TopicClient(
-                                                                GetValueOrThrow("serviceBusConnectionString"),
-                                                                GetValueOrThrow("serviceBusMembershipUpdatersTopic"))));
+            .AddSingleton<IServiceBusTopicsRepository>(services =>
+            {
+                var configuration = services.GetRequiredService<IConfiguration>();
+                var membershipAggregatorQueue = configuration["serviceBusMembershipUpdatersTopic"];
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(membershipAggregatorQueue);
+                return new ServiceBusTopicsRepository(sender);
+            });
         }
 
         private int GetIntSetting(IConfiguration configuration, string settingName, int defaultValue)

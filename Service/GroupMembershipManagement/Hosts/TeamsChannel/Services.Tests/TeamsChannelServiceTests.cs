@@ -81,7 +81,7 @@ namespace Services.Tests
                            .ReturnsAsync(() => _isFeatureFlagEnabled);
 
             var configurationRefresher = new Mock<IConfigurationRefresher>();
-            configurationRefresher.Setup(x => x.TryRefreshAsync()).ReturnsAsync(true);
+            configurationRefresher.Setup(x => x.TryRefreshAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
             _configurationRefresherProvider.Setup(x => x.Refreshers)
                                             .Returns(() => new List<IConfigurationRefresher> { configurationRefresher.Object });

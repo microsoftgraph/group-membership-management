@@ -24,9 +24,9 @@ namespace Repositories.ServiceBusQueue
                 MessageId = message.MessageId
             };
 
-            if (message.UserProperties != null)
+            if (message.ApplicationProperties != null)
             {
-                foreach (var property in message.UserProperties)
+                foreach (var property in message.ApplicationProperties)
                 {
                     serviceBusmessage.ApplicationProperties.Add(property.Key, property.Value);
                 }
