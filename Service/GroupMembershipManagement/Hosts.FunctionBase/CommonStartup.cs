@@ -23,6 +23,9 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using Repositories.EntityFramework.Contexts;
+using Microsoft.EntityFrameworkCore;
+using Repositories.EntityFramework;
 
 namespace Hosts.FunctionBase
 {
@@ -78,6 +81,13 @@ namespace Hosts.FunctionBase
             {
                 settings.Verbosity = configuration.GetValue<VerbosityLevel>("GMM:LoggingVerbosity");
             });
+
+            builder.Services.AddDbContext<GMMContext>(options =>
+                options.UseSqlServer(GetValueOrThrow("ConnectionStrings:DbContext")),
+                ServiceLifetime.Transient
+            );
+            builder.Services.AddScoped<IDatabaseMigrationsRepository, DatabaseMigrationsRepository>();
+
             builder.Services.AddSingleton<IAppConfigVerbosity>(services =>
             {
                 var creds = services.GetService<IOptions<AppConfigVerbosity>>();
