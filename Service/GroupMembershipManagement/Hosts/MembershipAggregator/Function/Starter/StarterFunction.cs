@@ -25,7 +25,7 @@ namespace Hosts.MembershipAggregator
         }
 
         [FunctionName("ServiceBusStarterFunction")]
-        public async Task RunAsync(
+        public async Task ProcessServiceBusMessageAsync(
             [ServiceBusTrigger("%serviceBusMembershipAggregatorQueue%", Connection = "serviceBusConnectionString")] ServiceBusReceivedMessage message,
             [DurableClient] IDurableOrchestrationClient starter)
         {
