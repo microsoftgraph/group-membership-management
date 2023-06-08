@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure.Messaging.ServiceBus;
 using Hosts.MembershipAggregator;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -11,6 +12,7 @@ using Repositories.Contracts;
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Services.Tests
@@ -123,6 +125,30 @@ namespace Services.Tests
                                     VerbosityLevel.INFO,
                                     It.IsAny<string>(),
                                     It.IsAny<string>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task ProcessServiceBusMessageAsync()
+        {
+            var starterFunction = new StarterFunction(_loggingRepository.Object);
+            var content = new MembershipAggregatorHttpRequest
+            {
+                FilePath = "file/path/name.json",
+                SyncJob = _syncJob,
+                PartNumber = 1,
+                PartsCount = 1
+            };
+
+            var contentBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(content));
+            var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(contentBytes));
+
+            await starterFunction.ProcessServiceBusMessageAsync(message, _durableClient.Object);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                        It.Is<LogMessage>(m => m.Message.StartsWith("Processing message")),
+                        VerbosityLevel.INFO,
+                        It.IsAny<string>(),
+                        It.IsAny<string>()), Times.Once());
         }
     }
 }
