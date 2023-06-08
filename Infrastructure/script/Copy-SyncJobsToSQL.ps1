@@ -34,12 +34,13 @@ function Copy-SyncJobsToSQL {
 
     $resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $storageAccounts = Get-AzStorageAccount -ResourceGroupName $resourceGroupName
+    $storageAccounts | ft
 
-    $storageAccountNamePrefix = "jobs$EnvironmentAbbreviation"
+    $storageAccountNamePrefix = "jobs$EnvironmentAbbreviation".ToLower()
     $jobStorageAccount = $storageAccounts | Where-Object { $_.StorageAccountName -like "$storageAccountNamePrefix*" }
 
-    if ($jobStorageAccount) {
-        Write-Host "Skipping... Could not find storage account starting with '$storageAccountPrefix' in resource group '$resourceGroupName'."
+    if (!$jobStorageAccount) {
+        Write-Host "Skipping... Could not find storage account starting with '$storageAccountNamePrefix' in resource group '$resourceGroupName'."
         Write-Host "Copy-SyncJobsToSQL completed."
         return
     }
