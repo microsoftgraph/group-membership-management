@@ -1,29 +1,24 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using DIConcreteTypes;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Models;
 using Models.ThresholdNotifications;
 using Moq;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
+using Repositories.Localization;
+using Services.Contracts.Notifications;
+using Services.Notifications;
+using Services.WebApi;
+using System.Security.Claims;
 using WebApi.Controllers.v1.Notifications;
 using WebApi.Models.Requests;
-using Microsoft.AspNetCore.Http;
-using System.Security.Claims;
-using Services.WebApi;
-using Services.Notifications;
-using Services.Contracts.Notifications;
-using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using Repositories.Localization;
-using DIConcreteTypes;
-using System.IdentityModel.Tokens.Jwt;
-using Microsoft.Azure.ServiceBus.Primitives;
-using Microsoft.IdentityModel.Tokens;
-using Azure.Core;
-using Repositories.Contracts.InjectConfig;
-using Microsoft.Graph.Models;
 
 namespace Services.Tests
 {
