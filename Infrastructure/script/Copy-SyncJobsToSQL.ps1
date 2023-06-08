@@ -26,11 +26,6 @@ function Copy-SyncJobsToSQL {
     )
 
     Write-Host "Copy-SyncJobsToSQL starting..."
-    
-    $infrastructureDirectory = Split-Path $PSScriptRoot -Parent
-    $rootDirectory = Split-Path $infrastructureDirectory -Parent
-    . ($rootDirectory + '\Scripts\Install-AzTableModuleIfNeeded.ps1')
-    Install-AzTableModuleIfNeeded | Out-Null
 
     $resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $storageAccounts = Get-AzStorageAccount -ResourceGroupName $resourceGroupName
