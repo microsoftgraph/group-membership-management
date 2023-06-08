@@ -57,7 +57,9 @@ function Copy-SyncJobsToSQL {
     }
 
     # Create a reference to the Storage Account
+    Write-Host ">>> Getting storage table..."
     $storageTable = Get-AzStorageTable –Name "SyncJobs" –Context $storageAccountContext
+    Write-Host ">>> Getting SyncJobs..."
     $syncJobs = Get-AzTableRow -table $storageTable.CloudTable
     $sourceTableLength = $syncJobs.Length
 
@@ -71,21 +73,29 @@ function Copy-SyncJobsToSQL {
     }
 
     $subscriptionId = (Get-AzContext).Subscription.Id
+    Write-Host ">>> Subscription Id: $subscriptionId"
 
+    Write-Host ">>> Creating SQL Connection"
     # Set up connection to SQL
     $conn = New-Object System.Data.SqlClient.SQLConnection 
     $conn.ConnectionString = "Server=$sqlServerName;Initial Catalog=$databaseName;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30"
+    Write-Host ">>> Getting access token"
     $conn.AccessToken = $(az account get-access-token --subscription $subscriptionId --resource https://database.windows.net --query accessToken -o tsv)
 
+    Write-Host ">>> Creating SQL Command"
     # Check to see if the destination sql table is empty
     $syncJobsCountCmd = $conn.CreateCommand()
     $syncJobsCountCmd.CommandText = "SELECT COUNT(*) FROM [dbo].[SyncJobs]"
 
+    Write-Host ">>> Opening Connection..."
     $conn.Open()
+    Write-Host ">>> Running command"
     $existingCount = $syncJobsCountCmd.ExecuteScalar()
+    Write-Host ">>> Closing connection"
     $conn.Close()
 
-    if (0 -ne $count) {
+    Write-Host ">>> SQL Record count: $existingCount"
+    if (0 -ne $existingCount) {
         if ($true -ne $Overwrite) {
             Write-Host "Skipping... Destination table contains ($existingCount) records and `$Overwrite is set to `$false."
             Write-Host "Copy-SyncJobsToSQL completed."
