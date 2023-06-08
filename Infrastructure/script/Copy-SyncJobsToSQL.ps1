@@ -33,24 +33,12 @@ function Copy-SyncJobsToSQL {
     Install-AzTableModuleIfNeeded | Out-Null
 
     $resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    $databaseName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    $sqlServerName = "$databaseName.database.windows.net"
-    $storageAccountPrefix = "jobs$EnvironmentAbbreviation".ToLower()
-
-    #jobsdhqvh6wkejd5zg2
-    #jobsago3wcxjtmidyoo
-
-    # Find jobs storage account in the resource group
     $storageAccounts = Get-AzStorageAccount -ResourceGroupName $resourceGroupName
-    foreach ($storageAccount in $storageAccounts) {
-        if ($storageAccount.StorageAccountName.ToLower().StartsWith($storageAccountPrefix)) {
-            Write-Host "Storage Account: $($storageAccount.StorageAccountName)"
-            $storageAccountContext = $storageAccount.Context
-            break
-        }
-    }
 
-    if ($null -eq $storageAccountContext) {
+    $storageAccountNamePrefix = "jobs$EnvironmentAbbreviation"
+    $jobStorageAccount = $storageAccounts | Where-Object { $_.StorageAccountName -like "$storageAccountNamePrefix*" }
+
+    if ($jobStorageAccount) {
         Write-Host "Skipping... Could not find storage account starting with '$storageAccountPrefix' in resource group '$resourceGroupName'."
         Write-Host "Copy-SyncJobsToSQL completed."
         return
@@ -58,7 +46,7 @@ function Copy-SyncJobsToSQL {
 
     # Create a reference to the Storage Account
     Write-Host ">>> Getting storage table..."
-    $storageTable = Get-AzStorageTable –Name "SyncJobs" –Context $storageAccountContext
+    $storageTable = Get-AzStorageTable –Name "SyncJobs" –Context $jobStorageAccount.Context  -ErrorAction SilentlyContinue
     Write-Host ">>> Getting SyncJobs..."
     $syncJobs = Get-AzTableRow -table $storageTable.CloudTable
     $sourceTableLength = $syncJobs.Length
@@ -74,6 +62,9 @@ function Copy-SyncJobsToSQL {
 
     $subscriptionId = (Get-AzContext).Subscription.Id
     Write-Host ">>> Subscription Id: $subscriptionId"
+
+    $databaseName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $sqlServerName = "$databaseName.database.windows.net"
 
     Write-Host ">>> Creating SQL Connection"
     # Set up connection to SQL
