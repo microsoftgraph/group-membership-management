@@ -42,6 +42,7 @@ var sqlServerUrl = 'Server=tcp:${solutionAbbreviation}-data-${environmentAbbrevi
 var sqlServerDataBaseName = 'Initial Catalog=${solutionAbbreviation}-data-${environmentAbbreviation};'
 var sqlServerLoginInfo = 'Persist Security Info=False;User ID=${sqlAdminUserName};Password=${sqlAdminPassword};'
 var sqlServerAdditionalSettings = 'MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=90;'
+var jobsSqlDataBaseName = 'Initial Catalog=${solutionAbbreviation}-data-${environmentAbbreviation}-jobs;'
 
 resource sqlServer 'Microsoft.Sql/servers@2021-02-01-preview' = {
   name: sqlServerName
@@ -223,6 +224,10 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
         {
           name: 'sqlServerManagedIdentity'
           value: sqlServer.identity.principalId
+        }
+        {
+          name: 'sqlDatabaseConnectionString'
+          value: '${sqlServerUrl}${jobsSqlDataBaseName}${sqlServerLoginInfo}${sqlServerAdditionalSettings}'
         }
         {
           name: 'sqlServerConnectionString'
