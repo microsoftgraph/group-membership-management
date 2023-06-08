@@ -24,6 +24,8 @@
     <ProjectReference Include="..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj" />
     <ProjectReference Include="..\..\..\DIConcreteTypes\DIConcreteTypes.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.EntityFramework.Contexts\Repositories.EntityFramework.Contexts.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.EntityFramework\Repositories.EntityFramework.csproj" />
     <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Localization\Repositories.Localization.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Logging\Repositories.Logging.csproj" />
