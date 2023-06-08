@@ -21,7 +21,7 @@ namespace Repositories.EntityFramework
 
         public Task<List<SyncJob>> SelectSyncJobsAsync()
         {
-            return _context.SyncJob.ToListAsync();
+            return _context.SyncJobs.ToListAsync();
         }
     }
 }
