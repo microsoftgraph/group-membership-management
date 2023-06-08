@@ -27,7 +27,7 @@ namespace Models.ServiceBus
         /// byte, sbyte, char, short, ushort, int, uint, long, ulong, float, double, decimal,
         /// bool, Guid, string, Uri, DateTime, DateTimeOffset, TimeSpan
         /// </remarks>
-        public Dictionary<string, object> UserProperties { get; set; } = new Dictionary<string, object>();
+        public Dictionary<string, object> ApplicationProperties { get; set; } = new Dictionary<string, object>();
 
     }
 }

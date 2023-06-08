@@ -43,7 +43,7 @@ namespace Hosts.MembershipAggregator
                 Body = body
             };
 
-            message.UserProperties.Add("Type", destinationType);
+            message.ApplicationProperties.Add("Type", destinationType);
 
             await _serviceBusTopicsRepository.AddMessageAsync(message);
 

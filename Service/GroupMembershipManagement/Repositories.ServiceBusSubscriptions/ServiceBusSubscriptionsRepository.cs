@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.Core;
-using Microsoft.Azure.ServiceBus.Primitives;
+
+using Azure.Messaging.ServiceBus;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
@@ -12,32 +11,45 @@ namespace Repositories.ServiceBusSubscriptions
 {
     public class ServiceBusSubscriptionsRepository : IServiceBusSubscriptionsRepository
     {
-        private readonly string _serviceBusNamespace;
-        public ServiceBusSubscriptionsRepository(string serviceBusNamespace)
+        private readonly ServiceBusReceiver _serviceBusReceiver;
+
+        public ServiceBusSubscriptionsRepository(ServiceBusReceiver serviceBusReceiver)
         {
-            _serviceBusNamespace = serviceBusNamespace;
+            _serviceBusReceiver = serviceBusReceiver ?? throw new ArgumentNullException(nameof(serviceBusReceiver));
         }
 
-        public async IAsyncEnumerable<Message> GetMessagesAsync(string topicName, string subscriptionName)
+        public async IAsyncEnumerable<Models.ServiceBus.ServiceBusMessage> GetMessagesAsync(string topicName, string subscriptionName)
         {
-            var tokenProvider = TokenProvider.CreateManagedIdentityTokenProvider();
-            var entityPath = EntityNameHelper.FormatSubscriptionPath(topicName, subscriptionName);
-            var receiver = new MessageReceiver($"sb://{_serviceBusNamespace}.servicebus.windows.net/", entityPath, tokenProvider);
-            IList<Message> messages = null;
+            IReadOnlyList<ServiceBusReceivedMessage> messages = null;
 
             do
             {
-                messages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(5));
+                messages = await _serviceBusReceiver.ReceiveMessagesAsync(100, TimeSpan.FromSeconds(5));
 
-                foreach (var message in (messages ?? Enumerable.Empty<Message>()))
+                foreach (var message in (messages ?? Enumerable.Empty<ServiceBusReceivedMessage>()))
                 {
-                    yield return message;
-                    await receiver.CompleteAsync(message.SystemProperties.LockToken);
+                    var newMessage = new Models.ServiceBus.ServiceBusMessage
+                    {
+                        Body = message.Body.ToArray(),
+                        MessageId = message.MessageId,
+                    };
+
+                    if (message.ApplicationProperties != null)
+                    {
+                        foreach (var keyValuePair in message.ApplicationProperties)
+                        {
+                            newMessage.ApplicationProperties.Add(keyValuePair.Key, keyValuePair.Value);
+                        }
+                    }
+
+                    yield return newMessage;
+
+                    await _serviceBusReceiver.CompleteMessageAsync(message);
                 }
 
             } while (messages?.Any() ?? false);
 
-            await receiver.CloseAsync();
+            await _serviceBusReceiver.CloseAsync();
         }
     }
 }
