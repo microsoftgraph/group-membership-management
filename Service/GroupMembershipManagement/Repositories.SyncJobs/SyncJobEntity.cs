@@ -33,6 +33,7 @@ namespace Repositories.SyncJobsRepository.Entities
         /// </summary>
         public Guid TargetOfficeGroupId { get; set; }
         public string Destination { get; set; }
+        public bool AllowEmptyDestination { get; set; }
 
         [IgnoreLogging]
         public string Status { get; set; }
