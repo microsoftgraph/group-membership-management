@@ -143,6 +143,7 @@ namespace Services
                         await LogIgnoreThresholdOnceAsync(job, sourceMembership.RunId);
                     else if (job.AllowEmptyDestination && (delta.Delta.ToAdd.Count > 0 && delta.TotalMembersCount == 0))
                     {
+                        deltaResponse.MembershipDeltaStatus = MembershipDeltaStatus.Ok;
                         await LogAllowEmptyDestinationAsync(job, sourceMembership.RunId);
                     }
                     else
