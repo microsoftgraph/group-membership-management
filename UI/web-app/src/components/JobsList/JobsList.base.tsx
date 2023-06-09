@@ -65,12 +65,22 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const columns = [
     {
       key: 'targetGroupType',
-      name: t('JobsList.ShimmeredDetailsList.columnNames.destinationType'),
+      name: t('JobsList.ShimmeredDetailsList.columnNames.type'),
       fieldName: 'targetGroupType',
       minWidth: 100,
       maxWidth: 100,
       isResizable: false,
       isSorted: sortKey === "targetGroupType",
+      isSortedDescending
+    },
+    {
+      key: 'targetGroupName',
+      name: t('JobsList.ShimmeredDetailsList.columnNames.name'),
+      fieldName: 'targetGroupName',
+      minWidth: 100,
+      maxWidth: 100,
+      isResizable: false,
+      isSorted: sortKey === "targetGroupName",
       isSortedDescending
     },
     {
@@ -119,6 +129,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     if (sortKey === "enabledOrNot" ||
         sortKey === "lastSuccessfulRunTime" ||
         sortKey === "estimatedNextRunTime" ||
+        sortKey === "targetGroupName" ||
         sortKey === "targetGroupType" ||
         sortKey === "actionRequired") {
       return isSortedDescending
