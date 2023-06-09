@@ -11,6 +11,7 @@ namespace WebApi.Models.DTOs
             Guid targetGroupId,
             string? targetGroupName,
             string status,
+            int period,
             DateTime lastSuccessfulRunTime,
             DateTime estimatedNextRunTime)
         {
@@ -19,6 +20,7 @@ namespace WebApi.Models.DTOs
             TargetGroupId = targetGroupId;
             TargetGroupName = targetGroupName;
             Status = status;
+            Period = period;
             LastSuccessfulRunTime = lastSuccessfulRunTime;
             EstimatedNextRunTime = estimatedNextRunTime;
         }
@@ -29,6 +31,8 @@ namespace WebApi.Models.DTOs
         public string? TargetGroupName { get; set; }
         public string? TargetGroupType { get; set; }
         public string Status { get; set; }
+        public int Period { get; set; }
+
         public DateTime LastSuccessfulRunTime { get; set; }
         public DateTime EstimatedNextRunTime { get; set; }
     }
