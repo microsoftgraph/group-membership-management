@@ -28,27 +28,19 @@ function Copy-SyncJobsToSQL {
     Write-Host "Copy-SyncJobsToSQL starting..."
 
     $resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    $storageAccounts = Get-AzStorageAccount -ResourceGroupName $resourceGroupName
-    $storageAccounts | ft
+	$storageAccounts = Get-AzStorageAccount -ResourceGroupName $resourceGroupName
 
-    $storageAccountNamePrefix = "jobs$EnvironmentAbbreviation".ToLower()
-    $jobStorageAccount = $storageAccounts | Where-Object { $_.StorageAccountName -like "$storageAccountNamePrefix*" }
+	$storageAccountNamePrefix = "jobs$EnvironmentAbbreviation"
+	$jobStorageAccount = $storageAccounts | Where-Object { $_.StorageAccountName -like "$storageAccountNamePrefix*" }
 
-    if (!$jobStorageAccount) {
-        Write-Host "Skipping... Could not find storage account starting with '$storageAccountNamePrefix' in resource group '$resourceGroupName'."
-        Write-Host "Copy-SyncJobsToSQL completed."
-        return
-    }
+	$tableName = "syncJobs"
+	$cloudTable = (Get-AzStorageTable -Name $tableName -Context $jobStorageAccount.Context).CloudTable
 
-    # Create a reference to the Storage Account
-    Write-Host ">>> Getting storage table..."
-    $storageTable = Get-AzStorageTable –Name "SyncJobs" –Context $jobStorageAccount.Context  -ErrorAction SilentlyContinue
-    Write-Host ">>> Getting SyncJobs..."
-    $syncJobs = Get-AzTableRow -table $storageTable.CloudTable
+    $syncJobs = Get-AzTableRow -table $cloudTable
     $sourceTableLength = $syncJobs.Length
 
     # Ensure that data exists in the source table
-    if (0 -eq $syncJobs.Length) {
+    if (0 -eq $sourceTableLength) {
         Write-Host "Skipping... Source table contains (0) records."
         Write-Host "Copy-SyncJobsToSQL completed."
         return
