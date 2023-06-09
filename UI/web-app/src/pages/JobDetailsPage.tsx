@@ -249,7 +249,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
                 />
                 {jobDetails != null ? (
                   <Text variant="medium" block>
-                    {jobDetails.period}
+                    {job.period}
                   </Text>
                 ) : (
                   <Shimmer width="120%" />
