@@ -14,6 +14,7 @@ export type Job = {
   enabledOrNot: string;
   status: string;
   period: number;
+  arrow: string;
   estimatedNextRunTime: string;
   thresholdPercentageForAdditions: number;
   thresholdPercentageForRemovals: number;
