@@ -47,7 +47,7 @@ function Copy-SyncJobsToSQL {
 
     # Get SQL Connection String
     $dataKeyVaultName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    $connectionString = Get-AzKeyVaultSecret -VaultName $dataKeyVaultName -Name "sqlServerConnectionString" -AsPlainText
+    $connectionString = Get-AzKeyVaultSecret -VaultName $dataKeyVaultName -Name "sqlDatabaseConnectionString" -AsPlainText
 
     # Set up connection to SQL
     $conn = New-Object System.Data.SqlClient.SQLConnection 
