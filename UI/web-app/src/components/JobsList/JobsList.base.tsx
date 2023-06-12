@@ -4,6 +4,7 @@
 import {
   DetailsListLayoutMode,
   IColumn,
+  SelectionMode,
 } from '@fluentui/react/lib/DetailsList';
 import { useTranslation } from 'react-i18next';
 import '../../i18n/config';
@@ -260,6 +261,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           columns={columns}
           enableShimmer={!jobs || jobs.length === 0}
           layoutMode={DetailsListLayoutMode.justified}
+          selectionMode={SelectionMode.none}
           ariaLabelForShimmer="Content is being fetched"
           ariaLabelForGrid="Item details"
           selectionPreservedOnEmptyClick={true}
