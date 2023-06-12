@@ -53,7 +53,7 @@ function Copy-SyncJobsToSQL {
 
     Write-Host ">>> Get connection string from keyvault"
     $dataKeyVaultName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    $connectionString = (Get-AzKeyVaultSecret -VaultName $dataKeyVaultName -Name "sqlServerConnectionString").SecretValueText
+    $connectionString = Get-AzKeyVaultSecret -VaultName $dataKeyVaultName -Name "sqlServerConnectionString" -AsPlainText
 
     Write-Host ">>> Creating SQL Connection"
     # Set up connection to SQL
