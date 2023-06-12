@@ -51,15 +51,14 @@ function Copy-SyncJobsToSQL {
     $subscriptionId = (Get-AzContext).Subscription.Id
     Write-Host ">>> Subscription Id: $subscriptionId"
 
-    $databaseName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    $sqlServerName = "$databaseName.database.windows.net"
+    Write-Host ">>> Get connection string from keyvault"
+    $dataKeyVaultName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $connectionString = ConvertFrom-SecureString -SecureString (Get-AzKeyVaultSecret -VaultName $dataKeyVaultName -Name "sqlServerConnectionString").SecretValue -AsPlainText
 
     Write-Host ">>> Creating SQL Connection"
     # Set up connection to SQL
     $conn = New-Object System.Data.SqlClient.SQLConnection 
-    $conn.ConnectionString = "Server=$sqlServerName;Initial Catalog=$databaseName;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30"
-    Write-Host ">>> Getting access token"
-    $conn.AccessToken = $(az account get-access-token --subscription $subscriptionId --resource https://database.windows.net --query accessToken -o tsv)
+    $conn.ConnectionString = $connectionString
 
     Write-Host ">>> Creating SQL Command"
     # Check to see if the destination sql table is empty
@@ -68,7 +67,7 @@ function Copy-SyncJobsToSQL {
 
     Write-Host ">>> Opening Connection..."
     $conn.Open()
-    Write-Host ">>> Running command"
+    Write-Host ">>> Running count command"
     $existingCount = $syncJobsCountCmd.ExecuteScalar()
     Write-Host ">>> Closing connection"
     $conn.Close()
