@@ -24,9 +24,6 @@ function Copy-SyncJobsToSQL {
         [Parameter(Mandatory=$false)]
         [bool] $Overwrite
     )
-
-    Write-Host "Copy-SyncJobsToSQL starting..."
-
     $resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
 	$storageAccounts = Get-AzStorageAccount -ResourceGroupName $resourceGroupName
 
@@ -48,31 +45,22 @@ function Copy-SyncJobsToSQL {
         Write-Host "Source table contains ($sourceTableLength) records."
     }
 
-    $subscriptionId = (Get-AzContext).Subscription.Id
-    Write-Host ">>> Subscription Id: $subscriptionId"
-
-    Write-Host ">>> Get connection string from keyvault"
+    # Get SQL Connection String
     $dataKeyVaultName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $connectionString = Get-AzKeyVaultSecret -VaultName $dataKeyVaultName -Name "sqlServerConnectionString" -AsPlainText
 
-    Write-Host ">>> Creating SQL Connection"
     # Set up connection to SQL
     $conn = New-Object System.Data.SqlClient.SQLConnection 
     $conn.ConnectionString = $connectionString
 
-    Write-Host ">>> Creating SQL Command"
     # Check to see if the destination sql table is empty
     $syncJobsCountCmd = $conn.CreateCommand()
     $syncJobsCountCmd.CommandText = "SELECT COUNT(*) FROM [dbo].[SyncJobs]"
 
-    Write-Host ">>> Opening Connection..."
     $conn.Open()
-    Write-Host ">>> Running count command"
     $existingCount = $syncJobsCountCmd.ExecuteScalar()
-    Write-Host ">>> Closing connection"
     $conn.Close()
 
-    Write-Host ">>> SQL Record count: $existingCount"
     if (0 -ne $existingCount) {
         if ($true -ne $Overwrite) {
             Write-Host "Skipping... Destination table contains ($existingCount) records and `$Overwrite is set to `$false."
@@ -105,8 +93,6 @@ function Copy-SyncJobsToSQL {
         }
     }
     $conn.Close()
-
-    Write-Host "Copy-SyncJobsToSQL completed."
 }
 
 function Get-InsertStatement {
@@ -115,7 +101,6 @@ function Get-InsertStatement {
         [Parameter(Mandatory)]
         [PSCustomObject] $SyncJob
     )
-
     $insertStatement = "
         INSERT INTO [dbo].[SyncJobs]
             ([Id]

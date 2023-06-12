@@ -21,12 +21,10 @@ function Confirm-KeyVaultSecrets {
 		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation
 	)
-    Write-Host "Confirm-KeyVaultSecrets starting..."
     $prereqsKeyVault = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
 	$graphAppCertificateName = Get-AzKeyVaultSecret -VaultName $prereqsKeyVault -Name "graphAppCertificateName"
     if(!$graphAppCertificateName){
 		$secret = ConvertTo-SecureString -String 'not-set' -AsPlainText -Force
 		Set-AzKeyVaultSecret -VaultName $prereqsKeyVault -Name "graphAppCertificateName" -SecretValue $secret
 	}
-    Write-Host "Confirm-KeyVaultSecrets completed."
 }
