@@ -7,7 +7,7 @@ namespace WebApi.Controllers.v1.Admin
 {
     [ApiController]
     [ApiVersion("1.0")]
-    [Route("api/v{version:apiVersion}/admin")]
+    [Route("api/v{version:apiVersion}/admin/databaseMigration")]
     public class DatabaseMigrationController : ControllerBase
     {
         private readonly IDatabaseMigrationsRepository _databaseMigrationsRepository;
@@ -17,7 +17,7 @@ namespace WebApi.Controllers.v1.Admin
             _databaseMigrationsRepository = databaseMigrationsRepository ?? throw new ArgumentNullException(nameof(databaseMigrationsRepository));
         }
 
-        // GET Admin/DatabaseMigration
+        // GET admin/databaseMigration
         [HttpGet]
         public async Task<IActionResult> Get()
         {

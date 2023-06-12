@@ -114,7 +114,7 @@ var appSettings = [
     value: appInsights.properties.ConnectionString
   }
   {
-    name: 'ConnectionStrings:DbContext'
+    name: 'ConnectionStrings:JobsContext'
     value: '@Microsoft.KeyVault(SecretUri=${reference(sqlDatabaseConnectionString, '2019-09-01').secretUriWithVersion})'
   }
   {
