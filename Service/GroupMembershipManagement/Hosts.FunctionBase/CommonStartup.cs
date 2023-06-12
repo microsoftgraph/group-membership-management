@@ -23,6 +23,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using Microsoft.FeatureManagement;
+using Azure.Messaging.ServiceBus;
 using Repositories.EntityFramework.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Repositories.EntityFramework;
@@ -87,7 +89,7 @@ namespace Hosts.FunctionBase
             });
 
             builder.Services.AddDbContext<GMMContext>(options =>
-                options.UseSqlServer(GetValueOrThrow("ConnectionStrings:DbContext")),
+                options.UseSqlServer(GetValueOrThrow("ConnectionStrings:JobsContext")),
                 ServiceLifetime.Transient
             );
             builder.Services.AddScoped<IDatabaseMigrationsRepository, DatabaseMigrationsRepository>();
