@@ -34,7 +34,7 @@ import {
   IJobsListStyleProps,
   IJobsListStyles,
 } from './JobsList.types';
-import { ReportHackedIcon } from '@fluentui/react-icons-mdl2';
+import { ReportHackedIcon, ChevronRightMedIcon } from '@fluentui/react-icons-mdl2';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -123,6 +123,14 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: false,
       isSorted: sortKey === "actionRequired",
       isSortedDescending
+    },
+    {
+      key: 'arrow',
+      name: '',
+      fieldName: '',
+      minWidth: 200,
+      maxWidth: 200,
+      isResizable: false
     }
   ];
 
@@ -230,6 +238,9 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
             )}
           </div>
         );
+
+        case 'arrow':
+          return <ChevronRightMedIcon />;
 
       default:
         return <span>{fieldContent}</span>;

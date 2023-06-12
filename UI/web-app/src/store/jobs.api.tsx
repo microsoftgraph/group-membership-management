@@ -75,6 +75,8 @@ export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async () => {
       index['enabledOrNot'] =
         index['status'] === SyncStatus.CustomerPaused ? 'Disabled' : 'Enabled';
 
+      index['arrow'] = '';
+
       return index;
     });
 
