@@ -42,6 +42,18 @@
     "sqlAdministratorsGroupName": {
       "value": ""
     },
+    "sqlSkuName": {
+      "value": "GP_S_Gen5"
+    },
+    "sqlSkuTier": {
+      "value": "GeneralPurpose"
+    },
+    "sqlSkuFamily": {
+      "value": "Gen5"
+    },
+    "sqlSkuCapacity": {
+      "value": 4
+    },
     "serviceBusMembershipUpdatersTopicSubscriptions": {
       "value": {
         "topicName": "membershipUpdaters",
