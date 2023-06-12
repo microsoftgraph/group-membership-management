@@ -51,7 +51,7 @@ namespace WebApi
             var secureApiHostName = $"https://{apiHostName}";
 
             builder.Services.AddDbContext<GMMContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DbContext")));
+                options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContext")));
 
             builder.Services.Configure<WebAPISettings>(builder.Configuration.GetSection("WebAPI:Settings"));
             builder.Configuration.AddAzureAppConfiguration(options =>
