@@ -42,6 +42,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mocks", "..\..
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\Models.csproj", "{62B6FDAF-28F2-4227-B689-B2DA1AF1ED0A}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework", "..\..\..\Repositories.EntityFramework\Repositories.EntityFramework.csproj", "{2080578B-605C-4308-B663-433C39833089}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -128,6 +130,10 @@ Global
 		{62B6FDAF-28F2-4227-B689-B2DA1AF1ED0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{62B6FDAF-28F2-4227-B689-B2DA1AF1ED0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{62B6FDAF-28F2-4227-B689-B2DA1AF1ED0A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2080578B-605C-4308-B663-433C39833089}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2080578B-605C-4308-B663-433C39833089}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2080578B-605C-4308-B663-433C39833089}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2080578B-605C-4308-B663-433C39833089}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

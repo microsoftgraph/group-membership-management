@@ -12,9 +12,12 @@ namespace Hosts.JobTrigger
     public class StarterFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        public StarterFunction(ILoggingRepository loggingRepository)
+        private readonly IDatabaseMigrationsRepository _databaseMigrationsRepository = null;
+
+        public StarterFunction(ILoggingRepository loggingRepository, IDatabaseMigrationsRepository databaseMigrationsRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _databaseMigrationsRepository = databaseMigrationsRepository ?? throw new ArgumentNullException(nameof(databaseMigrationsRepository));
         }
 
 
@@ -25,6 +28,7 @@ namespace Hosts.JobTrigger
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
             await starter.StartNewAsync(nameof(OrchestratorFunction), null);
+            await _databaseMigrationsRepository.MigrateDatabaseAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
         }
     }
