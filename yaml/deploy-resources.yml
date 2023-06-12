@@ -76,15 +76,15 @@ steps:
   displayName: 'set data output variables'
   name: dataVariables
 
-- task: AzureCLI@2
+- task: AzurePowerShell@4
   displayName: 'run infrastructure script'
   inputs:
     azureSubscription: ${{parameters.serviceConnection}}
-    scriptType: ps
-    scriptLocation: inlineScript
-    inlineScript: |
+    scriptType: inlineScript
+    inline: |
       cd\
       cd '${{parameters.root}}/Infrastructure/script'
       . ./PostDeploymentScript.ps1
       PostDeploymentScript -SolutionAbbreviation ${{parameters.solutionAbbreviation}} -EnvironmentAbbreviation ${{parameters.environmentAbbreviation}}
+    azurePowerShellVersion: LatestVersion
   name: postDeploymentScript
