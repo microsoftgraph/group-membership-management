@@ -14,6 +14,7 @@ using Models.ServiceBus;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.FeatureFlag;
 using Services.Contracts;
 using Services.Entities;
 
@@ -41,6 +42,7 @@ namespace Services.Tests
         private TelemetryTrackerRequest? _telemetryTrackerRequest = null;
         private OrchestratorRequest _orchestratorRequest = null!;
         private OwnershipReaderService _realOwnershipReaderService = null!;
+        private FeatureFlagRepository _featureFlagRepository = null!;
 
         [TestInitialize]
         public void Setup()
@@ -59,6 +61,10 @@ namespace Services.Tests
 
             var telemetryConfiguration = new TelemetryConfiguration();
             _telemetryClient = new TelemetryClient(telemetryConfiguration);
+
+            _featureFlagRepository = new FeatureFlagRepository(_loggingRepository.Object,
+                                                                 _featureManager.Object,
+                                                                 _configurationRefresherProvider.Object);
 
             _realOwnershipReaderService = new OwnershipReaderService(
                         _dryRunSettings.Object,
@@ -508,9 +514,7 @@ namespace Services.Tests
 
         private async Task<bool> CallFeatureFlagFunctionAsync(FeatureFlagRequest request)
         {
-            var function = new FeatureFlagFunction(
-                                _loggingRepository.Object, _featureManager.Object, _configurationRefresherProvider.Object);
-
+            var function = new FeatureFlagFunction(_loggingRepository.Object, _featureFlagRepository);
             return await function.CheckFeatureFlagStateAsync(request);
         }
 

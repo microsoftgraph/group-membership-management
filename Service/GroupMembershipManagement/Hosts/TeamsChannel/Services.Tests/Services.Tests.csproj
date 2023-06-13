@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Entities\Entities.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.FeatureFlag\Repositories.FeatureFlag.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Mocks\Repositories.Mocks.csproj" />
     <ProjectReference Include="..\Services.Contracts\TeamsChannel.Service.Contracts.csproj" />
     <ProjectReference Include="..\Services\TeamsChannel.Service\TeamsChannel.Service.csproj" />
