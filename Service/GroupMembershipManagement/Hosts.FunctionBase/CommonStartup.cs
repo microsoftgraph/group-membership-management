@@ -28,6 +28,7 @@ using Azure.Messaging.ServiceBus;
 using Repositories.EntityFramework.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Repositories.EntityFramework;
+using Repositories.FeatureFlag;
 
 namespace Hosts.FunctionBase
 {
@@ -49,6 +50,7 @@ namespace Hosts.FunctionBase
         {
             builder.Services.AddAzureAppConfiguration();
             builder.Services.AddFeatureManagement();
+            builder.Services.AddScoped<IFeatureFlagRespository, FeatureFlagRespository>();
 
             builder.Services.AddLocalization(opts => { opts.ResourcesPath = "Resources"; });
             builder.Services.Configure<RequestLocalizationOptions>(opts =>

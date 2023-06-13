@@ -2,12 +2,9 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.FeatureManagement;
 using Models;
 using Repositories.Contracts;
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Hosts.OwnershipReader
@@ -15,17 +12,14 @@ namespace Hosts.OwnershipReader
     public class FeatureFlagFunction
     {
         private readonly ILoggingRepository _loggingRepository;
-        private readonly IFeatureManager _featureManager;
-        private readonly IConfigurationRefresherProvider _refresherProvider;
+        private readonly IFeatureFlagRespository _featureFlagRespository;
 
         public FeatureFlagFunction(
             ILoggingRepository loggingRepository,
-            IFeatureManager featureManager,
-            IConfigurationRefresherProvider refresherProvider)
+            IFeatureFlagRespository featureFlagRespository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
-            _refresherProvider = refresherProvider ?? throw new ArgumentNullException(nameof(refresherProvider));
+            _featureFlagRespository = featureFlagRespository ?? throw new ArgumentNullException(nameof(featureFlagRespository));
         }
 
         [FunctionName(nameof(FeatureFlagFunction))]
@@ -33,19 +27,7 @@ namespace Hosts.OwnershipReader
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(FeatureFlagFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
-            if (request.RefreshAppConfigurationValues)
-            {
-                var refresher = _refresherProvider.Refreshers.First();
-                if (!await refresher.TryRefreshAsync())
-                {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    { Message = $"Unable to refresh app configuration values", RunId = request.RunId },
-                    VerbosityLevel.DEBUG);
-                }
-            }
-
-            var isFlagEnabled = await _featureManager.IsEnabledAsync(request.FeatureFlagName);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Feature flag {request.FeatureFlagName} is {(isFlagEnabled ? "enabled" : "disabled")}", RunId = request.RunId }, VerbosityLevel.INFO);
+            var isFlagEnabled = await _featureFlagRespository.IsFeatureFlagEnabledAsync(request.FeatureFlagName, request.RefreshAppConfigurationValues, request.RunId);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(FeatureFlagFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             return isFlagEnabled;

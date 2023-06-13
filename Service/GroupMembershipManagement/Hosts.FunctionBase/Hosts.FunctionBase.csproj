@@ -20,6 +20,7 @@
     <ProjectReference Include="..\Repositories.Contracts\Repositories.Contracts.csproj" />
     <ProjectReference Include="..\Repositories.EntityFramework.Contexts\Repositories.EntityFramework.Contexts.csproj" />
     <ProjectReference Include="..\Repositories.EntityFramework\Repositories.EntityFramework.csproj" />
+    <ProjectReference Include="..\Repositories.FeatureFlag\Repositories.FeatureFlag.csproj" />
     <ProjectReference Include="..\Repositories.Localization\Repositories.Localization.csproj" />
     <ProjectReference Include="..\Repositories.Logging\Repositories.Logging.csproj" />
     <ProjectReference Include="..\Repositories.Mail\Repositories.Mail.csproj" />

@@ -16,6 +16,7 @@ using Moq;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.FeatureFlag;
 using SecurityGroup.SubOrchestrator;
 using System;
 using System.Collections.Generic;
@@ -49,6 +50,7 @@ namespace Tests.Services
         private SGMembershipCalculator _membershipCalculator;
         private DurableHttpResponse _membershipAgregatorResponse;
         private TelemetryClient _telemetryClient;
+        private FeatureFlagRespository _featureFlagRepository;
         private bool _isFeatureFlagEnabled = false;
 
         [TestInitialize]
@@ -68,6 +70,9 @@ namespace Tests.Services
             _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
             _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
+            _featureFlagRepository = new FeatureFlagRespository(_loggingRepository.Object,
+                                                                 _featureManager.Object,
+                                                                 _configurationRefresherProvider.Object);
 
             _usersToReturn = 10;
             _querySample = QuerySample.GenerateQuerySample("SecurityGroup");
@@ -545,9 +550,7 @@ namespace Tests.Services
 
         private async Task<bool> CallFeatureFlagFunctionAsync(FeatureFlagRequest request)
         {
-            var function = new FeatureFlagFunction(
-                                _loggingRepository.Object, _featureManager.Object, _configurationRefresherProvider.Object);
-
+            var function = new FeatureFlagFunction(_loggingRepository.Object, _featureFlagRepository);
             return await function.CheckFeatureFlagStateAsync(request);
         }
 

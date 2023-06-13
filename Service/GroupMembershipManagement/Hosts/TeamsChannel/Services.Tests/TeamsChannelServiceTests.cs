@@ -9,9 +9,9 @@ using Models.ServiceBus;
 using Moq;
 using Moq.Protected;
 using Repositories.Contracts;
+using Repositories.FeatureFlag;
 using Repositories.Mocks;
 using System.Net;
-using System.Net.Http.Json;
 using TeamsChannel.Service;
 using TeamsChannel.Service.Contracts;
 
@@ -32,6 +32,7 @@ namespace Services.Tests
         private Mock<HttpMessageHandler> _messageHandler = null!;
         private bool _isFeatureFlagEnabled = false;
         private HttpStatusCode _responseStatusCode = HttpStatusCode.NoContent;
+        private FeatureFlagRespository _featureFlagRepository = null!;
 
 
         private Dictionary<AzureADTeamsChannel, List<AzureADTeamsUser>> _mockChannels = new Dictionary<AzureADTeamsChannel, List<AzureADTeamsUser>>
@@ -61,6 +62,10 @@ namespace Services.Tests
             _featureManager = new Mock<IFeatureManager>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
+
+            _featureFlagRepository = new FeatureFlagRespository(_loggingRepository.Object,
+                                                                 _featureManager.Object,
+                                                                 _configurationRefresherProvider.Object);
 
             _messageHandler = new Mock<HttpMessageHandler>();
             _messageHandler
@@ -93,7 +98,8 @@ namespace Services.Tests
                                                 _loggingRepository.Object,
                                                 _featureManager.Object,
                                                 _configurationRefresherProvider.Object,
-                                                _serviceBusQueueRepository.Object);
+                                                _serviceBusQueueRepository.Object,
+                                                _featureFlagRepository);
 
             _syncInfo = new ChannelSyncInfo
             {
@@ -108,6 +114,8 @@ namespace Services.Tests
                     Query = @"[{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000000"", ""channel"":""some channel""}},{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000001"", ""channel"":""another channel""}}]"
                 }
             };
+
+
         }
 
         [TestMethod]
