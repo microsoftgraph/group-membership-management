@@ -14,6 +14,18 @@ param location string
 @description('Tenant Id.')
 param tenantId string
 
+@description('SKU name')
+param skuName string
+
+@description('SKU tier')
+param skuTier string
+
+@description('SKU family')
+param skuFamily string
+
+@description('SKU capacity')
+param skuCapacity int
+
 @description('Administrators Azure AD Group Object Id')
 param sqlAdministratorsGroupId string
 
@@ -94,10 +106,10 @@ resource primaryDatabase 'Microsoft.Sql/servers/databases@2021-02-01-preview' = 
     autoPauseDelay: -1
   }
   sku: {
-    name: 'GP_S_Gen5'
-    tier: 'GeneralPurpose'
-    family: 'Gen5'
-    capacity: 4
+    name: skuName
+    tier: skuTier
+    family: skuFamily
+    capacity: skuCapacity
   }
 }
 

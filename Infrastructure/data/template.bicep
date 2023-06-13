@@ -138,6 +138,26 @@ param appConfigurationName string = '${solutionAbbreviation}-appConfig-${environ
 param appConfigurationSku string = 'Standard'
 param appConfigurationKeyData array = [
   {
+    key: 'SKU:Name'
+    value: 'GP_S_Gen5'
+    contentType: 'string'
+  }
+  {
+    key: 'SKU:Tier'
+    value: 'GeneralPurpose'
+    contentType: 'string'
+  }
+  {
+    key: 'SKU:Family'
+    value: 'Gen5'
+    contentType: 'string'
+  }
+  {
+    key: 'SKU:Capacity'
+    value: 4
+    contentType: 'integer'
+  }
+  {
     key: 'JobTrigger:IsGroupReadWriteAllGranted'
     value: 'false'
     contentType: 'boolean'
@@ -307,6 +327,10 @@ module sqlServer 'sqlServer.bicep' =  {
     readOnlySqlAdminPassword: readOnlySqlAdminPassword
     readOnlySqlAdminUserName:  readOnlySqlAdminUserName
     tenantId: tenantId
+    skuName: appConfigurationKeyData[0].value
+    skuTier: appConfigurationKeyData[1].value
+    skuFamily: appConfigurationKeyData[2].value
+    skuCapacity: appConfigurationKeyData[3].value
   }
 }
 
