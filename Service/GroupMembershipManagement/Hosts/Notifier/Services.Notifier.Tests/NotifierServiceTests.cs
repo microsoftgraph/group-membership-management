@@ -16,6 +16,8 @@ using Repositories.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Services.Contracts.Notifications;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 
 namespace Services.Notifier.Tests
 {
@@ -33,6 +35,7 @@ namespace Services.Notifier.Tests
         private ILocalizationRepository _localizationRepository;
         private NotifierService _notifierService;
         private ThresholdNotification _notification;
+        private TelemetryClient _telemetryClient;
 
         [TestInitialize]
         public void SetupTest()
@@ -60,6 +63,7 @@ namespace Services.Notifier.Tests
                 ThresholdPercentageForRemovals = -1,
             };
             _loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             for (int i = 0; i < 2; i++)
             {
@@ -84,7 +88,8 @@ namespace Services.Notifier.Tests
                                                 _localizationRepository,
                                                 _thresholdNotificationService.Object,
                                                 _notificationRepository.Object,
-                                                _graphGroupRepository.Object
+                                                _graphGroupRepository.Object,
+                                                _telemetryClient
                                                 );
         }
 

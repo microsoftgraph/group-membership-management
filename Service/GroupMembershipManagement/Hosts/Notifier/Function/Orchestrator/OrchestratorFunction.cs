@@ -7,18 +7,13 @@ using Repositories.Contracts;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Models.ThresholdNotifications;
-using Microsoft.ApplicationInsights;
-using System;
 
 namespace Hosts.Notifier
 {
     public class OrchestratorFunction
     {
-        private readonly TelemetryClient _telemetryClient;
-        public OrchestratorFunction(
-            TelemetryClient telemetryClient)
+        public OrchestratorFunction()
         {
-            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
@@ -44,7 +39,6 @@ namespace Hosts.Notifier
                     await context.CallActivityAsync(nameof(UpdateNotificationStatusFunction), new UpdateNotificationStatusRequest { Notification = notification, Status = ThresholdNotificationStatus.Triggered });
                     await context.CallActivityAsync(nameof(SendNotificationFunction), notification);
                     await context.CallActivityAsync(nameof(UpdateNotificationStatusFunction), new UpdateNotificationStatusRequest { Notification = notification, Status = ThresholdNotificationStatus.AwaitingResponse });
-                    TrackSentNotificationEvent(notification.TargetOfficeGroupId);
                 }
             }
 
@@ -55,15 +49,6 @@ namespace Hosts.Notifier
                     Message = $"{nameof(OrchestratorFunction)} function completed at: {context.CurrentUtcDateTime}",
                     Verbosity = VerbosityLevel.DEBUG
                 });
-        }
-
-        private void TrackSentNotificationEvent(Guid groupId)
-        {
-            var sentNotificationEvent = new Dictionary<string, string>
-            {
-                { "TargetGroupId", groupId.ToString() }
-            };
-            _telemetryClient.TrackEvent("NotificationSent", sentNotificationEvent);
         }
     }
 }
