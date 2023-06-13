@@ -4872,111 +4872,6 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
             position: {
               x: 7
               y: 68
-              colSpan: 14
-              rowSpan: 2
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'resourceTypeMode'
-                  isOptional: true
-                }
-                {
-                  name: 'ComponentId'
-                  isOptional: true
-                }
-                {
-                  name: 'Scope'
-                  value: {
-                    resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
-                    ]
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'PartId'
-                  value: '15bd1362-68dd-413e-a9fd-87c931d2c932'
-                  isOptional: true
-                }
-                {
-                  name: 'Version'
-                  value: '2.0'
-                  isOptional: true
-                }
-                {
-                  name: 'TimeRange'
-                  value: 'P1D'
-                  isOptional: true
-                }
-                {
-                  name: 'DashboardId'
-                  isOptional: true
-                }
-                {
-                  name: 'DraftRequestParameters'
-                  isOptional: true
-                }
-                {
-                  name: 'Query'
-                  value: 'customEvents\n| where name == "NotificationResponseReceived"\n| project Hours = todouble(customDimensions["ResponseTimeSeconds"]) / 3600 * 1h| project Hours, tostring(Type)\n| summarize percentiles(Hours, 50, 75, 95, 99, 100) by Type\n'
-                  isOptional: true
-                }
-                {
-                  name: 'ControlType'
-                  value: 'AnalyticsGrid'
-                  isOptional: true
-                }
-                {
-                  name: 'SpecificChart'
-                  isOptional: true
-                }
-                {
-                  name: 'PartTitle'
-                  value: 'Analytics'
-                  isOptional: true
-                }
-                {
-                  name: 'PartSubTitle'
-                  value: resourceGroup
-                  isOptional: true
-                }
-                {
-                  name: 'Dimensions'
-                  isOptional: true
-                }
-                {
-                  name: 'LegendOptions'
-                  isOptional: true
-                }
-                {
-                  name: 'IsQueryContainTimeRange'
-                  value: false
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
-              settings: {
-                content: {
-                  GridColumnsWidth: {
-                    percentile_Hours_50: '169px'
-                    percentile_Hours_75: '173px'
-                    percentile_Hours_95: '175px'
-                    percentile_Hours_99: '169px'
-                    percentile_Hours_100: '183px'
-                    Type: '105px'
-                  }
-                  Query: 'customEvents\n| where name == "NotificationResponseReceived"\n| project Hours = todouble(customDimensions["ResponseTimeSeconds"]) / 3600 * 1h\n| project Hours\n| summarize percentiles(Hours, 50, 75, 95, 99, 100)\n'
-                  PartTitle: 'Notification Response Times'
-                  PartSubTitle: resourceGroup
-                }
-              }
-            }
-          }
-          '52': {
-            position: {
-              x: 1
-              y: 72
               colSpan: 6
               rowSpan: 4
             }
@@ -5089,9 +4984,9 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '53': {
+          '52': {
             position: {
-              x: 7
+              x: 1
               y: 72
               colSpan: 6
               rowSpan: 4
