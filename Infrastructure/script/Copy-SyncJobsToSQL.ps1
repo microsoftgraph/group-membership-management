@@ -121,7 +121,7 @@ function Get-InsertStatement {
             ,[ThresholdPercentageForRemovals]
             ,[ThresholdViolations])
         VALUES
-            ('$($SyncJob.RowKey)'
+            (NEWSEQUENTIALID()
             ,'$($SyncJob.DryRunTimeStamp)'
             ,$([int][bool]::Parse($SyncJob.IgnoreThresholdOnce -eq "True"))
             ,$([int][bool]::Parse($SyncJob.IsDryRunEnabled -eq "True"))
