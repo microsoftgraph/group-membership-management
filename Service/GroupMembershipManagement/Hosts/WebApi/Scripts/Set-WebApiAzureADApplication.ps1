@@ -132,6 +132,22 @@ function Set-WebApiAzureADApplication {
 
 		New-AzADServicePrincipal -ApplicationId $webApiApp.AppId
 
+
+		$permissionScope = New-Object Microsoft.Azure.Powershell.Cmdlets.Resources.MSGraph.Models.ApiV10.MicrosoftGraphPermissionScope
+		$permissionScope.Id = New-Guid
+		$permissionScope.AdminConsentDescription = "admin"
+		$permissionScope.AdminConsentDisplayName = "admin"
+		$permissionScope.IsEnabled = $true
+		$permissionScope.Type = "User"
+		$permissionScope.UserConsentDescription = "user"
+		$permissionScope.UserConsentDisplayName = "user"
+		$permissionScope.Value = "user_impersonation"
+
+		$api = $webApiApp.Api
+		$api.Oauth2PermissionScope = $permissionScope
+
+		Update-AzADApplication -ApplicationId $webApiApp.AppId -Api $api
+
 		$webSettings = $webApiApp.Web
         $webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
 		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $true
