@@ -63,7 +63,7 @@ namespace Services.Tests
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
 
-            _featureFlagRepository = new featureFlagRepository(_loggingRepository.Object,
+            _featureFlagRepository = new FeatureFlagRepository(_loggingRepository.Object,
                                                                  _featureManager.Object,
                                                                  _configurationRefresherProvider.Object);
 
