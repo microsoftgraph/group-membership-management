@@ -23,6 +23,18 @@ param subscriptionId string = subscription().subscriptionId
 @description('Tenant id.')
 param tenantId string
 
+@description('SQL SKU Name')
+param sqlSkuName string
+
+@description('SQL SKU Tier')
+param sqlSkuTier string
+
+@description('SQL SKU Family')
+param sqlSkuFamily string
+
+@description('SQL SKU Capacity')
+param sqlSkuCapacity int
+
 @description('Key vault name.')
 @minLength(1)
 param keyVaultName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
@@ -306,6 +318,10 @@ module sqlServer 'sqlServer.bicep' =  {
     environmentAbbreviation: environmentAbbreviation
     location: location
     solutionAbbreviation: solutionAbbreviation
+    sqlSkuName: sqlSkuName
+    sqlSkuTier: sqlSkuTier
+    sqlSkuFamily: sqlSkuFamily
+    sqlSkuCapacity: sqlSkuCapacity
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
     sqlAdministratorsGroupName: sqlAdministratorsGroupName
     sqlAdminPassword: sqlAdminPassword
