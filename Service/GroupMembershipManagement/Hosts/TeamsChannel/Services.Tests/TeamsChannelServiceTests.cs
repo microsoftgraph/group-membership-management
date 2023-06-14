@@ -32,7 +32,7 @@ namespace Services.Tests
         private Mock<HttpMessageHandler> _messageHandler = null!;
         private bool _isFeatureFlagEnabled = false;
         private HttpStatusCode _responseStatusCode = HttpStatusCode.NoContent;
-        private FeatureFlagRespository _featureFlagRepository = null!;
+        private FeatureFlagRepository _featureFlagRepository = null!;
 
 
         private Dictionary<AzureADTeamsChannel, List<AzureADTeamsUser>> _mockChannels = new Dictionary<AzureADTeamsChannel, List<AzureADTeamsUser>>
@@ -63,7 +63,7 @@ namespace Services.Tests
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
 
-            _featureFlagRepository = new FeatureFlagRespository(_loggingRepository.Object,
+            _featureFlagRepository = new featureFlagRepository(_loggingRepository.Object,
                                                                  _featureManager.Object,
                                                                  _configurationRefresherProvider.Object);
 

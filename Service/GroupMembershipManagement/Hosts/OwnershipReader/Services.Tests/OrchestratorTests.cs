@@ -42,7 +42,7 @@ namespace Services.Tests
         private TelemetryTrackerRequest? _telemetryTrackerRequest = null;
         private OrchestratorRequest _orchestratorRequest = null!;
         private OwnershipReaderService _realOwnershipReaderService = null!;
-        private FeatureFlagRespository _featureFlagRepository = null!;
+        private FeatureFlagRepository _featureFlagRepository = null!;
 
         [TestInitialize]
         public void Setup()
@@ -62,7 +62,7 @@ namespace Services.Tests
             var telemetryConfiguration = new TelemetryConfiguration();
             _telemetryClient = new TelemetryClient(telemetryConfiguration);
 
-            _featureFlagRepository = new FeatureFlagRespository(_loggingRepository.Object,
+            _featureFlagRepository = new featureFlagRepository(_loggingRepository.Object,
                                                                  _featureManager.Object,
                                                                  _configurationRefresherProvider.Object);
 

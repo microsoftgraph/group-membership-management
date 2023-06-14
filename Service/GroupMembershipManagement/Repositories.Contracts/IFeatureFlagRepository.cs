@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Repositories.Contracts
 {
-    public interface IFeatureFlagRespository
+    public interface IFeatureFlagRepository
     {
         Task<bool> IsFeatureFlagEnabledAsync(string featureFlagName, bool refreshAppConfigurationValues, Guid? runId);
     }

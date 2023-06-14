@@ -12,14 +12,14 @@ namespace Hosts.OwnershipReader
     public class FeatureFlagFunction
     {
         private readonly ILoggingRepository _loggingRepository;
-        private readonly IFeatureFlagRespository _featureFlagRespository;
+        private readonly IFeatureFlagRepository _featureFlagRepository;
 
         public FeatureFlagFunction(
             ILoggingRepository loggingRepository,
-            IFeatureFlagRespository featureFlagRespository)
+            IFeatureFlagRepository featureFlagRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _featureFlagRespository = featureFlagRespository ?? throw new ArgumentNullException(nameof(featureFlagRespository));
+            _featureFlagRepository = featureFlagRepository ?? throw new ArgumentNullException(nameof(featureFlagRepository));
         }
 
         [FunctionName(nameof(FeatureFlagFunction))]
@@ -27,7 +27,7 @@ namespace Hosts.OwnershipReader
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(FeatureFlagFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
-            var isFlagEnabled = await _featureFlagRespository.IsFeatureFlagEnabledAsync(request.FeatureFlagName, request.RefreshAppConfigurationValues, request.RunId);
+            var isFlagEnabled = await _featureFlagRepository.IsFeatureFlagEnabledAsync(request.FeatureFlagName, request.RefreshAppConfigurationValues, request.RunId);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(FeatureFlagFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             return isFlagEnabled;

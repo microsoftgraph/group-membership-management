@@ -24,7 +24,7 @@ namespace TeamsChannel.Service
         private readonly IFeatureManager _featureManager;
         private readonly IConfigurationRefresherProvider _refresherProvider;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
-        private readonly IFeatureFlagRespository _featureFlagRespository;
+        private readonly IFeatureFlagRepository _featureFlagRepository;
 
         public TeamsChannelService(
             ITeamsChannelRepository teamsChannelRepository,
@@ -35,7 +35,7 @@ namespace TeamsChannel.Service
             IFeatureManager featureManager,
             IConfigurationRefresherProvider refresherProvider,
             IServiceBusQueueRepository serviceBusQueueRepository,
-            IFeatureFlagRespository featureFlagRespository)
+            IFeatureFlagRepository featureFlagRepository)
         {
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
@@ -45,7 +45,7 @@ namespace TeamsChannel.Service
             _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
             _refresherProvider = refresherProvider ?? throw new ArgumentNullException(nameof(refresherProvider));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
-            _featureFlagRespository = featureFlagRespository ?? throw new ArgumentNullException(nameof(featureFlagRespository)); ;
+            _featureFlagRepository = featureFlagRepository ?? throw new ArgumentNullException(nameof(featureFlagRepository)); ;
         }
 
         public async Task<(AzureADTeamsChannel parsedChannel, bool isGood)> VerifyChannelAsync(ChannelSyncInfo channelSyncInfo)
@@ -145,7 +145,7 @@ namespace TeamsChannel.Service
 
         private async Task<bool> CheckFeatureFlagStateAsync(string featureFlagName, bool refreshAppSettings = false, Guid? runId = null)
         {
-            return await _featureFlagRespository.IsFeatureFlagEnabledAsync(featureFlagName, refreshAppSettings, runId);
+            return await _featureFlagRepository.IsFeatureFlagEnabledAsync(featureFlagName, refreshAppSettings, runId);
         }
 
         private async Task MakeMembershipAggregatorHTTPRequestAsync(MembershipAggregatorHttpRequest request)

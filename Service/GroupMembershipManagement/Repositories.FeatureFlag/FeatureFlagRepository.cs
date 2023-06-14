@@ -7,13 +7,13 @@ using Repositories.Contracts;
 
 namespace Repositories.FeatureFlag
 {
-    public class FeatureFlagRespository : IFeatureFlagRespository
+    public class FeatureFlagRepository : IFeatureFlagRepository
     {
         private readonly ILoggingRepository _loggingRepository;
         private readonly IFeatureManager _featureManager;
         private readonly IConfigurationRefresherProvider _refresherProvider;
 
-        public FeatureFlagRespository(
+        public FeatureFlagRepository(
             ILoggingRepository loggingRepository,
             IFeatureManager featureManager,
             IConfigurationRefresherProvider refresherProvider)

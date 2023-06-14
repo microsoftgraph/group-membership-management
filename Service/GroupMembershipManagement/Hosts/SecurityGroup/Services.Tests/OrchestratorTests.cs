@@ -50,7 +50,7 @@ namespace Tests.Services
         private SGMembershipCalculator _membershipCalculator;
         private DurableHttpResponse _membershipAgregatorResponse;
         private TelemetryClient _telemetryClient;
-        private FeatureFlagRespository _featureFlagRepository;
+        private FeatureFlagRepository _featureFlagRepository;
         private bool _isFeatureFlagEnabled = false;
 
         [TestInitialize]
@@ -70,7 +70,7 @@ namespace Tests.Services
             _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
             _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
-            _featureFlagRepository = new FeatureFlagRespository(_loggingRepository.Object,
+            _featureFlagRepository = new featureFlagRepository(_loggingRepository.Object,
                                                                  _featureManager.Object,
                                                                  _configurationRefresherProvider.Object);
 

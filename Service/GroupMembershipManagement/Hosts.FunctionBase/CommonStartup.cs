@@ -50,7 +50,7 @@ namespace Hosts.FunctionBase
         {
             builder.Services.AddAzureAppConfiguration();
             builder.Services.AddFeatureManagement();
-            builder.Services.AddScoped<IFeatureFlagRespository, FeatureFlagRespository>();
+            builder.Services.AddScoped<IFeatureFlagRepository, FeatureFlagRepository>();
 
             builder.Services.AddLocalization(opts => { opts.ResourcesPath = "Resources"; });
             builder.Services.Configure<RequestLocalizationOptions>(opts =>
