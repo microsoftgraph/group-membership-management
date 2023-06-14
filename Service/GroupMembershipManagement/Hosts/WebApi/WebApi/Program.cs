@@ -28,6 +28,11 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Configuration;
 using Repositories.Contracts.InjectConfig;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights;
+using Repositories.EntityFramework.Contexts;
+using Microsoft.EntityFrameworkCore;
+using Repositories.EntityFramework;
 
 namespace WebApi
 {
@@ -47,6 +52,9 @@ namespace WebApi
             var apiHostName = builder.Configuration.GetValue<string>("Settings:ApiHostname");
             var secureApiHostName = $"https://{apiHostName}";
 
+            builder.Services.AddDbContext<GMMContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContext")));
+
             builder.Services.Configure<WebAPISettings>(builder.Configuration.GetSection("WebAPI:Settings"));
             builder.Configuration.AddAzureAppConfiguration(options =>
             {
@@ -61,6 +69,16 @@ namespace WebApi
 
             // Add services to the container.
             builder.Services.AddAzureAppConfiguration();
+
+            builder.Services.AddSingleton(sp =>
+            {
+                var telemetryConfiguration = new TelemetryConfiguration();
+                telemetryConfiguration.InstrumentationKey = builder.Configuration.GetValue<string>("Settings:APPINSIGHTS_INSTRUMENTATIONKEY");
+                telemetryConfiguration.TelemetryInitializers.Add(new OperationCorrelationTelemetryInitializer());
+                var tc = new TelemetryClient(telemetryConfiguration);
+                tc.Context.Operation.Name = "WebAPI";
+                return tc;
+            });
 
             builder.Services
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -207,7 +225,7 @@ namespace WebApi
                 settings.ApiHostname = apiHostName;
             });
             builder.Services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
-
+            builder.Services.AddScoped<IDatabaseMigrationsRepository, DatabaseMigrationsRepository>();
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.

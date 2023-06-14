@@ -4,6 +4,7 @@
 using Models.CustomAttributes;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Models
 {
@@ -19,7 +20,11 @@ namespace Models
             PartitionKey = partitionKey;
             RowKey = rowKey;
         }
+
+        public Guid Id { get; set; }
+        [NotMapped]
         public string PartitionKey { get; set; }
+        [NotMapped]
         public string RowKey { get; set; }
 
         public Guid? RunId { get; set; }
@@ -117,8 +122,9 @@ namespace Models
         /// </summary>
         [IgnoreLogging]
         public int ThresholdViolations { get; set; }
+        [NotMapped]
         public DateTimeOffset? Timestamp { get; set; }
-
+        [NotMapped]
         public string ETag { get; set; }
 
         public Dictionary<string, string> ToDictionary() =>

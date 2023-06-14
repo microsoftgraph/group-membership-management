@@ -35,6 +35,7 @@ namespace Services
                     rowKey: job.RowKey,
                     targetGroupId: job.TargetOfficeGroupId,
                     targetGroupName: targetGroupName,
+                    period: job.Period,
                     status: job.Status,
                     lastSuccessfulRunTime: job.LastSuccessfulRunTime,
                     estimatedNextRunTime: job.StartDate > job.LastSuccessfulRunTime ? job.StartDate : job.LastSuccessfulRunTime.AddHours(job.Period)

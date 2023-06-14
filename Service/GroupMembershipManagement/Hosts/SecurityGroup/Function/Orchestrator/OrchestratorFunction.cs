@@ -1,20 +1,17 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure;
-using Models.Helpers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Graph;
 using Models;
+using Models.Helpers;
 using Newtonsoft.Json;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using SecurityGroup.SubOrchestrator;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -110,7 +107,14 @@ namespace Hosts.SecurityGroup
                                                                                 Exclusionary = mainRequest.Exclusionary
                                                                             });
 
-                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = "Calling MembershipAggregator", RunId = runId });
+                    var useServiceBusQueue = await context.CallActivityAsync<bool>(nameof(FeatureFlagFunction),
+                                                            new FeatureFlagRequest
+                                                            {
+                                                                RunId = runId,
+                                                                FeatureFlagName = "UseServiceBusQueue",
+                                                                RefreshAppConfigurationValues = true
+                                                            });
+
                     var content = new MembershipAggregatorHttpRequest
                     {
                         FilePath = filePath,
@@ -120,19 +124,28 @@ namespace Hosts.SecurityGroup
                         IsDestinationPart = mainRequest.IsDestinationPart
                     };
 
-                    var request = new DurableHttpRequest(HttpMethod.Post,
-                                                            new Uri(_configuration["membershipAggregatorUrl"]),
-                                                            content: JsonConvert.SerializeObject(content),
-                                                            headers: new Dictionary<string, StringValues> { { "x-functions-key", _configuration["membershipAggregatorFunctionKey"] } },
-                                                            httpRetryOptions: new HttpRetryOptions(TimeSpan.FromSeconds(30), 3));
-
-                    var response = await context.CallHttpAsync(request);
-                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"MembershipAggregator response Code: {response.StatusCode}, Content: {response.Content}", RunId = runId });
-
-                    if (response.StatusCode != HttpStatusCode.NoContent)
+                    if (useServiceBusQueue)
                     {
-                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
-                        if (!context.IsReplaying) await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
+                        await context.CallActivityAsync(nameof(QueueMessageSenderFunction), content);
+                    }
+                    else
+                    {
+                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = "Calling MembershipAggregator", RunId = runId });
+
+                        var request = new DurableHttpRequest(HttpMethod.Post,
+                                                                new Uri(_configuration["membershipAggregatorUrl"]),
+                                                                content: JsonConvert.SerializeObject(content),
+                                                                headers: new Dictionary<string, StringValues> { { "x-functions-key", _configuration["membershipAggregatorFunctionKey"] } },
+                                                                httpRetryOptions: new HttpRetryOptions(TimeSpan.FromSeconds(30), 3));
+
+                        var response = await context.CallHttpAsync(request);
+                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"MembershipAggregator response Code: {response.StatusCode}, Content: {response.Content}", RunId = runId });
+
+                        if (response.StatusCode != HttpStatusCode.NoContent)
+                        {
+                            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
+                            if (!context.IsReplaying) await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
+                        }
                     }
                 }
             }

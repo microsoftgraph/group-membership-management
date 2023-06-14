@@ -188,6 +188,9 @@ GeneratedArtifacts/
 _Pvt_Extensions/
 ModelManifest.xml
 
-# Added by OneITVSO 
+# Added by OneITVSO
 *.dll
 *.exe
+
+# VSCode
+.vscode/

@@ -11,6 +11,7 @@ using System.Linq;
 using Repositories.Contracts.InjectConfig;
 using Models.ThresholdNotifications;
 using Services.Contracts.Notifications;
+using Microsoft.ApplicationInsights;
 
 namespace Services.Notifier
 {
@@ -23,6 +24,7 @@ namespace Services.Notifier
         private readonly IThresholdNotificationService _thresholdNotificationService;
         private readonly INotificationRepository _notificationRepository = null;
         private readonly IGraphGroupRepository _graphGroupRepository = null;
+        private readonly TelemetryClient _telemetryClient;
 
         public NotifierService(
             ILoggingRepository loggingRepository,
@@ -31,7 +33,8 @@ namespace Services.Notifier
             ILocalizationRepository localizationRepository,
             IThresholdNotificationService thresholdNotificationService,
             INotificationRepository notificationRepository,
-            IGraphGroupRepository graphGroupRepository)
+            IGraphGroupRepository graphGroupRepository,
+            TelemetryClient telemetryClient)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
@@ -40,6 +43,7 @@ namespace Services.Notifier
             _thresholdNotificationService = thresholdNotificationService ?? throw new ArgumentNullException(nameof(thresholdNotificationService));
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         public async Task SendEmailAsync(ThresholdNotification notification)
@@ -74,7 +78,7 @@ namespace Services.Notifier
             };
             
             await _mailRepository.SendMailAsync(message, null);
-
+            TrackSentNotificationEvent(notification.TargetOfficeGroupId);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sent email to recipient addresses." });
         }
 
@@ -93,6 +97,15 @@ namespace Services.Notifier
         public async Task UpdateNotificationStatusAsync(Models.ThresholdNotifications.ThresholdNotification notification, ThresholdNotificationStatus status)
         {
             await _notificationRepository.UpdateNotificationStatusAsync(notification, status);
+        }
+
+        private void TrackSentNotificationEvent(Guid groupId)
+        {
+            var sentNotificationEvent = new Dictionary<string, string>
+            {
+                { "TargetGroupId", groupId.ToString() }
+            };
+            _telemetryClient.TrackEvent("NotificationSent", sentNotificationEvent);
         }
 
     }

@@ -29,7 +29,6 @@ export const getStyles = (props: IAppStyleProps): IAppStyles => {
     },
     content: {
       backgroundColor: theme.palette.white,
-      paddingLeft: 40,
       paddingRight: 40,
       position: 'relative',
       width: '100%',

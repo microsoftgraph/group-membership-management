@@ -23,6 +23,18 @@ param subscriptionId string = subscription().subscriptionId
 @description('Tenant id.')
 param tenantId string
 
+@description('SQL SKU Name')
+param sqlSkuName string
+
+@description('SQL SKU Tier')
+param sqlSkuTier string
+
+@description('SQL SKU Family')
+param sqlSkuFamily string
+
+@description('SQL SKU Capacity')
+param sqlSkuCapacity int
+
 @description('Key vault name.')
 @minLength(1)
 param keyVaultName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
@@ -82,6 +94,9 @@ param serviceBusTopicSubscriptions array = [
 
 @description('Enter service bus membership updaters topic\'s and subscriptions details.')
 param serviceBusMembershipUpdatersTopicSubscriptions object
+
+@description('Enter membership aggregator service bus queue name')
+param serviceBusMembershipAggregatorQueue string = 'membershipAggregator'
 
 @description('Enter storage account name.')
 @minLength(1)
@@ -251,6 +266,9 @@ param appConfigurationKeyData array = [
   }
 ]
 
+@description('Array of feature flags objects. {id:"value", description:"description", enabled:true }')
+param appConfigurationfeatureFlags array = []
+
 @description('Unique name within the resource group for the Action group.')
 param actionGroupName string = 'PIILogAlerts'
 
@@ -300,6 +318,10 @@ module sqlServer 'sqlServer.bicep' =  {
     environmentAbbreviation: environmentAbbreviation
     location: location
     solutionAbbreviation: solutionAbbreviation
+    sqlSkuName: sqlSkuName
+    sqlSkuTier: sqlSkuTier
+    sqlSkuFamily: sqlSkuFamily
+    sqlSkuCapacity: sqlSkuCapacity
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
     sqlAdministratorsGroupName: sqlAdministratorsGroupName
     sqlAdminPassword: sqlAdminPassword
@@ -391,6 +413,19 @@ module serviceBusMembershipUpdatersSubscriptionsTemplate 'serviceBusSubscription
   ]
 }
 
+module membershipAggregatorQueue 'serviceBusQueue.bicep' = {
+  name: 'membershipAggregatorQueue'
+  params: {
+    queueName: serviceBusMembershipAggregatorQueue
+    serviceBusName: serviceBusName
+    requiresSession: false
+    maxDeliveryCount: 5
+  }
+  dependsOn:[
+    serviceBusTemplate
+  ]
+}
+
 module storageAccountTemplate 'storageAccount.bicep' = {
   name: 'storageAccountTemplate'
   params: {
@@ -443,6 +478,7 @@ module appConfigurationTemplate 'appConfiguration.bicep' = {
     appConfigurationSku: appConfigurationSku
     location: location
     appConfigurationKeyData: appConfigurationKeyData
+    featureFlags: appConfigurationfeatureFlags
   }
 }
 
@@ -516,6 +552,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'notifierProviderId'
         value: notifierProviderId
+      }
+      {
+        name: 'serviceBusMembershipAggregatorQueue'
+        value: serviceBusMembershipAggregatorQueue
       }
     ]
   }

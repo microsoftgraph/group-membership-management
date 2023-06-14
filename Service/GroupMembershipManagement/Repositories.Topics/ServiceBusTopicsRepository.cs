@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.ServiceBus;
+using Azure.Messaging.ServiceBus;
 using Models;
-using Models.ServiceBus;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using System;
@@ -10,16 +9,18 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Message = Azure.Messaging.ServiceBus.ServiceBusMessage;
+using MessageDTO = Models.ServiceBus.ServiceBusMessage;
 
 namespace Repositories.ServiceBusTopics
 {
     public class ServiceBusTopicsRepository : IServiceBusTopicsRepository
     {
-        private ITopicClient _topicClient;
+        private ServiceBusSender _serviceBusSender;
 
-        public ServiceBusTopicsRepository(ITopicClient topicClient)
+        public ServiceBusTopicsRepository(ServiceBusSender serviceBusSender)
         {
-            _topicClient = topicClient ?? throw new ArgumentNullException(nameof(topicClient));
+            _serviceBusSender = serviceBusSender ?? throw new ArgumentNullException(nameof(serviceBusSender));
         }
 
         public async Task AddMessageAsync(SyncJob job)
@@ -38,40 +39,40 @@ namespace Repositories.ServiceBusTopics
             foreach (var type in queryTypes)
             {
                 var sourceGroupMessage = CreateMessage(job);
-                sourceGroupMessage.UserProperties.Add("Type", type.type);
-                sourceGroupMessage.UserProperties.Add("Exclusionary", type.exclusionary);
-                sourceGroupMessage.UserProperties.Add("TotalParts", totalParts);
-                sourceGroupMessage.UserProperties.Add("CurrentPart", index);
+                sourceGroupMessage.ApplicationProperties.Add("Type", type.type);
+                sourceGroupMessage.ApplicationProperties.Add("Exclusionary", type.exclusionary);
+                sourceGroupMessage.ApplicationProperties.Add("TotalParts", totalParts);
+                sourceGroupMessage.ApplicationProperties.Add("CurrentPart", index);
                 sourceGroupMessage.MessageId += $"_{index++}";
-                await _topicClient.SendAsync(sourceGroupMessage);
+                await _serviceBusSender.SendMessageAsync(sourceGroupMessage);
             }
 
             var destinationGroupMessage = CreateMessage(job);
-            destinationGroupMessage.UserProperties.Add("Type", "SecurityGroup");
-            destinationGroupMessage.UserProperties.Add("TotalParts", totalParts);
-            destinationGroupMessage.UserProperties.Add("CurrentPart", index);
-            destinationGroupMessage.UserProperties.Add("IsDestinationPart", true);
+            destinationGroupMessage.ApplicationProperties.Add("Type", "SecurityGroup");
+            destinationGroupMessage.ApplicationProperties.Add("TotalParts", totalParts);
+            destinationGroupMessage.ApplicationProperties.Add("CurrentPart", index);
+            destinationGroupMessage.ApplicationProperties.Add("IsDestinationPart", true);
             destinationGroupMessage.MessageId += $"_{index}";
-            await _topicClient.SendAsync(destinationGroupMessage);
+            await _serviceBusSender.SendMessageAsync(destinationGroupMessage);
         }
 
-        public async Task AddMessageAsync(ServiceBusMessage message)
+        public async Task AddMessageAsync(MessageDTO message)
         {
             var serviceBusmessage = new Message
             {
-                Body = message.Body,
+                Body = new BinaryData(message.Body),
                 MessageId = message.MessageId
             };
 
-            if (message.UserProperties != null)
+            if (message.ApplicationProperties != null)
             {
-                foreach (var property in message.UserProperties)
+                foreach (var property in message.ApplicationProperties)
                 {
-                    serviceBusmessage.UserProperties.Add(property.Key, property.Value);
+                    serviceBusmessage.ApplicationProperties.Add(property.Key, property.Value);
                 }
             }
 
-            await _topicClient.SendAsync(serviceBusmessage);
+            await _serviceBusSender.SendMessageAsync(serviceBusmessage);
         }
 
         private Message CreateMessage(SyncJob job)
@@ -79,7 +80,7 @@ namespace Repositories.ServiceBusTopics
             var body = JsonSerializer.Serialize(job);
             var message = new Message
             {
-                Body = Encoding.UTF8.GetBytes(body)
+                Body = new BinaryData(Encoding.UTF8.GetBytes(body))
             };
 
             message.MessageId = $"{job.PartitionKey}_{job.RowKey}_{job.RunId}";

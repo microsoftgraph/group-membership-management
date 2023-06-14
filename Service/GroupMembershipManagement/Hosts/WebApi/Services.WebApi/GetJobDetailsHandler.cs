@@ -34,7 +34,6 @@ namespace Services{
                     startDate: job.StartDate,
                     lastSuccessfulStartTime: job.LastSuccessfulStartTime,
                     source: job.Query,
-                    period: job.Period,
                     requestor: requestor,
                     thresholdViolations: job.ThresholdViolations,
                     thresholdPercentageForAdditions: job.ThresholdPercentageForAdditions,

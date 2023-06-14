@@ -4,6 +4,7 @@
 import {
   DetailsListLayoutMode,
   IColumn,
+  SelectionMode,
 } from '@fluentui/react/lib/DetailsList';
 import { useTranslation } from 'react-i18next';
 import '../../i18n/config';
@@ -33,7 +34,7 @@ import {
   IJobsListStyleProps,
   IJobsListStyles,
 } from './JobsList.types';
-import { ReportHackedIcon } from '@fluentui/react-icons-mdl2';
+import { ReportHackedIcon, ChevronRightMedIcon } from '@fluentui/react-icons-mdl2';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -65,12 +66,22 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const columns = [
     {
       key: 'targetGroupType',
-      name: t('JobsList.ShimmeredDetailsList.columnNames.destinationType'),
+      name: t('JobsList.ShimmeredDetailsList.columnNames.type'),
       fieldName: 'targetGroupType',
       minWidth: 100,
       maxWidth: 100,
       isResizable: false,
       isSorted: sortKey === "targetGroupType",
+      isSortedDescending
+    },
+    {
+      key: 'targetGroupName',
+      name: t('JobsList.ShimmeredDetailsList.columnNames.name'),
+      fieldName: 'targetGroupName',
+      minWidth: 100,
+      maxWidth: 100,
+      isResizable: false,
+      isSorted: sortKey === "targetGroupName",
       isSortedDescending
     },
     {
@@ -112,6 +123,14 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: false,
       isSorted: sortKey === "actionRequired",
       isSortedDescending
+    },
+    {
+      key: 'arrow',
+      name: '',
+      fieldName: '',
+      minWidth: 200,
+      maxWidth: 200,
+      isResizable: false
     }
   ];
 
@@ -119,6 +138,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     if (sortKey === "enabledOrNot" ||
         sortKey === "lastSuccessfulRunTime" ||
         sortKey === "estimatedNextRunTime" ||
+        sortKey === "targetGroupName" ||
         sortKey === "targetGroupType" ||
         sortKey === "actionRequired") {
       return isSortedDescending
@@ -219,6 +239,9 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           </div>
         );
 
+        case 'arrow':
+          return <ChevronRightMedIcon />;
+
       default:
         return <span>{fieldContent}</span>;
     }
@@ -249,6 +272,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           columns={columns}
           enableShimmer={!jobs || jobs.length === 0}
           layoutMode={DetailsListLayoutMode.justified}
+          selectionMode={SelectionMode.none}
           ariaLabelForShimmer="Content is being fetched"
           ariaLabelForGrid="Item details"
           selectionPreservedOnEmptyClick={true}

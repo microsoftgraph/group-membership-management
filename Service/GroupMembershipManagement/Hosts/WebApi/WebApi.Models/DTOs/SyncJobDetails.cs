@@ -9,7 +9,6 @@ namespace WebApi.Models.DTOs
             DateTime startDate,
             DateTime lastSuccessfulStartTime,
             string source, 
-            int period,
             string requestor,
             int thresholdViolations, 
             int thresholdPercentageForAdditions,
@@ -18,7 +17,6 @@ namespace WebApi.Models.DTOs
             StartDate = startDate;
             LastSuccessfulStartTime = lastSuccessfulStartTime;
             Source = source;
-            Period = period;
             Requestor = requestor;
             ThresholdViolations = thresholdViolations;
             ThresholdPercentageForAdditions = thresholdPercentageForAdditions;
@@ -29,7 +27,6 @@ namespace WebApi.Models.DTOs
         public DateTime StartDate { get; set; }
         public DateTime LastSuccessfulStartTime { get; set; }
         public string Source { get; set; }
-        public int Period { get; set; }
         public string Requestor { get; set; }
         public int ThresholdViolations { get; set; }
         public int ThresholdPercentageForAdditions { get; set; }

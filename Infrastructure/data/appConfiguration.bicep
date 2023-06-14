@@ -10,7 +10,10 @@ param appConfigurationSku string = 'Standard'
 @description('Array of Objects that contain the key name, value, tag and contentType')
 param appConfigurationKeyData array
 
-resource configurationStore 'Microsoft.AppConfiguration/configurationStores@2020-06-01' = {
+@description('Array of feature flags objects. {id:"value", description:"description", enabled:true }')
+param featureFlags array
+
+resource configurationStore 'Microsoft.AppConfiguration/configurationStores@2023-03-01' = {
   name: configStoreName
   location: location
   identity: {
@@ -22,14 +25,25 @@ resource configurationStore 'Microsoft.AppConfiguration/configurationStores@2020
   }
 }
 
-resource configurationStoreKeyValues 'Microsoft.AppConfiguration/configurationStores/keyValues@2020-07-01-preview' = [for item in appConfigurationKeyData: {
-  name: '${configStoreName}/${item.key}'
+resource configurationStoreKeyValues 'Microsoft.AppConfiguration/configurationStores/keyValues@2023-03-01' = [for item in appConfigurationKeyData: {
+  parent: configurationStore
+  name: '${item.key}'
   properties: {
     value: item.value
     contentType: item.contentType
-    tags: (contains(item, 'tag') ? item.tag : json('null'))
+    tags: (contains(item, 'tag') ? item.tag : null)
   }
-  dependsOn: [
-    configurationStore
-  ]
+}]
+
+resource configurationStoreFeatureFlags 'Microsoft.AppConfiguration/configurationStores/keyValues@2023-03-01' = [for flag in featureFlags: {
+  parent: configurationStore
+  name: '.appconfig.featureflag~2F${flag.id}'
+  properties: {
+    contentType: 'application/vnd.microsoft.appconfig.ff+json;charset=utf-8'
+    value: string({
+      id: flag.id
+      description: flag.description
+      enabled: flag.enabled
+    })
+  }
 }]

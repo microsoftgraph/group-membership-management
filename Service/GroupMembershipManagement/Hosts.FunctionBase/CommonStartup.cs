@@ -23,6 +23,11 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using Microsoft.FeatureManagement;
+using Azure.Messaging.ServiceBus;
+using Repositories.EntityFramework.Contexts;
+using Microsoft.EntityFrameworkCore;
+using Repositories.EntityFramework;
 
 namespace Hosts.FunctionBase
 {
@@ -35,12 +40,16 @@ namespace Hosts.FunctionBase
         {
             builder.ConfigurationBuilder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(new Uri(GetValueOrThrow("appConfigurationEndpoint")), new DefaultAzureCredential());
+                options.Connect(new Uri(GetValueOrThrow("appConfigurationEndpoint")), new DefaultAzureCredential())
+                       .UseFeatureFlags();
             });
         }
 
         public override void Configure(IFunctionsHostBuilder builder)
         {
+            builder.Services.AddAzureAppConfiguration();
+            builder.Services.AddFeatureManagement();
+
             builder.Services.AddLocalization(opts => { opts.ResourcesPath = "Resources"; });
             builder.Services.Configure<RequestLocalizationOptions>(opts =>
             {
@@ -78,6 +87,13 @@ namespace Hosts.FunctionBase
             {
                 settings.Verbosity = configuration.GetValue<VerbosityLevel>("GMM:LoggingVerbosity");
             });
+
+            builder.Services.AddDbContext<GMMContext>(options =>
+                options.UseSqlServer(GetValueOrThrow("ConnectionStrings:JobsContext")),
+                ServiceLifetime.Transient
+            );
+            builder.Services.AddScoped<IDatabaseMigrationsRepository, DatabaseMigrationsRepository>();
+
             builder.Services.AddSingleton<IAppConfigVerbosity>(services =>
             {
                 var creds = services.GetService<IOptions<AppConfigVerbosity>>();
@@ -181,6 +197,18 @@ namespace Hosts.FunctionBase
                 var tc = new TelemetryClient(telemetryConfiguration);
                 tc.Context.Operation.Name = FunctionName;
                 return tc;
+            });
+
+            builder.Services.AddSingleton(services =>
+            {
+                var serviceBusConnectionString = GetValueOrDefault("serviceBusConnectionString");
+                if (string.IsNullOrWhiteSpace(serviceBusConnectionString))
+                    serviceBusConnectionString = GetValueOrDefault("serviceBusTopicConnection");
+
+                if (string.IsNullOrWhiteSpace(serviceBusConnectionString))
+                    throw new ArgumentNullException($"Could not start because of missing configuration option: servicebus connection string");
+
+                return new ServiceBusClient(serviceBusConnectionString);
             });
         }
 

@@ -62,9 +62,8 @@
             "ariaLabelForShimmer": "Content is being fetched",
             "ariaLabelForGrid": "Item details",
             "columnNames": {
-                "ID": "ID",
-                "destinationName": "Destination Name",
-                "destinationType": "Destination Type",
+                "name": "Name",
+                "type": "Type",
                 "lastRun": "Last Run",
                 "nextRun": "Next Run",
                 "status": "Status",

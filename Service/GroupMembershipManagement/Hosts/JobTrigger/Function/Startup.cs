@@ -14,7 +14,7 @@ using Microsoft.Extensions.Options;
 using Repositories.GraphGroups;
 using Microsoft.Graph;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Azure.ServiceBus;
+using Azure.Messaging.ServiceBus;
 
 [assembly: FunctionsStartup(typeof(Hosts.JobTrigger.Startup))]
 
@@ -46,7 +46,14 @@ namespace Hosts.JobTrigger
             })
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
-            builder.Services.AddSingleton<IServiceBusTopicsRepository>(new ServiceBusTopicsRepository(new TopicClient(GetValueOrThrow("serviceBusConnectionString"), GetValueOrThrow("serviceBusSyncJobTopic"))));
+            builder.Services.AddSingleton<IServiceBusTopicsRepository>(services =>
+            {
+                var serviceBusSyncJobTopic = GetValueOrThrow("serviceBusSyncJobTopic");
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(serviceBusSyncJobTopic);
+                return new ServiceBusTopicsRepository(sender);
+            });
+
             builder.Services.AddScoped<IJobTriggerService, JobTriggerService>();
         }
 
