@@ -29,11 +29,8 @@ namespace Repositories.GraphGroups
 
         // These indicate that we're trying to remove a user that's already been removed.
         // Probably because an ID from earlier finally went through between the first try and the retry.
-        private static readonly string[] _okayErrorMessages =
-            {
-                "One or more removed object references do not exist for the following modified properties: 'members'.",
-                "One or more added object references already exist for the following modified properties: 'members'."
-            };
+        private static readonly string _notFoundResponseError = "One or more removed object references do not exist for the following modified properties: 'members'.";
+        private static readonly string _alreadyExistsResponseError = "One or more added object references already exist for the following modified properties: 'members'.";
 
         private static readonly Regex _userNotFound =
             new Regex(@"Resource '(?<id>[({]?[a-fA-F0-9]{8}[-]?([a-fA-F0-9]{4}[-]?){3}[a-fA-F0-9]{12}[})]?)' does not exist", RegexOptions.IgnoreCase);
@@ -196,7 +193,7 @@ namespace Repositories.GraphGroups
                         }
 
                         // Break down request for individual retries
-                        if (chunkToRetry.ToSend.Count > 1 && idToRetry.ResponseCode == ResponseCode.IndividualRetry)
+                        if (chunkToRetry.ToSend.Count > 1 && (idToRetry.ResponseCode == ResponseCode.IndividualRetry || idToRetry.ResponseCode == ResponseCode.IndividualRetryAlreadyExists))
                         {
                             var chunksOfUsers = chunkToRetry.ToSend.Select(x => new ChunkOfUsers
                             {
@@ -216,7 +213,7 @@ namespace Repositories.GraphGroups
 
                         if (chunkToRetry.ToSend.Count > 0)
                         {
-                            if (chunkToRetry.ToSend.Count == 1 && idToRetry.ResponseCode == ResponseCode.Ok && idToRetry.HttpStatusCode == HttpStatusCode.BadRequest)
+                            if (chunkToRetry.ToSend.Count == 1 && idToRetry.ResponseCode == ResponseCode.IndividualRetryAlreadyExists && idToRetry.HttpStatusCode == HttpStatusCode.BadRequest)
                             {
                                 await _loggingRepository.LogMessageAsync(new LogMessage
                                 {
@@ -300,10 +297,16 @@ namespace Repositories.GraphGroups
             return waitFor;
         }
 
-        private static bool IsOkayError(string error)
+        private static bool IsNotFoundError(string error)
         {
             error = JObject.Parse(error)["error"]["message"].Value<string>();
-            return _okayErrorMessages.Any(x => error.Contains(x));
+            return error.Contains(_notFoundResponseError);
+        }
+
+        private static bool IsAlreadyExistsError(string error)
+        {
+            error = JObject.Parse(error)["error"]["message"].Value<string>();
+            return error.Contains(_alreadyExistsResponseError);
         }
 
         private async IAsyncEnumerable<RetryResponse> GetStepIdsToRetry(
@@ -341,12 +344,21 @@ namespace Repositories.GraphGroups
 
 
                 // Note that the ones with empty bodies mean "this response is okay and we don't have to do anything about it."
-                if (status == HttpStatusCode.BadRequest && IsOkayError(content))
+                if (status == HttpStatusCode.BadRequest && IsNotFoundError(content))
                 {
                     yield return new RetryResponse
                     {
                         RequestId = kvp.Key,
-                        ResponseCode = ResponseCode.Ok,
+                        ResponseCode = ResponseCode.IndividualRetry,
+                        HttpStatusCode = HttpStatusCode.BadRequest
+                    };
+                }
+                if (status == HttpStatusCode.BadRequest && IsAlreadyExistsError(content))
+                {
+                    yield return new RetryResponse
+                    {
+                        RequestId = kvp.Key,
+                        ResponseCode = ResponseCode.IndividualRetryAlreadyExists,
                         HttpStatusCode = HttpStatusCode.BadRequest
                     };
                 }

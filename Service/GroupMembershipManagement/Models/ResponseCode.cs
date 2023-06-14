@@ -7,6 +7,7 @@ namespace Models
     {
         Ok = 0,
         Error = 1,
-        IndividualRetry = 2
+        IndividualRetry = 2,
+        IndividualRetryAlreadyExists = 3
     }
 }
