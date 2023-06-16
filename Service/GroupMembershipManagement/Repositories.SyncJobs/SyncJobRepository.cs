@@ -114,14 +114,12 @@ namespace Repositories.SyncJobsRepository
         public async IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync()
         {
             var queryResult = _tableClient.QueryAsync<SyncJobEntity>(x =>
-                    x.Status != SyncStatus.Idle.ToString() &&
-                    x.Status != SyncStatus.InProgress.ToString() &&
-                    x.Status != SyncStatus.StuckInProgress.ToString() &&
-                    x.Status != SyncStatus.ErroredDueToStuckInProgress.ToString() &&
-                    x.Status != SyncStatus.QueryNotValid.ToString() &&
-                    x.Status != SyncStatus.FileNotFound.ToString() &&
-                    x.Status != SyncStatus.FilePathNotValid.ToString() &&
-                    x.Status != SyncStatus.Error.ToString());
+                x.Status == SyncStatus.CustomerPaused.ToString() ||
+                x.Status == SyncStatus.CustomMembershipDataNotFound.ToString() ||
+                x.Status == SyncStatus.DestinationGroupNotFound.ToString() ||
+                x.Status == SyncStatus.NotOwnerOfDestinationGroup.ToString() ||
+                x.Status == SyncStatus.SecurityGroupNotFound.ToString() ||
+                x.Status == SyncStatus.ThresholdExceeded.ToString());
 
             await foreach (var segmentResult in queryResult.AsPages())
             {
