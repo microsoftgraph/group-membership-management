@@ -53,14 +53,14 @@ namespace Hosts.MembershipAggregator
                                                 new JobStatusUpdaterRequest
                                                 {
                                                     SyncJob = request.SyncJob,
-                                                    Status = SyncStatus.Error
+                                                    Status = SyncStatus.CustomMembershipDataNotFound
                                                 });
                 await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
                     {
                         Message = new LogMessage
                         {
-                            Message = $"Sources are empty for TargetOfficeGroupId {request.SyncJob.TargetOfficeGroupId}. Empty destination is not allowed for this group. Marking job as errored.",
+                            Message = $"Sources are empty for TargetOfficeGroupId {request.SyncJob.TargetOfficeGroupId}. Empty destination is not allowed for this group. Marking job as 'CustomMembershipDataNotFound'.",
                             RunId = runId
                         }
                     });
