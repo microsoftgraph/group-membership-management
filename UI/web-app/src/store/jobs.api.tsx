@@ -88,8 +88,8 @@ export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async () => {
         case SyncStatus.CustomerPaused:
           index['actionRequired'] = ActionRequired.CustomerPaused;
           break;
-        case SyncStatus.CustomMembershipDataNotFound:
-          index['actionRequired'] = ActionRequired.CustomMembershipDataNotFound;
+        case SyncStatus.MembershipDataNotFound:
+          index['actionRequired'] = ActionRequired.MembershipDataNotFound;
           break;
         case SyncStatus.DestinationGroupNotFound:
           index['actionRequired'] = ActionRequired.DestinationGroupNotFound;

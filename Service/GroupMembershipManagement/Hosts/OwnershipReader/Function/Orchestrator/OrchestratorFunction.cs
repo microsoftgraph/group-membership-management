@@ -133,8 +133,8 @@ namespace Hosts.OwnershipReader
                                                        Verbosity = VerbosityLevel.DEBUG
                                                    });
 
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.CustomMembershipDataNotFound });
-                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.CustomMembershipDataNotFound, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.MembershipDataNotFound });
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.MembershipDataNotFound, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
                     return;
                 }
 

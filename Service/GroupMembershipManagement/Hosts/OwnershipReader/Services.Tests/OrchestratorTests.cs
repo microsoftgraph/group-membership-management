@@ -276,7 +276,7 @@ namespace Services.Tests
 
             _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
                         It.IsAny<IEnumerable<SyncJob>>(),
-                        SyncStatus.CustomMembershipDataNotFound), Times.Once);
+                        SyncStatus.MembershipDataNotFound), Times.Once);
 
         }
 

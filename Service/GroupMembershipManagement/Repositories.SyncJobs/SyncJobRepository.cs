@@ -115,7 +115,7 @@ namespace Repositories.SyncJobsRepository
         {
             var queryResult = _tableClient.QueryAsync<SyncJobEntity>(x =>
                 x.Status == SyncStatus.CustomerPaused.ToString() ||
-                x.Status == SyncStatus.CustomMembershipDataNotFound.ToString() ||
+                x.Status == SyncStatus.MembershipDataNotFound.ToString() ||
                 x.Status == SyncStatus.DestinationGroupNotFound.ToString() ||
                 x.Status == SyncStatus.NotOwnerOfDestinationGroup.ToString() ||
                 x.Status == SyncStatus.SecurityGroupNotFound.ToString() ||

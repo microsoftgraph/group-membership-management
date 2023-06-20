@@ -10,7 +10,7 @@ namespace Models
         Idle = 2,
         Error = 3,
         ThresholdExceeded = 4,
-        CustomMembershipDataNotFound = 5,
+        MembershipDataNotFound = 5,
         DestinationGroupNotFound = 6,
         NotOwnerOfDestinationGroup = 7,
         SecurityGroupNotFound = 8,
