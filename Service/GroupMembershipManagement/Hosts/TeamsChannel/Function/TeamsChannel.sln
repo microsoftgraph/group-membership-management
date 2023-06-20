@@ -35,6 +35,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Common.DependencyInjection"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.NotificationRepository", "..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj", "{9AD0DD4C-01FB-40A1-9A9E-BBDC2DD74EB7}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.FeatureFlag", "..\..\..\Repositories.FeatureFlag\Repositories.FeatureFlag.csproj", "{8F655591-5955-4647-BF87-B39F043F82FC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -101,6 +103,10 @@ Global
 		{9AD0DD4C-01FB-40A1-9A9E-BBDC2DD74EB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9AD0DD4C-01FB-40A1-9A9E-BBDC2DD74EB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9AD0DD4C-01FB-40A1-9A9E-BBDC2DD74EB7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8F655591-5955-4647-BF87-B39F043F82FC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8F655591-5955-4647-BF87-B39F043F82FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8F655591-5955-4647-BF87-B39F043F82FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8F655591-5955-4647-BF87-B39F043F82FC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

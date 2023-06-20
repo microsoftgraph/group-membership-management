@@ -13,7 +13,7 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
     root: [{}, className],
     enabled: {
       color: theme.palette.black,
-      backgroundColor: theme.palette.greenLight,
+      backgroundColor: theme.semanticColors.successBackground,
       borderRadius: 50,
       textAlign: 'center',
       height: 20,
@@ -26,7 +26,7 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       height: 20,
     },
     actionRequired: {
-      color: theme.palette.redDark,
+      color: theme.semanticColors.errorIcon,
     },
     tabContent: {
       float: 'left',

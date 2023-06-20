@@ -1,9 +1,4 @@
 {
-    "edit": "Edit",
-    "saveToReload": "and save to reload",
-    "learnReact": "Learn React!!",
-    "english": "English",
-    "spanish": "Spanish",
     "emptyList": "There are no GMM managed groups",
     "loading": "Loading",
     "addOwner204Message": "Added Successfully.",
@@ -14,6 +9,8 @@
     "groupIdHeader": "Enter Group ID",
     "groupIdPlaceHolder": "Group ID",
     "addOwnerButton": "Add GMM as an owner",
+    "membershipManagement": "Membership Management",
+    "learnMembershipManagement": "Learn how Membership Management works in your organization",
     "JobDetailsPage": {
         "labels": {
             "pageTitle": "Membership Details",
@@ -48,11 +45,12 @@
             "requestor": "User who requested this job to be onboarded into GMM.",
             "increaseThreshold": "Number of users that can be added from the target group expressed as a percentage of the current size of the group.",
             "decreaseThreshold": "Number of users that can be removed from the target group expressed as a percentage of the current size of the group.",
-            "thresholdViolations": "Number of times a threhold was exceeded."
+            "thresholdViolations": "Number of times a threshold was exceeded."
         },
         "MessageBar": {
             "dismissButtonAriaLabel": "Close"
-        }
+        },
+        "openInAzure": "Open in Azure"
     },
     "JobsList": {
         "ShimmeredDetailsList": {
@@ -73,5 +71,7 @@
         "MessageBar": {
             "dismissButtonAriaLabel": "Close"
         }
-    }
+    },
+    "welcome": "Welcome",
+    "back": "Back"
 }

@@ -48,14 +48,13 @@ const itemAlignmentsStackTokens: IStackTokens = {
 const stackStyles: Partial<IStackStyles> = { root: { height: 44 } };
 
 export const JobDetailsPage: React.FunctionComponent = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const job: Job = location.state.item;
 
   const dispatch = useDispatch<AppDispatch>();
   const jobDetails = useSelector(selectSelectedJobDetails);
   const error = useSelector(selectGetJobDetailsError);
-
-  const { t } = useTranslation();
 
   const OpenInNewWindowIcon: IIconProps = { iconName: 'OpenInNewWindow' };
 
@@ -181,7 +180,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
                   allowDisabledFocus
                   onClick={openInAzure}
                 >
-                  Open in Azure
+                  {t('JobDetailsPage.openInAzure')}
                 </ActionButton>
               </Stack.Item>
             </Stack>

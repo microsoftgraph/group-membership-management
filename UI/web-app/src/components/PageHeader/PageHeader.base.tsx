@@ -12,6 +12,7 @@ import { Stack, type IStackStyles } from '@fluentui/react/lib/Stack';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 import {
   type IPageHeaderProps,
@@ -38,6 +39,7 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
       theme: useTheme(),
     }
   );
+  const { t } = useTranslation();
 
   const navigate = useNavigate();
 
@@ -50,7 +52,7 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
       <Stack horizontal styles={stackStyles}>
         <CommandBarButton
           iconProps={leftArrowIcon}
-          text="Back"
+          text={t('back') as string}
           onClick={backButtonOnClick}
         />
       </Stack>

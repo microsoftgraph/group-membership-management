@@ -24,6 +24,7 @@ namespace TeamsChannel.Service
         private readonly IFeatureManager _featureManager;
         private readonly IConfigurationRefresherProvider _refresherProvider;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
+        private readonly IFeatureFlagRepository _featureFlagRepository;
 
         public TeamsChannelService(
             ITeamsChannelRepository teamsChannelRepository,
@@ -33,7 +34,8 @@ namespace TeamsChannel.Service
             ILoggingRepository loggingRepository,
             IFeatureManager featureManager,
             IConfigurationRefresherProvider refresherProvider,
-            IServiceBusQueueRepository serviceBusQueueRepository)
+            IServiceBusQueueRepository serviceBusQueueRepository,
+            IFeatureFlagRepository featureFlagRepository)
         {
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
@@ -43,6 +45,7 @@ namespace TeamsChannel.Service
             _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
             _refresherProvider = refresherProvider ?? throw new ArgumentNullException(nameof(refresherProvider));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
+            _featureFlagRepository = featureFlagRepository ?? throw new ArgumentNullException(nameof(featureFlagRepository)); ;
         }
 
         public async Task<(AzureADTeamsChannel parsedChannel, bool isGood)> VerifyChannelAsync(ChannelSyncInfo channelSyncInfo)
@@ -142,21 +145,7 @@ namespace TeamsChannel.Service
 
         private async Task<bool> CheckFeatureFlagStateAsync(string featureFlagName, bool refreshAppSettings = false, Guid? runId = null)
         {
-            if (refreshAppSettings)
-            {
-                var refresher = _refresherProvider.Refreshers.First();
-                if (!await refresher.TryRefreshAsync())
-                {
-                    await _logger.LogMessageAsync(new LogMessage
-                    { Message = $"Unable to refresh app configuration values", RunId = runId },
-                    VerbosityLevel.DEBUG);
-                }
-            }
-
-            var isFlagEnabled = await _featureManager.IsEnabledAsync(featureFlagName);
-            await _logger.LogMessageAsync(new LogMessage { Message = $"Feature flag {featureFlagName} is {(isFlagEnabled ? "enabled" : "disabled")}", RunId = runId }, VerbosityLevel.INFO);
-
-            return isFlagEnabled;
+            return await _featureFlagRepository.IsFeatureFlagEnabledAsync(featureFlagName, refreshAppSettings, runId);
         }
 
         private async Task MakeMembershipAggregatorHTTPRequestAsync(MembershipAggregatorHttpRequest request)

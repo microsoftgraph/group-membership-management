@@ -10,7 +10,7 @@ param appConfigurationSku string = 'Standard'
 @description('Array of Objects that contain the key name, value, tag and contentType')
 param appConfigurationKeyData array
 
-@description('Array of feature flags objects. {id:"value", description:"description", enabled:true }')
+@description('Array of feature flags objects. {id:"value", description:"description", enabled:true, createdBy:"value", createdDate:"data" }')
 param featureFlags array
 
 resource configurationStore 'Microsoft.AppConfiguration/configurationStores@2023-03-01' = {
@@ -44,6 +44,8 @@ resource configurationStoreFeatureFlags 'Microsoft.AppConfiguration/configuratio
       id: flag.id
       description: flag.description
       enabled: flag.enabled
+      createdBy: contains(flag, 'createdBy') ? flag.createdBy : null
+      createdDate: contains(flag, 'createdDate') ? flag.createdDate : null
     })
   }
 }]

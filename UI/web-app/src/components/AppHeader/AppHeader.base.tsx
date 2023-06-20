@@ -3,6 +3,7 @@
 
 import { classNamesFunction, IProcessedStyleSet } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
+import { useTranslation } from 'react-i18next';
 import WelcomeName from '../WelcomeName';
 import {
   AccountManagementIcon,
@@ -13,8 +14,6 @@ import {
   type IAppHeaderStyleProps,
   type IAppHeaderStyles,
 } from './AppHeader.types';
-import AddOwner from '../AddOwner';
-import SignInSignOutButton from '../SignInSignOutButton';
 
 const getClassNames = classNamesFunction<
   IAppHeaderStyleProps,
@@ -25,6 +24,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
   props: IAppHeaderProps
 ) => {
   const { className, styles } = props;
+  const { t } = useTranslation();
   const classNames: IProcessedStyleSet<IAppHeaderStyles> = getClassNames(
     styles,
     {
@@ -45,7 +45,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
               </div>{' '}
             </div>{' '}
           </div>
-          <div className={classNames.tabContent}> Membership Management </div>
+          <div className={classNames.tabContent}> {t('membershipManagement')} </div>
           <div className={classNames.right}>
             <SettingsIcon />
           </div>
@@ -55,7 +55,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
           <WelcomeName />
         </div>
         <div className={classNames.learn} role="banner" aria-label="header">
-          <br /> Learn how Membership Management works in your organization{' '}
+          <br /> {t('learnMembershipManagement')}
           <br />
         </div>
         <br />
