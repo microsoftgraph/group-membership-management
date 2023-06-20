@@ -103,8 +103,7 @@ function Get-InsertStatement {
     )
     $insertStatement = "
         INSERT INTO [dbo].[SyncJobs]
-            ([Id]
-            ,[DryRunTimeStamp]
+            ([DryRunTimeStamp]
             ,[IgnoreThresholdOnce]
             ,[IsDryRunEnabled]
             ,[LastRunTime]
@@ -121,8 +120,7 @@ function Get-InsertStatement {
             ,[ThresholdPercentageForRemovals]
             ,[ThresholdViolations])
         VALUES
-            (NEWSEQUENTIALID()
-            ,'$($SyncJob.DryRunTimeStamp)'
+            ('$($SyncJob.DryRunTimeStamp)'
             ,$([int][bool]::Parse($SyncJob.IgnoreThresholdOnce -eq "True"))
             ,$([int][bool]::Parse($SyncJob.IsDryRunEnabled -eq "True"))
             ,'$($SyncJob.LastRunTime)'
