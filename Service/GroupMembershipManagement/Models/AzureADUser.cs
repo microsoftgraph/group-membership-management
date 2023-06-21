@@ -3,19 +3,37 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 
 namespace Models
 {
     [ExcludeFromCodeCoverage]
 	public class AzureADUser : IAzureADObject, IEquatable<AzureADUser>
 	{
-		public Guid ObjectId { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+        public Guid ObjectId { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Mail { get; set; }
 
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public virtual object Properties { get
+			{
+				return null;
+			}
+		}
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public MembershipAction? MembershipAction { get; set; }
 
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public Guid SourceGroup { get; set; }
 
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public List<Guid> SourceGroups { get; set; }
 
         public override bool Equals(object obj)

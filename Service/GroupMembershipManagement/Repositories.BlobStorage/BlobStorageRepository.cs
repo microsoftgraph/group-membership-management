@@ -19,7 +19,7 @@ namespace Repositories.BlobStorage
 
         public BlobStorageRepository(string containerUrl)
         {
-            _containerClient = new BlobContainerClient(new Uri(containerUrl), new DefaultAzureCredential());
+            _containerClient = new BlobContainerClient(new Uri(containerUrl), new DefaultAzureCredential(true));
             _containerClient.CreateIfNotExists();
         }
 

@@ -15,7 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
-    <ProjectReference Include="..\..\Services.Contracts\TeamsChannel.Service.Contracts.csproj" />
+    <ProjectReference Include="..\..\Services.Contracts\TeamsChannelMembershipObtainer.Service.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

@@ -21,6 +21,6 @@ namespace Models
         StuckInProgress = 13,
         ErroredDueToStuckInProgress = 14,
         PrivateChannelNotDestination = 15,
-        TeamsChannelNotPrivate = 16,
+        DestinationQueryNotValid = 16,
     }
 }

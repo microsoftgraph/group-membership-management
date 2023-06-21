@@ -20,7 +20,7 @@ namespace Services.Tests
     [TestClass]
     public class TeamsChannelServiceTests
     {
-        private TeamsChannelService _service = null!;
+        private TeamsChannelMembershipObtainerService _service = null!;
         private ChannelSyncInfo _syncInfo = null!;
         private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository = null!;
         private Mock<IBlobStorageRepository> _mockBlobStorageRepository = null!;
@@ -38,9 +38,9 @@ namespace Services.Tests
         private Dictionary<AzureADTeamsChannel, List<AzureADTeamsUser>> _mockChannels = new Dictionary<AzureADTeamsChannel, List<AzureADTeamsUser>>
         {
             { new AzureADTeamsChannel { ObjectId = Guid.Empty, ChannelId = "some channel" },
-                new List<AzureADTeamsUser> { new AzureADTeamsUser { ObjectId = Guid.NewGuid(), TeamsId = "first guy" }, new AzureADTeamsUser { ObjectId = Guid.NewGuid(), TeamsId = "second guy" } } },
+                new List<AzureADTeamsUser> { new AzureADTeamsUser { ObjectId = Guid.NewGuid(), ConversationMemberId = "first guy" }, new AzureADTeamsUser { ObjectId = Guid.NewGuid(), ConversationMemberId = "second guy" } } },
             { new AzureADTeamsChannel { ObjectId = Guid.Parse("00000000-0000-0000-0000-000000000001"), ChannelId = "another channel" },
-                new List<AzureADTeamsUser> { new AzureADTeamsUser { ObjectId = Guid.NewGuid(), TeamsId = "third guy" }, new AzureADTeamsUser { ObjectId = Guid.NewGuid(), TeamsId = "fourth guy" } } }
+                new List<AzureADTeamsUser> { new AzureADTeamsUser { ObjectId = Guid.NewGuid(), ConversationMemberId = "third guy" }, new AzureADTeamsUser { ObjectId = Guid.NewGuid(), ConversationMemberId = "fourth guy" } } }
         };
         const string ExpectedFilename = "/00000000-0000-0000-0000-000000000042/03281995-010203_00000000-0000-0000-0000-000000000012_TeamsChannel_1.json";
 
@@ -91,7 +91,7 @@ namespace Services.Tests
             _configurationRefresherProvider.Setup(x => x.Refreshers)
                                             .Returns(() => new List<IConfigurationRefresher> { configurationRefresher.Object });
 
-            _service = new TeamsChannelService(_mockTeamsChannelRepository.Object,
+            _service = new TeamsChannelMembershipObtainerService(_mockTeamsChannelRepository.Object,
                                                 _mockBlobStorageRepository.Object,
                                                 _mockHttpClientFactory.Object,
                                                 mockSyncJobRepository,
@@ -103,6 +103,7 @@ namespace Services.Tests
 
             _syncInfo = new ChannelSyncInfo
             {
+                TotalParts = 1,
                 CurrentPart = 1,
                 IsDestinationPart = true,
                 SyncJob = new SyncJob
@@ -111,7 +112,8 @@ namespace Services.Tests
                     Status = SyncStatus.InProgress.ToString(),
                     TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
-                    Query = @"[{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000000"", ""channel"":""some channel""}},{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000001"", ""channel"":""another channel""}}]"
+                    Query = @"[{""type"":""SecurityGroup"",""source"":""00000000-0000-0000-0000-000000000000""}]",
+                    Destination = @"[{""type"":""TeamsChannel"",""value"":{""groupId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
                 }
             };
 
@@ -123,23 +125,24 @@ namespace Services.Tests
         {
             var badSyncInfo = new ChannelSyncInfo
             {
+                TotalParts = 1,
                 CurrentPart = 2,
-                IsDestinationPart = true,
+                IsDestinationPart = false,
                 SyncJob = new SyncJob
                 {
                     RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
                     Status = SyncStatus.InProgress.ToString(),
                     TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
-                    Query = @"[{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000000"", ""channel"":""some channel""}},{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000001"", ""channel"":""another channel""}}]"
+                    Query = @"[{""type"":""SecurityGroup"",""source"":""00000000-0000-0000-0000-000000000000""}]",
+                    Destination = @"[{""type"":""TeamsChannel"",""value"":{""groupId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
                 }
             };
 
             var verification = await _service.VerifyChannelAsync(badSyncInfo);
 
             Assert.IsFalse(verification.isGood);
-            Assert.AreEqual(SyncStatus.TeamsChannelNotPrivate.ToString(), badSyncInfo.SyncJob.Status);
-        }
+         }
 
 
         [TestMethod]
@@ -151,27 +154,6 @@ namespace Services.Tests
             Assert.AreEqual(SyncStatus.InProgress.ToString(), _syncInfo.SyncJob.Status);
         }
 
-        [TestMethod]
-        public async Task VerifyRejectsNonPrivateChannels()
-        {
-            var badSyncInfo = new ChannelSyncInfo
-            {
-                CurrentPart = 1,
-                IsDestinationPart = false,
-                SyncJob = new SyncJob
-                {
-                    RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
-                    TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
-                    Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
-                    Query = @"[{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000000"", ""channel"":""some channel""}},{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000001"", ""channel"":""another channel""}}]"
-                }
-            };
-
-            var verification = await _service.VerifyChannelAsync(badSyncInfo);
-
-            Assert.IsFalse(verification.isGood);
-            Assert.AreEqual(SyncStatus.PrivateChannelNotDestination.ToString(), badSyncInfo.SyncJob.Status);
-        }
 
         [TestMethod]
         public async Task GetsUsersFromTeam()
@@ -200,7 +182,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task CanMarkJobsAsError()
         {
-            await _service.MarkSyncJobAsErroredAsync(_syncInfo.SyncJob);
+            await _service.UpdateSyncJobStatusAsync(_syncInfo.SyncJob, SyncStatus.Error);
             Assert.AreEqual(SyncStatus.Error.ToString(), _syncInfo.SyncJob.Status);
         }
 

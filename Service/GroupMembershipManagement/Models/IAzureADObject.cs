@@ -8,5 +8,6 @@ namespace Models
 	public interface IAzureADObject
 	{
 		Guid ObjectId { get; }
+
 	}
 }

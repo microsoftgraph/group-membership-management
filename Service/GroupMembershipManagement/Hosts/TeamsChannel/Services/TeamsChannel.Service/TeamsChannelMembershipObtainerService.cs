@@ -11,22 +11,24 @@ using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using System.Net.Http.Json;
 using TeamsChannel.Service.Contracts;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace TeamsChannel.Service
 {
-    public class TeamsChannelService : ITeamsChannelService
+    public class TeamsChannelMembershipObtainerService : ITeamsChannelService
     {
         private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
         private readonly ILoggingRepository _logger;
         private readonly IFeatureManager _featureManager;
         private readonly IConfigurationRefresherProvider _refresherProvider;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
         private readonly IFeatureFlagRepository _featureFlagRepository;
 
-        public TeamsChannelService(
+        public TeamsChannelMembershipObtainerService(
             ITeamsChannelRepository teamsChannelRepository,
             IBlobStorageRepository blobStorageRepository,
             IHttpClientFactory httpClientFactory,
@@ -51,7 +53,22 @@ namespace TeamsChannel.Service
         public async Task<(AzureADTeamsChannel parsedChannel, bool isGood)> VerifyChannelAsync(ChannelSyncInfo channelSyncInfo)
         {
             Guid runId = channelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
-            var azureADTeamsChannel = GetChannelToRead(channelSyncInfo);
+
+            var destinationArray = JArray.Parse(channelSyncInfo.SyncJob.Destination);
+            var currentDestination = (destinationArray[0] as JObject)["value"];
+
+            if (currentDestination == null || currentDestination["groupId"] == null || currentDestination["channelId"] == null)
+            {
+                await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, invalid destination query!", RunId = runId });
+                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { channelSyncInfo.SyncJob }, SyncStatus.DestinationQueryNotValid);
+                return (null, isGood: false);
+            }
+
+            var azureADTeamsChannel = new AzureADTeamsChannel
+            {
+                ObjectId = Guid.Parse(currentDestination["groupId"].Value<string>()),
+                ChannelId = currentDestination["channelId"].Value<string>()
+            };
 
             if (!channelSyncInfo.IsDestinationPart)
             {
@@ -62,12 +79,7 @@ namespace TeamsChannel.Service
 
             var destType = await _teamsChannelRepository.GetChannelTypeAsync(azureADTeamsChannel, runId);
 
-            if (destType != ChannelMembershipType.Private.ToString())
-            {
-                await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, group {azureADTeamsChannel.ObjectId} and channel {azureADTeamsChannel.ChannelId} is not a private channel. It is {destType}.", RunId = runId });
-                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { channelSyncInfo.SyncJob }, SyncStatus.TeamsChannelNotPrivate);
-                return (azureADTeamsChannel, isGood: false);
-            }
+            await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, Channel {azureADTeamsChannel.ChannelId} of group {azureADTeamsChannel.ObjectId} is of type {destType}.", RunId = runId });
 
             return (azureADTeamsChannel, isGood: true);
         }
@@ -76,17 +88,6 @@ namespace TeamsChannel.Service
         {
             _logger.LogMessageAsync(new LogMessage { Message = $"In Service, reading from group {azureADTeamsChannel.ObjectId} and channel {azureADTeamsChannel.ChannelId}.", RunId = runId });
             return _teamsChannelRepository.ReadUsersFromChannelAsync(azureADTeamsChannel, runId);
-        }
-
-        private AzureADTeamsChannel GetChannelToRead(ChannelSyncInfo syncInfo)
-        {
-            var queryArray = JArray.Parse(syncInfo.SyncJob.Query);
-            var thisPart = (queryArray[syncInfo.CurrentPart - 1] as JObject)["source"];
-            return new AzureADTeamsChannel
-            {
-                ObjectId = Guid.Parse(thisPart["group"].Value<string>()),
-                ChannelId = thisPart["channel"].Value<string>()
-            };
         }
 
         public async Task<string> UploadMembershipAsync(List<AzureADTeamsUser> users, ChannelSyncInfo channelSyncInfo, bool dryRun)
@@ -100,7 +101,6 @@ namespace TeamsChannel.Service
             var groupMembership = new GroupMembership
             {
                 SourceMembers = new List<AzureADUser>(users) ?? new List<AzureADUser>(),
-                Destination = new AzureADGroup { ObjectId = channelSyncInfo.SyncJob.TargetOfficeGroupId },
                 RunId = runId,
                 Exclusionary = channelSyncInfo.Exclusionary,
                 SyncJobRowKey = channelSyncInfo.SyncJob.RowKey,
@@ -109,13 +109,11 @@ namespace TeamsChannel.Service
                 Query = channelSyncInfo.SyncJob.Query
             };
 
-
             var timeStamp = channelSyncInfo.SyncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
             var fileName = $"/{channelSyncInfo.SyncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_TeamsChannel_{channelSyncInfo.CurrentPart}.json";
 
             await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, uploading {users.Count} users to {fileName}.", RunId = runId });
-            await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
-
+            await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(groupMembership));
             await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, uploaded {users.Count} users to {fileName}.", RunId = runId });
 
             return fileName;
@@ -138,9 +136,14 @@ namespace TeamsChannel.Service
                 await MakeMembershipAggregatorHTTPRequestAsync(aggregatorRequest);
         }
 
-        public async Task MarkSyncJobAsErroredAsync(SyncJob syncJob)
+        public async Task SendMessageAsync(SyncJob job)
         {
-            await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Error);
+            await _serviceBusTopicsRepository.AddMessageAsync(job);
+        }
+
+        public async Task UpdateSyncJobStatusAsync(SyncJob syncJob, SyncStatus status)
+        {
+            await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, status);
         }
 
         private async Task<bool> CheckFeatureFlagStateAsync(string featureFlagName, bool refreshAppSettings = false, Guid? runId = null)
@@ -166,12 +169,13 @@ namespace TeamsChannel.Service
             {
                 var responseBody = await response.Content.ReadAsStringAsync();
                 await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, POST request failed. Got {response.StatusCode} instead. Response body: {responseBody}.", RunId = request.SyncJob.RunId });
-                await MarkSyncJobAsErroredAsync(request.SyncJob);
+                await UpdateSyncJobStatusAsync(request.SyncJob, SyncStatus.Error);
             }
         }
 
         private async Task SendMembershipAggregatorMessageAsync(MembershipAggregatorHttpRequest request)
         {
+
             var body = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
 
             var message = new ServiceBusMessage
@@ -180,11 +184,13 @@ namespace TeamsChannel.Service
                 Body = body
             };
 
+            await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, sending message {message.MessageId} to membership aggregator.", RunId = request.SyncJob.RunId });
+
             await _serviceBusQueueRepository.SendMessageAsync(message);
 
             await _logger.LogMessageAsync(new LogMessage
             {
-                Message = $"Sent message {message.MessageId} to membership aggregator",
+                Message = $"Sent message {message.MessageId} to membership aggregator.",
                 RunId = request.SyncJob.RunId
             }, VerbosityLevel.INFO);
         }

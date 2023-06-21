@@ -22,12 +22,12 @@ using TeamsChannel.Service.Contracts;
 using Constants = TeamsChannel.Service.Constants;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
-[assembly: FunctionsStartup(typeof(Hosts.TeamsChannel.Startup))]
-namespace Hosts.TeamsChannel
+[assembly: FunctionsStartup(typeof(Hosts.TeamsChannelMembershipObtainer.Startup))]
+namespace Hosts.TeamsChannelMembershipObtainer
 {
     public class Startup : CommonStartup
     {
-        protected override string FunctionName => nameof(TeamsChannel);
+        protected override string FunctionName => nameof(TeamsChannelMembershipObtainer);
 
         protected override string DryRunSettingName => "TeamsChannel:IsTeamsChannelDryRunEnabled";
 
@@ -53,7 +53,7 @@ namespace Hosts.TeamsChannel
 
                 return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
             })
-            .AddTransient<ITeamsChannelService, TeamsChannelService>()
+            .AddTransient<ITeamsChannelService, TeamsChannelMembershipObtainerService>()
             .AddTransient<ITeamsChannelRepository, TeamsChannelRepository>()
             .AddScoped<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
             {

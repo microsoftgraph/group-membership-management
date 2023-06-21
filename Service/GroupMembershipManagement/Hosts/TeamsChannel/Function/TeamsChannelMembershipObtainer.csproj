@@ -10,6 +10,7 @@
     <_FunctionsSkipCleanOutput>true</_FunctionsSkipCleanOutput>
 </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" Version="2.9.5" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" Version="5.11.0" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="6.0.16" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.2.0" />
@@ -18,8 +19,9 @@
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
     <ProjectReference Include="..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj" />
     <ProjectReference Include="..\..\..\Repositories.TeamsChannel\Repositories.TeamsChannel.csproj" />
-    <ProjectReference Include="..\Services.Contracts\TeamsChannel.Service.Contracts.csproj" />
-    <ProjectReference Include="..\Services\TeamsChannel.Service\TeamsChannel.Service.csproj" />
+	<ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
+	<ProjectReference Include="..\Services.Contracts\TeamsChannelMembershipObtainer.Service.Contracts.csproj" />
+    <ProjectReference Include="..\Services\TeamsChannel.Service\TeamsChannelMembershipObtainer.Service.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">
