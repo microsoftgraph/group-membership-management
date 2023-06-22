@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 
 using Models;
+using Models.AzureMaintenance;
+using Models.ThresholdNotifications;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -23,6 +25,7 @@ namespace Services
         private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
         private readonly IMailRepository _mailRepository = null;
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig = null;
+		private readonly INotificationRepository _notificationRepository = null;
 
         public AzureMaintenanceService(
             IDatabaseSyncJobsRepository syncJobRepository,
@@ -30,7 +33,8 @@ namespace Services
             IGraphGroupRepository graphGroupRepository,
             IEmailSenderRecipient emailSenderAndRecipients,
             IMailRepository mailRepository,
-            IHandleInactiveJobsConfig handleInactiveJobsConfig)
+			IHandleInactiveJobsConfig handleInactiveJobsConfig,
+            INotificationRepository notificationRepository)
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _purgedSyncJobRepository = purgedSyncJobRepository ?? throw new ArgumentNullException(nameof(purgedSyncJobRepository));
@@ -38,6 +42,7 @@ namespace Services
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _handleInactiveJobsConfig = handleInactiveJobsConfig ?? throw new ArgumentNullException(nameof(handleInactiveJobsConfig));
+			_notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
         }
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()
@@ -140,5 +145,17 @@ namespace Services
         {
             await _syncJobRepository.DeleteSyncJobsAsync(jobs);
         }
+
+		public async Task ExpireNotificationsAsync(IEnumerable<SyncJob> jobs)
+		{
+            foreach (var job in jobs)
+			{
+                var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobKeysAsync(job.PartitionKey, job.RowKey);
+				if (thresholdNotification != null)
+				{
+	                await _notificationRepository.UpdateNotificationStatusAsync(thresholdNotification, ThresholdNotificationStatus.Expired);
+				}
+            }
+		}
     }
 }

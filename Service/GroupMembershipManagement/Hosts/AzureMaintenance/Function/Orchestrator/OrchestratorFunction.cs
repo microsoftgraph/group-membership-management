@@ -42,6 +42,7 @@ namespace Hosts.AzureMaintenance
 
                 if (inactiveSyncJobs != null && inactiveSyncJobs.Count > 0 && inactiveSyncJobs.Count == countOfBackUpJobs)
                 {
+                    await context.CallActivityAsync(nameof(ExpireNotificationsFunction), inactiveSyncJobs);
                     await context.CallActivityAsync(nameof(RemoveInactiveJobsFunction), inactiveSyncJobs);
 
                     var processingTasks = new List<Task>();

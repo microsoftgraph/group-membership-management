@@ -45,6 +45,10 @@ namespace Services.Notifications
             {
                 cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdNotificationDisabled);
             }
+            else if (notification.CardState == ThresholdNotificationCardState.ExpiredCard)
+            {
+                cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdNotificationExpired);
+            }
             else
             {
                 throw new NotSupportedException("Currently the Notifier trigger only supports NextCardState of DefaultCard and DisabledCard. Please check on this card");
@@ -133,6 +137,22 @@ namespace Services.Notifications
                 NotificationId = $"{notification.Id}",
                 ProviderId = $"{_providerId}",
                 CardCreatedTime = DateTime.UtcNow
+            };
+
+            var template = new AdaptiveCardTemplate(cardJson);
+            var card = template.Expand(cardData);
+
+            return card;
+        }
+
+        public string CreateExpiredNotificationCardAsync(ThresholdNotification notification)
+        {
+            var cardJson = _localizationRepository.TranslateSetting(CardTemplate.ThresholdNotificationExpired);
+            var cardData = new ThresholdNotificationExpiredCardData
+            {
+                GroupId = $"{notification.TargetOfficeGroupId}",
+                NotificationId = $"{notification.Id}",
+                ProviderId = $"{_providerId}"
             };
 
             var template = new AdaptiveCardTemplate(cardJson);

@@ -57,6 +57,11 @@ namespace Services.WebApi
                     // Resolved
                     response.CardJson = await _thresholdNotificationService.CreateResolvedNotificationCardAsync(notification);
                 }
+                else if (notification.Status == ThresholdNotificationStatus.Expired)
+                {
+                    // Expired
+                    response.CardJson = _thresholdNotificationService.CreateExpiredNotificationCardAsync(notification);
+                }
                 else
                 {
                     // Unresolved

@@ -16,6 +16,7 @@ using Common.DependencyInjection;
 using Microsoft.Graph;
 using Repositories.GraphGroups;
 using Repositories.EntityFramework;
+using Repositories.NotificationsRepository;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 
@@ -44,6 +45,19 @@ namespace Hosts.AzureMaintenance
                     services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforeDeletion);
             });
 
+            builder.Services.AddSingleton<ISyncJobRepository>(services =>
+            {
+                var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
+                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
+            });
+            builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
+                settings.TableName = configuration.GetValue<string>("notificationsTableName");
+            });
+            builder.Services.AddSingleton<INotificationRepository, NotificationRepository>();
+
+
             builder.Services.AddSingleton<IKeyVaultSecret<IAzureMaintenanceService>>(services => new KeyVaultSecret<IAzureMaintenanceService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
             .AddSingleton((services) =>
             {
@@ -58,7 +72,8 @@ namespace Hosts.AzureMaintenance
                     services.GetService<IGraphGroupRepository>(),
                     services.GetService<IEmailSenderRecipient>(),
                     services.GetService<IMailRepository>(),
-                    services.GetService<IHandleInactiveJobsConfig>());
+                    services.GetService<IHandleInactiveJobsConfig>(),
+                    services.GetService<INotificationRepository>());
             });
         }
 

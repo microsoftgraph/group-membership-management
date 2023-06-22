@@ -16,6 +16,10 @@ namespace Models.ThresholdNotifications
         /// <summary>
         /// Will send out a Sync Disabled card
         /// </summary>
-        DisabledCard = 2
+        DisabledCard = 2,
+        /// <summary>
+        /// Will send out an Expired card
+        /// </summary>
+        ExpiredCard = 3
     }
 }

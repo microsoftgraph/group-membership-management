@@ -3,6 +3,8 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.AzureMaintenance;
+using Models.ThresholdNotifications;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -68,6 +70,7 @@ namespace Services.Tests
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
+            var notificationRepository = new Mock<INotificationRepository>();
 
             purgedSyncJobRepository.Setup(x => x.InsertPurgedSyncJobsAsync(It.IsAny<IEnumerable<PurgedSyncJob>>())).ReturnsAsync(2);
 
@@ -76,7 +79,8 @@ namespace Services.Tests
                                                 graphGroupRepository.Object,
                                                 mailAddresses.Object,
                                                 mailRepository.Object,
-                                                handleInactiveJobsConfig.Object);
+                                                handleInactiveJobsConfig.Object,
+                                                notificationRepository.Object);
 
             var countOfBackedUpJobs = await azureMaintenanceService.BackupInactiveJobsAsync(jobs);
             Assert.AreEqual(countOfBackedUpJobs, jobs.Count);
@@ -120,6 +124,7 @@ namespace Services.Tests
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
+            var notificationRepository = new Mock<INotificationRepository>();
 
             purgedSyncJobRepository.Setup(x => x.GetPurgedSyncJobsAsync(It.IsAny<DateTime>())).ReturnsAsync(tables);
             purgedSyncJobRepository.Setup(x => x.DeletePurgedSyncJobsAsync(It.IsAny<IEnumerable<PurgedSyncJob>>())).ReturnsAsync(2);
@@ -129,7 +134,8 @@ namespace Services.Tests
                                                 graphGroupRepository.Object,
                                                 mailAddresses.Object,
                                                 mailRepository.Object,
-                                                handleInactiveJobsConfig.Object);
+                                                handleInactiveJobsConfig.Object,
+                                                notificationRepository.Object);
 
             var countOfRemovedBackUps = await azureMaintenanceService.RemoveBackupsAsync();
             Assert.AreEqual(countOfRemovedBackUps, tables.Count);
@@ -171,16 +177,70 @@ namespace Services.Tests
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
+            var notificationRepository = new Mock<INotificationRepository>();
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 mailAddresses.Object,
                                                 mailRepository.Object,
-                                                handleInactiveJobsConfig.Object);
+                                                handleInactiveJobsConfig.Object,
+                                                notificationRepository.Object);
 
             await azureMaintenanceService.RemoveInactiveJobsAsync(j);
             syncJobRepository.Verify(x => x.DeleteSyncJobsAsync(It.IsAny<List<SyncJob>>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task TestExpireNotifications()
+        {
+            var loggerMock = new Mock<ILoggingRepository>();
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+
+            var jobs = new List<SyncJob>();
+
+            for (int i = 0; i < 2; i++)
+            {
+                var job = new SyncJob
+                {
+                    Requestor = $"requestor_{i}@email.com",
+                    PartitionKey = DateTime.UtcNow.ToString("MMddyyyy"),
+                    RowKey = Guid.NewGuid().ToString(),
+                    Period = 6,
+                    Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
+                    StartDate = DateTime.UtcNow.AddDays(-1),
+                    Status = SyncStatus.ThresholdExceeded.ToString(),
+                    TargetOfficeGroupId = Guid.NewGuid(),
+                    LastRunTime = DateTime.FromFileTimeUtc(0),
+                    RunId = Guid.NewGuid()
+                };
+
+                jobs.Add(job);
+            }
+
+            var j = GetJobs(jobs);
+
+            var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
+            var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
+            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var mailAddresses = new Mock<IEmailSenderRecipient>();
+            var mailRepository = new Mock<IMailRepository>();
+            var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
+            var notificationRepository = new Mock<INotificationRepository>();
+
+            var azureTableBackupService = new AzureMaintenanceService(loggerMock.Object,
+                                                azureTableBackupRepository.Object,
+                                                azureBlobBackupRepository.Object,
+                                                syncJobRepository.Object,
+                                                graphGroupRepository.Object,
+                                                mailAddresses.Object,
+                                                mailRepository.Object,
+                                                handleInactiveJobsConfig.Object,
+                                                notificationRepository.Object);
+
+            await azureTableBackupService.ExpireNotificationsAsync(j);
+            // notificationRepository.Verify(x => x.UpdateNotificationStatusAsync(It.IsAny<ThresholdNotification>(), It.IsAny<ThresholdNotificationStatus>()), Times.Once());
         }
 
         [TestMethod]
@@ -195,6 +255,7 @@ namespace Services.Tests
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
+            var notificationRepository = new Mock<INotificationRepository>();
 
             graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>())).ReturnsAsync(() => "Test Group");
 
@@ -203,7 +264,8 @@ namespace Services.Tests
                                                 graphGroupRepository.Object,
                                                 mailAddresses.Object,
                                                 mailRepository.Object,
-                                                handleInactiveJobsConfig.Object);
+                                                handleInactiveJobsConfig.Object,
+                                                notificationRepository.Object);
 
             await azureMaintenanceService.GetGroupNameAsync(Guid.NewGuid());
             graphGroupRepository.Verify(x => x.GetGroupNameAsync(It.IsAny<Guid>()), Times.Once());
@@ -236,13 +298,15 @@ namespace Services.Tests
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
+            var notificationRepository = new Mock<INotificationRepository>();
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 mailAddresses.Object,
                                                 mailRepository.Object,
-                                                handleInactiveJobsConfig.Object);
+                                                handleInactiveJobsConfig.Object,
+                                                notificationRepository.Object);
 
             var jobs = await azureMaintenanceService.GetSyncJobsAsync();
             Assert.AreEqual(jobs.Count, 0);
@@ -291,6 +355,7 @@ namespace Services.Tests
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
+            var notificationRepository = new Mock<INotificationRepository>();
 
             _ = graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(job.TargetOfficeGroupId, 0)).ReturnsAsync(users);
 
@@ -299,7 +364,8 @@ namespace Services.Tests
                                                 graphGroupRepository.Object,
                                                 mailAddresses.Object,
                                                 mailRepository.Object,
-                                                handleInactiveJobsConfig.Object);
+                                                handleInactiveJobsConfig.Object,
+                                                notificationRepository.Object);
 
             await azureMaintenanceService.SendEmailAsync(job, "Test Group");
             mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid>(), It.IsAny<string>()), Times.Once());

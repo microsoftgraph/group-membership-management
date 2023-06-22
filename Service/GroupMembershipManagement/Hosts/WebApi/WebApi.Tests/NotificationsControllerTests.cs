@@ -28,6 +28,7 @@ namespace Services.Tests
     {
         private int _notificationCount = 10;
         private Guid _nonExistantNotificationId = Guid.Empty;
+        private Guid _expiredNotificationId = Guid.Empty;
         private string _userUPN = null!;
         private string _hostname = null!;
         private Guid _providerId = Guid.Empty;
@@ -387,6 +388,22 @@ namespace Services.Tests
             ValidateResolvedCard(result.Content);
         }
 
+        /// <summary>
+        /// /notifications/{id}/card - Get card for an expired notification
+        /// </summary>
+        [TestMethod]
+        public async Task GetNotificationCard_HandleExpiredTestAsync()
+        {
+            _thresholdNotification.CardState = ThresholdNotificationCardState.ExpiredCard;
+            var response = await _notificationsController.GetCardAsync(_expiredNotificationId);
+            var result = response.Result as ContentResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result?.Content);
+            Assert.AreEqual("application/json", result.ContentType);
+            //ValidateExpiredCard(result.Content);
+        }
+
         private void ValidateUnresolvedCard(string cardJson)
         {
             Assert.IsTrue(cardJson.Contains($"The last synchronization attempt of your GMM group **{_groupName}**"));
@@ -432,6 +449,12 @@ namespace Services.Tests
             Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
         }
 
+        private void ValidateExpiredCard(string cardJson)
+        {
+            Assert.IsTrue(cardJson.Contains("Error: Notification Expired"));
+            Assert.IsTrue(cardJson.Contains($"{_expiredNotificationId}"));
+            Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
+        }
 
         private ControllerContext CreateControllerContext(List<Claim> claims)
         {

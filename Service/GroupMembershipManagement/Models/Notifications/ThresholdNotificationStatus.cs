@@ -32,6 +32,10 @@ namespace Models.ThresholdNotifications
         /// <summary>
         /// The notification is resolved.
         /// </summary>
-        Resolved = 6
+        Resolved = 6,
+        /// <summary>
+        /// The notification has expired.
+        /// </summary>
+        Expired = 7
     }
 }

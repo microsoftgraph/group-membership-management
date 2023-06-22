@@ -32,6 +32,7 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\Models.csproj", "{DF41B12F-4E60-4459-BDF1-D5539E572A8E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework", "..\..\..\Repositories.EntityFramework\Repositories.EntityFramework.csproj", "{DB73FE21-9E74-4C60-BCE0-24482A67BCB8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.NotificationRepository", "..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj", "{2CD0093E-9C17-4B34-B0F2-C6E882A07DCC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -95,6 +96,10 @@ Global
 		{DB73FE21-9E74-4C60-BCE0-24482A67BCB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DB73FE21-9E74-4C60-BCE0-24482A67BCB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DB73FE21-9E74-4C60-BCE0-24482A67BCB8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2CD0093E-9C17-4B34-B0F2-C6E882A07DCC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2CD0093E-9C17-4B34-B0F2-C6E882A07DCC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2CD0093E-9C17-4B34-B0F2-C6E882A07DCC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2CD0093E-9C17-4B34-B0F2-C6E882A07DCC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

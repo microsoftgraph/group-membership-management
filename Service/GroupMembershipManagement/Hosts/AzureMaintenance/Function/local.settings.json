@@ -10,6 +10,7 @@
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
     "jobsStorageAccountConnectionString": "",
     "jobsTableName": "",
+    "notificationsTableName": "",
     "graphCredentials:ClientId": "",
     "graphCredentials:ClientSecret": "",
     "graphCredentials:KeyVaultName": "",

@@ -17,7 +17,7 @@ namespace Services.Contracts.Notifications
         /// <summary>
         /// Generates the adaptive card for a threshold notification that has been resolved.
         /// </summary>
-        /// <param name="notificationId">The threshold notification.</param>
+        /// <param name="notification">The threshold notification.</param>
         /// <returns>The adpative card used to indicate that the notification has been resolved.</returns>
         Task<string> CreateResolvedNotificationCardAsync(ThresholdNotification notification);
 
@@ -34,5 +34,13 @@ namespace Services.Contracts.Notifications
         /// <param name="notification">The threshold notification.</param>
         /// <returns>The adpative card used to indicate that the user is unauthorized to view or resolve the notification.</returns>
         Task<string> CreateUnauthorizedNotificationCardAsync(ThresholdNotification notification);
+
+        /// <summary>
+        /// Generates the adaptive card for a threshold notification that has expired. 
+        /// </summary>
+        /// <param name="notification">The threshold notification.</param>
+        /// <returns></returns>
+        string CreateExpiredNotificationCardAsync(ThresholdNotification notification);
+
     }
 }
