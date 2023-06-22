@@ -45,21 +45,26 @@ function Copy-SyncJobsToSQL {
         Write-Host "Source table contains ($sourceTableLength) records."
     }
 
-    # Get SQL Connection String
-    $dataKeyVaultName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    $connectionString = Get-AzKeyVaultSecret -VaultName $dataKeyVaultName -Name "sqlDatabaseConnectionString" -AsPlainText
+    try {
+        # Get SQL Connection String
+        $dataKeyVaultName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+        $connectionString = Get-AzKeyVaultSecret -VaultName $dataKeyVaultName -Name "sqlDatabaseConnectionString" -AsPlainText
 
-    # Set up connection to SQL
-    $conn = New-Object System.Data.SqlClient.SQLConnection 
-    $conn.ConnectionString = $connectionString
+        # Set up connection to SQL
+        $conn = New-Object System.Data.SqlClient.SQLConnection 
+        $conn.ConnectionString = $connectionString
 
-    # Check to see if the destination sql table is empty
-    $syncJobsCountCmd = $conn.CreateCommand()
-    $syncJobsCountCmd.CommandText = "SELECT COUNT(*) FROM [dbo].[SyncJobs]"
+        # Check to see if the destination sql table is empty
+        $syncJobsCountCmd = $conn.CreateCommand()
+        $syncJobsCountCmd.CommandText = "SELECT COUNT(*) FROM [dbo].[SyncJobs]"
 
-    $conn.Open()
-    $existingCount = $syncJobsCountCmd.ExecuteScalar()
-    $conn.Close()
+        $conn.Open()
+        $existingCount = $syncJobsCountCmd.ExecuteScalar()
+        $conn.Close()
+    }
+    catch {
+        Write-Host "Error connecting to the jobs table in the jobs database. Do they exist?"
+    }
 
     if (0 -ne $existingCount) {
         if ($true -ne $Overwrite) {
