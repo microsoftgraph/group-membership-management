@@ -15,6 +15,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Models.Helpers;
 
 namespace Hosts.GraphUpdater
 {
@@ -76,7 +77,7 @@ namespace Hosts.GraphUpdater
                                                             {
                                                                 SyncJob = request.SyncJob,
                                                                 ObjectId = request.GroupId,
-                                                                Users = newUsers
+                                                                Users = TextCompressor.Compress(JsonConvert.SerializeObject(newUsers)),
                                                             });
                     await context.CallActivityAsync(nameof(LoggerFunction),
                                                        new LoggerRequest

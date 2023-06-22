@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 using Models;
 using System;
-using System.Collections.Generic;
 
 namespace Hosts.GraphUpdater
 {
@@ -11,6 +10,10 @@ namespace Hosts.GraphUpdater
         public Guid RunId { get; set; }
         public SyncJob SyncJob { get; set; }
         public Guid ObjectId { get; set; }
-        public List<AzureADUser> Users { get; set; }
+
+        /// <summary>
+        /// Compressed serialized List<AzureADUser>
+        /// </summary>
+        public string Users { get; set; }
     }
 }
