@@ -40,7 +40,6 @@ namespace Services.Tests
         {
 
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
-
             _loggingRepository = new Mock<ILoggingRepository>();
             _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
             _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();

@@ -29,7 +29,6 @@ namespace Hosts.TeamsChannelMembershipObtainer
             var runId = channelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ChannelValidatorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"TeamsChannel validating target office group. Query: {channelSyncInfo.SyncJob.Query}.", RunId = runId });
 
             var validated = await _teamsChannelService.VerifyChannelAsync(channelSyncInfo);
 

@@ -25,7 +25,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
         }
 
         [FunctionName(nameof(UserReaderFunction))]
-        public async Task<List<AzureADTeamsUser>> ReadUsersAsync([ActivityTrigger] UserReaderRequest request)
+        public async Task<List<AzureADTeamsUser>> ReadUsers([ActivityTrigger] UserReaderRequest request)
         {
             var runId = request.RunId;
 
@@ -33,7 +33,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
 
             var users = await _teamsChannelService.GetUsersFromTeamAsync(request.Channel, runId);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count} from {request.ChannelSyncInfo.SyncJob.Query}.", RunId = runId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count} users from {request.ChannelSyncInfo.SyncJob.Destination}.", RunId = runId });
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UserReaderFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
 
             return users;
