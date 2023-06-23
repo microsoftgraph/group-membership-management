@@ -25,7 +25,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
         }
 
         [FunctionName(nameof(UserReaderFunction))]
-        public async Task<List<AzureADTeamsUser>> ReadUsers([ActivityTrigger] UserReaderRequest request)
+        public async Task<List<AzureADTeamsUser>> ReadUsersAsync([ActivityTrigger] UserReaderRequest request)
         {
             var runId = request.RunId;
 

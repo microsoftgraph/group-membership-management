@@ -16,7 +16,7 @@ using Moq.Protected;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.FeatureFlag;
-using Repositories.Mocks;
+using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Threading;
 using TeamsChannel.Service;
@@ -47,8 +47,6 @@ namespace Services.Tests
             _teamsChannelMembershipObtainerService = new Mock<ITeamsChannelService>();
 
 
-
-
             _durableOrchestrationContext.Setup(x => x.GetInput<ChannelSyncInfo>())
                                        .Returns(() => _syncInfo);
 
@@ -58,42 +56,17 @@ namespace Services.Tests
                                             await CallLoggerFunctionAsync(request as LoggerRequest);
                                         });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<ChannelSyncInfo>()))
+            _teamsChannelMembershipObtainerService.Setup(x => x.VerifyChannelAsync(It.IsAny<ChannelSyncInfo>()))
+                                   .ReturnsAsync(() => (new AzureADTeamsChannel(), isGood: true));
+
+            (AzureADTeamsChannel parsedChannel, bool isGood) validated = (null, false);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(AzureADTeamsChannel parsedChannel, bool isGood)>(It.IsAny<string>(), It.IsAny<ChannelSyncInfo>()))
                                         .Callback<string, object>(async (name, request) =>
                                         {
-                                            await CallChannelValidatorFunctionAsync(request as ChannelSyncInfo);
-                                        });
-
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<UserReaderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
-                                        {
-                                            await CallUserReaderFunctionAsync(request as UserReaderRequest);
-                                        });
-
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<QueueMessageSenderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
-                                        {
-                                            await CallQueueMessageSenderFunctionAsync(request as QueueMessageSenderRequest);
-                                        });
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<UserUploaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
-                                       {
-                                           await CallUserUploaderFunctionAsync(request as UserUploaderRequest);
-                                       });
-
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
-                                        {
-                                            await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
-                                        });
-
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
-                    .Callback<string, object>(async (name, request) =>
-                    {
-                        var telemetryRequest = request as TelemetryTrackerRequest;
-                        await CallTelemetryTrackerFunctionAsync(telemetryRequest);
-                    });
-
+                                            validated = await CallChannelValidatorFunctionAsync(request as ChannelSyncInfo);
+                                        })
+                                        .ReturnsAsync(() => validated);
 
             _syncInfo = new ChannelSyncInfo
             {
@@ -110,8 +83,6 @@ namespace Services.Tests
                     Destination = @"[{""type"":""TeamsChannel"",""value"":{""groupId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
                 }
             };
-
-
         }
 
        
@@ -150,6 +121,9 @@ namespace Services.Tests
                                                 It.IsAny<string>(),
                                                 It.IsAny<string>()
                                             ), Times.Once);
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<string>(), It.Is<JobStatusUpdaterRequest>(request => request.Status == SyncStatus.Error)), Times.Once);
+
         }
 
 
@@ -172,41 +146,31 @@ namespace Services.Tests
 
         }
 
+        [TestMethod]
+        public async Task TestUnhandledException()
+        {
 
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(AzureADTeamsChannel parsedChannel, bool isGood)>(It.IsAny<string>(), It.IsAny<ChannelSyncInfo>()))
+                                       .Throws<Exception>();
+
+            var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _teamsChannelMembershipObtainerService.Object, _dryRunValue.Object);
+            await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object));
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                               It.Is<LogMessage>(m => m.Message.Contains("Caught unexpected exception:")),
+                                               It.IsAny<VerbosityLevel>(),
+                                               It.IsAny<string>(),
+                                               It.IsAny<string>()
+                                           ), Times.Once);
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<string>(), It.Is<JobStatusUpdaterRequest>(request => request.Status == SyncStatus.Error)), Times.Once);
+
+        }
+ 
         private async Task CallLoggerFunctionAsync(LoggerRequest request)
         {
             var loggerFunction = new LoggerFunction(_loggingRepository.Object);
             await loggerFunction.LogMessageAsync(request);
-        }
-
-        private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request)
-        {
-            var telemetryTrackerFunction = new TelemetryTrackerFunction(_loggingRepository.Object, _telemetryClient);
-            await telemetryTrackerFunction.TrackEventAsync(request);
-        }
-
-        private async Task CallJobStatusUpdaterFunctionAsync(JobStatusUpdaterRequest request)
-        {
-            var function = new JobStatusUpdaterFunction(_loggingRepository.Object, _teamsChannelMembershipObtainerService.Object);
-            await function.UpdateJobStatusAsync(request);
-        }
-
-        private async Task<string> CallUserUploaderFunctionAsync(UserUploaderRequest request)
-        {
-            var function = new UserUploaderFunction(_loggingRepository.Object, _teamsChannelMembershipObtainerService.Object);
-            return await function.UploadUsersAsync(request);
-        }
-
-        private async Task CallQueueMessageSenderFunctionAsync(QueueMessageSenderRequest request)
-        {
-            var function = new QueueMessageSenderFunction(_loggingRepository.Object, _teamsChannelMembershipObtainerService.Object);
-            await function.SendMessageAsync(request);
-        }
-
-        private async Task<List<AzureADTeamsUser>> CallUserReaderFunctionAsync(UserReaderRequest request)
-        {
-            var function = new UserReaderFunction(_loggingRepository.Object, _teamsChannelMembershipObtainerService.Object);
-            return await function.ReadUsersAsync(request);
         }
 
         private async Task<(AzureADTeamsChannel parsedChannel, bool isGood)> CallChannelValidatorFunctionAsync(ChannelSyncInfo request)

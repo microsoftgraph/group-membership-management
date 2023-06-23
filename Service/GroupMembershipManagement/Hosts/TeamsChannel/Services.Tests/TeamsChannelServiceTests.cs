@@ -10,7 +10,6 @@ using Moq;
 using Moq.Protected;
 using Repositories.Contracts;
 using Repositories.FeatureFlag;
-using Repositories.Mocks;
 using System.Net;
 using TeamsChannel.Service;
 using TeamsChannel.Service.Contracts;
@@ -22,6 +21,7 @@ namespace Services.Tests
     {
         private TeamsChannelMembershipObtainerService _service = null!;
         private ChannelSyncInfo _syncInfo = null!;
+        private Mock<ISyncJobRepository> _syncJobRepository = null!;
         private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository = null!;
         private Mock<IBlobStorageRepository> _mockBlobStorageRepository = null!;
         private Mock<IHttpClientFactory> _mockHttpClientFactory = null!;
@@ -55,7 +55,8 @@ namespace Services.Tests
                 .ReturnsAsync((AzureADTeamsChannel tc, Guid _) => tc.ChannelId == "some channel" ? "Private" : "Standard");
 
             _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
-            var mockSyncJobRepository = new MockSyncJobRepository();
+            _syncJobRepository = new Mock<ISyncJobRepository>();
+
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
             _loggingRepository = new Mock<ILoggingRepository>();
 
@@ -94,7 +95,7 @@ namespace Services.Tests
             _service = new TeamsChannelMembershipObtainerService(_mockTeamsChannelRepository.Object,
                                                 _mockBlobStorageRepository.Object,
                                                 _mockHttpClientFactory.Object,
-                                                mockSyncJobRepository,
+                                                _syncJobRepository.Object,
                                                 _loggingRepository.Object,
                                                 _featureManager.Object,
                                                 _configurationRefresherProvider.Object,
@@ -118,6 +119,30 @@ namespace Services.Tests
             };
 
 
+        }
+
+        [TestMethod]
+        public async Task VerifyRejectsInvalidDestinationQuery()
+        {
+            var badSyncInfo = new ChannelSyncInfo
+            {
+                TotalParts = 1,
+                CurrentPart = 2,
+                IsDestinationPart = false,
+                SyncJob = new SyncJob
+                {
+                    RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
+                    Status = SyncStatus.InProgress.ToString(),
+                    TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
+                    Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
+                    Query = @"[{""type"":""SecurityGroup"",""source"":""00000000-0000-0000-0000-000000000000""}]",
+                    Destination = @"[{""type"":""TeamsChannel"",""value"":{""XXgroupIdXX"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
+                }
+            };
+
+            var verification = await _service.VerifyChannelAsync(badSyncInfo);
+
+            Assert.IsFalse(verification.isGood);
         }
 
         [TestMethod]
@@ -182,8 +207,18 @@ namespace Services.Tests
         [TestMethod]
         public async Task CanMarkJobsAsError()
         {
+            _syncJobRepository.Setup(repo => repo.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()))
+               .Returns((IEnumerable<SyncJob> jobs, SyncStatus status) =>  UpdateJobStatus(jobs, status));
+
             await _service.UpdateSyncJobStatusAsync(_syncInfo.SyncJob, SyncStatus.Error);
             Assert.AreEqual(SyncStatus.Error.ToString(), _syncInfo.SyncJob.Status);
+        }
+
+        private Task UpdateJobStatus(IEnumerable<SyncJob> jobs, SyncStatus status)
+        {
+            foreach (var job in jobs)
+                job.Status = status.ToString();
+            return Task.CompletedTask;
         }
 
         [TestMethod]
