@@ -24,6 +24,10 @@ function Copy-SyncJobsToSQL {
         [Parameter(Mandatory=$false)]
         [bool] $Overwrite
     )
+
+    . ($PSScriptRoot + '\Install-AzTableModuleIfNeeded.ps1')
+    Install-AzTableModuleIfNeeded | Out-Null
+
     $resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
 	$storageAccounts = Get-AzStorageAccount -ResourceGroupName $resourceGroupName
 
