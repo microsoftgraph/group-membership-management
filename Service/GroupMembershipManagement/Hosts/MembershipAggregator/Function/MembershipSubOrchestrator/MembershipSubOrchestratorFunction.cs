@@ -64,6 +64,15 @@ namespace Hosts.MembershipAggregator
                             RunId = runId
                         }
                     });
+
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { 
+                    JobStatus = SyncStatus.MembershipDataNotFound, ResultStatus = ResultStatus.Success, RunId = runId });
+
+                return new MembershipSubOrchestratorResponse
+                {
+                    MembershipDeltaStatus = MembershipDeltaStatus.Error
+
+                };
             }
 
             if (SourceMembership.SourceMembers.Count >= MEMBERS_LIMIT || DestinationMembership.SourceMembers.Count >= MEMBERS_LIMIT)
