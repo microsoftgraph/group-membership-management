@@ -459,7 +459,7 @@ namespace Services.Tests
             _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(5);
 
             _syncJob.ThresholdViolations = 4;
-            _numberOfUsersForSourcePart = 0;
+            _numberOfUsersForSourcePart = 1;
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
@@ -751,7 +751,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task SendThresholdNotificationIfEnabled()
+        public async Task SendThresholdNotificationIfEnabledAsync()
         {
             _syncJob.ThresholdViolations = 2;
             _thresholdNotificationConfig.Setup(x => x.IsThresholdNotificationEnabled).Returns(true);
@@ -765,6 +765,32 @@ namespace Services.Tests
             _notificationRepository.Verify(x => x.SaveNotificationAsync(It.IsAny<Models.ThresholdNotifications.ThresholdNotification>()), Times.Once());
             _notificationRepository.Verify(x => x.SaveNotificationAsync(
                 It.Is<Models.ThresholdNotifications.ThresholdNotification>(n => n.Status.Equals(ThresholdNotificationStatus.Queued))));
+        }
+
+        [TestMethod]
+        public async Task TestAllowEmptyDestinationIsFalseAsync()
+        {
+            _syncJob.AllowEmptyDestination = false;
+            _numberOfUsersForSourcePart = 0;
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            Assert.IsNull(response.FilePath);
+            Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
+        }
+
+        [TestMethod]
+        public async Task TestAllowEmptyDestinationIsTrueInitialSyncAsync()
+        {
+            _syncJob.AllowEmptyDestination = true;
+            _numberOfUsersForSourcePart = 0;
+            _numberOfUsersForDestinationPart = 0;
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
         }
 
         private async Task<(string FilePath, string Content)> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)
