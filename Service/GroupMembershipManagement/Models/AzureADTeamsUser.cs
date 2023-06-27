@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Newtonsoft.Json;
 using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Text.Json.Serialization;
 
 namespace Models.Entities
 {
@@ -13,10 +13,10 @@ namespace Models.Entities
     [ExcludeFromCodeCoverage]
     public class AzureADTeamsUser : AzureADUser, IEquatable<AzureADTeamsUser>
     {
-        [JsonIgnore(Condition = JsonIgnoreCondition.Always)]
+        [JsonProperty(NullValueHandling = NullValueHandling.Include)]
         public string ConversationMemberId { get; set; }
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public override object Properties
 		{
             get

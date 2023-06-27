@@ -11,7 +11,7 @@ using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using System.Net.Http.Json;
 using TeamsChannel.Service.Contracts;
-using JsonSerializer = System.Text.Json.JsonSerializer;
+
 
 namespace TeamsChannel.Service
 {
@@ -113,7 +113,7 @@ namespace TeamsChannel.Service
             var fileName = $"/{channelSyncInfo.SyncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_TeamsChannel_{channelSyncInfo.CurrentPart}.json";
 
             await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, uploading {users.Count} users to {fileName}.", RunId = runId });
-            await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(groupMembership));
+            await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
             await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, uploaded {users.Count} users to {fileName}.", RunId = runId });
 
             return fileName;

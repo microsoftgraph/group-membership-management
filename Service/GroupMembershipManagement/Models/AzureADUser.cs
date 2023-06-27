@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+
 
 
 namespace Models
@@ -12,28 +12,28 @@ namespace Models
     [ExcludeFromCodeCoverage]
 	public class AzureADUser : IAzureADObject, IEquatable<AzureADUser>
 	{
-        [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+        [JsonProperty(NullValueHandling = NullValueHandling.Include)]
         public Guid ObjectId { get; set; }
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string Mail { get; set; }
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public virtual object Properties { get
 			{
 				return null;
 			}
 		}
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public MembershipAction? MembershipAction { get; set; }
 
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public Guid SourceGroup { get; set; }
 
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public List<Guid> SourceGroups { get; set; }
 
         public override bool Equals(object obj)
