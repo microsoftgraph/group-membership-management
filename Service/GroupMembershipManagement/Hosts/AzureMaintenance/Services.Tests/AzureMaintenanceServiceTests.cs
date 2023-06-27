@@ -228,7 +228,25 @@ namespace Services.Tests
             var mailRepository = new Mock<IMailRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
             var notificationRepository = new Mock<INotificationRepository>();
-
+            var notification = new ThresholdNotification
+            {
+                ChangePercentageForAdditions = Random.Shared.Next(51, 100),
+                ChangePercentageForRemovals = Random.Shared.Next(51, 100),
+                ChangeQuantityForAdditions = Random.Shared.Next(50, 1000),
+                ChangeQuantityForRemovals = Random.Shared.Next(50, 1000),
+                CreatedTime = DateTime.UtcNow,
+                Resolution = ThresholdNotificationResolution.Unresolved,
+                Id = Guid.NewGuid(),
+                SyncJobPartitionKey = Guid.NewGuid().ToString(),
+                SyncJobRowKey = Guid.NewGuid().ToString(),
+                ResolvedByUPN = string.Empty,
+                ResolvedTime = DateTime.UtcNow,
+                Status = ThresholdNotificationStatus.AwaitingResponse,
+                TargetOfficeGroupId = Guid.NewGuid(),
+                ThresholdPercentageForAdditions = Random.Shared.Next(1, 50),
+                ThresholdPercentageForRemovals = Random.Shared.Next(1, 50),
+                CardState = ThresholdNotificationCardState.DefaultCard
+            };
             var azureTableBackupService = new AzureMaintenanceService(loggerMock.Object,
                                                 azureTableBackupRepository.Object,
                                                 azureBlobBackupRepository.Object,
@@ -239,8 +257,10 @@ namespace Services.Tests
                                                 handleInactiveJobsConfig.Object,
                                                 notificationRepository.Object);
 
+
+            notificationRepository.Setup(x => x.GetThresholdNotificationBySyncJobKeysAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(() => Task.FromResult(notification));
             await azureTableBackupService.ExpireNotificationsAsync(j);
-            // notificationRepository.Verify(x => x.UpdateNotificationStatusAsync(It.IsAny<ThresholdNotification>(), It.IsAny<ThresholdNotificationStatus>()), Times.Once());
+            notificationRepository.Verify(x => x.UpdateNotificationStatusAsync(It.IsAny<ThresholdNotification>(), It.IsAny<ThresholdNotificationStatus>()), Times.Exactly(2));
         }
 
         [TestMethod]

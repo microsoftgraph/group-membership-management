@@ -14,10 +14,13 @@ namespace Hosts.AzureMaintenance
     public class OrchestratorFunction
     {
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig = null;
+        private readonly IThresholdNotificationConfig _thresholdNotificationConfig;
 
-        public OrchestratorFunction(IHandleInactiveJobsConfig handleInactiveJobsConfig)
+        public OrchestratorFunction(IHandleInactiveJobsConfig handleInactiveJobsConfig,
+            IThresholdNotificationConfig thresholdNotificationConfig)
         {
             _handleInactiveJobsConfig = handleInactiveJobsConfig;
+            _thresholdNotificationConfig = thresholdNotificationConfig;
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
@@ -42,7 +45,10 @@ namespace Hosts.AzureMaintenance
 
                 if (inactiveSyncJobs != null && inactiveSyncJobs.Count > 0 && inactiveSyncJobs.Count == countOfBackUpJobs)
                 {
-                    await context.CallActivityAsync(nameof(ExpireNotificationsFunction), inactiveSyncJobs);
+                    if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
+                    {
+                        await context.CallActivityAsync(nameof(ExpireNotificationsFunction), inactiveSyncJobs);
+                    }
                     await context.CallActivityAsync(nameof(RemoveInactiveJobsFunction), inactiveSyncJobs);
 
                     var processingTasks = new List<Task>();
