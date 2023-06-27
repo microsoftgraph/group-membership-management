@@ -20,6 +20,7 @@
     "senderPassword": "",
     "supportEmailAddresses": "",
     "AzureMaintenance:NumberOfDaysBeforeDeletion": 30,
-    "AzureMaintenance:HandleInactiveJobsEnabled":  true
+    "AzureMaintenance:HandleInactiveJobsEnabled":  true,
+    "ThresholdNotification:IsThresholdNotificationEnabled": false
   }
 }

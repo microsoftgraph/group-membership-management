@@ -28,7 +28,6 @@ namespace Services.Tests
     {
         private int _notificationCount = 10;
         private Guid _nonExistantNotificationId = Guid.Empty;
-        private Guid _expiredNotificationId = Guid.Empty;
         private string _userUPN = null!;
         private string _hostname = null!;
         private Guid _providerId = Guid.Empty;
@@ -394,14 +393,15 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetNotificationCard_HandleExpiredTestAsync()
         {
+            _thresholdNotification.Status = ThresholdNotificationStatus.Expired;
             _thresholdNotification.CardState = ThresholdNotificationCardState.ExpiredCard;
-            var response = await _notificationsController.GetCardAsync(_expiredNotificationId);
+            var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
             var result = response.Result as ContentResult;
 
             Assert.IsNotNull(response);
             Assert.IsNotNull(result?.Content);
             Assert.AreEqual("application/json", result.ContentType);
-            //ValidateExpiredCard(result.Content);
+            ValidateExpiredCard(result.Content);
         }
 
         private void ValidateUnresolvedCard(string cardJson)
@@ -452,7 +452,7 @@ namespace Services.Tests
         private void ValidateExpiredCard(string cardJson)
         {
             Assert.IsTrue(cardJson.Contains("Error: Notification Expired"));
-            Assert.IsTrue(cardJson.Contains($"{_expiredNotificationId}"));
+            Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.Id}"));
             Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
         }
 
