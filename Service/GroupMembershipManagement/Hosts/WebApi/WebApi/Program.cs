@@ -226,6 +226,7 @@ namespace WebApi
             });
             builder.Services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
             builder.Services.AddScoped<IDatabaseMigrationsRepository, DatabaseMigrationsRepository>();
+            builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.

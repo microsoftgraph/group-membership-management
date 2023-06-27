@@ -31,9 +31,9 @@ namespace Services.Tests
         private TelemetryClient _telemetryClient = null!;
         private Mock<IRequestAdapter> _requestAdapter = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
-        private Mock<ISyncJobRepository> _syncJobRepository = null!;
+        private Mock<IDatabaseSyncJobsRepository> _databaseSyncJobsRepository = null!;
         private Mock<GraphServiceClient> _graphServiceClient = null!;
-        private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
+        private Mock<IGraphGroupRepository> _graphGroupRepository = null!;        
 
         [TestInitialize]
         public void Initialize()
@@ -41,7 +41,7 @@ namespace Services.Tests
             _groups = new List<AzureADGroup>();
             _requestAdapter = new Mock<IRequestAdapter>();
             _loggingRepository = new Mock<ILoggingRepository>();
-            _syncJobRepository = new Mock<ISyncJobRepository>();
+            _databaseSyncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
 
             _requestAdapter.SetupProperty(x => x.BaseUrl).SetReturnsDefault("https://graph.microsoft.com/v1.0");
 
@@ -87,11 +87,11 @@ namespace Services.Tests
                 });
             });
 
-            _syncJobRepository.Setup(x => x.GetSyncJobsAsync(true, SyncStatus.All))
-                              .Returns(() => ToAsyncEnumerable(_jobEntities));
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobsAsync())
+                              .ReturnsAsync(() => _jobEntities);
 
             _getJobsHandler = new GetJobsHandler(_loggingRepository.Object,
-                                                 _syncJobRepository.Object,
+                                                 _databaseSyncJobsRepository.Object,
                                                  _graphGroupRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler);
@@ -129,7 +129,7 @@ namespace Services.Tests
 
             _getJobsHandler = new GetJobsHandler(
                                      _loggingRepository.Object,
-                                     _syncJobRepository.Object,
+                                     _databaseSyncJobsRepository.Object,
                                      _graphGroupRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler);
