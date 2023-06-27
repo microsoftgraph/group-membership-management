@@ -19,9 +19,9 @@ namespace Repositories.EntityFramework
             _contextOptions = gmmContextOptions ?? throw new ArgumentNullException(nameof(gmmContextOptions));
         }
 
-        public Task<List<SyncJob>> SelectSyncJobsAsync()
+        public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync()
         {
-            return _context.SyncJobs.ToListAsync();
+            return await _context.SyncJobs.ToListAsync();
         }
     }
 }

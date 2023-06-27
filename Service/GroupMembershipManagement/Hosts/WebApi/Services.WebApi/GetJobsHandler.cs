@@ -10,22 +10,22 @@ namespace Services
 {
     public class GetJobsHandler : RequestHandlerBase<GetJobsRequest, GetJobsResponse>
     {
-        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         public GetJobsHandler(ILoggingRepository loggingRepository,
-                              ISyncJobRepository syncJobRepository,
+                              IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                               IGraphGroupRepository graphGroupRepository) : base(loggingRepository)
         {
-            _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
         protected override async Task<GetJobsResponse> ExecuteCoreAsync(GetJobsRequest request)
         {
             var response = new GetJobsResponse();
-            var jobs = _syncJobRepository.GetSyncJobsAsync(true, Models.SyncStatus.All);
+            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync();
 
-            await foreach (var job in jobs)
+            foreach (var job in jobs)
             {
                 String targetGroupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
 
