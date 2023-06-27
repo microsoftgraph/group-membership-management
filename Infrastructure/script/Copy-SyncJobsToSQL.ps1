@@ -99,6 +99,8 @@ function Copy-SyncJobsToSQL {
         $ignoreThresholdOnceParam.Value = $([int][bool]::Parse($SyncJob.IgnoreThresholdOnce -eq "True"))
         $isDryRunEnabledParam = $sqlCommand.Parameters.Add("@IsDryRunEnabled", [System.Data.SqlDbType]::Bit)
         $isDryRunEnabledParam.Value = $([int][bool]::Parse($SyncJob.IsDryRunEnabled -eq "True"))
+        $allowEmptyDestinationParam = $sqlCommand.Parameters.Add("@AllowEmptyDestination", [System.Data.SqlDbType]::Bit)
+        $allowEmptyDestinationParam.Value = $([int][bool]::Parse($SyncJob.AllowEmptyDestination -eq "True"))
         $lastRunTimeParam = $sqlCommand.Parameters.Add("@LastRunTime", [System.Data.SqlDbType]::DateTime)
         $lastRunTimeParam.Value = (Get-SqlDate -dateTime $syncJob.LastRunTime)
         $lastSuccessfulRunTimeParam = $sqlCommand.Parameters.Add("@LastSuccessfulRunTime", [System.Data.SqlDbType]::DateTime)
@@ -167,6 +169,7 @@ function Get-InsertStatement {
             ([DryRunTimeStamp]
             ,[IgnoreThresholdOnce]
             ,[IsDryRunEnabled]
+            ,[AllowEmptyDestination]
             ,[LastRunTime]
             ,[LastSuccessfulRunTime]
             ,[LastSuccessfulStartTime]
@@ -186,6 +189,7 @@ function Get-InsertStatement {
              @DryRunTimeStamp
             ,@IgnoreThresholdOnce
             ,@IsDryRunEnabled
+            ,@AllowEmptyDestination
             ,@LastRunTime
             ,@LastSuccessfulRunTime
             ,@LastSuccessfulStartTime
