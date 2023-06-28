@@ -1,0 +1,27 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+    "logAnalyticsCustomerId": "",
+    "logAnalyticsPrimarySharedKey": "",
+    "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
+    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+    "jobsStorageAccountConnectionString": "",
+    "jobsTableName": "",
+    "graphCredentials:ClientId": "",
+    "graphCredentials:ClientSecret": "",
+    "graphCredentials:KeyVaultName": "",
+    "graphCredentials:KeyVaultTenantId": "",
+    "graphCredentials:TenantId": "",
+    "senderAddress": "",
+    "senderPassword": "",
+    "supportEmailAddresses": "",
+    "actionableEmailProviderId": "",
+    "apiHostname": "",
+    "serviceBusMembershipUpdatersTopic": "",
+    "serviceBusConnectionString": "",
+    "membershipStorageAccountName": "",
+    "membershipContainerName": ""
+  }
+}
