@@ -257,20 +257,6 @@ export const JobDetailsPage: React.FunctionComponent = () => {
 
               <Stack.Item align="start" styles={titleStackItemStyles}>
                 <InfoLabel
-                  label={t('JobDetailsPage.labels.requestor')}
-                  description={t('JobDetailsPage.descriptions.requestor')}
-                />
-                {jobDetails != null ? (
-                  <Text variant="medium" block>
-                    {jobDetails.requestor}
-                  </Text>
-                ) : (
-                  <Shimmer width="120%" />
-                )}
-              </Stack.Item>
-
-              <Stack.Item align="start" styles={titleStackItemStyles}>
-                <InfoLabel
                   label={t('JobDetailsPage.labels.increaseThreshold')}
                   description={t(
                     'JobDetailsPage.descriptions.increaseThreshold'
