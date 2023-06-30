@@ -36,6 +36,9 @@ import { Page } from '../components/Page';
 import { format } from 'react-string-format';
 
 
+const mainContent: React.CSSProperties = {
+  padding: 10
+}
 
 const itemData: React.CSSProperties = {
   paddingTop: 10
@@ -410,37 +413,40 @@ export const JobDetailsPage: React.FunctionComponent = () => {
         )}
       </div>
 
-      <MembershipDetails job={job} />
+      <div style={mainContent}>
 
-      <ContentContainer
-        title={t('JobDetailsPage.labels.membershipStatus')}
-        children={<MembershipStatusContent job={job} />}
-      />
+        <MembershipDetails job={job} />
 
-      <ContentContainer
-        title={t('JobDetailsPage.labels.destination')}
-        actionText={t('JobDetailsPage.openInAzure')}
-        actionIcon={OpenInNewWindowIcon}
-        actionOnClick={openInAzure}
-        children={<MembershipDestination job={job} />}
-      />
+        <ContentContainer
+          title={t('JobDetailsPage.labels.membershipStatus')}
+          children={<MembershipStatusContent job={job} />}
+        />
 
-      <ContentContainer
-        title={t('JobDetailsPage.labels.configuration')}
-        actionText={t('JobDetailsPage.editButton')}
-        useLinkButton={true}
-        linkButtonIconName='edit'
-        children={<MembershipConfiguration job={job} />}
-      />
+        <ContentContainer
+          title={t('JobDetailsPage.labels.destination')}
+          actionText={t('JobDetailsPage.openInAzure')}
+          actionIcon={OpenInNewWindowIcon}
+          actionOnClick={openInAzure}
+          children={<MembershipDestination job={job} />}
+        />
 
-      <ContentContainer
-        title={t('JobDetailsPage.labels.sourceParts')}
-        actionText={t('JobDetailsPage.editButton')}
-        useLinkButton={true}
-        linkButtonIconName='edit'
-        children={<label>{jobDetails?.source}</label>}
-      />
+        <ContentContainer
+          title={t('JobDetailsPage.labels.configuration')}
+          actionText={t('JobDetailsPage.editButton')}
+          useLinkButton={true}
+          linkButtonIconName='edit'
+          children={<MembershipConfiguration job={job} />}
+        />
 
+        <ContentContainer
+          title={t('JobDetailsPage.labels.sourceParts')}
+          actionText={t('JobDetailsPage.editButton')}
+          useLinkButton={true}
+          linkButtonIconName='edit'
+          children={<label>{jobDetails?.source}</label>}
+        />
+
+      </div>
     </Page >
   );
 };
