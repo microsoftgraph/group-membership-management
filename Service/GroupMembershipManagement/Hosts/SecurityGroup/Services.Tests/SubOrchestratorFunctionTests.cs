@@ -32,7 +32,7 @@ namespace Tests.Services
         private MockDeltaCachingConfig _deltaCachingConfig;
         private Mock<IMailRepository> _mailRepository;
         private Mock<ILoggingRepository> _loggingRepository;
-        private Mock<ISyncJobRepository> _syncJobRepository;
+        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
@@ -58,7 +58,7 @@ namespace Tests.Services
             _deltaCachingConfig = new MockDeltaCachingConfig();
             _mailRepository = new Mock<IMailRepository>();
             _loggingRepository = new Mock<ILoggingRepository>();
-            _syncJobRepository = new Mock<ISyncJobRepository>();
+            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
@@ -68,8 +68,7 @@ namespace Tests.Services
             _userCount = 10;
             var content = new GroupMembership
             {
-                SyncJobPartitionKey = "PK",
-                SyncJobRowKey = "RK",
+                SyncJobId = Guid.Empty,
                 MembershipObtainerDryRunEnabled = false,
                 RunId = Guid.Empty,
                 SourceMembers = Enumerable.Range(0, _userCount)

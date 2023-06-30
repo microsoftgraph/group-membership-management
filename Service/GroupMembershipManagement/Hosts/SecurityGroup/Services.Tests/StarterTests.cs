@@ -21,7 +21,7 @@ namespace Tests.Services
     {
         private Mock<IDryRunValue> _dryRunValue;
         private Mock<ILoggingRepository> _loggingRepository;
-        private Mock<ISyncJobRepository> _syncJobRepository;
+        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
         private Mock<IDurableOrchestrationClient> _durableOrchestrationClient;
         private SyncJob _syncJob;
 
@@ -30,7 +30,7 @@ namespace Tests.Services
         {
             _dryRunValue = new Mock<IDryRunValue>();
             _loggingRepository = new Mock<ILoggingRepository>();
-            _syncJobRepository = new Mock<ISyncJobRepository>();
+            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _durableOrchestrationClient = new Mock<IDurableOrchestrationClient>();
 
             _syncJob = new SyncJob
@@ -97,7 +97,7 @@ namespace Tests.Services
             await starterFunction.RunAsync(message, _durableOrchestrationClient.Object);
 
             _durableOrchestrationClient.Verify(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<OrchestratorRequest>()), Times.Never);
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.Is<SyncStatus>(s => s == SyncStatus.Idle)), Times.Once);
+            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), It.Is<SyncStatus>(s => s == SyncStatus.Idle)), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.StartsWith("Setting the status of the sync back to Idle")),
