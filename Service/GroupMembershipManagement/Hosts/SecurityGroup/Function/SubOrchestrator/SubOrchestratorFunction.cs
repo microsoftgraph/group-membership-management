@@ -50,7 +50,7 @@ namespace Hosts.SecurityGroup
             var deltaUsersToRemove = new List<AzureADUser>();
             var allNonUserGraphObjects = new Dictionary<string, int>();
 
-            if (request != null)
+            if (request != null && request.SyncJob != null)
             {
                 _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
                 var isExistingGroup = await context.CallActivityAsync<bool>(nameof(GroupValidatorFunction), new GroupValidatorRequest { SyncJob = request.SyncJob, RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId });
