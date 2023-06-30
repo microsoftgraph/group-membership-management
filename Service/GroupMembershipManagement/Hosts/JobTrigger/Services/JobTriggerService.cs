@@ -19,7 +19,7 @@ namespace Services
         private const int JobsBatchSize = 20;
 
         private readonly ILoggingRepository _loggingRepository;
-        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly string _gmmAppId;
@@ -41,7 +41,7 @@ namespace Services
 
         public JobTriggerService(
             ILoggingRepository loggingRepository,
-            ISyncJobRepository syncJobRepository,
+            IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             IServiceBusTopicsRepository serviceBusTopicsRepository,
             IGraphGroupRepository graphGroupRepository,
             IKeyVaultSecret<IJobTriggerService> gmmAppId,
@@ -53,7 +53,7 @@ namespace Services
         {
             _emailSenderAndRecipients = emailSenderAndRecipients;
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _serviceBusTopicsRepository = serviceBusTopicsRepository ?? throw new ArgumentNullException(nameof(serviceBusTopicsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _gmmAppId = gmmAppId.Secret;
@@ -62,18 +62,10 @@ namespace Services
             _jobTriggerConfig = jobTriggerConfig ?? throw new ArgumentNullException(nameof(jobTriggerConfig));
         }
 
-        public async Task<Models.Page<SyncJob>> GetSyncJobsSegmentAsync(string query, string continuationToken)
+        public async Task<List<SyncJob>> GetSyncJobsSegmentAsync()
         {
-            if (string.IsNullOrWhiteSpace(continuationToken))
-            {
-                var firstPage = await _syncJobRepository.GetPageableQueryResultAsync(false, JobsBatchSize, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
-                firstPage.Values = ApplyJobTriggerFilters(firstPage.Values).ToList();
-                return firstPage;
-            }
-
-            var nextPage = await _syncJobRepository.GetSyncJobsSegmentAsync(query, continuationToken, JobsBatchSize);
-            nextPage.Values = ApplyJobTriggerFilters(nextPage.Values).ToList();
-            return nextPage;
+            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
+            return ApplyJobTriggerFilters(jobs).ToList();
         }
 
         public async Task<string> GetGroupNameAsync(Guid groupId)
@@ -133,8 +125,8 @@ namespace Services
                 job.LastRunTime = DateTime.UtcNow;
                 job.LastSuccessfulStartTime = DateTime.UtcNow;
             }
-
-            await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
+            
+            await _databaseSyncJobsRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
         }
 
         public async Task SendMessageAsync(SyncJob job)
