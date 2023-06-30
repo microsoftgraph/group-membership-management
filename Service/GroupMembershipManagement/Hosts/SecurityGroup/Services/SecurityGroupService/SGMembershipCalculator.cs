@@ -21,14 +21,14 @@ namespace Hosts.SecurityGroup
         private readonly ILoggingRepository _log;
         private readonly IMailRepository _mail;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
-        private readonly ISyncJobRepository _syncJob;
+        private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly bool _isSecurityGroupDryRunEnabled;
 
         public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository,
                                       IBlobStorageRepository blobStorageRepository,
                                       IMailRepository mail,
                                       IEmailSenderRecipient emailSenderAndRecipients,
-                                      ISyncJobRepository syncJob,
+                                      IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                                       ILoggingRepository logging,
                                       IDryRunValue dryRun
                                       )
@@ -37,7 +37,7 @@ namespace Hosts.SecurityGroup
             _blobStorageRepository = blobStorageRepository;
             _log = logging;
             _mail = mail;
-            _syncJob = syncJob;
+            _databaseSyncJobsRepository = databaseSyncJobsRepository;
             _emailSenderAndRecipients = emailSenderAndRecipients;
             _isSecurityGroupDryRunEnabled = dryRun.DryRunEnabled;
         }
@@ -161,8 +161,7 @@ namespace Hosts.SecurityGroup
                 Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
                 RunId = runId,
                 Exclusionary = exclusionary,
-                SyncJobRowKey = syncJob.RowKey,
-                SyncJobPartitionKey = syncJob.PartitionKey,
+                SyncJobId = syncJob.Id,
                 MembershipObtainerDryRunEnabled = _isSecurityGroupDryRunEnabled,
                 Query = syncJob.Query
             };
@@ -203,7 +202,7 @@ namespace Hosts.SecurityGroup
 
         public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status)
         {
-            await _syncJob.UpdateSyncJobStatusAsync(new[] { job }, status);
+            await _databaseSyncJobsRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
         }
 
         public async Task<string> GetGroupNameAsync(Guid groupId)
