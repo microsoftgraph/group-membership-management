@@ -56,6 +56,7 @@ namespace Repositories.EntityFramework
             entity.LastSuccessfulStartTime = job.LastSuccessfulStartTime;
             entity.LastRunTime = job.LastRunTime;
             entity.RunId = job.RunId;
+            entity.StartDate = job.StartDate;
             await _context.SaveChangesAsync();
         }
     }
