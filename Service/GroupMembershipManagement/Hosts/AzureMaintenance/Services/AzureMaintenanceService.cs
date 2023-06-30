@@ -153,7 +153,9 @@ namespace Services
                 var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobKeysAsync(job.PartitionKey, job.RowKey);
 				if (thresholdNotification != null)
 				{
-	                await _notificationRepository.UpdateNotificationStatusAsync(thresholdNotification, ThresholdNotificationStatus.Expired);
+					thresholdNotification.Status = ThresholdNotificationStatus.Expired;
+					thresholdNotification.CardState = ThresholdNotificationCardState.ExpiredCard;
+					await _notificationRepository.SaveNotificationAsync(thresholdNotification);
 				}
             }
 		}

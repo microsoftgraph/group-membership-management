@@ -15,7 +15,6 @@ namespace Services.Contracts
         Task RemoveInactiveJobsAsync(IEnumerable<SyncJob> jobs);
         Task<int> RemoveBackupsAsync();
         Task ExpireNotificationsAsync(IEnumerable<SyncJob> jobs);
-        Task<List<string>> RemoveBackupsAsync();
         Task<string> GetGroupNameAsync(Guid groupId);
         Task SendEmailAsync(SyncJob job, string groupName);
     }

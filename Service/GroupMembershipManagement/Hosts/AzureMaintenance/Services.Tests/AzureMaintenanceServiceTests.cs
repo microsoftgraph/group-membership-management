@@ -260,7 +260,7 @@ namespace Services.Tests
 
             notificationRepository.Setup(x => x.GetThresholdNotificationBySyncJobKeysAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(() => Task.FromResult(notification));
             await azureTableBackupService.ExpireNotificationsAsync(j);
-            notificationRepository.Verify(x => x.UpdateNotificationStatusAsync(It.IsAny<ThresholdNotification>(), It.IsAny<ThresholdNotificationStatus>()), Times.Exactly(2));
+            notificationRepository.Verify(x => x.SaveNotificationAsync(It.IsAny<ThresholdNotification>()), Times.Exactly(2));
         }
 
         [TestMethod]
