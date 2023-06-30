@@ -42,6 +42,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mocks", "..\..
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\Models.csproj", "{62B6FDAF-28F2-4227-B689-B2DA1AF1ED0A}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework", "..\..\..\Repositories.EntityFramework\Repositories.EntityFramework.csproj", "{D371B88F-01CB-4D14-984A-128D5F910125}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.NotificationRepository", "..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj", "{7FBBA476-521E-4F27-9FD1-F29743D4DBA7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -128,6 +132,14 @@ Global
 		{62B6FDAF-28F2-4227-B689-B2DA1AF1ED0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{62B6FDAF-28F2-4227-B689-B2DA1AF1ED0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{62B6FDAF-28F2-4227-B689-B2DA1AF1ED0A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D371B88F-01CB-4D14-984A-128D5F910125}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D371B88F-01CB-4D14-984A-128D5F910125}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D371B88F-01CB-4D14-984A-128D5F910125}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D371B88F-01CB-4D14-984A-128D5F910125}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7FBBA476-521E-4F27-9FD1-F29743D4DBA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7FBBA476-521E-4F27-9FD1-F29743D4DBA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7FBBA476-521E-4F27-9FD1-F29743D4DBA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7FBBA476-521E-4F27-9FD1-F29743D4DBA7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

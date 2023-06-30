@@ -8,6 +8,7 @@ using System;
 using System.Threading.Tasks;
 using Services.Contracts;
 using Repositories.Contracts;
+using System.Collections.Generic;
 
 namespace Hosts.JobTrigger
 {
@@ -22,19 +23,14 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName(nameof(GetJobsSegmentedFunction))]
-        public async Task<GetJobsSegmentedResponse> GetJobsToUpdateAsync([ActivityTrigger] GetJobsSegmentedRequest request)
+        public async Task<List<SyncJob>> GetJobsToUpdateAsync([ActivityTrigger] object obj)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            var tableQuerySegment = await _jobTriggerService.GetSyncJobsSegmentAsync(request.Query, request.ContinuationToken);
+            var tableQuerySegment = await _jobTriggerService.GetSyncJobsSegmentAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} number of jobs about to be returned: {tableQuerySegment.Values.Count}" }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} number of jobs about to be returned: {tableQuerySegment.Count}" }, VerbosityLevel.DEBUG);
 
-            return new GetJobsSegmentedResponse
-            {
-                Query = tableQuerySegment.Query,
-                JobsSegment = tableQuerySegment.Values,
-                ContinuationToken = tableQuerySegment.ContinuationToken
-            };
+            return tableQuerySegment;
         }
     }
 }

@@ -8,7 +8,10 @@ using System.Threading.Tasks;
 namespace Repositories.Contracts
 {
     public interface IDatabaseSyncJobsRepository
-    {        
-        Task<IEnumerable<SyncJob>> GetSyncJobsAsync();
+    {
+        Task<List<SyncJob>> GetSyncJobsAsync();
+        Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters);
+        Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status);
+        Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null);
     }
 }
