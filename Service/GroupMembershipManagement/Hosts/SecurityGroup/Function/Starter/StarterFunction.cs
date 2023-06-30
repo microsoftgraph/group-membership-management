@@ -16,13 +16,13 @@ namespace Hosts.SecurityGroup
     public class StarterFunction
     {
         private readonly ILoggingRepository _loggingRepository;
-        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly bool _isSecurityGroupDryRunEnabled;
 
-        public StarterFunction(ILoggingRepository loggingRepository, ISyncJobRepository syncJobRepository, IDryRunValue dryRun)
+        public StarterFunction(ILoggingRepository loggingRepository, IDatabaseSyncJobsRepository databaseSyncJobsRepository, IDryRunValue dryRun)
         {
             _loggingRepository = loggingRepository;
-            _syncJobRepository = syncJobRepository;
+            _databaseSyncJobsRepository = databaseSyncJobsRepository;
             _isSecurityGroupDryRunEnabled = dryRun.DryRunEnabled;
         }
 
@@ -39,7 +39,7 @@ namespace Hosts.SecurityGroup
 
             if ((DateTime.UtcNow - syncJob.DryRunTimeStamp) < TimeSpan.FromHours(syncJob.Period) && _isSecurityGroupDryRunEnabled == true)
             {
-                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Idle);
+                await _databaseSyncJobsRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Idle);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Setting the status of the sync back to Idle as the sync has run within the previous DryRunTimeStamp period", RunId = runId });
             }
             else
@@ -54,7 +54,7 @@ namespace Hosts.SecurityGroup
                 };
 
                 var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job RowKey: {syncJob.RowKey} ", RunId = runId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job Id: {syncJob.Id} ", RunId = runId });
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
