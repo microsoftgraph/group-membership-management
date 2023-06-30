@@ -20,7 +20,8 @@ export const getClassNames = classNamesFunction<IContentContainerStyleProps, ICo
 export const ContentContainerBase: React.FunctionComponent<IContentContainerProps> = (
     props: IContentContainerProps
 ) => {
-    const { title, actionOnClick, actionText, actionIcon, className, styles, children, useLinkButton, linkButtonIconName, hideSeparator } = props;
+    const { title, actionOnClick, actionText, actionIcon, className, styles,
+            children, useLinkButton, linkButtonIconName, hideSeparator, removeButton } = props;
     const classNames: IProcessedStyleSet<IContentContainerStyles> = getClassNames(styles, {
         className,
         theme: useTheme(),
@@ -33,19 +34,20 @@ export const ContentContainerBase: React.FunctionComponent<IContentContainerProp
                 <Text className={classNames.title}>
                     {title}
                 </Text>
-                {useLinkButton === true ? (
-                    <Link className={classNames.linkButton} onClick={actionOnClick}>
-                        {actionText}<Icon iconName={linkButtonIconName} />
-                    </Link>
-                ) : (
-                    <ActionButton
-                        iconProps={actionIcon}
-                        allowDisabledFocus
-                        onClick={actionOnClick}
-                    >
-                        {actionText}
-                    </ActionButton>
-                )}
+                {removeButton === true ? (<></>) :
+                    useLinkButton === true ? (
+                        <Link className={classNames.linkButton} onClick={actionOnClick}>
+                            {actionText}<Icon iconName={linkButtonIconName} />
+                        </Link>
+                    ) : (
+                        <ActionButton
+                            iconProps={actionIcon}
+                            allowDisabledFocus
+                            onClick={actionOnClick}
+                        >
+                            {actionText}
+                        </ActionButton>
+                    )}
             </div>
             {hideSeparator === true ? <></> : <Separator />}
             {children}

@@ -420,6 +420,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
         <ContentContainer
           title={t('JobDetailsPage.labels.membershipStatus')}
           children={<MembershipStatusContent job={job} />}
+          removeButton={true}
         />
 
         <ContentContainer

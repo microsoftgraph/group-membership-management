@@ -39,6 +39,7 @@ import {
     useLinkButton?: boolean;
     linkButtonIconName?: string;
     hideSeparator?: boolean;
+    removeButton?: boolean;
   }
 
 
