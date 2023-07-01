@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Models;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -11,6 +12,7 @@ namespace Repositories.Contracts
     {
         Task<List<SyncJob>> GetSyncJobsAsync();
         Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters);
-        Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status);
+        Task<SyncJob> GetSyncJobAsync(Guid SyncJobId);
+        Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus? status);
     }
 }

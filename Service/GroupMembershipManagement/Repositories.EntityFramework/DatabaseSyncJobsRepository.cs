@@ -49,7 +49,12 @@ namespace Repositories.EntityFramework
             return await query.ToListAsync();
         }
 
-        public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status)
+        public async Task<SyncJob> GetSyncJobAsync(Guid SyncJobId)
+        {
+            return await _context.SyncJobs.SingleOrDefaultAsync(job => job.Id == SyncJobId);
+        }
+
+        public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus? status)
         {
             var entity = await _context.SyncJobs.FirstOrDefaultAsync(item => item.Id == job.Id);
             entity.Status = Enum.GetName(typeof(SyncStatus), status);
@@ -57,6 +62,8 @@ namespace Repositories.EntityFramework
             entity.LastRunTime = job.LastRunTime;
             entity.RunId = job.RunId;
             entity.StartDate = job.StartDate;
+            entity.DryRunTimeStamp = job.DryRunTimeStamp;
+            entity.ThresholdViolations = job.ThresholdViolations;
             await _context.SaveChangesAsync();
         }
     }
