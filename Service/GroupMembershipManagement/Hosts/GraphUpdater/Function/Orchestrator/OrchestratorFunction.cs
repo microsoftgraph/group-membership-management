@@ -70,8 +70,7 @@ namespace Hosts.GraphUpdater
                 syncJob = await context.CallActivityAsync<SyncJob>(nameof(JobReaderFunction),
                                                        new JobReaderRequest
                                                        {
-                                                           JobPartitionKey = graphRequest.SyncJob.PartitionKey,
-                                                           JobRowKey = graphRequest.SyncJob.RowKey,
+                                                           JobId = graphRequest.SyncJob.Id,                                                           
                                                            RunId = graphRequest.SyncJob.RunId.GetValueOrDefault()
                                                        });
 
@@ -106,15 +105,14 @@ namespace Hosts.GraphUpdater
                                            {
                                                RunId = groupMembership.RunId,
                                                GroupId = groupMembership.Destination.ObjectId,
-                                               JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                                               JobRowKey = groupMembership.SyncJobRowKey,
+                                               JobId = groupMembership.SyncJobId,                                               
                                                AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory
                                            });
 
                 if (!isValidGroup)
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                    CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
+                                    CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
                                                                     SyncStatus.DestinationGroupNotFound, syncJob.ThresholdViolations, groupMembership.RunId));
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationGroupNotFound, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
                     await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function did not complete", SyncJob = syncJob });
@@ -180,7 +178,7 @@ namespace Hosts.GraphUpdater
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = message, SyncJob = syncJob });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                    CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
+                                    CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
                                                                     SyncStatus.Idle, 0, groupMembership.RunId));
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
                 if (!context.IsReplaying)
@@ -212,10 +210,11 @@ namespace Hosts.GraphUpdater
                     return OrchestrationRuntimeStatus.Failed;
                 }
 
-                if (syncJob != null && groupMembership != null && !string.IsNullOrWhiteSpace(groupMembership.SyncJobPartitionKey) && !string.IsNullOrWhiteSpace(groupMembership.SyncJobRowKey))
+                //if (syncJob != null && groupMembership != null && !string.IsNullOrWhiteSpace(groupMembership.SyncJobPartitionKey) && !string.IsNullOrWhiteSpace(groupMembership.SyncJobRowKey))
+                if (syncJob != null && groupMembership != null)
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                    CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
+                                    CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
                                                                     SyncStatus.Error, syncJob.ThresholdViolations, groupMembership.RunId));
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
                 }
@@ -320,13 +319,12 @@ namespace Hosts.GraphUpdater
             _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteDict);
         }
 
-        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(string partitionKey, string rowKey, SyncStatus syncStatus, int thresholdViolations, Guid runId)
+        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(Guid jobId, SyncStatus syncStatus, int thresholdViolations, Guid runId)
         {
             return new JobStatusUpdaterRequest
             {
                 RunId = runId,
-                JobPartitionKey = partitionKey,
-                JobRowKey = rowKey,
+                JobId = jobId,                
                 Status = syncStatus,
                 ThresholdViolations = thresholdViolations
             };
