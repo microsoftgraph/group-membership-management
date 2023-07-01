@@ -39,7 +39,7 @@ namespace Hosts.MembershipAggregator
 
             var message = new ServiceBusMessage
             {
-                MessageId = $"{request.SyncJob.PartitionKey}_{request.SyncJob.RowKey}_{request.SyncJob.RunId}_{destinationType}",
+                MessageId = $"{request.SyncJob.Id}_{request.SyncJob.RunId}_{destinationType}",
                 Body = body
             };
 
