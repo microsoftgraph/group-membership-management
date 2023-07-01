@@ -42,10 +42,9 @@ namespace Repositories.Mocks
             throw new NotImplementedException();
         }
 
-        public async Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey)
+        public Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
         {
-            var result = Jobs.ContainsKey((partitionKey, rowKey)) ? Jobs[(partitionKey, rowKey)] : null;
-            return await Task.FromResult(result);
+            throw new NotImplementedException();
         }
 
         public async Task<PolicyResult<bool>> GroupExistsAsync(Guid groupId, Guid runId)
