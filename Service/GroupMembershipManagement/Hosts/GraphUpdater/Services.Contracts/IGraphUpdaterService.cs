@@ -16,7 +16,7 @@ namespace Services.Contracts
 		public Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, Guid runId);
 		public Task<PolicyResult<bool>> GroupExistsAsync(Guid groupId, Guid runId);
 		public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "");
-		public Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey);
+		public Task<SyncJob> GetSyncJobAsync(Guid syncJobId);
 		public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId);
 		public Task<string> GetGroupNameAsync(Guid groupId);
 		public Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync);

@@ -25,7 +25,7 @@ namespace Hosts.GraphUpdater
         public async Task<SyncJob> GetSyncJobAsync([ActivityTrigger] JobReaderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobPartitionKey, request.JobRowKey);
+            var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobId);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             return syncJob;
         }
