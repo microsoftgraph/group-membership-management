@@ -25,7 +25,7 @@ namespace Services
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
-        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IDatabaseSyncJobsRepository _syncJobRepository;
 
         private Guid _runId;
         public Guid RunId
@@ -44,7 +44,7 @@ namespace Services
                 IGraphGroupRepository graphGroupRepository,
                 IMailRepository mailRepository,
                 IEmailSenderRecipient emailSenderAndRecipients,
-                ISyncJobRepository syncJobRepository)
+                IDatabaseSyncJobsRepository syncJobRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
@@ -137,9 +137,9 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = message, RunId = runId });
         }
 
-        public async Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey)
+        public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
         {
-            return await _syncJobRepository.GetSyncJobAsync(partitionKey, rowKey);
+            return await _syncJobRepository.GetSyncJobAsync(syncJobId);
         }
 
         public async Task<string> GetGroupNameAsync(Guid groupId)
