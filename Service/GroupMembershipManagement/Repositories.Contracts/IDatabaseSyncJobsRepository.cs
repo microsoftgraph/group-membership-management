@@ -12,7 +12,7 @@ namespace Repositories.Contracts
     {
         Task<List<SyncJob>> GetSyncJobsAsync();
         Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters);
-        Task<SyncJob> GetSyncJobAsync(Guid SyncJobId);
+        Task<SyncJob> GetSyncJobAsync(Guid syncJobId);
         Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus? status);
     }
 }

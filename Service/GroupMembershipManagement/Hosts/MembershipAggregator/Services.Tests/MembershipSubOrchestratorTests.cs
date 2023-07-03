@@ -97,9 +97,8 @@ namespace Services.Tests
             _groupExists = PolicyResult<bool>.Successful(true, new Context());
 
             _syncJob = new SyncJob
-            {
-                PartitionKey = "00-00-0000",
-                RowKey = Guid.NewGuid().ToString(),
+            {                
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = Guid.NewGuid(),
                 ThresholdPercentageForAdditions = 80,
                 ThresholdPercentageForRemovals = 20,

@@ -49,9 +49,9 @@ namespace Repositories.EntityFramework
             return await query.ToListAsync();
         }
 
-        public async Task<SyncJob> GetSyncJobAsync(Guid SyncJobId)
+        public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
         {
-            return await _context.SyncJobs.SingleOrDefaultAsync(job => job.Id == SyncJobId);
+            return await _context.SyncJobs.SingleOrDefaultAsync(job => job.Id == syncJobId);
         }
 
         public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus? status)
