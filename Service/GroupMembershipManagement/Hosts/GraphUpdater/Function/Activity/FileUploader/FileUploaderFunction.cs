@@ -28,7 +28,7 @@ namespace Hosts.GraphUpdater
         public async Task SendUsersAsync([ActivityTrigger] FileUploaderRequest request)
         {
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(FileUploaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            var timeStamp = request.SyncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
+            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmmss");
             var users = JsonConvert.DeserializeObject<List<AzureADUser>>(TextCompressor.Decompress(request.Users));
             var groupMembership = new GroupMembership
             {

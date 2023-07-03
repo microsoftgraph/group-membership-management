@@ -306,7 +306,7 @@ namespace Hosts.GraphUpdater
 
         private void TrackSyncCompleteEvent(IDurableOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
         {
-            var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.Timestamp.GetValueOrDefault()).TotalSeconds;
+            var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.LastSuccessfulStartTime).TotalSeconds;
             _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
 
             syncCompleteEvent.SyncJobTimeElapsedSeconds = timeElapsedForJob.ToString();

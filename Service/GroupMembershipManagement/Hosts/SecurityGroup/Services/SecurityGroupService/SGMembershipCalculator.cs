@@ -166,7 +166,7 @@ namespace Hosts.SecurityGroup
                 Query = syncJob.Query
             };
 
-            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
+            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmmss");
             var fileName = $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_SecurityGroup_{currentPart}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
 
@@ -175,7 +175,7 @@ namespace Hosts.SecurityGroup
 
         public async Task SaveDeltaUsersAsync(SyncJob syncJob, Guid id, List<AzureADUser> users, string deltaLink)
         {
-            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
+            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmmss");
             var fileName = $"/cache/delta_{id}_{timeStamp}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, deltaLink);
             var groupMembership = new GroupMembership
