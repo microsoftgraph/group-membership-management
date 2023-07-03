@@ -161,12 +161,6 @@ namespace Hosts.FunctionBase
                         GetValueOrDefault("actionableEmailProviderId"));
             });
 
-            builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
-                {
-                    settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
-                    settings.TableName = configuration.GetValue<string>("jobsTableName");
-                });
-
             builder.Services.AddSingleton<ISyncJobRepository>(services =>
             {
                 var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
