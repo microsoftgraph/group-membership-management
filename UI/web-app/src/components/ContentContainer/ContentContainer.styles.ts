@@ -9,7 +9,10 @@ export const getStyles = (props: IContentContainerStyleProps): IContentContainer
     return {
         root: [{}, className],
         card: {
-            padding: 10,
+            paddingTop: 18,
+            paddingBottom: 18,
+            paddingLeft: 24,
+            paddingRight: 24,
             borderRadius: 10,
             marginBottom: 10,
             backgroundColor: theme.palette.white

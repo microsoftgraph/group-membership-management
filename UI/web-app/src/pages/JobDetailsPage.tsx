@@ -7,7 +7,7 @@ import {
   MessageBar,
   MessageBarType,
   IIconProps,
-  Toggle,
+  Toggle
 } from '@fluentui/react';
 
 import {
@@ -35,11 +35,6 @@ import { useTheme } from '@fluentui/react/lib/Theme';
 import { Page } from '../components/Page';
 import { format } from 'react-string-format';
 
-
-const mainContent: React.CSSProperties = {
-  padding: 10
-}
-
 const itemData: React.CSSProperties = {
   paddingTop: 10
 }
@@ -54,9 +49,12 @@ const MembershipDetails: React.FunctionComponent<IContentProps> = (
   const { t } = useTranslation();
   const theme = useTheme();
   const card: React.CSSProperties = {
-    padding: 10,
+    paddingTop: 18,
+    paddingBottom: 18,
+    paddingLeft: 22,
+    paddingRight: 22,
     borderRadius: 10,
-    marginBottom: 10,
+    marginBottom: 12,
     backgroundColor: theme.palette.white,
   }
   const subtitle: React.CSSProperties = {
@@ -89,6 +87,9 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
 ) => {
   const { t } = useTranslation();
   const theme = useTheme();
+  const toggleLabel: React.CSSProperties = {
+    paddingRight: 10
+  }
   const jobEnabled: React.CSSProperties = {
     color: theme.palette.black,
     backgroundColor: theme.semanticColors.successBackground,
@@ -111,10 +112,12 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
   }
   const { job } = props;
 
+
+
   return (
-    <div style={{ display: "flex", alignItems: "baseline" }}>
+    <div style={{ display: "flex", alignItems: "flex-start" }}>
+      <label style={toggleLabel}>{t('JobDetailsPage.labels.sync')}</label>
       <Toggle
-        label={<label>{t('JobDetailsPage.labels.sync')}</label>}
         inlineLabel={true}
         checked={job.enabledOrNot === 'Enabled'}
       />
@@ -152,7 +155,6 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
 
   const mainStackTokens: IStackTokens = {
     childrenGap: 30,
-    padding: 15,
   };
 
   return (
@@ -413,7 +415,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
         )}
       </div>
 
-      <div style={mainContent}>
+      <div>
 
         <MembershipDetails job={job} />
 
