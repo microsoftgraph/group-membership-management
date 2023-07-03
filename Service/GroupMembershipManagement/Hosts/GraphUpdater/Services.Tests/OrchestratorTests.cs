@@ -68,8 +68,7 @@ namespace Services.Tests
             var destinationMembers = GetGroupMembership();
             var syncJob = new SyncJob
             {
-                PartitionKey = groupMembership.SyncJobPartitionKey,
-                RowKey = groupMembership.SyncJobRowKey,
+                Id = groupMembership.SyncJobId,   
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
                 Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
                 ThresholdPercentageForAdditions = -1,
@@ -96,8 +95,7 @@ namespace Services.Tests
 
             var jobReaderRequest = new JobReaderRequest
             {
-                JobPartitionKey = syncJob.PartitionKey,
-                JobRowKey = syncJob.RowKey,
+                JobId = syncJob.Id,                
                 RunId = syncJob.RunId.Value
             };
 
@@ -183,8 +181,7 @@ namespace Services.Tests
             var destinationMembers = GetGroupMembership();
             var syncJob = new SyncJob
             {
-                PartitionKey = groupMembership.SyncJobPartitionKey,
-                RowKey = groupMembership.SyncJobRowKey,
+                Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
                 Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
                 ThresholdPercentageForAdditions = -1,
@@ -309,8 +306,7 @@ namespace Services.Tests
             var destinationMembers = GetGroupMembership();
             var syncJob = new SyncJob
             {
-                PartitionKey = groupMembership.SyncJobPartitionKey,
-                RowKey = groupMembership.SyncJobRowKey,
+                Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
                 Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
                 ThresholdPercentageForAdditions = -1,
@@ -470,8 +466,7 @@ namespace Services.Tests
             var destinationMembers = GetGroupMembership();
             var syncJob = new SyncJob
             {
-                PartitionKey = groupMembership.SyncJobPartitionKey,
-                RowKey = groupMembership.SyncJobRowKey,
+                Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
                 Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
                 ThresholdPercentageForAdditions = -1,
@@ -549,8 +544,7 @@ namespace Services.Tests
             var destinationMembers = GetGroupMembership();
             var syncJob = new SyncJob
             {
-                PartitionKey = groupMembership.SyncJobPartitionKey,
-                RowKey = groupMembership.SyncJobRowKey,
+                Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
                 Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
                 ThresholdPercentageForAdditions = -1,
@@ -654,8 +648,7 @@ namespace Services.Tests
             var destinationMembers = GetGroupMembership();
             var syncJob = new SyncJob
             {
-                PartitionKey = groupMembership.SyncJobPartitionKey,
-                RowKey = groupMembership.SyncJobRowKey,
+                Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
                 Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
                 ThresholdPercentageForAdditions = -1,
@@ -682,8 +675,7 @@ namespace Services.Tests
 
             var jobReaderRequest = new JobReaderRequest
             {
-                JobPartitionKey = syncJob.PartitionKey,
-                JobRowKey = syncJob.RowKey,
+                JobId = syncJob.Id,
                 RunId = syncJob.RunId.Value
             };
 
@@ -747,8 +739,7 @@ namespace Services.Tests
             {
                 RunId = groupMembership.RunId,
                 GroupId = groupMembership.Destination.ObjectId,
-                JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                JobRowKey = groupMembership.SyncJobRowKey
+                JobId = groupMembership.SyncJobId
             };
             var groupValidatorFunction = new GroupValidatorFunction(mockLoggingRepo, mockGraphUpdaterService, mailSenders);
 

@@ -48,9 +48,8 @@ namespace Services.Tests
             _userCount = 10;
 
             var content = new GroupMembership
-            {
-                SyncJobPartitionKey = "PK",
-                SyncJobRowKey = "RK",
+            {                
+                SyncJobId = Guid.Empty,
                 MembershipObtainerDryRunEnabled = false,
                 RunId = Guid.Empty,
                 SourceMembers = Enumerable.Range(0, _userCount)
