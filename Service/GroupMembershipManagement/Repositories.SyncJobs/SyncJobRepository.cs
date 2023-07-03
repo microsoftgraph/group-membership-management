@@ -25,39 +25,6 @@ namespace Repositories.SyncJobsRepository
             _tableClient = new TableClient(connectionString, syncJobTableName);
         }
 
-        public async Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey)
-        {
-            var result = await _tableClient.GetEntityAsync<SyncJobEntity>(partitionKey, rowKey);
-
-            if (result.GetRawResponse().Status != 404)
-                return MapSyncJobEntityToDTO(result.Value);
-
-            return null;
-        }
-
-        public async IAsyncEnumerable<SyncJob> GetSyncJobsAsync(bool includeFutureJobs = false, params SyncStatus[] statusFilters)
-        {
-            string query = null;
-
-            if (statusFilters.Contains(SyncStatus.All))
-            {
-                if (!includeFutureJobs)
-                    query = $"StartDate le datetime\'{DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff")}Z\'";
-            }
-            else
-            {
-                query = string.Join(" or ", statusFilters.Select(status => $"Status eq \'{status}\'"));
-                if (!includeFutureJobs)
-                    query = $"({query}) and StartDate le datetime\'{DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff")}Z\'";
-            }
-
-            var jobs = _tableClient.QueryAsync<SyncJobEntity>(query);
-            await foreach (var job in jobs)
-            {
-                yield return MapSyncJobEntityToDTO(job);
-            }
-        }
-
         private async Task<Models.Page<SyncJob>> GetPageAsync(
             string query,
             string continuationToken = null,
@@ -77,38 +44,6 @@ namespace Repositories.SyncJobsRepository
                 Values = MapSyncJobEntitiesToDTOs(page.Values),
                 ContinuationToken = page.ContinuationToken,
             };
-        }
-
-        public async Task<Models.Page<SyncJob>> GetPageableQueryResultAsync(
-            bool includeFutureJobs,
-            int? pageSize = null,
-            params SyncStatus[] statusFilters)
-        {
-            string query = null;
-            var result = new Models.Page<SyncJob>();
-
-            if (statusFilters.Contains(SyncStatus.All))
-            {
-                if (!includeFutureJobs)
-                    query = $"StartDate le datetime\'{DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff")}Z\'";
-
-                return await GetPageAsync(query, pageSize: pageSize);
-            }
-
-            query = string.Join(" or ", statusFilters.Select(status => $"Status eq \'{status}\'"));
-
-            if (!includeFutureJobs)
-                query = $"({query}) and StartDate le datetime\'{DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff")}Z\'";
-
-            return await GetPageAsync(query);
-        }
-
-        public async Task<Models.Page<SyncJob>> GetSyncJobsSegmentAsync(
-           string query,
-           string continuationToken,
-           int batchSize)
-        {
-            return await GetPageAsync(query, continuationToken, batchSize);
         }
 
         public async IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync()
@@ -170,58 +105,6 @@ namespace Repositories.SyncJobsRepository
             await _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key completed", RunId = Guid.Empty });
         }
 
-        /// <summary>
-        /// Update all the jobs with the specified status.
-        /// </summary>
-        /// <param name="jobs"></param>
-        /// <param name="status"></param>
-        /// <returns></returns>
-        public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status)
-        {
-            await UpdateSyncJobsAsync(jobs, status: status);
-        }
-
-        public async Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null)
-        {
-            var batchSize = 100;
-            var groupedJobs = MapSyncJobsToEntities(jobs).GroupBy(x => x.PartitionKey);
-
-            await _log.LogMessageAsync(new LogMessage { Message = $"Number of grouped jobs: {groupedJobs.Count()}", RunId = Guid.Empty });
-            await _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key started", RunId = Guid.Empty });
-
-            foreach (var group in groupedJobs)
-            {
-                var batchOperation = new List<TableTransactionAction>();
-
-                foreach (var job in group.AsEnumerable())
-                {
-                    if (status != null)
-                    {
-                        job.Status = status.ToString();
-                        await _log.LogMessageAsync(new LogMessage { Message = $"Setting job status to {status} for job Rowkey:{job.RowKey}", RunId = job.RunId });
-                    }
-
-                    job.ETag = ETag.All;
-
-                    await _log.LogMessageAsync(new LogMessage { Message = string.Join('\n', job.GetType().GetProperties().Select(jobProperty => $"{jobProperty.Name} : {jobProperty.GetValue(job, null)}")), RunId = job.RunId });
-
-                    batchOperation.Add(new TableTransactionAction(TableTransactionActionType.UpdateReplace, job));
-
-                    if (batchOperation.Count == batchSize)
-                    {
-                        await _tableClient.SubmitTransactionAsync(batchOperation);
-                        batchOperation.Clear();
-                    }
-                }
-
-                if (batchOperation.Any())
-                {
-                    await _tableClient.SubmitTransactionAsync(batchOperation);
-                }
-            }
-            await _log.LogMessageAsync(new LogMessage { Message = $"Batching jobs by partition key completed", RunId = Guid.Empty });
-        }
-
         public async Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> jobs)
         {
             var entities = MapUpdateMergeSyncJobsToEntities(jobs);
@@ -251,12 +134,6 @@ namespace Repositories.SyncJobsRepository
             {
                 await _tableClient.SubmitTransactionAsync(batchOperation);
             }
-        }
-
-        private IEnumerable<SyncJob> ExcludeFutureStartDatesFromResults(IEnumerable<SyncJob> jobs)
-        {
-            var jobsWithPastStartDate = jobs.Where(x => x.StartDate <= DateTime.UtcNow);
-            return jobsWithPastStartDate;
         }
 
         private UpdateMergeSyncJobEntity MapUpdateMergeSyncJobToEntity(UpdateMergeSyncJob updateMergeSyncJob)
