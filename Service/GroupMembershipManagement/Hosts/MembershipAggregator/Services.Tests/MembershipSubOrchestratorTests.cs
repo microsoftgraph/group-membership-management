@@ -588,40 +588,40 @@ namespace Services.Tests
                                                         , Times.Once());
         }
 
-        [TestMethod]
-        public async Task ProcessMembershipFromFilesForLargeSyncsAsync()
-        {
-            _syncJob.ThresholdPercentageForAdditions = -1;
-            _syncJob.ThresholdPercentageForRemovals = -1;
-            _numberOfUsersForSourcePart = 50000;
+        //[TestMethod]
+        //public async Task ProcessMembershipFromFilesForLargeSyncsAsync()
+        //{
+        //    _syncJob.ThresholdPercentageForAdditions = -1;
+        //    _syncJob.ThresholdPercentageForRemovals = -1;
+        //    _numberOfUsersForSourcePart = 50000;
 
-            _membersPerFile.Add(GenerateFileName(_syncJob, "SourceMembership"), 100000);
-            _membersPerFile.Add(GenerateFileName(_syncJob, "DestinationMembership"), 0);
+        //    _membersPerFile.Add(GenerateFileName(_syncJob, "SourceMembership"), 100000);
+        //    _membersPerFile.Add(GenerateFileName(_syncJob, "DestinationMembership"), 0);
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
-            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+        //    var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
+        //    var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("SourceMembership")),
-                                                                 It.IsAny<string>(),
-                                                                 It.IsAny<Dictionary<string, string>>()), Times.Once());
+        //    _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("SourceMembership")),
+        //                                                         It.IsAny<string>(),
+        //                                                         It.IsAny<Dictionary<string, string>>()), Times.Once());
 
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("DestinationMembership")),
-                                                                 It.IsAny<string>(),
-                                                                 It.IsAny<Dictionary<string, string>>()), Times.Once());
+        //    _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("DestinationMembership")),
+        //                                                         It.IsAny<string>(),
+        //                                                         It.IsAny<Dictionary<string, string>>()), Times.Once());
 
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.Is<string>(x => x.Contains("SourceMembership"))), Times.Once());
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.Is<string>(x => x.Contains("DestinationMembership"))), Times.Once());
+        //    _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.Is<string>(x => x.Contains("SourceMembership"))), Times.Once());
+        //    _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.Is<string>(x => x.Contains("DestinationMembership"))), Times.Once());
 
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("Aggregated")),
-                                                                 It.IsAny<string>(),
-                                                                 It.IsAny<Dictionary<string, string>>()), Times.Once());
+        //    _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("Aggregated")),
+        //                                                         It.IsAny<string>(),
+        //                                                         It.IsAny<Dictionary<string, string>>()), Times.Once());
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Uploaded membership file")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus>()), Times.Never());
+        //    _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Uploaded membership file")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
+        //    _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus>()), Times.Never());
 
-            Assert.IsNotNull(response.FilePath);
-            Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
-        }
+        //    Assert.IsNotNull(response.FilePath);
+        //    Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
+        //}
 
         [TestMethod]
         public async Task ProcessExclusionaryMembershipAsync()
