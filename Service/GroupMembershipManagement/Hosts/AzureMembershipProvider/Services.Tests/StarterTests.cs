@@ -21,7 +21,7 @@ namespace Tests.Services
     {
         private Mock<IDryRunValue> _dryRunValue;
         private Mock<ILoggingRepository> _loggingRepository;
-        private Mock<ISyncJobRepository> _syncJobRepository;
+        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
         private Mock<IDurableOrchestrationClient> _durableOrchestrationClient;
         private SyncJob _syncJob;
 
@@ -30,13 +30,12 @@ namespace Tests.Services
         {
             _dryRunValue = new Mock<IDryRunValue>();
             _loggingRepository = new Mock<ILoggingRepository>();
-            _syncJobRepository = new Mock<ISyncJobRepository>();
+            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _durableOrchestrationClient = new Mock<IDurableOrchestrationClient>();
 
             _syncJob = new SyncJob
             {
-                RowKey = Guid.NewGuid().ToString(),
-                PartitionKey = "00-00-0000",
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = Guid.NewGuid(),
                 Query = "[{ \"type\": \"AzureMembershipProvider\", \"source\": \"https://graph.microsoft.com/v1.0/places/microsoft.graph.room\" }]",
                 Status = "InProgress",
