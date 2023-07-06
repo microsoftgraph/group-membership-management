@@ -16,14 +16,14 @@ namespace Services
         private readonly ILoggingRepository _log;
         private readonly IMailRepository _mail;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
-        private readonly ISyncJobRepository _syncJob;
+        private readonly IDatabaseSyncJobsRepository _syncJob;
         private readonly bool _isAzureMembershipProviderDryRunEnabled;
 
         public AzureMembershipProviderService(IGraphGroupRepository graphGroupRepository,
                                       IBlobStorageRepository blobStorageRepository,
                                       IMailRepository mail,
                                       IEmailSenderRecipient emailSenderAndRecipients,
-                                      ISyncJobRepository syncJob,
+                                      IDatabaseSyncJobsRepository syncJob,
                                       ILoggingRepository logging,
                                       IDryRunValue dryRun
                                       )
@@ -99,12 +99,11 @@ namespace Services
                 Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
                 RunId = runId,
                 Exclusionary = exclusionary,
-                SyncJobRowKey = syncJob.RowKey,
-                SyncJobPartitionKey = syncJob.PartitionKey,
+                SyncJobId = syncJob.Id,                
                 MembershipObtainerDryRunEnabled = _isAzureMembershipProviderDryRunEnabled
             };
 
-            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
+            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmm");
             var fileName = $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_AzureMembershipProvider_{currentPart}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
 

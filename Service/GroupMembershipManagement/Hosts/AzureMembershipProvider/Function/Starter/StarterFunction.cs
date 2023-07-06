@@ -17,10 +17,10 @@ namespace Hosts.AzureMembershipProvider
     public class StarterFunction
     {
         private readonly ILoggingRepository _loggingRepository;
-        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly bool _isAzureMembershipProviderDryRunEnabled;
 
-        public StarterFunction(ILoggingRepository loggingRepository, ISyncJobRepository syncJobRepository, IDryRunValue dryRun)
+        public StarterFunction(ILoggingRepository loggingRepository, IDatabaseSyncJobsRepository syncJobRepository, IDryRunValue dryRun)
         {
             _loggingRepository = loggingRepository;
             _syncJobRepository = syncJobRepository;
