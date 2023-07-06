@@ -47,6 +47,34 @@ namespace Hosts.MembershipAggregator
                 RunId = request.SyncJob.RunId
             };
 
+            if (!request.SyncJob.AllowEmptyDestination && SourceMembership.SourceMembers.Count == 0)
+            {
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                new JobStatusUpdaterRequest
+                                                {
+                                                    SyncJob = request.SyncJob,
+                                                    Status = SyncStatus.MembershipDataNotFound
+                                                });
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        Message = new LogMessage
+                        {
+                            Message = $"Sources are empty for TargetOfficeGroupId {request.SyncJob.TargetOfficeGroupId}. Empty destination is not allowed for this group. Marking job as 'MembershipDataNotFound'.",
+                            RunId = runId
+                        }
+                    });
+
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { 
+                    JobStatus = SyncStatus.MembershipDataNotFound, ResultStatus = ResultStatus.Success, RunId = runId });
+
+                return new MembershipSubOrchestratorResponse
+                {
+                    MembershipDeltaStatus = MembershipDeltaStatus.Error
+
+                };
+            }
+
             if (SourceMembership.SourceMembers.Count >= MEMBERS_LIMIT || DestinationMembership.SourceMembers.Count >= MEMBERS_LIMIT)
             {
                 var sourceFilePath = GenerateFileName(request.SyncJob, "SourceMembership");

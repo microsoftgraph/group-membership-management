@@ -1,30 +1,45 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Models.Entities
 {
+    public class TeamsUserProperties
+	{
+		public string ConversationMemberId { get; set; }
+	}
     [ExcludeFromCodeCoverage]
     public class AzureADTeamsUser : AzureADUser, IEquatable<AzureADTeamsUser>
     {
-      public string TeamsId { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Include)]
+        public string ConversationMemberId { get; set; }
 
-        public override bool Equals(object obj)
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public override object Properties
+		{
+            get
+            {
+                return new TeamsUserProperties 
+				{ 
+					ConversationMemberId = ConversationMemberId
+				};
+            }
+        }
+
+
+		public override bool Equals(object obj)
 		{
 			AzureADTeamsUser castObj = obj as AzureADTeamsUser;
 			if (castObj is null) return false;
-			return castObj.ObjectId == ObjectId && castObj.TeamsId == TeamsId;
+			return castObj.ObjectId == ObjectId && castObj.ConversationMemberId == ConversationMemberId;
 		}
 
 		public bool Equals(AzureADTeamsUser other)
 		{
 			if (other is null) return false;
-			return ObjectId == other.ObjectId && TeamsId == other.TeamsId;
+			return ObjectId == other.ObjectId && ConversationMemberId == other.ConversationMemberId;
 		}
 
 		public static bool operator ==(AzureADTeamsUser lhs, AzureADTeamsUser rhs)
@@ -40,9 +55,9 @@ namespace Models.Entities
 			return !(lhs == rhs);
 		}
 
-		public override int GetHashCode() => HashCode.Combine(ObjectId.GetHashCode(), TeamsId.GetHashCode());
+		public override int GetHashCode() => HashCode.Combine(ObjectId.GetHashCode(), ConversationMemberId.GetHashCode());
 
-		public override string ToString() => $"u: {ObjectId} t: {TeamsId}";
+		public override string ToString() => $"u: {ObjectId} t: {ConversationMemberId}";
     }
 }
 

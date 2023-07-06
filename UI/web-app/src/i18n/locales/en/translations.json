@@ -27,11 +27,16 @@
             "lastRun": "Last Run",
             "nextRun": "Next Run",
             "frequency": "Frequency",
+            "frequencyDescription": "Every {0} hrs",
             "requestor": "Requestor",
             "increaseThreshold": "Increase Threshold",
             "decreaseThreshold": "Decrease Threshold",
             "thresholdViolations": "Threshold Violations",
-            "sourceParts": "Source Parts"
+            "sourceParts": "Source Parts",
+            "membershipStatus": "Membership status",
+            "sync": "Sync",
+            "enabled": "Enabled",
+            "disabled": "Disabled"
         },
         "descriptions": {
             "lastModifiedby": "User who made the last change to this job.",
@@ -50,7 +55,9 @@
         "MessageBar": {
             "dismissButtonAriaLabel": "Close"
         },
-        "openInAzure": "Open in Azure"
+        "openInAzure": "Open in Azure",
+        "viewDetails": "View Details",
+        "editButton": "Edit"
     },
     "JobsList": {
         "ShimmeredDetailsList": {
@@ -73,5 +80,5 @@
         }
     },
     "welcome": "Welcome",
-    "back": "Back"
+    "back": "Back to dashboard"
 }

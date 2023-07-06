@@ -11,16 +11,19 @@ export interface InfoLabelProps {
 }
 
 const stackTokens: IStackTokens = {
-  childrenGap: 7,
+  childrenGap: 7
 };
+
+const titleStyle: React.CSSProperties = {
+  fontWeight: 'bold'
+}
 
 export const InfoLabel: React.FunctionComponent<InfoLabelProps> = (
   props: InfoLabelProps
 ) => {
   return (
     <Stack horizontal tokens={stackTokens}>
-      <Text variant="mediumPlus">{props.label}</Text>
-
+      <Text style={titleStyle} variant="mediumPlus">{props.label}</Text>
       <TooltipHost content={props.description}>
         <Icon iconName="Info" />
       </TooltipHost>

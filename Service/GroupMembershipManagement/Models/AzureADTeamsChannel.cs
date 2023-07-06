@@ -12,7 +12,7 @@ namespace Models.Entities
     {
         public string ChannelId { get; init; }
 
-		public override bool Equals(object obj)
+        public override bool Equals(object obj)
 		{
 			var castObj = obj as AzureADTeamsChannel;
 			if (castObj is null) return false;

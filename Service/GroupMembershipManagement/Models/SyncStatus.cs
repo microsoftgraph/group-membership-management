@@ -10,7 +10,7 @@ namespace Models
         Idle = 2,
         Error = 3,
         ThresholdExceeded = 4,
-        CustomMembershipDataNotFound = 5,
+        MembershipDataNotFound = 5,
         DestinationGroupNotFound = 6,
         NotOwnerOfDestinationGroup = 7,
         SecurityGroupNotFound = 8,
@@ -21,6 +21,6 @@ namespace Models
         StuckInProgress = 13,
         ErroredDueToStuckInProgress = 14,
         PrivateChannelNotDestination = 15,
-        TeamsChannelNotPrivate = 16,
+        DestinationQueryNotValid = 16,
     }
 }

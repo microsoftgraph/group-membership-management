@@ -117,15 +117,20 @@ namespace Repositories.GraphGroups
         private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessQueue(ConcurrentQueue<ChunkOfUsers> queue, MakeBulkRequest makeRequest, int threadNumber, int batchSize)
         {
             var successCount = 0;
+            var maxNumberOfRequests = batchSize * GraphBatchLimit;
 
             do
             {
                 var toSend = new List<ChunkOfUsers>();
                 while (queue.TryDequeue(out var step))
                 {
-                    toSend.Add(step);
-                    if (toSend.Count == batchSize)
+                    var isUnderMaxLimit = toSend.Sum(x => x.ToSend.Count) + step.ToSend.Count < maxNumberOfRequests;
+
+                    if (isUnderMaxLimit && toSend.Count < GraphBatchLimit)
+                        toSend.Add(step);
+                    else
                     {
+                        queue.Enqueue(step);
                         var response = await ProcessBatch(queue, toSend, makeRequest, threadNumber);
                         toSend.Clear();
 

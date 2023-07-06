@@ -9,6 +9,7 @@ using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Models.Helpers;
 
 namespace Hosts.GraphUpdater
 {
@@ -28,9 +29,10 @@ namespace Hosts.GraphUpdater
         {
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(FileUploaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             var timeStamp = request.SyncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
+            var users = JsonConvert.DeserializeObject<List<AzureADUser>>(TextCompressor.Decompress(request.Users));
             var groupMembership = new GroupMembership
             {
-                SourceMembers = request.Users ?? new List<AzureADUser>()
+                SourceMembers = users ?? new List<AzureADUser>()
             };
             var fileName = $"/cache/{request.ObjectId}_{timeStamp}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
@@ -38,7 +40,7 @@ namespace Hosts.GraphUpdater
             await _log.LogMessageAsync(new LogMessage
             {
                 RunId = request.RunId,
-                Message = $"Successfully uploaded {request.Users.Count} users from group {request.ObjectId} to cache."
+                Message = $"Successfully uploaded {users.Count} users from group {request.ObjectId} to cache."
             });
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(FileUploaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
         }

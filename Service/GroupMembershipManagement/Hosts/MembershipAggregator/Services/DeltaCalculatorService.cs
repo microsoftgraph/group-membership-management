@@ -141,6 +141,11 @@ namespace Services
 
                     if (job.IgnoreThresholdOnce)
                         await LogIgnoreThresholdOnceAsync(job, sourceMembership.RunId);
+                    else if (job.AllowEmptyDestination && (delta.Delta.ToAdd.Count > 0 && delta.TotalMembersCount == 0))
+                    {
+                        deltaResponse.MembershipDeltaStatus = MembershipDeltaStatus.Ok;
+                        await LogAllowEmptyDestinationAsync(job, sourceMembership.RunId);
+                    }
                     else
                     {
                         await SendThresholdNotificationAsync(threshold, job, sourceMembership.RunId, delta.Delta);
@@ -260,6 +265,15 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"Going to sync the job even though threshold exceeded because IgnoreThresholdOnce is currently set to {job.IgnoreThresholdOnce}.",
+                RunId = runId
+            });
+        }
+
+        private async Task LogAllowEmptyDestinationAsync(SyncJob job, Guid runId)
+        {
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Going to sync the job even though threshold exceeded because AllowEmptyDestination is currently set to {job.AllowEmptyDestination}.",
                 RunId = runId
             });
         }

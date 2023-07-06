@@ -9,6 +9,6 @@ namespace Repositories.Contracts
 {
     public interface IDatabaseSyncJobsRepository
     {        
-        Task<List<SyncJob>> SelectSyncJobsAsync();
+        Task<IEnumerable<SyncJob>> GetSyncJobsAsync();
     }
 }

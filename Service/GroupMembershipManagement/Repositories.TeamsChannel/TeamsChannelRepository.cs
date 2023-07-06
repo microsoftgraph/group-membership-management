@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
+using Microsoft.Graph.Models.ODataErrors;
 using Microsoft.Kiota.Abstractions;
 using Models;
 using Models.Entities;
@@ -29,41 +30,62 @@ namespace Repositories.TeamsChannel
 
             var toReturn = new List<AzureADTeamsUser>();
 
-            var members = await _graphServiceClient.Teams[groupId.ToString()].Channels[channelId].Members.GetAsync();
-
-            await _logger.LogMessageAsync(new LogMessage { Message = $"Read {members.Value.Count} Teams users from group {groupId}, channel {channelId}." });
-
-            // x! uses the "null forgiving operator" to fix the nullable/non-nullable type mismatch https://stackoverflow.com/a/54724546
-            // it's fine here because the where clause guarantees there's no nulls.
-            toReturn.AddRange(members.Value.Select(ToTeamsUser).Where(x => x != null).Select(x => x!));
-
-            while (members.OdataNextLink != null)
+            try
             {
-                var request = new RequestInformation
-                {
-                    HttpMethod = Method.GET,
-                    UrlTemplate = members.OdataNextLink
-                };
+                var members = await _graphServiceClient.Teams[groupId.ToString()].Channels[channelId].Members.GetAsync();
 
-                members = await _graphServiceClient.RequestAdapter.SendAsync<ConversationMemberCollectionResponse>(request, ConversationMemberCollectionResponse.CreateFromDiscriminatorValue);
-                toReturn.AddRange(members.Value.Select(ToTeamsUser).Where(x => x != null).Select(x => x!));
                 await _logger.LogMessageAsync(new LogMessage { Message = $"Read {members.Value.Count} Teams users from group {groupId}, channel {channelId}." });
+
+                // x! uses the "null forgiving operator" to fix the nullable/non-nullable type mismatch https://stackoverflow.com/a/54724546
+                // it's fine here because the where clause guarantees there's no nulls.
+                toReturn.AddRange(members.Value.Select(ToTeamsUser).Where(x => x != null).Select(x => x!));
+
+                while (members.OdataNextLink != null)
+                {
+                    var request = new RequestInformation
+                    {
+                        HttpMethod = Method.GET,
+                        UrlTemplate = members.OdataNextLink
+                    };
+
+                    members = await _graphServiceClient.RequestAdapter.SendAsync<ConversationMemberCollectionResponse>(request, ConversationMemberCollectionResponse.CreateFromDiscriminatorValue);
+                    toReturn.AddRange(members.Value.Select(ToTeamsUser).Where(x => x != null).Select(x => x!));
+                    await _logger.LogMessageAsync(new LogMessage { Message = $"Read {members.Value.Count} Teams users from group {groupId}, channel {channelId}." });
+                }
+
+                await _logger.LogMessageAsync(new LogMessage { Message = $"Read a total of {toReturn.Count} Teams users from group {groupId}, channel {channelId}." });
+
+                return toReturn;
+
             }
-
-            await _logger.LogMessageAsync(new LogMessage { Message = $"Read a total of {toReturn.Count} Teams users from group {groupId}, channel {channelId}." });
-
-            return toReturn;
+            catch (ODataError e)
+            {
+                await _logger.LogMessageAsync(new LogMessage { Message = $"Exception code:  {e.Error.Code}" });
+                await _logger.LogMessageAsync(new LogMessage { Message = $"Exception Message:  {e.Error.Message}" });
+                throw;
+            }
+            
         }
 
         public async Task<string> GetChannelTypeAsync(AzureADTeamsChannel teamsChannel, Guid runId)
         {
-            await _logger.LogMessageAsync(new LogMessage { Message = $"Reading metadata about group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}." });
+            try
+            {
+                await _logger.LogMessageAsync(new LogMessage { Message = $"Reading metadata about group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}." });
 
-            var channelData = await _graphServiceClient.Teams[teamsChannel.ObjectId.ToString()].Channels[teamsChannel.ChannelId].GetAsync();
+                var channelData = await _graphServiceClient.Teams[teamsChannel.ObjectId.ToString()].Channels[teamsChannel.ChannelId].GetAsync();
 
-            await _logger.LogMessageAsync(new LogMessage { Message = $"Read metadata about group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}. MembershipType is {channelData.MembershipType}." });
+                await _logger.LogMessageAsync(new LogMessage { Message = $"Read metadata about group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}. MembershipType is {channelData.MembershipType}." });
 
-            return channelData.MembershipType.ToString();
+                return channelData.MembershipType.ToString();
+            }
+            catch (ODataError e)
+            {
+                await _logger.LogMessageAsync(new LogMessage { Message = $"Exception code:  {e.Error.Code}" });
+                await _logger.LogMessageAsync(new LogMessage { Message = $"Exception Message:  {e.Error.Message}" });
+                throw;
+            }
+
         }
 
 
@@ -71,7 +93,7 @@ namespace Repositories.TeamsChannel
         {
             var aadMember = member as AadUserConversationMember;
             if (aadMember == null) { return null; }
-            return new AzureADTeamsUser { ObjectId = Guid.Parse(aadMember.UserId), TeamsId = aadMember.Id };
+            return new AzureADTeamsUser { ObjectId = Guid.Parse(aadMember.UserId), ConversationMemberId = aadMember.Id };
         }
     }
 }

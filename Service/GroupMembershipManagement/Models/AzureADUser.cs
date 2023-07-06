@@ -1,21 +1,39 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+
+
 
 namespace Models
 {
     [ExcludeFromCodeCoverage]
 	public class AzureADUser : IAzureADObject, IEquatable<AzureADUser>
 	{
-		public Guid ObjectId { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Include)]
+        public Guid ObjectId { get; set; }
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string Mail { get; set; }
 
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public virtual object Properties { get
+			{
+				return null;
+			}
+		}
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public MembershipAction? MembershipAction { get; set; }
 
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public Guid SourceGroup { get; set; }
 
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public List<Guid> SourceGroups { get; set; }
 
         public override bool Equals(object obj)

@@ -17,10 +17,10 @@ namespace Repositories.EntityFramework.Contexts.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.5")
+                .HasAnnotation("ProductVersion", "6.0.16")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
 
             modelBuilder.Entity("Models.SyncJob", b =>
                 {
@@ -28,6 +28,9 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
                         .HasDefaultValueSql("NEWSEQUENTIALID()");
+
+                    b.Property<bool>("AllowEmptyDestination")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Destination")
                         .HasColumnType("nvarchar(max)");

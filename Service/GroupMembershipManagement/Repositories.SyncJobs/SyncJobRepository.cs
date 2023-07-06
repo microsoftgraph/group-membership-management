@@ -115,7 +115,7 @@ namespace Repositories.SyncJobsRepository
         {
             var queryResult = _tableClient.QueryAsync<SyncJobEntity>(x =>
                 x.Status == SyncStatus.CustomerPaused.ToString() ||
-                x.Status == SyncStatus.CustomMembershipDataNotFound.ToString() ||
+                x.Status == SyncStatus.MembershipDataNotFound.ToString() ||
                 x.Status == SyncStatus.DestinationGroupNotFound.ToString() ||
                 x.Status == SyncStatus.NotOwnerOfDestinationGroup.ToString() ||
                 x.Status == SyncStatus.SecurityGroupNotFound.ToString() ||
@@ -288,6 +288,7 @@ namespace Repositories.SyncJobsRepository
                 Timestamp = job.Timestamp,
                 TargetOfficeGroupId = job.TargetOfficeGroupId,
                 Destination = job.Destination,
+                AllowEmptyDestination = job.AllowEmptyDestination,
                 RunId = job.RunId,
                 Period = job.Period,
                 ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
@@ -319,6 +320,7 @@ namespace Repositories.SyncJobsRepository
                 Timestamp = job.Timestamp,
                 TargetOfficeGroupId = job.TargetOfficeGroupId,
                 Destination = job.Destination,
+                AllowEmptyDestination = job.AllowEmptyDestination,
                 RunId = job.RunId,
                 Period = job.Period,
                 ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
