@@ -73,5 +73,21 @@ namespace Repositories.EntityFramework
 
             await _context.SaveChangesAsync();
         }
+
+        public async Task BatchUpdateSyncJobsAsync(List<SyncJob> jobs)
+        {           
+            if (jobs.Count() > 100)
+            {
+                jobs = jobs.Take(100).ToList();
+            }
+
+            foreach (var job in jobs)
+            {
+                var entity = await _context.SyncJobs.FirstOrDefaultAsync(item => item.Id == job.Id);
+                entity.StartDate = job.StartDate;
+                await _context.SaveChangesAsync();
+            }
+        
+        }
     }
 }
