@@ -67,17 +67,32 @@ namespace Hosts.GraphUpdater
                     await context.CallActivityAsync(nameof(LoggerFunction),
                                                        new LoggerRequest
                                                        {
+                                                           Message = $"{cacheMembers.Count} cacheMembers users to remove from cache/{request.GroupId}",
+                                                           SyncJob = request.SyncJob,
+                                                           Verbosity = VerbosityLevel.DEBUG
+                                                       });
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                                                       new LoggerRequest
+                                                       {
                                                            Message = $"Earlier count in cache/{request.GroupId}: {cacheMembers.Count}",
                                                            SyncJob = request.SyncJob,
                                                            Verbosity = VerbosityLevel.DEBUG
                                                        });
                     var newUsers = cacheMembers.Except(request.UserIds).ToList();
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                                                       new LoggerRequest
+                                                       {
+                                                           Message = $"{newUsers.Count} newUsers to add to cache/{request.GroupId}",
+                                                           SyncJob = request.SyncJob,
+                                                           Verbosity = VerbosityLevel.DEBUG
+                                                       });
                     await context.CallActivityAsync(nameof(FileUploaderFunction),
                                                             new FileUploaderRequest
                                                             {
                                                                 SyncJob = request.SyncJob,
                                                                 ObjectId = request.GroupId,
                                                                 Users = TextCompressor.Compress(JsonConvert.SerializeObject(newUsers)),
+                                                                RunId = (Guid)request.SyncJob.RunId
                                                             });
                     await context.CallActivityAsync(nameof(LoggerFunction),
                                                        new LoggerRequest
