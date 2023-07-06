@@ -92,7 +92,7 @@ namespace Hosts.GraphUpdater
                                                                 SyncJob = request.SyncJob,
                                                                 ObjectId = request.GroupId,
                                                                 Users = TextCompressor.Compress(JsonConvert.SerializeObject(newUsers)),
-                                                                RunId = (Guid)request.SyncJob.RunId
+                                                                RunId = request.SyncJob.RunId.GetValueOrDefault()
                                                             });
                     await context.CallActivityAsync(nameof(LoggerFunction),
                                                        new LoggerRequest
