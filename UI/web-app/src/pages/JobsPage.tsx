@@ -7,12 +7,17 @@ import { JobsList } from '../components/JobsList/JobsList';
 import { Page } from '../components/Page';
 import { PageHeader } from '../components/PageHeader';
 import { WelcomeName } from '../components/WelcomeName';
+import { Banner } from '../components/Banner';
+import { Stack } from '@fluentui/react';
 
 export const JobsPage: React.FunctionComponent = () => {
   return (
     <Page>
       <PageHeader backButtonHidden>
-        <WelcomeName />
+        <Stack horizontalAlign='space-between' horizontal>
+          <WelcomeName />
+          <Banner />
+        </Stack>
       </PageHeader>
       <JobsList />
     </Page>

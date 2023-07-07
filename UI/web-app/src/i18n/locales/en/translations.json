@@ -5,6 +5,7 @@
     "addOwner400Message": "GMM is already added as an owner.",
     "addOwner403Message": "You do not have permission to complete this operation.",
     "addOwnerErrorMessage": "We are having trouble adding GMM as the owner. Please try again later.",
+    "bannerMessage": "Need help? Click here to learn more about how Membership Management works in your organization.",
     "okButton": "OK",
     "groupIdHeader": "Enter Group ID",
     "groupIdPlaceHolder": "Group ID",
