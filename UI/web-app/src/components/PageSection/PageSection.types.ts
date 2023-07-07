@@ -8,18 +8,19 @@ import {
 } from '@fluentui/react';
 import type React from 'react';
 
-export interface IAppStyles {
+export interface IPageSectionStyles {
   root: IStyle;
-  body: IStyle;
-  content: IStyle;
 }
 
-export interface IAppStyleProps {
+export interface IPageSectionStyleProps {
   className?: string;
   theme: ITheme;
 }
 
-export interface IAppProps extends React.AllHTMLAttributes<HTMLDivElement> {
+export interface IPageSectionProps
+  extends React.AllHTMLAttributes<HTMLDivElement> {
+  backButtonHidden?: boolean;
+  
   /**
    * Optional className to apply to the root of the component.
    */
@@ -28,5 +29,5 @@ export interface IAppProps extends React.AllHTMLAttributes<HTMLDivElement> {
   /**
    * Call to provide customized styling that will layer on top of the variant rules.
    */
-  styles?: IStyleFunctionOrObject<IAppStyleProps, IAppStyles>;
+  styles?: IStyleFunctionOrObject<IPageSectionStyleProps, IPageSectionStyles>;
 }

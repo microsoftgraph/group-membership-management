@@ -34,7 +34,10 @@ import {
   IJobsListStyleProps,
   IJobsListStyles,
 } from './JobsList.types';
-import { ReportHackedIcon, ChevronRightMedIcon } from '@fluentui/react-icons-mdl2';
+import {
+  ReportHackedIcon,
+  ChevronRightMedIcon,
+} from '@fluentui/react-icons-mdl2';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -71,8 +74,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       minWidth: 100,
       maxWidth: 100,
       isResizable: false,
-      isSorted: sortKey === "targetGroupType",
-      isSortedDescending
+      isSorted: sortKey === 'targetGroupType',
+      isSortedDescending,
     },
     {
       key: 'targetGroupName',
@@ -81,8 +84,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       minWidth: 100,
       maxWidth: 100,
       isResizable: false,
-      isSorted: sortKey === "targetGroupName",
-      isSortedDescending
+      isSorted: sortKey === 'targetGroupName',
+      isSortedDescending,
     },
     {
       key: 'lastSuccessfulRunTime',
@@ -91,8 +94,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       minWidth: 100,
       maxWidth: 100,
       isResizable: false,
-      isSorted: sortKey === "lastSuccessfulRunTime",
-      isSortedDescending
+      isSorted: sortKey === 'lastSuccessfulRunTime',
+      isSortedDescending,
     },
     {
       key: 'estimatedNextRunTime',
@@ -101,8 +104,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       minWidth: 100,
       maxWidth: 100,
       isResizable: false,
-      isSorted: sortKey === "estimatedNextRunTime",
-      isSortedDescending
+      isSorted: sortKey === 'estimatedNextRunTime',
+      isSortedDescending,
     },
     {
       key: 'enabledOrNot',
@@ -111,8 +114,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       minWidth: 75,
       maxWidth: 75,
       isResizable: false,
-      isSorted: sortKey === "enabledOrNot",
-      isSortedDescending
+      isSorted: sortKey === 'enabledOrNot',
+      isSortedDescending,
     },
     {
       key: 'actionRequired',
@@ -121,8 +124,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       minWidth: 200,
       maxWidth: 200,
       isResizable: false,
-      isSorted: sortKey === "actionRequired",
-      isSortedDescending
+      isSorted: sortKey === 'actionRequired',
+      isSortedDescending,
     },
     {
       key: 'arrow',
@@ -130,28 +133,27 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       fieldName: '',
       minWidth: 200,
       maxWidth: 200,
-      isResizable: false
-    }
+      isResizable: false,
+    },
   ];
 
-  const sortedItems = [...items ? items : []].sort((a, b) => {
-    if (sortKey === "enabledOrNot" ||
-        sortKey === "lastSuccessfulRunTime" ||
-        sortKey === "estimatedNextRunTime" ||
-        sortKey === "targetGroupName" ||
-        sortKey === "targetGroupType" ||
-        sortKey === "actionRequired") {
+  const sortedItems = [...(items ? items : [])].sort((a, b) => {
+    if (
+      sortKey === 'enabledOrNot' ||
+      sortKey === 'lastSuccessfulRunTime' ||
+      sortKey === 'estimatedNextRunTime' ||
+      sortKey === 'targetGroupName' ||
+      sortKey === 'targetGroupType' ||
+      sortKey === 'actionRequired'
+    ) {
       return isSortedDescending
-      ? (b[sortKey] || "").localeCompare(a[sortKey] || "")
-      : (a[sortKey] || "").localeCompare(b[sortKey] || "");
+        ? (b[sortKey] || '').localeCompare(a[sortKey] || '')
+        : (a[sortKey] || '').localeCompare(b[sortKey] || '');
     }
     return 0;
   });
 
-  function onColumnHeaderClick(
-    event?: any,
-    column?: IColumn
-  ) {
+  function onColumnHeaderClick(event?: any, column?: IColumn) {
     if (column) {
       setIsSortedDescending(!!column.isSorted && !column.isSortedDescending);
       setSortKey(column.key);
@@ -239,8 +241,17 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           </div>
         );
 
-        case 'arrow':
-          return <ChevronRightMedIcon />;
+      case 'arrow':
+        return fieldContent ? (
+          <IconButton
+            iconProps={refreshIcon}
+            title="Refresh"
+            ariaLabel="Refresh"
+            onClick={onRefreshClicked}
+          />
+        ) : (
+          <ChevronRightMedIcon />
+        );
 
       default:
         return <span>{fieldContent}</span>;
@@ -292,17 +303,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           onActiveItemChanged={onItemClicked}
           onRenderItemColumn={_renderItemColumn}
         />
-      </div>
-
-      <div className={classNames.tabContent}>
-        <div className={classNames.refresh}>
-          <IconButton
-            iconProps={refreshIcon}
-            title="Refresh"
-            ariaLabel="Refresh"
-            onClick={onRefreshClicked}
-          />
-        </div>
       </div>
     </div>
   );

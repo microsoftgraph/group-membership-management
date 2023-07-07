@@ -15,7 +15,9 @@ export const getStyles = (props: IAppStyleProps): IAppStyles => {
   const classNames = getGlobalClassNames(GlobalClassNames, theme);
 
   return {
-    root: [{}, classNames.root, className],
+    root: [{
+      backgroundColor: theme.palette.neutralLight
+    }, classNames.root, className],
     body: {
       display: 'flex',
       flexDirection: 'row',
@@ -24,13 +26,7 @@ export const getStyles = (props: IAppStyleProps): IAppStyles => {
       boxSizing: 'border-box',
       margin: '0 auto',
     },
-    nav: {
-      width: 324,
-    },
     content: {
-      backgroundColor: theme.palette.white,
-      paddingRight: 40,
-      position: 'relative',
       width: '100%',
     },
   };

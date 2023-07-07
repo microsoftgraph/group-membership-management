@@ -59,7 +59,6 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
       </Stack>
       }
       {children}
-      <Separator></Separator>
     </Stack>
   );
 };

@@ -9,17 +9,20 @@ import { PageHeader } from '../components/PageHeader';
 import { WelcomeName } from '../components/WelcomeName';
 import { Banner } from '../components/Banner';
 import { Stack } from '@fluentui/react';
+import { PageSection } from '../components/PageSection';
 
 export const JobsPage: React.FunctionComponent = () => {
   return (
     <Page>
       <PageHeader backButtonHidden>
-        <Stack horizontalAlign='space-between' horizontal>
+        <Stack horizontalAlign="space-between" horizontal>
           <WelcomeName />
           <Banner />
         </Stack>
       </PageHeader>
-      <JobsList />
+      <PageSection>
+        <JobsList />
+      </PageSection>
     </Page>
   );
 };

@@ -58,7 +58,7 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
     );
   } else {
     return (
-      <div> {t('loading')} </div>
+      <div className={classNames.root}> {t('loading')} </div>
     );
   }
 };

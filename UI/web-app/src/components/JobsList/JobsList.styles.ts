@@ -29,9 +29,7 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       color: theme.semanticColors.errorIcon,
     },
     tabContent: {
-      float: 'left',
       cursor: 'pointer',
-      paddingLeft: 15,
     },
     refresh: {
       padding: 22.5,
