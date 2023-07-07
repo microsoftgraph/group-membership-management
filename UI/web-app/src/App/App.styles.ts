@@ -16,6 +16,7 @@ export const getStyles = (props: IAppStyleProps): IAppStyles => {
 
   return {
     root: [{
+      fontFamily: 'Segoe UI',
       backgroundColor: theme.palette.neutralLight
     }, classNames.root, className],
     body: {
