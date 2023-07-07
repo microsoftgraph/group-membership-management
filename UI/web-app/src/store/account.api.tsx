@@ -5,6 +5,7 @@ import { type AccountInfo } from '@azure/msal-browser';
 import { type IMsalContext } from '@azure/msal-react';
 import { createAsyncThunk } from '@reduxjs/toolkit';
 
+import { graphRequest } from '../authConfig';
 import { msalInstance } from '../index';
 import { type Account } from '../models/Account';
 

@@ -10,6 +10,8 @@ export const getStyles = (props: IPageHeaderStyleProps): IPageHeaderStyles => {
   const { className } = props;
 
   return {
-    root: [{}, className],
+    root: [{
+      padding: '19px 36px'
+    }, className],
   };
 };
