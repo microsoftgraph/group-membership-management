@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.import React from "react";
 
-import { classNamesFunction, IButtonStyles, IconButton, IPersonaSharedProps, IProcessedStyleSet, IStyle, Persona, PersonaSize } from '@fluentui/react';
-import { useTheme } from '@fluentui/react/lib/Theme';
+import { classNamesFunction, IButtonStyles, IconButton, IPersonaSharedProps, IProcessedStyleSet, IStyle, Persona, PersonaSize, useTheme } from '@fluentui/react';
 import { useTranslation } from 'react-i18next';
 import {
   AccountManagementIcon,
