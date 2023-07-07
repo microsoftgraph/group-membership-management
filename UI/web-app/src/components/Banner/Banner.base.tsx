@@ -2,8 +2,6 @@
 // Licensed under the MIT license.
 
 import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
-import { selectAccountName } from '../../store/account.slice';
 import { useTranslation } from 'react-i18next';
 import {
   IButtonProps,
