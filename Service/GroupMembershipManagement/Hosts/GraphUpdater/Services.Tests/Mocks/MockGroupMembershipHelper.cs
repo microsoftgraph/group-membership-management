@@ -22,8 +22,7 @@ namespace Services.Tests.Mocks
 			return new GroupMembership()
 			{
 				Destination = new AzureADGroup { ObjectId = Guid.NewGuid() },
-				SyncJobPartitionKey = Guid.NewGuid().ToString(),
-				SyncJobRowKey = Guid.NewGuid().ToString(),
+				SyncJobId = Guid.NewGuid(),
 				RunId = Guid.NewGuid(),
 				SourceMembers = Enumerable.Range(0, UserCount).Select(
 						x => new AzureADUser { ObjectId = Guid.NewGuid() }).ToList()

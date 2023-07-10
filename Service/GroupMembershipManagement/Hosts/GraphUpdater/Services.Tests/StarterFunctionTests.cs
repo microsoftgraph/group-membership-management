@@ -32,9 +32,8 @@ namespace Services.Tests
             _durableClientMock = new Mock<IDurableOrchestrationClient>();
             _loggerMock = new MockLoggingRepository();
             _syncJob = new SyncJob
-            {
-                PartitionKey = "00-00-0000",
-                RowKey = Guid.NewGuid().ToString(),
+            {                
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = Guid.NewGuid(),
                 ThresholdPercentageForAdditions = 80,
                 ThresholdPercentageForRemovals = 20,
@@ -89,8 +88,7 @@ namespace Services.Tests
             "  }," +
             "  'SourceMembers': []," +
             "  'RunId': '501f6c70-8fe1-496f-8446-befb15b5249a'," +
-            "  'SyncJobRowKey': '0a4cc250-69a0-4019-8298-96bf492aca01'," +
-            "  'SyncJobPartitionKey': '2021-01-01'," +
+            "  'SyncJobId': '0a4cc250-69a0-4019-8298-96bf492aca01'," +
             "  'Errored': false," +
             "  'TotalMessageCount': " + totalMessageCount.ToString() +
             "}";

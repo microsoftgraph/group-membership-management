@@ -46,9 +46,8 @@ namespace Services.Tests
 
             var targetOfficeGroupId = Guid.NewGuid();
             _syncJob = new SyncJob
-            {
-                PartitionKey = "00-00-0000",
-                RowKey = Guid.NewGuid().ToString(),
+            {               
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = targetOfficeGroupId,
                 ThresholdPercentageForAdditions = 80,
                 ThresholdPercentageForRemovals = 20,
@@ -132,7 +131,7 @@ namespace Services.Tests
 
             Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus>()), Times.Never());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
@@ -146,7 +145,7 @@ namespace Services.Tests
 
             Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus>()), Times.Never());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Never());
         }
 
@@ -161,7 +160,7 @@ namespace Services.Tests
             Assert.IsNotNull(_jobTrackerEntity.Object.JobState.DestinationPart);
             Assert.AreEqual(_membershipAggregatorHttpRequest.FilePath, _jobTrackerEntity.Object.JobState.DestinationPart);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus>()), Times.Never());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
@@ -175,7 +174,7 @@ namespace Services.Tests
 
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus>()), Times.Never());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 

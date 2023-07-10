@@ -97,9 +97,8 @@ namespace Services.Tests
             _groupExists = PolicyResult<bool>.Successful(true, new Context());
 
             _syncJob = new SyncJob
-            {
-                PartitionKey = "00-00-0000",
-                RowKey = Guid.NewGuid().ToString(),
+            {                
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = Guid.NewGuid(),
                 ThresholdPercentageForAdditions = 80,
                 ThresholdPercentageForRemovals = 20,
@@ -267,7 +266,7 @@ namespace Services.Tests
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.Exactly(3));
             _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Uploaded membership file")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus>()), Times.Never());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
         }
 
         [TestMethod]
@@ -291,11 +290,11 @@ namespace Services.Tests
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.Exactly(3));
             _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Never());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Membership increase in")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
-            //_syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
-            //                                                        It.IsAny<SyncJob>(),
-            //                                                        It.Is<SyncStatus>(x => x == SyncStatus.Idle)
-            //                                                    )
-            //                                                        , Times.Once());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
+                                                                    It.IsAny<IEnumerable<SyncJob>>(),
+                                                                    It.Is<SyncStatus?>(x => x == SyncStatus.Idle)
+                                                                )
+                                                                    , Times.Once());
 
             _graphAPIService.Verify(x => x.SendEmailAsync(
                                             It.IsAny<string>(),
@@ -356,11 +355,11 @@ namespace Services.Tests
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.Exactly(3));
             _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Never());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Membership decrease in")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
-            //_syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
-            //                                                        It.IsAny<IEnumerable<SyncJob>>(),
-            //                                                        It.Is<SyncStatus?>(x => x == SyncStatus.Idle)
-            //                                                    )
-            //                                                        , Times.Once());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
+                                                                    It.IsAny<IEnumerable<SyncJob>>(),
+                                                                    It.Is<SyncStatus?>(x => x == SyncStatus.Idle)
+                                                                )
+                                                                    , Times.Once());
 
             _graphAPIService.Verify(x => x.SendEmailAsync(
                                             It.IsAny<string>(),
@@ -405,11 +404,11 @@ namespace Services.Tests
                                                     )
                                                         , Times.Once());
 
-            //_syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
-            //                                                        It.IsAny<IEnumerable<SyncJob>>(),
-            //                                                        It.Is<SyncStatus?>(x => x == SyncStatus.ThresholdExceeded)
-            //                                                    )
-            //                                                        , Times.Once());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
+                                                                    It.IsAny<IEnumerable<SyncJob>>(),
+                                                                    It.Is<SyncStatus?>(x => x == SyncStatus.ThresholdExceeded)
+                                                                )
+                                                                    , Times.Once());
         }
 
         [TestMethod]
@@ -443,11 +442,11 @@ namespace Services.Tests
                                                     )
                                                         , Times.Once());
 
-            //_syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
-            //                                                        It.IsAny<IEnumerable<SyncJob>>(),
-            //                                                        It.Is<SyncStatus?>(x => x == SyncStatus.ThresholdExceeded)
-            //                                                    )
-            //                                                        , Times.Once());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
+                                                                    It.IsAny<IEnumerable<SyncJob>>(),
+                                                                    It.Is<SyncStatus?>(x => x == SyncStatus.ThresholdExceeded)
+                                                                )
+                                                                    , Times.Once());
         }
 
         [TestMethod]
@@ -481,11 +480,11 @@ namespace Services.Tests
                                                     )
                                                         , Times.Once());
 
-            //_syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
-            //                                                        It.IsAny<IEnumerable<SyncJob>>(),
-            //                                                        It.Is<SyncStatus?>(x => x == SyncStatus.ThresholdExceeded)
-            //                                                    )
-            //                                                        , Times.Once());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
+                                                                    It.IsAny<IEnumerable<SyncJob>>(),
+                                                                    It.Is<SyncStatus?>(x => x == SyncStatus.ThresholdExceeded)
+                                                                )
+                                                                    , Times.Once());
         }
 
         [TestMethod]
@@ -518,11 +517,11 @@ namespace Services.Tests
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.Exactly(3));
             _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Never());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("A Dry Run Synchronization for")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
-            //_syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
-            //                                                        It.IsAny<IEnumerable<SyncJob>>(),
-            //                                                        It.Is<SyncStatus?>(x => x == SyncStatus.Idle)
-            //                                                    )
-            //                                                        , Times.Once());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
+                                                                    It.IsAny<IEnumerable<SyncJob>>(),
+                                                                    It.Is<SyncStatus?>(x => x == SyncStatus.Idle)
+                                                                )
+                                                                    , Times.Once());
         }
 
         [TestMethod]
@@ -618,7 +617,7 @@ namespace Services.Tests
                                                                  It.IsAny<Dictionary<string, string>>()), Times.Once());
 
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Uploaded membership file")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus>()), Times.Never());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()), Times.Never());
 
             Assert.IsNotNull(response.FilePath);
             Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
@@ -640,8 +639,7 @@ namespace Services.Tests
 
                                         var content = new GroupMembership
                                         {
-                                            SyncJobId = _syncJob?.Id ?? Guid.Empty,
-                                            //SyncJobRowKey = _syncJob?.RowKey,
+                                            SyncJobId = _syncJob?.Id ?? Guid.Empty,                                 
                                             MembershipObtainerDryRunEnabled = false,
                                             RunId = _syncJob?.RunId.Value ?? Guid.Empty,
                                             Exclusionary = true,
@@ -821,7 +819,7 @@ namespace Services.Tests
 
         private string GenerateFileName(SyncJob syncJob, string suffix)
         {
-            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
+            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
             return $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{syncJob.RunId}_{suffix}.json";
         }
     }
