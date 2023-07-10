@@ -28,7 +28,7 @@ namespace Services.Tests
         private Mock<IConfiguration> _configuration = null!;
         private Mock<IFeatureManager> _featureManager = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
-        private Mock<ISyncJobRepository> _syncJobRepository = null!;
+        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<IBlobStorageRepository> _blobStorageRepository = null!;
         private Mock<IOwnershipReaderService> _ownershipReaderService = null!;
@@ -51,7 +51,7 @@ namespace Services.Tests
             _configuration = new Mock<IConfiguration>();
             _featureManager = new Mock<IFeatureManager>();
             _loggingRepository = new Mock<ILoggingRepository>();
-            _syncJobRepository = new Mock<ISyncJobRepository>();
+            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _ownershipReaderService = new Mock<IOwnershipReaderService>();
@@ -87,8 +87,7 @@ namespace Services.Tests
             {
                 new SyncJob
                 {
-                    RowKey = Guid.NewGuid().ToString(),
-                    PartitionKey = "00-00-0000",
+                    Id = Guid.NewGuid(),
                     TargetOfficeGroupId = Guid.NewGuid(),
                     Query = "[{\"type\":\"SecurityGroup\",\"source\":\"00000000-0000-0000-0000-000000000000\"}]",
                     Status = "InProgress",
@@ -96,8 +95,7 @@ namespace Services.Tests
                 },
                 new SyncJob
                 {
-                    RowKey = Guid.NewGuid().ToString(),
-                    PartitionKey = "00-00-0000",
+                    Id = Guid.NewGuid(),
                     TargetOfficeGroupId = Guid.NewGuid(),
                     Query = "[{\"type\":\"CustomType1\",\"source\":\"00000000-0000-0000-0000-000000000001\"}]",
                     Status = "InProgress",
@@ -105,8 +103,7 @@ namespace Services.Tests
                 },
                 new SyncJob
                 {
-                    RowKey = Guid.NewGuid().ToString(),
-                    PartitionKey = "00-00-0000",
+                    Id = Guid.NewGuid(),
                     TargetOfficeGroupId = Guid.NewGuid(),
                     Query = "[{\"type\":\"CustomType2\",\"source\":\"00000000-0000-0000-0000-000000000002\"}]",
                     Status = "InProgress",
@@ -148,8 +145,8 @@ namespace Services.Tests
                                             await CallJobStatusUpdaterFunctionAsync((JobStatusUpdaterRequest)request);
                                         });
 
-            GetJobsSegmentedResponse getJobsSegmentedResponse = null!;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction), It.IsAny<GetJobsSegmentedRequest>()))
+            List<SyncJob> getJobsSegmentedResponse = new List<SyncJob>();
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<List<SyncJob>>(nameof(GetJobsSegmentedFunction), It.IsAny<GetJobsSegmentedRequest>()))
                                         .Callback<string, object>(async (name, request) =>
                                         {
                                             getJobsSegmentedResponse = await CallGetJobsSegmentedFunctionAsync((GetJobsSegmentedRequest)request);
@@ -187,16 +184,8 @@ namespace Services.Tests
                                             await CallTelemetryTrackerFunctionAsync(_telemetryTrackerRequest);
                                         });
 
-            _ownershipReaderService.Setup(x => x.GetSyncJobsSegmentAsync(It.IsAny<string>(), It.IsAny<string>()))
-                                   .ReturnsAsync(() =>
-                                   {
-                                       return new Page<SyncJob>
-                                       {
-                                           Query = "some-query",
-                                           ContinuationToken = null,
-                                           Values = _sampleSyncJobs
-                                       };
-                                   });
+            _ownershipReaderService.Setup(x => x.GetSyncJobsSegmentAsync())
+                                   .ReturnsAsync(() => _sampleSyncJobs);
 
             _ownershipReaderService.Setup(x => x.GetGroupOwnersAsync(It.IsAny<Guid>()))
                                    .ReturnsAsync(() => ownerIds);
@@ -482,7 +471,7 @@ namespace Services.Tests
             await function.UpdateJobStatusAsync(request);
         }
 
-        private async Task<GetJobsSegmentedResponse> CallGetJobsSegmentedFunctionAsync(GetJobsSegmentedRequest request)
+        private async Task<List<SyncJob>> CallGetJobsSegmentedFunctionAsync(GetJobsSegmentedRequest request)
         {
             var function = new GetJobsSegmentedFunction(_loggingRepository.Object, _ownershipReaderService.Object);
             return await function.GetJobsAsync(request);

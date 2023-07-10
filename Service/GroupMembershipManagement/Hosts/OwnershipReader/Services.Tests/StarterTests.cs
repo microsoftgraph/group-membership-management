@@ -19,7 +19,7 @@ namespace Tests.Services
     {
         private Mock<IDryRunValue> _dryRunValue = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
-        private Mock<ISyncJobRepository> _syncJobRepository = null!;
+        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private Mock<IDurableOrchestrationClient> _durableOrchestrationClient = null!;
         private SyncJob _syncJob = null!;
 
@@ -28,13 +28,12 @@ namespace Tests.Services
         {
             _dryRunValue = new Mock<IDryRunValue>();
             _loggingRepository = new Mock<ILoggingRepository>();
-            _syncJobRepository = new Mock<ISyncJobRepository>();
+            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _durableOrchestrationClient = new Mock<IDurableOrchestrationClient>();
 
             _syncJob = new SyncJob
             {
-                RowKey = Guid.NewGuid().ToString(),
-                PartitionKey = "00-00-0000",
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = Guid.NewGuid(),
                 Query = "<query>",
                 Status = "InProgress",
