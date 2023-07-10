@@ -70,6 +70,8 @@ namespace Repositories.EntityFramework
                 var entry = _context.Set<SyncJob>().Add(job);
                 entry.State = EntityState.Modified;
             }
+
+            await _context.SaveChangesAsync();
         }
     }
 }
