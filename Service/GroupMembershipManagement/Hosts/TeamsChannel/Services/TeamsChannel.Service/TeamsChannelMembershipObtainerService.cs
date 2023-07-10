@@ -20,7 +20,7 @@ namespace TeamsChannel.Service
         private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
         private readonly IHttpClientFactory _httpClientFactory;
-        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
         private readonly ILoggingRepository _logger;
         private readonly IFeatureManager _featureManager;
@@ -32,7 +32,7 @@ namespace TeamsChannel.Service
             ITeamsChannelRepository teamsChannelRepository,
             IBlobStorageRepository blobStorageRepository,
             IHttpClientFactory httpClientFactory,
-            ISyncJobRepository syncJobRepository,
+            IDatabaseSyncJobsRepository syncJobRepository,
             ILoggingRepository loggingRepository,
             IFeatureManager featureManager,
             IConfigurationRefresherProvider refresherProvider,
@@ -103,8 +103,7 @@ namespace TeamsChannel.Service
                 SourceMembers = new List<AzureADUser>(users) ?? new List<AzureADUser>(),
                 RunId = runId,
                 Exclusionary = channelSyncInfo.Exclusionary,
-                SyncJobRowKey = channelSyncInfo.SyncJob.RowKey,
-                SyncJobPartitionKey = channelSyncInfo.SyncJob.PartitionKey,
+                SyncJobId = channelSyncInfo.SyncJob.Id,                
                 MembershipObtainerDryRunEnabled = dryRun,
                 Query = channelSyncInfo.SyncJob.Query
             };
