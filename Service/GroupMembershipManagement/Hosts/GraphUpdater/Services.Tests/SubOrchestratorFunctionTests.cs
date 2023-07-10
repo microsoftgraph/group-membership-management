@@ -48,9 +48,8 @@ namespace Services.Tests
             _userCount = 10;
 
             var content = new GroupMembership
-            {
-                SyncJobPartitionKey = "PK",
-                SyncJobRowKey = "RK",
+            {                
+                SyncJobId = Guid.Empty,
                 MembershipObtainerDryRunEnabled = false,
                 RunId = Guid.Empty,
                 SourceMembers = Enumerable.Range(0, _userCount)
@@ -70,8 +69,7 @@ namespace Services.Tests
 
             var syncJob = new SyncJob
             {
-                RowKey = Guid.NewGuid().ToString(),
-                PartitionKey = "00-00-0000",
+                Id = Guid.NewGuid(),               
                 TargetOfficeGroupId = Guid.NewGuid(),
                 Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 Status = "InProgress",

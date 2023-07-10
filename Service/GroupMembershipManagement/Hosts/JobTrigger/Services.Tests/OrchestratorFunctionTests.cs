@@ -6,6 +6,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
 using Repositories.Contracts;
+using Repositories.Logging;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -31,13 +32,10 @@ namespace Services.Tests
 
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
 
-            jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync(It.IsAny<string>(), It.IsAny<string>()))
-                                    .ReturnsAsync(() => new Page<SyncJob>
-                                    {
-                                        Values = syncJobs
-                                    });
+            jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
+                                    .ReturnsAsync(() => syncJobs);
 
-            context.Setup(x => x.CallActivityAsync<GetJobsSegmentedResponse>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<GetJobsSegmentedRequest>()))
+            context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<object>()))
                         .Returns(() => CallGetSyncJobsSegmentAsync(loggingRepository.Object, jobTriggerService.Object));
 
             context.Setup(x => x.CallSubOrchestratorAsync(It.Is<string>(x => x == nameof(SubOrchestratorFunction)), It.IsAny<SyncJob>()));
@@ -64,14 +62,13 @@ namespace Services.Tests
 
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
 
-            context.Setup(x => x.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction), It.IsAny<GetJobsSegmentedRequest>()))
-                        .ReturnsAsync(() => new GetJobsSegmentedResponse
-                        {
-                            Query = null,
-                            JobsSegment = syncJobs,
-                            ContinuationToken = null
-                        });
+            jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
+                                    .ReturnsAsync(() => syncJobs);
 
+            context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<object>()))
+                        .Returns(() => CallGetSyncJobsSegmentAsync(loggingRepository.Object, jobTriggerService.Object));
+
+            context.Setup(x => x.CallSubOrchestratorAsync(It.Is<string>(x => x == nameof(SubOrchestratorFunction)), It.IsAny<SyncJob>()));
             var orchestrator = new OrchestratorFunction(loggingRepository.Object);
             await orchestrator.RunOrchestratorAsync(context.Object);
 
@@ -93,14 +90,13 @@ namespace Services.Tests
 
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
 
-            context.Setup(x => x.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction), It.IsAny<GetJobsSegmentedRequest>()))
-                        .ReturnsAsync(() => new GetJobsSegmentedResponse
-                        {
-                            Query = null,
-                            JobsSegment = syncJobs,
-                            ContinuationToken = null
-                        });
+            jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
+                                    .ReturnsAsync(() => syncJobs);
 
+            context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<object>()))
+                        .Returns(() => CallGetSyncJobsSegmentAsync(loggingRepository.Object, jobTriggerService.Object));
+
+            context.Setup(x => x.CallSubOrchestratorAsync(It.Is<string>(x => x == nameof(SubOrchestratorFunction)), It.IsAny<SyncJob>()));
             var orchestrator = new OrchestratorFunction(loggingRepository.Object);
             await orchestrator.RunOrchestratorAsync(context.Object);
 
@@ -122,20 +118,21 @@ namespace Services.Tests
 
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
 
-            context.SetupSequence(x => x.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction), It.IsAny<GetJobsSegmentedRequest>()))
-                        .ReturnsAsync(() => new GetJobsSegmentedResponse
-                        {
-                            Query = "some-query",
-                            JobsSegment = syncJobs1,
-                            ContinuationToken = "ContinuationTokenDummy"
-                        })
-                        .ReturnsAsync(() => new GetJobsSegmentedResponse
-                        {
-                            Query = null,
-                            JobsSegment = syncJobs2,
-                            ContinuationToken = null
-                        });
+            jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
+                .ReturnsAsync(() => syncJobs1.Concat(syncJobs2).ToList());
 
+            context.SetupSequence(x => x.CallActivityAsync<List<SyncJob>>(nameof(GetJobsSegmentedFunction), It.IsAny<object>()))
+                        .ReturnsAsync(() =>
+                            syncJobs1
+                        )
+                        .ReturnsAsync(() =>
+                           syncJobs2
+                        );
+
+            context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<object>()))
+                        .Returns(() => CallGetSyncJobsSegmentAsync(loggingRepository.Object, jobTriggerService.Object));
+
+            context.Setup(x => x.CallSubOrchestratorAsync(It.Is<string>(x => x == nameof(SubOrchestratorFunction)), It.IsAny<SyncJob>()));
             var orchestrator = new OrchestratorFunction(loggingRepository.Object);
             await orchestrator.RunOrchestratorAsync(context.Object);
 
@@ -143,15 +140,11 @@ namespace Services.Tests
                                 Times.Exactly(syncJobs1.Count + syncJobs2.Count));
         }
 
-        private async Task<GetJobsSegmentedResponse> CallGetSyncJobsSegmentAsync(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
+        private async Task<List<SyncJob>> CallGetSyncJobsSegmentAsync(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
         {
             var getJobsSegmentedFunction = new GetJobsSegmentedFunction(jobTriggerService, loggingRepository);
             var getJobsSegmentedResponse = await getJobsSegmentedFunction.GetJobsToUpdateAsync(
-                new GetJobsSegmentedRequest
-                {
-                    Query = null,
-                    ContinuationToken = null
-                });
+                null);
             return getJobsSegmentedResponse;
         }
     }
