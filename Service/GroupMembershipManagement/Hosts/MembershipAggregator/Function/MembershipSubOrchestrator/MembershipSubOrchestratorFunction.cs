@@ -224,7 +224,7 @@ namespace Hosts.MembershipAggregator
 
         private string GenerateFileName(SyncJob syncJob, string suffix)
         {
-            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
+            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
             return $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{syncJob.RunId}_{suffix}.json";
         }
     }
