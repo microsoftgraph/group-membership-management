@@ -60,10 +60,19 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
   parent: functionApp
   properties: {
     appSettingNames: [
-      'membershipAggregatorUrl'
-      'membershipAggregatorFunctionKey'
       'AzureFunctionsJobHost__extensions__durableTask__hubName'
-      // TODO ADD ACTIVITY FUNCTIONS
+      'AzureWebJobs.StarterFunction.Disabled'
+      'AzureWebJobs.OrchestratorFunction.Disabled'
+      'AzureWebJobs.JobReaderFunction.Disabled'
+      'AzureWebJobs.FileDownloaderFunction.Disabled'
+      'AzureWebJobs.LoggerFunction.Disabled'
+      'AzureWebJobs.EmailSenderFunction.Disabled'
+      'AzureWebJobs.GroupOwnersReaderFunction.Disabled'
+      'AzureWebJobs.GroupNameReaderFunction.Disabled'
+      'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
+      'AzureWebJobs.TelemetryTrackerFunction.Disabled'
+      'AzureWebJobs.TeamsChannelUpdaterSubOrchestratorFunction.Disabled'
+      'AzureWebJobs.TeamsUpdaterFunction.Disabled'
     ]
   }
 }
