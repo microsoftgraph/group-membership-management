@@ -43,7 +43,7 @@ namespace Services.Tests
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
             EmailSenderRecipient mailSenders;
-            MockSyncJobRepository mockSyncJobRepo;
+            MockDatabaseSyncJobRepository mockSyncJobRepo;
             MockGraphGroupRepository mockGroupRepo;
             ThresholdConfig thresholdConfig;
             MockLocalizationRepository localizationRepository;
@@ -60,7 +60,7 @@ namespace Services.Tests
                                             "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
 
             mockGroupRepo = new MockGraphGroupRepository();
-            mockSyncJobRepo = new MockSyncJobRepository();
+            mockSyncJobRepo = new MockDatabaseSyncJobRepository();
             localizationRepository = new MockLocalizationRepository();
             blobStorageRepository = new MockBlobStorageRepository();
 
@@ -68,8 +68,7 @@ namespace Services.Tests
             var destinationMembers = GetGroupMembership();
             var syncJob = new SyncJob
             {
-                PartitionKey = groupMembership.SyncJobPartitionKey,
-                RowKey = groupMembership.SyncJobRowKey,
+                Id = groupMembership.SyncJobId,   
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
                 Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
                 ThresholdPercentageForAdditions = -1,
@@ -96,14 +95,13 @@ namespace Services.Tests
 
             var jobReaderRequest = new JobReaderRequest
             {
-                JobPartitionKey = syncJob.PartitionKey,
-                JobRowKey = syncJob.RowKey,
+                JobId = syncJob.Id,                
                 RunId = syncJob.RunId.Value
             };
 
             _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
 
-            mockGraphUpdaterService.Jobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
+            mockGraphUpdaterService.Jobs.Add(syncJob);
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
 
@@ -144,9 +142,7 @@ namespace Services.Tests
 
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
             Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
-            Assert.AreEqual(logProperties["PartitionKey"], syncJob.PartitionKey);
-            Assert.AreEqual(logProperties["RowKey"], syncJob.RowKey);
-            Assert.AreEqual(SyncStatus.Idle.ToString(), mockGraphUpdaterService.Jobs[(syncJob.PartitionKey, syncJob.RowKey)].Status);
+            Assert.AreEqual(SyncStatus.Idle.ToString(), mockGraphUpdaterService.Jobs[0].Status);
         }
 
         [TestMethod]
@@ -159,7 +155,7 @@ namespace Services.Tests
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
             EmailSenderRecipient mailSenders;
-            MockSyncJobRepository mockSyncJobRepo;
+            MockDatabaseSyncJobRepository mockSyncJobRepo;
             MockGraphGroupRepository mockGroupRepo;
             ThresholdConfig thresholdConfig;
             MockLocalizationRepository localizationRepository;
@@ -176,15 +172,14 @@ namespace Services.Tests
 
 
             mockGroupRepo = new MockGraphGroupRepository();
-            mockSyncJobRepo = new MockSyncJobRepository();
+            mockSyncJobRepo = new MockDatabaseSyncJobRepository();
             localizationRepository = new MockLocalizationRepository();
 
             var groupMembership = GetGroupMembership();
             var destinationMembers = GetGroupMembership();
             var syncJob = new SyncJob
             {
-                PartitionKey = groupMembership.SyncJobPartitionKey,
-                RowKey = groupMembership.SyncJobRowKey,
+                Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
                 Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
                 ThresholdPercentageForAdditions = -1,
@@ -225,8 +220,7 @@ namespace Services.Tests
                                                     DisplayName = "Test Group"
                                                 });
 
-
-            mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
+            await mockSyncJobRepo.AddSyncJobAsync(syncJob);
 
             Mock<IGraphUpdaterService> graphUpdaterService = new Mock<IGraphUpdaterService>();
             graphUpdaterService.Setup(x => x.GetGroupOwnersAsync(It.IsAny<Guid>(), It.IsAny<int>())).ReturnsAsync(owners);
@@ -264,8 +258,7 @@ namespace Services.Tests
 
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
             Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
-            Assert.AreEqual(logProperties["PartitionKey"], syncJob.PartitionKey);
-            Assert.AreEqual(logProperties["RowKey"], syncJob.RowKey);
+            Assert.AreEqual(logProperties["Id"], syncJob.Id.ToString());
             Assert.AreEqual(1, mockMailRepo.SentEmails.Count);
             Assert.AreEqual(7, mockMailRepo.SentEmails[0].AdditionalContentParams.Length);
             Assert.AreEqual(ownerEmails, mockMailRepo.SentEmails[0].ToEmailAddresses);
@@ -282,7 +275,7 @@ namespace Services.Tests
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
             EmailSenderRecipient mailSenders;
-            MockSyncJobRepository mockSyncJobRepo;
+            MockDatabaseSyncJobRepository mockSyncJobRepo;
             MockGraphGroupRepository mockGroupRepo;
             ThresholdConfig thresholdConfig;
             MockLocalizationRepository localizationRepository;
@@ -302,15 +295,14 @@ namespace Services.Tests
 
 
             mockGroupRepo = new MockGraphGroupRepository();
-            mockSyncJobRepo = new MockSyncJobRepository();
+            mockSyncJobRepo = new MockDatabaseSyncJobRepository();
             localizationRepository = new MockLocalizationRepository();
 
             var groupMembership = GetGroupMembership();
             var destinationMembers = GetGroupMembership();
             var syncJob = new SyncJob
             {
-                PartitionKey = groupMembership.SyncJobPartitionKey,
-                RowKey = groupMembership.SyncJobRowKey,
+                Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
                 Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
                 ThresholdPercentageForAdditions = -1,
@@ -369,8 +361,7 @@ namespace Services.Tests
 
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
             Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
-            Assert.AreEqual(logProperties["PartitionKey"], syncJob.PartitionKey);
-            Assert.AreEqual(logProperties["RowKey"], syncJob.RowKey);
+            Assert.AreEqual(logProperties["Id"], syncJob.Id.ToString());
         }
 
         [TestMethod]
@@ -382,7 +373,7 @@ namespace Services.Tests
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
             EmailSenderRecipient mailSenders;
-            MockSyncJobRepository mockSyncJobRepo;
+            MockDatabaseSyncJobRepository mockSyncJobRepo;
             MockGraphGroupRepository mockGroupRepo;
             ThresholdConfig thresholdConfig;
             MockLocalizationRepository localizationRepository;
@@ -402,7 +393,7 @@ namespace Services.Tests
 
 
             mockGroupRepo = new MockGraphGroupRepository();
-            mockSyncJobRepo = new MockSyncJobRepository();
+            mockSyncJobRepo = new MockDatabaseSyncJobRepository();
             localizationRepository = new MockLocalizationRepository();
 
             var groupMembership = GetGroupMembership();
@@ -442,7 +433,7 @@ namespace Services.Tests
             DryRunValue dryRun;
 
             EmailSenderRecipient mailSenders;
-            MockSyncJobRepository mockSyncJobRepo;
+            MockDatabaseSyncJobRepository mockSyncJobRepo;
             MockGraphGroupRepository mockGroupRepo;
 
             ThresholdConfig thresholdConfig;
@@ -462,7 +453,7 @@ namespace Services.Tests
 
 
             mockGroupRepo = new MockGraphGroupRepository();
-            mockSyncJobRepo = new MockSyncJobRepository();
+            mockSyncJobRepo = new MockDatabaseSyncJobRepository();
             localizationRepository = new MockLocalizationRepository();
             blobStorageRepository = new MockBlobStorageRepository();
 
@@ -470,8 +461,7 @@ namespace Services.Tests
             var destinationMembers = GetGroupMembership();
             var syncJob = new SyncJob
             {
-                PartitionKey = groupMembership.SyncJobPartitionKey,
-                RowKey = groupMembership.SyncJobRowKey,
+                Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
                 Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
                 ThresholdPercentageForAdditions = -1,
@@ -508,7 +498,7 @@ namespace Services.Tests
                     .Returns(async () => await CheckIfGroupExistsAsync(groupMembership, mockLoggingRepo, mockGraphUpdaterService, mailSenders));
 
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
-            mockSyncJobRepo.ExistingSyncJobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
+            mockSyncJobRepo.Jobs.Add(syncJob);
 
             var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
             await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestrator.RunOrchestratorAsync(context.Object, executionContext.Object));
@@ -524,7 +514,7 @@ namespace Services.Tests
             DryRunValue dryRun;
 
             EmailSenderRecipient mailSenders;
-            MockSyncJobRepository mockSyncJobRepo;
+            MockDatabaseSyncJobRepository mockSyncJobRepo;
             MockGraphGroupRepository mockGroupRepo;
 
             ThresholdConfig thresholdConfig;
@@ -542,15 +532,14 @@ namespace Services.Tests
                                             "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
 
             mockGroupRepo = new MockGraphGroupRepository();
-            mockSyncJobRepo = new MockSyncJobRepository();
+            mockSyncJobRepo = new MockDatabaseSyncJobRepository();
             localizationRepository = new MockLocalizationRepository();
 
             var groupMembership = GetGroupMembership();
             var destinationMembers = GetGroupMembership();
             var syncJob = new SyncJob
             {
-                PartitionKey = groupMembership.SyncJobPartitionKey,
-                RowKey = groupMembership.SyncJobRowKey,
+                Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
                 Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
                 ThresholdPercentageForAdditions = -1,
@@ -598,8 +587,7 @@ namespace Services.Tests
 
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
             Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
-            Assert.AreEqual(logProperties["PartitionKey"], syncJob.PartitionKey);
-            Assert.AreEqual(logProperties["RowKey"], syncJob.RowKey);
+            Assert.AreEqual(logProperties["Id"], syncJob.Id.ToString());
         }
 
         [TestMethod]
@@ -611,7 +599,7 @@ namespace Services.Tests
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
             EmailSenderRecipient mailSenders;
-            MockSyncJobRepository mockSyncJobRepo;
+            MockDatabaseSyncJobRepository mockSyncJobRepo;
             MockGraphGroupRepository mockGroupRepo;
             ThresholdConfig thresholdConfig;
             MockLocalizationRepository localizationRepository;
@@ -629,7 +617,7 @@ namespace Services.Tests
                                             "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
 
             mockGroupRepo = new MockGraphGroupRepository();
-            mockSyncJobRepo = new MockSyncJobRepository();
+            mockSyncJobRepo = new MockDatabaseSyncJobRepository();
             localizationRepository = new MockLocalizationRepository();
             blobStorageRepository = new MockBlobStorageRepository();
 
@@ -654,8 +642,7 @@ namespace Services.Tests
             var destinationMembers = GetGroupMembership();
             var syncJob = new SyncJob
             {
-                PartitionKey = groupMembership.SyncJobPartitionKey,
-                RowKey = groupMembership.SyncJobRowKey,
+                Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
                 Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
                 ThresholdPercentageForAdditions = -1,
@@ -682,12 +669,11 @@ namespace Services.Tests
 
             var jobReaderRequest = new JobReaderRequest
             {
-                JobPartitionKey = syncJob.PartitionKey,
-                JobRowKey = syncJob.RowKey,
+                JobId = syncJob.Id,
                 RunId = syncJob.RunId.Value
             };
 
-            mockGraphUpdaterService.Jobs.Add((syncJob.PartitionKey, syncJob.RowKey), syncJob);
+            mockGraphUpdaterService.Jobs.Add(syncJob);
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
             blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
 
@@ -747,8 +733,7 @@ namespace Services.Tests
             {
                 RunId = groupMembership.RunId,
                 GroupId = groupMembership.Destination.ObjectId,
-                JobPartitionKey = groupMembership.SyncJobPartitionKey,
-                JobRowKey = groupMembership.SyncJobRowKey
+                JobId = groupMembership.SyncJobId
             };
             var groupValidatorFunction = new GroupValidatorFunction(mockLoggingRepo, mockGraphUpdaterService, mailSenders);
 
@@ -774,15 +759,13 @@ namespace Services.Tests
             "  'Destination': {" +
             "    'ObjectId': 'dc04c21f-091a-44a9-a661-9211dd9ccf35'" +
             "  }," +
-            "  'SourceMembers': []," +
-            "  'RunId': '501f6c70-8fe1-496f-8446-befb15b5249a'," +
-            "  'SyncJobRowKey': '0a4cc250-69a0-4019-8298-96bf492aca01'," +
-            "  'SyncJobPartitionKey': '2021-01-01'," +
+            "  'SyncJobId': '601f6c70-8fe1-496f-8446-befb15b5249a'," +
+            "  'SourceMembers': []," +           
+            "  'RunId': '501f6c70-8fe1-496f-8446-befb15b5249a'," +          
             "  'Errored': false," +
             "  'IsLastMessage': true" +
             "}";
             var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(json);
-
             return groupMembership;
         }
 

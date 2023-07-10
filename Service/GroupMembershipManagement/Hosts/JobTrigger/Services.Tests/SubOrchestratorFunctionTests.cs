@@ -218,7 +218,7 @@ namespace Services.Tests
                         var gmmResources = new Mock<IGMMResources>();
                         var mailRepository = new Mock<IMailRepository>();
                         var jobTriggerConfig = new Mock<IJobTriggerConfig>();
-                        var syncJobRepository = new Mock<ISyncJobRepository>();
+                        var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
                         var graphGroupRepository = new Mock<IGraphGroupRepository>();
                         var gmmAppId = new Mock<IKeyVaultSecret<IJobTriggerService>>();
                         var emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
@@ -288,7 +288,7 @@ namespace Services.Tests
                         var gmmResources = new Mock<IGMMResources>();
                         var mailRepository = new Mock<IMailRepository>();
                         var jobTriggerConfig = new Mock<IJobTriggerConfig>();
-                        var syncJobRepository = new Mock<ISyncJobRepository>();
+                        var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
                         var graphGroupRepository = new Mock<IGraphGroupRepository>();
                         var gmmAppId = new Mock<IKeyVaultSecret<IJobTriggerService>>();
                         var emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();

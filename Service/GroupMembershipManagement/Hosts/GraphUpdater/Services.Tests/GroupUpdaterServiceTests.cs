@@ -26,7 +26,7 @@ namespace Services.Tests
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
-            var mockSynJobs = new MockSyncJobRepository();
+            var mockSynJobs = new MockDatabaseSyncJobRepository();
 
             var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs);
 
@@ -57,7 +57,7 @@ namespace Services.Tests
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
-            var mockSynJobs = new MockSyncJobRepository();
+            var mockSynJobs = new MockDatabaseSyncJobRepository();
 
             var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs);
 
