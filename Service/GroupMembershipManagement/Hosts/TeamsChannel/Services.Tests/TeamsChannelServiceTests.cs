@@ -21,7 +21,7 @@ namespace Services.Tests
     {
         private TeamsChannelMembershipObtainerService _service = null!;
         private ChannelSyncInfo _syncInfo = null!;
-        private Mock<ISyncJobRepository> _syncJobRepository = null!;
+        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository = null!;
         private Mock<IBlobStorageRepository> _mockBlobStorageRepository = null!;
         private Mock<IHttpClientFactory> _mockHttpClientFactory = null!;
@@ -55,7 +55,7 @@ namespace Services.Tests
                 .ReturnsAsync((AzureADTeamsChannel tc, Guid _) => tc.ChannelId == "some channel" ? "Private" : "Standard");
 
             _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
-            _syncJobRepository = new Mock<ISyncJobRepository>();
+            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
 
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
             _loggingRepository = new Mock<ILoggingRepository>();
