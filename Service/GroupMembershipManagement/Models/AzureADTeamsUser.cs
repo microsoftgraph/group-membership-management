@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Newtonsoft.Json;
 using System;
 using System.Diagnostics.CodeAnalysis;
 
@@ -13,10 +12,8 @@ namespace Models.Entities
     [ExcludeFromCodeCoverage]
     public class AzureADTeamsUser : AzureADUser, IEquatable<AzureADTeamsUser>
     {
-        [JsonProperty(NullValueHandling = NullValueHandling.Include)]
         public string ConversationMemberId { get; set; }
 
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public override object Properties
 		{
             get

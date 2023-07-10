@@ -18,4 +18,5 @@
     <ProjectReference Include="..\..\Services.Contracts\TeamsChannelMembershipObtainer.Service.Contracts.csproj" />
   </ItemGroup>
 
+
 </Project>

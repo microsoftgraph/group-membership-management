@@ -111,9 +111,15 @@ namespace TeamsChannel.Service
 
             var timeStamp = channelSyncInfo.SyncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
             var fileName = $"/{channelSyncInfo.SyncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_TeamsChannel_{channelSyncInfo.CurrentPart}.json";
+            var serializerSettings = new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore, // Ignores null values during serialization
+                DefaultValueHandling = DefaultValueHandling.Ignore
+            };
+
 
             await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, uploading {users.Count} users to {fileName}.", RunId = runId });
-            await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
+            await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership, serializerSettings));
             await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, uploaded {users.Count} users to {fileName}.", RunId = runId });
 
             return fileName;
