@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.Graph;
 using Models;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Services.Entities;
@@ -55,7 +56,7 @@ namespace Repositories.GraphGroups
             //You can, in theory, send batches of 20 requests of 20 group adds each
             // but Graph starts saying "Service Unavailable" for a bunch of them if you do that, so only send so many at once
             // 5 seems to be the most without it starting to throw errors that have to be retried
-            return BatchAndSend(users, b => MakeBulkAddRequest(b, targetGroup.ObjectId), GraphBatchLimit, 5);
+            return BatchAndSend(users, b => MakeBulkAddRequest(b, targetGroup.ObjectId), GraphBatchLimit, 5, targetGroup.ObjectId);
         }
 
         private HttpRequestMessage MakeBulkAddRequest(List<AzureADUser> batch, Guid targetGroup)
@@ -79,7 +80,7 @@ namespace Repositories.GraphGroups
             RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
             // This, however, is the most we can send per delete batch, and it works pretty well.
-            return BatchAndSend(users, b => MakeBulkRemoveRequest(b, targetGroup.ObjectId), 1, GraphBatchLimit);
+            return BatchAndSend(users, b => MakeBulkRemoveRequest(b, targetGroup.ObjectId), 1, GraphBatchLimit, targetGroup.ObjectId);
         }
 
         private HttpRequestMessage MakeBulkRemoveRequest(List<AzureADUser> batch, Guid targetGroup)
@@ -93,10 +94,10 @@ namespace Repositories.GraphGroups
             return new HttpRequestMessage(HttpMethod.Delete, $"https://graph.microsoft.com/v1.0/groups/{targetGroup}/members/{toRemove}/$ref");
         }
 
-        private string GetNewChunkId() => $"{Guid.NewGuid().ToString().Replace("-", string.Empty)}-";
+        private string GetNewChunkId() => $"{Guid.NewGuid().ToString().Replace("-", string.Empty)}";
 
         private async Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)>
-            BatchAndSend(IEnumerable<AzureADUser> users, MakeBulkRequest makeRequest, int requestMax, int batchSize)
+            BatchAndSend(IEnumerable<AzureADUser> users, MakeBulkRequest makeRequest, int requestMax, int batchSize, Guid targetGroupId)
         {
             if (!users.Any()) { return (ResponseCode.Ok, 0, new List<AzureADUser>(), new List<AzureADUser>()); }
 
@@ -108,13 +109,13 @@ namespace Repositories.GraphGroups
                         Id = x[0].MembershipAction == MembershipAction.Add ? GetNewChunkId() : x[0].ObjectId.ToString()
                     }));
 
-            var responses = await Task.WhenAll(Enumerable.Range(0, ConcurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize)));
+            var responses = await Task.WhenAll(Enumerable.Range(0, ConcurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize, targetGroupId)));
 
             var status = responses.Any(x => x.ResponseCode == ResponseCode.Error) ? ResponseCode.Error : ResponseCode.Ok;
             return (status, responses.Sum(x => x.SuccessCount), _usersNotFound, _usersAlreadyExist);
         }
 
-        private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessQueue(ConcurrentQueue<ChunkOfUsers> queue, MakeBulkRequest makeRequest, int threadNumber, int batchSize)
+        private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessQueue(ConcurrentQueue<ChunkOfUsers> queue, MakeBulkRequest makeRequest, int threadNumber, int batchSize, Guid targetGroupId)
         {
             var successCount = 0;
             var maxNumberOfRequests = batchSize * GraphBatchLimit;
@@ -131,7 +132,7 @@ namespace Repositories.GraphGroups
                     else
                     {
                         queue.Enqueue(step);
-                        var response = await ProcessBatch(queue, toSend, makeRequest, threadNumber);
+                        var response = await ProcessBatch(queue, toSend, makeRequest, threadNumber, targetGroupId);
                         toSend.Clear();
 
                         successCount += response.SuccessCount;
@@ -143,7 +144,7 @@ namespace Repositories.GraphGroups
 
                 if (toSend.Any())
                 {
-                    var response = await ProcessBatch(queue, toSend, makeRequest, threadNumber);
+                    var response = await ProcessBatch(queue, toSend, makeRequest, threadNumber, targetGroupId);
 
                     successCount += response.SuccessCount;
 
@@ -156,19 +157,23 @@ namespace Repositories.GraphGroups
             return (ResponseCode.Ok, successCount);
         }
 
-        private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessBatch(ConcurrentQueue<ChunkOfUsers> queue, List<ChunkOfUsers> toSend, MakeBulkRequest makeRequest, int threadNumber)
+        private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessPatchBatch(ConcurrentQueue<ChunkOfUsers> queue, List<ChunkOfUsers> toSend, MakeBulkRequest makeRequest, int threadNumber)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Thread number {threadNumber}: Sending a batch of {toSend.Count} requests.", RunId = RunId }, VerbosityLevel.DEBUG);
             int requeued = 0;
             bool hasUnrecoverableErrors = false;
-            var successfulRequests = toSend.SelectMany(x => x.ToSend).ToList().Count;
+            var successfulRequests = toSend.Where(x => !x.SendAsPostRequest).SelectMany(x => x.ToSend).ToList().Count;
 
             try
             {
-                var batchRequestSteps = toSend.Select(x => new BatchRequestStep(x.Id, makeRequest(x.ToSend))).ToArray();
+                var patchRequests = toSend.Where(x => !x.SendAsPostRequest).ToList();
+                if (!patchRequests.Any())
+                    return (ResponseCode.Ok, 0);
+
+                var batchRequestSteps = patchRequests.Select(x => new BatchRequestStep(x.Id, makeRequest(x.ToSend))).ToArray();
                 var batchRequestContent = new BatchRequestContent(_graphServiceClient, batchRequestSteps);
 
-                await foreach (var idToRetry in await SendBatch(batchRequestContent))
+                foreach (var idToRetry in await SendBatch(batchRequestContent))
                 {
                     var chunkToRetry = toSend.First(x => x.Id == idToRetry.RequestId);
 
@@ -182,6 +187,8 @@ namespace Repositories.GraphGroups
 
                     if (chunkToRetry.ShouldRetry)
                     {
+                        chunkToRetry.UpdateIdForRetry();
+
                         // Not found
                         if (!string.IsNullOrWhiteSpace(idToRetry.AzureObjectId))
                         {
@@ -197,44 +204,44 @@ namespace Repositories.GraphGroups
                             }
                         }
 
-                        // Break down request for individual retries
+                        // Flag for individual retries
+                        // It will be immedialtely retried within ProcessPostBatch
                         if (chunkToRetry.ToSend.Count > 1 && (idToRetry.ResponseCode == ResponseCode.IndividualRetry || idToRetry.ResponseCode == ResponseCode.IndividualRetryAlreadyExists))
                         {
-                            var chunksOfUsers = chunkToRetry.ToSend.Select(x => new ChunkOfUsers
-                            {
-                                Id = x.ObjectId.ToString(),
-                                ToSend = new List<AzureADUser> { x }
-                            });
-
-                            foreach (var chunk in chunksOfUsers)
-                            {
-                                requeued++;
-                                queue.Enqueue(chunk.UpdateIdForRetry(threadNumber));
-                                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Queued {chunk.Id} from {chunkToRetry.Id}", RunId = RunId });
-                            }
-
-                            chunkToRetry.ToSend.Clear();
+                            chunkToRetry.SendAsPostRequest = true;
+                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set {chunkToRetry.Id} as POST request", RunId = RunId });
+                            continue;
                         }
 
                         if (chunkToRetry.ToSend.Count > 0)
                         {
-                            if (chunkToRetry.ToSend.Count == 1 && idToRetry.ResponseCode == ResponseCode.IndividualRetryAlreadyExists && idToRetry.HttpStatusCode == HttpStatusCode.BadRequest)
+                            if (chunkToRetry.ToSend.Count == 1 && idToRetry.HttpStatusCode == HttpStatusCode.BadRequest)
                             {
-                                await _loggingRepository.LogMessageAsync(new LogMessage
+                                if (idToRetry.ResponseCode == ResponseCode.IndividualRetryAlreadyExists)
                                 {
-                                    Message = $"{chunkToRetry.Id} already exists",
-                                    RunId = RunId
-                                });
+                                    await _loggingRepository.LogMessageAsync(new LogMessage
+                                    {
+                                        Message = $"{chunkToRetry.Id} already exists",
+                                        RunId = RunId
+                                    });
 
-                                _usersAlreadyExist.Add(chunkToRetry.ToSend[0]);
+                                    _usersAlreadyExist.Add(chunkToRetry.ToSend[0]);
+                                }
+                                else
+                                {
+                                    await _loggingRepository.LogMessageAsync(new LogMessage
+                                    {
+                                        Message = $"{chunkToRetry.Id} was not removed as it could not be found",
+                                        RunId = RunId
+                                    });
+                                }
                             }
 
                             else
                             {
                                 requeued++;
-                                var originalId = chunkToRetry.Id;
-                                queue.Enqueue(chunkToRetry.UpdateIdForRetry(threadNumber));
-                                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId} as {chunkToRetry.Id}", RunId = RunId });
+                                queue.Enqueue(chunkToRetry);
+                                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Requeued {chunkToRetry.Id}-{chunkToRetry.RetryCount}", RunId = RunId });
                             }
                         }
                     }
@@ -260,9 +267,9 @@ namespace Repositories.GraphGroups
                     if (chunk.ShouldRetry)
                     {
                         var originalId = chunk.Id;
-                        queue.Enqueue(chunk.UpdateIdForRetry(threadNumber));
+                        queue.Enqueue(chunk.UpdateIdForRetry());
 
-                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId} as {chunk.Id}", RunId = RunId });
+                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Requeued {originalId}-{chunk.RetryCount} ", RunId = RunId });
                     }
                 }
             }
@@ -271,14 +278,91 @@ namespace Repositories.GraphGroups
             return (status, successfulRequests);
         }
 
-        private async Task<IAsyncEnumerable<RetryResponse>> SendBatch(BatchRequestContent tosend)
+        private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessPostBatch(ConcurrentQueue<ChunkOfUsers> queue, List<ChunkOfUsers> toSend, Guid targetGroupId)
+        {
+            (ResponseCode ResponseCode, int SuccessCount) postResponse = (ResponseCode.Ok, 0);
+            var successfulRequests = 0;
+            var postRequests = toSend.Where(x => x.SendAsPostRequest && x.ShouldRetry).ToList();
+            if (postRequests.Count > 0)
+            {
+                foreach (var request in postRequests)
+                {
+                    successfulRequests += request.ToSend.Count;
+
+                    var responses = await SendBatch(CreatePOSTBatchRequestContent(request, targetGroupId));
+                    foreach (var response in responses)
+                    {
+                        if (response.ResponseCode != ResponseCode.Ok)
+                            successfulRequests--;
+
+                        if (response.HttpStatusCode == HttpStatusCode.NotFound || response.HttpStatusCode == HttpStatusCode.BadRequest)
+                        {
+                            var stepToRemove = request.ToSend.FirstOrDefault(x => x.ObjectId.ToString() == response.RequestId);
+                            if (stepToRemove != null)
+                                request.ToSend.Remove(stepToRemove);
+                        }
+                    }
+
+                    // remove successful requests from the chunk, we only want to retry the ones that failed
+                    var responseIds = responses.Select(x => Guid.Parse(x.RequestId)).ToList();
+                    request.ToSend.RemoveAll(x => !responseIds.Contains(x.ObjectId));
+
+                    if (request.ToSend.Any())
+                    {
+                        request.UpdateIdForRetry();
+                        queue.Enqueue(request);
+                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Requeued {request.Id}-{request.RetryCount}", RunId = RunId });
+                    }
+                }
+            }
+
+            return postResponse;
+        }
+
+        private BatchRequestContent CreatePOSTBatchRequestContent(ChunkOfUsers chunkOfUsers, Guid targetGroupId)
+        {
+            var batchRequestContent = new BatchRequestContent(_graphServiceClient);
+            foreach (var user in chunkOfUsers.ToSend)
+            {
+                var httpMethod = user.MembershipAction == MembershipAction.Add ? HttpMethod.Post : HttpMethod.Delete;
+
+                JObject body = new JObject
+                {
+                    ["@odata.id"] = $"https://graph.microsoft.com/v1.0/directoryObjects/{user.ObjectId}"
+                };
+
+                var json = body.ToString(Newtonsoft.Json.Formatting.None);
+                var request = new HttpRequestMessage(httpMethod, $"https://graph.microsoft.com/v1.0/groups/{targetGroupId}/members/$ref")
+                {
+                    Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
+                };
+
+                batchRequestContent.AddBatchRequestStep(new BatchRequestStep(user.ObjectId.ToString(), request));
+            }
+
+            return batchRequestContent;
+        }
+
+        private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessBatch(ConcurrentQueue<ChunkOfUsers> queue, List<ChunkOfUsers> toSend, MakeBulkRequest makeRequest, int threadNumber, Guid targetGroupId)
+        {
+
+            (ResponseCode ResponseCode, int SuccessCount) patchResponse = await ProcessPatchBatch(queue, toSend, makeRequest, threadNumber);
+            (ResponseCode ResponseCode, int SuccessCount) postResponse = await ProcessPostBatch(queue, toSend, targetGroupId);
+
+            return (patchResponse.ResponseCode == ResponseCode.Ok && postResponse.ResponseCode == ResponseCode.Ok
+                    ? ResponseCode.Ok
+                    : ResponseCode.Error, patchResponse.SuccessCount + postResponse.SuccessCount);
+
+        }
+
+        private async Task<List<RetryResponse>> SendBatch(BatchRequestContent tosend)
         {
             try
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sending requests {string.Join(",", tosend.BatchRequestSteps.Keys)}.", RunId = RunId });
 
                 var response = await _graphServiceClient.Batch.PostAsync(tosend);
-                return GetStepIdsToRetry(await response.GetResponsesAsync(), (Dictionary<string, BatchRequestStep>)tosend.BatchRequestSteps);
+                return await GetStepIdsToRetry(await response.GetResponsesAsync(), (Dictionary<string, BatchRequestStep>)tosend.BatchRequestSteps);
             }
             catch (ServiceException ex)
             {
@@ -314,9 +398,10 @@ namespace Repositories.GraphGroups
             return error.Contains(_alreadyExistsResponseError);
         }
 
-        private async IAsyncEnumerable<RetryResponse> GetStepIdsToRetry(
+        private async Task<List<RetryResponse>> GetStepIdsToRetry(
             Dictionary<string, HttpResponseMessage> responses, Dictionary<string, BatchRequestStep> requests)
         {
+            var retryResponses = new List<RetryResponse>();
             bool beenThrottled = false;
 
             var resourceUnitsUsed = _graphGroupMetricTracker.GetMetric(nameof(Metric.ResourceUnitsUsed));
@@ -347,25 +432,27 @@ namespace Repositories.GraphGroups
                     RunId = RunId
                 }, VerbosityLevel.DEBUG);
 
-
                 // Note that the ones with empty bodies mean "this response is okay and we don't have to do anything about it."
-                if (status == HttpStatusCode.BadRequest && IsNotFoundError(content))
+                if (status == HttpStatusCode.BadRequest)
                 {
-                    yield return new RetryResponse
+                    if (IsAlreadyExistsError(content))
                     {
-                        RequestId = kvp.Key,
-                        ResponseCode = ResponseCode.IndividualRetry,
-                        HttpStatusCode = HttpStatusCode.BadRequest
-                    };
-                }
-                if (status == HttpStatusCode.BadRequest && IsAlreadyExistsError(content))
-                {
-                    yield return new RetryResponse
+                        retryResponses.Add(new RetryResponse
+                        {
+                            RequestId = kvp.Key,
+                            ResponseCode = ResponseCode.IndividualRetryAlreadyExists,
+                            HttpStatusCode = HttpStatusCode.BadRequest
+                        });
+                    }
+                    else
                     {
-                        RequestId = kvp.Key,
-                        ResponseCode = ResponseCode.IndividualRetryAlreadyExists,
-                        HttpStatusCode = HttpStatusCode.BadRequest
-                    };
+                        retryResponses.Add(new RetryResponse
+                        {
+                            RequestId = kvp.Key,
+                            ResponseCode = ResponseCode.IndividualRetry,
+                            HttpStatusCode = HttpStatusCode.BadRequest
+                        });
+                    }
                 }
                 else if (status == HttpStatusCode.NotFound && (content).Contains("does not exist or one of its queried reference-property objects are not present."))
                 {
@@ -413,19 +500,21 @@ namespace Repositories.GraphGroups
                             RunId = RunId
                         });
 
-                        yield return new RetryResponse
+                        retryResponses.Add(new RetryResponse
                         {
                             RequestId = kvp.Key,
-                            ResponseCode = ResponseCode.IndividualRetry
-                        };
+                            ResponseCode = ResponseCode.IndividualRetry,
+                            HttpStatusCode = HttpStatusCode.NotFound
+                        });
                     }
 
-                    yield return new RetryResponse
+                    retryResponses.Add(new RetryResponse
                     {
                         RequestId = kvp.Key,
                         ResponseCode = ResponseCode.IndividualRetry,
-                        AzureObjectId = userId
-                    };
+                        AzureObjectId = userId,
+                        HttpStatusCode = HttpStatusCode.NotFound
+                    });
 
                 }
                 else if (_isOkay.Contains(status)) { writesUsed.TrackValue(1); }
@@ -460,53 +549,62 @@ namespace Repositories.GraphGroups
                     }
 
                     // it's possible for only some requests in a batch to be throttled, so only retry the ones that were throttled.
-                    yield return new RetryResponse
+                    retryResponses.Add(new RetryResponse
                     {
                         RequestId = kvp.Key,
-                        ResponseCode = ResponseCode.IndividualRetry
-                    };
+                        ResponseCode = ResponseCode.IndividualRetry,
+                        HttpStatusCode = HttpStatusCode.TooManyRequests
+                    });
                 }
                 else if (status == HttpStatusCode.Forbidden && content.Contains("Guests users are not allowed to join"))
                 {
-                    yield return new RetryResponse
+                    retryResponses.Add(new RetryResponse
                     {
                         RequestId = kvp.Key,
-                        ResponseCode = ResponseCode.IndividualRetry
-                    };
+                        ResponseCode = ResponseCode.IndividualRetry,
+                        HttpStatusCode = HttpStatusCode.Forbidden
+                    });
                 }
                 else if (_shouldRetry.Contains(status))
                 {
-                    yield return new RetryResponse
+                    retryResponses.Add(new RetryResponse
                     {
                         RequestId = kvp.Key,
-                        ResponseCode = ResponseCode.Ok
-                    };
+                        ResponseCode = ResponseCode.Ok,
+                        HttpStatusCode = status
+                    });
                 }
                 else
                 {
                     await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Got an unexpected error from Graph, stopping all processing for current job: {status} {response.ReasonPhrase} {content}.", RunId = RunId });
-                    yield return new RetryResponse
+                    retryResponses.Add(new RetryResponse
                     {
                         RequestId = kvp.Key,
                         ResponseCode = ResponseCode.Error
-                    };
+                    });
                 }
             }
+
+            return retryResponses;
         }
 
 
         private class ChunkOfUsers
         {
             public List<AzureADUser> ToSend { get; set; }
+
             public string Id { get; set; }
 
-            private const int MaxBatchRetries = 5;
+
+            public const int MaxBatchRetries = 5;
+            public int RetryCount { get; set; }
+            public bool SendAsPostRequest { get; set; }
 
             // basically, whenever a batch is retried, we append the thread number after a dash
-            public bool ShouldRetry => Id.Split('-')[1].Length < MaxBatchRetries;
-            public ChunkOfUsers UpdateIdForRetry(int threadNumber)
+            public bool ShouldRetry => RetryCount < MaxBatchRetries;
+            public ChunkOfUsers UpdateIdForRetry()
             {
-                Id += threadNumber;
+                RetryCount++;
                 return this;
             }
         }
