@@ -35,10 +35,8 @@ export const fetchJobDetails = createAsyncThunk(
     try {
       const response = await fetch(
         config.getJobDetails +
-          `?rowKey=${encodeURIComponent(
-            jobDetailsRequest.rowKey
-          )}&partitionKey=${encodeURIComponent(
-            jobDetailsRequest.partitionKey
+          `?syncJobId=${encodeURIComponent(
+            jobDetailsRequest.syncJobId
           )}`,
         options
       ).then(async (response) => await response.json());

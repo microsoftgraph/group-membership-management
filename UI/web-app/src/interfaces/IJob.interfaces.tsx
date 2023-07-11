@@ -2,8 +2,7 @@
 // Licensed under the MIT license.
 
 export interface IJob {
-  partitionKey: string;
-  rowKey: string;
+  syncJobId: string;
   targetGroupId: string;
   targetGroupType: string;
   startDate: string;
