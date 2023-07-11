@@ -27,7 +27,7 @@ namespace Repositories.EntityFramework
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
             return await _context.SyncJobs.ToListAsync();
-        }        
+        }
 
         public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
         {
@@ -52,7 +52,7 @@ namespace Repositories.EntityFramework
             }
 
             return await query.ToListAsync();
-        }       
+        }
 
         public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status)
         {
@@ -72,7 +72,18 @@ namespace Repositories.EntityFramework
             }
 
             await _context.SaveChangesAsync();
-        }      
+        }
+
+        public async Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs)
+        {
+            foreach (var job in jobs)
+            {
+                var entry = _context.Set<SyncJob>().Add(job);
+                entry.State = EntityState.Deleted;
+            }
+
+            await _context.SaveChangesAsync();
+        }
 
         public async Task BatchUpdateSyncJobsAsync(List<SyncJob> jobs)
         {
