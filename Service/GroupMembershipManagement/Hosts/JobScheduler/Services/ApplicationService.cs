@@ -64,48 +64,17 @@ namespace Services
             {
                 await UpdateSyncJobsAsync(jobsWithUpdates);
             }
-
         }
 
         private async Task<List<DistributionSyncJob>> GetSyncJobsAsync(bool includeFutureJobs)
         {
-            var jobs = new List<SyncJob>();
-            string query = null;
-            string continuationToken = null;
-            Models.Page<SyncJob> pageableQueryResult = null;
-
-            do
-            {
-                pageableQueryResult = await _jobSchedulingService.GetSyncJobsSegmentAsync(query, continuationToken, includeFutureJobs);
-                jobs.AddRange(pageableQueryResult.Values);
-                query = pageableQueryResult.Query;
-                continuationToken = pageableQueryResult.ContinuationToken;
-
-            } while (continuationToken != null);
-
+            var jobs = await _jobSchedulingService.GetSyncJobsSegmentAsync(includeFutureJobs);
             return jobs.Select(x => new DistributionSyncJob(x)).ToList();
         }
 
         private async Task UpdateSyncJobsAsync(List<DistributionSyncJob> jobsToUpdate)
         {
-            var BATCH_SIZE = 100;
-            var groupingsByPartitionKey = jobsToUpdate.GroupBy(x => x.PartitionKey);
-
-            var batchTasks = new List<Task>();
-
-            foreach (var grouping in groupingsByPartitionKey)
-            {
-                var jobsBatches = grouping.Select((x, idx) => new { x, idx })
-                .GroupBy(x => x.idx / BATCH_SIZE)
-                .Select(g => g.Select(a => a.x));
-
-                foreach (var batch in jobsBatches)
-                {
-                    batchTasks.Add(_jobSchedulingService.BatchUpdateSyncJobsAsync(batch));
-                }
-            }
-
-            await Task.WhenAll(batchTasks);
+            await _jobSchedulingService.BatchUpdateSyncJobsAsync(jobsToUpdate);
         }
     }
 }

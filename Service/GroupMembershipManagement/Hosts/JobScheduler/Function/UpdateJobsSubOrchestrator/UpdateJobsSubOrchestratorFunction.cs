@@ -29,39 +29,22 @@ namespace Hosts.JobScheduler
             var request = context.GetInput<UpdateJobsSubOrchestratorRequest>();
             var jobsToUpdate = request.JobsToUpdate;
 
-            var BATCH_SIZE = 100;
-            var groupingsByPartitionKey = jobsToUpdate.GroupBy(x => x.PartitionKey);
-
-            var batchTasks = new List<Task>();
-
-            foreach (var grouping in groupingsByPartitionKey)
-            {
-                var jobsBatches = grouping.Select((x, idx) => new { x, idx })
-                .GroupBy(x => x.idx / BATCH_SIZE)
-                .Select(g => g.Select(a => a.x));
-
-                foreach (var batch in jobsBatches)
-                {
-                    batchTasks.Add(context.CallActivityAsync(nameof(BatchUpdateJobsFunction),
+            await context.CallActivityAsync(nameof(BatchUpdateJobsFunction),
                         new BatchUpdateJobsRequest
                         {
-                            SyncJobBatch = batch
-                        }));
-                }
-            }
+                            SyncJobBatch = jobsToUpdate
+                        });
 
             await context.CallActivityAsync(nameof(LoggerFunction),
                 new LoggerRequest
                 {
-                    Message = $"Updating {jobsToUpdate.Count} total jobs in {batchTasks.Count} batches of 100 jobs..."
+                    Message = $"Updating {jobsToUpdate.Count} total jobs..."
                 });
 
-            await Task.WhenAll(batchTasks);
-
             await context.CallActivityAsync(nameof(LoggerFunction),
                 new LoggerRequest
                 {
-                    Message = $"Updated {jobsToUpdate.Count} total jobs in {batchTasks.Count} batches of 100 jobs."
+                    Message = $"Updated {jobsToUpdate.Count} total jobs."
                 });
 
             await context.CallActivityAsync(nameof(LoggerFunction),

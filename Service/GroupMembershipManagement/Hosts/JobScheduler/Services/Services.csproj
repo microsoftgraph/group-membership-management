@@ -10,7 +10,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
-    <ProjectReference Include="..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj" />
     <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
     <ProjectReference Include="..\Services.Entities\Services.Entities.csproj" />
   </ItemGroup>

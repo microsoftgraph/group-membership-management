@@ -21,16 +21,16 @@ namespace Services
         private const int JobsBatchSize = 100;
 
 
-        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IRuntimeRetrievalService _runtimeRetrievalService;
         private readonly ILoggingRepository _loggingRepository;
 
         public JobSchedulingService(
-            ISyncJobRepository syncJobRepository,
+            IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             IRuntimeRetrievalService runtimeRetrievalService,
             ILoggingRepository loggingRepository)
         {
-            _syncJobRepository = syncJobRepository;
+            _databaseSyncJobsRepository = databaseSyncJobsRepository;
             _runtimeRetrievalService = runtimeRetrievalService;
             _loggingRepository = loggingRepository;
         }
@@ -58,22 +58,30 @@ namespace Services
             return updatedJobs;
         }
 
-        public async Task<Page<SyncJob>> GetSyncJobsSegmentAsync(
-            string query,
-            string continuationToken,
-            bool includeFutureJobs)
+        public async Task<List<SyncJob>> GetSyncJobsSegmentAsync(bool includeFutureJobs)
         {
-            if (string.IsNullOrWhiteSpace(continuationToken))
-            {
-                return await _syncJobRepository.GetPageableQueryResultAsync(includeFutureJobs, JobsBatchSize, SyncStatus.All);
-            }
-
-            return await _syncJobRepository.GetSyncJobsSegmentAsync(query, continuationToken, JobsBatchSize);
+            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(includeFutureJobs, SyncStatus.All);
+            return jobs.ToList();
         }
 
         public async Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> updatedSyncJobs)
         {
-            await _syncJobRepository.BatchUpdateSyncJobsAsync(updatedSyncJobs);
+            var jobs = MapUpdateMergeSyncJobsToEntities(updatedSyncJobs);
+            await _databaseSyncJobsRepository.BatchUpdateSyncJobsAsync(jobs);
+        }
+
+        private SyncJob MapUpdateMergeSyncJobToEntity(UpdateMergeSyncJob updateMergeSyncJob)
+        {
+            return new SyncJob
+            {
+                Id = updateMergeSyncJob.Id,
+                StartDate = updateMergeSyncJob.StartDate
+            };
+        }
+
+        private List<SyncJob> MapUpdateMergeSyncJobsToEntities(IEnumerable<UpdateMergeSyncJob> jobs)
+        {
+            return jobs.Select(x => MapUpdateMergeSyncJobToEntity(x)).ToList();
         }
 
         public List<DistributionSyncJob> ResetJobStartTimes(List<DistributionSyncJob> syncJobsToReset, DateTime newStartTime, bool includeFutureStartDates = false)
