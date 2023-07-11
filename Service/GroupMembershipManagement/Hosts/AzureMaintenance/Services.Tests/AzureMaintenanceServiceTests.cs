@@ -40,7 +40,7 @@ namespace Services.Tests
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
-            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
@@ -103,7 +103,7 @@ namespace Services.Tests
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
-            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
@@ -166,7 +166,7 @@ namespace Services.Tests
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
-            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
@@ -218,7 +218,7 @@ namespace Services.Tests
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
-            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
@@ -275,7 +275,7 @@ namespace Services.Tests
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
-            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
@@ -344,7 +344,7 @@ namespace Services.Tests
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
-            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
@@ -391,7 +391,7 @@ namespace Services.Tests
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
-            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
@@ -445,7 +445,7 @@ namespace Services.Tests
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
-            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
@@ -471,7 +471,7 @@ namespace Services.Tests
             loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
-            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
@@ -490,42 +490,7 @@ namespace Services.Tests
 
             await azureTableBackupService.GetGroupNameAsync(Guid.NewGuid());
             graphGroupRepository.Verify(x => x.GetGroupNameAsync(It.IsAny<Guid>()), Times.Once());
-        }
-
-        [TestMethod]
-        public async Task TestGetSyncJobs()
-        {
-            var loggerMock = new Mock<ILoggingRepository>();
-            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
-
-            var job = GetJob();
-
-            var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
-            var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
-            var syncJobRepository = new Mock<ISyncJobRepository>();
-            var graphGroupRepository = new Mock<IGraphGroupRepository>();
-            var mailAddresses = new Mock<IEmailSenderRecipient>();
-            var mailRepository = new Mock<IMailRepository>();
-            var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
-
-            var azureTableBackupService = new AzureMaintenanceService(loggerMock.Object,
-                                                azureTableBackupRepository.Object,
-                                                azureBlobBackupRepository.Object,
-                                                syncJobRepository.Object,
-                                                graphGroupRepository.Object,
-                                                mailAddresses.Object,
-                                                mailRepository.Object,
-                                                handleInactiveJobsConfig.Object);
-
-            var jobs = await azureTableBackupService.GetSyncJobsAsync();
-            Assert.AreEqual(jobs.Count, 0);
-            syncJobRepository.Verify(x => x.GetSpecificSyncJobsAsync(), Times.Once());
-
-            syncJobRepository.Setup(x => x.GetSpecificSyncJobsAsync()).Returns(job);
-            jobs = await azureTableBackupService.GetSyncJobsAsync();
-            Assert.AreEqual(jobs.Count, 1);
-            syncJobRepository.Verify(x => x.GetSpecificSyncJobsAsync(), Times.Exactly(2));
-        }
+        }       
 
         [TestMethod]
         public async Task TestSendEmail()
@@ -561,7 +526,7 @@ namespace Services.Tests
 
             var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
             var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
-            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
