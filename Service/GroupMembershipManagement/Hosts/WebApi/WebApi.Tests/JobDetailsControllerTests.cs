@@ -17,14 +17,14 @@ namespace Services.Tests
         private JobDetailsController _jobDetailsController = null!;
         private GetJobDetailsHandler _getJobDetailsHandler = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
-        private Mock<ISyncJobRepository> _syncJobRepository = null!;
+        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
 
         [TestInitialize]
         public void Initialize()
         {
             _loggingRepository = new Mock<ILoggingRepository>();
-            _syncJobRepository = new Mock<ISyncJobRepository>();
+            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
 
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
 
@@ -33,8 +33,7 @@ namespace Services.Tests
 
             _jobEntity = new SyncJob
             {
-                PartitionKey = Guid.NewGuid().ToString(),
-                RowKey = Guid.NewGuid().ToString(),
+                Id = Guid.NewGuid(),
                 Status = ((SyncStatus)Random.Shared.Next(1, 15)).ToString(),
                 TargetOfficeGroupId = Guid.NewGuid(),
                 LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-4),
@@ -49,7 +48,7 @@ namespace Services.Tests
             };
            
 
-            _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<string>(), It.IsAny<string>()))
+            _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
                               .ReturnsAsync(() => _jobEntity);
 
             _getJobDetailsHandler = new GetJobDetailsHandler(_loggingRepository.Object,
@@ -62,7 +61,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetJobDetailsTestAsync()
         {
-            var response = await _jobDetailsController.GetJobDetailsAsync(Guid.NewGuid().ToString(), Guid.NewGuid().ToString());
+            var response = await _jobDetailsController.GetJobDetailsAsync(Guid.NewGuid());
             var result = response.Result as OkObjectResult;
 
             Assert.IsNotNull(response);
@@ -91,7 +90,7 @@ namespace Services.Tests
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler);
 
-            var response = await _jobDetailsController.GetJobDetailsAsync(Guid.NewGuid().ToString(), Guid.NewGuid().ToString());
+            var response = await _jobDetailsController.GetJobDetailsAsync(Guid.NewGuid());
             var result = response.Result as OkObjectResult;
 
             Assert.IsNotNull(response);
