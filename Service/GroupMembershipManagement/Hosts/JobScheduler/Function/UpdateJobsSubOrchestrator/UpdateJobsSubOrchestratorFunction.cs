@@ -30,7 +30,7 @@ namespace Hosts.JobScheduler
             var jobsToUpdate = request.JobsToUpdate;
 
             var BATCH_SIZE = 100;
-            var groupingsByPartitionKey = jobsToUpdate.GroupBy(x => x.PartitionKey);
+            var groupingsByPartitionKey = jobsToUpdate.GroupBy(x => x.Id);
 
             var batchTasks = new List<Task>();
 
