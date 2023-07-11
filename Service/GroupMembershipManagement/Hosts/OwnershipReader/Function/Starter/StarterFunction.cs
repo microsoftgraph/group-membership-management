@@ -17,10 +17,10 @@ namespace Hosts.OwnershipReader
     public class StarterFunction
     {
         private readonly ILoggingRepository _loggingRepository;
-        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly bool _isDryRunEnabled;
 
-        public StarterFunction(ILoggingRepository loggingRepository, ISyncJobRepository syncJobRepository, IDryRunValue dryRun)
+        public StarterFunction(ILoggingRepository loggingRepository, IDatabaseSyncJobsRepository syncJobRepository, IDryRunValue dryRun)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
@@ -31,7 +31,7 @@ namespace Hosts.OwnershipReader
         public async Task RunAsync(
         [ServiceBusTrigger("%serviceBusSyncJobTopic%", "GroupOwnership", Connection = "serviceBusTopicConnection")] ServiceBusReceivedMessage message,
         [DurableClient] IDurableOrchestrationClient starter)
-        {
+        {            
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));
             var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
 

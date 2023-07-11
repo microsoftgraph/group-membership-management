@@ -13,11 +13,11 @@ namespace Hosts.OwnershipReader
     public class JobStatusUpdaterFunction
     {
         private readonly ILoggingRepository _loggingRepository;
-        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IDatabaseSyncJobsRepository _syncJobRepository;
 
         public JobStatusUpdaterFunction(
                         ILoggingRepository loggingRepository,
-                        ISyncJobRepository syncJobRepository)
+                        IDatabaseSyncJobsRepository syncJobRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
