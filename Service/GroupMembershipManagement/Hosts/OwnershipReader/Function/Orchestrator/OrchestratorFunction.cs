@@ -97,17 +97,15 @@ namespace Hosts.OwnershipReader
 
                 do
                 {
-                    var segmentResponse = await context.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction),
+                    var segmentResponse = await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsSegmentedFunction),
                                                                                                     new GetJobsSegmentedRequest
-                                                                                                    {
-                                                                                                        Query = query,
-                                                                                                        ContinuationToken = continuationToken,
+                                                                                                    {                                                                                                        
                                                                                                         RunId = syncJob.RunId,
                                                                                                     });
 
-                    syncJobs.AddRange(segmentResponse.ResponsePage.Values);
-                    query = segmentResponse.ResponsePage.Query;
-                    continuationToken = segmentResponse.ResponsePage.ContinuationToken;
+                    syncJobs.AddRange(segmentResponse);
+                    //query = segmentResponse.ResponsePage.Query;
+                    //continuationToken = segmentResponse.ResponsePage.ContinuationToken;
 
                 } while (continuationToken != null);
 
