@@ -40,7 +40,7 @@ namespace Services.Tests
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<INotificationRepository> _notificationRepository = null!;
-        private Mock<ISyncJobRepository> _syncJobRepository = null!;
+        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private ILocalizationRepository _localizationRepository = null!;
         private IThresholdNotificationService _thresholdNotificationService = null!;
         private IHandleInactiveJobsConfig _handleInactiveJobsConfig = null!;
@@ -74,7 +74,7 @@ namespace Services.Tests
             _loggingRepository = new Mock<ILoggingRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _notificationRepository = new Mock<INotificationRepository>();
-            _syncJobRepository = new Mock<ISyncJobRepository>();
+            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
 
             _groupTypes = new List<string>
@@ -117,8 +117,7 @@ namespace Services.Tests
                     CreatedTime = DateTime.UtcNow,
                     Resolution = ThresholdNotificationResolution.Unresolved,
                     Id = Guid.NewGuid(),
-                    SyncJobPartitionKey = Guid.NewGuid().ToString(),
-                    SyncJobRowKey = Guid.NewGuid().ToString(),
+                    SyncJobId = Guid.NewGuid(),
                     ResolvedByUPN = string.Empty,
                     ResolvedTime = DateTime.UtcNow,
                     Status = ThresholdNotificationStatus.AwaitingResponse,
@@ -149,7 +148,7 @@ namespace Services.Tests
                 .Returns<Guid>((id) => Task.FromResult(_thresholdNotifications.FirstOrDefault(notification => notification.Id == id)));
 
             var syncJob = new SyncJob();
-            _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<string>(), It.IsAny<string>()))
+            _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
                 .ReturnsAsync(() => syncJob);
 
             // Items for testing

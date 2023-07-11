@@ -66,8 +66,7 @@ namespace Services.Tests
 
             _jobEntities = Enumerable.Range(0, _jobCount).Select(x => new SyncJob
             {
-                PartitionKey = Guid.NewGuid().ToString(),
-                RowKey = Guid.NewGuid().ToString(),
+                Id = Guid.NewGuid(),
                 Status = ((SyncStatus)Random.Shared.Next(1, 15)).ToString(),
                 TargetOfficeGroupId = Guid.NewGuid(),
                 LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-4),
@@ -112,7 +111,7 @@ namespace Services.Tests
             Assert.IsNotNull(jobs);
             Assert.AreEqual(_jobCount, jobs.Count);
             Assert.AreEqual(_jobCount, jobs.Select(x => x.TargetGroupId).Distinct().Count());
-            Assert.IsTrue(jobs.All(x => x.RowKey != null && x.PartitionKey != null));
+            Assert.IsTrue(jobs.All(x => x.SyncJobId.ToString() != null));
             Assert.IsTrue(jobs.All(x => x.EstimatedNextRunTime == x.LastSuccessfulRunTime.AddHours(6)));
             Assert.IsTrue(jobs.All(x => x.Status != null));
             Assert.IsTrue(jobs.All(x => x.TargetGroupType != null));
@@ -146,7 +145,7 @@ namespace Services.Tests
             Assert.IsNotNull(jobs);
             Assert.AreEqual(_jobCount, jobs.Count);
             Assert.AreEqual(_jobCount, jobs.Select(x => x.TargetGroupId).Distinct().Count());
-            Assert.IsTrue(jobs.All(x => x.RowKey != null && x.PartitionKey != null));
+            Assert.IsTrue(jobs.All(x => x.SyncJobId.ToString() != null));
             Assert.IsTrue(jobs.All(x => x.EstimatedNextRunTime == x.LastSuccessfulRunTime.AddHours(6)));
             Assert.IsTrue(jobs.All(x => x.Status != null));
             Assert.IsTrue(jobs.All(x => x.TargetGroupType == null));
