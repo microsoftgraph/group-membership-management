@@ -7,13 +7,11 @@ namespace Services.Messages.Requests
 {
     public class GetJobDetailsRequest : RequestBase
     {
-        public GetJobDetailsRequest(string partitionKey, string rowKey)
+        public GetJobDetailsRequest(Guid syncJobId)
         {
-            this.PartitionKey = partitionKey;
-            this.RowKey = rowKey;
+            this.SyncJobId = syncJobId;
         }
 
-        public string PartitionKey { get; }
-        public string RowKey { get; }
+        public Guid SyncJobId { get; }
     }
 }

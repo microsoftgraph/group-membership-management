@@ -25,9 +25,9 @@ namespace WebApi.Controllers.v1.Jobs
         [EnableQuery()]
         [Authorize(Roles = "Admin")]
         [HttpGet()]
-        public async Task<ActionResult<IEnumerable<SyncJob>>> GetJobDetailsAsync(string partitionKey, string rowKey)
+        public async Task<ActionResult<IEnumerable<SyncJob>>> GetJobDetailsAsync(Guid syncJobId)
         {
-            var response = await _getJobDetailsRequestHandler.ExecuteAsync(new GetJobDetailsRequest(partitionKey, rowKey));
+            var response = await _getJobDetailsRequestHandler.ExecuteAsync(new GetJobDetailsRequest(syncJobId));
             return Ok(response.Model);
         }
     }
