@@ -206,7 +206,7 @@ namespace Services.Tests
 
         [TestMethod]
         public async Task CanMarkJobsAsError()
-        {
+        {             
             _syncJobRepository.Setup(repo => repo.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()))
                .Returns((IEnumerable<SyncJob> jobs, SyncStatus status) =>  UpdateJobStatus(jobs, status));
 
@@ -216,7 +216,8 @@ namespace Services.Tests
 
         private Task UpdateJobStatus(IEnumerable<SyncJob> jobs, SyncStatus status)
         {
-            job.Status = status.ToString();
+            foreach (var job in jobs)
+                job.Status = status.ToString();
             return Task.CompletedTask;
         }
 
