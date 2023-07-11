@@ -31,8 +31,7 @@ namespace Services
 
                 var dto = new SyncJobDTO
                 (
-                    partitionKey: job.PartitionKey,
-                    rowKey: job.RowKey,
+                    id: job.Id,                    
                     targetGroupId: job.TargetOfficeGroupId,
                     targetGroupName: targetGroupName,
                     period: job.Period,

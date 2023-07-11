@@ -6,17 +6,15 @@ namespace WebApi.Models.DTOs
     public class SyncJob
     {
         public SyncJob(
-            string partitionKey,
-            string rowKey,
+            Guid id,
             Guid targetGroupId,
             string? targetGroupName,
             string status,
             int period,
             DateTime lastSuccessfulRunTime,
             DateTime estimatedNextRunTime)
-        {
-            PartitionKey = partitionKey;
-            RowKey = rowKey;
+        {            
+            SyncJobId = id;
             TargetGroupId = targetGroupId;
             TargetGroupName = targetGroupName;
             Status = status;
@@ -25,8 +23,7 @@ namespace WebApi.Models.DTOs
             EstimatedNextRunTime = estimatedNextRunTime;
         }
 
-        public string PartitionKey { get; set; }
-        public string RowKey { get; set; }
+        public Guid SyncJobId { get; set; }
         public Guid TargetGroupId { get; set; }
         public string? TargetGroupName { get; set; }
         public string? TargetGroupType { get; set; }
