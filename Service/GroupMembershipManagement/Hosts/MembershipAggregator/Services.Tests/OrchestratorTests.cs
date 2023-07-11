@@ -29,7 +29,7 @@ namespace Services.Tests
         private Mock<IConfiguration> _configuration;
         private Mock<JobTrackerEntity> _jobTrackerEntity;
         private Mock<ILoggingRepository> _loggingRepository;
-        private Mock<ISyncJobRepository> _syncJobRepository;
+        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
         private Mock<IDurableOrchestrationContext> _durableContext;
         private Mock<IServiceBusTopicsRepository> _serviceBusTopicsRepository;
 
@@ -39,7 +39,7 @@ namespace Services.Tests
             _configuration = new Mock<IConfiguration>();
             _jobTrackerEntity = new Mock<JobTrackerEntity>();
             _loggingRepository = new Mock<ILoggingRepository>();
-            _syncJobRepository = new Mock<ISyncJobRepository>();
+            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _durableContext = new Mock<IDurableOrchestrationContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _serviceBusTopicsRepository = new Mock<IServiceBusTopicsRepository>();
@@ -79,7 +79,7 @@ namespace Services.Tests
             _configuration.Setup(x => x[It.Is<string>(x => x == "graphUpdaterFunctionKey")])
                             .Returns("112233445566");
 
-            _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<string>(), It.IsAny<string>()))
+            _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
                                 .ReturnsAsync(() => _syncJob);
 
             _durableContext.Setup(x => x.GetInput<MembershipAggregatorHttpRequest>())
@@ -132,7 +132,7 @@ namespace Services.Tests
 
             Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
-            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus>()), Times.Never());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
@@ -146,7 +146,7 @@ namespace Services.Tests
 
             Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
-            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus>()), Times.Never());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Never());
         }
 
@@ -161,7 +161,7 @@ namespace Services.Tests
             Assert.IsNotNull(_jobTrackerEntity.Object.JobState.DestinationPart);
             Assert.AreEqual(_membershipAggregatorHttpRequest.FilePath, _jobTrackerEntity.Object.JobState.DestinationPart);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
-            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus>()), Times.Never());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
@@ -175,7 +175,7 @@ namespace Services.Tests
 
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
+            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus>()), Times.Never());
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
