@@ -2,8 +2,7 @@
 // Licensed under the MIT license.
 
 export type Job = {
-  partitionKey: string;
-  rowKey: string;
+  syncJobId: string;
   targetGroupId: string;
   targetGroupType: string;
   targetGroupName: string;

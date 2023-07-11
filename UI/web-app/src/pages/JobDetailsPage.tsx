@@ -389,8 +389,7 @@ export const JobDetailsPage: React.FunctionComponent = () => {
   useEffect(() => {
     dispatch(
       fetchJobDetails({
-        partitionKey: job.partitionKey,
-        rowKey: job.rowKey,
+        syncJobId: job.syncJobId
       })
     );
   }, [dispatch]);
