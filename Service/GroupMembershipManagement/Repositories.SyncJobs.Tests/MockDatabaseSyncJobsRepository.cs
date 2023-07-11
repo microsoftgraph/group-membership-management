@@ -51,5 +51,10 @@ namespace Repositories.SyncJobs.Tests
         {
             throw new NotImplementedException();
         }
+
+        public async Task BatchUpdateSyncJobsAsync(List<SyncJob> jobs)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
