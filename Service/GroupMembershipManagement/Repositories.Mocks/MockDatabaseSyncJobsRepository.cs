@@ -58,5 +58,10 @@ namespace Repositories.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public async Task BatchUpdateSyncJobsAsync(List<SyncJob> jobs)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

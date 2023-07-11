@@ -16,7 +16,7 @@ namespace Services.Tests
     {
         private Mock<IDryRunValue> _dryRunSettings = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
-        private Mock<ISyncJobRepository> _syncJobRepository = null!;
+        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<IBlobStorageRepository> _blobStorageRepository = null!;
         private OwnershipReaderService _ownershipReaderService = null!;
@@ -26,7 +26,7 @@ namespace Services.Tests
         {
             _dryRunSettings = new Mock<IDryRunValue>();
             _loggingRepository = new Mock<ILoggingRepository>();
-            _syncJobRepository = new Mock<ISyncJobRepository>();
+            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
 

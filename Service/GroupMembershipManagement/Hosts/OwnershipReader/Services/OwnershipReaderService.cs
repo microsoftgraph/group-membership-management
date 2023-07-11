@@ -18,7 +18,7 @@ namespace Services
         private const int JobsBatchSize = 20;
         private readonly IDryRunValue _dryRunSettings;
         private readonly ILoggingRepository _loggingRepository;
-        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
 
@@ -27,26 +27,21 @@ namespace Services
         public OwnershipReaderService(
             IDryRunValue dryRunSettings,
             ILoggingRepository loggingRepository,
-            ISyncJobRepository syncJobRepository,
+            IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             IGraphGroupRepository graphGroupRepository,
             IBlobStorageRepository blobStorageRepository)
         {
             _dryRunSettings = dryRunSettings ?? throw new ArgumentNullException(nameof(dryRunSettings));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
         }
 
-        public async Task<Page<SyncJob>> GetSyncJobsSegmentAsync(string query, string continuationToken)
+        public async Task<List<SyncJob>> GetSyncJobsSegmentAsync()
         {
-            if (string.IsNullOrWhiteSpace(continuationToken))
-            {
-                return await _syncJobRepository.GetPageableQueryResultAsync(true, JobsBatchSize, SyncStatus.All);
-            }
-
-            return await _syncJobRepository.GetSyncJobsSegmentAsync(query, continuationToken, JobsBatchSize);
-
+            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
+            return jobs.ToList();
         }
 
         public async Task<List<Guid>> GetGroupOwnersAsync(Guid groupId)
@@ -71,13 +66,12 @@ namespace Services
                 Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
                 RunId = runId,
                 Exclusionary = exclusionary,
-                SyncJobRowKey = syncJob.RowKey,
-                SyncJobPartitionKey = syncJob.PartitionKey,
+                SyncJobId = syncJob.Id,
                 MembershipObtainerDryRunEnabled = _dryRunSettings.DryRunEnabled,
                 Query = syncJob.Query
             };
 
-            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
+            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmm");
             var fileName = $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_OwnershipReader_{currentPart}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
 
