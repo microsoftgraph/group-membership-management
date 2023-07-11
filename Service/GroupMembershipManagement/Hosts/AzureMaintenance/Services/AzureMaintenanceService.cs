@@ -24,7 +24,7 @@ namespace Services
         private readonly ILoggingRepository _loggingRepository = null;
 		private readonly IAzureTableBackupRepository _azureTableBackupRepository = null;
 		private readonly IAzureStorageBackupRepository _azureBlobBackupRepository = null;
-        private readonly ISyncJobRepository _syncJobRepository = null;
+        private readonly IDatabaseSyncJobsRepository _syncJobRepository = null;
         private readonly IGraphGroupRepository _graphGroupRepository = null;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
         private readonly IMailRepository _mailRepository = null;
@@ -34,7 +34,7 @@ namespace Services
 			ILoggingRepository loggingRepository,
 			IAzureTableBackupRepository azureTableBackupRepository,
             IAzureStorageBackupRepository azureBlobBackupRepository,
-            ISyncJobRepository syncJobRepository,
+            IDatabaseSyncJobsRepository syncJobRepository,
             IGraphGroupRepository graphGroupRepository,
             IEmailSenderRecipient emailSenderAndRecipients,
             IMailRepository mailRepository,
@@ -160,13 +160,21 @@ namespace Services
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
             var allJobs = new List<SyncJob>();
-            var jobs = _syncJobRepository.GetSpecificSyncJobsAsync();
-			if (jobs == null) { return allJobs; }
-            await foreach (var job in jobs)
-            {
-                allJobs.Add(job);
-            }
-            return allJobs;
+            var jobs = await _syncJobRepository.GetSyncJobsAsync(false,
+                SyncStatus.CustomerPaused,
+                SyncStatus.DestinationGroupNotFound,
+                SyncStatus.MembershipDataNotFound,
+                SyncStatus.NotOwnerOfDestinationGroup,
+                SyncStatus.SecurityGroupNotFound,
+                SyncStatus.ThresholdExceeded);
+            if (jobs == null) { return allJobs; }
+
+            return ApplyJobTriggerFilters(jobs).ToList();
+        }
+
+        private IEnumerable<SyncJob> ApplyJobTriggerFilters(IEnumerable<SyncJob> jobs)
+        {
+            return jobs.Where(x => ((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromDays(30)));
         }
 
         public async Task<string> GetGroupNameAsync(Guid groupId)

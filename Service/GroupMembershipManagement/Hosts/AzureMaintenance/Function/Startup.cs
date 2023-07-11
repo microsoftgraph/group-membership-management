@@ -91,7 +91,7 @@ namespace Hosts.AzureMaintenance
                 return new AzureMaintenanceService(services.GetService<ILoggingRepository>(),
                     services.GetService<IAzureTableBackupRepository>(),
                     services.GetService<IAzureStorageBackupRepository>(),
-                    services.GetService<ISyncJobRepository>(),
+                    services.GetService<IDatabaseSyncJobsRepository>(),
                     services.GetService<IGraphGroupRepository>(),
                     services.GetService<IEmailSenderRecipient>(),
                     services.GetService<IMailRepository>(),
