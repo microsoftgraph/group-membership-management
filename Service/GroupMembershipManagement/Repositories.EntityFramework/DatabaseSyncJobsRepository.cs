@@ -72,6 +72,17 @@ namespace Repositories.EntityFramework
             }
 
             await _context.SaveChangesAsync();
+        }                
+        
+        public async Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs)
+        {
+            foreach (var job in jobs)
+            {                
+                var entry = _context.Set<SyncJob>().Add(job);
+                entry.State = EntityState.Deleted;
+            }
+
+            await _context.SaveChangesAsync();
         }
 
         public async Task BatchUpdateSyncJobsAsync(List<SyncJob> jobs)
