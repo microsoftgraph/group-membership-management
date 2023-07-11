@@ -15,5 +15,6 @@ namespace Repositories.Contracts
         Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters);
         Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status);
         Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null);
+        Task BatchUpdateSyncJobsAsync(List<SyncJob> jobs);
     }
 }

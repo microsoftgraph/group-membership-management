@@ -7,9 +7,7 @@ namespace Entities
 {
     public class UpdateMergeSyncJob
     {
-        public string PartitionKey { get; set; }
-
-        public string RowKey { get; set; }
+        public Guid Id { get; set; }
 
         public DateTime StartDate { get; set; } = DateTime.FromFileTimeUtc(0);
 

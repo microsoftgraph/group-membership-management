@@ -13,12 +13,10 @@ namespace Hosts.JobScheduler
 {
     public class GetJobsSubOrchestratorFunction
     {
-        private readonly ISyncJobRepository _syncJobRepository;
         private readonly IJobSchedulerConfig _jobSchedulerConfig;
 
-        public GetJobsSubOrchestratorFunction(ISyncJobRepository syncJobRepository, IJobSchedulerConfig jobSchedulerConfig)
+        public GetJobsSubOrchestratorFunction(IJobSchedulerConfig jobSchedulerConfig)
         {
-            _syncJobRepository = syncJobRepository;
             _jobSchedulerConfig = jobSchedulerConfig;
         }
 

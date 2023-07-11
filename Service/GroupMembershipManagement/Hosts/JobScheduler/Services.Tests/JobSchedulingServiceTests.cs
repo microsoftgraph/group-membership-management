@@ -22,7 +22,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using MockSyncJobRepository = Repositories.SyncJobs.Tests.MockSyncJobRepository;
+using MockDatabaseSyncJobRepository = Repositories.SyncJobs.Tests.MockDatabaseSyncJobRepository;
 
 namespace Services.Tests
 {
@@ -34,7 +34,7 @@ namespace Services.Tests
         public int BUFFER_SECONDS = 10;
 
         private JobSchedulingService _jobSchedulingService = null;
-        private MockSyncJobRepository _mockSyncJobRepository = null;
+        private MockDatabaseSyncJobRepository _mockDatabaseSyncJobRepository = null;
         private DefaultRuntimeRetrievalService _defaultRuntimeRetrievalService = null;
         private LogsRuntimeRetrievalService _logsRuntimeRetrievalService = null;
         private MockLoggingRepository _mockLoggingRepository = null;
@@ -45,13 +45,13 @@ namespace Services.Tests
         public void InitializeTest()
         {
             _jobSchedulerConfig.Setup(x => x.DefaultRuntimeSeconds).Returns(DEFAULT_RUNTIME_SECONDS);
-            _mockSyncJobRepository = new MockSyncJobRepository();
+            _mockDatabaseSyncJobRepository = new MockDatabaseSyncJobRepository();
             _defaultRuntimeRetrievalService = new DefaultRuntimeRetrievalService(_jobSchedulerConfig.Object.DefaultRuntimeSeconds);
             _logsRuntimeRetrievalService = new LogsRuntimeRetrievalService(_jobSchedulerConfig.Object, _logsQueryClient.Object);
             _mockLoggingRepository = new MockLoggingRepository();
 
             _jobSchedulingService = new JobSchedulingService(
-                _mockSyncJobRepository,
+                _mockDatabaseSyncJobRepository,
                 _defaultRuntimeRetrievalService,
                 _mockLoggingRepository
             );
@@ -163,7 +163,7 @@ namespace Services.Tests
                                                         7,
                                                         "workspace-id");
             JobSchedulingService jobSchedulingService = new JobSchedulingService(
-                _mockSyncJobRepository,
+                _mockDatabaseSyncJobRepository,
                 longerDefaultRuntimeService,
                 _mockLoggingRepository
             );
@@ -234,7 +234,7 @@ namespace Services.Tests
         {
             _jobSchedulerConfig.Setup(x => x.GetRunTimeFromLogs).Returns(true);
             _jobSchedulingService = new JobSchedulingService(
-                                        _mockSyncJobRepository,
+                                        _mockDatabaseSyncJobRepository,
                                         _logsRuntimeRetrievalService,
                                         _mockLoggingRepository);
 
@@ -294,8 +294,7 @@ namespace Services.Tests
             {
                 var job = new DistributionSyncJob
                 {
-                    PartitionKey = DateTime.UtcNow.ToString("MMddyyyy"),
-                    RowKey = Guid.NewGuid().ToString(),
+                    Id = Guid.NewGuid(),
                     Period = period,
                     StartDate = StartDateBase.AddDays(-1 * i),
                     Status = SyncStatus.Idle.ToString(),
