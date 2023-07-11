@@ -19,8 +19,7 @@ namespace Models
             LastRunTime = syncJob.LastRunTime;
             Period = syncJob.Period;
             Status = syncJob.Status;
-            PartitionKey = syncJob.PartitionKey;
-            RowKey = syncJob.RowKey;
+            Id = syncJob.Id;
             StartDate = syncJob.StartDate;
         }
 

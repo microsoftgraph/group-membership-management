@@ -27,14 +27,12 @@ namespace Hosts.JobScheduler
         public async Task<GetJobsSegmentedResponse> GetJobsToUpdateAsync([ActivityTrigger] GetJobsSegmentedRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            var tableQuerySegment = await _jobSchedulingService.GetSyncJobsSegmentAsync(request.Query, request.ContinuationToken, request.IncludeFutureJobs);
+            var tableQuerySegment = await _jobSchedulingService.GetSyncJobsSegmentAsync(request.IncludeFutureJobs);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
             return new GetJobsSegmentedResponse
-            {
-                Query = tableQuerySegment.Query,
-                ContinuationToken = tableQuerySegment.ContinuationToken,
-                JobsSegment = tableQuerySegment.Values.Select(x => new DistributionSyncJob(x)).ToList(),
+            {               
+                JobsSegment = tableQuerySegment.Select(x => new DistributionSyncJob(x)).ToList()
             };
         }
     }
