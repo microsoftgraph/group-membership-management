@@ -181,16 +181,16 @@ namespace WebApi
                 return new LoggingRepository(settings.Value);
             });
 
-            builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.ConnectionString = configuration.GetValue<string>("Settings:jobsStorageAccountConnectionString");
-                settings.TableName = configuration.GetValue<string>("Settings:jobsTableName");
-            })
-            .Services.AddSingleton<ISyncJobRepository>(services =>
-            {
-                var settings = services.GetRequiredService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
-                return new SyncJobRepository(settings.Value.ConnectionString, settings.Value.TableName, services.GetService<ILoggingRepository>());
-            });
+            //builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
+            //{
+            //    settings.ConnectionString = configuration.GetValue<string>("Settings:jobsStorageAccountConnectionString");
+            //    settings.TableName = configuration.GetValue<string>("Settings:jobsTableName");
+            //})
+            //.Services.AddSingleton<ISyncJobRepository>(services =>
+            //{
+            //    var settings = services.GetRequiredService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
+            //    return new SyncJobRepository(settings.Value.ConnectionString, settings.Value.TableName, services.GetService<ILoggingRepository>());
+            //});
 
             builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {

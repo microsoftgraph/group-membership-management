@@ -15,14 +15,14 @@ namespace Services
     public class ResolveNotificationHandler : RequestHandlerBase<ResolveNotificationRequest, ResolveNotificationResponse>
     {
         private readonly INotificationRepository _notificationRepository;
-        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IThresholdNotificationService _thresholdNotificationService;
         private readonly TelemetryClient _telemetryClient;
 
         public ResolveNotificationHandler(ILoggingRepository loggingRepository,
                               INotificationRepository notificationRepository,
-                              ISyncJobRepository syncJobRepository,
+                              IDatabaseSyncJobsRepository syncJobRepository,
                               IGraphGroupRepository graphGroupRepository,
                               TelemetryClient telemetryClient,
                               IThresholdNotificationService thresholdNotificationService) : base(loggingRepository)
@@ -73,7 +73,7 @@ namespace Services
 
         private async Task handleSyncJobResolution(ThresholdNotification notification)
         {
-            var job = await _syncJobRepository.GetSyncJobAsync(notification.SyncJobPartitionKey, notification.SyncJobRowKey);
+            var job = await _syncJobRepository.GetSyncJobAsync(notification.SyncJobId);
 
             if (notification.Resolution == ThresholdNotificationResolution.IgnoreOnce)
             {

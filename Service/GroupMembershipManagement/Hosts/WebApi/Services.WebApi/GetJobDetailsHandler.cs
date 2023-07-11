@@ -10,21 +10,21 @@ using SyncJobDetailsDTO = WebApi.Models.DTOs.SyncJobDetails;
 namespace Services{
     public class GetJobDetailsHandler : RequestHandlerBase<GetJobDetailsRequest, GetJobDetailsResponse>
     {
-        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
 
         public GetJobDetailsHandler(ILoggingRepository loggingRepository,
-                              ISyncJobRepository syncJobRepository,
+                              IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                               IGraphGroupRepository graphGroupRepository) : base(loggingRepository)
         {
-            _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
         protected override async Task<GetJobDetailsResponse> ExecuteCoreAsync(GetJobDetailsRequest request)
         {
             var response = new GetJobDetailsResponse();
-            SyncJob job = await _syncJobRepository.GetSyncJobAsync(request.PartitionKey, request.RowKey);
+            SyncJob job = await _databaseSyncJobsRepository.GetSyncJobAsync(request.SyncJobId);
 
             bool isRequestorOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(job.Requestor, job.TargetOfficeGroupId);
             string requestor = isRequestorOwner ? job.Requestor : job.Requestor + " (Not an Owner)";
