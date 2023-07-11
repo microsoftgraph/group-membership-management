@@ -15,5 +15,6 @@
   "runTimeQuery": "",
   "runTimeRangeInDays": "",
   "workspaceId": "",
-  "APPINSIGHTS_INSTRUMENTATIONKEY": ""
+  "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+  "sqlDatabaseConnectionString": ""
 }

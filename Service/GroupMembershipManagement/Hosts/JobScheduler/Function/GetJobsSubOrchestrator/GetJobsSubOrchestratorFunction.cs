@@ -13,12 +13,10 @@ namespace Hosts.JobScheduler
 {
     public class GetJobsSubOrchestratorFunction
     {
-        private readonly ISyncJobRepository _syncJobRepository;
         private readonly IJobSchedulerConfig _jobSchedulerConfig;
 
-        public GetJobsSubOrchestratorFunction(ISyncJobRepository syncJobRepository, IJobSchedulerConfig jobSchedulerConfig)
+        public GetJobsSubOrchestratorFunction(IJobSchedulerConfig jobSchedulerConfig)
         {
-            _syncJobRepository = syncJobRepository;
             _jobSchedulerConfig = jobSchedulerConfig;
         }
 
@@ -38,25 +36,14 @@ namespace Hosts.JobScheduler
                     Message = "Retrieving enabled sync jobs" + (_jobSchedulerConfig.IncludeFutureJobs ? " including those with future StartDate values" : "")
                 });
 
-            string query = null;
-            string continuationToken = null;
             var jobs = new List<DistributionSyncJob>();
 
-            do
+            var segmentResponse = await context.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction), new GetJobsSegmentedRequest
             {
-                var segmentResponse = await context.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction),
-                    new GetJobsSegmentedRequest
-                    {
-                        Query = query,
-                        ContinuationToken = continuationToken,
-                        IncludeFutureJobs = _jobSchedulerConfig.IncludeFutureJobs
-                    });
+                IncludeFutureJobs = _jobSchedulerConfig.IncludeFutureJobs
+            });
 
-                jobs.AddRange(segmentResponse.JobsSegment);
-                query = segmentResponse.Query;
-                continuationToken = segmentResponse.ContinuationToken;
-
-            } while (continuationToken != null);
+            jobs = segmentResponse.JobsSegment;
 
             await context.CallActivityAsync(nameof(LoggerFunction),
                 new LoggerRequest

@@ -4,13 +4,16 @@
 using System.Threading.Tasks;
 using Services;
 using Microsoft.ApplicationInsights.Extensibility;
-using Repositories.SyncJobsRepository;
 using Repositories.Logging;
 using DIConcreteTypes;
 using Services.Contracts;
 using Repositories.Contracts;
 using Azure.Identity;
 using Azure.Monitor.Query;
+using Repositories.EntityFramework;
+using Repositories.EntityFramework.Contexts;
+using Microsoft.ApplicationInsights.Extensibility.Implementation;
+using Microsoft.EntityFrameworkCore;
 
 namespace JobScheduler
 {
@@ -20,11 +23,15 @@ namespace JobScheduler
         {
             var appSettings = AppSettings.LoadAppSettings();
 
+            var gmmContext = new GMMContext(new DbContextOptionsBuilder<GMMContext>()
+                                        .UseSqlServer(appSettings.SQLDatabaseConnectionString)
+                                        .Options);
+
             // Injections
             var logAnalyticsSecret = new LogAnalyticsSecret<LoggingRepository>(appSettings.LogAnalyticsCustomerId, appSettings.LogAnalyticsPrimarySharedKey, "JobScheduler");
             var appConfigVerbosity = new AppConfigVerbosity { Verbosity = VerbosityLevel.INFO };
             var loggingRepository = new LoggingRepository(logAnalyticsSecret);
-            var syncJobRepository = new SyncJobRepository(appSettings.JobsStorageAccountConnectionString, appSettings.JobsTableName, loggingRepository);
+            var syncJobRepository = new DatabaseSyncJobsRepository(gmmContext);
 
 
             var telemetryConfiguration = new TelemetryConfiguration();
