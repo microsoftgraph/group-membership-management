@@ -60,7 +60,7 @@ dependencies:
     version: 6.11.2(react-dom@18.2.0)(react@18.2.0)
   react-scripts:
     specifier: 5.0.1
-    version: 5.0.1(@babel/plugin-syntax-flow@7.21.4)(@babel/plugin-transform-react-jsx@7.22.3)(eslint@8.42.0)(react@18.2.0)(typescript@4.9.4)
+    version: 5.0.1(@babel/plugin-syntax-flow@7.21.4)(@babel/plugin-transform-react-jsx@7.22.3)(react@18.2.0)(typescript@4.9.4)
   react-string-format:
     specifier: ^1.0.1
     version: 1.0.1
