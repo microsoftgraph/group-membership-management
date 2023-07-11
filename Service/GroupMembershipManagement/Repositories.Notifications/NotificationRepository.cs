@@ -5,6 +5,7 @@ using Azure;
 using Azure.Data.Tables;
 using DIConcreteTypes;
 using Microsoft.Extensions.Options;
+using Models;
 using Models.ThresholdNotifications;
 using Repositories.Contracts;
 using System;
@@ -43,11 +44,11 @@ namespace Repositories.NotificationsRepository
             return null;
         }
 
-        public async Task<ThresholdNotification> GetThresholdNotificationBySyncJobKeysAsync(string syncJobPartitionKey, string syncJobRowKey)
+        public async Task<ThresholdNotification> GetThresholdNotificationBySyncJobKeysAsync(Guid syncJobId)
         {
             var resolutionNameString = ThresholdNotificationResolution.Unresolved.ToString();
             var queryResult = _tableClient.QueryAsync<ThresholdNotificationEntity>(x =>
-                x.SyncJobPartitionKey == syncJobPartitionKey && x.SyncJobRowKey == syncJobRowKey && x.ResolutionName == resolutionNameString);
+                x.Id == syncJobId && x.ResolutionName == resolutionNameString);
 
             await foreach (var segmentResult in queryResult.AsPages())
             {
@@ -95,8 +96,7 @@ namespace Repositories.NotificationsRepository
             return new ThresholdNotification
             {
                 Id = entity.Id,
-                SyncJobPartitionKey = entity.SyncJobPartitionKey,
-                SyncJobRowKey = entity.SyncJobRowKey,
+                SyncJobId = entity.SyncJobId,
                 ChangePercentageForAdditions = entity.ChangePercentageForAdditions,
                 ChangePercentageForRemovals = entity.ChangePercentageForRemovals,
                 ChangeQuantityForAdditions = entity.ChangeQuantityForAdditions,
@@ -121,8 +121,7 @@ namespace Repositories.NotificationsRepository
                 PartitionKey = _thresholdNotificationPartitionKey,
                 RowKey = entity.Id.ToString(),
                 Id = entity.Id,
-                SyncJobPartitionKey = entity.SyncJobPartitionKey,
-                SyncJobRowKey = entity.SyncJobRowKey,
+                SyncJobId = entity.SyncJobId,
                 ChangePercentageForAdditions = entity.ChangePercentageForAdditions,
                 ChangePercentageForRemovals = entity.ChangePercentageForRemovals,
                 ChangeQuantityForAdditions = entity.ChangeQuantityForAdditions,

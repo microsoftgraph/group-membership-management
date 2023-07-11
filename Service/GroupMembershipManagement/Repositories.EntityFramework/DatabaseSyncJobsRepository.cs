@@ -19,10 +19,15 @@ namespace Repositories.EntityFramework
             _contextOptions = gmmContextOptions ?? throw new ArgumentNullException(nameof(gmmContextOptions));
         }
 
+        public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
+        {
+            return await _context.SyncJobs.SingleOrDefaultAsync(job => job.Id == syncJobId);
+        }
+
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
             return await _context.SyncJobs.ToListAsync();
-        }
+        }        
 
         public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
         {
