@@ -4,7 +4,6 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
-using Services;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
