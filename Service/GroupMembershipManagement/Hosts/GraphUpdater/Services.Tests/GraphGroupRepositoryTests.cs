@@ -82,13 +82,28 @@ namespace Services.Tests
                                 var batchRequest = JArray.Parse(requestsNode);
 
                                 var requests = new Dictionary<string, string>();
+                                var userIds = new List<string>();
+
                                 foreach (var step in batchRequest)
                                 {
-                                    var userIds = step["body"]["members@odata.bind"]
-                                                    .Values()
-                                                    .Select(x => x.Value<string>()
-                                                    .Replace("https://graph.microsoft.com/v1.0/users/", string.Empty))
-                                                    .ToList();
+                                    //PATCH requests have multiple userIds per step
+                                    if (step["method"].Value<string>() == "PATCH")
+                                    {
+                                        userIds = step["body"]["members@odata.bind"]
+                                                  .Values()
+                                                  .Select(x => x.Value<string>()
+                                                  .Replace("https://graph.microsoft.com/v1.0/users/", string.Empty))
+                                                  .ToList();
+                                    }
+                                    else
+                                    {
+                                        //POST requests have a single userId per step
+                                        var userId = step["body"]["@odata.id"]
+                                                        .Value<string>()
+                                                        .Replace("https://graph.microsoft.com/v1.0/directoryObjects/", string.Empty);
+
+                                        userIds.Add(userId);
+                                    }
 
                                     userIds.ForEach(x =>
                                     {
@@ -100,11 +115,14 @@ namespace Services.Tests
 
                                     if (usersNotFound != usersNotFoundLimit && userIds.Count > 1)
                                     {
-                                        var id = userIds.Skip(usersNotFound++).First();
-                                        var requestId = step["id"].Value<string>(); //requestid
-                                        requests.Add(requestId, id);
+                                        var id = userIds.Skip(usersNotFound++).FirstOrDefault();
+                                        if (id != null)
+                                        {
+                                            var requestId = step["id"].Value<string>();
+                                            requests.Add(requestId, id);
 
-                                        usersNotFoundIds.Add(id);
+                                            usersNotFoundIds.Add(id);
+                                        }
                                     }
                                 }
 
