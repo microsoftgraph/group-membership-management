@@ -2,13 +2,9 @@
 // Licensed under the MIT license.
 
 using Models;
-using Models.AzureMaintenance;
 using Repositories.Contracts;
-using Repositories.Contracts.AzureMaintenance;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
-using Services.Entities;
-using Services.Entities.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,141 +17,28 @@ namespace Services
         private const string CustomerPausedJobEmailSubject = "CustomerPausedJobEmailSubject";
         private const string CustomerPausedJobEmailBody = "CustomerPausedJobEmailBody";
 
-        private readonly ILoggingRepository _loggingRepository = null;
-		private readonly IAzureTableBackupRepository _azureTableBackupRepository = null;
-		private readonly IAzureStorageBackupRepository _azureBlobBackupRepository = null;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository = null;
+        private readonly IDatabasePurgedSyncJobsRepository _purgedSyncJobRepository = null;
         private readonly IGraphGroupRepository _graphGroupRepository = null;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
         private readonly IMailRepository _mailRepository = null;
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig = null;
 
         public AzureMaintenanceService(
-			ILoggingRepository loggingRepository,
-			IAzureTableBackupRepository azureTableBackupRepository,
-            IAzureStorageBackupRepository azureBlobBackupRepository,
             IDatabaseSyncJobsRepository syncJobRepository,
+            IDatabasePurgedSyncJobsRepository purgedSyncJobRepository,
             IGraphGroupRepository graphGroupRepository,
             IEmailSenderRecipient emailSenderAndRecipients,
             IMailRepository mailRepository,
-			IHandleInactiveJobsConfig handleInactiveJobsConfig)
+            IHandleInactiveJobsConfig handleInactiveJobsConfig)
         {
-			_loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-			_azureTableBackupRepository = azureTableBackupRepository ?? throw new ArgumentNullException(nameof(azureTableBackupRepository));
-			_azureBlobBackupRepository = azureBlobBackupRepository ?? throw new ArgumentNullException(nameof(azureBlobBackupRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _purgedSyncJobRepository = purgedSyncJobRepository ?? throw new ArgumentNullException(nameof(purgedSyncJobRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _handleInactiveJobsConfig = handleInactiveJobsConfig ?? throw new ArgumentNullException(nameof(handleInactiveJobsConfig));
         }
-
-		public async Task RunBackupServiceAsync(IAzureMaintenanceJob maintenanceJob)
-        {
-			if (maintenanceJob.SourceStorageSetting.StorageType == StorageType.Table)
-		        await BackupTableAsync(maintenanceJob);
-        }
-
-		public async Task<List<IReviewAndDeleteRequest>> RetrieveBackupsAsync(IAzureMaintenanceJob maintenanceJob)
-		{
-			var requests = new List<IReviewAndDeleteRequest>();
-
-			var backupStorage = DetermineBackupStorage(maintenanceJob.SourceStorageSetting.StorageType);
-			var backupEntities = await backupStorage.GetBackupsAsync(maintenanceJob);
-			foreach(var backupEntity in backupEntities)
-            {
-				requests.Add(new ReviewAndDeleteRequest
-				{
-					TargetName = backupEntity.Name,
-					MaintenanceSetting = new AzureMaintenanceJob(maintenanceJob),
-				});
-			}
-
-			return requests;
-		}
-
-		public async Task<bool> ReviewAndDeleteAsync(IAzureMaintenanceJob maintenanceJob, string targetName)
-		{
-			var backupStorage = DetermineBackupStorage(maintenanceJob.SourceStorageSetting.StorageType);
-			var shouldDelete = await backupStorage.VerifyCleanupAsync(maintenanceJob, targetName);
-			if (shouldDelete)
-			{
-				await backupStorage.CleanupAsync(maintenanceJob, targetName);
-
-				if (maintenanceJob.Backup && maintenanceJob.SourceStorageSetting.StorageType == StorageType.Table)
-				{
-					await DeleteOldBackupTrackersAsync(new AzureMaintenanceJob(maintenanceJob), new List<string> { targetName });
-				}
-			}
-
-			return shouldDelete;
-		}
-
-		private async Task BackupTableAsync(IAzureMaintenanceJob maintenanceJob)
-		{
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Starting backup maintenance for table: {maintenanceJob.SourceStorageSetting.TargetName}" });
-			var entities = await _azureTableBackupRepository.GetEntitiesAsync(maintenanceJob);
-
-			if (entities == null)
-				return;
-
-			// Currently, this will only support backups to the same storage type as the source, so table to table right now
-			IAzureStorageBackupRepository backUpTo = DetermineBackupStorage(maintenanceJob.DestinationStorageSetting.StorageType);
-			if (backUpTo == null)
-			{
-				await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"BackupType must be 'table' or 'blob'. Was {maintenanceJob.SourceStorageSetting.StorageType}. Not backing up {maintenanceJob.SourceStorageSetting.TargetName}." });
-				return;
-			}
-
-			await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Backing up {entities.Count} entities from table {maintenanceJob.SourceStorageSetting.TargetName} to {maintenanceJob.SourceStorageSetting.StorageType} storage." });
-			var backupResult = await backUpTo.BackupEntitiesAsync(maintenanceJob, entities);
-
-			await CompareBackupResults(maintenanceJob, backupResult);
-		}
-
-		private IAzureStorageBackupRepository DetermineBackupStorage(StorageType backUpTo)
-		{
-			switch (backUpTo)
-			{
-				case StorageType.Table:
-					return _azureTableBackupRepository;
-				case StorageType.Blob:
-					return _azureBlobBackupRepository;
-				default:
-					return null;
-			}
-
-		}
-
-		private async Task CompareBackupResults(IAzureMaintenanceJob backupSettings, BackupResult currentBackup)
-		{
-			var previousBackupTracker = await _azureTableBackupRepository.GetLatestBackupResultTrackerAsync(backupSettings);
-			await _azureTableBackupRepository.AddBackupResultTrackerAsync(backupSettings, currentBackup);
-
-			if (previousBackupTracker == null)
-			{
-				return;
-			}
-
-			var delta = currentBackup.RowCount - previousBackupTracker.RowCount;
-			var message = delta == 0 ? " same number of" : ((delta > 0) ? " more" : " less");
-			await _loggingRepository.LogMessageAsync(
-				new LogMessage
-				{
-					Message = $"Current backup for {backupSettings.SourceStorageSetting.TargetName} has {delta}{message} rows than previous backup",
-					DynamicProperties =
-					{
-						{ "status", "Delta" },
-						{ "rowCount", delta.ToString() }
-					}
-				});
-		}
-
-		private async Task DeleteOldBackupTrackersAsync(IAzureMaintenanceJob backupSettings, List<string> deletedTables)
-		{
-			var keys = deletedTables.Select(x => (backupSettings.SourceStorageSetting.TargetName, x)).ToList();
-			await _azureTableBackupRepository.DeleteBackupTrackersAsync(backupSettings, keys);
-		}
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
@@ -211,25 +94,50 @@ namespace Services
         public async Task<int> BackupInactiveJobsAsync(List<SyncJob> syncJobs)
         {
             if (syncJobs.Count <= 0) return 0;
-            return await _azureTableBackupRepository.BackupInactiveJobsAsync(syncJobs);
+            var purgedJobs = MapSyncJobsToPurgedSyncJobs(syncJobs);
+            var a = await _purgedSyncJobRepository.InsertPurgedSyncJobsAsync(purgedJobs);
+            return a;
         }
 
-        public async Task<List<string>> RemoveBackupsAsync()
+        private List<PurgedSyncJob> MapSyncJobsToPurgedSyncJobs(List<SyncJob> syncJobs)
         {
-            var backupTables = await _azureTableBackupRepository.GetInactiveBackupsAsync();
-            var cutOffDate = DateTime.UtcNow.AddDays(-_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion);
-            var deletedTables = new List<string>();
+            return syncJobs.Select(x => MapSyncJobToPurgedSyncJob(x)).ToList();
+        }
 
-            foreach (var table in backupTables)
+        private PurgedSyncJob MapSyncJobToPurgedSyncJob(SyncJob job)
+        {
+            return new PurgedSyncJob()
             {
-                if (table.CreatedDate < cutOffDate)
-                {
-                    await _azureTableBackupRepository.DeleteBackupTableAsync(table.TableName);
-                    deletedTables.Add(table.TableName);
-                }
-            }
+                Id = new Guid(),
+                IgnoreThresholdOnce = job.IgnoreThresholdOnce,
+                IsDryRunEnabled = job.IsDryRunEnabled,
+                DryRunTimeStamp = job.DryRunTimeStamp,
+                LastRunTime = job.LastRunTime,
+                LastSuccessfulRunTime = job.LastSuccessfulRunTime,
+                LastSuccessfulStartTime = job.LastSuccessfulStartTime,
+                StartDate = job.StartDate,
+                Timestamp = job.Timestamp,
+                TargetOfficeGroupId = job.TargetOfficeGroupId,
+                Destination = job.Destination,
+                AllowEmptyDestination = job.AllowEmptyDestination,
+                RunId = job.RunId,
+                Period = job.Period,
+                ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
+                ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals,
+                ThresholdViolations = job.ThresholdViolations,
+                Query = job.Query,
+                Requestor = job.Requestor,
+                Status = job.Status,
+                PurgedAt = DateTime.UtcNow
+            };
+        }
 
-            return deletedTables;
+        public async Task<int> RemoveBackupsAsync()
+        {
+            var cutOffDate = DateTime.UtcNow.AddDays(-_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion);
+            var jobs = await _purgedSyncJobRepository.GetPurgedSyncJobsAsync(cutOffDate);
+            if (jobs.ToList().Count <= 0) return 0;
+            return await _purgedSyncJobRepository.DeletePurgedSyncJobsAsync(jobs);
         }
 
         public async Task RemoveInactiveJobsAsync(IEnumerable<SyncJob> jobs)

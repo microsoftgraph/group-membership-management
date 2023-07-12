@@ -23,7 +23,7 @@ namespace Hosts.AzureMaintenance
 
         [FunctionName(nameof(BackUpInactiveJobsFunction))]
         public async Task<int> BackupInactiveJobsAsync([ActivityTrigger] List<SyncJob> syncJobs)
-        {
+        {            
             int countOfBackUpJobs = 0;
             if (syncJobs.Count > 0)
             {
