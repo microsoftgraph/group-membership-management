@@ -11,6 +11,7 @@ namespace JobScheduler
         public string LogAnalyticsPrimarySharedKey { get; set; }
         public string JobsStorageAccountConnectionString { get; set; }
         public string JobsTableName { get; set; }
+        public string SQLDatabaseConnectionString { get; set; }
         public string APPINSIGHTS_INSTRUMENTATIONKEY { get; set; }
 
         public bool ResetJobs { get; set; }
