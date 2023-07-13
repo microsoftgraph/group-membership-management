@@ -37,21 +37,9 @@ namespace Hosts.JobTrigger
             string continuationToken = null;
             var syncJobs = new List<SyncJob>();
 
-            do
-            {
-                var segmentResponse = await context.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction),
-                    new GetJobsSegmentedRequest
-                    {
-                        Query = query,
-                        ContinuationToken = continuationToken
-                    });
+            var segmentResponse = await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsSegmentedFunction), null);
 
-                syncJobs.AddRange(segmentResponse.JobsSegment);
-
-                query = segmentResponse.Query;
-                continuationToken = segmentResponse.ContinuationToken;
-
-            } while (continuationToken != null);
+            syncJobs = segmentResponse;
 
             await context.CallActivityAsync(nameof(LoggerFunction),
              new LoggerRequest
