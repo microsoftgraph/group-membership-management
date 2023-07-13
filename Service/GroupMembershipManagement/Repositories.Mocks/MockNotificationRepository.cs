@@ -23,9 +23,9 @@ namespace Repositories.Mocks
             await Task.CompletedTask;
         }
 
-        public async Task<ThresholdNotification> GetThresholdNotificationBySyncJobKeysAsync(Guid syncJobId)
+        public async Task<ThresholdNotification> GetThresholdNotificationBySyncJobKeysAsync(string syncJobPartitionKey, string syncJobRowKey)
         {
-            var thresholdNotification = ThresholdNotifications.FirstOrDefault(x => x.Id == syncJobId);
+            var thresholdNotification = ThresholdNotifications.FirstOrDefault(x => x.SyncJobPartitionKey == syncJobPartitionKey && x.SyncJobRowKey == syncJobRowKey);
             return await Task.FromResult(thresholdNotification);
         }
 

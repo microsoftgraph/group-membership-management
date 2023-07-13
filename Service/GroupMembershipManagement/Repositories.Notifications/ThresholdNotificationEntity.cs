@@ -38,12 +38,12 @@ namespace Repositories.NotificationsRepository
         /// <summary>
         /// The threshold notification sync job's PartitionKey.
         /// </summary>
-        //public string SyncJobPartitionKey { get; set; } = string.Empty;
+        public string SyncJobPartitionKey { get; set; } = string.Empty;
 
         /// <summary>
         /// The threshold notification  sync job's RowKey.
         /// </summary>
-        //public string SyncJobRowKey { get; set; } = string.Empty;
+        public string SyncJobRowKey { get; set; } = string.Empty;
 
         /// <summary>
         /// The id of the group associated with the notification.
