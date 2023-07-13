@@ -6,6 +6,7 @@ using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.OwnershipReader
@@ -22,17 +23,14 @@ namespace Hosts.OwnershipReader
         }
 
         [FunctionName(nameof(GetJobsSegmentedFunction))]
-        public async Task<GetJobsSegmentedResponse> GetJobsAsync([ActivityTrigger] GetJobsSegmentedRequest request)
+        public async Task<List<SyncJob>> GetJobsAsync([ActivityTrigger] GetJobsSegmentedRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function started at: {DateTime.UtcNow}", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            var responsePage = await _ownershipReaderService.GetSyncJobsSegmentAsync(request.Query, request.ContinuationToken);
+            var responsePage = await _ownershipReaderService.GetSyncJobsSegmentAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function completed at: {DateTime.UtcNow}", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} number of jobs about to be returned: {responsePage.Values.Count}", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} number of jobs about to be returned: {responsePage.Count}", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
-            return new GetJobsSegmentedResponse
-            {
-                ResponsePage = responsePage
-            };
+            return responsePage;
         }
     }
 }
