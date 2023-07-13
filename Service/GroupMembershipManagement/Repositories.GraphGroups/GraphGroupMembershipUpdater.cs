@@ -205,7 +205,7 @@ namespace Repositories.GraphGroups
                         }
 
                         // Flag for individual retries
-                        // It will be immedialtely retried within ProcessPostBatch
+                        // It will be immediately retried within ProcessPostBatch
                         if (chunkToRetry.ToSend.Count > 1 && (idToRetry.ResponseCode == ResponseCode.IndividualRetry || idToRetry.ResponseCode == ResponseCode.IndividualRetryAlreadyExists))
                         {
                             chunkToRetry.SendAsPostRequest = true;
