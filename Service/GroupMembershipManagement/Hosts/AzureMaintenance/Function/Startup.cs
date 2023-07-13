@@ -15,6 +15,7 @@ using Microsoft.Extensions.Configuration;
 using Common.DependencyInjection;
 using Microsoft.Graph;
 using Repositories.GraphGroups;
+using Repositories.EntityFramework;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 
@@ -28,6 +29,8 @@ namespace Hosts.AzureMaintenance
         public override void Configure(IFunctionsHostBuilder builder)
         {
             base.Configure(builder);
+
+            builder.Services.AddScoped<IDatabasePurgedSyncJobsRepository, DatabasePurgedSyncJobsRepository>();
 
             builder.Services.AddOptions<HandleInactiveJobsConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
