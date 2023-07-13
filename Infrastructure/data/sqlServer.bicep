@@ -32,29 +32,20 @@ param sqlAdministratorsGroupId string
 @description('Administrators Azure AD Group Name')
 param sqlAdministratorsGroupName string
 
-@description('Administrator user name')
-param sqlAdminUserName string
-
-@secure()
-@description('Administrator password')
-param sqlAdminPassword string
-
-@description('Read Only SQL Administrator user name')
-param readOnlySqlAdminUserName string
-
-@secure()
-@description('Read Only SQL Administrator password')
-param readOnlySqlAdminPassword string
-
 var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var sqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
+var primaryDatabaseName = '${sqlDatabaseName}-jobs'
+var replicaSqlServerName = '${sqlServerName}-R'
+var replicaSqlDatabaseName = '${primaryDatabaseName}-R'
 var sqlDatabaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var logAnalyticsName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var sqlServerUrl = 'Server=tcp:${solutionAbbreviation}-data-${environmentAbbreviation}${environment().suffixes.sqlServerHostname},1433;'
-var sqlServerDataBaseName = 'Initial Catalog=${solutionAbbreviation}-data-${environmentAbbreviation};'
-var sqlServerLoginInfo = 'Persist Security Info=False;User ID=${sqlAdminUserName};Password=${sqlAdminPassword};'
+var sqlServerUrl = 'Server=tcp:${sqlServerName}${environment().suffixes.sqlServerHostname},1433;'
+var sqlServerDataBaseName = 'Initial Catalog=${sqlServerName}'
 var sqlServerAdditionalSettings = 'MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=90;'
 var jobsSqlDataBaseName = 'Initial Catalog=${solutionAbbreviation}-data-${environmentAbbreviation}-jobs;'
+var replicaConnectionString = 'Server=tcp:${replicaSqlServerName}${environment().suffixes.sqlServerHostname},1433;Initial Catalog=${replicaSqlDatabaseName};${sqlServerAdditionalSettings}'
+
+
 
 resource sqlServer 'Microsoft.Sql/servers@2021-02-01-preview' = {
   name: sqlServerName
@@ -64,14 +55,20 @@ resource sqlServer 'Microsoft.Sql/servers@2021-02-01-preview' = {
   }
   properties: {
     minimalTlsVersion: '1.2'
-    administratorLogin: sqlAdminUserName
-    administratorLoginPassword: sqlAdminPassword
     administrators: {
       administratorType: 'ActiveDirectory'
       principalType: 'Group'
       login: sqlAdministratorsGroupName
       sid: sqlAdministratorsGroupId
       tenantId: tenantId
+      azureADOnlyAuthentication: true
+    }
+  }
+
+  resource aadAuthentication 'azureADOnlyAuthentications@2022-11-01-preview' = {
+    name: 'Default'
+    properties: {
+      azureADOnlyAuthentication: true
     }
   }
 
@@ -99,7 +96,7 @@ resource sqlServer 'Microsoft.Sql/servers@2021-02-01-preview' = {
 }
 
 resource primaryDatabase 'Microsoft.Sql/servers/databases@2021-02-01-preview' = {
-  name: '${sqlDatabaseName}-jobs'
+  name: primaryDatabaseName
   parent: sqlServer
   location: location
   properties: {
@@ -122,36 +119,38 @@ resource SqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = {
 }
 
 resource replicaSqlServer 'Microsoft.Sql/servers@2021-11-01-preview' = {
-  name: '${sqlServer.name}-R'
+  name: replicaSqlServerName
   location: location
   identity: {
     type: 'SystemAssigned'
   }
   dependsOn:[
-    sqlServer
     primaryDatabase
   ]
   properties: {
     minimalTlsVersion: '1.2'
-    administratorLogin: readOnlySqlAdminUserName
-    administratorLoginPassword: readOnlySqlAdminPassword
     administrators: {
       administratorType: 'ActiveDirectory'
       principalType: 'Group'
       login: sqlAdministratorsGroupName
       sid: sqlAdministratorsGroupId
       tenantId: tenant().tenantId
+      azureADOnlyAuthentication: true
+    }
+  }
+
+  resource aadAuthentication 'azureADOnlyAuthentications@2022-11-01-preview' = {
+    name: 'Default'
+    properties: {
+      azureADOnlyAuthentication: true
     }
   }
 }
 
 resource readReplicaDb 'Microsoft.Sql/servers/databases@2021-11-01-preview' = {
-  name: '${primaryDatabase.name}-R'
+  name: replicaSqlDatabaseName
   parent: replicaSqlServer
   location: location
-  dependsOn:[
-    primaryDatabase
-  ]
   properties: {
     autoPauseDelay: -1
     createMode: 'OnlineSecondary'
@@ -218,32 +217,16 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
     keyVaultSecrets: {
       secrets: [
         {
-          name: 'sqlServerAdminUserName'
-          value: sqlAdminUserName
-        }
-        {
-          name: 'sqlServerAdminPassword'
-          value: sqlAdminPassword
-        }
-        {
-          name: 'readOnlySqlAdminUserName'
-          value: readOnlySqlAdminUserName
-        }
-        {
-          name: 'readOnlySqlAdminPassword'
-          value: readOnlySqlAdminPassword
-        }
-        {
           name: 'sqlServerManagedIdentity'
           value: sqlServer.identity.principalId
         }
         {
           name: 'sqlDatabaseConnectionString'
-          value: '${sqlServerUrl}${jobsSqlDataBaseName}${sqlServerLoginInfo}${sqlServerAdditionalSettings}'
+          value: '${sqlServerUrl}${jobsSqlDataBaseName}${sqlServerAdditionalSettings}'
         }
         {
           name: 'sqlServerConnectionString'
-          value: '${sqlServerUrl}${sqlServerDataBaseName}${sqlServerLoginInfo}${sqlServerAdditionalSettings}'
+          value: '${sqlServerUrl}${sqlServerDataBaseName}${sqlServerAdditionalSettings}'
         }
         {
           name: 'sqlServerBasicConnectionString'
@@ -252,6 +235,26 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
         {
           name: 'sqlServerMSIConnectionString'
           value: '${sqlServerUrl}${sqlServerDataBaseName}Authentication=Active Directory Default;TrustServerCertificate=True;Encrypt=True;'
+        }
+        {
+          name: 'sqlServerName'
+          value: '${sqlServerName}${environment().suffixes.sqlServerHostname}'
+        }
+        {
+          name: 'sqlServerDataBaseName'
+          value: sqlServerName
+        }
+        {
+          name: 'replicaSqlServerName'
+          value: replicaSqlServerName
+        }
+        {
+          name: 'replicaSqlDataBaseName'
+          value: replicaSqlDatabaseName
+        }
+        {
+          name: 'replicaSqlServerConnectionString'
+          value: replicaConnectionString
         }
       ]
     }
