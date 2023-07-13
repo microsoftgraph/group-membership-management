@@ -28,7 +28,7 @@ namespace Hosts.GraphUpdater
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
-            var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobPartitionKey, request.JobRowKey);
+            var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobId);
             syncJob.ThresholdViolations = request.ThresholdViolations;
             if (request.Status == SyncStatus.Idle && syncJob.IgnoreThresholdOnce) syncJob.IgnoreThresholdOnce = false;
 
