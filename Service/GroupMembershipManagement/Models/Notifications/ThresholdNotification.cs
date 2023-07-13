@@ -13,6 +13,11 @@ namespace Models.ThresholdNotifications
         public Guid Id { get; set; } = Guid.Empty;
 
         /// <summary>
+        /// The threshold notification sync job's Id.
+        /// </summary>
+        public Guid SyncJobId { get; set; } = Guid.Empty;
+
+        /// <summary>
         /// The threshold notification sync job's PartitionKey.
         /// </summary>
         public string SyncJobPartitionKey { get; set; } = string.Empty;

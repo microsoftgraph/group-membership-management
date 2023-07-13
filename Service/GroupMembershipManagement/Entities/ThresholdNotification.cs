@@ -25,6 +25,7 @@ namespace Entities
         }
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
+        public Guid SyncJobId { get; set; } = Guid.Empty;
 
         /// <summary>
         /// The threshold notification id.
