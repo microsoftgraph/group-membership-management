@@ -15,13 +15,15 @@ param keyVaultName string
 
 var authRuleResourceId = resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', name, 'RootManageSharedAccessKey')
 
-resource serviceBus 'Microsoft.ServiceBus/namespaces@2017-04-01' = {
+resource serviceBus 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' = {
   name: name
   location: location
   sku: {
     name: sku
   }
-  properties: {}
+  properties: {
+    minimumTlsVersion: '1.2'
+  }
 }
 
 module secureSecretsTemplatePrimaryKey 'keyVaultSecretsSecure.bicep' = {
@@ -30,7 +32,7 @@ module secureSecretsTemplatePrimaryKey 'keyVaultSecretsSecure.bicep' = {
     keyVaultName: keyVaultName
     keyVaultSecrets: {
       secrets: [
-        { 
+        {
           name: 'serviceBusPrimaryKey'
           value: listkeys(authRuleResourceId, '2017-04-01').primaryKey
         }
@@ -45,7 +47,7 @@ module secureSecretsTemplateConnectionString 'keyVaultSecretsSecure.bicep' = {
     keyVaultName: keyVaultName
     keyVaultSecrets: {
       secrets: [
-        { 
+        {
           name: 'serviceBusConnectionString'
           value: listkeys(authRuleResourceId, '2017-04-01').primaryConnectionString
         }
@@ -53,4 +55,3 @@ module secureSecretsTemplateConnectionString 'keyVaultSecretsSecure.bicep' = {
     }
   }
 }
-
