@@ -15,7 +15,6 @@
     <ProjectReference Include="..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj" />
     <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Logging\Repositories.Logging.csproj" />
-    <ProjectReference Include="..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj" />
     <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
     <ProjectReference Include="..\Services.Entities\Services.Entities.csproj" />
     <ProjectReference Include="..\Services\Services.csproj" />
