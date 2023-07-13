@@ -10,12 +10,10 @@ namespace Repositories.EntityFramework
     public class DatabaseMigrationsRepository : IDatabaseMigrationsRepository
     {
         private readonly GMMContext _context;
-        private readonly DbContextOptions<GMMContext> _contextOptions;
 
-        public DatabaseMigrationsRepository(GMMContext gmmContext, DbContextOptions<GMMContext> gmmContextOptions)
+        public DatabaseMigrationsRepository(GMMContext gmmContext)
         {
-            _context = gmmContext ?? throw new ArgumentNullException(nameof(gmmContext));
-            _contextOptions = gmmContextOptions ?? throw new ArgumentNullException(nameof(gmmContextOptions));
+            _context = gmmContext ?? throw new ArgumentNullException(nameof(gmmContext));            
         }
 
         public async Task MigrateDatabaseAsync()
