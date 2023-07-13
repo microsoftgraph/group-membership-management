@@ -8,7 +8,6 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.Mocks;
 using Repositories.ServiceBusTopics.Tests;
-using Repositories.SyncJobs.Tests;
 using Services.Contracts;
 using System;
 using System.Linq;
@@ -161,7 +160,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task VerifyJobStatusIsUpdatedToInProgress()
         {
-            var jobs = 1;
+            var jobs = 2;
 
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobs, Organization));
 
@@ -169,7 +168,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
             foreach (var job in _syncJobRepository.Jobs)
-            {
+            {                
                 var canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
                 await _jobTriggerService.UpdateSyncJobStatusAsync(canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
                 Assert.AreEqual(job.Status, SyncStatus.InProgress.ToString());
@@ -179,7 +178,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task VerifyJobStatusIsUpdatedToStuckInProgress()
         {
-            var jobs = 1;
+            var jobs = 2;
 
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobs, Organization));
 
@@ -198,7 +197,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task VerifyJobStatusIsUpdatedToErrorDueToNoGroupOwnership()
         {
-            var jobs = 1;
+            var jobs = 2;
 
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobs, Organization));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
@@ -215,7 +214,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task VerifyJobStatusIsUpdatedToInProgressDueToTenantAPIPermissions()
         {
-            var jobs = 1;
+            var jobs = 2;
 
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobs, Organization));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
