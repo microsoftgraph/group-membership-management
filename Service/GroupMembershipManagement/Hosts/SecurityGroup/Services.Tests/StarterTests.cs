@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using System.Collections.Concurrent;
 
 namespace Tests.Services
 {
@@ -21,7 +22,7 @@ namespace Tests.Services
     {
         private Mock<IDryRunValue> _dryRunValue;
         private Mock<ILoggingRepository> _loggingRepository;
-        private Mock<ISyncJobRepository> _syncJobRepository;
+        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
         private Mock<IDurableOrchestrationClient> _durableOrchestrationClient;
         private SyncJob _syncJob;
 
@@ -30,13 +31,12 @@ namespace Tests.Services
         {
             _dryRunValue = new Mock<IDryRunValue>();
             _loggingRepository = new Mock<ILoggingRepository>();
-            _syncJobRepository = new Mock<ISyncJobRepository>();
+            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _durableOrchestrationClient = new Mock<IDurableOrchestrationClient>();
 
             _syncJob = new SyncJob
             {
-                RowKey = Guid.NewGuid().ToString(),
-                PartitionKey = "00-00-0000",
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = Guid.NewGuid(),
                 Query = QuerySample.GenerateQuerySample("SecurityGroup").GetQuery(),
                 Status = "InProgress",
