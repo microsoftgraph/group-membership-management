@@ -22,8 +22,7 @@ namespace Repositories.ServiceBusQueue
 
         public async Task SendMembership(GroupMembership groupMembership, string sentFrom = "")
         {
-            if (groupMembership.SyncJobPartitionKey == null) { throw new ArgumentNullException("SyncJobPartitionKey must be set."); }
-            if (groupMembership.SyncJobRowKey == null) { throw new ArgumentNullException("SyncJobRowKey must be set."); }
+            if (groupMembership.SyncJobId.ToString() == null) { throw new ArgumentNullException("SyncJobId must be set."); }
 
             foreach (var message in groupMembership.Split().Select(x => new Azure.Messaging.ServiceBus.ServiceBusMessage
             {

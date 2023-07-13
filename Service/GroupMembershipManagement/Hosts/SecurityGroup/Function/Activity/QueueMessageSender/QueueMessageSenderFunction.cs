@@ -37,7 +37,7 @@ namespace Hosts.SecurityGroup
 
             var message = new ServiceBusMessage
             {
-                MessageId = $"{request.SyncJob.RowKey}_{request.SyncJob.RunId}_{Guid.NewGuid()}",
+                MessageId = $"{request.SyncJob.Id}_{request.SyncJob.RunId}_{Guid.NewGuid()}",
                 Body = body
             };
 

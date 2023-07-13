@@ -14,8 +14,7 @@ namespace Models.ServiceBus
         public AzureADGroup Destination { get; set; }
         public List<AzureADUser> SourceMembers { get; set; } = new List<AzureADUser>();
         public Guid RunId { get; set; }
-        public string SyncJobRowKey { get; set; }
-        public string SyncJobPartitionKey { get; set; }
+        public Guid SyncJobId { get; set; }
         public bool MembershipObtainerDryRunEnabled { get; set; }
         public bool Exclusionary { get; set; }
         public string Query { get; set; }
@@ -39,8 +38,7 @@ namespace Models.ServiceBus
                 Select(x => new GroupMembership
                 {
                     Destination = Destination,
-                    SyncJobPartitionKey = SyncJobPartitionKey,
-                    SyncJobRowKey = SyncJobRowKey,
+                    SyncJobId = SyncJobId,
                     SourceMembers = x,
                     RunId = RunId,
                     MembershipObtainerDryRunEnabled = MembershipObtainerDryRunEnabled,
@@ -61,8 +59,7 @@ namespace Models.ServiceBus
         {
             var groupMembership = (GroupMembership)this.MemberwiseClone();
             groupMembership.Destination = this.Destination != null ? new AzureADGroup { ObjectId = this.Destination.ObjectId } : null;
-            groupMembership.SyncJobPartitionKey = this.SyncJobPartitionKey;
-            groupMembership.SyncJobRowKey = this.SyncJobRowKey;
+            groupMembership.SyncJobId = this.SyncJobId;
             groupMembership.Query = this.Query;
             SourceMembers = this.SourceMembers != null
                             ? this.SourceMembers.Select(x => new AzureADUser
