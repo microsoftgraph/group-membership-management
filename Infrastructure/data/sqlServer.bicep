@@ -113,13 +113,13 @@ resource primaryDatabase 'Microsoft.Sql/servers/databases@2021-02-01-preview' = 
   }
 }
 
-resource SqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = {
-  scope: primaryDatabase
-  name: 'Do Not Delete'
-  properties: {
-    level: 'CanNotDelete'
-  }
-}
+// resource SqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = {
+//   scope: primaryDatabase
+//   name: 'Do Not Delete'
+//   properties: {
+//     level: 'CanNotDelete'
+//   }
+// }
 
 resource replicaSqlServer 'Microsoft.Sql/servers@2021-11-01-preview' = {
   name: '${sqlServer.name}-R'
@@ -167,13 +167,13 @@ resource readReplicaDb 'Microsoft.Sql/servers/databases@2021-11-01-preview' = {
   }
 }
 
-resource RSqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = {
-  scope: readReplicaDb
-  name: 'Do Not Delete'
-  properties: {
-    level: 'CanNotDelete'
-  }
-}
+// resource RSqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = {
+//   scope: readReplicaDb
+//   name: 'Do Not Delete'
+//   properties: {
+//     level: 'CanNotDelete'
+//   }
+// }
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2021-06-01' existing = {
   name: logAnalyticsName
