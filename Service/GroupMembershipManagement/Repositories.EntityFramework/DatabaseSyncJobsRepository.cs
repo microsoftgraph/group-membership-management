@@ -11,12 +11,10 @@ namespace Repositories.EntityFramework
     public class DatabaseSyncJobsRepository : IDatabaseSyncJobsRepository
     {
         private readonly GMMContext _context;
-        private readonly DbContextOptions<GMMContext> _contextOptions;
 
-        public DatabaseSyncJobsRepository(GMMContext gmmContext, DbContextOptions<GMMContext> gmmContextOptions)
+        public DatabaseSyncJobsRepository(GMMContext gmmContext)
         {
-            _context = gmmContext ?? throw new ArgumentNullException(nameof(gmmContext));
-            _contextOptions = gmmContextOptions ?? throw new ArgumentNullException(nameof(gmmContextOptions));
+            _context = gmmContext ?? throw new ArgumentNullException(nameof(gmmContext));            
         }
 
         public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
