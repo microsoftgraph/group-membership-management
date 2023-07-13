@@ -47,7 +47,7 @@ namespace Hosts.GraphUpdater
                 {
                     await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.GroupId} doesn't exist." });
 
-                    var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobPartitionKey, request.JobRowKey);
+                    var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobId);
                     if (syncJob != null)
                         await _graphUpdaterService.SendEmailAsync(
                             syncJob.Requestor,
