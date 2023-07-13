@@ -17,6 +17,7 @@ using Repositories.Contracts.InjectConfig;
 using ExecutionContext = Microsoft.Azure.WebJobs.ExecutionContext;
 using Models.Entities;
 using System.Text.Json;
+using Services.TeamsChannelUpdater.Contracts;
 
 namespace Hosts.TeamsChannelUpdater
 {
@@ -81,7 +82,9 @@ namespace Hosts.TeamsChannelUpdater
                                                                                 SyncJob = syncJob
                                                                             });
 
-                groupMembership = JsonSerializer.Deserialize<TeamsGroupMembership>(fileContent);
+                JsonSerializerOptions options = new JsonSerializerOptions();
+                options.Converters.Add(new AzureADTeamsUserConverter());
+                groupMembership = JsonSerializer.Deserialize<TeamsGroupMembership>(fileContent, options);
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", RunId = syncJob.RunId.GetValueOrDefault(Guid.Empty), Verbosity = VerbosityLevel.DEBUG });
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest

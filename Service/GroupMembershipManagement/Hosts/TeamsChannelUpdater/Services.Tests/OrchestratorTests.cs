@@ -245,7 +245,9 @@ namespace Services.Tests
 
         private TeamsGroupMembership GetGroupMembership()
         {
-            var groupMembership = JsonSerializer.Deserialize<TeamsGroupMembership>(_groupMembershipJson);
+            JsonSerializerOptions options = new JsonSerializerOptions();
+            options.Converters.Add(new AzureADTeamsUserConverter());
+            var groupMembership = JsonSerializer.Deserialize<TeamsGroupMembership>(_groupMembershipJson, options);
 
             return groupMembership;
         }

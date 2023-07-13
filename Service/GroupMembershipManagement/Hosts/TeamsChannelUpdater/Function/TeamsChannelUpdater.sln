@@ -31,8 +31,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.TeamsChannelUpdate
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.TeamsChannelUpdater.Contracts", "..\Services.TeamsChannelUpdater.Contracts\Services.TeamsChannelUpdater.Contracts.csproj", "{46E07EED-A68C-4850-9AA5-89BEB144B028}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Tests", "..\Services.TeamsChannelUpdater.Tests\Services.Tests.csproj", "{ADD34631-B3AE-46E0-A119-408438694C90}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework.Contexts", "..\..\..\Repositories.EntityFramework.Contexts\Repositories.EntityFramework.Contexts.csproj", "{8C010D06-3005-4AA9-A688-58B0B7A1AC17}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.FeatureFlag", "..\..\..\Repositories.FeatureFlag\Repositories.FeatureFlag.csproj", "{33B29DF9-FD54-44B5-B2D5-6D3E308FE1A0}"
@@ -40,6 +38,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.ServiceBusQueue", "..\..\..\Repositories.ServiceBusQueue\Repositories.ServiceBusQueue.csproj", "{697ED894-3F73-42F9-9AA7-04B5C75B0A3F}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework", "..\..\..\Repositories.EntityFramework\Repositories.EntityFramework.csproj", "{605D2AFB-D8AA-48A7-AE57-269E9CE52A52}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Tests", "..\Services.Tests\Services.Tests.csproj", "{7ABADB8C-B9FD-4D46-A574-0663D4C15BEC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -99,10 +99,6 @@ Global
 		{46E07EED-A68C-4850-9AA5-89BEB144B028}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{46E07EED-A68C-4850-9AA5-89BEB144B028}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{46E07EED-A68C-4850-9AA5-89BEB144B028}.Release|Any CPU.Build.0 = Release|Any CPU
-		{ADD34631-B3AE-46E0-A119-408438694C90}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{ADD34631-B3AE-46E0-A119-408438694C90}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{ADD34631-B3AE-46E0-A119-408438694C90}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{ADD34631-B3AE-46E0-A119-408438694C90}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8C010D06-3005-4AA9-A688-58B0B7A1AC17}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8C010D06-3005-4AA9-A688-58B0B7A1AC17}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8C010D06-3005-4AA9-A688-58B0B7A1AC17}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -119,6 +115,10 @@ Global
 		{605D2AFB-D8AA-48A7-AE57-269E9CE52A52}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{605D2AFB-D8AA-48A7-AE57-269E9CE52A52}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{605D2AFB-D8AA-48A7-AE57-269E9CE52A52}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7ABADB8C-B9FD-4D46-A574-0663D4C15BEC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7ABADB8C-B9FD-4D46-A574-0663D4C15BEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7ABADB8C-B9FD-4D46-A574-0663D4C15BEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7ABADB8C-B9FD-4D46-A574-0663D4C15BEC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
