@@ -25,7 +25,7 @@ namespace Services
         private const string SyncThresholdBothEmailBody = "SyncThresholdBothEmailBody";
         private const string SyncThresholdDisablingJobEmailSubject = "SyncThresholdDisablingJobEmailSubject";
 
-        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly ILoggingRepository _loggingRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IGraphAPIService _graphAPIService;
@@ -49,7 +49,7 @@ namespace Services
         }
 
         public DeltaCalculatorService(
-            ISyncJobRepository syncJobRepository,
+            IDatabaseSyncJobsRepository syncJobRepository,
             ILoggingRepository loggingRepository,
             IEmailSenderRecipient emailSenderAndRecipients,
             IGraphAPIService graphAPIService,
@@ -82,10 +82,10 @@ namespace Services
                 MembershipDeltaStatus = MembershipDeltaStatus.Ok
             };
 
-            var job = await _syncJobRepository.GetSyncJobAsync(sourceMembership.SyncJobPartitionKey, sourceMembership.SyncJobRowKey);
+            var job = await _syncJobRepository.GetSyncJobAsync(sourceMembership.SyncJobId);
             if (job == null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sync job : Partition key {sourceMembership.SyncJobPartitionKey}, Row key {sourceMembership.SyncJobRowKey} was not found!", RunId = sourceMembership.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sync job : Id {sourceMembership.SyncJobId} was not found!", RunId = sourceMembership.RunId });
                 deltaResponse.MembershipDeltaStatus = MembershipDeltaStatus.Error;
                 return deltaResponse;
             }
@@ -101,7 +101,7 @@ namespace Services
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"Processing sync job : Partition key {sourceMembership.SyncJobPartitionKey} , Row key {sourceMembership.SyncJobRowKey}",
+                Message = $"Processing sync job : Id {sourceMembership.SyncJobId}",
                 RunId = sourceMembership.RunId
             });
 
@@ -308,7 +308,7 @@ namespace Services
 
         private async Task SendActionableEmailNotification(ThresholdResult threshold, SyncJob job, MembershipDelta<AzureADUser> delta, bool sendDisableJobNotification)
         {
-            var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobKeysAsync(job.PartitionKey, job.RowKey);
+            var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobKeysAsync(job.Id.ToString(), Guid.NewGuid().ToString());
 
             if (thresholdNotification == null)
             {
@@ -399,7 +399,7 @@ namespace Services
         {
             if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
             {
-                var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobKeysAsync(job.PartitionKey, job.RowKey);
+                var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobKeysAsync(job.Id.ToString(), Guid.NewGuid().ToString());
                 if (thresholdNotification != null && thresholdNotification.Status != ThresholdNotificationStatus.Resolved)
                 {
                     thresholdNotification.Resolution = ThresholdNotificationResolution.SelfCorrected;
@@ -444,7 +444,7 @@ namespace Services
             {
                 additionalContent = new[]
                 {
-                      job.TargetOfficeGroupId.ToString(), 
+                      job.TargetOfficeGroupId.ToString(),
                       groupName,
                       $"{increasedThresholdMessage}\n",
                       _gmmResources.LearnMoreAboutGMMUrl,

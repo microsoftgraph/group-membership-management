@@ -26,6 +26,7 @@ namespace Repositories.NotificationsRepository
             PartitionKey = partitionKey;
             RowKey = rowKey;
         }
+        public Guid SyncJobId { get; set; }
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
 
