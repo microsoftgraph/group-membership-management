@@ -92,6 +92,7 @@ var membershipAggregatorStagingUrl = resourceId(subscription().subscriptionId, d
 var membershipAggregatorStagingFunctionKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipAggregatorStagingFunctionKey')
 var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
+var sqlDatabaseConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'sqlDatabaseConnectionString')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-TeamsChannel'
@@ -125,6 +126,7 @@ var appSettings = {
   'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:KeyVaultName': prereqsKeyVaultName
   'graphCredentials:KeyVaultTenantId': tenantId
+  'ConnectionStrings:JobsContext': '@Microsoft.KeyVault(SecretUri=${reference(sqlDatabaseConnectionString, '2019-09-01').secretUriWithVersion})'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
   jobsStorageAccountConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
