@@ -34,7 +34,6 @@ namespace Tests.FunctionApps
             };
         }
 
-
         [TestMethod]
         [DataRow(0, 0)]
         [DataRow(3, 0)]
@@ -53,21 +52,20 @@ namespace Tests.FunctionApps
 
             var mail = new MockMailRepository();
             var mailAddresses = new MockEmail<IEmailSenderRecipient>();
-            var syncJobs = new MockSyncJobRepository();
+            var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
             var testJob = new SyncJob
             {
-                RowKey = "row",
-                PartitionKey = "partition",
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = destinationGroup,
                 Query = _querySample.GetQuery(),
                 Status = "InProgress"
             };
 
-            syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+            syncJobs.Jobs.Add(testJob);
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
             await calc.SendMembershipAsync(testJob, allUsers, _partIndex, true);
@@ -112,21 +110,20 @@ namespace Tests.FunctionApps
 
             var mail = new MockMailRepository();
             var mailAddresses = new MockEmail<IEmailSenderRecipient>();
-            var syncJobs = new MockSyncJobRepository();
+            var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
             var testJob = new SyncJob
             {
-                RowKey = "row",
-                PartitionKey = "partition",
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = destinationGroup,
                 Query = _querySample.GetQuery(),
                 Status = "InProgress"
             };
 
-            syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+            syncJobs.Jobs.Add(testJob);
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
             await calc.SendMembershipAsync(testJob, allUsers, _partIndex, true);
@@ -170,21 +167,20 @@ namespace Tests.FunctionApps
 
             var mail = new MockMailRepository();
             var mailAddresses = new MockEmail<IEmailSenderRecipient>();
-            var syncJobs = new MockSyncJobRepository();
+            var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
             var testJob = new SyncJob
             {
-                RowKey = "row",
-                PartitionKey = "partition",
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = destinationGroup,
                 Query = _querySample.GetQuery(),
                 Status = "InProgress"
             };
 
-            syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+            syncJobs.Jobs.Add(testJob);
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
             var groupExistsResult = await calc.GroupExistsAsync(partOneSource, Guid.NewGuid());
@@ -230,7 +226,7 @@ namespace Tests.FunctionApps
 
             var mail = new MockMailRepository();
             var mailAddresses = new MockEmail<IEmailSenderRecipient>();
-            var syncJobs = new MockSyncJobRepository();
+            var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
@@ -240,14 +236,13 @@ namespace Tests.FunctionApps
             var sampleQuery = QuerySample.GenerateQuerySample("SecurityGroup");
             var testJob = new SyncJob
             {
-                RowKey = "row",
-                PartitionKey = "partition",
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = destinationGroup,
                 Query = sampleQuery.GetQuery(),
                 Status = "InProgress"
             };
 
-            syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+
 
             var partIndex = 0;
             var partOneSource = sampleQuery.GetSourceId(partIndex);
@@ -290,7 +285,7 @@ namespace Tests.FunctionApps
 
             var mail = new MockMailRepository();
             var mailAddresses = new MockEmail<IEmailSenderRecipient>();
-            var syncJobs = new MockSyncJobRepository();
+            var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
@@ -300,15 +295,14 @@ namespace Tests.FunctionApps
             var sampleQuery = QuerySample.GenerateQuerySample("SecurityGroup");
             var testJob = new SyncJob
             {
-                RowKey = "row",
-                PartitionKey = "partition",
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = destinationGroup,
                 Query = sampleQuery.GetQuery(),
                 Status = "InProgress",
                 RunId = new Guid()
             };
 
-            syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+            syncJobs.Jobs.Add(testJob);
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
 
@@ -351,7 +345,7 @@ namespace Tests.FunctionApps
 
             var mail = new MockMailRepository();
             var mailAddresses = new MockEmail<IEmailSenderRecipient>();
-            var syncJobs = new MockSyncJobRepository();
+            var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
@@ -361,14 +355,13 @@ namespace Tests.FunctionApps
             var sampleQuery = QuerySample.GenerateQuerySample("SecurityGroup");
             var testJob = new SyncJob
             {
-                RowKey = "row",
-                PartitionKey = "partition",
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = destinationGroup,
                 Query = sampleQuery.GetQuery(),
                 Status = "InProgress"
             };
 
-            syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+            syncJobs.Jobs.Add(testJob);
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
 
@@ -394,7 +387,7 @@ namespace Tests.FunctionApps
 
             var mail = new MockMailRepository();
             var mailAddresses = new MockEmail<IEmailSenderRecipient>();
-            var syncJobs = new MockSyncJobRepository();
+            var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
@@ -404,14 +397,13 @@ namespace Tests.FunctionApps
             var sampleQuery = QuerySample.GenerateQuerySample("SecurityGroup");
             var testJob = new SyncJob
             {
-                RowKey = "row",
-                PartitionKey = "partition",
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = destinationGroup,
                 Query = sampleQuery.GetQuery(),
                 Status = "InProgress"
             };
 
-            syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+            syncJobs.Jobs.Add(testJob);
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
             var groupExistsResult = await calc.GroupExistsAsync(partOneSource, Guid.NewGuid());
@@ -454,7 +446,7 @@ namespace Tests.FunctionApps
 
             var mail = new MockMailRepository();
             var mailAddresses = new MockEmail<IEmailSenderRecipient>();
-            var syncJobs = new MockSyncJobRepository();
+            var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
@@ -464,14 +456,13 @@ namespace Tests.FunctionApps
             var sampleQuery = QuerySample.GenerateQuerySample("SecurityGroup");
             var testJob = new SyncJob
             {
-                RowKey = "row",
-                PartitionKey = "partition",
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = destinationGroup,
                 Query = sampleQuery.GetQuery(),
                 Status = "InProgress"
             };
 
-            syncJobs.ExistingSyncJobs.Add((testJob.RowKey, testJob.PartitionKey), testJob);
+            syncJobs.Jobs.Add(testJob);
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
             await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Subject", "Content", null);

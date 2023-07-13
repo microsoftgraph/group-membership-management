@@ -18,6 +18,7 @@ namespace Services.Tests
                 var job = new SyncJob
                 {
                     Requestor = $"requestor_{i}@email.com",
+                    Id = Guid.NewGuid(),
                     PartitionKey = DateTime.UtcNow.ToString("MMddyyyy"),
                     RowKey = Guid.NewGuid().ToString(),
                     Period = period,

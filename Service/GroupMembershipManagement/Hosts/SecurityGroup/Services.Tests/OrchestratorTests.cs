@@ -35,7 +35,7 @@ namespace Tests.Services
         private Mock<IMailRepository> _mailRepository;
         private Mock<IFeatureManager> _featureManager;
         private Mock<ILoggingRepository> _loggingRepository;
-        private Mock<ISyncJobRepository> _syncJobRepository;
+        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
@@ -61,7 +61,7 @@ namespace Tests.Services
             _mailRepository = new Mock<IMailRepository>();
             _featureManager = new Mock<IFeatureManager>();
             _loggingRepository = new Mock<ILoggingRepository>();
-            _syncJobRepository = new Mock<ISyncJobRepository>();
+            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
@@ -79,8 +79,7 @@ namespace Tests.Services
 
             var syncJob = new SyncJob
             {
-                RowKey = Guid.NewGuid().ToString(),
-                PartitionKey = "00-00-0000",
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = Guid.NewGuid(),
                 Query = _querySample.GetQuery(),
                 Status = "InProgress",
@@ -360,8 +359,7 @@ namespace Tests.Services
 
             var syncJob = new SyncJob
             {
-                RowKey = Guid.NewGuid().ToString(),
-                PartitionKey = "00-00-0000",
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = Guid.NewGuid(),
                 Query = _querySample.GetQuery(),
                 Status = "InProgress",

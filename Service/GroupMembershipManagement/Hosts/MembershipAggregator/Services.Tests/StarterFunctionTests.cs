@@ -33,8 +33,7 @@ namespace Services.Tests
             _durableClient = new Mock<IDurableOrchestrationClient>();
             _syncJob = new SyncJob
             {
-                PartitionKey = "00-00-0000",
-                RowKey = Guid.NewGuid().ToString(),
+                Id = Guid.NewGuid(),
                 TargetOfficeGroupId = Guid.NewGuid(),
                 ThresholdPercentageForAdditions = 80,
                 ThresholdPercentageForRemovals = 20,
