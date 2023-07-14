@@ -26,11 +26,22 @@ namespace Hosts.SecurityGroup
         public async Task<AzureADGroup> GetSourceGroupsAsync([ActivityTrigger] SourceGroupsReaderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SourceGroupsReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            await _loggingRepository.LogMessageAsync(new LogMessage
+            if (request.IsDestinationPart)
             {
-                RunId = request.RunId,
-                Message = $"Getting source groups for Part# {request.CurrentPart} {request.SyncJob.Query} to be synced into the destination group {request.SyncJob.TargetOfficeGroupId}."
-            });
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = request.RunId,
+                    Message = $"Getting destination group for Part# {request.CurrentPart}, with group id {request.SyncJob.TargetOfficeGroupId}."
+                });
+            }
+            else
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = request.RunId,
+                    Message = $"Getting source group for Part# {request.CurrentPart} {request.SyncJob.Query} to be synced into the destination group {request.SyncJob.TargetOfficeGroupId}."
+                });
+            }
 
             AzureADGroup sourceGroup = request.IsDestinationPart
                                             ? sourceGroup = new AzureADGroup { ObjectId = request.SyncJob.TargetOfficeGroupId }
