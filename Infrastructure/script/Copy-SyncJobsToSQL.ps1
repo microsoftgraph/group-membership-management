@@ -53,10 +53,13 @@ function Copy-SyncJobsToSQL {
         # Get SQL Connection String
         $dataKeyVaultName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
         $connectionString = Get-AzKeyVaultSecret -VaultName $dataKeyVaultName -Name "sqlDatabaseConnectionString" -AsPlainText
+        $context = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
+        $sqlToken = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($context.Account, $context.Environment, $context.Tenant.Id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "https://database.windows.net").AccessToken
 
         # Set up connection to SQL
-        $conn = New-Object System.Data.SqlClient.SQLConnection 
+        $conn = New-Object System.Data.SqlClient.SQLConnection
         $conn.ConnectionString = $connectionString
+        $conn.AccessToken = $sqlToken
 
         # Check to see if the destination sql table is empty
         $syncJobsCountCmd = $conn.CreateCommand()
