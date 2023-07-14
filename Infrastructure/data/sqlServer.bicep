@@ -44,8 +44,8 @@ var sqlServerDataBaseName = 'Initial Catalog=${sqlServerName}'
 var sqlServerAdditionalSettings = 'MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=90;'
 var jobsSqlDataBaseName = 'Initial Catalog=${solutionAbbreviation}-data-${environmentAbbreviation}-jobs;'
 var replicaConnectionString = 'Server=tcp:${replicaSqlServerName}${environment().suffixes.sqlServerHostname},1433;Initial Catalog=${replicaSqlDatabaseName};${sqlServerAdditionalSettings}'
-
-
+var jobsMSIConnectionString = 'Server=tcp:${sqlServerName}${environment().suffixes.sqlServerHostname},1433;${jobsSqlDataBaseName};Authentication=Active Directory Default;'
+var replicaJobsMSIConnectionString = 'Server=tcp:${replicaSqlServerName}${environment().suffixes.sqlServerHostname},1433;${jobsSqlDataBaseName};Authentication=Active Directory Default;'
 
 resource sqlServer 'Microsoft.Sql/servers@2021-02-01-preview' = {
   name: sqlServerName
@@ -237,6 +237,10 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
           value: '${sqlServerUrl}${sqlServerDataBaseName}Authentication=Active Directory Default;TrustServerCertificate=True;Encrypt=True;'
         }
         {
+          name: 'replicaSqlServerMSIConnectionString'
+          value: '${sqlServerUrl}${sqlServerDataBaseName}Authentication=Active Directory Default;TrustServerCertificate=True;Encrypt=True;'
+        }
+        {
           name: 'sqlServerName'
           value: '${sqlServerName}${environment().suffixes.sqlServerHostname}'
         }
@@ -256,6 +260,14 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
           name: 'replicaSqlServerConnectionString'
           value: replicaConnectionString
         }
+        {
+          name: 'jobsMSIConnectionString'
+          value: jobsMSIConnectionString
+        }
+        {
+          name: 'replicaJobsMSIConnectionString'
+          value: replicaJobsMSIConnectionString
+        }        
       ]
     }
   }
