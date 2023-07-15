@@ -113,14 +113,6 @@ resource primaryDatabase 'Microsoft.Sql/servers/databases@2021-02-01-preview' = 
   }
 }
 
-resource SqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = {
-  scope: primaryDatabase
-  name: 'Do Not Delete'
-  properties: {
-    level: 'CanNotDelete'
-  }
-}
-
 resource replicaSqlServer 'Microsoft.Sql/servers@2021-11-01-preview' = {
   name: '${sqlServer.name}-R'
   location: location
@@ -164,14 +156,6 @@ resource readReplicaDb 'Microsoft.Sql/servers/databases@2021-11-01-preview' = {
     secondaryType: 'Geo'
     isLedgerOn: false
     sourceDatabaseId: primaryDatabase.id
-  }
-}
-
-resource RSqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = {
-  scope: readReplicaDb
-  name: 'Do Not Delete'
-  properties: {
-    level: 'CanNotDelete'
   }
 }
 
