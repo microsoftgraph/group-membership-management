@@ -5,6 +5,7 @@ using Models.CustomAttributes;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Data.SqlTypes;
 
 namespace Models
 {
@@ -46,19 +47,19 @@ namespace Models
         /// Last Run Time (UTC)
         /// </summary>
         [IgnoreLogging]
-        public DateTime LastRunTime { get; set; } = DateTime.FromFileTimeUtc(0); //azure table storage rejects default(DateTime), so set them to this on construction.
+        public DateTime LastRunTime { get; set; } = SqlDateTime.MinValue.Value; //azure table storage rejects default(DateTime), so set them to this on construction.
 
         /// <summary>
         /// Last Successful Run Time (UTC)
         /// </summary>
         [IgnoreLogging]
-        public DateTime LastSuccessfulRunTime { get; set; } = DateTime.FromFileTimeUtc(0);
+        public DateTime LastSuccessfulRunTime { get; set; } = SqlDateTime.MinValue.Value;
 
         /// <summary>
         /// Last Successful Start Time (UTC)
         /// </summary>
         [IgnoreLogging]
-        public DateTime LastSuccessfulStartTime { get; set; } = DateTime.FromFileTimeUtc(0);
+        public DateTime LastSuccessfulStartTime { get; set; } = SqlDateTime.MinValue.Value;
 
         /// <summary>
         /// Period (hours)
@@ -72,7 +73,7 @@ namespace Models
         /// Start Date (UTC)
         /// </summary>
         [IgnoreLogging]
-        public DateTime StartDate { get; set; } = DateTime.FromFileTimeUtc(0);
+        public DateTime StartDate { get; set; } = SqlDateTime.MinValue.Value;
 
         /// <summary>
         /// Ignore threshold check if this is set to true

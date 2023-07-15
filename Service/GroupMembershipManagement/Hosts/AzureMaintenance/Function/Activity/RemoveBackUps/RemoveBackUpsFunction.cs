@@ -1,12 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.AzureMaintenance
@@ -22,12 +21,12 @@ namespace Hosts.AzureMaintenance
         }
 
         [FunctionName(nameof(RemoveBackUpsFunction))]
-        public async Task<List<string>> RemoveBackupsAsync([ActivityTrigger] object obj)
+        public async Task<int> RemoveBackUpsAsync([ActivityTrigger] object obj)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RemoveBackUpsFunction)} function started" }, VerbosityLevel.DEBUG);
-            var tables = await _azureMaintenanceService.RemoveBackupsAsync();
+            int countOfRemovedJobs =  await _azureMaintenanceService.RemoveBackupsAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(RemoveBackUpsFunction)} function completed" }, VerbosityLevel.DEBUG);
-            return tables;
+            return countOfRemovedJobs;
         }
     }
 }
