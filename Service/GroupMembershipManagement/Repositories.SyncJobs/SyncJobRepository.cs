@@ -263,8 +263,6 @@ namespace Repositories.SyncJobsRepository
         {
             return new UpdateMergeSyncJobEntity
             {
-                PartitionKey = updateMergeSyncJob.PartitionKey,
-                RowKey = updateMergeSyncJob.RowKey,
                 StartDate = updateMergeSyncJob.StartDate
             };
         }
