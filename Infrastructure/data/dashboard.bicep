@@ -852,7 +852,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
             position: {
               x: 16
               y: 4
-              colSpan: 4
+              colSpan: 6
               rowSpan: 2
             }
             metadata: {
@@ -941,7 +941,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   GridColumnsWidth: {
                     Message: '379px'
                   }
-                  Query: 'AzureDiagnostics \n| where Category == "PipelineRuns" and pipelineName_s == "ProdPipeline" \n| summarize arg_max(TimeGenerated, *) by runId_g\n| project TimeGenerated, status_s\n| order by TimeGenerated desc\n'
+                  Query: 'AzureDiagnostics \n| where Category == "PipelineRuns" and pipelineName_s == "ProdPipeline" \n| summarize arg_max(TimeGenerated, *) by runId_g\n| project TimeGenerated, Resource, status_s\n| order by TimeGenerated desc, Resource\n'
                   PartTitle: 'Pipeline Run Status'
                 }
               }
