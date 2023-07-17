@@ -54,15 +54,15 @@ namespace Hosts.SecurityGroup
                         return;
                     }
 
-                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-                    var sourceGroup = await context.CallActivityAsync<AzureADGroup>(nameof(SourceGroupsReaderFunction),
-                                                                                        new SourceGroupsReaderRequest
-                                                                                        {
-                                                                                            SyncJob = syncJob,
-                                                                                            CurrentPart = mainRequest.CurrentPart,
-                                                                                            IsDestinationPart = mainRequest.IsDestinationPart,
-                                                                                            RunId = runId
-                                                                                        });
+                if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
+                var sourceGroup = await context.CallActivityAsync<AzureADGroup>(nameof(GroupReaderFunction),
+                                                                                    new GroupReaderRequest
+                                                                                    {
+                                                                                        SyncJob = syncJob,
+                                                                                        CurrentPart = mainRequest.CurrentPart,
+                                                                                        IsDestinationPart = mainRequest.IsDestinationPart,
+                                                                                        RunId = runId
+                                                                                    });
 
                     if (sourceGroup.ObjectId == Guid.Empty)
                     {

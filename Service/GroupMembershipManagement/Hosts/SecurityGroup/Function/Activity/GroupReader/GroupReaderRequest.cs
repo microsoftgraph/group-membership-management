@@ -5,7 +5,7 @@ using System;
 
 namespace Hosts.SecurityGroup
 {
-    public class SourceGroupsReaderRequest
+    public class GroupReaderRequest
     {
         public SyncJob SyncJob { get; set; }
         public Guid RunId { get; set; }

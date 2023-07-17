@@ -11,21 +11,21 @@ using System.Threading.Tasks;
 
 namespace Hosts.SecurityGroup
 {
-    public class SourceGroupsReaderFunction
+    public class GroupReaderFunction
     {
         private readonly ILoggingRepository _loggingRepository;
         private readonly SGMembershipCalculator _membershipCalculator;
 
-        public SourceGroupsReaderFunction(ILoggingRepository loggingRepository, SGMembershipCalculator membershipCalculator)
+        public GroupReaderFunction(ILoggingRepository loggingRepository, SGMembershipCalculator membershipCalculator)
         {
             _loggingRepository = loggingRepository;
             _membershipCalculator = membershipCalculator;
         }
 
-        [FunctionName(nameof(SourceGroupsReaderFunction))]
-        public async Task<AzureADGroup> GetSourceGroupsAsync([ActivityTrigger] SourceGroupsReaderRequest request)
+        [FunctionName(nameof(GroupReaderFunction))]
+        public async Task<AzureADGroup> GetGroupAsync([ActivityTrigger] GroupReaderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SourceGroupsReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             if (request.IsDestinationPart)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage
@@ -43,15 +43,15 @@ namespace Hosts.SecurityGroup
                 });
             }
 
-            AzureADGroup sourceGroup = request.IsDestinationPart
-                                            ? sourceGroup = new AzureADGroup { ObjectId = request.SyncJob.TargetOfficeGroupId }
-                                            : sourceGroup = GetSourceGroup(request);
+            AzureADGroup azureAdGroup = request.IsDestinationPart
+                                            ? azureAdGroup = new AzureADGroup { ObjectId = request.SyncJob.TargetOfficeGroupId }
+                                            : azureAdGroup = GetSourceGroup(request);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SourceGroupsReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return sourceGroup;
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            return azureAdGroup;
         }
 
-        private AzureADGroup GetSourceGroup(SourceGroupsReaderRequest request)
+        private AzureADGroup GetSourceGroup(GroupReaderRequest request)
         {
             var queryParts = JArray.Parse(request.SyncJob.Query);
             var currentPart = queryParts[request.CurrentPart - 1];

@@ -136,10 +136,10 @@ namespace Tests.Services
                         await CallTelemetryTrackerFunctionAsync(telemetryRequest);
                     });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<AzureADGroup>(It.IsAny<string>(), It.IsAny<SourceGroupsReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<AzureADGroup>(It.IsAny<string>(), It.IsAny<GroupReaderRequest>()))
                                         .Callback<string, object>(async (name, request) =>
                                         {
-                                            sourceGroup = await CallSourceGroupsReaderFunctionAsync(request as SourceGroupsReaderRequest);
+                                            sourceGroup = await CallSourceGroupsReaderFunctionAsync(request as GroupReaderRequest);
                                         })
                                         .ReturnsAsync(() => sourceGroup);
 
@@ -528,10 +528,10 @@ namespace Tests.Services
             await function.UpdateJobStatusAsync(request);
         }
 
-        private async Task<AzureADGroup> CallSourceGroupsReaderFunctionAsync(SourceGroupsReaderRequest request)
+        private async Task<AzureADGroup> CallSourceGroupsReaderFunctionAsync(GroupReaderRequest request)
         {
-            var function = new SourceGroupsReaderFunction(_loggingRepository.Object, _membershipCalculator);
-            return await function.GetSourceGroupsAsync(request);
+            var function = new GroupReaderFunction(_loggingRepository.Object, _membershipCalculator);
+            return await function.GetGroupAsync(request);
         }
 
         private async Task<string> CallUsersSenderFunctionAsync(UsersSenderRequest request)
