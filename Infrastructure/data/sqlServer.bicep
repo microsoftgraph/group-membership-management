@@ -124,7 +124,7 @@ resource replicaSqlServer 'Microsoft.Sql/servers@2021-11-01-preview' = {
   identity: {
     type: 'SystemAssigned'
   }
-  dependsOn:[
+  dependsOn: [
     primaryDatabase
   ]
   properties: {
@@ -143,6 +143,14 @@ resource replicaSqlServer 'Microsoft.Sql/servers@2021-11-01-preview' = {
     name: 'Default'
     properties: {
       azureADOnlyAuthentication: true
+    }
+  }
+
+  resource sqlServerFirewall 'firewallRules@2021-02-01-preview' = {
+    name: 'AllowAllWindowsAzureIpsReplica'
+    properties: {
+      startIpAddress: '0.0.0.0'
+      endIpAddress: '0.0.0.0'
     }
   }
 }
@@ -267,7 +275,7 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
         {
           name: 'replicaJobsMSIConnectionString'
           value: replicaJobsMSIConnectionString
-        }        
+        }
       ]
     }
   }
