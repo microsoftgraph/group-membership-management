@@ -68,6 +68,42 @@ Running the script mentioned in the Post-Deployment tasks section will grant the
 To properly setup the WebAPI you will need to configure the parameters in the `WebApi/Infrastructure/compute/parameters` for your environment.
 If you have a custom domain, follow the instructions [here](WebApiSetup.md/#setting-up-a-custom-domain). If not, skip on to the instructions [here](WebApiSetup.md/#using-the-default).
 
+### Grant access to the SQL Server Database
+
+WebAPI will access the database using its system identity to authenticate with the database to prevent the use of credentials.
+
+Once the WebAPI is deployed (`<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-webapi`)and has been created we need to grant it access to the SQL Server DB.
+
+Server name follows this naming convention `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>` and `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-r` for the replica server.
+Database name follows this naming convention `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-jobs` and `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-jobs-r` for the replica database.
+
+1. Connect to your SQL Server Database using Sql Server Management Studio (SSMS) or Azure Data Studio.
+- Server name : `<server-name>.database.windows.net`
+- User name: Use your Azure account.
+- Authentication: Azure Active Directory - Universal with MFA
+- Database name: `<database-name>`
+
+2. Run these SQL command
+
+- This script needs to run only once per database.
+- Make sure you are connected to right database. Sometimes SSMS will default to the master database.
+
+```
+IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-webapi')
+BEGIN
+ CREATE USER [<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-webapi] FROM EXTERNAL PROVIDER;
+ ALTER ROLE db_datareader ADD MEMBER [<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-webapi];
+ ALTER ROLE db_datawriter ADD MEMBER [<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-webapi];
+END
+```
+
+Verify it ran successufully by running:
+```
+SELECT * FROM sys.database_principals WHERE name = N'<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-webapi'
+```
+You should see one record for your webapi app.
+Repeat the steps for both databases.
+
 ## Setting up a custom domain
 If you have a custom domain ('contoso.com', for example) and want to use it, you will need to upgrade your App Service Plan. You can set the API custom domain in the `apiHostname` parameter as `api.contoso.com`.
 This way, your parameter file will look like this 
