@@ -37,21 +37,10 @@ You can add or remove this function to/from vsts-cicd.yml file. Make sure to add
 
 ## How to use AzureUserReader
 
-This is an HTTP triggered function accepting only POST requests.
-
 In order to call the function you will need to have:
-- Function Url
-- Function Key
 - Request Body
 
-### Input
-Url  
-You can find the exact url in the Azure Portal, it will have this format:  
-https://`<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`.azureuserreader.azurewebsites.net/api/StarterFunction
-
-Header  
-This header must be provided to authenticate with your function.  
-`x-functions-key` : `<your-function-key>`
+### Input`
 
 Request Body
 ```

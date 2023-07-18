@@ -135,10 +135,7 @@ namespace TeamsChannel.Service
                 IsDestinationPart = syncInfo.IsDestinationPart
             };
 
-            if (await CheckFeatureFlagStateAsync("UseServiceBusQueue", refreshAppSettings: true))
-                await SendMembershipAggregatorMessageAsync(aggregatorRequest);
-            else
-                await MakeMembershipAggregatorHTTPRequestAsync(aggregatorRequest);
+            await SendMembershipAggregatorMessageAsync(aggregatorRequest);
         }
 
         public async Task SendMessageAsync(SyncJob job)
@@ -149,33 +146,6 @@ namespace TeamsChannel.Service
         public async Task UpdateSyncJobStatusAsync(SyncJob syncJob, SyncStatus status)
         {
             await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, status);
-        }
-
-        private async Task<bool> CheckFeatureFlagStateAsync(string featureFlagName, bool refreshAppSettings = false, Guid? runId = null)
-        {
-            return await _featureFlagRepository.IsFeatureFlagEnabledAsync(featureFlagName, refreshAppSettings, runId);
-        }
-
-        private async Task MakeMembershipAggregatorHTTPRequestAsync(MembershipAggregatorHttpRequest request)
-        {
-            // we could use typed clients here instead, i'd prefer doing this in DI https://learn.microsoft.com/en-us/aspnet/core/fundamentals/http-requests?view=aspnetcore-7.0
-            // but that feels like overkill when this is probably going to become a durable function eventually.
-            // also, it feels like a good idea to me to only create an httpClient if we're actually going to use it
-            var httpClient = _httpClientFactory.CreateClient(Constants.MembershipAggregatorHttpClientName);
-
-            await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, making HTTP request to {httpClient.BaseAddress}.", RunId = request.SyncJob.RunId });
-            var response = await httpClient.PostAsJsonAsync(httpClient.BaseAddress, request);
-
-            if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
-            {
-                await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, successfully made POST request to {httpClient.BaseAddress}. Status Code: {response.StatusCode}", RunId = request.SyncJob.RunId });
-            }
-            else
-            {
-                var responseBody = await response.Content.ReadAsStringAsync();
-                await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, POST request failed. Got {response.StatusCode} instead. Response body: {responseBody}.", RunId = request.SyncJob.RunId });
-                await UpdateSyncJobStatusAsync(request.SyncJob, SyncStatus.Error);
-            }
         }
 
         private async Task SendMembershipAggregatorMessageAsync(MembershipAggregatorHttpRequest request)

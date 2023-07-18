@@ -109,14 +109,6 @@ namespace Hosts.SecurityGroup
                                                                                     Exclusionary = mainRequest.Exclusionary
                                                                                 });
 
-                        var useServiceBusQueue = await context.CallActivityAsync<bool>(nameof(FeatureFlagFunction),
-                                                                new FeatureFlagRequest
-                                                                {
-                                                                    RunId = runId,
-                                                                    FeatureFlagName = "UseServiceBusQueue",
-                                                                    RefreshAppConfigurationValues = true
-                                                                });
-
                         var content = new MembershipAggregatorHttpRequest
                         {
                             FilePath = filePath,
@@ -126,44 +118,7 @@ namespace Hosts.SecurityGroup
                             IsDestinationPart = mainRequest.IsDestinationPart
                         };
 
-                        if (useServiceBusQueue)
-                        {
-                            await context.CallActivityAsync(nameof(QueueMessageSenderFunction), content);
-                        }
-                        else
-                        {
-                            if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = "Calling MembershipAggregator", RunId = runId });
-
-                            var request = new DurableHttpRequest(HttpMethod.Post,
-                                                                    new Uri(_configuration["membershipAggregatorUrl"]),
-                                                                    content: JsonConvert.SerializeObject(content),
-                                                                    headers: new Dictionary<string, StringValues> { { "x-functions-key", _configuration["membershipAggregatorFunctionKey"] } },
-                                                                    httpRetryOptions: new HttpRetryOptions(TimeSpan.FromSeconds(30), 3));
-
-                            var response = await context.CallHttpAsync(request);
-                            if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"MembershipAggregator response Code: {response.StatusCode}, Content: {response.Content}", RunId = runId });
-
-                            if (response.StatusCode != HttpStatusCode.NoContent)
-                            {
-                                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
-                                if (!context.IsReplaying) await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
-                            }
-                        }
-                    }
-                }
-                catch (ServiceException ex)
-                {
-                    if ((ex.ResponseStatusCode == (int)HttpStatusCode.ServiceUnavailable || ex.ResponseStatusCode == (int)HttpStatusCode.BadGateway)
-                        && ((context.CurrentUtcDateTime - syncJob.LastSuccessfulRunTime).TotalHours < syncJob.Period + 2))
-                    {
-                        syncJob.StartDate = context.CurrentUtcDateTime.AddMinutes(30);
-                        var httpStatus = Enum.GetName(typeof(HttpStatusCode), ex.ResponseStatusCode);
-
-                        _ = _log.LogMessageAsync(new LogMessage { Message = $"Rescheduling job at {syncJob.StartDate} due to {httpStatus} exception", RunId = runId });
-
-                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Idle });
-                        if (!context.IsReplaying) await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = runId });
-                        return;
+                        await context.CallActivityAsync(nameof(QueueMessageSenderFunction), content);
                     }
                 }
                 catch (Exception ex)

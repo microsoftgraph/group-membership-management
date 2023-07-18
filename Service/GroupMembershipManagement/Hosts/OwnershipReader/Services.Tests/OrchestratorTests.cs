@@ -14,7 +14,6 @@ using Models.ServiceBus;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.FeatureFlag;
 using Services.Contracts;
 using Services.Entities;
 
@@ -23,7 +22,6 @@ namespace Services.Tests
     [TestClass]
     public class OrchestratorTests
     {
-        private bool _isFeatureFlagEnabled = false;
         private Mock<IDryRunValue> _dryRunSettings = null!;
         private Mock<IConfiguration> _configuration = null!;
         private Mock<IFeatureManager> _featureManager = null!;
@@ -42,7 +40,6 @@ namespace Services.Tests
         private TelemetryTrackerRequest? _telemetryTrackerRequest = null;
         private OrchestratorRequest _orchestratorRequest = null!;
         private OwnershipReaderService _realOwnershipReaderService = null!;
-        private FeatureFlagRepository _featureFlagRepository = null!;
 
         [TestInitialize]
         public void Setup()
@@ -61,10 +58,6 @@ namespace Services.Tests
 
             var telemetryConfiguration = new TelemetryConfiguration();
             _telemetryClient = new TelemetryClient(telemetryConfiguration);
-
-            _featureFlagRepository = new FeatureFlagRepository(_loggingRepository.Object,
-                                                                 _featureManager.Object,
-                                                                 _configurationRefresherProvider.Object);
 
             _realOwnershipReaderService = new OwnershipReaderService(
                         _dryRunSettings.Object,
@@ -123,9 +116,6 @@ namespace Services.Tests
             {
                 ownerIds.Add(Guid.NewGuid());
             }
-
-            _configuration.SetupGet(x => x["membershipAggregatorUrl"]).Returns("http://app-config-url");
-            _configuration.SetupGet(x => x["membershipAggregatorFunctionKey"]).Returns("112233445566");
 
             _durableOrchestrationContext.Setup(x => x.GetInput<OrchestratorRequest>())
                                         .Returns(() => _orchestratorRequest);
@@ -190,21 +180,11 @@ namespace Services.Tests
             _ownershipReaderService.Setup(x => x.GetGroupOwnersAsync(It.IsAny<Guid>()))
                                    .ReturnsAsync(() => ownerIds);
 
-            _featureManager.Setup(x => x.IsEnabledAsync(It.IsAny<string>()))
-                            .ReturnsAsync(() => _isFeatureFlagEnabled);
-
             var configurationRefresher = new Mock<IConfigurationRefresher>();
             configurationRefresher.Setup(x => x.TryRefreshAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
             _configurationRefresherProvider.Setup(x => x.Refreshers)
                                             .Returns(() => new List<IConfigurationRefresher> { configurationRefresher.Object });
-
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(FeatureFlagFunction), It.IsAny<FeatureFlagRequest>()))
-                             .Callback<string, object>(async (name, request) =>
-                             {
-                                 _isFeatureFlagEnabled = await CallFeatureFlagFunctionAsync((FeatureFlagRequest)request);
-                             })
-                            .ReturnsAsync(() => _isFeatureFlagEnabled);
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(QueueMessageSenderFunction), It.IsAny<MembershipAggregatorHttpRequest>()))
                                         .Callback<string, object>(async (name, request) =>
@@ -439,26 +419,6 @@ namespace Services.Tests
 
         }
 
-        [TestMethod]
-        public async Task TestMAQueueFeatureFlagEnabledAsync()
-        {
-            _isFeatureFlagEnabled = true;
-
-            List<Guid> filteredGroupIds = new List<Guid>();
-            _ownershipReaderService.Setup(x => x.FilterSyncJobsBySourceTypes(It.IsAny<HashSet<string>>(), It.IsAny<List<JobsFilterSyncJob>>()))
-                                   .Callback<HashSet<string>, List<JobsFilterSyncJob>>((requestedSourceTypes, syncJobs) =>
-                                   {
-                                       filteredGroupIds = _realOwnershipReaderService.FilterSyncJobsBySourceTypes(requestedSourceTypes, syncJobs);
-                                   }).
-                                   Returns(() => filteredGroupIds);
-
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
-
-            _featureManager.Verify(x => x.IsEnabledAsync(It.IsAny<string>()), Times.Once);
-            _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
-        }
-
         private async Task CallLoggerFunctionAsync(LoggerRequest request)
         {
             var function = new LoggerFunction(_loggingRepository.Object);
@@ -499,12 +459,6 @@ namespace Services.Tests
         {
             var function = new TelemetryTrackerFunction(_loggingRepository.Object, _telemetryClient);
             await function.TrackEventAsync(request);
-        }
-
-        private async Task<bool> CallFeatureFlagFunctionAsync(FeatureFlagRequest request)
-        {
-            var function = new FeatureFlagFunction(_loggingRepository.Object, _featureFlagRepository);
-            return await function.CheckFeatureFlagStateAsync(request);
         }
 
         private async Task CallQueueMessageSenderFunctionAsync(MembershipAggregatorHttpRequest request)

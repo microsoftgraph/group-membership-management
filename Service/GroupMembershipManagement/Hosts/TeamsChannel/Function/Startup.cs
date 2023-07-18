@@ -35,12 +35,6 @@ namespace Hosts.TeamsChannelMembershipObtainer
         {
             base.Configure(builder);
 
-            builder.Services.AddHttpClient(Constants.MembershipAggregatorHttpClientName, (services, httpClient) =>
-            {
-                var configuration = services.GetService<IConfiguration>();
-                httpClient.BaseAddress = new Uri(configuration["membershipAggregatorUrl"]);
-                httpClient.DefaultRequestHeaders.Add("x-functions-key", configuration["membershipAggregatorFunctionKey"]);
-            }).AddPolicyHandler(GetRetryPolicy());
             builder.Services.AddSingleton((services) =>
             {
                 return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));

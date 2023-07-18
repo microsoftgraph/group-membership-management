@@ -86,8 +86,6 @@ var syncDisabledCCEmailAddresses = resourceId(subscription().subscriptionId, pre
 var supportEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'supportEmailAddresses')
 var membershipStorageAccountName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountName')
 var membershipContainerName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipContainerName')
-var membershipAggregatorUrl = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipAggregatorUrl')
-var membershipAggregatorFunctionKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipAggregatorFunctionKey')
 var membershipAggregatorStagingUrl = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipAggregatorStagingUrl')
 var membershipAggregatorStagingFunctionKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipAggregatorStagingFunctionKey')
 var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
@@ -143,16 +141,12 @@ var appSettings = {
 var stagingSettings = {
   WEBSITE_CONTENTSHARE: toLower('functionApp-TeamsChannel-staging')
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelStaging'
-  membershipAggregatorUrl: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorStagingUrl, '2019-09-01').secretUriWithVersion})'
-  membershipAggregatorFunctionKey: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorStagingFunctionKey, '2019-09-01').secretUriWithVersion})'
   'TeamsChannel:IsTeamsChannelDryRunEnabled': 1
 }
 
 var productionSettings = {
   WEBSITE_CONTENTSHARE: toLower('functionApp-TeamsChannel')
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannel'
-  membershipAggregatorUrl: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorUrl, '2019-09-01').secretUriWithVersion})'
-  membershipAggregatorFunctionKey: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorFunctionKey, '2019-09-01').secretUriWithVersion})'
   'TeamsChannel:IsTeamsChannelDryRunEnabled': 0
 }
 

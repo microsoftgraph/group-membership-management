@@ -16,7 +16,6 @@ using Moq;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.FeatureFlag;
 using SecurityGroup.SubOrchestrator;
 using System;
 using System.Collections.Generic;
@@ -50,8 +49,6 @@ namespace Tests.Services
         private SGMembershipCalculator _membershipCalculator;
         private DurableHttpResponse _membershipAgregatorResponse;
         private TelemetryClient _telemetryClient;
-        private FeatureFlagRepository _featureFlagRepository;
-        private bool _isFeatureFlagEnabled = false;
 
         [TestInitialize]
         public void Setup()
@@ -70,9 +67,6 @@ namespace Tests.Services
             _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
             _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
-            _featureFlagRepository = new FeatureFlagRepository(_loggingRepository.Object,
-                                                                 _featureManager.Object,
-                                                                 _configurationRefresherProvider.Object);
 
             _usersToReturn = 10;
             _querySample = QuerySample.GenerateQuerySample("SecurityGroup");
@@ -103,12 +97,6 @@ namespace Tests.Services
                                             _loggingRepository.Object,
                                             _dryRunValue.Object
                                             );
-
-            _configuration.SetupGet(x => x[It.Is<string>(s => s == "membershipAggregatorUrl")]).Returns("http://app-config-url");
-            _configuration.SetupGet(x => x[It.Is<string>(s => s == "membershipAggregatorFunctionKey")]).Returns("112233445566");
-
-            _featureManager.Setup(x => x.IsEnabledAsync(It.IsAny<string>()))
-                            .ReturnsAsync(() => _isFeatureFlagEnabled);
 
             var configurationRefresher = new Mock<IConfigurationRefresher>();
             configurationRefresher.Setup(x => x.TryRefreshAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
@@ -177,13 +165,6 @@ namespace Tests.Services
                                         {
                                             await CallEmailSenderFunctionAsync(request as EmailSenderRequest);
                                         });
-
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(FeatureFlagFunction), It.IsAny<FeatureFlagRequest>()))
-                                         .Callback<string, object>(async (name, request) =>
-                                         {
-                                             _isFeatureFlagEnabled = await CallFeatureFlagFunctionAsync(request as FeatureFlagRequest);
-                                         })
-                                        .ReturnsAsync(() => _isFeatureFlagEnabled);
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(QueueMessageSenderFunction), It.IsAny<MembershipAggregatorHttpRequest>()))
                                         .Callback<string, object>(async (name, request) =>
@@ -498,24 +479,6 @@ namespace Tests.Services
 
         }
 
-        [TestMethod]
-        public async Task TestMAQueueFeatureFlagEnabledAsync()
-        {
-            _usersToReturn = 100;
-            _isFeatureFlagEnabled = true;
-
-            var orchestratorFunction = new OrchestratorFunction(
-                                            _loggingRepository.Object,
-                                            _membershipCalculator,
-                                            _configuration.Object
-                                            );
-
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
-
-            _featureManager.Verify(x => x.IsEnabledAsync(It.IsAny<string>()), Times.Once);
-            _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
-        }
-
         private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request)
         {
             var telemetryTrackerFunction = new TelemetryTrackerFunction(_loggingRepository.Object, _telemetryClient);
@@ -544,12 +507,6 @@ namespace Tests.Services
         {
             var function = new EmailSenderFunction(_loggingRepository.Object, _membershipCalculator, _emailSenderRecipient.Object);
             await function.SendEmailAsync(request);
-        }
-
-        private async Task<bool> CallFeatureFlagFunctionAsync(FeatureFlagRequest request)
-        {
-            var function = new FeatureFlagFunction(_loggingRepository.Object, _featureFlagRepository);
-            return await function.CheckFeatureFlagStateAsync(request);
         }
 
         private async Task CallQueueMessageSenderFunctionAsync(MembershipAggregatorHttpRequest request)

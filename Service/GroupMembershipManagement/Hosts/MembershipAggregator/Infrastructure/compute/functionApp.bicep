@@ -71,34 +71,12 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
     keyVaultName: dataKeyVaultName
     keyVaultParameters: [
       {
-        name: 'membershipAggregatorUrl'
-        value: 'https://${functionApp.properties.defaultHostName}/api/StarterFunction'
-      }
-      {
         name: 'membershipAggregatorFunctionName'
         value: '${name}-MembershipAggregator'
       }
     ]
   }
 }
-
-module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
-  name: 'secureSecretsTemplate-MembershipAggregator'
-  scope: resourceGroup(dataKeyVaultResourceGroup)
-  params: {
-    keyVaultName: dataKeyVaultName
-    keyVaultSecrets: {
-      secrets: [
-        { 
-          name: 'membershipAggregatorFunctionKey'
-          value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
-        }
-      ]
-    }
-  }
-}
-
-
 
 resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
   name: 'slotConfigNames'
