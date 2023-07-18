@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
@@ -10,6 +11,7 @@ using Microsoft.Graph;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.GraphGroups;
+using Repositories.ServiceBusQueue;
 using Services;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
@@ -39,6 +41,14 @@ namespace Hosts.AzureMembershipProvider
                 var containerName = configuration["membershipContainerName"];
 
                 return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
+            })
+            .AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
+            {
+                var configuration = services.GetRequiredService<IConfiguration>();
+                var membershipAggregatorQueue = configuration["serviceBusMembershipAggregatorQueue"];
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(membershipAggregatorQueue);
+                return new ServiceBusQueueRepository(sender);
             });
         }
     }

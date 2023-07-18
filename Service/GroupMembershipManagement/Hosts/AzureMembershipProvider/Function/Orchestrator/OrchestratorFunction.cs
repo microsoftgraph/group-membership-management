@@ -1,27 +1,20 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure;
-using Azure.Core;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
-using Microsoft.Graph;
 using Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
-using Repositories.Logging;
 using Services;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using static Microsoft.Graph.Constants;
 
 namespace Hosts.AzureMembershipProvider
 {
@@ -107,7 +100,15 @@ namespace Hosts.AzureMembershipProvider
                                         Users = distinctUsers,
                                         CurrentPart = mainRequest.CurrentPart,
                                         Exclusionary = mainRequest.Exclusionary
-                                    });                
+                                    });
+
+                var useServiceBusQueue = await context.CallActivityAsync<bool>(nameof(FeatureFlagFunction),
+                                        new FeatureFlagRequest
+                                        {
+                                            RunId = runId,
+                                            FeatureFlagName = "UseServiceBusQueue",
+                                            RefreshAppConfigurationValues = true
+                                        });
 
                 if (!string.IsNullOrWhiteSpace(filePath))
                 {
@@ -120,18 +121,25 @@ namespace Hosts.AzureMembershipProvider
                         SyncJob = mainRequest.SyncJob
                     };
 
-                    var request = new DurableHttpRequest(HttpMethod.Post,
-                                        new Uri(_configuration["membershipAggregatorUrl"]),
-                                        content: JsonConvert.SerializeObject(content),
-                                        headers: new Dictionary<string, StringValues> { { "x-functions-key", _configuration["membershipAggregatorFunctionKey"] } },
-                                        httpRetryOptions: new HttpRetryOptions(TimeSpan.FromSeconds(30), 3));
-
-                    var httpResponse = await context.CallHttpAsync(request);
-                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"MembershipAggregator response Code:{httpResponse.StatusCode}, Content: {httpResponse.Content}" });
-
-                    if (httpResponse.StatusCode != HttpStatusCode.NoContent)
+                    if (useServiceBusQueue)
                     {
-                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
+                        await context.CallActivityAsync(nameof(QueueMessageSenderFunction), content);
+                    }
+                    else
+                    {
+                        var request = new DurableHttpRequest(HttpMethod.Post,
+                                            new Uri(_configuration["membershipAggregatorUrl"]),
+                                            content: JsonConvert.SerializeObject(content),
+                                            headers: new Dictionary<string, StringValues> { { "x-functions-key", _configuration["membershipAggregatorFunctionKey"] } },
+                                            httpRetryOptions: new HttpRetryOptions(TimeSpan.FromSeconds(30), 3));
+
+                        var httpResponse = await context.CallHttpAsync(request);
+                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"MembershipAggregator response Code:{httpResponse.StatusCode}, Content: {httpResponse.Content}" });
+
+                        if (httpResponse.StatusCode != HttpStatusCode.NoContent)
+                        {
+                            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
+                        }
                     }
                 }
                 else
