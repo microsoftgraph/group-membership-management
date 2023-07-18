@@ -6,7 +6,6 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.FeatureManagement;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
@@ -32,7 +31,6 @@ namespace Tests.Services
         private Mock<IDryRunValue> _dryRunValue;
         private Mock<IConfiguration> _configuration;
         private Mock<IMailRepository> _mailRepository;
-        private Mock<IFeatureManager> _featureManager;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
         private Mock<IGraphGroupRepository> _graphGroupRepository;
@@ -56,7 +54,6 @@ namespace Tests.Services
             _dryRunValue = new Mock<IDryRunValue>();
             _configuration = new Mock<IConfiguration>();
             _mailRepository = new Mock<IMailRepository>();
-            _featureManager = new Mock<IFeatureManager>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();

@@ -6,7 +6,6 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.FeatureManagement;
 using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
@@ -24,7 +23,6 @@ namespace Services.Tests
     {
         private Mock<IDryRunValue> _dryRunSettings = null!;
         private Mock<IConfiguration> _configuration = null!;
-        private Mock<IFeatureManager> _featureManager = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
@@ -46,7 +44,6 @@ namespace Services.Tests
         {
             _dryRunSettings = new Mock<IDryRunValue>();
             _configuration = new Mock<IConfiguration>();
-            _featureManager = new Mock<IFeatureManager>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
@@ -213,6 +210,8 @@ namespace Services.Tests
                     It.IsAny<string>(),
                     It.IsAny<string>()), Times.Once());
 
+            _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
+            
             _loggingRepository.Verify(x => x.LogMessageAsync(
                     It.Is<LogMessage>(m => m.Message.StartsWith($"{nameof(OrchestratorFunction)} function completed")),
                     It.IsAny<VerbosityLevel>(),

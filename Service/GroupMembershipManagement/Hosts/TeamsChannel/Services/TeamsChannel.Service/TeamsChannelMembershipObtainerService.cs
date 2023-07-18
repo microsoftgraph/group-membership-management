@@ -23,10 +23,8 @@ namespace TeamsChannel.Service
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
         private readonly ILoggingRepository _logger;
-        private readonly IFeatureManager _featureManager;
         private readonly IConfigurationRefresherProvider _refresherProvider;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
-        private readonly IFeatureFlagRepository _featureFlagRepository;
 
         public TeamsChannelMembershipObtainerService(
             ITeamsChannelRepository teamsChannelRepository,
@@ -34,20 +32,16 @@ namespace TeamsChannel.Service
             IHttpClientFactory httpClientFactory,
             IDatabaseSyncJobsRepository syncJobRepository,
             ILoggingRepository loggingRepository,
-            IFeatureManager featureManager,
             IConfigurationRefresherProvider refresherProvider,
-            IServiceBusQueueRepository serviceBusQueueRepository,
-            IFeatureFlagRepository featureFlagRepository)
+            IServiceBusQueueRepository serviceBusQueueRepository)
         {
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _logger = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _featureManager = featureManager ?? throw new ArgumentNullException(nameof(featureManager));
             _refresherProvider = refresherProvider ?? throw new ArgumentNullException(nameof(refresherProvider));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
-            _featureFlagRepository = featureFlagRepository ?? throw new ArgumentNullException(nameof(featureFlagRepository)); ;
         }
 
         public async Task<(AzureADTeamsChannel parsedChannel, bool isGood)> VerifyChannelAsync(ChannelSyncInfo channelSyncInfo)

@@ -9,7 +9,6 @@ using Models.ServiceBus;
 using Moq;
 using Moq.Protected;
 using Repositories.Contracts;
-using Repositories.FeatureFlag;
 using System.Net;
 using TeamsChannel.Service;
 using TeamsChannel.Service.Contracts;
@@ -25,14 +24,11 @@ namespace Services.Tests
         private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository = null!;
         private Mock<IBlobStorageRepository> _mockBlobStorageRepository = null!;
         private Mock<IHttpClientFactory> _mockHttpClientFactory = null!;
-        private Mock<IFeatureManager> _featureManager = null!;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository = null!;
         private Mock<IConfigurationRefresherProvider> _configurationRefresherProvider = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<HttpMessageHandler> _messageHandler = null!;
-        private bool _isFeatureFlagEnabled = false;
         private HttpStatusCode _responseStatusCode = HttpStatusCode.NoContent;
-        private FeatureFlagRepository _featureFlagRepository = null!;
 
 
         private Dictionary<AzureADTeamsChannel, List<AzureADTeamsUser>> _mockChannels = new Dictionary<AzureADTeamsChannel, List<AzureADTeamsUser>>
@@ -59,14 +55,8 @@ namespace Services.Tests
 
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
             _loggingRepository = new Mock<ILoggingRepository>();
-
-            _featureManager = new Mock<IFeatureManager>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
-
-            _featureFlagRepository = new FeatureFlagRepository(_loggingRepository.Object,
-                                                                 _featureManager.Object,
-                                                                 _configurationRefresherProvider.Object);
 
             _messageHandler = new Mock<HttpMessageHandler>();
             _messageHandler
@@ -83,9 +73,6 @@ namespace Services.Tests
             var httpClient = new HttpClient(_messageHandler.Object) { BaseAddress = new Uri("https://graph.microsoft.com/v1.0/") };
             _mockHttpClientFactory.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
-            _featureManager.Setup(x => x.IsEnabledAsync(It.IsAny<string>()))
-                           .ReturnsAsync(() => _isFeatureFlagEnabled);
-
             var configurationRefresher = new Mock<IConfigurationRefresher>();
             configurationRefresher.Setup(x => x.TryRefreshAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
@@ -97,10 +84,8 @@ namespace Services.Tests
                                                 _mockHttpClientFactory.Object,
                                                 _syncJobRepository.Object,
                                                 _loggingRepository.Object,
-                                                _featureManager.Object,
                                                 _configurationRefresherProvider.Object,
-                                                _serviceBusQueueRepository.Object,
-                                                _featureFlagRepository);
+                                                _serviceBusQueueRepository.Object);
 
             _syncInfo = new ChannelSyncInfo
             {
@@ -224,59 +209,8 @@ namespace Services.Tests
         [TestMethod]
         public async Task SendMembershipRequestViaServiceBus()
         {
-            _isFeatureFlagEnabled = true;
             await _service.MakeMembershipAggregatorRequestAsync(_syncInfo, "blob-path");
-
-            _featureManager.Verify(x => x.IsEnabledAsync(It.IsAny<string>()), Times.Once);
             _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
-        }
-
-        [TestMethod]
-        public async Task SendMembershipRequestViaHTTP_Success()
-        {
-            _isFeatureFlagEnabled = false;
-            _responseStatusCode = HttpStatusCode.NoContent;
-            await _service.MakeMembershipAggregatorRequestAsync(_syncInfo, "blob-path");
-
-            _featureManager.Verify(x => x.IsEnabledAsync(It.IsAny<string>()), Times.Once);
-            _messageHandler.Protected().Verify(
-                       "SendAsync",
-                       Times.Once(),
-                       ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Post),
-                       ItExpr.IsAny<CancellationToken>()
-                    );
-
-            _loggingRepository
-                .Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(x => x.Message.StartsWith("In Service, successfully made POST request")),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()),
-                                    Times.Once);
-        }
-
-        [TestMethod]
-        public async Task SendMembershipRequestViaHTTP_Failure()
-        {
-            _isFeatureFlagEnabled = false;
-            _responseStatusCode = HttpStatusCode.BadRequest;
-            await _service.MakeMembershipAggregatorRequestAsync(_syncInfo, "blob-path");
-
-            _featureManager.Verify(x => x.IsEnabledAsync(It.IsAny<string>()), Times.Once);
-            _messageHandler.Protected().Verify(
-                       "SendAsync",
-                       Times.Once(),
-                       ItExpr.Is<HttpRequestMessage>(req => req.Method == HttpMethod.Post),
-                       ItExpr.IsAny<CancellationToken>()
-                    );
-
-            _loggingRepository
-                .Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(x => x.Message.StartsWith("In Service, POST request failed")),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()),
-                                    Times.Once);
         }
     }
 }
