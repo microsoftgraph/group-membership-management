@@ -315,8 +315,8 @@ namespace Services
                 thresholdNotification = new ThresholdNotification
                 {
                     Id = Guid.NewGuid(),
-                    SyncJobPartitionKey = job.PartitionKey,
-                    SyncJobRowKey = job.RowKey,
+                    SyncJobPartitionKey = job.Id.ToString(),
+                    SyncJobRowKey = job.Id.ToString(),                    
                     ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage,
                     ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage,
                     ChangeQuantityForAdditions = delta.ToAdd.Count,
