@@ -44,11 +44,11 @@ namespace Repositories.NotificationsRepository
             return null;
         }
 
-        public async Task<ThresholdNotification> GetThresholdNotificationBySyncJobKeysAsync(string syncJobPartitionKey, string syncJobRowKey)
+        public async Task<ThresholdNotification> GetThresholdNotificationBySyncJobIdAsync(Guid syncJobId)
         {
             var resolutionNameString = ThresholdNotificationResolution.Unresolved.ToString();
             var queryResult = _tableClient.QueryAsync<ThresholdNotificationEntity>(x =>
-                x.SyncJobPartitionKey == syncJobPartitionKey && x.SyncJobRowKey == syncJobRowKey && x.ResolutionName == resolutionNameString);
+                x.SyncJobId == syncJobId && x.ResolutionName == resolutionNameString);
 
             await foreach (var segmentResult in queryResult.AsPages())
             {

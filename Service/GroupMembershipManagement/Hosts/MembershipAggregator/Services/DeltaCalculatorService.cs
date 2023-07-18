@@ -308,7 +308,7 @@ namespace Services
 
         private async Task SendActionableEmailNotification(ThresholdResult threshold, SyncJob job, MembershipDelta<AzureADUser> delta, bool sendDisableJobNotification)
         {
-            var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobKeysAsync(job.Id.ToString(), Guid.NewGuid().ToString());
+            var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobIdAsync(job.Id);
 
             if (thresholdNotification == null)
             {
@@ -316,7 +316,8 @@ namespace Services
                 {
                     Id = Guid.NewGuid(),
                     SyncJobPartitionKey = job.Id.ToString(),
-                    SyncJobRowKey = job.Id.ToString(),                    
+                    SyncJobRowKey = job.Id.ToString(),        
+                    SyncJobId = job.Id,
                     ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage,
                     ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage,
                     ChangeQuantityForAdditions = delta.ToAdd.Count,
@@ -399,7 +400,7 @@ namespace Services
         {
             if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
             {
-                var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobKeysAsync(job.Id.ToString(), Guid.NewGuid().ToString());
+                var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobIdAsync(job.Id);
                 if (thresholdNotification != null && thresholdNotification.Status != ThresholdNotificationStatus.Resolved)
                 {
                     thresholdNotification.Resolution = ThresholdNotificationResolution.SelfCorrected;

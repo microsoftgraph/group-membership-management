@@ -12,7 +12,7 @@ namespace Repositories.Contracts
     {
         Task<ThresholdNotification> GetThresholdNotificationByIdAsync(Guid notificationId);
         Task SaveNotificationAsync(ThresholdNotification notification);
-        Task<ThresholdNotification> GetThresholdNotificationBySyncJobKeysAsync(string syncJobPartitionKey, string syncJobRowKey);
+        Task<ThresholdNotification> GetThresholdNotificationBySyncJobIdAsync(Guid syncJobId);
         IAsyncEnumerable<ThresholdNotification> GetQueuedNotificationsAsync();
         Task UpdateNotificationStatusAsync(ThresholdNotification notification, ThresholdNotificationStatus status);
     }
