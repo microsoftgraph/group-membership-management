@@ -44,11 +44,11 @@ namespace Repositories.NotificationsRepository
             return null;
         }
 
-        public async Task<ThresholdNotification> GetThresholdNotificationBySyncJobKeysAsync(string syncJobPartitionKey, string syncJobRowKey)
+        public async Task<ThresholdNotification> GetThresholdNotificationBySyncJobIdAsync(Guid syncJobId)
         {
             var resolutionNameString = ThresholdNotificationResolution.Unresolved.ToString();
             var queryResult = _tableClient.QueryAsync<ThresholdNotificationEntity>(x =>
-                x.SyncJobPartitionKey == syncJobPartitionKey && x.SyncJobRowKey == syncJobRowKey && x.ResolutionName == resolutionNameString);
+                x.SyncJobId == syncJobId && x.ResolutionName == resolutionNameString);
 
             await foreach (var segmentResult in queryResult.AsPages())
             {
@@ -97,7 +97,8 @@ namespace Repositories.NotificationsRepository
             {
                 Id = entity.Id,
                 SyncJobPartitionKey = entity.SyncJobId.ToString(),
-                SyncJobRowKey = entity.SyncJobRowKey,
+                SyncJobRowKey = entity.SyncJobId.ToString(),
+                SyncJobId = entity.SyncJobId,
                 ChangePercentageForAdditions = entity.ChangePercentageForAdditions,
                 ChangePercentageForRemovals = entity.ChangePercentageForRemovals,
                 ChangeQuantityForAdditions = entity.ChangeQuantityForAdditions,
@@ -123,7 +124,8 @@ namespace Repositories.NotificationsRepository
                 RowKey = entity.Id.ToString(),
                 Id = entity.Id,
                 SyncJobPartitionKey = entity.SyncJobId.ToString(),
-                SyncJobRowKey = entity.SyncJobRowKey,               
+                SyncJobRowKey = entity.SyncJobId.ToString(),
+                SyncJobId = entity.SyncJobId,
                 ChangePercentageForAdditions = entity.ChangePercentageForAdditions,
                 ChangePercentageForRemovals = entity.ChangePercentageForRemovals,
                 ChangeQuantityForAdditions = entity.ChangeQuantityForAdditions,
