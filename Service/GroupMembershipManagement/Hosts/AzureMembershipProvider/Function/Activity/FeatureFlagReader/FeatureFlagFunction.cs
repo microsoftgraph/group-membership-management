@@ -33,7 +33,19 @@ namespace Hosts.AzureMembershipProvider
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(FeatureFlagFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
-            var isFlagEnabled = await _featureFlagRepository.IsFeatureFlagEnabledAsync(request.FeatureFlagName, request.RefreshAppConfigurationValues, request.RunId);
+            if (request.RefreshAppConfigurationValues)
+            {
+                var refresher = _refresherProvider.Refreshers.First();
+                if (!await refresher.TryRefreshAsync())
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    { Message = $"Unable to refresh app configuration values", RunId = request.RunId },
+                    VerbosityLevel.DEBUG);
+                }
+            }
+
+            var isFlagEnabled = await _featureManager.IsEnabledAsync(request.FeatureFlagName);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Feature flag {request.FeatureFlagName} is {(isFlagEnabled ? "enabled" : "disabled")}", RunId = request.RunId }, VerbosityLevel.INFO);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(FeatureFlagFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             return isFlagEnabled;

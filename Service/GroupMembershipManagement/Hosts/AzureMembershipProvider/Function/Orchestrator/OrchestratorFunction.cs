@@ -102,14 +102,6 @@ namespace Hosts.AzureMembershipProvider
                                         Exclusionary = mainRequest.Exclusionary
                                     });
 
-                var useServiceBusQueue = await context.CallActivityAsync<bool>(nameof(FeatureFlagFunction),
-                                        new FeatureFlagRequest
-                                        {
-                                            RunId = runId,
-                                            FeatureFlagName = "UseServiceBusQueue",
-                                            RefreshAppConfigurationValues = true
-                                        });
-
                 if (!string.IsNullOrWhiteSpace(filePath))
                 {
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = "Calling MembershipAggregator" });
@@ -121,26 +113,7 @@ namespace Hosts.AzureMembershipProvider
                         SyncJob = mainRequest.SyncJob
                     };
 
-                    if (useServiceBusQueue)
-                    {
-                        await context.CallActivityAsync(nameof(QueueMessageSenderFunction), content);
-                    }
-                    else
-                    {
-                        var request = new DurableHttpRequest(HttpMethod.Post,
-                                            new Uri(_configuration["membershipAggregatorUrl"]),
-                                            content: JsonConvert.SerializeObject(content),
-                                            headers: new Dictionary<string, StringValues> { { "x-functions-key", _configuration["membershipAggregatorFunctionKey"] } },
-                                            httpRetryOptions: new HttpRetryOptions(TimeSpan.FromSeconds(30), 3));
-
-                        var httpResponse = await context.CallHttpAsync(request);
-                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"MembershipAggregator response Code:{httpResponse.StatusCode}, Content: {httpResponse.Content}" });
-
-                        if (httpResponse.StatusCode != HttpStatusCode.NoContent)
-                        {
-                            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
-                        }
-                    }
+                    await context.CallActivityAsync(nameof(QueueMessageSenderFunction), content);
                 }
                 else
                 {
