@@ -91,20 +91,9 @@ namespace Hosts.OwnershipReader
                     return;
                 }
 
-                string query = null;
-                string continuationToken = null;
                 var syncJobs = new List<SyncJob>();
-
-                do
-                {
-                    var segmentResponse = await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsSegmentedFunction),
-                                                                                                    new GetJobsSegmentedRequest
-                                                                                                    {
-                                                                                                        RunId = syncJob.RunId,
-                                                                                                    });
-
-                    syncJobs.AddRange(segmentResponse);
-                } while (continuationToken != null);
+                var segmentResponse = await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsSegmentedFunction), new GetJobsSegmentedRequest { RunId = syncJob.RunId });
+                syncJobs.AddRange(segmentResponse);
 
                 var filteredJobs = await context.CallActivityAsync<List<Guid>>(nameof(JobsFilterFunction),
                                                                                new JobsFilterRequest
