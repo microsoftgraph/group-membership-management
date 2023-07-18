@@ -4,7 +4,6 @@ using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
 using Models;
 using Repositories.Contracts;
-using Services.TeamsChannelUpdater;
 
 namespace Repositories.GraphGroups
 {
@@ -32,7 +31,7 @@ namespace Repositories.GraphGroups
                 ruu = 5;
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = runId });
                 TrackResourceUnitsUsedByTypeEvent(ruu, queryType, runId);
-                _telemetryClient.GetMetric(nameof(Services.TeamsChannelUpdater.Metric.ResourceUnitsUsed)).TrackValue(ruu);
+                _telemetryClient.GetMetric(nameof(Repositories.TeamsChannel.Metric.ResourceUnitsUsed)).TrackValue(ruu);
                 return;
             }
 
@@ -45,10 +44,10 @@ namespace Repositories.GraphGroups
             ruu = ParseFirst<int>(resourceValues, int.TryParse);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu}", RunId = runId });
             TrackResourceUnitsUsedByTypeEvent(ruu, queryType, runId);
-            _telemetryClient.GetMetric(nameof(Services.TeamsChannelUpdater.Metric.ResourceUnitsUsed)).TrackValue(ruu);
+            _telemetryClient.GetMetric(nameof(Repositories.TeamsChannel.Metric.ResourceUnitsUsed)).TrackValue(ruu);
 
             if (headers.TryGetValue(GraphResponseHeader.ThrottlePercentageHeader, out var throttleValues))
-                _telemetryClient.GetMetric(nameof(Services.TeamsChannelUpdater.Metric.ThrottleLimitPercentage)).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
+                _telemetryClient.GetMetric(nameof(Repositories.TeamsChannel.Metric.ThrottleLimitPercentage)).TrackValue(ParseFirst<double>(throttleValues, double.TryParse));
         }
 
         public Microsoft.ApplicationInsights.Metric GetMetric(string metric)

@@ -9,6 +9,7 @@ namespace Hosts.TeamsChannelUpdater
 {
     public class TeamsChannelUpdaterSubOrchestratorRequest
     {
+        public bool IsInitialSync { get; set; }
         public RequestType Type { get; set; }
         public ICollection<AzureADTeamsUser> Members { get; set; }
         public AzureADTeamsChannel TeamsChannelInfo { get; set; }

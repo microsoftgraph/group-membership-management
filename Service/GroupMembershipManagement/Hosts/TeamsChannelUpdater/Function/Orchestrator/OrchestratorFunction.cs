@@ -103,7 +103,8 @@ namespace Hosts.TeamsChannelUpdater
 
 
                 var membersAddedResponse = await context.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction),
-                                CreateTeamsGroupUpdaterRequest(syncJob.RunId.GetValueOrDefault(Guid.Empty),
+                                CreateTeamsGroupUpdaterRequest(isInitialSync,
+                                syncJob.RunId.GetValueOrDefault(Guid.Empty),
                                 membersToAdd, 
                                 destination,
                                 RequestType.Add));
@@ -112,7 +113,8 @@ namespace Hosts.TeamsChannelUpdater
                 syncCompleteEvent.MembersToAddAlreadyExist = membersAddedResponse.UsersAlreadyExist.Count.ToString();
 
                 var membersRemovedResponse = await context.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction),
-                                CreateTeamsGroupUpdaterRequest(syncJob.RunId.GetValueOrDefault(Guid.Empty),
+                                CreateTeamsGroupUpdaterRequest(isInitialSync,
+                                syncJob.RunId.GetValueOrDefault(Guid.Empty),
                                 membersToRemove,
                                 destination,
                                 RequestType.Remove));
@@ -230,10 +232,11 @@ namespace Hosts.TeamsChannelUpdater
             _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteDict);
         }
 
-        private TeamsChannelUpdaterSubOrchestratorRequest CreateTeamsGroupUpdaterRequest(Guid runId, ICollection<AzureADTeamsUser> members, AzureADTeamsChannel teamsChannelInfo, RequestType type)
+        private TeamsChannelUpdaterSubOrchestratorRequest CreateTeamsGroupUpdaterRequest(bool isInitialSync, Guid runId, ICollection<AzureADTeamsUser> members, AzureADTeamsChannel teamsChannelInfo, RequestType type)
         {
             return new TeamsChannelUpdaterSubOrchestratorRequest
             {
+                IsInitialSync = isInitialSync,
                 Type = type,
                 Members = members,
                 TeamsChannelInfo = teamsChannelInfo,

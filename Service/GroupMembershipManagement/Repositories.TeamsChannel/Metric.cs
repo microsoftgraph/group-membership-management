@@ -1,19 +1,16 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-namespace Services.TeamsChannelUpdater
+namespace Repositories.TeamsChannel
 {
     public enum Metric
     {
-        MembersAdded,
-        MembersRemoved,
-        MembersAddedFromOnboarding,
-        MembersRemovedFromOnboarding,
-        GraphAddRatePerSecond,
-        GraphRemoveRatePerSecond,
-        MembersNotFound,
+        TeamsMembersAdded,
+        TeamsMembersRemoved,
+        TeamsMembersAddedFromOnboarding,
+        TeamsMembersRemovedFromOnboarding,
+        TeamsMembersNotFound,
 		ResourceUnitsUsed,
-		ThrottleLimitPercentage,
-        WritesUsed
+		ThrottleLimitPercentage
 	};
 }

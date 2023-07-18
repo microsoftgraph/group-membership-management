@@ -7,9 +7,9 @@ using System.Linq;
 using System.Collections.Generic;
 using System;
 using Microsoft.ApplicationInsights;
-using Models;
 using Repositories.Contracts;
 using Models.Entities;
+using Models;
 
 namespace Hosts.TeamsChannelUpdater
 {
@@ -67,14 +67,33 @@ namespace Hosts.TeamsChannelUpdater
                 batch.AddRange(response.UsersToRetry);
                 batch = request.Members.Skip(skip).Take(_batchSize).ToList();
             }
-            _telemetryClient.TrackMetric(nameof(Services.TeamsChannelUpdater.Metric.MembersNotFound), request.Members.Count - totalSuccessCount);
 
             await context.CallActivityAsync(nameof(LoggerFunction),
-                                                     new LoggerRequest
-                                                     {
-                                                         Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount} users.",
-                                                         RunId = request.RunId
-                                                     });
+                                                new LoggerRequest
+                                                {
+                                                    Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount} users.",
+                                                    RunId = request.RunId
+                                                });
+
+            if (!context.IsReplaying)
+            {
+                _telemetryClient.TrackMetric(nameof(Repositories.TeamsChannel.Metric.TeamsMembersNotFound), request.Members.Count - totalSuccessCount);
+
+                if (request.IsInitialSync)
+                {
+                    if (request.Type == RequestType.Add)
+                        _telemetryClient.TrackMetric(nameof(Repositories.TeamsChannel.Metric.TeamsMembersAddedFromOnboarding), totalSuccessCount);
+                    else
+                        _telemetryClient.TrackMetric(nameof(Repositories.TeamsChannel.Metric.TeamsMembersRemovedFromOnboarding), totalSuccessCount);
+                }
+                else
+                {
+                    if (request.Type == RequestType.Add)
+                        _telemetryClient.TrackMetric(nameof(Repositories.TeamsChannel.Metric.TeamsMembersAdded), totalSuccessCount);
+                    else
+                        _telemetryClient.TrackMetric(nameof(Repositories.TeamsChannel.Metric.TeamsMembersRemoved), totalSuccessCount);
+                }
+            }
 
             await context.CallActivityAsync(nameof(LoggerFunction),
                                                       new LoggerRequest
