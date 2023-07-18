@@ -70,7 +70,7 @@ namespace Hosts.GraphUpdater
                 syncJob = await context.CallActivityAsync<SyncJob>(nameof(JobReaderFunction),
                                                        new JobReaderRequest
                                                        {
-                                                           JobId = graphRequest.SyncJob.Id,                                                           
+                                                           JobId = graphRequest.SyncJob.Id,
                                                            RunId = graphRequest.SyncJob.RunId.GetValueOrDefault()
                                                        });
 
@@ -105,7 +105,7 @@ namespace Hosts.GraphUpdater
                                            {
                                                RunId = groupMembership.RunId,
                                                GroupId = groupMembership.Destination.ObjectId,
-                                               JobId = groupMembership.SyncJobId,                                               
+                                               JobId = groupMembership.SyncJobId,
                                                AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory
                                            });
 
@@ -209,9 +209,8 @@ namespace Hosts.GraphUpdater
                     await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = "SyncJob is null. Removing the message from the queue..." });
                     return OrchestrationRuntimeStatus.Failed;
                 }
-
-                //if (syncJob != null && groupMembership != null && !string.IsNullOrWhiteSpace(groupMembership.SyncJobPartitionKey) && !string.IsNullOrWhiteSpace(groupMembership.SyncJobRowKey))
-                if (syncJob != null && groupMembership != null)
+                
+                if (syncJob != null && groupMembership != null && groupMembership.SyncJobId != Guid.Empty)
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                     CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
@@ -324,7 +323,7 @@ namespace Hosts.GraphUpdater
             return new JobStatusUpdaterRequest
             {
                 RunId = runId,
-                JobId = jobId,                
+                JobId = jobId,
                 Status = syncStatus,
                 ThresholdViolations = thresholdViolations
             };
