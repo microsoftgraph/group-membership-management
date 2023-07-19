@@ -204,12 +204,6 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                    It.Is<LogMessage>(m => m.Message.StartsWith($"Calling MembershipAggregator")),
-                    It.IsAny<VerbosityLevel>(),
-                    It.IsAny<string>(),
-                    It.IsAny<string>()), Times.Once());
-
             _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
             
             _loggingRepository.Verify(x => x.LogMessageAsync(
@@ -378,44 +372,6 @@ namespace Services.Tests
             _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
                                                 It.Is<IEnumerable<SyncJob>>(x => x.All(y => y.StartDate == currentUtcDate.AddMinutes(30))),
                                                 It.Is<SyncStatus>(s => s == SyncStatus.Idle)), Times.Once);
-        }
-
-        [TestMethod]
-        public async Task TestMembershipAggregatorUnavailableAsync()
-        {
-            _orchestratorRequest.SyncJob.LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-1);
-
-            var exception = new ServiceException(null, null, (int)System.Net.HttpStatusCode.ServiceUnavailable);
-            _durableOrchestrationContext.Setup(x => x.CallHttpAsync(It.IsAny<DurableHttpRequest>()))
-                                        .Throws(exception);
-
-            List<Guid> filteredGroupIds = new List<Guid>();
-            _ownershipReaderService.Setup(x => x.FilterSyncJobsBySourceTypes(It.IsAny<HashSet<string>>(), It.IsAny<List<JobsFilterSyncJob>>()))
-                                   .Callback<HashSet<string>, List<JobsFilterSyncJob>>((requestedSourceTypes, syncJobs) =>
-                                   {
-                                       filteredGroupIds = _realOwnershipReaderService.FilterSyncJobsBySourceTypes(requestedSourceTypes, syncJobs);
-                                   }).
-                                   Returns(() => filteredGroupIds);
-
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                    It.Is<LogMessage>(m => m.Message.StartsWith($"Calling MembershipAggregator")),
-                    It.IsAny<VerbosityLevel>(),
-                    It.IsAny<string>(),
-                    It.IsAny<string>()), Times.Once());
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                    It.Is<LogMessage>(m => m.Message.StartsWith($"Rescheduling job at")),
-                    It.IsAny<VerbosityLevel>(),
-                    It.IsAny<string>(),
-                    It.IsAny<string>()), Times.Once());
-
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                        It.IsAny<IEnumerable<SyncJob>>(),
-                        SyncStatus.Idle), Times.Once);
-
         }
 
         private async Task CallLoggerFunctionAsync(LoggerRequest request)
