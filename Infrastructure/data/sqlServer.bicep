@@ -44,7 +44,7 @@ var sqlServerDataBaseName = 'Initial Catalog=${sqlServerName}'
 var sqlServerAdditionalSettings = 'MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=90;'
 var jobsSqlDataBaseName = 'Initial Catalog=${solutionAbbreviation}-data-${environmentAbbreviation}-jobs;'
 var replicaConnectionString = 'Server=tcp:${replicaSqlServerName}${environment().suffixes.sqlServerHostname},1433;Initial Catalog=${replicaSqlDatabaseName};${sqlServerAdditionalSettings}'
-var jobsMSIConnectionString = 'Server=tcp:${sqlServerName}${environment().suffixes.sqlServerHostname},1433;${jobsSqlDataBaseName};Authentication=Active Directory Default;'
+var jobsMSIConnectionString = 'Server=tcp:${sqlServerName}${environment().suffixes.sqlServerHostname},1433;${jobsSqlDataBaseName}Authentication=Active Directory Default;'
 var replicaJobsMSIConnectionString = 'Server=tcp:${replicaSqlServerName}${environment().suffixes.sqlServerHostname},1433;${replicaSqlDatabaseName};Authentication=Active Directory Default;'
 
 resource sqlServer 'Microsoft.Sql/servers@2021-02-01-preview' = {
