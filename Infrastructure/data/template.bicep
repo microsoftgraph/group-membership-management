@@ -416,6 +416,9 @@ module storageAccountTemplate 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
   }
+  dependsOn:[
+    dataKeyVaultPoliciesTemplate
+  ]
 }
 
 module jobsStorageAccountTemplate 'storageAccount.bicep' = {
@@ -427,6 +430,9 @@ module jobsStorageAccountTemplate 'storageAccount.bicep' = {
     addJobsStorageAccountPolicies: true
     location: location
   }
+  dependsOn:[
+    dataKeyVaultPoliciesTemplate
+  ]
 }
 
 module logAnalyticsTemplate 'logAnalytics.bicep' = {
