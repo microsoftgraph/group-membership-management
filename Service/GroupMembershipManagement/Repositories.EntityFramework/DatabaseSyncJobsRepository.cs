@@ -17,6 +17,17 @@ namespace Repositories.EntityFramework
             _context = gmmContext ?? throw new ArgumentNullException(nameof(gmmContext));
         }
 
+        public async Task InsertSyncJobsAsync(List<SyncJob> jobs)
+        {
+            foreach (var job in jobs)
+            {
+                var entry = _context.Set<SyncJob>().Add(job);
+                entry.State = EntityState.Added;
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
         public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
         {
             return await _context.SyncJobs.SingleOrDefaultAsync(job => job.Id == syncJobId);
