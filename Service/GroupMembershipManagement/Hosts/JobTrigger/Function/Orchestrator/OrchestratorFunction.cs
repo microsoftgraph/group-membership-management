@@ -33,10 +33,7 @@ namespace Hosts.JobTrigger
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
-            string query = null;
-            string continuationToken = null;
             var syncJobs = new List<SyncJob>();
-
             var segmentResponse = await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsSegmentedFunction), null);
 
             syncJobs = segmentResponse;
