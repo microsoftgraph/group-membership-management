@@ -528,6 +528,27 @@ Where:
 * `<appConfigName>` - will have the form of "`<SolutionAbbreviation>`-appConfig-`<EnvironmentAbbreviation>`"
 * `<logAnalyticsWorkspaceResourceName>` - will be the name of your LogAnalytics resource (Also known as a Workspace) and will have the form of "`<SolutionAbbreviation>`-data-`<EnvironmentAbbreviation>`"
 
+### SQL Server - Jobs table access
+
+Azure Functions connect to SQL server via MSI (System Identity), once the database is created as part of the deployment we need to grant access to the functions to read and write to the database.
+
+For these functions:
+JobTrigger, SecurityGroup, AzureMainteanace, AzureMembershipProvider, AzureUserReader, GraphUpdater, JobScheduler, MembershipAggregator, NonProdService, Notifier, OwnershipReader, TeamsChannel
+
+Run this commands, in your SQL Server database where the jobs table was created:
+
+    --Production slot
+    CREATE USER [<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-<function>] FROM EXTERNAL PROVIDER
+    ALTER ROLE db_datareader ADD MEMBER [<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-<function>] -- gives permission to read to database
+    ALTER ROLE db_datawriter ADD MEMBER [<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-<function>] -- gives permission to write to database
+
+    --Staging slot
+    CREATE USER [<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-<function>/slots/staging] FROM EXTERNAL PROVIDER
+    ALTER ROLE db_datareader ADD MEMBER [<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-<function>/slots/staging] -- gives permission to read to database
+    ALTER ROLE db_datawriter ADD MEMBER [<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-<function>/slots/staging] -- gives permission to write to database
+
+Repeat the steps above for each function.
+
 ### Create the jobs table:
 
 The jobs table contains all the sync jobs that GMM will perform.
