@@ -5,6 +5,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using System;
+using System.Data.SqlTypes;
 using System.Threading.Tasks;
 
 namespace Hosts.JobTrigger
@@ -23,7 +24,7 @@ namespace Hosts.JobTrigger
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobTrackerFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
             var frequency = 0;
-            if (syncJob != null && syncJob.LastSuccessfulRunTime != DateTime.FromFileTimeUtc(0))
+            if (syncJob != null && syncJob.LastSuccessfulRunTime != SqlDateTime.MinValue.Value)
             {
                 if (syncJob.Status == SyncStatus.Idle.ToString())
                 {

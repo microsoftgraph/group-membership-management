@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
+using System.Data.SqlTypes;
 
 namespace Services
 {
@@ -128,7 +129,7 @@ namespace Services
             if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.Ok)
             {
                 var delta = await CalculateDeltaAsync(sourceMembership, destinationMembership, fromto, job);
-                var isInitialSync = job.LastRunTime == DateTime.FromFileTimeUtc(0);
+                var isInitialSync = job.LastRunTime == SqlDateTime.MinValue.Value;
                 var threshold = isInitialSync ? new ThresholdResult() : await CalculateThresholdAsync(job, delta.Delta, delta.TotalMembersCount, sourceMembership.RunId);
 
                 deltaResponse.MembersToAdd = delta.Delta.ToAdd;

@@ -11,6 +11,7 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -138,7 +139,7 @@ namespace Hosts.JobTrigger
                 return;
             }
 
-            if (syncJob.LastRunTime == DateTime.FromFileTimeUtc(0))
+            if (syncJob.LastRunTime == SqlDateTime.MinValue.Value)
                 await context.CallActivityAsync(nameof(EmailSenderFunction),
                                                 new EmailSenderRequest
                                                 {

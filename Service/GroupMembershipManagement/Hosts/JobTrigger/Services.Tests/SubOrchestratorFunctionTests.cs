@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Azure.Messaging.ServiceBus;
 using System.Threading;
+using System.Data.SqlTypes;
 
 namespace Services.Tests
 {
@@ -176,7 +177,7 @@ namespace Services.Tests
             _context.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<SyncJob>()))
                                         .Callback<string, object>(async (name, request) =>
                                         {
-                                            _frequency = await CallJobTrackerFunctionAsync(request as SyncJob, DateTime.FromFileTimeUtc(0));
+                                            _frequency = await CallJobTrackerFunctionAsync(request as SyncJob, SqlDateTime.MinValue.Value);
                                         })
                                         .ReturnsAsync(() => _frequency);
 
