@@ -51,19 +51,63 @@ steps:
     deploymentMode: 'Incremental'
     deploymentOutputs: dataoutputs
 
+- task: AzurePowerShell@5
+  displayName: 'Open Network before read keyvault'
+  inputs:
+    azureSubscription: ${{parameters.serviceConnection}}
+    scriptType: inlineScript
+    inline: |
+      $prereqsKeyVaultName = "${{parameters.solutionAbbreviation}}-prereqs-${{parameters.environmentAbbreviation}}"
+      $dataKeyVaultName = "${{parameters.solutionAbbreviation}}-data-${{parameters.environmentAbbreviation}}"
+      cd\
+      cd '$(defaultWorkingDirectory)/Infrastructure/script'
+      . ./Update-KeyvaultFirewallRule.ps1
+      Update-KeyvaultFirewallRule	-KeyVaultName $prereqsKeyVaultName -Add $true
+      Update-KeyvaultFirewallRule	-KeyVaultName $dataKeyVaultName -Add $true
+    azurePowerShellVersion: LatestVersion
+  name: preSecretRetrieval
+
 - task: AzurePowerShell@4
   displayName: 'run main script'
   inputs:
     azureSubscription: ${{parameters.serviceConnection}}
     ScriptType: InlineScript
     Inline: |
-     . ${{ parameters.root }}/Scripts/main.ps1
+      $secret = Get-AzKeyVaultSecret -VaultName ${{parameters.solutionAbbreviation}}-data-${{parameters.environmentAbbreviation}} -Name "sqlDatabaseConnectionString"
+      $ssPtr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret.SecretValue)
+      try {
+          $ConnectionString = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($ssPtr)
+      } finally {
+          [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ssPtr)
+      }
+      if ([string]::IsNullOrWhiteSpace($ConnectionString)) {
+          throw 'ConnectionString is empty';
+      }
 
-     Set-UpdateQuery -SubscriptionName "${{parameters.subscriptionName}}" `
-     -SolutionAbbreviation "${{parameters.solutionAbbreviation}}" `
-     -EnvironmentAbbreviation "${{parameters.environmentAbbreviation}}" `
-     -Verbose
+      . ${{ parameters.root }}/Scripts/main.ps1
+
+      Set-UpdateQuery -SubscriptionName "${{parameters.subscriptionName}}" `
+                       -SolutionAbbreviation "${{parameters.solutionAbbreviation}}" `
+                       -EnvironmentAbbreviation "${{parameters.environmentAbbreviation}}" `
+                       -ConnectionString $ConnectionString `
+                       -Verbose
     azurePowerShellVersion: LatestVersion
+
+- task: AzurePowerShell@5
+  displayName: 'Close Network after read keyvault'
+  inputs:
+    azureSubscription: ${{parameters.serviceConnection}}
+    scriptType: inlineScript
+    inline: |
+      $prereqsKeyVaultName = "${{parameters.solutionAbbreviation}}-prereqs-${{parameters.environmentAbbreviation}}"
+      $dataKeyVaultName = "${{parameters.solutionAbbreviation}}-data-${{parameters.environmentAbbreviation}}"
+      cd\
+      cd '$(defaultWorkingDirectory)/Infrastructure/script'
+      . ./Update-KeyvaultFirewallRule.ps1
+      Update-KeyvaultFirewallRule	-KeyVaultName $prereqsKeyVaultName -Add $false
+      Update-KeyvaultFirewallRule	-KeyVaultName $dataKeyVaultName -Add $false
+    azurePowerShellVersion: LatestVersion
+  name: postSecretRetrieval
 
 - powershell: |
     Write-Host $ENV:dataoutputs;
