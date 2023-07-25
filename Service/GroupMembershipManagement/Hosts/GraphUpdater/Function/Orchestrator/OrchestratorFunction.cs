@@ -219,7 +219,7 @@ namespace Hosts.GraphUpdater
                     }
                 }
 
-                if (_deltaCachingConfig.DeltaCacheEnabled) await UpdateCacheAsync(context, sourceUsersNotFound, destinationUsersNotFound, syncJob, groupMembership.SourceMembers);
+                if (_deltaCachingConfig.DeltaCacheEnabled) await UpdateCachesAsync(context, sourceUsersNotFound, destinationUsersNotFound, syncJob, groupMembership.SourceMembers);
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
 
@@ -254,7 +254,7 @@ namespace Hosts.GraphUpdater
             }
         }
 
-        public async Task UpdateCacheAsync(IDurableOrchestrationContext context,
+        public async Task UpdateCachesAsync(IDurableOrchestrationContext context,
                                                 List<AzureADUser> sourceUsersNotFound,
                                                 List<AzureADUser> destinationUsersNotFound,
                                                 SyncJob syncJob,
@@ -283,11 +283,9 @@ namespace Hosts.GraphUpdater
 
                     if (sourceGroups != null && sourceGroups.Count > 0)
                     {
-                        // multiple source group processing flows in parallel
-                        var processingTasks = new List<Task>();
                         foreach (var sourceGroup in sourceGroups)
                         {
-                            var processTask = context.CallSubOrchestratorAsync(nameof(CacheUserUpdaterSubOrchestratorFunction),
+                            await context.CallSubOrchestratorAsync(nameof(CacheUserUpdaterSubOrchestratorFunction),
                                 new CacheUserUpdaterRequest
                                 {
                                     GroupId = sourceGroup.GroupId,
@@ -295,10 +293,7 @@ namespace Hosts.GraphUpdater
                                     RunId = syncJob.RunId,
                                     SyncJob = syncJob
                                 });
-                            processingTasks.Add(processTask);
                         }
-
-                        await Task.WhenAll(processingTasks);
                     }
                 }
 
