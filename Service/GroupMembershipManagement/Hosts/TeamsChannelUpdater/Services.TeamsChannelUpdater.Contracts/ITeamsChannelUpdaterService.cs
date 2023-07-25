@@ -8,7 +8,7 @@ namespace Services.TeamsChannelUpdater.Contracts
     public interface ITeamsChannelUpdaterService
     {
         public Guid RunId { get; set; }
-        Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey);
+        Task<SyncJob> GetSyncJobAsync(Guid syncJobId);
         Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId);
         public Task MarkSyncJobAsErroredAsync(SyncJob syncJob);
         public Task<(int SuccessCount, List<AzureADTeamsUser> UsersToRetry)> AddUsersToChannelAsync(AzureADTeamsChannel azureADTeamsChannel, List<AzureADTeamsUser> members);

@@ -16,7 +16,7 @@ namespace Services.TeamsChannelUpdater
         private const string EmailSubject = "EmailSubject";
 
         private readonly ITeamsChannelRepository _teamsChannelRepository;
-        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly ILoggingRepository _loggingRepository;
         private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
@@ -33,7 +33,7 @@ namespace Services.TeamsChannelUpdater
         }
 
         public TeamsChannelUpdaterService(ITeamsChannelRepository teamsChannelRepository,
-            ISyncJobRepository syncJobRepository, 
+            IDatabaseSyncJobsRepository syncJobRepository, 
             ILoggingRepository loggingRepository,
             IMailRepository mailRepository,
             IEmailSenderRecipient emailSenderAndRecipients)
@@ -45,9 +45,9 @@ namespace Services.TeamsChannelUpdater
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
         }
 
-        public async Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey)
+        public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
         {
-            return await _syncJobRepository.GetSyncJobAsync(partitionKey, rowKey);
+            return await _syncJobRepository.GetSyncJobAsync(syncJobId);
         }
 
 

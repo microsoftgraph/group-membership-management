@@ -29,7 +29,7 @@ namespace Hosts.TeamsChannelUpdater
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
-            var syncJob = await _teamsChannelUpdaterService.GetSyncJobAsync(request.JobPartitionKey, request.JobRowKey);
+            var syncJob = await _teamsChannelUpdaterService.GetSyncJobAsync(request.SyncJobId);
             syncJob.ThresholdViolations = request.ThresholdViolations;
             if (request.Status == SyncStatus.Idle && syncJob.IgnoreThresholdOnce) syncJob.IgnoreThresholdOnce = false;
 

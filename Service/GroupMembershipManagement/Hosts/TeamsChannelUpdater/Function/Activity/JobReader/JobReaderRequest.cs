@@ -7,8 +7,7 @@ namespace Hosts.TeamsChannelUpdater
 {
     public class JobReaderRequest
     {
-        public string JobPartitionKey { get; set; }
-        public string JobRowKey { get; set; }
+        public Guid SyncJobId { get; set; }
         public Guid RunId { get; set; }
     }
 }

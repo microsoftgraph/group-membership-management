@@ -62,8 +62,7 @@ namespace Hosts.TeamsChannelUpdater
                 syncJob = await context.CallActivityAsync<SyncJob>(nameof(JobReaderFunction),
                                                        new JobReaderRequest
                                                        {
-                                                           JobPartitionKey = graphRequest.SyncJob.PartitionKey,
-                                                           JobRowKey = graphRequest.SyncJob.RowKey,
+                                                           SyncJobId = graphRequest.SyncJob.Id,
                                                            RunId = graphRequest.SyncJob.RunId.GetValueOrDefault()
                                                        });
                 var queryTypes = JsonParser.GetQueryTypes(syncJob.Query);
@@ -159,7 +158,7 @@ namespace Hosts.TeamsChannelUpdater
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = message, RunId = syncJob.RunId.GetValueOrDefault(Guid.Empty) });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                    CreateJobStatusUpdaterRequest(groupMembership.SyncJobPartitionKey, groupMembership.SyncJobRowKey,
+                                    CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
                                                                     SyncStatus.Idle, 0, groupMembership.RunId));
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
                 if (!context.IsReplaying)
@@ -201,7 +200,7 @@ namespace Hosts.TeamsChannelUpdater
                 if (syncJob != null)
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                    CreateJobStatusUpdaterRequest(syncJob.PartitionKey, syncJob.RowKey,
+                                    CreateJobStatusUpdaterRequest(syncJob.Id,
                                                                     SyncStatus.Error, syncJob.ThresholdViolations, syncJob.RunId.GetValueOrDefault(new Guid())));
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
                 }
@@ -244,13 +243,12 @@ namespace Hosts.TeamsChannelUpdater
             };
         }
 
-        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(string partitionKey, string rowKey, SyncStatus syncStatus, int thresholdViolations, Guid runId)
+        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(Guid syncJobId, SyncStatus syncStatus, int thresholdViolations, Guid runId)
         {
             return new JobStatusUpdaterRequest
             {
                 RunId = runId,
-                JobPartitionKey = partitionKey,
-                JobRowKey = rowKey,
+                SyncJobId = syncJobId,
                 Status = syncStatus,
                 ThresholdViolations = thresholdViolations
             };

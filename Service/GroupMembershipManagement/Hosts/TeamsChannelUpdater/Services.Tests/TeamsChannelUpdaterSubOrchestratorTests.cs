@@ -36,8 +36,7 @@ namespace Services.Tests
 
             _syncJob = new SyncJob
             {
-                PartitionKey = groupMembership.SyncJobPartitionKey,
-                RowKey = groupMembership.SyncJobRowKey,
+                Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
                 Destination = $"[{{\"value\":{{\"objectId\":\"e9c0ddc4-5379-42a8-bd35-e2f00b584733\",\"channelId\":\"19:O779DDojg816swmRBSbE23yixpmVyzsRV4QmMip_KBA1@thread.tacv2\"}},\"type\":\"TeamsChannel\"}}]",
                 ThresholdPercentageForAdditions = -1,

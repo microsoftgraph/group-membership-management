@@ -18,7 +18,7 @@ namespace Services.Tests
         private TeamsChannelUpdaterService _teamsChannelUpdaterService = null!;
         private UpdaterChannelSyncInfo _syncInfo = null!;  
         private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository = null!;
-        private Mock<ISyncJobRepository> _mockSyncJobRepository = null!;
+        private Mock<IDatabaseSyncJobsRepository> _mockSyncJobRepository = null!;
         private Mock<ILoggingRepository> _mockLoggingRepository = null!;
         private Mock<IMailRepository> _mockMailRepository = null!;
         private Mock<IEmailSenderRecipient> _mockEmailSenderRecipient = null!;
@@ -68,8 +68,8 @@ namespace Services.Tests
             _mockTeamsChannelRepository.Setup<Task<List<AzureADUser>>>(repo => repo.GetGroupOwnersAsync(_syncInfo.SyncJob.TargetOfficeGroupId, It.IsAny<Guid>(), 0))
                 .ReturnsAsync(() => _mockOwnerList);
 
-            _mockSyncJobRepository = new Mock<ISyncJobRepository>();
-            _mockSyncJobRepository.Setup<Task<SyncJob>>(repo => repo.GetSyncJobAsync(_syncInfo.SyncJob.PartitionKey, _syncInfo.SyncJob.RowKey))
+            _mockSyncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _mockSyncJobRepository.Setup<Task<SyncJob>>(repo => repo.GetSyncJobAsync(_syncInfo.SyncJob.Id))
                 .ReturnsAsync(_syncInfo.SyncJob);
             _mockSyncJobRepository.Setup(repo => repo.UpdateSyncJobStatusAsync(It.IsAny<SyncJob[]>(), SyncStatus.Error))
                 .Callback(() =>
@@ -95,7 +95,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task CanRetrieveJobs()
         {
-            var job = await _teamsChannelUpdaterService.GetSyncJobAsync(_syncInfo.SyncJob.PartitionKey, _syncInfo.SyncJob.RowKey);
+            var job = await _teamsChannelUpdaterService.GetSyncJobAsync(_syncInfo.SyncJob.Id);
             Assert.AreEqual(job, _syncInfo.SyncJob);
         }
 
