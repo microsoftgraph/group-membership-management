@@ -533,7 +533,7 @@ Where:
 Azure Functions connect to SQL server via MSI (System Identity), once the database is created as part of the deployment we need to grant access to the functions to read and write to the database.
 
 For these functions:
-JobTrigger, GroupMembershipObtainer, AzureMaintenance, AzureMembershipProvider*, AzureUserReader, GraphUpdater, JobScheduler, MembershipAggregator, NonProdService, Notifier, OwnershipReader, TeamsChannel
+JobTrigger, GroupMembershipObtainer, AzureMaintenance, AzureMembershipProvider*, AzureUserReader, GraphUpdater, JobScheduler, MembershipAggregator, NonProdService, Notifier, GroupOwnershipObtainer, TeamsChannel
 
 Run this commands, in your SQL Server database where the jobs table was created:
 
@@ -761,8 +761,8 @@ The default configuration for the 'syncJobs' table is generated via an ARM templ
 
 The run frequency is set to every day at midnight, it is defined as a NCRONTAB expression in the application setting named 'backupTriggerSchedule' which can be updated on the Azure Portal, it's located under the Configuration blade for `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-AzureMaintenance Function App. Additionally,  it can be updated directly in the respective ARM template located under Service\GroupMembershipManagement\Hosts\AzureMaintenance\Infrastructure\compute\template.bicep
 
-# Setting OwnershipReader function
-[OwnershipReader function](Service\GroupMembershipManagement\Hosts\OwnershipReader\Documentation\OwnershipReader.md)
+# Setting GroupOwnershipObtainer function
+[GroupOwnershipObtainer function](Service\GroupMembershipManagement\Hosts\GroupOwnershipObtainer\Documentation\GroupOwnershipObtainer.md)
 
 # Setting GMM in a demo tenant
 
