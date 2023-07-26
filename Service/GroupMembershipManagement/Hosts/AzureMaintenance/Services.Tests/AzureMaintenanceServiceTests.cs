@@ -8,6 +8,7 @@ using Models.ThresholdNotifications;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
@@ -220,9 +221,8 @@ namespace Services.Tests
 
             var j = GetJobs(jobs);
 
-            var azureTableBackupRepository = new Mock<IAzureTableBackupRepository>();
-            var azureBlobBackupRepository = new Mock<IAzureStorageBackupRepository>();
-            var syncJobRepository = new Mock<ISyncJobRepository>();
+            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var mailAddresses = new Mock<IEmailSenderRecipient>();
             var mailRepository = new Mock<IMailRepository>();
@@ -247,19 +247,16 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = Random.Shared.Next(1, 50),
                 CardState = ThresholdNotificationCardState.DefaultCard
             };
-            var azureTableBackupService = new AzureMaintenanceService(loggerMock.Object,
-                                                azureTableBackupRepository.Object,
-                                                azureBlobBackupRepository.Object,
-                                                syncJobRepository.Object,
-                                                graphGroupRepository.Object,
-                                                mailAddresses.Object,
-                                                mailRepository.Object,
-                                                handleInactiveJobsConfig.Object,
-                                                notificationRepository.Object);
+            var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
+                                    purgedSyncJobRepository.Object,
+                                    graphGroupRepository.Object,
+                                    mailAddresses.Object,
+                                    mailRepository.Object,
+                                    handleInactiveJobsConfig.Object,
+                                    notificationRepository.Object);
 
-
-            notificationRepository.Setup(x => x.GetThresholdNotificationBySyncJobKeysAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(() => Task.FromResult(notification));
-            await azureTableBackupService.ExpireNotificationsAsync(j);
+            notificationRepository.Setup(x => x.GetThresholdNotificationBySyncJobIdAsync(It.IsAny<Guid>())).Returns(() => Task.FromResult(notification));
+            await azureMaintenanceService.ExpireNotificationsAsync(j);
             notificationRepository.Verify(x => x.SaveNotificationAsync(It.IsAny<ThresholdNotification>()), Times.Exactly(2));
         }
 

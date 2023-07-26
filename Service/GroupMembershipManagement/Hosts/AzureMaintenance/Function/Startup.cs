@@ -17,6 +17,7 @@ using Microsoft.Graph;
 using Repositories.GraphGroups;
 using Repositories.EntityFramework;
 using Repositories.NotificationsRepository;
+using Repositories.SyncJobsRepository;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 

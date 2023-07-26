@@ -150,7 +150,7 @@ namespace Services
 		{
             foreach (var job in jobs)
 			{
-                var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobKeysAsync(job.PartitionKey, job.RowKey);
+                var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobIdAsync(job.Id);
 				if (thresholdNotification != null)
 				{
 					thresholdNotification.Status = ThresholdNotificationStatus.Expired;
