@@ -10,6 +10,7 @@ using Repositories.Mocks;
 using Repositories.ServiceBusTopics.Tests;
 using Services.Contracts;
 using System;
+using System.Data.SqlTypes;
 using System.Linq;
 using System.Threading.Tasks;
 using Tests.Repositories;
@@ -284,8 +285,8 @@ namespace Services.Tests
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
 
-            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(validStartDateJobs, Organization, lastRunTime: DateTime.FromFileTimeUtc(0)));
-            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(futureStartDateJobs, Organization, startDateBase: DateTime.UtcNow.AddDays(5), lastRunTime: DateTime.FromFileTimeUtc(0)));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(validStartDateJobs, Organization, lastRunTime: SqlDateTime.MinValue.Value));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(futureStartDateJobs, Organization, startDateBase: DateTime.UtcNow.AddDays(5), lastRunTime: SqlDateTime.MinValue.Value));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));

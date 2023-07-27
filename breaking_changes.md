@@ -198,3 +198,10 @@ GMM has been updated to send group membership through blobs instead of queues. S
 See section [Grant SecurityGroup, GraphUpdater function access to storage account](README.md#grant-securitygroup-graphupdater-function-access-to-storage-account) for more information.
 
 Once these changes are deployed successfully to your enviroment it will be safe to delete the 'membership' queue from your Azure Resources.
+
+## 7/26/2023
+### Create the jobs table in SQL database
+
+* Go to https://`<solutionAbbreviation>`-compute-`<environmentAbbreviation>`-webapi.azurewebsites.net/swagger/index.html
+* Hit the endpoint `admin/databaseMigration`. This will create the jobs table in `<solutionAbbreviation>`-data-`<environmentAbbreviation>`-jobs database
+* A successful deployment to your environment will copy the jobs from storage account to sql database

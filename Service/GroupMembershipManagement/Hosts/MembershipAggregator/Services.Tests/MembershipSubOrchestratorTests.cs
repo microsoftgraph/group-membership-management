@@ -18,6 +18,7 @@ using Services.Contracts;
 using Services.Entities;
 using System;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -255,7 +256,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task ProcessInitialJobSyncAsync()
         {
-            _syncJob.LastRunTime = DateTime.FromFileTimeUtc(0);
+            _syncJob.LastRunTime = SqlDateTime.MinValue.Value;
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
@@ -490,7 +491,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task DryRunTestAsync()
         {
-            _syncJob.LastRunTime = DateTime.FromFileTimeUtc(0);
+            _syncJob.LastRunTime = SqlDateTime.MinValue.Value;
 
             _dryRun.Setup(x => x.DryRunEnabled).Returns(true);
             _deltaCalculatorService = new DeltaCalculatorService

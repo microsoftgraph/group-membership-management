@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using System;
+using System.Data.SqlTypes;
 using Entities;
 
 namespace Models
@@ -9,7 +10,7 @@ namespace Models
     public class DistributionSyncJob : UpdateMergeSyncJob, IComparable<DistributionSyncJob>
     {
         public Guid TargetOfficeGroupId { get; set; }
-        public DateTime LastRunTime { get; set; } = DateTime.FromFileTimeUtc(0);
+        public DateTime LastRunTime { get; set; } = SqlDateTime.MinValue.Value;
         public int Period { get; set; }
         public string Status { get; set; }
 

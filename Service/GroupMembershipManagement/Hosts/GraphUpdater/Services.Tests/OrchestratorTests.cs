@@ -16,6 +16,7 @@ using Services.Contracts;
 using Services.Tests.Mocks;
 using System;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -184,7 +185,7 @@ namespace Services.Tests
                 Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
-                LastRunTime = DateTime.FromFileTimeUtc(0),
+                LastRunTime = SqlDateTime.MinValue.Value,
                 Requestor = "user@domail.com",
                 Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = Guid.NewGuid()
@@ -307,7 +308,7 @@ namespace Services.Tests
                 Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
-                LastRunTime = DateTime.FromFileTimeUtc(0),
+                LastRunTime = SqlDateTime.MinValue.Value,
                 Requestor = "user@domail.com",
                 Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = Guid.NewGuid()

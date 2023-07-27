@@ -3,6 +3,7 @@
 using Models;
 using System;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.Linq;
 
 namespace Services.Tests
@@ -26,7 +27,7 @@ namespace Services.Tests
                     StartDate = startDateBase ?? DateTime.UtcNow.AddDays(-1),
                     Status = SyncStatus.Idle.ToString(),
                     TargetOfficeGroupId = Guid.NewGuid(),
-                    LastRunTime = lastRunTime ?? DateTime.FromFileTimeUtc(0),
+                    LastRunTime = lastRunTime ?? SqlDateTime.MinValue.Value,
                     RunId = Guid.NewGuid()
                 };
 

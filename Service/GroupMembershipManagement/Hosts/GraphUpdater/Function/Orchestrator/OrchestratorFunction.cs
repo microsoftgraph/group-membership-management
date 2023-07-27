@@ -14,6 +14,7 @@ using Services.Contracts;
 using Services.Entities;
 using System;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -120,7 +121,7 @@ namespace Hosts.GraphUpdater
                     return OrchestrationRuntimeStatus.Completed;
                 }
 
-                var isInitialSync = syncJob.LastRunTime == DateTime.FromFileTimeUtc(0);
+                var isInitialSync = syncJob.LastRunTime == SqlDateTime.MinValue.Value;
                 syncCompleteEvent.IsInitialSync = isInitialSync.ToString();
                 var membersToAdd = groupMembership.SourceMembers.Where(x => x.MembershipAction == MembershipAction.Add).Distinct().ToList();
                 syncCompleteEvent.MembersToAdd = membersToAdd.Count.ToString();

@@ -107,7 +107,7 @@ namespace Models
             }
             set
             {
-                if (DateTime.FromFileTimeUtc(0) > value)
+                if (SqlDateTime.MinValue.Value > value)
                     _dryRunTimeStamp = SqlDateTime.MinValue.Value;
                 else
                     _dryRunTimeStamp = value;
