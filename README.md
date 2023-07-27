@@ -832,9 +832,12 @@ The run frequency is set to every day at midnight, it is defined as a NCRONTAB e
 
 In the event that you are setting up GMM in a demo tenant refer to [Setting GMM in a demo tenant](/Documentation/DemoTenant.md) for additional guidance.
 
-# Setting up GMM UI
+# Setting up WebAPI and GMM UI
 
-Please refer to [GMM UI](UI/web-app/README.md) for additional guidance.
+Please refer to [Create React App](UI/web-app/README.md) for additional guidance.
+Please refer to [WebAPI](Service/GroupMembershipManagement/Hosts/WebApi/Documentation/WebApiSetup.md) for additional guidance.
+#TODO
+Please refer to [GMM UI](UI/web-app/Documentation/UISetup.md) for additional guidance.
 
 # Steps to debug and troubleshoot a failing sync
 
