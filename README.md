@@ -406,9 +406,7 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
 
 11. Save your changes.
 
-12. appsettings.env.json TODO  
-
-13. Create parameter files based off the provided `parameters.env.json` by using the [Add-ParamFiles.ps1](/scripts/Add-ParamFiles.ps1) script:
+12. Create parameter files based off the provided `parameters.env.json` by using the [Add-ParamFiles.ps1](/scripts/Add-ParamFiles.ps1) script:
     * From your PowerShell command prompt navigate to the Scripts folder of your `Public` repo and type these commands.
 
             1. . ./Add-ParamFiles.ps1
