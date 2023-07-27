@@ -836,8 +836,7 @@ In the event that you are setting up GMM in a demo tenant refer to [Setting GMM 
 
 Please refer to [Create React App](UI/web-app/README.md) for additional guidance.
 Please refer to [WebAPI](Service/GroupMembershipManagement/Hosts/WebApi/Documentation/WebApiSetup.md) for additional guidance.
-#TODO
-Please refer to [GMM UI](UI/web-app/Documentation/UISetup.md) for additional guidance.
+Please refer to [GMM UI](UI/Documentation/UISetup.md) for additional guidance.
 
 # Steps to debug and troubleshoot a failing sync
 
