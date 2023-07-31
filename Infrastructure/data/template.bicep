@@ -81,9 +81,9 @@ param serviceBusTopicName string = 'syncJobs'
 @description('Enter service bus topic\'s subscriptions.')
 param serviceBusTopicSubscriptions array = [
   {
-    name: 'SecurityGroup'
+    name: 'GroupMembership'
     ruleName: 'syncType'
-    ruleSqlExpression: 'Type = \'SecurityGroup\''
+    ruleSqlExpression: 'Type = \'GroupMembership\''
   }
   {
     name: 'AzureMembershipProvider'
@@ -161,15 +161,15 @@ param appConfigurationKeyData array = [
     }
   }
   {
-    key: 'SecurityGroup:IsDeltaCacheEnabled'
+    key: 'GroupMembershipObtainer:IsDeltaCacheEnabled'
     value: 'false'
     contentType: 'boolean'
     tag: {
-      tag1: 'SecurityGroup'
+      tag1: 'GroupMembershipObtainer'
     }
   }
   {
-    key: 'SecurityGroup:IsSecurityGroupDryRunEnabled'
+    key: 'GroupMembershipObtainer:IsDryRunEnabled'
     value: 'false'
     contentType: 'boolean'
     tag: {
