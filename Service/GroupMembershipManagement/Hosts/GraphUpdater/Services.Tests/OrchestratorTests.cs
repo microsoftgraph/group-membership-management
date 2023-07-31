@@ -76,7 +76,7 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
-                Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
+                Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = groupMembership.RunId
             };
 
@@ -187,7 +187,7 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = SqlDateTime.MinValue.Value,
                 Requestor = "user@domail.com",
-                Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
+                Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = Guid.NewGuid()
             };
 
@@ -310,7 +310,7 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = SqlDateTime.MinValue.Value,
                 Requestor = "user@domail.com",
-                Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
+                Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = Guid.NewGuid()
             };
 
@@ -469,7 +469,7 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
-                Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
+                Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = Guid.NewGuid()
             };
 
@@ -547,7 +547,7 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
-                Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
+                Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = Guid.NewGuid()
             };
 
@@ -650,7 +650,7 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
-                Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
+                Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = Guid.NewGuid()
             };
 

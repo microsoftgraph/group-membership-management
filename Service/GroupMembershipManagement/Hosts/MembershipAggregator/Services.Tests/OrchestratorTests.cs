@@ -55,7 +55,7 @@ namespace Services.Tests
                 Requestor = "user@domail.com",
                 RunId = Guid.NewGuid(),
                 ThresholdViolations = 0,
-                Query = "[{\"type\":\"SecurityGroup\",\"source\":\"9e9b029b-52a7-467a-94fb-325b6241022b\"},{\"type\":\"GroupOwnership\",\"source\":[\"SecurityGroup\"]}]",
+                Query = "[{\"type\":\"GroupMembership\",\"source\":\"9e9b029b-52a7-467a-94fb-325b6241022b\"},{\"type\":\"GroupOwnership\",\"source\":[\"GroupMembership\"]}]",
                 Destination = $"[{{\"value\":\"{targetOfficeGroupId}\",\"type\":\"GraphUpdater\"}}]"
             };
 

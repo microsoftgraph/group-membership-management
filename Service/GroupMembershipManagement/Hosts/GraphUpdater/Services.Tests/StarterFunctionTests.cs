@@ -62,7 +62,7 @@ namespace Services.Tests
             var contentBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(content));
             var properties = new Dictionary<string, object>
             {
-                { "Type", "SecurityGroup"}
+                { "Type", "GroupMembership"}
             };
 
             var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(contentBytes), properties: properties);

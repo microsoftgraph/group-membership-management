@@ -71,7 +71,7 @@ namespace Services.Tests
             {
                 Id = Guid.NewGuid(),
                 TargetOfficeGroupId = Guid.NewGuid(),
-                Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
+                Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 Status = "InProgress",
                 Period = 6
             };

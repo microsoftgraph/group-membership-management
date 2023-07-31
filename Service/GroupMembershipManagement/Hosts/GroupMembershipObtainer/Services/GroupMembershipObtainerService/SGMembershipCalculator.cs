@@ -22,7 +22,7 @@ namespace Hosts.GroupMembershipObtainer
         private readonly IMailRepository _mail;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
-        private readonly bool _isSecurityGroupDryRunEnabled;
+        private readonly bool _isGroupMembershipDryRunEnabled;
 
         public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository,
                                       IBlobStorageRepository blobStorageRepository,
@@ -39,7 +39,7 @@ namespace Hosts.GroupMembershipObtainer
             _mail = mail;
             _databaseSyncJobsRepository = databaseSyncJobsRepository;
             _emailSenderAndRecipients = emailSenderAndRecipients;
-            _isSecurityGroupDryRunEnabled = dryRun.DryRunEnabled;
+            _isGroupMembershipDryRunEnabled = dryRun.DryRunEnabled;
         }
 
         private const int NumberOfGraphRetries = 5;
@@ -162,12 +162,12 @@ namespace Hosts.GroupMembershipObtainer
                 RunId = runId,
                 Exclusionary = exclusionary,
                 SyncJobId = syncJob.Id,
-                MembershipObtainerDryRunEnabled = _isSecurityGroupDryRunEnabled,
+                MembershipObtainerDryRunEnabled = _isGroupMembershipDryRunEnabled,
                 Query = syncJob.Query
             };
 
             var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
-            var fileName = $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_SecurityGroup_{currentPart}.json";
+            var fileName = $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_GroupMembership_{currentPart}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
 
             return fileName;

@@ -13,11 +13,11 @@ This document will guide you through the steps required in log analytics for fin
 
 * The *Results* will contain the logs with a message as well as the location of the message
 
-* You can additionally check for the logs based on a particular sync type as well such as `SecurityGroup`, like this:
+* You can additionally check for the logs based on a particular sync type as well such as `GroupMembershipObtainer`, like this:
 
       ApplicationLog_CL 
       | where RunId_g == '<destination group RunId>'
       | order by TimeGenerated
-      | where location_s == 'SecurityGroup'
+      | where location_s == 'GroupMembershipObtainer'
       
 

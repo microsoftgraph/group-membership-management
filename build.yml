@@ -36,4 +36,4 @@ stages:
     functionApps:
     - name: 'JobTrigger'
     - name: 'GraphUpdater'
-    - name: 'SecurityGroup'
+    - name: 'GroupMembershipObtainer'

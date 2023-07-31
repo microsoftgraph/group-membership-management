@@ -318,7 +318,7 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
             dependsOn:
             - 'GraphUpdater'
             - function:
-            name: 'SecurityGroup'
+            name: 'GroupMembershipObtainer'
             dependsOn:
             - 'MembershipAggregator'
             - function:
@@ -330,7 +330,7 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
             - function:
             name: 'JobTrigger'
             dependsOn:
-            - 'SecurityGroup'
+            - 'GroupMembershipObtainer'
             condition: |
             and(
                 succeeded('Build_Common'),
@@ -511,7 +511,7 @@ Once the pipeline has completed building and deploying GMM code and resources to
 
 The following script:
 1. Grants all functions access to App Configuration.
-2. Grants SecurityGroup, MembershipAggregator, and GraphUpdater functions access to storage account.
+2. Grants GroupMembershipObtainer, MembershipAggregator, and GraphUpdater functions access to storage account.
 
 From your `PowerShell 7.x` command prompt navigate to the `Scripts/PostDeployment` folder of your `Public` repo, run these commands, and follow the instructions on the screen:
 
@@ -533,7 +533,7 @@ Where:
 Azure Functions connect to SQL server via MSI (System Identity), once the database is created as part of the deployment we need to grant access to the functions to read and write to the database.
 
 For these functions:
-JobTrigger, SecurityGroup, AzureMaintenance, AzureMembershipProvider*, AzureUserReader, GraphUpdater, JobScheduler, MembershipAggregator, NonProdService, Notifier, OwnershipReader, TeamsChannel
+JobTrigger, GroupMembershipObtainer, AzureMaintenance, AzureMembershipProvider*, AzureUserReader, GraphUpdater, JobScheduler, MembershipAggregator, NonProdService, Notifier, OwnershipReader, TeamsChannel
 
 Run this commands, in your SQL Server database where the jobs table was created:
 
@@ -607,7 +607,7 @@ To create a production environment:
             dependsOn:
             - 'GraphUpdater'
             - function:
-            name: 'SecurityGroup'
+            name: 'GroupMembershipObtainer'
             dependsOn:
             - 'MembershipAggregator'
             - function:
@@ -619,7 +619,7 @@ To create a production environment:
             - function:
             name: 'JobTrigger'
             dependsOn:
-            - 'SecurityGroup'
+            - 'GroupMembershipObtainer'
             condition: |
             and(
                 succeeded('Build_Common'),
@@ -682,30 +682,30 @@ A synchronization job must have the following properties populated:
 See [syncJobs properties](./Documentation/syncJobsProperties.md) for more information.
 
 
-A PowerShell script [New-GmmSecurityGroupSyncJob.ps1](/Service/GroupMembershipManagement/Hosts/SecurityGroup/Scripts/New-GmmSecurityGroupSyncJob.ps1) is provided to help you create the synchronization jobs.
+A PowerShell script [New-GmmGroupMembershipSyncJob.ps1](/Service/GroupMembershipManagement/Hosts/GroupMembershipObtainer/Scripts/New-GmmGroupMembershipSyncJob.ps1) is provided to help you create the synchronization jobs.
 
 The Query field requires a JSON object that must follow this format:
 
 ```
 [
     {
-        "type": "SecurityGroup",
+        "type": "GroupMembershipObtainer",
         "source": "<guid-group-objet-id-1>"
     },
     {
-        "type": "SecurityGroup",
+        "type": "GroupMembershipObtainer",
         "source": "<guid-group-objet-id-2>"
     },
     {
-        "type": "SecurityGroup",
+        "type": "GroupMembershipObtainer",
         "source": "<guid-group-objet-id-n>"
     }
 ]
 ```
-The script can be found in \Service\GroupMembershipManagement\Hosts\SecurityGroup\Scripts folder.
+The script can be found in \Service\GroupMembershipManagement\Hosts\GroupMembershipObtainer\Scripts folder.
 
-    1. . ./New-GmmSecurityGroupSyncJob.ps1
-    2. New-GmmSecurityGroupSyncJob	-SubscriptionName "<SubscriptionName>" `
+    1. . ./New-GmmGroupMembershipSyncJob.ps1
+    2. New-GmmGroupMembershipSyncJob	-SubscriptionName "<SubscriptionName>" `
                             -SolutionAbbreviation "<SolutionAbbreviation>" `
 							-EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
 							-Requestor "<RequestorEmailAddress>" `
@@ -724,11 +724,11 @@ The NonProdService function will create and populate test groups in the tenant f
 ### Dry Run Settings
 
 Dry run settings are present in GMM to provide users the ability to test new changes without affecting the group membership. This configuration is present in the application configuration table.
-If you would like to have the default setting to be false, then please update the settings in the app configuration to false for the GraphUpdater and SecurityGroup.
+If you would like to have the default setting to be false, then please update the settings in the app configuration to false for the GraphUpdater and GroupMembershipObtainer.
 
 There are 3 Dry Run flags in GMM. If any of these Dry run flags are set, the sync will be completed but destination membership will not be affected.
 1. IsDryRunEnabled: This is a property that is set on an individual sync. Setting this to true will run this sync in dry run.
-2. IsSecurityGroupDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all Security Group syncs in dry run.
+2. GroupMembershipObtainer:IsDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all Security Group syncs in dry run.
 3. IsMembershipAggregatorDryRunEnabled: This is a property that is set in the app configuration table. Setting this to true will run all syncs in dry run.
 
 # Setting AzureMaintenance function

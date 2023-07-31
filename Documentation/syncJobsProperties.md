@@ -59,15 +59,15 @@ Defines the type of sync and the Azure ObjectId of the security group that will 
 
         [
             {
-                "type": "SecurityGroup",
+                "type": "GroupMembership",
                 "source": "<guid-group-objet-id-1>"
             },
             {
-                "type": "SecurityGroup",
+                "type": "GroupMembership",
                 "source": "<guid-group-objet-id-2>"
             },
             {
-                "type": "SecurityGroup",
+                "type": "GroupMembership",
                 "source": "<guid-group-objet-id-n>"
             }
         ]

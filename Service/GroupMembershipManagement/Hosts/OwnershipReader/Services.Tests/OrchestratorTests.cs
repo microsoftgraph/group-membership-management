@@ -68,7 +68,7 @@ namespace Services.Tests
                 RowKey = Guid.NewGuid().ToString(),
                 PartitionKey = "00-00-0000",
                 TargetOfficeGroupId = Guid.NewGuid(),
-                Query = "[{\"type\":\"GroupOwnership\",\"source\":[\"SecurityGroup\"]}]",
+                Query = "[{\"type\":\"GroupOwnership\",\"source\":[\"GroupMembership\"]}]",
                 Status = "InProgress",
                 Period = 6
             };
@@ -79,7 +79,7 @@ namespace Services.Tests
                 {
                     Id = Guid.NewGuid(),
                     TargetOfficeGroupId = Guid.NewGuid(),
-                    Query = "[{\"type\":\"SecurityGroup\",\"source\":\"00000000-0000-0000-0000-000000000000\"}]",
+                    Query = "[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000000\"}]",
                     Status = "InProgress",
                     Period = 6
                 },

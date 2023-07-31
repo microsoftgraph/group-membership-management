@@ -40,13 +40,13 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        [DataRow("All", "SecurityGroup,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
-        [DataRow("Hybrid", "SecurityGroup,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
-        [DataRow("SecurityGroup", "SecurityGroup,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
-        [DataRow("CustomType1", "SecurityGroup,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
-        [DataRow("CustomType2", "SecurityGroup,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
-        [DataRow("SecurityGroup,CustomType1", "SecurityGroup,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
-        [DataRow("SecurityGroup,CustomType1,CustomType2", "SecurityGroup,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
+        [DataRow("All", "GroupMembership,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
+        [DataRow("Hybrid", "GroupMembership,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
+        [DataRow("GroupMembership", "GroupMembership,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
+        [DataRow("CustomType1", "GroupMembership,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
+        [DataRow("CustomType2", "GroupMembership,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
+        [DataRow("GroupMembership,CustomType1", "GroupMembership,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
+        [DataRow("GroupMembership,CustomType1,CustomType2", "GroupMembership,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
         public void TestExistingFilterSyncJobsBySourceTypes(string requestedSourceTypes, string jobSourceTypes)
         {
             var requestedTypes = new HashSet<string>(requestedSourceTypes.Split(','));
@@ -106,10 +106,10 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        [DataRow("SecurityGroup,CustomType2", "SecurityGroup,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
-        [DataRow("CustomType1,CustomType2", "SecurityGroup,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
-        [DataRow("type3", "SecurityGroup,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
-        [DataRow("type3,SecurityGroup", "SecurityGroup,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
+        [DataRow("GroupMembership,CustomType2", "GroupMembership,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
+        [DataRow("CustomType1,CustomType2", "GroupMembership,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
+        [DataRow("type3", "GroupMembership,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
+        [DataRow("type3,GroupMembership", "GroupMembership,CustomType1,CustomType2", DisplayName = "RequestedSourceTypes,CurrentJobSourceTypes")]
         public void TestNonExistingFilterSyncJobsBySourceTypes(string requestedSourceTypes, string jobSourceTypes)
         {
             var requestedTypes = new HashSet<string>(requestedSourceTypes.Split(','));

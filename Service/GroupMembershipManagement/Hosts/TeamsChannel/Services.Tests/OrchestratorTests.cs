@@ -109,7 +109,7 @@ namespace Services.Tests
                     Status = SyncStatus.InProgress.ToString(),
                     TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
-                    Query = @"[{""type"":""SecurityGroup"",""source"":""00000000-0000-0000-0000-000000000000""}]",
+                    Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
                     Destination = @"[{""type"":""TeamsChannel"",""value"":{""groupId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
                 }
             };
@@ -131,7 +131,7 @@ namespace Services.Tests
                     Status = SyncStatus.InProgress.ToString(),
                     TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
-                    Query = @"[{""type"":""SecurityGroup"",""source"":""00000000-0000-0000-0000-000000000000""}]",
+                    Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
                     Destination = @"[{""type"":""TeamsChannel"",""value"":{""groupId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
                 }
             };
@@ -171,7 +171,7 @@ namespace Services.Tests
                     Status = SyncStatus.InProgress.ToString(),
                     TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
-                    Query = @"[{""type"":""SecurityGroup"",""source"":""00000000-0000-0000-0000-000000000000""}]",
+                    Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
                     Destination = @"[{""type"":""TeamsChannel"",""value"":{""groupId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
                 }
             };

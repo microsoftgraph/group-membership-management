@@ -1,4 +1,4 @@
-function Set-UpdateSecurityGroupQuery {
+function Set-UpdateGroupMembershipQuery {
     [CmdletBinding()]
 	param(
 		[Parameter(Mandatory=$True)]
@@ -9,7 +9,7 @@ function Set-UpdateSecurityGroupQuery {
 		[string] $EnvironmentAbbreviation
     )
 
-    Write-Host "Start Set-UpdateSecurityGroupQuery"
+    Write-Host "Start Set-UpdateGroupMembershipQuery"
 
     Set-AzContext -SubscriptionName $SubscriptionName
 
@@ -44,7 +44,7 @@ function Set-UpdateSecurityGroupQuery {
 
     foreach($job in $sgJobs)
     {
-        if(-not ($job.Query.Contains("SecurityGroup"))) {
+        if(-not ($job.Query.Contains("GroupMembership"))) {
             continue
         }
 
@@ -53,14 +53,14 @@ function Set-UpdateSecurityGroupQuery {
 
         foreach($part in $currentQuery) {
 
-            if($part.type -ne "SecurityGroup") {
+            if($part.type -ne "GroupMembership") {
                 $newQueryParts +=  ConvertTo-Json -InputObject $part -Compress -Depth 100
                 continue
             }
 
             if($part.sources) {
                 foreach($id in $part.sources) {
-                    $newQueryPart = '{"type":"SecurityGroup","source":"' + $id + '"}'
+                    $newQueryPart = '{"type":"GroupMembership","source":"' + $id + '"}'
                     $newQueryParts += $newQueryPart
                 }
             }
@@ -75,5 +75,5 @@ function Set-UpdateSecurityGroupQuery {
         $job | Update-AzTableRow -table $cloudTable
     }
 
-    Write-Host "Finish Set-UpdateSecurityGroupQuery"
+    Write-Host "Finish Set-UpdateGroupMembershipQuery"
 }

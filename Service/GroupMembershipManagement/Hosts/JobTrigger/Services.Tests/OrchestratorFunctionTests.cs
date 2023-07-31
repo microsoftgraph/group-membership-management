@@ -27,7 +27,7 @@ namespace Services.Tests
             var jobTriggerServiceInProgress = new Mock<IJobTriggerService>();
             var jobTriggerServiceStuckInProgress = new Mock<IJobTriggerService>();
             var context = new Mock<IDurableOrchestrationContext>();
-            var syncJobs = SampleDataHelper.CreateSampleSyncJobs(10, "SecurityGroup");
+            var syncJobs = SampleDataHelper.CreateSampleSyncJobs(10, "GroupMembership");
             var loggerJobProperties = new Dictionary<Guid, LogProperties>();
 
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
@@ -56,7 +56,7 @@ namespace Services.Tests
             var graphRepository = new Mock<IGraphGroupRepository>();
             var jobTriggerService = new Mock<IJobTriggerService>();
             var context = new Mock<IDurableOrchestrationContext>();
-            var syncJobs = SampleDataHelper.CreateSampleSyncJobs(0, "SecurityGroup");
+            var syncJobs = SampleDataHelper.CreateSampleSyncJobs(0, "GroupMembership");
             var emptySyncJobsList = new List<SyncJob>();
             var loggerJobProperties = new Dictionary<Guid, LogProperties>();
 
@@ -84,7 +84,7 @@ namespace Services.Tests
             var graphRepository = new Mock<IGraphGroupRepository>();
             var jobTriggerService = new Mock<IJobTriggerService>();
             var context = new Mock<IDurableOrchestrationContext>();
-            var syncJobs = SampleDataHelper.CreateSampleSyncJobs(10, "SecurityGroup");
+            var syncJobs = SampleDataHelper.CreateSampleSyncJobs(10, "GroupMembership");
             var emptySyncJobsList = new List<SyncJob>();
             var loggerJobProperties = new Dictionary<Guid, LogProperties>();
 
@@ -111,8 +111,8 @@ namespace Services.Tests
             var graphRepository = new Mock<IGraphGroupRepository>();
             var jobTriggerService = new Mock<IJobTriggerService>();
             var context = new Mock<IDurableOrchestrationContext>();
-            var syncJobs1 = SampleDataHelper.CreateSampleSyncJobs(10, "SecurityGroup");
-            var syncJobs2 = SampleDataHelper.CreateSampleSyncJobs(10, "SecurityGroup");
+            var syncJobs1 = SampleDataHelper.CreateSampleSyncJobs(10, "GroupMembership");
+            var syncJobs2 = SampleDataHelper.CreateSampleSyncJobs(10, "GroupMembership");
             var emptySyncJobsList = new List<SyncJob>();
             var loggerJobProperties = new Dictionary<Guid, LogProperties>();
 

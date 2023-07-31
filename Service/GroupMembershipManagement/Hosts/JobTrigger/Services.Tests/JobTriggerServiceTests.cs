@@ -31,7 +31,7 @@ namespace Services.Tests
         private MockJobTriggerConfig _jobTriggerConfig = null;
 
         private const string Organization = "Organization";
-        private const string SecurityGroup = "SecurityGroup";
+        private const string GroupMembership = "GroupMembership";
         private const string EmailSubject = "EmailSubject";
         private const string SyncStartedEmailBody = "SyncStartedEmailBody";
         private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
@@ -66,10 +66,10 @@ namespace Services.Tests
         public async Task ValidateJobsAreAddedToCorrectSubscription()
         {
             var organizationJobCount = 5;
-            var securityGroupJobCount = 3;
+            var groupMembershipJobCount = 3;
 
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(organizationJobCount, Organization));
-            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(securityGroupJobCount, SecurityGroup));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(groupMembershipJobCount, GroupMembership));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
@@ -79,7 +79,7 @@ namespace Services.Tests
                 await _jobTriggerService.SendMessageAsync(job);
             }
             Assert.AreEqual(organizationJobCount, _serviceBusTopicsRepository.Subscriptions[Organization].Count);
-            Assert.AreEqual(securityGroupJobCount, _serviceBusTopicsRepository.Subscriptions[SecurityGroup].Count);
+            Assert.AreEqual(groupMembershipJobCount, _serviceBusTopicsRepository.Subscriptions[GroupMembership].Count);
         }
 
         [TestMethod]
@@ -237,8 +237,8 @@ namespace Services.Tests
             var MessageIdOne = "";
             var MessageIdTwo = "";
 
-            var securityGroupJobCount = 1;
-            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(securityGroupJobCount, SecurityGroup));
+            var groupMembershipJobCount = 1;
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(groupMembershipJobCount, GroupMembership));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));

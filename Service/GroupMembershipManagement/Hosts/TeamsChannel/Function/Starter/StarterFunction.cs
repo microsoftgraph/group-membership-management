@@ -18,13 +18,13 @@ namespace Hosts.TeamsChannelMembershipObtainer
     {
         private readonly ILoggingRepository _loggingRepository;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
-        private readonly bool _isSecurityGroupDryRunEnabled;
+        private readonly bool _isGroupMembershipDryRunEnabled;
 
         public StarterFunction(ILoggingRepository loggingRepository, IDatabaseSyncJobsRepository syncJobRepository, IDryRunValue dryRun)
         {
             _loggingRepository = loggingRepository;
             _syncJobRepository = syncJobRepository;
-            _isSecurityGroupDryRunEnabled = dryRun.DryRunEnabled;
+            _isGroupMembershipDryRunEnabled = dryRun.DryRunEnabled;
         }
 
         [FunctionName(nameof(StarterFunction))]
