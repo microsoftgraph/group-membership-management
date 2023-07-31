@@ -18,8 +18,8 @@ function Set-UpdateQuery {
 
   	Set-AzContext -SubscriptionName $SubscriptionName
 
-	. ($scriptsDirectory + '\Scripts\Set-UpdateSecurityGroupQuery.ps1')
-		Set-UpdateSecurityGroupQuery -SubscriptionName $SubscriptionName `
+	. ($scriptsDirectory + '\Scripts\Set-UpdateGroupMembershipQuery.ps1')
+		Set-UpdateGroupMembershipQuery -SubscriptionName $SubscriptionName `
                                  	 -SolutionAbbreviation $SolutionAbbreviation `
 							         -EnvironmentAbbreviation $EnvironmentAbbreviation `
                                  	 -Verbose

@@ -56,11 +56,11 @@ jobs:
       run: Copy 'Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/' 'upload/functions_arm_templates/GraphUpdater/Infrastructure/' -recurse
       shell: powershell
 
-    - name: dotnet publish security group
-      run: dotnet publish Service/GroupMembershipManagement/Hosts/SecurityGroup/Function/SecurityGroup.csproj --configuration Release --output upload/function_packages/SecurityGroup
+    - name: dotnet publish group membership obtainer
+      run: dotnet publish Service/GroupMembershipManagement/Hosts/GroupMembershipObtainer/Function/GroupMembershipObtainer.csproj --configuration Release --output upload/function_packages/GroupMembershipObtainer
 
     - name: copy security group function arm templates
-      run: Copy 'Service/GroupMembershipManagement/Hosts/SecurityGroup/Infrastructure/' 'upload/functions_arm_templates/SecurityGroup/Infrastructure/' -recurse
+      run: Copy 'Service/GroupMembershipManagement/Hosts/GroupMembershipObtainer/Infrastructure/' 'upload/functions_arm_templates/GroupMembershipObtainer/Infrastructure/' -recurse
       shell: powershell
 
     - name: publish functions to artifact

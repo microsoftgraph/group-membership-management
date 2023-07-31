@@ -43,7 +43,7 @@ namespace Services.Tests
         [TestInitialize]
         public void Setup()
         {
-            _syncJob = SampleDataHelper.CreateSampleSyncJobs(1, "SecurityGroup").First();
+            _syncJob = SampleDataHelper.CreateSampleSyncJobs(1, "GroupMembership").First();
             _canWriteToGroups = true;
             _gmmResources = new Mock<IGMMResources>();
             _jobTriggerService = new Mock<IJobTriggerService>();
@@ -263,7 +263,7 @@ namespace Services.Tests
 
             serviceBusSender.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
             serviceBusSender.Verify(x => x.SendMessageAsync(
-                It.Is<ServiceBusMessage>(m => (string)m.ApplicationProperties["Type"] == "SecurityGroup"),
+                It.Is<ServiceBusMessage>(m => (string)m.ApplicationProperties["Type"] == "GroupMembership"),
                 It.IsAny<CancellationToken>()),
                 Times.Exactly(2));
             serviceBusSender.Verify(x => x.SendMessageAsync(
@@ -279,7 +279,7 @@ namespace Services.Tests
         {
             var serviceBusSender = new Mock<ServiceBusSender>();
 
-            var inProgressSyncJob = SampleDataHelper.CreateSampleSyncJobs(1, "SecurityGroup").First();
+            var inProgressSyncJob = SampleDataHelper.CreateSampleSyncJobs(1, "GroupMembership").First();
             inProgressSyncJob.Status = SyncStatus.InProgress.ToString();
 
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(inProgressSyncJob);
@@ -333,7 +333,7 @@ namespace Services.Tests
 
             serviceBusSender.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
             serviceBusSender.Verify(x => x.SendMessageAsync(
-                It.Is<ServiceBusMessage>(m => (string)m.ApplicationProperties["Type"] == "SecurityGroup"),
+                It.Is<ServiceBusMessage>(m => (string)m.ApplicationProperties["Type"] == "GroupMembership"),
                 It.IsAny<CancellationToken>()), Times.Exactly(2));
             serviceBusSender.Verify(x => x.SendMessageAsync(
                 It.Is<ServiceBusMessage>(m => m.ApplicationProperties.ContainsKey("IsDestinationPart")

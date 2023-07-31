@@ -106,7 +106,7 @@ function Set-GraphCredentialsAzureADApplication {
     #endregion
 
     # These are the function apps that need to interact with the graph.
-    $replyUrls = @("graphupdater", "securitygroup") |
+    $replyUrls = @("graphupdater", "groupmembershipobtainer") |
         ForEach-Object { "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$_.azurewebsites.net"};
     $replyUrls += "http://localhost";
 

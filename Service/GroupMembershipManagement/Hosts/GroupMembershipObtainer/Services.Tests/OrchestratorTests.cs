@@ -67,7 +67,7 @@ namespace Tests.Services
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
             _usersToReturn = 10;
-            _querySample = QuerySample.GenerateQuerySample("SecurityGroup");
+            _querySample = QuerySample.GenerateQuerySample("GroupMembership");
 
             var syncJob = new SyncJob
             {
@@ -201,7 +201,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestOldSourceGroupsQueryFormatAsync()
         {
-            var oldQueryFormat = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"0fab28de-4d33-4bb7-be1f-17e46cf75200\",\"ab7b7af7-fa0f-4874-bb03-15d435506595\"]}]";
+            var oldQueryFormat = "[{ \"type\": \"GroupMembership\", \"sources\": [\"0fab28de-4d33-4bb7-be1f-17e46cf75200\",\"ab7b7af7-fa0f-4874-bb03-15d435506595\"]}]";
             _orchestratorRequest.SyncJob.Query = oldQueryFormat;
 
             var orchestratorFunction = new OrchestratorFunction(
@@ -257,7 +257,7 @@ namespace Tests.Services
         }
 
         [TestMethod]
-        public async Task TestSecurityGroupNotFoundAsync()
+        public async Task TestGroupMembershipNotFoundAsync()
         {
             _subOrchestratorResponseStatus = SyncStatus.SecurityGroupNotFound;
 

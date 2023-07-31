@@ -45,7 +45,7 @@ A: Make sure the Azure Function was added to key vault access policies and it ha
 6. Click on the 'Add' button.
 7. Finally click on the 'Save' button on the top menu.
 
-Q: Azure Function `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-SecurityGroup can not read/write from/to the service bus topic or queue
+Q: Azure Function `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-GroupMembershipObtainer can not read/write from/to the service bus topic or queue
 A: Make sure the Azure Function has the right role assigned 'Azure Service Bus Data Sender' for both the queue (membership) and the topic (syncjobs) it needs access to.
 
 1. In the [Azure Portal](https://portal.azure.com/) locate and open the service bus, if will follow this naming convention `<SolutionAbbreviation>`-data-`<EnvironmentAbbreviation>`.
@@ -55,11 +55,11 @@ A: Make sure the Azure Function has the right role assigned 'Azure Service Bus D
 3. Open the 'membership' queue or 'syncjobs' topic.
 4. Click on 'Access control (IAM)' on the left menu.
 5. Click on 'Role Assignments' button on the top menu.
-6. If `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-SecurityGroup is missing from role assignment list, it will need to be added.
-7. To add `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-SecurityGroup, click on the 'Add' button on the top menu, then 'Add role assignment'.
+6. If `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-GroupMembershipObtainer is missing from role assignment list, it will need to be added.
+7. To add `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-GroupMembershipObtainer, click on the 'Add' button on the top menu, then 'Add role assignment'.
 8. Fill in and save the form:
     - Role: Azure Service Bus Data Sender
-    - Select: `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-SecurityGroup
+    - Select: `<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-GroupMembershipObtainer
 
 Note: remember to verify both the queue and the topic role assignments.
 

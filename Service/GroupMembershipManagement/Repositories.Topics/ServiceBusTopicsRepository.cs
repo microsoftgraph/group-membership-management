@@ -48,7 +48,7 @@ namespace Repositories.ServiceBusTopics
             }
 
             var destinationGroupMessage = CreateMessage(job);
-            destinationGroupMessage.ApplicationProperties.Add("Type", "SecurityGroup");
+            destinationGroupMessage.ApplicationProperties.Add("Type", "GroupMembership");
             destinationGroupMessage.ApplicationProperties.Add("TotalParts", totalParts);
             destinationGroupMessage.ApplicationProperties.Add("CurrentPart", index);
             destinationGroupMessage.ApplicationProperties.Add("IsDestinationPart", true);

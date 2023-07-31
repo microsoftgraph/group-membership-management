@@ -11,9 +11,9 @@
     "serviceBusTopicSubscriptions": {
       "value": [
         {
-          "name": "SecurityGroup",
+          "name": "GroupMembership",
           "ruleName": "syncType",
-          "ruleSqlExpression": "Type = 'SecurityGroup'"
+          "ruleSqlExpression": "Type = 'GroupMembership'"
         },
         {
           "name": "TeamsChannel",

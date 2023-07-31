@@ -17,18 +17,18 @@ namespace Hosts.GroupMembershipObtainer
     {
         private readonly ILoggingRepository _loggingRepository;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
-        private readonly bool _isSecurityGroupDryRunEnabled;
+        private readonly bool _isGroupMembershipDryRunEnabled;
 
         public StarterFunction(ILoggingRepository loggingRepository, IDatabaseSyncJobsRepository databaseSyncJobsRepository, IDryRunValue dryRun)
         {
             _loggingRepository = loggingRepository;
             _databaseSyncJobsRepository = databaseSyncJobsRepository;
-            _isSecurityGroupDryRunEnabled = dryRun.DryRunEnabled;
+            _isGroupMembershipDryRunEnabled = dryRun.DryRunEnabled;
         }
 
         [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
-            [ServiceBusTrigger("%serviceBusSyncJobTopic%", "SecurityGroup", Connection = "serviceBusTopicConnection")] ServiceBusReceivedMessage message,
+            [ServiceBusTrigger("%serviceBusSyncJobTopic%", "GroupMembership", Connection = "serviceBusTopicConnection")] ServiceBusReceivedMessage message,
             [DurableClient] IDurableOrchestrationClient starter)
         {
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));
@@ -37,7 +37,7 @@ namespace Hosts.GroupMembershipObtainer
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
 
-            if ((DateTime.UtcNow - syncJob.DryRunTimeStamp) < TimeSpan.FromHours(syncJob.Period) && _isSecurityGroupDryRunEnabled == true)
+            if ((DateTime.UtcNow - syncJob.DryRunTimeStamp) < TimeSpan.FromHours(syncJob.Period) && _isGroupMembershipDryRunEnabled == true)
             {
                 await _databaseSyncJobsRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Idle);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Setting the status of the sync back to Idle as the sync has run within the previous DryRunTimeStamp period", RunId = runId });
