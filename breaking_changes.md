@@ -1,4 +1,25 @@
 # Breaking Changes
+## 8/1/2023
+SecurityGroup function has been renamed to GroupMembershipObtainer.
+SecurityGroup service bus topic has been renamed to GroupMembership.
+
+SyncJob must set the type to GroupMembership in their query.
+```
+[
+    {
+        "type": "GroupMembership",
+        "source": "<guid-group-objet-id-1>"
+    }
+]
+```
+
+Existing jobs will need to be updated to use the new type.
+To manually update the type, you can use the following T-SQL statement.
+```
+UPDATE SyncJobs SET Query = REPLACE(Query, 'SecurityGroup', 'GroupMembership') WHERE Query LIKE '%SecurityGroup%'
+```
+Once the renamed function is deployed, you can remove the old "SecurityGroup" function.
+
 
 ## 11/23/2022
 

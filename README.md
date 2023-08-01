@@ -689,15 +689,15 @@ The Query field requires a JSON object that must follow this format:
 ```
 [
     {
-        "type": "GroupMembershipObtainer",
+        "type": "GroupMembership",
         "source": "<guid-group-objet-id-1>"
     },
     {
-        "type": "GroupMembershipObtainer",
+        "type": "GroupMembership",
         "source": "<guid-group-objet-id-2>"
     },
     {
-        "type": "GroupMembershipObtainer",
+        "type": "GroupMembership",
         "source": "<guid-group-objet-id-n>"
     }
 ]
