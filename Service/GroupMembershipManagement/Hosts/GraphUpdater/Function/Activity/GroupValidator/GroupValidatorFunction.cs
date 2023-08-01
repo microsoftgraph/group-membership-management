@@ -33,39 +33,27 @@ namespace Hosts.GraphUpdater
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             _graphUpdaterService.RunId = request.RunId;
 
-            bool isExistingGroup = false;
+
             var groupExistsResult = await _graphUpdaterService.GroupExistsAsync(request.GroupId, request.RunId);
 
-            if (groupExistsResult.Outcome == OutcomeType.Successful && groupExistsResult.Result)
+            if (groupExistsResult)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.GroupId} exists." });
-                isExistingGroup = true;
             }
             else
             {
-                if (groupExistsResult.Outcome == OutcomeType.Successful)
-                {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.GroupId} doesn't exist." });
-
-                    var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobId);
-                    if (syncJob != null)
-                        await _graphUpdaterService.SendEmailAsync(
-                            syncJob.Requestor,
-                            SyncDisabledNoGroupEmailBody,
-                            new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses },
-                            request.RunId, null, null, null, request.AdaptiveCardTemplateDirectory);
-                }
-                else if (groupExistsResult.FaultType == FaultType.ExceptionHandledByThisPolicy)
-                    await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Exceeded {NumberOfGraphRetries} while trying to determine if a group exists." });
-
-                if (groupExistsResult.FinalException != null)
-                    throw groupExistsResult.FinalException;
-
-                isExistingGroup = false;
+                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.GroupId} doesn't exist." });
+                var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobId);
+                if (syncJob != null)
+                    await _graphUpdaterService.SendEmailAsync(
+                        syncJob.Requestor,
+                        SyncDisabledNoGroupEmailBody,
+                        new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses },
+                        request.RunId, null, null, null, request.AdaptiveCardTemplateDirectory);
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return isExistingGroup;
+            return groupExistsResult;
         }
     }
 }

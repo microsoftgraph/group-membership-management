@@ -93,38 +93,7 @@ namespace Services.Tests
 
             var response = await graphUpdaterService.GroupExistsAsync(groupId, runId);
 
-            Assert.IsTrue(response.Result);
-        }
-
-        [TestMethod]
-        public async Task GroupExistsSocketExceptionTest()
-        {
-            var mockLogs = new MockLoggingRepository();
-            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var mockGraphGroup = new Mock<IGraphGroupRepository>();
-            var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
-            var mockSynJobs = new MockDatabaseSyncJobRepository();
-
-
-            var attemptNumber = 1;
-            mockGraphGroup.Setup(x => x.GroupExists(It.IsAny<Guid>())).Callback(() =>
-            {
-                if (attemptNumber == 1)
-                {
-                    attemptNumber++;
-                    throw new SocketException();
-                }
-            }).ReturnsAsync(true);
-
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs);
-
-            var groupId = Guid.NewGuid();
-            var runId = Guid.NewGuid();
-            var response = await graphUpdaterService.GroupExistsAsync(groupId, runId);
-
-            Assert.IsTrue(response.Result);
-            Assert.IsTrue(mockLogs.MessagesLogged.Any(x => x.Message.Contains("Got a transient SocketException")));
+            Assert.IsTrue(response);
         }
 
         [TestMethod]

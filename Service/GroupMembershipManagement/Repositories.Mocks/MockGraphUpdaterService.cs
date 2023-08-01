@@ -48,11 +48,10 @@ namespace Repositories.Mocks
             return await Task.FromResult(job);
         }
 
-        public async Task<PolicyResult<bool>> GroupExistsAsync(Guid groupId, Guid runId)
+        public async Task<bool> GroupExistsAsync(Guid groupId, Guid runId)
         {
             var groupExists = Groups.ContainsKey(groupId);
-            var result = PolicyResult<bool>.Successful(groupExists, new Context());
-            return await Task.FromResult(result);
+            return await Task.FromResult(groupExists);
         }
 
         public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")

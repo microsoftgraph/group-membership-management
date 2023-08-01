@@ -79,20 +79,9 @@ namespace Services
             };
         }
 
-        public async Task<PolicyResult<bool>> GroupExistsAsync(Guid groupId, Guid runId)
+        public async Task<bool> GroupExistsAsync(Guid groupId, Guid runId)
         {
-            var graphRetryPolicy = Policy.Handle<SocketException>()
-                                    .WaitAndRetryAsync(NumberOfGraphRetries, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
-                   onRetry: async (ex, count) =>
-                   {
-                       await _loggingRepository.LogMessageAsync(new LogMessage
-                       {
-                           Message = $"Got a transient SocketException. Retrying. This was try {count} out of {NumberOfGraphRetries}.\n" + ex.ToString(),
-                           RunId = runId
-                       });
-                   });
-
-            return await graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(groupId));
+            return await _graphGroupRepository.GroupExists(groupId);
         }
 
         public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
