@@ -477,7 +477,10 @@ The following PowerShell scripts create a Service Principal and set up a Service
     Where:
     *  `<OrganizationName>` - This is the name of your organization used in Azure DevOps.
     *  `<ProjectName>` - This is the name of the project in Azure DevOps we just created in a previous step.
+4. Give service connection access to the keyvaults
 
+    Go to your <SolutionAbbreviation>-prereqs-<EnvironmentAbbreviation> keyvault > Click on 'Access policies' > Click on Create > Select Get, List, and Set secrets permissions and then add your <SolutionAbbreviation>-serviceconnection-<EnvironmentAbbreviation> as the principal.
+    
 ## Set up email notifications
 
 Please follow the steps in this documentation, which will ensure that the requestor is notified regarding the synchronization job status:
@@ -564,6 +567,8 @@ In Azure DevOps, we need to create a pipeline that will create your resources an
         * *If you see an error task `mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks` is missing, install it from [here](https://marketplace.visualstudio.com/items?itemName=mspremier.BuildQualityChecks&ssr=false&referrer=https%3A%2F%2Fapp.vssps.visualstudio.com%2F#overview)*
         * *If you see an error `no hosted parallelism has been purchased or granted`, please fill out [this](https://aka.ms/azpipelines-parallelism-request) form to request a free parallelism grant*
         * *If you see an error `MissingSubscriptionRegistration`, go to Subscription -> Resource Providers and register the missing provider*
+
+    Note: For testing purposes, "`<SolutionAbbreviation>`-serviceconnection-`<EnvironmentAbbreviation>`" must be assigned the 'Owner' role in order to successfully run the pipeline. Please note that this is for testing only and is not recommended for production use. In a production environment or when operating as a company, it is advised to define a custom role that aligns with the principle of least privilege for enhanced security. This custom role should only provide the minimum permissions necessary for the pipeline to function correctly, thereby minimizing potential security risks 
 
 ## Post-Deployment tasks
 
