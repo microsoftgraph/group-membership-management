@@ -47,7 +47,7 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domain.com",
-                Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
+                Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = groupMembership.RunId
             };
 
@@ -118,9 +118,8 @@ namespace Services.Tests
                 {
                     Type = RequestType.Add,
                     SuccessCount = 1,
-                    UsersAlreadyExist = new List<AzureADTeamsUser>(),
                     UsersNotFound = new List<AzureADTeamsUser>(),
-                    UsersToRetry = new List<AzureADTeamsUser>()
+                    UsersFailed = new List<AzureADTeamsUser>()
                 });
 
             var orchestratorFunction = new OrchestratorFunction(_mockLoggingRepository.Object,
@@ -157,9 +156,8 @@ namespace Services.Tests
                 {
                     Type = RequestType.Add,
                     SuccessCount = 1,
-                    UsersAlreadyExist = new List<AzureADTeamsUser>(),
                     UsersNotFound = new List<AzureADTeamsUser>(),
-                    UsersToRetry = new List<AzureADTeamsUser>()
+                    UsersFailed = new List<AzureADTeamsUser>()
                 });
 
             var orchestratorFunction = new OrchestratorFunction(_mockLoggingRepository.Object,
@@ -236,7 +234,7 @@ namespace Services.Tests
     ""SyncJobPartitionKey"": ""2021-06-28"",
     ""MembershipObtainerDryRunEnabled"": false,
     ""Exclusionary"": false,
-    ""Query"": ""[{\""type\"":\""SecurityGroup\"",\""source\"":\""ab1dec41-4724-41ca-aa84-113f1e067f54\""}]"",
+    ""Query"": ""[{\""type\"":\""GroupMembership\"",\""source\"":\""ab1dec41-4724-41ca-aa84-113f1e067f54\""}]"",
     ""IsLastMessage"": false,
     ""TotalMessageCount"": 0
 }

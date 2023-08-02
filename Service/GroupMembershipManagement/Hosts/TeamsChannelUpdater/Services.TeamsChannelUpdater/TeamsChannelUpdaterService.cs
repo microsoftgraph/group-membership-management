@@ -83,7 +83,7 @@ namespace Services.TeamsChannelUpdater
             await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Error);
         }
 
-        public async Task<(int SuccessCount, List<AzureADTeamsUser> UsersToRetry)> AddUsersToChannelAsync(AzureADTeamsChannel azureADTeamsChannel, List<AzureADTeamsUser> members)
+        public async Task<(int SuccessCount, List<AzureADTeamsUser> UsersToRetry, List<AzureADTeamsUser> UsersNotFound)> AddUsersToChannelAsync(AzureADTeamsChannel azureADTeamsChannel, List<AzureADTeamsUser> members)
         {
             var response = await _teamsChannelRepository.AddUsersToChannelAsync(azureADTeamsChannel, members);
 

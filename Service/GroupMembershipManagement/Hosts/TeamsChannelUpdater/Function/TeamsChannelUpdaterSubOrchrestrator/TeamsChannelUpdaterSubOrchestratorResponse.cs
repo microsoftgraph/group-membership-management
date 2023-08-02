@@ -10,8 +10,7 @@ namespace Hosts.TeamsChannelUpdater
     {
         public RequestType Type { get; set; }
         public int SuccessCount { get; set; }
-        public List<AzureADTeamsUser> UsersToRetry { get; set; }
         public List<AzureADTeamsUser> UsersNotFound { get; set; }
-        public List<AzureADTeamsUser> UsersAlreadyExist { get; set; }
+        public List<AzureADTeamsUser> UsersFailed { get; set; }
     }
 }

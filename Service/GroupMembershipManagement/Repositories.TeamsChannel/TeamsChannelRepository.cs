@@ -125,10 +125,11 @@ namespace Repositories.TeamsChannel
             }
             return (successCount, new List<AzureADTeamsUser>());
         }
-        public async Task<(int SuccessCount, List<AzureADTeamsUser> UsersToRetry)> AddUsersToChannelAsync(AzureADTeamsChannel teamsChannel, ICollection<AzureADTeamsUser> members)
+        public async Task<(int SuccessCount, List<AzureADTeamsUser> UsersToRetry, List<AzureADTeamsUser> UsersNotFound)> AddUsersToChannelAsync(AzureADTeamsChannel teamsChannel, ICollection<AzureADTeamsUser> members)
         {
             int successCount = 0;
             var usersToRetry = new List<AzureADTeamsUser>();
+            var usersNotFound = new List<AzureADTeamsUser>();
             foreach (var member in members)
             {
                 var requestBody = CreateRequestBody(member.ObjectId.ToString());
@@ -142,6 +143,12 @@ namespace Repositories.TeamsChannel
                     if (e.Error.Code == HttpStatusCode.BadRequest.ToString() && e.Error.Message!.Contains("Externally authenticated users and guest users are not allowed in shared channels"))
                     {
                         await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Guest user cannot be added to channel, continuing sync. Exception Message:  {e.Error.Message}" });
+                    }
+
+                    if (e.Error.Code == "NotFound" && e.Error.Message!.Contains("Unable to resolve the recipient."))
+                    {
+                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"User not found with Object Id: {member.ObjectId}, sync will fail. Exception Message:  {e.Error.Message}" });
+                        usersNotFound.Add(member);
 
                         continue;
                     }
@@ -160,7 +167,7 @@ namespace Repositories.TeamsChannel
                     throw;
                 }
             }
-            return (successCount, usersToRetry);
+            return (successCount, usersToRetry, usersNotFound);
         }
         public async Task<(int SuccessCount, List<AzureADTeamsUser> UserRemovesFailed)> RemoveUsersFromChannelAsync(AzureADTeamsChannel teamsChannel, ICollection<AzureADTeamsUser> members)
         {

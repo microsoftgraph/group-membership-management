@@ -30,7 +30,6 @@ namespace Hosts.TeamsChannelUpdater
             var request = context.GetInput<TeamsChannelUpdaterSubOrchestratorRequest>();
             var totalSuccessCount = 0;
             var allUsersNotFound = new List<AzureADTeamsUser>();
-            var allUsersAlreadyExist = new List<AzureADTeamsUser>();
 
             if (request == null)
             {
@@ -38,10 +37,13 @@ namespace Hosts.TeamsChannelUpdater
             }
 
             await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LoggerRequest { Message = $"{nameof(TeamsChannelUpdaterSubOrchestratorFunction)} function started with batch size {_batchSize}", RunId = request.RunId, Verbosity = VerbosityLevel.INFO });
+                new LoggerRequest { Message = $"{nameof(TeamsChannelUpdaterSubOrchestratorFunction)} function started with batch size {_batchSize}", RunId = request.RunId, Verbosity = VerbosityLevel.INFO });
 
             var batch = request.Members?.Skip(skip).Take(_batchSize).ToList() ?? new List<AzureADTeamsUser>();
 
+            var retryMembers = new List<AzureADTeamsUser>();
+
+            // The orchestrator will stop trying to retry user operations once the retry count exceeds the original member count
             while (batch.Count > 0)
             {
                 var response = await context.CallActivityAsync<TeamsUpdaterResponse>(nameof(TeamsUpdaterFunction),
@@ -62,18 +64,61 @@ namespace Hosts.TeamsChannelUpdater
                                                 });
 
 
-                skip += batch.Count - response.UsersToRetry.Count;
+                skip += batch.Count;
 
-                batch.AddRange(response.UsersToRetry);
                 batch = request.Members.Skip(skip).Take(_batchSize).ToList();
+                retryMembers.AddRange(response.UsersToRetry);
+                allUsersNotFound.AddRange(response.UsersNotFound);
+            }
+
+            skip = 0;
+            var retryBatch = retryMembers?.Skip(skip).Take(_batchSize).ToList() ?? new List<AzureADTeamsUser>();
+            var userFailures = new List<AzureADTeamsUser>();
+
+            if (retryBatch.Count > 0)
+            {
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        Message = $"Retrying {retryBatch.Count} users",
+                        RunId = request.RunId
+                    });
+
+                while (retryBatch.Count > 0)
+                {
+                    var response = await context.CallActivityAsync<TeamsUpdaterResponse>(nameof(TeamsUpdaterFunction),
+                                               new TeamsUpdaterRequest
+                                               {
+                                                   Type = request.Type,
+                                                   Members = batch,
+                                                   TeamsChannelInfo = request.TeamsChannelInfo,
+                                                   RunId = request.RunId
+                                               });
+                    totalSuccessCount += response.SuccessCount;
+
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                        new LoggerRequest
+                        {
+                            Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount}/{request.Members.Count} users so far.",
+                            RunId = request.RunId
+                        });
+
+
+                    skip += retryBatch.Count;
+
+                    retryBatch = retryMembers.Skip(skip).Take(_batchSize).ToList();
+                    userFailures.AddRange(response.UsersToRetry);
+                    allUsersNotFound.AddRange(response.UsersNotFound);
+                }
             }
 
             await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LoggerRequest
-                                                {
-                                                    Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount} users.",
-                                                    RunId = request.RunId
-                                                });
+                new LoggerRequest
+                {
+                    Message = $"{(request.Type == RequestType.Add ? "Added" : "Removed")} {totalSuccessCount} users in total, " +
+                    $"{allUsersNotFound.Count} users not found, {userFailures.Count} users failed.",
+                    RunId = request.RunId
+                });
 
             if (!context.IsReplaying)
             {
@@ -108,7 +153,7 @@ namespace Hosts.TeamsChannelUpdater
                 Type = request.Type,
                 SuccessCount = totalSuccessCount,
                 UsersNotFound = allUsersNotFound,
-                UsersAlreadyExist = allUsersAlreadyExist
+                UsersFailed = userFailures
             };
         }
     }

@@ -62,7 +62,7 @@ namespace Hosts.TeamsChannelUpdater
                 syncJob = await context.CallActivityAsync<SyncJob>(nameof(JobReaderFunction),
                                                        new JobReaderRequest
                                                        {
-                                                           SyncJobId = graphRequest.SyncJob.Id,
+                                                           JobId = graphRequest.SyncJob.Id,
                                                            RunId = graphRequest.SyncJob.RunId.GetValueOrDefault()
                                                        });
                 var queryTypes = JsonParser.GetQueryTypes(syncJob.Query);
@@ -109,7 +109,6 @@ namespace Hosts.TeamsChannelUpdater
                                 RequestType.Add));
                 syncCompleteEvent.MembersAdded = membersAddedResponse.SuccessCount.ToString();
                 syncCompleteEvent.MembersToAddNotFound = membersAddedResponse.UsersNotFound.Count.ToString();
-                syncCompleteEvent.MembersToAddAlreadyExist = membersAddedResponse.UsersAlreadyExist.Count.ToString();
 
                 var membersRemovedResponse = await context.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction),
                                 CreateTeamsGroupUpdaterRequest(isInitialSync,
@@ -157,13 +156,23 @@ namespace Hosts.TeamsChannelUpdater
                 var message = GetUsersDataMessage(groupMembership.Destination.ObjectId, membersToAdd.Count, membersToRemove.Count);
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = message, RunId = syncJob.RunId.GetValueOrDefault(Guid.Empty) });
 
-                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                    CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
-                                                                    SyncStatus.Idle, 0, groupMembership.RunId));
+                if(membersAddedResponse.UsersFailed.Count > 0)
+                {
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                        CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
+                                                                        SyncStatus.TeamsChannelError, 0, groupMembership.RunId));
+                }
+                else
+                {
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                        CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
+                                                                        SyncStatus.Idle, 0, groupMembership.RunId));
+                }
+
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
                 if (!context.IsReplaying)
                 {
-                    if (membersAddedResponse.SuccessCount + membersAddedResponse.UsersNotFound.Count + membersAddedResponse.UsersAlreadyExist.Count == membersToAdd.Count &&
+                    if (membersAddedResponse.SuccessCount + membersAddedResponse.UsersNotFound.Count == membersToAdd.Count &&
                         membersRemovedResponse.SuccessCount + membersRemovedResponse.UsersNotFound.Count == membersToRemove.Count)
                     {
                         TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Success");
@@ -248,7 +257,7 @@ namespace Hosts.TeamsChannelUpdater
             return new JobStatusUpdaterRequest
             {
                 RunId = runId,
-                SyncJobId = syncJobId,
+                JobId = syncJobId,
                 Status = syncStatus,
                 ThresholdViolations = thresholdViolations
             };

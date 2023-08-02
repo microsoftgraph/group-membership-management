@@ -22,7 +22,8 @@ namespace Models
         ErroredDueToStuckInProgress = 14,
         PrivateChannelNotDestination = 15,
         DestinationQueryNotValid = 16,
-        TeamsChannelNotPrivate = 17,
-        GuestUsersCannotBeAddedToUnifiedGroup = 18
+        GuestUsersCannotBeAddedToUnifiedGroup = 17,
+        TeamsChannelNotPrivate = 18,
+        TeamsChannelError = 19
     }
 }

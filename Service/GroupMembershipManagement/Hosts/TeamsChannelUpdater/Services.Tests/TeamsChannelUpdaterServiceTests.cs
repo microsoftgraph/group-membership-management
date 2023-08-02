@@ -59,8 +59,8 @@ namespace Services.Tests
             };
 
             _mockTeamsChannelRepository = new Mock<ITeamsChannelRepository>();
-            _mockTeamsChannelRepository.Setup<Task<(int, List<AzureADTeamsUser>)>>(repo => repo.AddUsersToChannelAsync(_mockChannels[0], _mockMemberLists[0]))
-                .ReturnsAsync(() => (2, new List<AzureADTeamsUser>()));
+            _mockTeamsChannelRepository.Setup<Task<(int, List<AzureADTeamsUser>, List<AzureADTeamsUser>)>>(repo => repo.AddUsersToChannelAsync(_mockChannels[0], _mockMemberLists[0]))
+                .ReturnsAsync(() => (2, new List<AzureADTeamsUser>(), new List<AzureADTeamsUser>()));
             _mockTeamsChannelRepository.Setup<Task<(int, List<AzureADTeamsUser>)>>(repo => repo.RemoveUsersFromChannelAsync(_mockChannels[1], _mockMemberLists[1]))
                 .ReturnsAsync(() => (2, new List<AzureADTeamsUser>()));
             _mockTeamsChannelRepository.Setup<Task<string>>(repo => repo.GetGroupNameAsync(_syncInfo.SyncJob.TargetOfficeGroupId, It.IsAny<Guid>()))
