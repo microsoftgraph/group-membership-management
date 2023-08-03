@@ -283,6 +283,8 @@ namespace Hosts.GraphUpdater
 
                     if (sourceGroups != null && sourceGroups.Count > 0)
                     {
+                        // These calls to the cache updater suborchestrator were once done in parallel, but this caused an OutOfMemoryException due to loading multiple big files at once into memory. 
+                        // Although this does not affect many sync runs, we should revise it once we have upgraded our service plan. 
                         foreach (var sourceGroup in sourceGroups)
                         {
                             await context.CallSubOrchestratorAsync(nameof(CacheUserUpdaterSubOrchestratorFunction),
