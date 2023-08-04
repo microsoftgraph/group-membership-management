@@ -26,10 +26,7 @@ Solution Abbreviation
 .PARAMETER EnvironmentAbbreviation
 Environment Abbreviation
 
-.PARAMETER AppTenantId
-Azure tenant id where the application is going to be installed.
-
-.PARAMETER KeyVaultTenantId
+.PARAMETER TenantId
 Azure tenant id where keyvaults exists.
 The application is going to be created in this tenant and its settings stored in the data keyvault.
 
@@ -45,8 +42,7 @@ When re-running the script, this flag is used to indicate if we need to recreate
 Set-UIAzureADApplication	-SubscriptionName "<subscription-name>" `
 								-SolutionAbbreviation "<solution-abbreviation>" `
 								-EnvironmentAbbreviation "<environment-abbreviation>" `
-								-AppTenantId "<app-tenant-id>" `
-								-KeyVaultTenantId "<keyvault-tenant-id>" `
+								-TenantId "<keyvault-tenant-id>" `
 								-Clean $false `
 								-Verbose
 #>
@@ -61,9 +57,7 @@ function Set-UIAzureADApplication {
 		[Parameter(Mandatory=$True)]
 		[string] $EnvironmentAbbreviation,
 		[Parameter(Mandatory=$True)]
-		[Guid] $AppTenantId,
-		[Parameter(Mandatory=$True)]
-		[Guid] $KeyVaultTenantId,
+		[Guid] $TenantId,
 		[Parameter(Mandatory=$False)]
 		[string] $CertificateName,
 		[Parameter(Mandatory=$False)]
@@ -81,7 +75,7 @@ function Set-UIAzureADApplication {
     Write-Host "Please sign in as an account that can make Azure AD Apps in your target tenant."
 	# Connect to keyvault tenant
 	# we are going to create the multitenant app here first
-	Connect-AzAccount -Tenant $KeyVaultTenantId
+	Connect-AzAccount -Tenant $TenantId
 	Set-AzContext -Subscription $SubscriptionName
 
 	#region Delete Application / Service Principal if they already exist
@@ -171,7 +165,7 @@ function Set-UIAzureADApplication {
 							   -DisplayName $uiAppDisplayName `
 							   -Web $webSettings `
 							   -AppRole $appRoles `
-							   -AvailableToOtherTenants $true
+							   -AvailableToOtherTenants $false
 	}
 	else
 	{
@@ -181,14 +175,14 @@ function Set-UIAzureADApplication {
 		Write-Verbose "Updating Azure AD app $uiAppDisplayName"
 		Update-AzADApplication	-ObjectId $($uiApp.Id) `
                                 -DisplayName $uiAppDisplayName `
-								-AvailableToOtherTenants $true `
+								-AvailableToOtherTenants $false `
 								-Web $webSettings
     }
 
 	Start-Sleep -Seconds 30
 
 	# These need to go into the key vault
-	$uiAppTenantId = $AppTenantId;
+	$uiAppTenantId = $TenantId;
 	$uiAppClientId = $uiApp.AppId;
 
 	# Create new secret
