@@ -188,7 +188,7 @@ From your `PowerShell Core 7.x` command prompt navigate to the Scripts folder of
                         -overwrite $true
 
 Where:
-* `<objectId>` - the Azure Object Id of the user, group or service principal to which access to the prereqs keyvault is going to be granted. This object Id must be located in the same Azure tenant where the keyvault is going to be created.
+* `<objectId>` - the Azure Object Id of the user, group or service principal to which access to the prereqs keyvault is going to be granted. To find your Object Id go to `Azure Portal -> AAD -> Search Tenant Search Bar`, look up your Microsoft email, and click on your profile. Your Object Id should be under the `Identity` section.
 * `<resourceGroupLocation>` - the Azure location where the resources are going to be created. Please refer to [this](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/resource-location?tabs=azure-powershell) documentation to know the available resource locations.
 
 <b>Note:</b> If you get an error stating "script is not digitally signed" when running any of the provided PowerShell scripts, try running this cmdlet and rerunning the script:
@@ -216,6 +216,11 @@ From your `PowerShell 7.x` command prompt navigate to the `Scripts` folder of yo
                                                 -Clean $true `
                                                 -Verbose
 Follow the instructions on the screen.
+
+Note:   
+* AppTenantId <app-tenant-id> - If the application is going to be installed in a different tenant, set that tenant id here.  
+* KeyVaultTenantId <keyvault-tenant-id> - This is the tenant where your GMM resources are located, i.e. keyvaults, storage account.
+* If you only have one tenant, these will be set to the same tenant id.
 
 ### Creating the certificate
 If you don't need to use a certificate for authentication you can skip this step.
@@ -250,6 +255,8 @@ Follow the instructions on the screen.
 
 
 ### Upload the certificate to your `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application.
+
+If you don't need to use a certificate for authentication you can skip this step.
 
 We need to upload the certificate to the `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application, in order to do that we need to export it from the prerqs keyvault.
 
@@ -297,46 +304,55 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
 1. In your `Private` repo, locate and open file [vsts-cicd.yml](https://github.com/microsoftgraph/group-membership-management-tenant/blob/main/vsts-cicd.yml)
 2. Locate the `yaml/deploy-pipeline.yml` template of the `env` environment. It should look like this:
 
-        - template: yaml/deploy-pipeline.yml
-        parameters:
-            solutionAbbreviation: '$(SolutionAbbreviation)'
-            environmentAbbreviation: '<env>'
-            tenantId: $(tenantId)
-            subscriptionId: $(subscriptionId_nonprod)
-            keyVaultReaders: $(keyVaultReaders_nonprod)
-            location: $(location)
-            serviceConnection: '$(SolutionAbbreviation)-serviceconnection-<env>'
-            dependsOn:
-            - Build_Common
-            - Build_CopyParameters
-            stageName: 'NonProd_<env>'
-            functionApps:
-            - function:
-            name: 'GraphUpdater'
-            - function:
-            name: 'MembershipAggregator'
-            dependsOn:
-            - 'GraphUpdater'
-            - function:
-            name: 'GroupMembershipObtainer'
-            dependsOn:
-            - 'MembershipAggregator'
-            - function:
-            name: 'AzureTableBackup'
-            - function:
-            name: 'JobScheduler'
-            - function:
-            name: 'Notifier'
-            - function:
-            name: 'JobTrigger'
-            dependsOn:
-            - 'GroupMembershipObtainer'
-            condition: |
-            and(
-                succeeded('Build_Common'),
-                eq(variables['Build.SourceBranch'], 'refs/heads/develop'),
-                in(variables['Build.Reason'], 'IndividualCI', 'Manual')
-            )
+    - template: yaml/deploy-pipeline.yml
+    parameters:
+        solutionAbbreviation: '$(SolutionAbbreviation)'
+        environmentAbbreviation: '<env>'
+        tenantId: $(tenantId)
+        subscriptionName: $(subscriptionName_nonprod)
+        subscriptionId: $(subscriptionId_nonprod)
+        keyVaultReaders: $(keyVaultReaders_nonprod)
+        location: $(location)
+        serviceConnection: '$(SolutionAbbreviation)-serviceconnection-<env>'
+        dependsOn:
+        - Build_Common
+        - Build_CopyParameters
+        stageName: 'NonProd_<env>'
+        functionApps:
+        - function:
+        name: 'NonProdService'
+        - function:
+        name: 'GraphUpdater'
+        - function:
+        name: 'MembershipAggregator'
+        dependsOn:
+        - 'GraphUpdater'
+        - function:
+        name: 'AzureUserReader'
+        - function:
+        name: 'SecurityGroup'
+        dependsOn:
+        - 'MembershipAggregator'
+        - function:
+        name: 'AzureMaintenance'
+        - function:
+        name: 'TeamsChannel'
+        dependsOn:
+        - 'MembershipAggregator'
+        - function:
+        name: 'JobTrigger'
+        dependsOn:
+        - 'MembershipAggregator'
+        - function:
+        name: 'Notifier'
+        deployJobScheduler: true
+        condition: |
+        and(
+            succeeded('Build_Common'),
+            succeeded('Build_CopyParameters'),
+            eq(variables['Build.SourceBranch'], 'refs/heads/develop'),
+            in(variables['Build.Reason'], 'IndividualCI', 'Manual')
+        )
 
 3. Copy and paste the template located in step two, then replace the values for these settings accordingly using the name of your new environment:
     - environmentAbbreviation
@@ -344,7 +360,55 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
     - stageName
 
     Save your changes.
-4. Create parameter files based off the provided `parameters.env.json` by using the [Add-ParamFiles.ps1](/scripts/Add-ParamFiles.ps1) script:
+
+4. In your `Private` repo, locate and open file [vsts-cicd.yml](https://github.com/microsoftgraph/group-membership-management-tenant/blob/main/vsts-cicd.yml)
+
+5. Locate the `yaml/copy-deploy-webapp.yml` template of the `env` environment. It should look like this:
+    - template: yaml/copy-deploy-webapp.yml
+    parameters:
+        alias: ''
+        solutionAbbreviation: '$(SolutionAbbreviation)'
+        environmentAbbreviation: '<env>'
+        tenantId: $(tenantId)
+        subscriptionId: $(subscriptionId_prod)
+        keyVaultReaders: $(keyVaultReaders_prod)
+        location: $(location)
+        serviceConnection: '$(SolutionAbbreviation)-serviceconnection-<env>'
+        buildRelease: ${{variables.buildRelease}}
+        stageName: 'Prod_webapp_<env>'
+        condition: |
+        and(
+            succeeded('Build_WebApp'),
+            in(variables['Build.SourceBranch'], 'refs/heads/main'),
+            in(variables['Build.Reason'], 'IndividualCI', 'Manual')
+        )
+
+6. Edit the following fields of the duplicated template:
+    * There are three parameters that you must be set to your `<EnvironmentAbbreviation>`:
+
+        - environmentAbbreviation
+        - serviceConnection
+        - stageName
+
+7. Save your changes.
+
+8. In your `Private` repo, locate and open file [vsts-cicd.yml](https://github.com/microsoftgraph/group-membership-management-tenant/blob/main/vsts-cicd.yml)
+
+9. Locate the `repositories` information at the top. It should look like this:
+    resources:
+    repositories:
+    - repository: group-membership-management
+        type: git
+        name: external-gmm/STW-Sol-GrpMM-public
+        ref: refs/tags/<tag>
+
+10. Change <tag> to the latest tag. the latest Git tag for a repository can be found on the main overview page on GitHub.Specifically, the latest tag is shown next to the total number of branches at the top of the page, above the list of project files and folders.
+
+11. Save your changes.
+
+12. appsettings.env.json TODO  
+
+13. Create parameter files based off the provided `parameters.env.json` by using the [Add-ParamFiles.ps1](/scripts/Add-ParamFiles.ps1) script:
     * From your PowerShell command prompt navigate to the Scripts folder of your `Public` repo and type these commands.
 
             1. . ./Add-ParamFiles.ps1

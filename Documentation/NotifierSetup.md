@@ -15,7 +15,7 @@ These are the steps to procure a `provider id` for an environment.
     -|-
     Friendly Name | A name that represents the environment associated with the Originator Id. *Example: `<SolutionAbbreviation>` Notifier `<EnvironmentAbbreviation>`.*
     Sender Email Address | The email address from which actionable messages will be sent.
-    Target URLs | The endpoints where the actional messages will send responses.
+    Target URLs | The endpoints where the actional messages will send responses. Example: https://`<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-webapi.azurewebsites.net/.+
     Scope of Submission | This should be set to `Organization` scope.
 
 After the submission is sent, an email will be sent to the Exchange admins asking them to review the request. The email contains an actionable message with a button that directs them to the [Outlook Actionable Messages Admin Dashboard] where they can approve the request.
