@@ -40,7 +40,7 @@ namespace Services
 
         public async Task<List<SyncJob>> GetSyncJobsSegmentAsync()
         {
-            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
+            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(true, SyncStatus.All);
             return jobs.ToList();
         }
 
