@@ -570,7 +570,7 @@ In Azure DevOps, we need to create a pipeline that will create your resources an
 
     Note: For testing purposes, "`<SolutionAbbreviation>`-serviceconnection-`<EnvironmentAbbreviation>`" must be assigned the 'Owner' role in order to successfully run the pipeline. Please note that this is for testing only and is not recommended for production use. In a production environment or when operating as a company, it is advised to define a custom role that aligns with the principle of least privilege for enhanced security. This custom role should only provide the minimum permissions necessary for the pipeline to function correctly, thereby minimizing potential security risks 
 
-    14. if your AzureUserReader Durable Function failed, please follow the instruction here: [AzureUserReader](Service\GroupMembershipManagement\Hosts\AzureUserReader\Documentation\README.md)
+    14. if you want to set up AzureUserReader Durable Function, please follow the instruction here: [AzureUserReader](Service\GroupMembershipManagement\Hosts\AzureUserReader\Documentation\README.md). Otherwise, you can remove this function from vstss-cicd.yml file
 
 ## Post-Deployment tasks
 
