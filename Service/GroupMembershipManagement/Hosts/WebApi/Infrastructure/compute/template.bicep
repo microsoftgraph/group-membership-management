@@ -88,7 +88,7 @@ var appSettings = [
   }
   {
     name: 'AzureAd:TenantId'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(tenantId, '2019-09-01').secretUriWithVersion})'
+    value: tenantId
   }
   {
     name: 'AzureAd:Instance'
