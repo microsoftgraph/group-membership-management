@@ -57,6 +57,20 @@ You might need to change the "Application Type" filter to "All Applications".
 
 Note: Individual users can be added and granted the proper permission, if you decide not to use a group.
 
+## Add trusted client applications
+
+The WebpAPI will be called by the GMM UI. In order to allow it to call the WebAPI, it needs to be added as trusted client application.
+
+1. From the Azure Portal locate and open "Azure Active Directory"
+2. On the left menu select "App Registrations"
+3. Search for the webapi application, the name follows this convention `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>` i.e. gmm-webapi-int.
+4. Click on the name of your application.
+5. On the left menu select "Expose an API".
+6. Click on "Add a client application"
+7. Provide the Application/Client ID of your GMM UI application, the name follows this convention `<solutionAbbreviation>`-ui-`<environmentAbbreviation>` i.e. gmm-ui-int.
+Make sure to select the Authorized scope.
+8. Click "Add application"
+
 ## Grant Permissions
 
 This step needs to be completed after all the resources have been deployed to your Azure tenant.
