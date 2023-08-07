@@ -480,6 +480,43 @@ The following PowerShell scripts create a Service Principal and set up a Service
 4. Give service connection access to the keyvaults
 
     Go to your <SolutionAbbreviation>-prereqs-<EnvironmentAbbreviation> keyvault > Click on 'Access policies' > Click on Create > Select Get, List, and Set secrets permissions and then add your <SolutionAbbreviation>-serviceconnection-<EnvironmentAbbreviation> as the principal.
+
+## Grant the service connection access to SQL Server Database
+
+Your service connecion needs MSI access to the SQL Server DB so it can deploy the DACPAC file.
+
+Once the SQL server and databases are created as part of the deployment we will need to run these SQL statements before we can deploy the DACPAC file and run scripts on the jobs database.
+
+SyncJobs DB
+- Server name follows this naming convention `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>`.
+- Database name follows this naming convention `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-jobs`.
+
+1. Connect to your SQL Server Database using Sql Server Management Studio (SSMS) or Azure Data Studio.
+- Server name : `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>.database.windows.net`
+- User name: Your account.
+- Authentication: Azure Active Directory - Universal with MFA
+- Database name: `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>`
+
+2. Run these SQL commands
+
+SyncJobs DB
+
+- This script needs to run only once.
+- Make sure you are connected to SyncJobs database: `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-jobs`.
+
+```
+IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'<SolutionAbbreviation>-serviceconnection-<EnvironmentAbbreviation>')
+BEGIN
+    ALTER ROLE db_datareader ADD MEMBER [<SolutionAbbreviation>-serviceconnection-<EnvironmentAbbreviation>] -- gives permission to read to database
+    ALTER ROLE db_datawriter ADD MEMBER [<SolutionAbbreviation>-serviceconnection-<EnvironmentAbbreviation>] -- gives permission to write to database
+END
+```
+
+Verify it ran successufully by running:
+```
+SELECT * FROM sys.database_principals WHERE name = N'<SolutionAbbreviation>-serviceconnection-<EnvironmentAbbreviation>'
+```
+You should see one record for your service connection resource.
     
 ## Set up email notifications
 
