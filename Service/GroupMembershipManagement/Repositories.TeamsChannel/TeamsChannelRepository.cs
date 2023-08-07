@@ -98,7 +98,6 @@ namespace Repositories.TeamsChannel
 
         }
 
-
         private AzureADTeamsUser? ToTeamsUser(ConversationMember member)
         {
             var aadMember = member as AadUserConversationMember;
@@ -106,25 +105,6 @@ namespace Repositories.TeamsChannel
             return new AzureADTeamsUser { ObjectId = Guid.Parse(aadMember.UserId), ConversationMemberId = aadMember.Id };
         }
 
-        public async Task<(int SuccessCount, List<AzureADTeamsUser> UserAddsFailed)> AddUsersToTeamsGroupAsync(AzureADTeamsChannel teamsChannel, ICollection<AzureADUser> members)
-        {
-            int successCount = 0;
-            foreach (var member in members)
-            {
-                var requestBody = CreateRequestBody(member.ObjectId.ToString());
-                try
-                {
-                    await _graphServiceClient.Teams[teamsChannel.ObjectId.ToString()].Members.PostAsync(requestBody);
-                }
-                catch (ODataError e)
-                {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Exception code:  {e.Error.Code}" });
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Exception Message:  {e.Error.Message}" });
-                    throw;
-                }
-            }
-            return (successCount, new List<AzureADTeamsUser>());
-        }
         public async Task<(int SuccessCount, List<AzureADTeamsUser> UsersToRetry, List<AzureADTeamsUser> UsersNotFound)> AddUsersToChannelAsync(AzureADTeamsChannel teamsChannel, ICollection<AzureADTeamsUser> members)
         {
             int successCount = 0;

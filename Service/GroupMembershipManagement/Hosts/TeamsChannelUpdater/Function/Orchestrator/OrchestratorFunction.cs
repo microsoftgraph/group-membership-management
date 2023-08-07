@@ -104,7 +104,7 @@ namespace Hosts.TeamsChannelUpdater
                 var membersAddedResponse = await context.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction),
                                 CreateTeamsGroupUpdaterRequest(isInitialSync,
                                 syncJob.RunId.GetValueOrDefault(Guid.Empty),
-                                membersToAdd, 
+                                membersToAdd,
                                 destination,
                                 RequestType.Add));
                 syncCompleteEvent.MembersAdded = membersAddedResponse.SuccessCount.ToString();
@@ -156,7 +156,7 @@ namespace Hosts.TeamsChannelUpdater
                 var message = GetUsersDataMessage(groupMembership.Destination.ObjectId, membersToAdd.Count, membersToRemove.Count);
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = message, RunId = syncJob.RunId.GetValueOrDefault(Guid.Empty) });
 
-                if(membersAddedResponse.UsersFailed.Count > 0)
+                if (membersAddedResponse.UsersFailed.Count > 0)
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
@@ -196,10 +196,6 @@ namespace Hosts.TeamsChannelUpdater
 
             catch (Exception ex)
             {
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Caught unexpected exception, marking sync job as errored. Exception:\n{ex}",
-                    RunId = syncJob.RunId.GetValueOrDefault(Guid.Empty)
-                });
-
                 if (syncJob == null)
                 {
                     await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = "SyncJob is null. Removing the message from the queue..." });
@@ -208,13 +204,19 @@ namespace Hosts.TeamsChannelUpdater
 
                 if (syncJob != null)
                 {
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
+                    {
+                        Message = $"Caught unexpected exception, marking sync job as errored. Exception:\n{ex}",
+                        RunId = syncJob.RunId.GetValueOrDefault(Guid.Empty)
+                    });
+
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                     CreateJobStatusUpdaterRequest(syncJob.Id,
                                                                     SyncStatus.Error, syncJob.ThresholdViolations, syncJob.RunId.GetValueOrDefault(new Guid())));
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
-                }
 
-                TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Failure");
+                    TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Failure");
+                }
 
                 throw;
             }
