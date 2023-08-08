@@ -103,7 +103,7 @@ namespace Services
                 MembershipObtainerDryRunEnabled = _isAzureMembershipProviderDryRunEnabled
             };
 
-            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmm");
+            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
             var fileName = $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_AzureMembershipProvider_{currentPart}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
 

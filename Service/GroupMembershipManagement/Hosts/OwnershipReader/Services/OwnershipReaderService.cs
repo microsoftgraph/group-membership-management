@@ -71,7 +71,7 @@ namespace Services
                 Query = syncJob.Query
             };
 
-            var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmm");
+            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
             var fileName = $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_OwnershipReader_{currentPart}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
 
