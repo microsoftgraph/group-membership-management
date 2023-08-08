@@ -596,8 +596,10 @@ namespace Services.Tests
             _syncJob.ThresholdPercentageForRemovals = -1;
             _numberOfUsersForSourcePart = 50000;
 
-            _membersPerFile.Add(GenerateFileName(_syncJob, "SourceMembership"), 100000);
-            _membersPerFile.Add(GenerateFileName(_syncJob, "DestinationMembership"), 0);
+            var contextMock = new Mock<IDurableOrchestrationContext>();
+
+            _membersPerFile.Add(GenerateFileName(_syncJob, "SourceMembership", contextMock.Object), 100000);
+            _membersPerFile.Add(GenerateFileName(_syncJob, "DestinationMembership", contextMock.Object), 0);
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
@@ -818,9 +820,9 @@ namespace Services.Tests
             return await function.CalculateDeltaAsync(request);
         }
 
-        private string GenerateFileName(SyncJob syncJob, string suffix)
+        private string GenerateFileName(SyncJob syncJob, string suffix, IDurableOrchestrationContext context)
         {
-            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
+            var timeStamp = context.CurrentUtcDateTime.ToString("MMddyyyy-HHmm");
             return $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{syncJob.RunId}_{suffix}.json";
         }
     }
