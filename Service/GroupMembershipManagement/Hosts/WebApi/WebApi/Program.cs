@@ -1,38 +1,37 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Identity;
-using WebApi.Configuration;
+using Common.DependencyInjection;
+using DIConcreteTypes;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.Versioning;
+using Microsoft.AspNetCore.OData;
+using Microsoft.AspNetCore.OData.Routing.Conventions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.Graph;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Logging;
-using Microsoft.OpenApi.Models;
-using Repositories.Contracts;
-using Repositories.Logging;
-using Microsoft.Extensions.Options;
-using DIConcreteTypes;
-using Repositories.SyncJobsRepository;
-using Microsoft.AspNetCore.OData;
-using Common.DependencyInjection;
-using Microsoft.Graph;
-using Repositories.GraphGroups;
-using Services.Contracts.Notifications;
-using Services.Notifications;
-using Repositories.NotificationsRepository;
-using Repositories.Localization;
-using Microsoft.O365.ActionableMessages.Utilities;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.Extensions.Configuration;
+using Microsoft.O365.ActionableMessages.Utilities;
+using Microsoft.OpenApi.Models;
+using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.ApplicationInsights;
-using Repositories.EntityFramework.Contexts;
-using Microsoft.EntityFrameworkCore;
 using Repositories.EntityFramework;
+using Repositories.EntityFramework.Contexts;
+using Repositories.GraphGroups;
+using Repositories.Localization;
+using Repositories.Logging;
+using Repositories.NotificationsRepository;
+using Services.Contracts.Notifications;
+using Services.Notifications;
+using WebApi.Configuration;
 
 namespace WebApi
 {
@@ -40,7 +39,7 @@ namespace WebApi
     {
         public static void Main(string[] args)
         {
-            var builder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder(args);
+            var builder = WebApplication.CreateBuilder(args);
 
             var azureAdConfigSection = builder.Configuration.GetSection("AzureAd");
             var azureAdTenantId = azureAdConfigSection.GetValue<string>("TenantId");
@@ -88,9 +87,9 @@ namespace WebApi
 
             builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, async options =>
             {
-                var tenantSigningKeys = await getSigningKeysFromUrlAsync($"{azureAdInstanceUrl}{azureAdTenantId}/.well-known/openid-configuration");
-                var tenantSigningKeysv2 = await getSigningKeysFromUrlAsync($"{azureAdInstanceUrl}{azureAdTenantId}/v2.0/.well-known/openid-configuration");
-                var officeSigningKeys = await getSigningKeysFromUrlAsync("https://substrate.office.com/sts/common/.well-known/openid-configuration");
+                var tenantSigningKeys = await GetSigningKeysFromUrlAsync($"{azureAdInstanceUrl}{azureAdTenantId}/.well-known/openid-configuration");
+                var tenantSigningKeysv2 = await GetSigningKeysFromUrlAsync($"{azureAdInstanceUrl}{azureAdTenantId}/v2.0/.well-known/openid-configuration");
+                var officeSigningKeys = await GetSigningKeysFromUrlAsync("https://substrate.office.com/sts/common/.well-known/openid-configuration");
 
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
@@ -126,10 +125,16 @@ namespace WebApi
             });
 
             builder.Services.AddControllers()
-                            .AddOData(options => options.Select().Filter());
+                            .AddOData(options =>
+                            {
+                                options.Select().Filter().OrderBy().SetMaxTop(100);
+                            });
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(options =>
             {
+                // Hide ODataQueryOptions in Swagger
+                options.OperationFilter<IgnoreODataQueryOptionsOperationFilter>();
+
                 // Enabled OAuth security in Swagger
                 options.AddSecurityDefinition("WebApiAuth2", new OpenApiSecurityScheme
                 {
@@ -271,7 +276,7 @@ namespace WebApi
             app.Run();
         }
 
-        private static async Task<ICollection<SecurityKey>> getSigningKeysFromUrlAsync(string url)
+        private static async Task<ICollection<SecurityKey>> GetSigningKeysFromUrlAsync(string url)
         {
             var openIdConfigManager = new ConfigurationManager<OpenIdConnectConfiguration>(
                 url,

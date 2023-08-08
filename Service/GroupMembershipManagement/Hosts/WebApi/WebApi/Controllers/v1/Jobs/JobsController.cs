@@ -7,6 +7,7 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using WebApi.Models.DTOs;
+using SyncJobModel = Models.SyncJob;
 
 namespace WebApi.Controllers.v1.Jobs
 {
@@ -22,12 +23,12 @@ namespace WebApi.Controllers.v1.Jobs
             _getJobsRequestHandler = getJobsRequestHandler ?? throw new ArgumentNullException(nameof(getJobsRequestHandler));
         }
 
-        [EnableQuery()]
         [Authorize(Roles = "Admin")]
         [HttpGet()]
-        public async Task<ActionResult<IEnumerable<SyncJob>>> GetJobsAsync()
+        public async Task<ActionResult<IEnumerable<SyncJob>>> GetJobsAsync(ODataQueryOptions<SyncJobModel> queryOptions)
         {
-            var response = await _getJobsRequestHandler.ExecuteAsync(new GetJobsRequest());
+            var response = await _getJobsRequestHandler.ExecuteAsync(new GetJobsRequest { QueryOptions = queryOptions });
+            Response.Headers.Add("X-Total-Count", response.TotalNumberOfJobs.ToString());
             return Ok(response.Model);
         }
     }

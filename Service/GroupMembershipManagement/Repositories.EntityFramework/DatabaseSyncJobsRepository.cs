@@ -27,6 +27,11 @@ namespace Repositories.EntityFramework
             return await _context.SyncJobs.ToListAsync();
         }
 
+        public IQueryable<SyncJob> GetSyncJobs()
+        {
+            return _context.SyncJobs;
+        }
+
         public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
         {
             IQueryable<SyncJob> query = _context.SyncJobs;

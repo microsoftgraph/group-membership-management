@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.AspNetCore.OData.Query;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -23,15 +24,33 @@ namespace Services
         protected override async Task<GetJobsResponse> ExecuteCoreAsync(GetJobsRequest request)
         {
             var response = new GetJobsResponse();
-            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync();
+            var jobs = _databaseSyncJobsRepository.GetSyncJobs();
+
+            if (request.QueryOptions != null)
+            {
+                jobs = (IQueryable<Models.SyncJob>)request.QueryOptions.ApplyTo(jobs);
+
+                if (request.QueryOptions.Filter != null)
+                {
+                    var countQuery = (IQueryable<Models.SyncJob>)request.QueryOptions.ApplyTo(
+                        _databaseSyncJobsRepository.GetSyncJobs(),
+                        AllowedQueryOptions.Skip | AllowedQueryOptions.Top);
+
+                    response.TotalNumberOfJobs = countQuery.Count();
+                }
+                else
+                {
+                    response.TotalNumberOfJobs = jobs.Count();
+                }
+            }
 
             foreach (var job in jobs)
             {
-                String targetGroupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
+                var targetGroupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
 
                 var dto = new SyncJobDTO
                 (
-                    id: job.Id,                    
+                    id: job.Id,
                     targetGroupId: job.TargetOfficeGroupId,
                     targetGroupName: targetGroupName,
                     period: job.Period,

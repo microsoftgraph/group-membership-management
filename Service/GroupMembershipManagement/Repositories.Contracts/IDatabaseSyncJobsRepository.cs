@@ -4,6 +4,7 @@
 using Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Repositories.Contracts
@@ -11,6 +12,7 @@ namespace Repositories.Contracts
     public interface IDatabaseSyncJobsRepository
     {
         Task<SyncJob> GetSyncJobAsync(Guid syncJobId);
+        IQueryable<SyncJob> GetSyncJobs();
         Task<List<SyncJob>> GetSyncJobsAsync();
         Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters);
         Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status);
