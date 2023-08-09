@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 using Models.Entities;
 using Models;
 using System.Text.Json;

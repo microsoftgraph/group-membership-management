@@ -1,9 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Graph.Models;
 using Models;
 using Models.Entities;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Services.TeamsChannelUpdater.Contracts;
 using Repositories.Contracts.InjectConfig;

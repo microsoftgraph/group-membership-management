@@ -4,7 +4,6 @@ using Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
-using Services.Contracts;
 using System;
 using System.Threading.Tasks;
 using Services.TeamsChannelUpdater.Contracts;

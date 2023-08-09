@@ -9,8 +9,6 @@ using System;
 using System.Threading.Tasks;
 using Services.TeamsChannelUpdater.Contracts;
 using System.Collections.Generic;
-using Newtonsoft.Json.Linq;
-using System.Linq;
 using Models.Entities;
 
 namespace Hosts.TeamsChannelUpdater

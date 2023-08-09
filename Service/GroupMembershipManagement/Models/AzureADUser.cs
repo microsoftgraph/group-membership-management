@@ -19,28 +19,30 @@ namespace Models
 
         public MembershipAction? MembershipAction { get; set; }
 
-
         public Guid SourceGroup { get; set; }
 
-
         public List<Guid> SourceGroups { get; set; }
+
         public override bool Equals(object obj)
         {
             var castobj = obj as AzureADUser;
             if (castobj is null) return false;
             return castobj.ObjectId == ObjectId;
         }
+
         public bool Equals(AzureADUser other)
         {
             if (other is null) return false;
             return ObjectId == other.ObjectId;
         }
+
         public static bool operator ==(AzureADUser lhs, AzureADUser rhs)
         {
             if (lhs is null)
                 return rhs is null;
             return lhs.Equals(rhs);
         }
+
         public static bool operator !=(AzureADUser lhs, AzureADUser rhs)
         {
             return !(lhs == rhs);
