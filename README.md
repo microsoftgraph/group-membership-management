@@ -533,7 +533,7 @@ Where:
 Azure Functions connect to SQL server via MSI (System Identity), once the database is created as part of the deployment we need to grant access to the functions to read and write to the database.
 
 For these functions:
-JobTrigger, GroupMembershipObtainer, AzureMaintenance, AzureMembershipProvider*, AzureUserReader, GraphUpdater, JobScheduler, MembershipAggregator, NonProdService, Notifier, GroupOwnershipObtainer, TeamsChannel
+JobTrigger, GroupMembershipObtainer, AzureMaintenance, PlaceMembershipObtainer*, AzureUserReader, GraphUpdater, JobScheduler, MembershipAggregator, NonProdService, Notifier, GroupOwnershipObtainer, TeamsChannel
 
 Run this commands, in your SQL Server database where the jobs table was created:
 
@@ -550,7 +550,7 @@ Run this commands, in your SQL Server database where the jobs table was created:
 Repeat the steps above for each function.
 
 Note:
-AzureMembershipProvider is not being deployed by default, if you need to deploy it, you will need to grant access to the database as well.
+PlaceMembershipObtainer is not being deployed by default, if you need to deploy it, you will need to grant access to the database as well.
 
 ### Create the jobs table:
 
