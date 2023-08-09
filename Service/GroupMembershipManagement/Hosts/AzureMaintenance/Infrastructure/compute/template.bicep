@@ -141,6 +141,7 @@ var stagingSettings = {
   'AzureWebJobs.RemoveBackUpsFunction.Disabled': 1
   'AzureWebJobs.RemoveInactiveJobsFunction.Disabled': 1
   'AzureWebJobs.SendEmailFunction.Disabled': 1
+  'AzureWebJobs.ExpireNotificationsFunction.Disabled': 1
 }
 
 var productionSettings = {
@@ -158,6 +159,7 @@ var productionSettings = {
   'AzureWebJobs.RemoveBackUpsFunction.Disabled': 0
   'AzureWebJobs.RemoveInactiveJobsFunction.Disabled': 0
   'AzureWebJobs.SendEmailFunction.Disabled': 0
+  'AzureWebJobs.ExpireNotificationsFunction.Disabled': 0
 }
 
 module functionAppTemplate_AzureMaintenance 'functionApp.bicep' = {
