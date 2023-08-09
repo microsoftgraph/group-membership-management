@@ -160,6 +160,8 @@ namespace Hosts.GraphUpdater
                     if (syncJob?.RunId.HasValue ?? false)
                         _loggingRepository.RemoveSyncJobProperties(syncJob.RunId.Value);
 
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
+
                     return OrchestrationRuntimeStatus.Completed;
                 }
 
