@@ -86,9 +86,9 @@ param serviceBusTopicSubscriptions array = [
     ruleSqlExpression: 'Type = \'GroupMembership\''
   }
   {
-    name: 'AzureMembershipProvider'
+    name: 'PlaceMembership'
     ruleName: 'syncType'
-    ruleSqlExpression: 'Type = \'AzureMembershipProvider\''
+    ruleSqlExpression: 'Type = \'PlaceMembership\''
   }
 ]
 
