@@ -71,8 +71,6 @@ param appConfigurationEndpoint string = 'https://${solutionAbbreviation}-appconf
 
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
-var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountConnectionString')
-var jobsTableName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsTableName')
 var serviceBusConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusConnectionString')
 var serviceBusSyncJobTopic = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusSyncJobTopic')
 var serviceBusMembershipAggregatorQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusMembershipAggregatorQueue')
@@ -86,14 +84,12 @@ var syncDisabledCCEmailAddresses = resourceId(subscription().subscriptionId, pre
 var supportEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'supportEmailAddresses')
 var membershipStorageAccountName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountName')
 var membershipContainerName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipContainerName')
-var membershipAggregatorStagingUrl = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipAggregatorStagingUrl')
-var membershipAggregatorStagingFunctionKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipAggregatorStagingFunctionKey')
 var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
-  name: 'servicePlanTemplate-AzureMembershipProvider'
+  name: 'servicePlanTemplate-PlaceMembershipObtainer'
   params: {
     name: servicePlanName
     sku: servicePlanSku
@@ -127,8 +123,6 @@ var appSettings = {
   'ConnectionStrings:JobsContext': '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
-  jobsStorageAccountConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(jobsStorageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  jobsTableName: '@Microsoft.KeyVault(SecretUri=${reference(jobsTableName, '2019-09-01').secretUriWithVersion})'
   senderAddress: '@Microsoft.KeyVault(SecretUri=${reference(senderUsername, '2019-09-01').secretUriWithVersion})'
   senderPassword: '@Microsoft.KeyVault(SecretUri=${reference(senderPassword, '2019-09-01').secretUriWithVersion})'
   syncDisabledCCEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(syncDisabledCCEmailAddresses, '2019-09-01').secretUriWithVersion})'
@@ -139,31 +133,39 @@ var appSettings = {
 }
 
 var stagingSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-AzureMembershipProvider-staging')
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureMembershipProviderStaging'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-PlaceMembershipObtainer-staging')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}PlaceMembershipObtainerStaging'
   'AzureWebJobs.StarterFunction.Disabled': 1
   'AzureWebJobs.OrchestratorFunction.Disabled': 1
+  'AzureWebJobs.UsersSenderFunction.Disabled': 1
+  'AzureWebJobs.QueueMessageSenderFunction.Disabled': 1
   'AzureWebJobs.SubOrchestratorFunction.Disabled': 1
   'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 1
-  'AzureWebJobs.MembershipReaderFunction.Disabled': 1
-  'AzureWebJobs.UsersSenderFunction.Disabled': 1
+  'AzureWebJobs.RoomsReaderFunction.Disabled': 1
+  'AzureWebJobs.WorkspacesReaderFunction.Disabled': 1
+  'AzureWebJobs.UsersReaderFunction.Disabled': 1
+  'AzureWebJobs.SubsequentUsersReaderFunction.Disabled': 1
 }
 
 var productionSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-AzureMembershipProvider')
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureMembershipProvider'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-PlaceMembershipObtainer')
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}PlaceMembershipObtainer'
   'AzureWebJobs.StarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
+  'AzureWebJobs.UsersSenderFunction.Disabled': 0
+  'AzureWebJobs.QueueMessageSenderFunction.Disabled': 0
   'AzureWebJobs.SubOrchestratorFunction.Disabled': 0
   'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 0
-  'AzureWebJobs.MembershipReaderFunction.Disabled': 0
-  'AzureWebJobs.UsersSenderFunction.Disabled': 0
+  'AzureWebJobs.RoomsReaderFunction.Disabled': 0
+  'AzureWebJobs.WorkspacesReaderFunction.Disabled': 0
+  'AzureWebJobs.UsersReaderFunction.Disabled': 0
+  'AzureWebJobs.SubsequentUsersReaderFunction.Disabled': 0
 }
 
-module functionAppTemplate_AzureMembershipProvider 'functionApp.bicep' = {
-  name: 'functionAppTemplate-AzureMembershipProvider'
+module functionAppTemplate_PlaceMembershipObtainer 'functionApp.bicep' = {
+  name: 'functionAppTemplate-PlaceMembershipObtainer'
   params: {
-    name: '${functionAppName}-AzureMembershipProvider'
+    name: '${functionAppName}-PlaceMembershipObtainer'
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
@@ -174,35 +176,35 @@ module functionAppTemplate_AzureMembershipProvider 'functionApp.bicep' = {
   ]
 }
 
-module functionAppSlotTemplate_AzureMembershipProvider 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-AzureMembershipProvider'
+module functionAppSlotTemplate_PlaceMembershipObtainer 'functionAppSlot.bicep' = {
+  name: 'functionAppSlotTemplate-PlaceMembershipObtainer'
   params: {
-    name: '${functionAppName}-AzureMembershipProvider/staging'
+    name: '${functionAppName}-PlaceMembershipObtainer/staging'
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
     secretSettings: commonSettings
   }
   dependsOn: [
-    functionAppTemplate_AzureMembershipProvider
+    functionAppTemplate_PlaceMembershipObtainer
   ]
 }
 
 module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'dataKeyVaultPoliciesTemplate-AzureMembershipProvider'
+  name: 'dataKeyVaultPoliciesTemplate-PlaceMembershipObtainer'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     name: dataKeyVaultName
     policies: [
       {
-        objectId: functionAppTemplate_AzureMembershipProvider.outputs.msi
+        objectId: functionAppTemplate_PlaceMembershipObtainer.outputs.msi
         secrets: [
           'get'
           'list'
         ]
       }
       {
-        objectId: functionAppSlotTemplate_AzureMembershipProvider.outputs.msi
+        objectId: functionAppSlotTemplate_PlaceMembershipObtainer.outputs.msi
         secrets: [
           'get'
           'list'
@@ -212,19 +214,19 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
     tenantId: tenantId
   }
   dependsOn: [
-    functionAppTemplate_AzureMembershipProvider
-    functionAppSlotTemplate_AzureMembershipProvider
+    functionAppTemplate_PlaceMembershipObtainer
+    functionAppSlotTemplate_PlaceMembershipObtainer
   ]
 }
 
 module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'prereqsKeyVaultPoliciesTemplate-AzureMembershipProvider'
+  name: 'prereqsKeyVaultPoliciesTemplate-PlaceMembershipObtainer'
   scope: resourceGroup(prereqsKeyVaultResourceGroup)
   params: {
     name: prereqsKeyVaultName
     policies: [
       {
-        objectId: functionAppTemplate_AzureMembershipProvider.outputs.msi
+        objectId: functionAppTemplate_PlaceMembershipObtainer.outputs.msi
         secrets: [
           'get'
           'list'
@@ -234,7 +236,7 @@ module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
         ]
       }
       {
-        objectId: functionAppSlotTemplate_AzureMembershipProvider.outputs.msi
+        objectId: functionAppSlotTemplate_PlaceMembershipObtainer.outputs.msi
         secrets: [
           'get'
           'list'
@@ -247,27 +249,27 @@ module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
     tenantId: tenantId
   }
   dependsOn: [
-    functionAppTemplate_AzureMembershipProvider
-    functionAppSlotTemplate_AzureMembershipProvider
+    functionAppTemplate_PlaceMembershipObtainer
+    functionAppSlotTemplate_PlaceMembershipObtainer
   ]
 }
 
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
-  name: '${functionAppName}-AzureMembershipProvider/appsettings'
+  name: '${functionAppName}-PlaceMembershipObtainer/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
-    functionAppTemplate_AzureMembershipProvider
+    functionAppTemplate_PlaceMembershipObtainer
     dataKeyVaultPoliciesTemplate
   ]
 }
 
 resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
-  name: '${functionAppName}-AzureMembershipProvider/staging/appsettings'
+  name: '${functionAppName}-PlaceMembershipObtainer/staging/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
-    functionAppSlotTemplate_AzureMembershipProvider
+    functionAppSlotTemplate_PlaceMembershipObtainer
     dataKeyVaultPoliciesTemplate
   ]
 }

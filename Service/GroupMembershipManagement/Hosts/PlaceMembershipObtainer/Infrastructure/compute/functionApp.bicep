@@ -62,11 +62,14 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureFunctionsJobHost__extensions__durableTask__hubName'
       'AzureWebJobs.StarterFunction.Disabled'
       'AzureWebJobs.OrchestratorFunction.Disabled'
+      'AzureWebJobs.UsersSenderFunction.Disabled'
+      'AzureWebJobs.QueueMessageSenderFunction.Disabled'
       'AzureWebJobs.SubOrchestratorFunction.Disabled'
       'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
-      'AzureWebJobs.MembershipReaderFunction.Disabled'
-      'AzureWebJobs.SubsequentMembershipReaderFunction.Disabled'
-      'AzureWebJobs.UsersSenderFunction.Disabled'
+      'AzureWebJobs.RoomsReaderFunction.Disabled'
+      'AzureWebJobs.WorkspacesReaderFunction.Disabled'
+      'AzureWebJobs.UsersReaderFunction.Disabled'
+      'AzureWebJobs.SubsequentUsersReaderFunction.Disabled'
     ]
   }
 }
