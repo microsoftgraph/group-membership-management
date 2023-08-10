@@ -1,6 +1,6 @@
 # WebAPI Setup
 
-WebAPI is used by GMM UI and other GMM Durable Dunctions to get information about the groups that are managed by GMM as well as their respective job definition.
+WebAPI is used by GMM UI and other GMM Durable Functions to get information about the groups that are managed by GMM as well as their respective job definition.
 
 ## Create the WebAPI application and populate prereqs keyvault
 
@@ -149,4 +149,4 @@ Finally, you will need to update your App registration to include this custom do
 1. In the Application ID URI, set your custom domain here. i.e. `api://api.contoso.com`.
 
 ## Using the default domain
-If you do not wish to set up a custom domain, you can leverage the one included in the F1 service plan, remove the `apiHostname` parameter file to use the default `<solutionAbbreviation>-<resourceGroupClassification>-<solutionAbbreviation>-webapi.azurewebsites.net`, for example
+If you do not wish to set up a custom domain, you can leverage the one included in the F1 service plan, remove the `apiHostname` parameter file to use the default `<solutionAbbreviation>-compute-<solutionAbbreviation>-webapi.azurewebsites.net`
