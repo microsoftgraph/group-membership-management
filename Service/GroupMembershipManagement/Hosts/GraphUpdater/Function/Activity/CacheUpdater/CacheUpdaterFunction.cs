@@ -39,13 +39,6 @@ namespace Hosts.GraphUpdater
             var json = JsonConvert.DeserializeObject<GroupMembership>(request.FileContent);
             var cacheMembers = json.SourceMembers.Distinct().ToList();
 
-            await _loggingRepository.LogMessageAsync(  
-                new LogMessage { 
-                    Message = $"{nameof(CacheUpdaterFunction)} {cacheMembers.Count} cacheMembers users to remove from cache/{request.GroupId}", 
-                    RunId = request.RunId 
-                }, 
-                VerbosityLevel.DEBUG);
-
             await _loggingRepository.LogMessageAsync(
                 new LogMessage
                 {
