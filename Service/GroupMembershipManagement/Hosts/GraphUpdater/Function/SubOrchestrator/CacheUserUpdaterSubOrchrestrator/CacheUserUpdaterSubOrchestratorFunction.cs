@@ -64,7 +64,7 @@ namespace Hosts.GraphUpdater
                         RunId = request.SyncJob.RunId,
                         UserIds = request.UserIds,
                         GroupId = request.GroupId,
-                        Timestamp = request.SyncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss")
+                        Timestamp = request.SyncJob.LastSuccessfulStartTime.ToString("MMddyyyy-HHmmss")
                     });
                 }
 
