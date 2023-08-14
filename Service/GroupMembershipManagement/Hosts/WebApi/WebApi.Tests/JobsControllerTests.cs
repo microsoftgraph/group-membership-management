@@ -3,16 +3,16 @@
 
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OData.Query;
 using Microsoft.Graph;
-using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
-using Microsoft.Kiota.Abstractions.Serialization;
+using Microsoft.OData.ModelBuilder;
+using Microsoft.OData.UriParser;
 using Models;
 using Moq;
 using Repositories.Contracts;
-using Repositories.GraphGroups;
-using System.Threading;
 using WebApi.Controllers.v1.Jobs;
 using WebApi.Models.Responses;
 
@@ -23,6 +23,7 @@ namespace Services.Tests
     {
         private int _jobCount = 1000;
 
+        private HttpContext _context = null!;
         private List<string> _groupTypes = null!;
         private List<SyncJob> _jobEntities = null!;
         private List<AzureADGroup> _groups = null!;
@@ -33,15 +34,25 @@ namespace Services.Tests
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _databaseSyncJobsRepository = null!;
         private Mock<GraphServiceClient> _graphServiceClient = null!;
-        private Mock<IGraphGroupRepository> _graphGroupRepository = null!;        
+        private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
+        private ODataQueryOptions<SyncJob> _odataQueryOptions = null!;
 
         [TestInitialize]
         public void Initialize()
         {
             _groups = new List<AzureADGroup>();
+            _context = new DefaultHttpContext();
             _requestAdapter = new Mock<IRequestAdapter>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _databaseSyncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+
+            var builder = new ODataConventionModelBuilder();
+            builder.EntitySet<SyncJob>("SyncJob");
+            var edmModel = builder.GetEdmModel();
+
+            var odataContext = new ODataQueryContext(edmModel, typeof(SyncJob), new ODataPath());
+            _odataQueryOptions = new ODataQueryOptions<SyncJob>(odataContext, _context.Request);
+
 
             _requestAdapter.SetupProperty(x => x.BaseUrl).SetReturnsDefault("https://graph.microsoft.com/v1.0");
 
@@ -89,17 +100,24 @@ namespace Services.Tests
             _databaseSyncJobsRepository.Setup(x => x.GetSyncJobsAsync())
                               .ReturnsAsync(() => _jobEntities);
 
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs())
+                  .Returns(() => _jobEntities.AsQueryable());
+
             _getJobsHandler = new GetJobsHandler(_loggingRepository.Object,
                                                  _databaseSyncJobsRepository.Object,
                                                  _graphGroupRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
         }
 
         [TestMethod]
         public async Task GetJobsTestAsync()
         {
-            var response = await _jobsController.GetJobsAsync();
+            var response = await _jobsController.GetJobsAsync(_odataQueryOptions);
             var result = response.Result as OkObjectResult;
 
             Assert.IsNotNull(response);
@@ -132,8 +150,12 @@ namespace Services.Tests
                                      _graphGroupRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
 
-            var response = await _jobsController.GetJobsAsync();
+            var response = await _jobsController.GetJobsAsync(_odataQueryOptions);
             var result = response.Result as OkObjectResult;
 
             Assert.IsNotNull(response);

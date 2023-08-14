@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.AspNetCore.OData.Query;
+using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -23,56 +24,55 @@ namespace Services
 
         protected override async Task<GetJobsResponse> ExecuteCoreAsync(GetJobsRequest request)
         {
-            var response = new GetJobsResponse();
-            var jobs = _databaseSyncJobsRepository.GetSyncJobs();
+            var numberOfJobs = 0;
+            var response = new GetJobsResponse
+            {
+                CurrentPage = 1,
+                TotalNumberOfPages = 1
+            };
+
+            var jobsQuery = _databaseSyncJobsRepository.GetSyncJobs();
 
             if (request.QueryOptions != null)
             {
-                jobs = (IQueryable<Models.SyncJob>)request.QueryOptions.ApplyTo(jobs);
+                jobsQuery = (IQueryable<SyncJob>)request.QueryOptions.ApplyTo(jobsQuery);
 
-                if (request.QueryOptions.Filter != null)
-                {
-                    var countQuery = (IQueryable<Models.SyncJob>)request.QueryOptions.ApplyTo(
-                        _databaseSyncJobsRepository.GetSyncJobs(),
-                        AllowedQueryOptions.Skip | AllowedQueryOptions.Top);
+                var countQuery = (IQueryable<SyncJob>)request.QueryOptions.ApplyTo(
+                       _databaseSyncJobsRepository.GetSyncJobs(),
+                       AllowedQueryOptions.Skip | AllowedQueryOptions.Top);
+                numberOfJobs = countQuery.Count();
 
-                    response.TotalNumberOfJobs = countQuery.Count();
-                }
-                else
+                if (request.QueryOptions.Top?.Value > 0 && request.QueryOptions.Skip?.Value >= 0)
                 {
-                    response.TotalNumberOfJobs = jobs.Count();
+                    response.TotalNumberOfPages = (int)Math.Ceiling((double)numberOfJobs / request.QueryOptions.Top.Value);
+                    response.CurrentPage = request.QueryOptions.Skip.Value / request.QueryOptions.Top.Value + 1;
                 }
             }
 
+            var jobs = jobsQuery.ToList();
+            var targetGroups = (await _graphGroupRepository.GetGroupsAsync(jobs.Select(x => x.TargetOfficeGroupId).ToList()))
+                               .ToDictionary(x => x.ObjectId);
+
             foreach (var job in jobs)
             {
-                var targetGroupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
-
                 var dto = new SyncJobDTO
                 (
-                    id: job.Id,
-                    targetGroupId: job.TargetOfficeGroupId,
-                    targetGroupName: targetGroupName,
-                    period: job.Period,
-                    status: job.Status,
-                    lastSuccessfulRunTime: job.LastSuccessfulRunTime,
-                    estimatedNextRunTime: job.StartDate > job.LastSuccessfulRunTime ? job.StartDate : job.LastSuccessfulRunTime.AddHours(job.Period)
-                );
+                    job.Id,
+                    job.TargetOfficeGroupId,
+                    job.Status,
+                    job.Period,
+                    job.LastSuccessfulRunTime,
+                    job.StartDate > job.LastSuccessfulRunTime ? job.StartDate : job.LastSuccessfulRunTime.AddHours(job.Period)
+                )
+                {
+                    TargetGroupName = targetGroups.ContainsKey(job.TargetOfficeGroupId) ? targetGroups[job.TargetOfficeGroupId].Name : null,
+                    TargetGroupType = targetGroups.ContainsKey(job.TargetOfficeGroupId) ? targetGroups[job.TargetOfficeGroupId].Type : null
+                };
 
                 response.Model.Add(dto);
             }
 
-            var targetGroups = (await _graphGroupRepository.GetGroupsAsync(response.Model.Select(x => x.TargetGroupId).ToList()))
-                               .ToDictionary(x => x.ObjectId);
-
-            foreach (var job in response.Model)
-            {
-                if (targetGroups.ContainsKey(job.TargetGroupId))
-                    job.TargetGroupType = targetGroups[job.TargetGroupId].Type;
-            }
-
             return response;
         }
-
     }
 }

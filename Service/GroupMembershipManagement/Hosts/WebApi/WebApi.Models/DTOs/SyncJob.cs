@@ -8,15 +8,13 @@ namespace WebApi.Models.DTOs
         public SyncJob(
             Guid id,
             Guid targetGroupId,
-            string? targetGroupName,
             string status,
             int period,
             DateTime lastSuccessfulRunTime,
             DateTime estimatedNextRunTime)
-        {            
+        {
             SyncJobId = id;
             TargetGroupId = targetGroupId;
-            TargetGroupName = targetGroupName;
             Status = status;
             Period = period;
             LastSuccessfulRunTime = lastSuccessfulRunTime;

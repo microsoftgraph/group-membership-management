@@ -62,6 +62,11 @@ namespace Repositories.GraphGroups
             return await _graphGroupInformationReader.GetGroupNameAsync(objectId, RunId);
         }
 
+        public Task<Dictionary<Guid, string>> GetGroupNamesAsync(List<Guid> objectIds)
+        {
+            return _graphGroupInformationReader.GetGroupNamesAsync(objectIds);
+        }
+
         public Task<List<string>> GetGroupEndpointsAsync(Guid groupId)
         {
             return _graphGroupInformationReader.GetGroupEndpointsAsync(groupId, RunId);

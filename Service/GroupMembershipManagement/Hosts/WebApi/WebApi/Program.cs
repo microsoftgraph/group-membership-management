@@ -265,6 +265,7 @@ namespace WebApi
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .AllowCredentials()
+                .WithExposedHeaders("X-Total-Pages", "X-Current-Page")
                 .Build()
             );
 

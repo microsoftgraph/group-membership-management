@@ -10,8 +10,9 @@ namespace Models
 	{
 		public Guid ObjectId { get; set; }
         public string Type { get; set; }
+        public string Name { get; set; }
 
-		public override bool Equals(object obj)
+        public override bool Equals(object obj)
 		{
 			var castobj = obj as AzureADGroup;
 			if (castobj is null) return false;

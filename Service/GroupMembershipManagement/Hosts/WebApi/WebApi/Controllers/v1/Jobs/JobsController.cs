@@ -28,8 +28,10 @@ namespace WebApi.Controllers.v1.Jobs
         public async Task<ActionResult<IEnumerable<SyncJob>>> GetJobsAsync(ODataQueryOptions<SyncJobModel> queryOptions)
         {
             var response = await _getJobsRequestHandler.ExecuteAsync(new GetJobsRequest { QueryOptions = queryOptions });
-            Response.Headers.Add("X-Total-Count", response.TotalNumberOfJobs.ToString());
+            Response.Headers.Add("X-Total-Pages", response.TotalNumberOfPages.ToString());
+            Response.Headers.Add("X-Current-Page", response.CurrentPage.ToString());
             return Ok(response.Model);
         }
     }
 }
+
