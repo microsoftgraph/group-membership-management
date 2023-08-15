@@ -100,7 +100,7 @@ namespace Services.Tests
             _databaseSyncJobsRepository.Setup(x => x.GetSyncJobsAsync())
                               .ReturnsAsync(() => _jobEntities);
 
-            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs())
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
                   .Returns(() => _jobEntities.AsQueryable());
 
             _getJobsHandler = new GetJobsHandler(_loggingRepository.Object,
