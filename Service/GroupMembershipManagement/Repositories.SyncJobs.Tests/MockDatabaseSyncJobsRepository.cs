@@ -61,5 +61,10 @@ namespace Repositories.SyncJobs.Tests
         {
             throw new NotImplementedException();
         }
+
+        public IQueryable<SyncJob> GetSyncJobs(bool asNoTracking = false)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

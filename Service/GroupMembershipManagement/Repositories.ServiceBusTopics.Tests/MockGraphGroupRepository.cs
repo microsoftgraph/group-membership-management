@@ -154,5 +154,10 @@ namespace Repositories.ServiceBusTopics.Tests
         {
             throw new NotImplementedException();
         }
+
+        public Task<Dictionary<Guid, string>> GetGroupNamesAsync(List<Guid> objectIds)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

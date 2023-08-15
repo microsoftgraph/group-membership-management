@@ -167,6 +167,11 @@ namespace Tests.FunctionApps.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task<Dictionary<Guid, string>> GetGroupNamesAsync(List<Guid> objectIds)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class MockException : Exception { }

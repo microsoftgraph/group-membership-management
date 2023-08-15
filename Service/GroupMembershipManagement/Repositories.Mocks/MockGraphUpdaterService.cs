@@ -111,6 +111,6 @@ namespace Repositories.Mocks
         public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)
         {
             throw new NotImplementedException();
-        }
+        }        
     }
 }
