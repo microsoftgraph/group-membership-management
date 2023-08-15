@@ -12,7 +12,7 @@ namespace Repositories.Contracts
     public interface IDatabaseSyncJobsRepository
     {
         Task<SyncJob> GetSyncJobAsync(Guid syncJobId);
-        IQueryable<SyncJob> GetSyncJobs();
+        IQueryable<SyncJob> GetSyncJobs(bool asNoTracking = false);
         Task<List<SyncJob>> GetSyncJobsAsync();
         Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters);
         Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status);

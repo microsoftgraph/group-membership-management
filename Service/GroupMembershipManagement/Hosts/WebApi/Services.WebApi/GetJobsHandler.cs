@@ -31,14 +31,14 @@ namespace Services
                 TotalNumberOfPages = 1
             };
 
-            var jobsQuery = _databaseSyncJobsRepository.GetSyncJobs();
+            var jobsQuery = _databaseSyncJobsRepository.GetSyncJobs(true);
 
             if (request.QueryOptions != null)
             {
                 jobsQuery = (IQueryable<SyncJob>)request.QueryOptions.ApplyTo(jobsQuery);
 
                 var countQuery = (IQueryable<SyncJob>)request.QueryOptions.ApplyTo(
-                       _databaseSyncJobsRepository.GetSyncJobs(),
+                       _databaseSyncJobsRepository.GetSyncJobs(true),
                        AllowedQueryOptions.Skip | AllowedQueryOptions.Top);
                 numberOfJobs = countQuery.Count();
 
