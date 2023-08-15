@@ -12,17 +12,24 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Services.Contracts;
+using Services;
+using Microsoft.Graph.Models;
 
 namespace Hosts.MembershipAggregator
 {
     public class MembershipSubOrchestratorFunction
     {
+        private const string NoDataEmailSubject = "NoDataEmailSubject";
+        private const string NoDataEmailContent = "NoDataEmailContent";
         private const int MEMBERS_LIMIT = 100000;
         private readonly IThresholdConfig _thresholdConfig = null;
+        private readonly IGraphAPIService _graphAPIService;
 
-        public MembershipSubOrchestratorFunction(IThresholdConfig thresholdConfig)
+        public MembershipSubOrchestratorFunction(IThresholdConfig thresholdConfig, IGraphAPIService graphAPIService)
         {
             _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
+            _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService));
         }
 
         [FunctionName(nameof(MembershipSubOrchestratorFunction))]
@@ -67,6 +74,14 @@ namespace Hosts.MembershipAggregator
 
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { 
                     JobStatus = SyncStatus.MembershipDataNotFound, ResultStatus = ResultStatus.Success, RunId = runId });
+
+                await _graphAPIService.SendEmailAsync(
+                    toEmail: request.SyncJob.Requestor,
+                    contentTemplate: NoDataEmailContent,
+                    additionalContentParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString() },
+                    runId,
+                    emailSubject: NoDataEmailSubject,
+                    additionalSubjectParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString() });
 
                 return new MembershipSubOrchestratorResponse
                 {
