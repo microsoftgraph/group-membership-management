@@ -13,6 +13,7 @@ import { type JobDetails } from '../models/JobDetails';
 export interface JobsState {
   jobsLoading: boolean;
   jobs?: Job[];
+  totalNumberOfPages?: number;
   selectedJob: JobDetails | undefined;
   selectedJobLoading: boolean;
   getJobsError: string | undefined;
@@ -49,7 +50,8 @@ export const jobsSlice = createSlice({
     });
     builder.addCase(fetchJobs.fulfilled, (state, action) => {
       state.jobsLoading = false;
-      state.jobs = action.payload;
+      state.jobs = action.payload.jobs;
+      state.totalNumberOfPages = action.payload.totalNumberOfPages;
     });
     builder.addCase(fetchJobs.rejected, (state, action) => {
       state.jobsLoading = false;
@@ -86,5 +88,7 @@ export const selectGetJobsError = (state: RootState) => state.jobs.getJobsError;
 
 export const selectGetJobDetailsError = (state: RootState) =>
   state.jobs.getJobDetailsError;
+
+export const getTotalNumberOfPages = (state: RootState) => state.jobs.totalNumberOfPages;
 
 export default jobsSlice.reducer;

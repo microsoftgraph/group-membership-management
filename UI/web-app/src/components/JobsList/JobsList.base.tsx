@@ -10,11 +10,12 @@ import { useTranslation } from 'react-i18next';
 import '../../i18n/config';
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchJobs } from '../../store/jobs.api';
+import { OdataQueryOptions, fetchJobs } from '../../store/jobs.api';
 import {
   selectAllJobs,
   selectGetJobsError,
   setGetJobsError,
+  getTotalNumberOfPages
 } from '../../store/jobs.slice';
 import { AppDispatch } from '../../store';
 
@@ -26,6 +27,10 @@ import {
   MessageBarType,
   IconButton,
   IIconProps,
+  IButtonProps,
+  TextField,
+  Dropdown,
+  IDropdownOption,
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { ShimmeredDetailsList } from '@fluentui/react/lib/ShimmeredDetailsList';
@@ -38,6 +43,7 @@ import {
   ReportHackedIcon,
   ChevronRightMedIcon,
 } from '@fluentui/react-icons-mdl2';
+import { useCookies } from 'react-cookie';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -47,6 +53,7 @@ const getClassNames = classNamesFunction<
 export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   props: IJobsListProps
 ) => {
+
   const { className, styles } = props;
 
   const classNames: IProcessedStyleSet<IJobsListStyles> = getClassNames(
@@ -60,6 +67,9 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const { t } = useTranslation();
   const dispatch = useDispatch<AppDispatch>();
   const jobs = useSelector(selectAllJobs);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState("10");
+  const totalNumberOfPages = useSelector(getTotalNumberOfPages);
   const navigate = useNavigate();
 
   const [sortKey, setSortKey] = useState<string | undefined>(undefined);
@@ -153,6 +163,11 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     return 0;
   });
 
+  const [cookies, setCookie] = useCookies(['pageSize']);
+  const setPageSizeCookie = (pageSize: string): void => {
+    setCookie('pageSize', pageSize, { path: '/' });
+  }
+
   function onColumnHeaderClick(event?: any, column?: IColumn) {
     if (column) {
       setIsSortedDescending(!!column.isSorted && !column.isSortedDescending);
@@ -166,9 +181,24 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     dispatch(setGetJobsError());
   };
 
+  const getJobsByPage = (currentPageSize?: number, currentPageNumber?: number): void => {
+    let odataQueryOptions = new OdataQueryOptions();
+    odataQueryOptions.pageSize = currentPageSize ?? parseInt(pageSize);
+    odataQueryOptions.itemsToSkip = ((currentPageNumber ?? pageNumber) - 1) * odataQueryOptions.pageSize;
+    dispatch(fetchJobs(odataQueryOptions));
+  }
+
   useEffect(() => {
+
+    if (cookies.pageSize === undefined || cookies.pageSize === 'undefined' || cookies.pageSize === '') {
+      setPageSizeCookie('10');
+    }
+    else {
+      setPageSize(cookies.pageSize);
+    }
+
     if (!jobs) {
-      dispatch(fetchJobs());
+      getJobsByPage(cookies.pageSize ?? pageSize ?? 10);
     }
   }, [dispatch, jobs]);
 
@@ -259,51 +289,187 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   };
 
   return (
-    <div className={classNames.root}>
-      {error && (
-        <MessageBar
-          messageBarType={MessageBarType.error}
-          isMultiline={false}
-          onDismiss={onDismiss}
-          dismissButtonAriaLabel={
-            t('JobsList.MessageBar.dismissButtonAriaLabel') as
+    <div>
+      <div className={classNames.root}>
+        {error && (
+          <MessageBar
+            messageBarType={MessageBarType.error}
+            isMultiline={false}
+            onDismiss={onDismiss}
+            dismissButtonAriaLabel={
+              t('JobsList.MessageBar.dismissButtonAriaLabel') as
               | string
               | undefined
-          }
-        >
-          {error}
-        </MessageBar>
-      )}
+            }
+          >
+            {error}
+          </MessageBar>
+        )}
 
-      <div className={classNames.tabContent}>
-        <ShimmeredDetailsList
-          setKey="set"
-          onColumnHeaderClick={onColumnHeaderClick}
-          items={sortedItems || []}
-          columns={columns}
-          enableShimmer={!jobs || jobs.length === 0}
-          layoutMode={DetailsListLayoutMode.justified}
-          selectionMode={SelectionMode.none}
-          ariaLabelForShimmer="Content is being fetched"
-          ariaLabelForGrid="Item details"
-          selectionPreservedOnEmptyClick={true}
-          ariaLabelForSelectionColumn={
-            t('JobsList.ShimmeredDetailsList.toggleSelection') as
+        <div className={classNames.tabContent}>
+          <ShimmeredDetailsList
+            setKey="set"
+            onColumnHeaderClick={onColumnHeaderClick}
+            items={sortedItems || []}
+            columns={columns}
+            enableShimmer={!jobs || jobs.length === 0}
+            layoutMode={DetailsListLayoutMode.justified}
+            selectionMode={SelectionMode.none}
+            ariaLabelForShimmer="Content is being fetched"
+            ariaLabelForGrid="Item details"
+            selectionPreservedOnEmptyClick={true}
+            ariaLabelForSelectionColumn={
+              t('JobsList.ShimmeredDetailsList.toggleSelection') as
               | string
               | undefined
-          }
-          ariaLabelForSelectAllCheckbox={
-            t('JobsList.ShimmeredDetailsList.toggleAllSelection') as
+            }
+            ariaLabelForSelectAllCheckbox={
+              t('JobsList.ShimmeredDetailsList.toggleAllSelection') as
               | string
               | undefined
-          }
-          checkButtonAriaLabel={
-            t('JobsList.ShimmeredDetailsList.selectRow') as string | undefined
-          }
-          onActiveItemChanged={onItemClicked}
-          onRenderItemColumn={_renderItemColumn}
-        />
+            }
+            checkButtonAriaLabel={
+              t('JobsList.ShimmeredDetailsList.selectRow') as string | undefined
+            }
+            onActiveItemChanged={onItemClicked}
+            onRenderItemColumn={_renderItemColumn}
+          />
+        </div>
       </div>
+      <PagingBar
+        pageSize={pageSize}
+        pageNumber={pageNumber}
+        totalNumberOfPages={totalNumberOfPages ?? 1}
+        getJobsByPage={getJobsByPage}
+        setPageSize={setPageSize}
+        setPageNumber={setPageNumber}
+        setPageSizeCookie={setPageSizeCookie}
+      />
     </div>
   );
 };
+
+export interface IPagingBarProps extends React.AllHTMLAttributes<HTMLElement> {
+  pageSize: string;
+  pageNumber: number;
+  totalNumberOfPages: number;
+  setPageSize: (pageSize: string) => void;
+  setPageNumber: (pageNumber: number) => void;
+  setPageSizeCookie: (pageSize: string) => void;
+  getJobsByPage: (currentPageSize?: number, currentPageNumber?: number) => void;
+}
+
+export const PagingBar: React.FunctionComponent<IPagingBarProps> = (
+  props: IPagingBarProps
+) => {
+
+  const { t } = useTranslation();
+  const { pageSize, pageNumber, totalNumberOfPages, setPageSize, setPageNumber, setPageSizeCookie, getJobsByPage } = props;
+
+  const pageSizeOptions: IDropdownOption[] = [
+    { key: '10', text: '10' },
+    { key: '20', text: '20' },
+    { key: '30', text: '30' },
+    { key: '40', text: '40' },
+    { key: '50', text: '50' },
+  ];
+
+  const leftLabelMessage: React.CSSProperties = {
+    marginRight: 5
+  }
+
+  const rightLabelMessage: React.CSSProperties = {
+    marginLeft: 5
+  }
+
+  const divContainer: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    marginLeft: 10,
+    marginRight: 10
+  }
+
+  const leftButtonProps: IButtonProps = {
+    iconProps: {
+      iconName: 'ChevronLeft',
+    },
+    title: 'Prev',
+  };
+
+  const righttButtonProps: IButtonProps = {
+    iconProps: {
+      iconName: 'ChevronRight',
+    },
+    title: 'Next',
+  };
+
+  const mainContainer: React.CSSProperties = {
+    display: "flex",
+    justifyContent: "flex-end",
+    marginTop: 10
+  }
+
+  const onPageSizeChanged = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption | undefined): void => {
+    if (item) {
+      setPageSize(item.key.toString());
+      setPageNumber(1);
+      setPageSizeCookie(item.key.toString());
+      getJobsByPage(parseInt(item.key.toString()), 1);
+    }
+  }
+
+  const navigateToPage = (direction: number) => {
+    if (pageNumber + direction === 0 || totalNumberOfPages === undefined || pageNumber + direction > totalNumberOfPages)
+      return;
+
+    let newPageNumber = pageNumber + direction;
+    setPageNumber(newPageNumber);
+    getJobsByPage(parseInt(pageSize), newPageNumber);
+  }
+
+  const onPageNumberChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string | undefined): void => {
+    if (newValue === undefined || newValue === ''
+      || isNaN(parseInt(newValue))
+      || parseInt(newValue) <= 0
+      || (totalNumberOfPages !== undefined && !isNaN(totalNumberOfPages) && parseInt(newValue) > totalNumberOfPages))
+      return;
+
+    setPageNumber(parseInt(newValue));
+    getJobsByPage(parseInt(pageSize), parseInt(newValue));
+  }
+
+  return (
+    <div style={mainContainer}>
+      <div style={divContainer}>
+        <IconButton
+          {...leftButtonProps}
+          onClick={() => navigateToPage(-1)}
+        />
+        <label>{t('JobsList.PagingBar.previousPage')}</label>
+        <div style={divContainer}>
+          <label style={leftLabelMessage}>{t('JobsList.PagingBar.page')}</label>
+          <TextField
+            style={{ width: 55 }}
+            defaultValue={pageNumber.toString()}
+            onChange={onPageNumberChanged}
+          />
+          <label style={rightLabelMessage}>{t('JobsList.PagingBar.of')} {(totalNumberOfPages ? totalNumberOfPages : 1)}</label>
+        </div>
+        <label>{t('JobsList.PagingBar.nextPage')}</label>
+        <IconButton
+          {...righttButtonProps}
+          onClick={() => navigateToPage(1)}
+        />
+      </div>
+      <div style={divContainer}>
+        <label style={leftLabelMessage}>{t('JobsList.PagingBar.display')}</label>
+        <Dropdown
+          options={pageSizeOptions}
+          defaultSelectedKey={pageSize}
+          onChange={onPageSizeChanged}
+        />
+        <label style={rightLabelMessage}>{t('JobsList.PagingBar.items')}</label>
+      </div>
+    </div >
+  )
+}

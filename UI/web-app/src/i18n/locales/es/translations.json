@@ -77,6 +77,14 @@
         },
         "MessageBar": {
             "dismissButtonAriaLabel": "Cerrar"
+        },
+        "PagingBar": {
+            "previousPage": "Ant",
+            "nextPage": "Sig",
+            "page": "Página",
+            "of": "de",
+            "display": "Mostrando",
+            "items": "Elementos por página"
         }
     },
     "welcome": "Bienvenido",

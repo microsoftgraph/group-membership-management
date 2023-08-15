@@ -8,7 +8,19 @@ import { loginRequest, config } from '../authConfig';
 import { msalInstance } from '../index';
 import { type Job } from '../models/Job';
 
-export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async () => {
+export class OdataQueryOptions {
+  pageSize?: number;
+  itemsToSkip?: number;
+  filter?: String;
+  orderBy?: String;
+}
+
+export interface JobsResponse {
+  jobs: Job[];
+  totalNumberOfPages: number;
+}
+
+export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (odataQueryOptions?: OdataQueryOptions | undefined) => {
   const account = msalInstance.getActiveAccount();
   if (account == null) {
     throw Error(
@@ -31,46 +43,75 @@ export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async () => {
   };
 
   try {
-    const response = await fetch(config.getJobs, options).then(
-      async (response) => await response.json()
+
+    let odataQuery: String = '';
+    if (odataQueryOptions != null) {
+      if (odataQueryOptions.pageSize != null) {
+        odataQuery = "?$top=" + odataQueryOptions.pageSize;
+      }
+
+      if (odataQueryOptions.itemsToSkip != null) {
+        if (odataQuery !== '') {
+          odataQuery += "&$skip=" + odataQueryOptions.itemsToSkip;
+        } else {
+          odataQuery = "?$skip=" + odataQueryOptions.itemsToSkip;
+        }
+      }
+
+      if (odataQueryOptions.filter != null) {
+        if (odataQuery !== '') {
+          odataQuery += "&$filter=" + odataQueryOptions.filter;
+        } else {
+          odataQuery = "?$filter=" + odataQueryOptions.filter;
+        }
+      }
+    }
+
+    const response = await fetch(config.getJobs + odataQuery, options).then(
+      async (response) => {
+        let jobs = await response.json();
+        let totalNumberOfPages  = response.headers.get('X-Total-Pages')?.toString() ?? '1';
+        var jobsResponse: JobsResponse = { jobs: jobs, totalNumberOfPages: parseInt(totalNumberOfPages) };
+        return jobsResponse;
+      }
     );
 
-    const payload: Job[] = response;
+    const payload: JobsResponse = response;
 
-    const mapped = payload.map((index) => {
+    const mapped = payload.jobs.map((index) => {
       const currentTime = moment.utc();
       var lastRunTime = moment(index['lastSuccessfulRunTime']);
       var hoursAgo = currentTime.diff(lastRunTime, 'hours');
       index['lastSuccessfulRunTime'] =
         hoursAgo > index['period']
           ? moment
-              .utc(index['lastSuccessfulRunTime'])
-              .local()
-              .format('MM/DD/YYYY') +
-            ' >' +
-            index['period'] +
-            ' hrs ago'
+            .utc(index['lastSuccessfulRunTime'])
+            .local()
+            .format('MM/DD/YYYY') +
+          ' >' +
+          index['period'] +
+          ' hrs ago'
           : moment
-              .utc(index['lastSuccessfulRunTime'])
-              .local()
-              .format('MM/DD/YYYY') +
-            ' ' +
-            hoursAgo.toString() +
-            ' hrs ago';
+            .utc(index['lastSuccessfulRunTime'])
+            .local()
+            .format('MM/DD/YYYY') +
+          ' ' +
+          hoursAgo.toString() +
+          ' hrs ago';
 
       var nextRunTime = moment(index['estimatedNextRunTime']);
       var hoursLeft = Math.abs(currentTime.diff(nextRunTime, 'hours'));
       index['estimatedNextRunTime'] =
         hoursAgo > index['period'] ||
-        index['status'] === SyncStatus.CustomerPaused
+          index['status'] === SyncStatus.CustomerPaused
           ? ''
           : moment
-              .utc(index['estimatedNextRunTime'])
-              .local()
-              .format('MM/DD/YYYY') +
-            ' ' +
-            hoursLeft.toString() +
-            ' hrs left';
+            .utc(index['estimatedNextRunTime'])
+            .local()
+            .format('MM/DD/YYYY') +
+          ' ' +
+          hoursLeft.toString() +
+          ' hrs left';
 
       index['enabledOrNot'] =
         index['status'] === SyncStatus.CustomerPaused ? 'Disabled' : 'Enabled';
@@ -104,8 +145,7 @@ export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async () => {
       return index;
     });
 
-    return newPayload;
-
+    payload.jobs = newPayload;
     return payload;
   } catch (error) {
     throw new Error('Failed to fetch jobs!');

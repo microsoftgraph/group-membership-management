@@ -78,6 +78,14 @@
         },
         "MessageBar": {
             "dismissButtonAriaLabel": "Close"
+        },
+        "PagingBar": {
+            "previousPage": "Prev",
+            "nextPage": "Next",
+            "page": "Page",
+            "of": "of",
+            "display": "Display",
+            "items": "Items per page"
         }
     },
     "welcome": "Welcome",
