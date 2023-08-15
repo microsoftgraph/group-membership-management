@@ -450,7 +450,7 @@ export const PagingBar: React.FunctionComponent<IPagingBarProps> = (
           <label style={leftLabelMessage}>{t('JobsList.PagingBar.page')}</label>
           <TextField
             style={{ width: 55 }}
-            defaultValue={pageNumber.toString()}
+            value={pageNumber.toString()}
             onChange={onPageNumberChanged}
           />
           <label style={rightLabelMessage}>{t('JobsList.PagingBar.of')} {(totalNumberOfPages ? totalNumberOfPages : 1)}</label>
