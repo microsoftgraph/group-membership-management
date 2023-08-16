@@ -18,6 +18,8 @@ namespace Services
         private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
         private const string SyncDisabledNoOwnerEmailBody = "SyncDisabledNoOwnerEmailBody";
         private const int JobsBatchSize = 20;
+        private const int MinimumJobsStopTriggering = 100;
+        private const int PercentageOfJobsStopTriggering = 25;
 
         private readonly ILoggingRepository _loggingRepository;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
@@ -66,7 +68,9 @@ namespace Services
         public async Task<List<SyncJob>> GetSyncJobsSegmentAsync()
         {
             var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
-            return ApplyJobTriggerFilters(jobs).ToList();
+            var filteredJobs = ApplyJobTriggerFilters(jobs).ToList();
+            var proceedJobsFlag =  ShouldProcessJobs(filteredJobs.Count(), jobs.Count);
+            return (filteredJobs, proceedJobsFlag);
         }
 
         public async Task<string> GetGroupNameAsync(SyncJob job)
@@ -245,5 +249,23 @@ namespace Services
             var inProgressSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.LastSuccessfulStartTime) > TimeSpan.FromHours(x.Period)) && x.Status == SyncStatus.InProgress.ToString());
             return allNonDryRunSyncJobs.Concat(allDryRunSyncJobs).Concat(inProgressSyncJobs);
         }
+
+        private bool ShouldProcessJobs(int syncJobsCount, int totalSyncJobsCount)
+            {
+                if (syncJobsCount < MinimumJobsStopTriggering)
+                {
+                    return true;
+                }
+                else if (syncJobsCount >= MinimumJobsStopTriggering)
+                {
+                    double percentage = ((double)syncJobsCount / totalSyncJobsCount) * 100;
+
+                    if (percentage > PercentageOfJobsStopTriggering)
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
     }
 }
