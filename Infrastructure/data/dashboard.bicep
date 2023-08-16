@@ -5074,7 +5074,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "ThresholdViolation"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"])\n| summarize by TargetOfficeGroupId, Bin = bin(timestamp, 1d)\n| summarize count() by Bin\n'
+                  Query: 'customEvents\n| where name == "ThresholdViolation"\n| extend Day = format_datetime(timestamp, \'yyyy-MM-dd\')\n| summarize NotificationsCount = count() by Day\n| order by Day asc'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Threshold Violations Created'
