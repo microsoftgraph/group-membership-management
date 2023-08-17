@@ -45,12 +45,12 @@ export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (odataQueryOpt
   try {
 
     let odataQuery: String = '';
-    if (odataQueryOptions != null) {
-      if (odataQueryOptions.pageSize != null) {
+    if (odataQueryOptions !== undefined) {
+      if (odataQueryOptions.pageSize !== undefined) {
         odataQuery = "?$top=" + odataQueryOptions.pageSize;
       }
 
-      if (odataQueryOptions.itemsToSkip != null) {
+      if (odataQueryOptions.itemsToSkip !== undefined) {
         if (odataQuery !== '') {
           odataQuery += "&$skip=" + odataQueryOptions.itemsToSkip;
         } else {
@@ -58,11 +58,19 @@ export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (odataQueryOpt
         }
       }
 
-      if (odataQueryOptions.filter != null) {
+      if (odataQueryOptions.filter !== undefined) {
         if (odataQuery !== '') {
           odataQuery += "&$filter=" + odataQueryOptions.filter;
         } else {
           odataQuery = "?$filter=" + odataQueryOptions.filter;
+        }
+      }
+
+      if (odataQueryOptions.orderBy !== undefined) {
+        if (odataQuery !== '') {
+          odataQuery += "&$orderby=" + odataQueryOptions.orderBy;
+        } else {
+          odataQuery = "?$orderby=" + odataQueryOptions.orderBy;
         }
       }
     }

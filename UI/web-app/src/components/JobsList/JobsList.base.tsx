@@ -86,6 +86,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: false,
       isSorted: sortKey === 'targetGroupType',
       isSortedDescending,
+      columnActionsMode: 0
     },
     {
       key: 'targetGroupName',
@@ -96,6 +97,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: false,
       isSorted: sortKey === 'targetGroupName',
       isSortedDescending,
+      columnActionsMode: 0
     },
     {
       key: 'lastSuccessfulRunTime',
@@ -116,6 +118,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: false,
       isSorted: sortKey === 'estimatedNextRunTime',
       isSortedDescending,
+      columnActionsMode: 0
     },
     {
       key: 'enabledOrNot',
@@ -126,6 +129,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: false,
       isSorted: sortKey === 'enabledOrNot',
       isSortedDescending,
+      columnActionsMode: 0
     },
     {
       key: 'actionRequired',
@@ -136,6 +140,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: false,
       isSorted: sortKey === 'actionRequired',
       isSortedDescending,
+      columnActionsMode: 0
     },
     {
       key: 'arrow',
@@ -144,6 +149,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       minWidth: 200,
       maxWidth: 200,
       isResizable: false,
+      columnActionsMode: 0
     },
   ];
 
@@ -170,8 +176,10 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
 
   function onColumnHeaderClick(event?: any, column?: IColumn) {
     if (column) {
-      setIsSortedDescending(!!column.isSorted && !column.isSortedDescending);
+      let isSortedDescending = !!column.isSorted && !column.isSortedDescending;
+      setIsSortedDescending(isSortedDescending);
       setSortKey(column.key);
+      getJobsByPage(parseInt(pageSize), pageNumber, column.key + (isSortedDescending ? ' desc' : ''));
     }
   }
 
@@ -181,10 +189,19 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     dispatch(setGetJobsError());
   };
 
-  const getJobsByPage = (currentPageSize?: number, currentPageNumber?: number): void => {
+  const getJobsByPage = (currentPageSize?: number, currentPageNumber?: number, orderBy?: string): void => {
+
+    let orderByString: string | undefined = undefined;
+    if (orderBy !== undefined)
+      orderByString = orderBy;
+    else if (sortKey !== undefined) {
+      orderByString = sortKey + (isSortedDescending ? ' desc' : '');
+    }
+
     let odataQueryOptions = new OdataQueryOptions();
     odataQueryOptions.pageSize = currentPageSize ?? parseInt(pageSize);
     odataQueryOptions.itemsToSkip = ((currentPageNumber ?? pageNumber) - 1) * odataQueryOptions.pageSize;
+    odataQueryOptions.orderBy = orderByString
     dispatch(fetchJobs(odataQueryOptions));
   }
 
@@ -310,7 +327,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           <ShimmeredDetailsList
             setKey="set"
             onColumnHeaderClick={onColumnHeaderClick}
-            items={sortedItems || []}
+            items={items || []}
             columns={columns}
             enableShimmer={!jobs || jobs.length === 0}
             layoutMode={DetailsListLayoutMode.justified}

@@ -46,7 +46,6 @@ namespace WebApi
             var azureAdClientId = azureAdConfigSection.GetValue<string>("ClientId");
             var azureAdInstanceUrl = azureAdConfigSection.GetValue<string>("Instance");
             azureAdInstanceUrl += azureAdInstanceUrl.Last() == '/' ? string.Empty : "/";
-            var azureAdAudience = azureAdConfigSection.GetValue<string>("Audience");
 
             var apiHostName = builder.Configuration.GetValue<string>("Settings:ApiHostname");
             var secureApiHostName = $"https://{apiHostName}";
@@ -95,8 +94,8 @@ namespace WebApi
                 {
                     ValidateAudience = true,
                     ValidAudiences = new[] {
-                        azureAdAudience,
                         $"api://{azureAdClientId}",
+                        azureAdClientId,
                         secureApiHostName
                     },
                     ValidateIssuer = true,
