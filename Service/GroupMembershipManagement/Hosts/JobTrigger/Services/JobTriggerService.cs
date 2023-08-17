@@ -65,12 +65,13 @@ namespace Services
             _jobTriggerConfig = jobTriggerConfig ?? throw new ArgumentNullException(nameof(jobTriggerConfig));
         }
 
-        public async Task<List<SyncJob>> GetSyncJobsSegmentAsync()
+        public async Task<(List<SyncJob> jobs, bool proceedJobsFlag)> GetSyncJobsAsync()
         {
             var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
             var filteredJobs = ApplyJobTriggerFilters(jobs).ToList();
-            var proceedJobsFlag =  ShouldProcessJobs(filteredJobs.Count(), jobs.Count);
-            return (filteredJobs, proceedJobsFlag);
+			var totalJobs = await _databaseSyncJobsRepository.GetSyncJobCountAsync(true, SyncStatus.All);
+			var proceedJobsFlag = ShouldProcessJobs(filteredJobs.Count, totalJobs);
+			return (filteredJobs, proceedJobsFlag);
         }
 
         public async Task<string> GetGroupNameAsync(SyncJob job)

@@ -59,7 +59,32 @@ namespace Repositories.EntityFramework
             return await query.ToListAsync();
         }
 
-        public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status)
+		public async Task<int> GetSyncJobCountAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
+		{
+			IQueryable<SyncJob> query = _context.SyncJobs;
+
+			if (statusFilters.Contains(SyncStatus.All))
+			{
+				if (!includeFutureJobs)
+				{
+					DateTime currentUtcTime = DateTime.UtcNow;
+					query = query.Where(job => job.StartDate <= currentUtcTime);
+				}
+
+				return await query.CountAsync();
+			}
+
+			if (!includeFutureJobs)
+			{
+				var statuses = statusFilters.Select(x => x.ToString()).ToList();
+				DateTime currentUtcTime = DateTime.UtcNow;
+				query = query.Where(job => job.StartDate <= currentUtcTime && statuses.Contains(job.Status));
+			}
+
+			return await query.CountAsync();
+		}
+
+		public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status)
         {
             await UpdateSyncJobsAsync(jobs, status: status);
         }

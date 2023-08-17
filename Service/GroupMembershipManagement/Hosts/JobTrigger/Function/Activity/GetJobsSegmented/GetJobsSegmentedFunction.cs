@@ -26,13 +26,13 @@ namespace Hosts.JobTrigger
         public async Task<List<SyncJob>> GetJobsToUpdateAsync([ActivityTrigger] object obj)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            var (tableQuerySegment, proceedJobsFlag) = await _jobTriggerService.GetSyncJobsSegmentAsync();
+            var (tableQuerySegment, proceedJobsFlag) = await _jobTriggerService.GetSyncJobsAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
             if (!proceedJobsFlag)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function is not proceeding with {tableQuerySegment.Count} jobs due to JobTrigger threshold limit exceed." }, VerbosityLevel.DEBUG);
-                return new List<SyncJob>;
+                return new List<SyncJob>();
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} number of jobs about to be returned: {tableQuerySegment.Count}" }, VerbosityLevel.DEBUG);

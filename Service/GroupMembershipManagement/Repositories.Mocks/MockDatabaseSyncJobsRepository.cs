@@ -26,16 +26,40 @@ namespace Repositories.Mocks
             return await Task.FromResult(Jobs);
         }
 
-        public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
-        {
-            var jobs = Jobs.Where(x => (x.StartDate <= DateTime.UtcNow)
-                                        && (DateTime.UtcNow - x.LastRunTime > TimeSpan.FromHours(x.Period))
-                                        && (x.Status == SyncStatus.Idle.ToString() || x.Status == SyncStatus.InProgress.ToString() || x.Status == SyncStatus.StuckInProgress.ToString())).ToList();
+		public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
+		{
+			var jobs = Jobs.Where(x => (x.StartDate <= DateTime.UtcNow)
+										&& (DateTime.UtcNow - x.LastRunTime > TimeSpan.FromHours(x.Period))
+										&& (x.Status == SyncStatus.Idle.ToString() || x.Status == SyncStatus.InProgress.ToString() || x.Status == SyncStatus.StuckInProgress.ToString())).ToList();
 
-            return await Task.FromResult(jobs);
-        }
+			return await Task.FromResult(jobs);
+		}
+		public async Task<int> GetSyncJobCountAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
+		{
+			IEnumerable<SyncJob> jobs = Jobs; 
 
-        public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
+			if (statusFilters.Contains(SyncStatus.All))
+			{
+				if (!includeFutureJobs)
+				{
+					DateTime currentUtcTime = DateTime.UtcNow;
+					jobs = jobs.Where(job => job.StartDate <= currentUtcTime);
+				}
+
+				return await Task.FromResult(jobs.Count());
+			}
+
+			if (!includeFutureJobs)
+			{
+				var statuses = statusFilters.Select(x => x.ToString()).ToList();
+				DateTime currentUtcTime = DateTime.UtcNow;
+				jobs = jobs.Where(job => job.StartDate <= currentUtcTime && statuses.Contains(job.Status));
+			}
+
+			return await Task.FromResult(jobs.Count());
+		}
+
+		public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
         {
             var job = Jobs.FirstOrDefault(x => x.Id == syncJobId);
             return await Task.FromResult(job);

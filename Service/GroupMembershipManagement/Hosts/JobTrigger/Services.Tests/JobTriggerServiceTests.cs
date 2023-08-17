@@ -200,10 +200,10 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync();
-            var jobs = bulkSegment;
+            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
+			var jobs = bulkSegment.jobs;
 
-            var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
+			var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
         }
@@ -220,10 +220,10 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync();
-            var jobs = bulkSegment;
+            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
+			var jobs = bulkSegment.jobs;
 
-            var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
+			var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
             Assert.AreEqual(jobsWithValidPeriods, jobs.Count);
         }
@@ -361,8 +361,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync();
-            var jobs = bulkSegment;
+            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
+            var jobs = bulkSegment.jobs;
 
             foreach (var job in jobs)
             {
@@ -405,10 +405,10 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync();
-            var jobs = bulkSegment;
+            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
+			var jobs = bulkSegment.jobs;
 
-            foreach (var job in jobs)
+			foreach (var job in jobs)
             {
                 var groupName = await _graphGroupRepository.GetGroupNameAsync(getDestinationObjectId(job));
                 await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
@@ -443,10 +443,10 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync();
-            var jobs = bulkSegment;
+            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
+			var jobs = bulkSegment.jobs;
 
-            foreach (var job in jobs)
+			foreach (var job in jobs)
             {
                 await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
             }
@@ -480,15 +480,51 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync();
-            var jobs = bulkSegment;
+            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
+			var jobs = bulkSegment.jobs;
 
-            foreach (var job in jobs)
+			foreach (var job in jobs)
             {
                 await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
+        }
+
+        [TestMethod]
+        public async Task VerifyJobsCountExceedMinimalNumberHigherThanThreshold()
+        {
+            var jobsProceedNow = 5;
+            var jobsNotProceedNow = 3;
+            var jobsShouldProceed = 0;
+
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsProceedNow, Organization));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsNotProceedNow, Organization, startDateBase: DateTime.UtcNow.AddDays(5)));
+
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
+
+            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
+            var proceedJobsFlag = bulkSegment.proceedJobsFlag;
+            Assert.AreEqual(false, proceedJobsFlag);
+        }
+
+        [TestMethod]
+        public async Task VerifyJobsCountExceedMinimalNumberLowerThanThreshold()
+        {
+            var jobsProceedNow = 5;
+            var jobsNotProceedNow = 20;
+            var jobsShouldProceed = 5;
+
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsProceedNow, Organization));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsNotProceedNow, Organization, startDateBase: DateTime.UtcNow.AddDays(5)));
+
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
+
+            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
+            var proceedJobsFlag = bulkSegment.proceedJobsFlag;
+            Assert.AreEqual(true, proceedJobsFlag);
         }
 
         private class MockEmail<T> : IEmailSenderRecipient
