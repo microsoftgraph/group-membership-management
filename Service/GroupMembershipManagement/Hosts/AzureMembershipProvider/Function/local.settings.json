@@ -14,7 +14,7 @@
     "logAnalyticsCustomerId": "",
     "logAnalyticsPrimarySharedKey": "",
     "jobsStorageAccountConnectionString": "",
-    "jobsTableName": "",
+    "ConnectionStrings:JobsContext": "",
     "senderAddress": "",
     "senderPassword": "",
     "syncDisabledCCEmailAddresses": "",

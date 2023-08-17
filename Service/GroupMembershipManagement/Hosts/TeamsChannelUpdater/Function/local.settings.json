@@ -8,7 +8,7 @@
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "",
     "jobsStorageAccountConnectionString": "",
-    "jobsTableName": "",
+    "ConnectionStrings:JobsContext": "",
     "graphCredentials:ClientId": "",
     "graphCredentials:ClientSecret": "",
     "graphCredentials:KeyVaultName": "",
