@@ -367,6 +367,8 @@ namespace Repositories.GraphGroups
                                 group.Type = "Mail enabled security";
                             else if (!groupTypes.Any() && isMailEnabled && !isSecurityEnabled)
                                 group.Type = "Distribution";
+
+                            group.Name = graphGroup.DisplayName;
                         }
 
                         groups.Add(group);
