@@ -7,7 +7,7 @@
     "logAnalyticsCustomerId": "",
     "logAnalyticsPrimarySharedKey": "",
     "jobsStorageAccountConnectionString": "",
-    "jobsTableName": "syncJobs",
+    "ConnectionStrings:JobsContext": "",
     "notificationsTableName": "notifications",
     "graphUpdaterUrl": "",
     "graphUpdaterFunctionKey": "",
