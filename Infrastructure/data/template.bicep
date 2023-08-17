@@ -120,10 +120,6 @@ param jobsStorageAccountName string = 'jobs${environmentAbbreviation}${uniqueStr
 @minLength(1)
 param membershipContainerName string = 'membership'
 
-@description('Enter jobs table name.')
-@minLength(1)
-param jobsTableName string
-
 @description('Enter notifications table name.')
 @minLength(1)
 param notificationsTableName string = 'notifications'
@@ -508,10 +504,6 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'membershipContainerName'
         value: membershipContainerName
-      }
-      {
-        name: 'jobsTableName'
-        value: jobsTableName
       }
       {
         name: 'notificationsTableName'

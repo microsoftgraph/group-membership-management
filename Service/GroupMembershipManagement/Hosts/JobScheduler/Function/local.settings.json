@@ -6,7 +6,7 @@
     "logAnalyticsCustomerId": "",
     "logAnalyticsPrimarySharedKey": "",
     "jobsStorageAccountConnectionString": "",
-    "jobsTableName": "",
+    "ConnectionStrings:JobsContext": "",
     "jobSchedulerSchedule": "",
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
     "APPINSIGHTS_INSTRUMENTATIONKEY": ""

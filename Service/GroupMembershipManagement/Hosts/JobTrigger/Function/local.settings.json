@@ -6,7 +6,7 @@
     "logAnalyticsCustomerId": "",
     "logAnalyticsPrimarySharedKey": "",
     "jobsStorageAccountConnectionString": "",
-    "jobsTableName": "",
+    "ConnectionStrings:JobsContext": "",
     "serviceBusConnectionString": "",
     "serviceBusSyncJobTopic": "",
     "jobTriggerSchedule": "0 */1 * * * *",
