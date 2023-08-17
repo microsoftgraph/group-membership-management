@@ -141,6 +141,18 @@ namespace Hosts.MembershipAggregator
             }
             else if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.ThresholdExceeded)
             {
+                var uploadRequest = CreateAggregatedFileUploaderRequest(SourceMembership, deltaResponse, request.SyncJob, context);
+                await context.CallActivityAsync(nameof(FileUploaderFunction), uploadRequest);
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        Message = new LogMessage
+                        {
+                            Message = $"Uploaded membership file {uploadRequest.FilePath} with {SourceMembership.SourceMembers.Count} unique members",
+                            RunId = runId
+                        }
+                    });
+
                 var currentThresholdViolations = request.SyncJob.ThresholdViolations + 1;
                 SyncStatus? status = currentThresholdViolations >= _thresholdConfig.NumberOfThresholdViolationsToDisableJob
                                     ? SyncStatus.ThresholdExceeded
