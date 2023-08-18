@@ -34,8 +34,14 @@ function Copy-SyncJobsToSQL {
     $jobStorageAccount = $storageAccounts | Where-Object { $_.StorageAccountName -like "$storageAccountNamePrefix*" }
 
     $tableName = "syncJobs"
-    $cloudTable = (Get-AzStorageTable -Name $tableName -Context $jobStorageAccount.Context).CloudTable
+    $storageTable = Get-AzStorageTable -Name $tableName -Context $jobStorageAccount.Context -ErrorAction SilentlyContinue
 
+    if (!$storageTable) {
+        Write-Host "syncJobs table does not exist."
+        return
+    }
+
+    $cloudTable = $storageTable.CloudTable
     $syncJobs = Get-AzTableRow -table $cloudTable
     $sourceTableLength = $syncJobs.Length
 
