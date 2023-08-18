@@ -21,8 +21,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\M
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Logging", "..\..\..\Repositories.Logging\Repositories.Logging.csproj", "{3EEADB18-8A3A-4AAC-8BB5-13BB8B47524E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.SyncJobRepository", "..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj", "{82BBD531-138E-4C86-8C72-56B2E982BD40}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Common.DependencyInjection", "..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj", "{5C683B9D-E546-4FA0-87F8-242342EC5BA8}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.NotificationRepository", "..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj", "{9AD0DD4C-01FB-40A1-9A9E-BBDC2DD74EB7}"
@@ -79,10 +77,6 @@ Global
 		{3EEADB18-8A3A-4AAC-8BB5-13BB8B47524E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3EEADB18-8A3A-4AAC-8BB5-13BB8B47524E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3EEADB18-8A3A-4AAC-8BB5-13BB8B47524E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{82BBD531-138E-4C86-8C72-56B2E982BD40}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{82BBD531-138E-4C86-8C72-56B2E982BD40}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{82BBD531-138E-4C86-8C72-56B2E982BD40}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{82BBD531-138E-4C86-8C72-56B2E982BD40}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5C683B9D-E546-4FA0-87F8-242342EC5BA8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5C683B9D-E546-4FA0-87F8-242342EC5BA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5C683B9D-E546-4FA0-87F8-242342EC5BA8}.Release|Any CPU.ActiveCfg = Release|Any CPU

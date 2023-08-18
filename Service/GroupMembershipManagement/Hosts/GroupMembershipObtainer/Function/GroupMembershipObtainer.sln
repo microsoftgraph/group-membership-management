@@ -26,8 +26,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mail", "..\..\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Localization", "..\..\..\Repositories.Localization\Repositories.Localization.csproj", "{FA6F5ACC-DBC3-40FE-8DE8-30482F6B1436}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.SyncJobRepository", "..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj", "{5EAFBF0D-5481-4606-B62F-E895DF9F87B7}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mocks", "..\..\..\Repositories.Mocks\Repositories.Mocks.csproj", "{5F06336F-A9F2-47E1-BAB9-867E7B8AF1B5}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.BlobStorage", "..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj", "{8B9441FF-C61F-49A3-97A0-433C3FDA60BC}"
@@ -96,10 +94,6 @@ Global
 		{FA6F5ACC-DBC3-40FE-8DE8-30482F6B1436}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FA6F5ACC-DBC3-40FE-8DE8-30482F6B1436}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FA6F5ACC-DBC3-40FE-8DE8-30482F6B1436}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5EAFBF0D-5481-4606-B62F-E895DF9F87B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5EAFBF0D-5481-4606-B62F-E895DF9F87B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5EAFBF0D-5481-4606-B62F-E895DF9F87B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5EAFBF0D-5481-4606-B62F-E895DF9F87B7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5F06336F-A9F2-47E1-BAB9-867E7B8AF1B5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5F06336F-A9F2-47E1-BAB9-867E7B8AF1B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5F06336F-A9F2-47E1-BAB9-867E7B8AF1B5}.Release|Any CPU.ActiveCfg = Release|Any CPU

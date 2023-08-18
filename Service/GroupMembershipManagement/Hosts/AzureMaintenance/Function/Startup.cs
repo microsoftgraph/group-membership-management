@@ -17,7 +17,6 @@ using Microsoft.Graph;
 using Repositories.GraphGroups;
 using Repositories.EntityFramework;
 using Repositories.NotificationsRepository;
-using Repositories.SyncJobsRepository;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 
@@ -56,11 +55,6 @@ namespace Hosts.AzureMaintenance
                     services.GetService<IOptions<ThresholdNotificationConfig>>().Value.IsThresholdNotificationEnabled);
             });
 
-            builder.Services.AddSingleton<ISyncJobRepository>(services =>
-            {
-                var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
-                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
-            });
             builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");

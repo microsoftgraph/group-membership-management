@@ -33,8 +33,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.NotificationRe
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Common.DependencyInjection", "..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj", "{44D425F3-7883-4014-A3A7-108807522C51}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.SyncJobRepository", "..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj", "{45C2422C-9C9E-4545-9C79-F28946579F79}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.ServiceBusTopics", "..\..\..\Repositories.Topics\Repositories.ServiceBusTopics.csproj", "{855E5414-FF0C-4097-9CAC-BFD91F2D4B08}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework", "..\..\..\Repositories.EntityFramework\Repositories.EntityFramework.csproj", "{6802317B-2566-499A-862A-748C682C8B2C}"
@@ -107,10 +105,6 @@ Global
 		{44D425F3-7883-4014-A3A7-108807522C51}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{44D425F3-7883-4014-A3A7-108807522C51}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{44D425F3-7883-4014-A3A7-108807522C51}.Release|Any CPU.Build.0 = Release|Any CPU
-		{45C2422C-9C9E-4545-9C79-F28946579F79}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{45C2422C-9C9E-4545-9C79-F28946579F79}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{45C2422C-9C9E-4545-9C79-F28946579F79}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{45C2422C-9C9E-4545-9C79-F28946579F79}.Release|Any CPU.Build.0 = Release|Any CPU
 		{855E5414-FF0C-4097-9CAC-BFD91F2D4B08}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{855E5414-FF0C-4097-9CAC-BFD91F2D4B08}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{855E5414-FF0C-4097-9CAC-BFD91F2D4B08}.Release|Any CPU.ActiveCfg = Release|Any CPU

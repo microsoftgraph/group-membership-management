@@ -23,8 +23,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Entities", "..\..\..\Entiti
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\Models.csproj", "{C6660599-CE05-4C66-B352-89183B247ABE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.SyncJobRepository", "..\..\..\Repositories.SyncJobs\Repositories.SyncJobRepository.csproj", "{D13EF2C3-471C-4085-99BD-46246996A8D8}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Logging", "..\..\..\Repositories.Logging\Repositories.Logging.csproj", "{121AA45C-0807-4519-A044-69D3B839C7EF}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DIConcreteTypes", "..\..\..\DIConcreteTypes\DIConcreteTypes.csproj", "{BB8D9677-C969-42C6-8058-391FC8CFE3B9}"
@@ -91,10 +89,6 @@ Global
 		{C6660599-CE05-4C66-B352-89183B247ABE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C6660599-CE05-4C66-B352-89183B247ABE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C6660599-CE05-4C66-B352-89183B247ABE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D13EF2C3-471C-4085-99BD-46246996A8D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D13EF2C3-471C-4085-99BD-46246996A8D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D13EF2C3-471C-4085-99BD-46246996A8D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D13EF2C3-471C-4085-99BD-46246996A8D8}.Release|Any CPU.Build.0 = Release|Any CPU
 		{121AA45C-0807-4519-A044-69D3B839C7EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{121AA45C-0807-4519-A044-69D3B839C7EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{121AA45C-0807-4519-A044-69D3B839C7EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
