@@ -155,6 +155,22 @@ param appConfigurationKeyData array = [
     tag: {
       tag1: 'JobTrigger'
     }
+  }        
+  {
+    key: 'JobTrigger:MinimalJobs'
+    value: '100'
+    contentType: 'integer'
+    tag: {
+      tag1: 'JobTrigger'
+    }
+  }
+  {
+    key: 'JobTrigger:StopThreshold'
+    value: '25'
+    contentType: 'integer'
+    tag: {
+      tag1: 'JobTrigger'
+    }
   }
   {
     key: 'GroupMembershipObtainer:IsDeltaCacheEnabled'

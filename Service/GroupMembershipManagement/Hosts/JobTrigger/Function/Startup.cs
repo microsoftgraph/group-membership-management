@@ -32,11 +32,18 @@ namespace Hosts.JobTrigger
             builder.Services.AddOptions<JobTriggerConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.GMMHasGroupReadWriteAllPermissions = GetBoolSetting(configuration, "JobTrigger:IsGroupReadWriteAllGranted", false);
+                settings.MinimalJobs = GetIntSetting(configuration, "JobTrigger:MinimalJobs", 100); 
+                settings.StopThreshold = GetIntSetting(configuration, "JobTrigger:StopThreshold", 25);
             });
 
             builder.Services.AddSingleton<IJobTriggerConfig>(services =>
             {
-                return new JobTriggerConfig(services.GetService<IOptions<JobTriggerConfig>>().Value.GMMHasGroupReadWriteAllPermissions);
+                var jobTriggerOptions = services.GetService<IOptions<JobTriggerConfig>>().Value;
+                return new JobTriggerConfig(
+                    jobTriggerOptions.GMMHasGroupReadWriteAllPermissions, 
+                    jobTriggerOptions.MinimalJobs,
+                    jobTriggerOptions.StopThreshold
+                );
             });
 
             builder.Services.AddSingleton<IKeyVaultSecret<IJobTriggerService>>(services => new KeyVaultSecret<IJobTriggerService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
@@ -60,6 +67,11 @@ namespace Hosts.JobTrigger
         private bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)
         {
             var checkParse = bool.TryParse(configuration[settingName], out bool value);
+            return checkParse ? value : defaultValue;
+        }
+        private int GetIntSetting(IConfiguration configuration, string settingName, int defaultValue)
+        {
+            var checkParse = int.TryParse(configuration[settingName], out int value);
             return checkParse ? value : defaultValue;
         }
     }

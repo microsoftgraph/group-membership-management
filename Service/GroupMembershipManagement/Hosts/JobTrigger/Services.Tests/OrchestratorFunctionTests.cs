@@ -75,8 +75,32 @@ namespace Services.Tests
                                 Times.Exactly(syncJobs.Count));
         }
 
+		[TestMethod]
+		public async Task ProceedJobsFlagFalse()
+		{
+			var loggingRepository = new Mock<ILoggingRepository>();
+			var graphRepository = new Mock<IGraphGroupRepository>();
+			var jobTriggerService = new Mock<IJobTriggerService>();
+			var context = new Mock<IDurableOrchestrationContext>();
+			var syncJobs = SampleDataHelper.CreateSampleSyncJobs(10, "GroupMembership");
+			var emptySyncJobsList = new List<SyncJob>();
+			var loggerJobProperties = new Dictionary<Guid, LogProperties>();
+			loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
+			bool proceedJobsFlag = false;
+			jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
+											.ReturnsAsync((syncJobs, proceedJobsFlag));
+			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<object>()))
+						.Returns(() => CallGetSyncJobsSegmentAsync(loggingRepository.Object, jobTriggerService.Object));
 
-        [TestMethod]
+			context.Setup(x => x.CallSubOrchestratorAsync(It.Is<string>(x => x == nameof(SubOrchestratorFunction)), It.IsAny<SyncJob>()));
+			var orchestrator = new OrchestratorFunction(loggingRepository.Object);
+			await orchestrator.RunOrchestratorAsync(context.Object);
+
+			context.Verify(x => x.CallSubOrchestratorAsync(nameof(SubOrchestratorFunction), It.IsAny<SyncJob>()),
+								Times.Exactly(0));
+		}
+
+		[TestMethod]
         public async Task NoContinuationTokenRetrieved()
         {
             var loggingRepository = new Mock<ILoggingRepository>();

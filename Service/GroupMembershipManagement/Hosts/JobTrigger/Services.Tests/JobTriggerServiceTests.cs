@@ -496,7 +496,9 @@ namespace Services.Tests
         {
             var jobsProceedNow = 5;
             var jobsNotProceedNow = 3;
-            var jobsShouldProceed = 0;
+
+            _jobTriggerConfig.MinimalJobs = 4;
+            _jobTriggerConfig.StopThreshold = 20;
 
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsProceedNow, Organization));
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsNotProceedNow, Organization, startDateBase: DateTime.UtcNow.AddDays(5)));
@@ -514,7 +516,6 @@ namespace Services.Tests
         {
             var jobsProceedNow = 5;
             var jobsNotProceedNow = 20;
-            var jobsShouldProceed = 5;
 
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsProceedNow, Organization));
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsNotProceedNow, Organization, startDateBase: DateTime.UtcNow.AddDays(5)));

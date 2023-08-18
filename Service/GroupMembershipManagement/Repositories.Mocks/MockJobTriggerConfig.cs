@@ -7,10 +7,15 @@ namespace Repositories.Mocks
     public class MockJobTriggerConfig : IJobTriggerConfig
     {
         public bool GMMHasGroupReadWriteAllPermissions { get; set; }
+		public int MinimalJobs { get; set; }
+		public int StopThreshold { get; set; }
 
-        public MockJobTriggerConfig()
+		public MockJobTriggerConfig()
         {
             GMMHasGroupReadWriteAllPermissions = false;
-        }
+            MinimalJobs = 4;
+            StopThreshold = 20;
+
+		}
     }
 }
