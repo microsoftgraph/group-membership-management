@@ -61,6 +61,7 @@
         "editButton": "Edit"
     },
     "JobsList": {
+        "listOfMemberships": "List of memberships",
         "ShimmeredDetailsList": {
             "toggleSelection": "Toggle selection",
             "toggleAllSelection": "Toggle selection for all items",
@@ -89,5 +90,6 @@
         }
     },
     "welcome": "Welcome",
-    "back": "Back to dashboard"
+    "back": "Back to dashboard",
+    "version": "Version"
 }

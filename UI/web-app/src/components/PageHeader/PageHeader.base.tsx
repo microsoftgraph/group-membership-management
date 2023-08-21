@@ -4,8 +4,7 @@
 import {
   classNamesFunction,
   type IProcessedStyleSet,
-  type IIconProps,
-  Separator,
+  type IIconProps
 } from '@fluentui/react';
 import { CommandBarButton } from '@fluentui/react/lib/Button';
 import { Stack, type IStackStyles } from '@fluentui/react/lib/Stack';

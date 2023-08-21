@@ -8,23 +8,19 @@ import {
 } from '@fluentui/react';
 import type React from 'react';
 
-export interface IJobsListStyles {
+export interface IPageFooterStyles {
   root: IStyle;
-  enabled: IStyle;
-  disabled: IStyle;
-  actionRequired: IStyle;
-  tabContent: IStyle;
-  refresh: IStyle;
-  title: IStyle;
 }
 
-export interface IJobsListStyleProps {
+export interface IPageFooterStyleProps {
   className?: string;
   theme: ITheme;
 }
 
-export interface IJobsListProps
+export interface IPageFooterProps
   extends React.AllHTMLAttributes<HTMLDivElement> {
+  backButtonHidden?: boolean;
+  
   /**
    * Optional className to apply to the root of the component.
    */
@@ -33,5 +29,5 @@ export interface IJobsListProps
   /**
    * Call to provide customized styling that will layer on top of the variant rules.
    */
-  styles?: IStyleFunctionOrObject<IJobsListStyleProps, IJobsListStyles>;
+  styles?: IStyleFunctionOrObject<IPageFooterStyleProps, IPageFooterStyles>;
 }

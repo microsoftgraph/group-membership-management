@@ -17,7 +17,8 @@ export const getStyles = (props: IAppStyleProps): IAppStyles => {
   return {
     root: [{
       fontFamily: 'Segoe UI',
-      backgroundColor: theme.palette.neutralLight
+      backgroundColor: theme.palette.neutralLight,
+      minHeight: '100vh'
     }, classNames.root, className],
     body: {
       display: 'flex',
@@ -26,6 +27,7 @@ export const getStyles = (props: IAppStyleProps): IAppStyles => {
       justifyContent: 'center',
       boxSizing: 'border-box',
       margin: '0 auto',
+      minHeight: '100vh'
     },
     content: {
       width: '100%',

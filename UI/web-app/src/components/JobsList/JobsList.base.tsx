@@ -26,13 +26,10 @@ import {
   MessageBar,
   MessageBarType,
   IconButton,
-  IIconProps,
-  IButtonProps,
-  TextField,
-  Dropdown,
-  IDropdownOption,
+  IIconProps
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
+import { Text } from '@fluentui/react/lib/Text';
 import { ShimmeredDetailsList } from '@fluentui/react/lib/ShimmeredDetailsList';
 import {
   IJobsListProps,
@@ -44,6 +41,7 @@ import {
   ChevronRightMedIcon,
 } from '@fluentui/react-icons-mdl2';
 import { useCookies } from 'react-cookie';
+import { PagingBar } from '../PagingBar';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -81,65 +79,71 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       key: 'targetGroupType',
       name: t('JobsList.ShimmeredDetailsList.columnNames.type'),
       fieldName: 'targetGroupType',
-      minWidth: 100,
-      maxWidth: 100,
-      isResizable: false,
+      minWidth: 109,
+      maxWidth: 109,
+      isResizable: true,
       isSorted: sortKey === 'targetGroupType',
       isSortedDescending,
+      showSortIconWhenUnsorted: true,
       columnActionsMode: 0
     },
     {
       key: 'targetGroupName',
       name: t('JobsList.ShimmeredDetailsList.columnNames.name'),
       fieldName: 'targetGroupName',
-      minWidth: 100,
-      maxWidth: 100,
-      isResizable: false,
+      minWidth: 439,
+      maxWidth: 439,
+      isResizable: true,
       isSorted: sortKey === 'targetGroupName',
       isSortedDescending,
+      showSortIconWhenUnsorted: true,
       columnActionsMode: 0
     },
     {
       key: 'lastSuccessfulRunTime',
       name: t('JobsList.ShimmeredDetailsList.columnNames.lastRun'),
       fieldName: 'lastSuccessfulRunTime',
-      minWidth: 100,
-      maxWidth: 100,
-      isResizable: false,
+      minWidth: 114,
+      maxWidth: 114,
+      isResizable: true,
       isSorted: sortKey === 'lastSuccessfulRunTime',
       isSortedDescending,
+      showSortIconWhenUnsorted: true,
     },
     {
       key: 'estimatedNextRunTime',
       name: t('JobsList.ShimmeredDetailsList.columnNames.nextRun'),
       fieldName: 'estimatedNextRunTime',
-      minWidth: 100,
-      maxWidth: 100,
-      isResizable: false,
+      minWidth: 123,
+      maxWidth: 123,
+      isResizable: true,
       isSorted: sortKey === 'estimatedNextRunTime',
       isSortedDescending,
+      showSortIconWhenUnsorted: true,
       columnActionsMode: 0
     },
     {
       key: 'enabledOrNot',
       name: t('JobsList.ShimmeredDetailsList.columnNames.status'),
       fieldName: 'enabledOrNot',
-      minWidth: 75,
-      maxWidth: 75,
-      isResizable: false,
+      minWidth: 83,
+      maxWidth: 83,
+      isResizable: true,
       isSorted: sortKey === 'enabledOrNot',
       isSortedDescending,
+      showSortIconWhenUnsorted: true,
       columnActionsMode: 0
     },
     {
       key: 'actionRequired',
       name: t('JobsList.ShimmeredDetailsList.columnNames.actionRequired'),
       fieldName: 'actionRequired',
-      minWidth: 200,
-      maxWidth: 200,
-      isResizable: false,
+      minWidth: 140,
+      maxWidth: 140,
+      isResizable: true,
       isSorted: sortKey === 'actionRequired',
       isSortedDescending,
+      showSortIconWhenUnsorted: true,
       columnActionsMode: 0
     },
     {
@@ -148,7 +152,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       fieldName: '',
       minWidth: 200,
       maxWidth: 200,
-      isResizable: false,
+      isResizable: true,
       columnActionsMode: 0
     },
   ];
@@ -322,35 +326,37 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
             {error}
           </MessageBar>
         )}
-
-        <div className={classNames.tabContent}>
-          <ShimmeredDetailsList
-            setKey="set"
-            onColumnHeaderClick={onColumnHeaderClick}
-            items={items || []}
-            columns={columns}
-            enableShimmer={!jobs || jobs.length === 0}
-            layoutMode={DetailsListLayoutMode.justified}
-            selectionMode={SelectionMode.none}
-            ariaLabelForShimmer="Content is being fetched"
-            ariaLabelForGrid="Item details"
-            selectionPreservedOnEmptyClick={true}
-            ariaLabelForSelectionColumn={
-              t('JobsList.ShimmeredDetailsList.toggleSelection') as
-              | string
-              | undefined
-            }
-            ariaLabelForSelectAllCheckbox={
-              t('JobsList.ShimmeredDetailsList.toggleAllSelection') as
-              | string
-              | undefined
-            }
-            checkButtonAriaLabel={
-              t('JobsList.ShimmeredDetailsList.selectRow') as string | undefined
-            }
-            onActiveItemChanged={onItemClicked}
-            onRenderItemColumn={_renderItemColumn}
-          />
+        <div className={classNames.title}>
+          <Text variant='xLarge'>{t('JobsList.listOfMemberships')}</Text>
+        </div>
+          <div className={classNames.tabContent}>
+            <ShimmeredDetailsList
+              setKey="set"
+              onColumnHeaderClick={onColumnHeaderClick}
+              items={items || []}
+              columns={columns}
+              enableShimmer={!jobs || jobs.length === 0}
+              layoutMode={DetailsListLayoutMode.justified}
+              selectionMode={SelectionMode.none}
+              ariaLabelForShimmer="Content is being fetched"
+              ariaLabelForGrid="Item details"
+              selectionPreservedOnEmptyClick={true}
+              ariaLabelForSelectionColumn={
+                t('JobsList.ShimmeredDetailsList.toggleSelection') as
+                | string
+                | undefined
+              }
+              ariaLabelForSelectAllCheckbox={
+                t('JobsList.ShimmeredDetailsList.toggleAllSelection') as
+                | string
+                | undefined
+              }
+              checkButtonAriaLabel={
+                t('JobsList.ShimmeredDetailsList.selectRow') as string | undefined
+              }
+              onActiveItemChanged={onItemClicked}
+              onRenderItemColumn={_renderItemColumn}
+            />
         </div>
       </div>
       <PagingBar
@@ -365,128 +371,3 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     </div>
   );
 };
-
-export interface IPagingBarProps extends React.AllHTMLAttributes<HTMLElement> {
-  pageSize: string;
-  pageNumber: number;
-  totalNumberOfPages: number;
-  setPageSize: (pageSize: string) => void;
-  setPageNumber: (pageNumber: number) => void;
-  setPageSizeCookie: (pageSize: string) => void;
-  getJobsByPage: (currentPageSize?: number, currentPageNumber?: number) => void;
-}
-
-export const PagingBar: React.FunctionComponent<IPagingBarProps> = (
-  props: IPagingBarProps
-) => {
-
-  const { t } = useTranslation();
-  const { pageSize, pageNumber, totalNumberOfPages, setPageSize, setPageNumber, setPageSizeCookie, getJobsByPage } = props;
-
-  const pageSizeOptions: IDropdownOption[] = [
-    { key: '10', text: '10' },
-    { key: '20', text: '20' },
-    { key: '30', text: '30' },
-    { key: '40', text: '40' },
-    { key: '50', text: '50' },
-  ];
-
-  const leftLabelMessage: React.CSSProperties = {
-    marginRight: 5
-  }
-
-  const rightLabelMessage: React.CSSProperties = {
-    marginLeft: 5
-  }
-
-  const divContainer: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    marginLeft: 10,
-    marginRight: 10
-  }
-
-  const leftButtonProps: IButtonProps = {
-    iconProps: {
-      iconName: 'ChevronLeft',
-    },
-    title: 'Prev',
-  };
-
-  const righttButtonProps: IButtonProps = {
-    iconProps: {
-      iconName: 'ChevronRight',
-    },
-    title: 'Next',
-  };
-
-  const mainContainer: React.CSSProperties = {
-    display: "flex",
-    justifyContent: "flex-end",
-    marginTop: 10
-  }
-
-  const onPageSizeChanged = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption | undefined): void => {
-    if (item) {
-      setPageSize(item.key.toString());
-      setPageNumber(1);
-      setPageSizeCookie(item.key.toString());
-      getJobsByPage(parseInt(item.key.toString()), 1);
-    }
-  }
-
-  const navigateToPage = (direction: number) => {
-    if (pageNumber + direction === 0 || totalNumberOfPages === undefined || pageNumber + direction > totalNumberOfPages)
-      return;
-
-    let newPageNumber = pageNumber + direction;
-    setPageNumber(newPageNumber);
-    getJobsByPage(parseInt(pageSize), newPageNumber);
-  }
-
-  const onPageNumberChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string | undefined): void => {
-    if (newValue === undefined || newValue === ''
-      || isNaN(parseInt(newValue))
-      || parseInt(newValue) <= 0
-      || (totalNumberOfPages !== undefined && !isNaN(totalNumberOfPages) && parseInt(newValue) > totalNumberOfPages))
-      return;
-
-    setPageNumber(parseInt(newValue));
-    getJobsByPage(parseInt(pageSize), parseInt(newValue));
-  }
-
-  return (
-    <div style={mainContainer}>
-      <div style={divContainer}>
-        <IconButton
-          {...leftButtonProps}
-          onClick={() => navigateToPage(-1)}
-        />
-        <label>{t('JobsList.PagingBar.previousPage')}</label>
-        <div style={divContainer}>
-          <label style={leftLabelMessage}>{t('JobsList.PagingBar.page')}</label>
-          <TextField
-            style={{ width: 55 }}
-            value={pageNumber.toString()}
-            onChange={onPageNumberChanged}
-          />
-          <label style={rightLabelMessage}>{t('JobsList.PagingBar.of')} {(totalNumberOfPages ? totalNumberOfPages : 1)}</label>
-        </div>
-        <label>{t('JobsList.PagingBar.nextPage')}</label>
-        <IconButton
-          {...righttButtonProps}
-          onClick={() => navigateToPage(1)}
-        />
-      </div>
-      <div style={divContainer}>
-        <label style={leftLabelMessage}>{t('JobsList.PagingBar.display')}</label>
-        <Dropdown
-          options={pageSizeOptions}
-          defaultSelectedKey={pageSize}
-          onChange={onPageSizeChanged}
-        />
-        <label style={rightLabelMessage}>{t('JobsList.PagingBar.items')}</label>
-      </div>
-    </div >
-  )
-}

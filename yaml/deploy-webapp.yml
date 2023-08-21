@@ -54,3 +54,4 @@ steps:
       REACT_APP_AAD_API_APP_CLIENT_ID: $(REACT_APP_AAD_API_APP_CLIENT_ID_${{parameters.environmentAbbreviation}})
       REACT_APP_AAD_APP_TENANT_ID: $(REACT_APP_AAD_APP_TENANT_ID_${{parameters.environmentAbbreviation}})
       REACT_APP_AAD_APP_SERVICE_BASE_URI: $(REACT_APP_AAD_APP_SERVICE_BASE_URI_${{parameters.environmentAbbreviation}})
+      REACT_APP_VERSION_NUMBER: $(Build.BuildNumber)
