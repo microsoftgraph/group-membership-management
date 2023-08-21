@@ -497,9 +497,6 @@ namespace Services.Tests
             var jobsProceedNow = 5;
             var jobsNotProceedNow = 3;
 
-            _jobTriggerConfig.MinimalJobs = 4;
-            _jobTriggerConfig.StopThreshold = 20;
-
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsProceedNow, Organization));
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsNotProceedNow, Organization, startDateBase: DateTime.UtcNow.AddDays(5)));
 
@@ -517,7 +514,7 @@ namespace Services.Tests
             var jobsProceedNow = 5;
             var jobsNotProceedNow = 20;
 
-            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsProceedNow, Organization));
+			_syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsProceedNow, Organization));
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsNotProceedNow, Organization, startDateBase: DateTime.UtcNow.AddDays(5)));
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
@@ -528,7 +525,24 @@ namespace Services.Tests
             Assert.AreEqual(true, proceedJobsFlag);
         }
 
-        private class MockEmail<T> : IEmailSenderRecipient
+		[TestMethod]
+		public async Task VerifyJobsCountLowerThanMinimalHigherThanThreshold()
+		{
+			var jobsProceedNow = 3;
+			var jobsNotProceedNow = 3;
+
+			_syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsProceedNow, Organization));
+			_syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsNotProceedNow, Organization, startDateBase: DateTime.UtcNow.AddDays(5)));
+
+			_syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
+			_syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
+
+			var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync();
+			var proceedJobsFlag = bulkSegment.proceedJobsFlag;
+			Assert.AreEqual(true, proceedJobsFlag);
+		}
+
+		private class MockEmail<T> : IEmailSenderRecipient
         {
             public string SenderAddress => "";
 
