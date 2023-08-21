@@ -8,8 +8,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Entities", "Entities\Entiti
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.GraphAzureADGroups", "Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj", "{A1B2E4F6-6976-42CF-BC42-53D55A7B0CA5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.SyncJobRepository", "Repositories.SyncJobs\Repositories.SyncJobRepository.csproj", "{0816910E-E402-4CB2-994A-3A22FC2AA77D}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.ServiceBusTopics", "Repositories.Topics\Repositories.ServiceBusTopics.csproj", "{176FEE96-E330-42BC-A87F-4A270A161E93}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.ServiceBusSubscriptions", "Repositories.ServiceBusSubscriptions\Repositories.ServiceBusSubscriptions.csproj", "{213E3500-4FB9-45C3-ACDB-5DC4B05DF2D7}"
@@ -61,7 +59,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramewor
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework", "Repositories.EntityFramework\Repositories.EntityFramework.csproj", "{D14FF6B2-92A0-4A00-9A34-A3E9554444BF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.FeatureFlag", "Repositories.FeatureFlag\Repositories.FeatureFlag.csproj", "{694A5629-D09B-4855-93E1-96D6DE6D07F3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.FeatureFlag", "Repositories.FeatureFlag\Repositories.FeatureFlag.csproj", "{694A5629-D09B-4855-93E1-96D6DE6D07F3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -81,10 +79,6 @@ Global
 		{A1B2E4F6-6976-42CF-BC42-53D55A7B0CA5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1B2E4F6-6976-42CF-BC42-53D55A7B0CA5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1B2E4F6-6976-42CF-BC42-53D55A7B0CA5}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0816910E-E402-4CB2-994A-3A22FC2AA77D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0816910E-E402-4CB2-994A-3A22FC2AA77D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0816910E-E402-4CB2-994A-3A22FC2AA77D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0816910E-E402-4CB2-994A-3A22FC2AA77D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{176FEE96-E330-42BC-A87F-4A270A161E93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{176FEE96-E330-42BC-A87F-4A270A161E93}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{176FEE96-E330-42BC-A87F-4A270A161E93}.Release|Any CPU.ActiveCfg = Release|Any CPU

@@ -17,7 +17,6 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.Localization;
 using Repositories.Logging;
 using Repositories.Mail;
-using Repositories.SyncJobsRepository;
 using Repositories.NotificationsRepository;
 using System;
 using System.Collections.Generic;
@@ -159,18 +158,6 @@ namespace Hosts.FunctionBase
                         services.GetService<ILocalizationRepository>(),
                         services.GetService<ILoggingRepository>(),
                         GetValueOrDefault("actionableEmailProviderId"));
-            });
-
-            builder.Services.AddOptions<SyncJobRepoCredentials<SyncJobRepository>>().Configure<IConfiguration>((settings, configuration) =>
-                {
-                    settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
-                    settings.TableName = configuration.GetValue<string>("jobsTableName");
-                });
-
-            builder.Services.AddSingleton<ISyncJobRepository>(services =>
-            {
-                var creds = services.GetService<IOptions<SyncJobRepoCredentials<SyncJobRepository>>>();
-                return new SyncJobRepository(creds.Value.ConnectionString, creds.Value.TableName, services.GetService<ILoggingRepository>());
             });
 
             builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>
