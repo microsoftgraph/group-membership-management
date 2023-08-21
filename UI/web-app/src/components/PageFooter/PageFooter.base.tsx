@@ -32,7 +32,7 @@ export const PageFooterBase: React.FunctionComponent<IPageFooterProps> = (
       theme: useTheme(),
     }
   );
-  const versionNumber = process.env.VERSION_NUMBER || '1.0.0';
+  const versionNumber = `${process.env.REACT_APP_VERSION_NUMBER}` || '1.0.0';
   const { t } = useTranslation();
 
   return (
