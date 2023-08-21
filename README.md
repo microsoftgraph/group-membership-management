@@ -328,9 +328,7 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
         dependsOn:
         - 'GraphUpdater'
         - function:
-        name: 'AzureUserReader'
-        - function:
-        name: 'SecurityGroup'
+        name: 'GroupMembershipObtainer'
         dependsOn:
         - 'MembershipAggregator'
         - function:
