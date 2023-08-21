@@ -12,7 +12,8 @@ namespace WebApi.Models.DTOs
             string requestor,
             int thresholdViolations, 
             int thresholdPercentageForAdditions,
-            int thresholdPercentageForRemovals)
+            int thresholdPercentageForRemovals,
+            List<string> endpoints)
         { 
             StartDate = startDate;
             LastSuccessfulStartTime = lastSuccessfulStartTime;
@@ -21,6 +22,7 @@ namespace WebApi.Models.DTOs
             ThresholdViolations = thresholdViolations;
             ThresholdPercentageForAdditions = thresholdPercentageForAdditions;
             ThresholdPercentageForRemovals = thresholdPercentageForRemovals;
+            Endpoints = endpoints;
         }
 
         
@@ -31,5 +33,6 @@ namespace WebApi.Models.DTOs
         public int ThresholdViolations { get; set; }
         public int ThresholdPercentageForAdditions { get; set; }
         public int ThresholdPercentageForRemovals { get; set; }
+        public List<string> Endpoints { get; set; }
     }
 }

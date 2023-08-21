@@ -386,6 +386,8 @@ export const JobDetailsPage: React.FunctionComponent = () => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  console.log("endpoints:", job.endpoints);
+
   useEffect(() => {
     dispatch(
       fetchJobDetails({
