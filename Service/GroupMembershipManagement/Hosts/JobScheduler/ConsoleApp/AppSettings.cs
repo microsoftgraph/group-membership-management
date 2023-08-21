@@ -9,7 +9,6 @@ namespace JobScheduler
     {
         public string LogAnalyticsCustomerId { get; set; }
         public string LogAnalyticsPrimarySharedKey { get; set; }
-        public string JobsStorageAccountConnectionString { get; set; }
         public string SQLDatabaseConnectionString { get; set; }
         public string APPINSIGHTS_INSTRUMENTATIONKEY { get; set; }
 

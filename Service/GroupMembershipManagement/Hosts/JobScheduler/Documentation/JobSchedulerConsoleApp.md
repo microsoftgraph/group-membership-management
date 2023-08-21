@@ -12,7 +12,6 @@ This guide will explain how to use the JobScheduler console app, found in JobSch
 ```
     logAnalyticsCustomerId          | Found in data keyvault, same name
     logAnalyticsPrimarySharedKey    | Found in data keyvault, same name
-    jobsTableConnectionString       | Found in data keyvault, under "jobsStorageAccountConnectionString"
     resetJobs                       | Custom input, true if you want to reset the times of jobs to a certain day, false otherwise
     daysToAddForReset               | Custom input, if resetJobs is on, this represents how many days in the future to reset job StartDates to (this can be a negative number)
     distributeJobs                  | Custom input, true if you want to distribute jobs evenly by their period, false otherwise

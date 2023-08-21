@@ -7,7 +7,6 @@
     "logAnalyticsPrimarySharedKey": "",
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "",
-    "jobsStorageAccountConnectionString": "",
     "ConnectionStrings:JobsContext": "",
     "graphCredentials:ClientId": "",
     "graphCredentials:ClientSecret": "",

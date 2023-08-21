@@ -13,7 +13,6 @@
     "graphCredentials:TenantId": "",
     "logAnalyticsCustomerId": "",
     "logAnalyticsPrimarySharedKey": "",
-    "jobsStorageAccountConnectionString": "",
     "ConnectionStrings:JobsContext": "",
     "senderAddress": "",
     "senderPassword": "",

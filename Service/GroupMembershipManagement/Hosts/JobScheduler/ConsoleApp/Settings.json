@@ -1,7 +1,6 @@
 {
   "logAnalyticsCustomerId": "",
   "logAnalyticsPrimarySharedKey": "",
-  "jobsStorageAccountConnectionString": "",
   "ConnectionStrings:JobsContext": "",
   "resetJobs": "",
   "daysToAddForReset": "",

@@ -6,7 +6,6 @@
     "graphCredentials:KeyVaultName": "",
     "graphCredentials:KeyVaultTenantId": "",
     "appConfigurationEndpoint": "",
-    "jobsStorageAccountConnectionString": "",
     "ConnectionStrings:JobsContext": "",
     "graphCredentials:ClientSecret": "",
     "graphCredentials:ClientId": "",

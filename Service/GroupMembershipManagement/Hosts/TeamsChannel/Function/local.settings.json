@@ -14,7 +14,6 @@
     "graphCredentials:KeyVaultName": "",
     "graphCredentials:KeyVaultTenantId": "",
     "graphCredentials:TenantId": "",
-    "jobsStorageAccountConnectionString": "",
     "ConnectionStrings:JobsContext": "",
     "logAnalyticsCustomerId": "",
     "logAnalyticsPrimarySharedKey": "",
