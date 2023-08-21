@@ -25,6 +25,7 @@ namespace Services{
         {
             var response = new GetJobDetailsResponse();
             SyncJob job = await _databaseSyncJobsRepository.GetSyncJobAsync(request.SyncJobId);
+            var endpoints = await GetGroupEndpointsAsync(request.SyncJobId);
 
             bool isRequestorOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(job.Requestor, job.TargetOfficeGroupId);
             string requestor = isRequestorOwner ? job.Requestor : job.Requestor + " (Not an Owner)";
@@ -37,12 +38,18 @@ namespace Services{
                     requestor: requestor,
                     thresholdViolations: job.ThresholdViolations,
                     thresholdPercentageForAdditions: job.ThresholdPercentageForAdditions,
-                    thresholdPercentageForRemovals: job.ThresholdPercentageForRemovals
+                    thresholdPercentageForRemovals: job.ThresholdPercentageForRemovals,
+                    endpoints: endpoints
                 );
 
             response.Model = dto;
 
             return response;
+        }
+
+        public async Task<List<string>> GetGroupEndpointsAsync(Guid groupId)
+        {
+            return await _graphGroupRepository.GetGroupEndpointsAsync(groupId);
         }
     }
 }
