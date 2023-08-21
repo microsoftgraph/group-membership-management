@@ -28,6 +28,9 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
     actionRequired: {
       color: theme.semanticColors.errorIcon,
     },
+    title: {
+      paddingLeft: 12
+    },
     tabContent: {
       cursor: 'pointer',
     },
