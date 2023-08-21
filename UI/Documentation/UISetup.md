@@ -28,12 +28,6 @@ If you only have one tenant, these will be set to the same tenant id.
 
 ## Update UI/Web API application settings
 
-- Go to `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>` application in Azure Active Directory -> `Expose an API` under `Manage` -> `Add a scope` -> fille the form:
-* Scope name: user_impersonation
-* Who can consent: Admins only
-* Admin consent display name:user_impersonation
-* Admin consent description:user_impersonation
-
 - Go to `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>` application in Azure Active Directory -> `Expose an API` under `Manage` -> `Add a client application` -> provide the client id of `<solutionAbbreviation>`-ui-`<environmentAbbreviation>` -> Make sure that Authorized scopes is checked -> Click `Add application`
 
 - Go to `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>` application in Azure Active Directory -> `Manifest` under `Manage` -> Set `"accessTokenAcceptedVersion": 2`, -> Click `Save`
