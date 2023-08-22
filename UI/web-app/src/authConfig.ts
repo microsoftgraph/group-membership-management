@@ -6,7 +6,7 @@ import { type Configuration, type PopupRequest } from '@azure/msal-browser';
 // Config object to be passed to Msal on creation
 export const msalConfig: Configuration = {
   auth: {
-    clientId: `${process.env.REACT_APP_AAD_UI_APP_CLIENT_ID}`,
+    clientId: '43bbe0bf-c699-41b1-9a2c-29bb31169aef',
     authority: 'https://login.microsoftonline.com/organizations',
     redirectUri: '/',
     postLogoutRedirectUri: '/',
@@ -16,7 +16,7 @@ export const msalConfig: Configuration = {
 // scopes
 export const loginRequest = {
   scopes: [
-    `api://${process.env.REACT_APP_AAD_API_APP_CLIENT_ID}/user_impersonation`,
+    'api://11316d26-c6fb-404a-8701-7638112bc9af/user_impersonation',
   ],
 };
 
@@ -26,6 +26,6 @@ export const graphRequest: PopupRequest = {
 
 // endpoints
 export const config = {
-  getJobs: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobs`,
-  getJobDetails: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails`,
+  getJobs: 'https://gmm-compute-ar-webapi.azurewebsites.net/api/v1/jobs',
+  getJobDetails: 'https://gmm-compute-ar-webapi.azurewebsites.net/api/v1/jobDetails',
 };
