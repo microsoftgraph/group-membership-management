@@ -117,7 +117,7 @@ namespace Repositories.GraphGroups
                     ResponseCode.Ok);
 
             return (status, responses.Sum(x => x.SuccessCount), _usersNotFound, _usersAlreadyExist);
-         }
+        }
 
         private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessQueue(ConcurrentQueue<ChunkOfUsers> queue, MakeBulkRequest makeRequest, int threadNumber, int batchSize, Guid targetGroupId)
         {
@@ -211,7 +211,11 @@ namespace Repositories.GraphGroups
 
                         // Flag for individual retries
                         // It will be immediately retried within ProcessPostBatch
-                        if (chunkToRetry.ToSend.Count > 1 && (idToRetry.ResponseCode == ResponseCode.IndividualRetry || idToRetry.ResponseCode == ResponseCode.IndividualRetryAlreadyExists))
+                        if (chunkToRetry.ToSend.Count > 1
+                            && (idToRetry.ResponseCode == ResponseCode.IndividualRetry
+                                || idToRetry.ResponseCode == ResponseCode.IndividualRetryAlreadyExists
+                                || idToRetry.ResponseCode == ResponseCode.GuestError
+                               ))
                         {
                             chunkToRetry.SendAsPostRequest = true;
                             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set {chunkToRetry.Id} as POST request", RunId = RunId });
@@ -246,12 +250,11 @@ namespace Repositories.GraphGroups
                             {
                                 await _loggingRepository.LogMessageAsync(new LogMessage
                                 {
-                                    Message = $"{chunkToRetry.Id} was not added because it is a guest user and the destination does not allow guest users",
+                                    Message = $"{chunkToRetry.ToSend[0].ObjectId} was not added because it is a guest user and the destination does not allow guest users",
                                     RunId = RunId
                                 });
                                 guestUserError = true;
                             }
-
                             else
                             {
                                 requeued++;
@@ -310,11 +313,33 @@ namespace Repositories.GraphGroups
                         if (response.ResponseCode != ResponseCode.Ok)
                             successfulRequests--;
 
-                        if (response.HttpStatusCode == HttpStatusCode.NotFound || response.HttpStatusCode == HttpStatusCode.BadRequest)
+                        if (response.HttpStatusCode == HttpStatusCode.NotFound
+                            || response.HttpStatusCode == HttpStatusCode.BadRequest
+                            || response.HttpStatusCode == HttpStatusCode.Forbidden
+                            )
                         {
                             var stepToRemove = request.ToSend.FirstOrDefault(x => x.ObjectId.ToString() == response.RequestId);
                             if (stepToRemove != null)
                                 request.ToSend.Remove(stepToRemove);
+
+                            if (response.ResponseCode == ResponseCode.IndividualRetryAlreadyExists)
+                            {
+                                await _loggingRepository.LogMessageAsync(new LogMessage
+                                {
+                                    Message = $"{response.RequestId} already exists",
+                                    RunId = RunId
+                                });
+
+                                _usersAlreadyExist.Add(new AzureADUser { ObjectId = Guid.Parse(response.RequestId) });
+                            }
+                            else if (response.ResponseCode == ResponseCode.GuestError)
+                            {
+                                await _loggingRepository.LogMessageAsync(new LogMessage
+                                {
+                                    Message = $"{response.RequestId} was not added because it is a guest user and the destination does not allow guest users",
+                                    RunId = RunId
+                                });
+                            }
                         }
                     }
 
@@ -329,6 +354,8 @@ namespace Repositories.GraphGroups
                         await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Requeued {request.Id}-{request.RetryCount}", RunId = RunId });
                     }
                 }
+
+                postResponse.SuccessCount = successfulRequests;
             }
 
             return postResponse;
@@ -474,6 +501,7 @@ namespace Repositories.GraphGroups
                 {
                     var match = _userNotFound.Match(content);
                     var userId = default(string);
+                    var requestStep = requests[kvp.Key];
 
                     if (match.Success)
                     {
@@ -483,45 +511,31 @@ namespace Repositories.GraphGroups
                             Message = $"User ID is found",
                             RunId = RunId
                         });
-
-                        var requestStep = requests[kvp.Key];
-
-                        if (requestStep.Request.Method == HttpMethod.Delete)
-                        {
-                            await _loggingRepository.LogMessageAsync(new LogMessage
-                            {
-                                Message = $"Removing {requestStep.RequestId} failed as this resource does not exists.",
-                                RunId = RunId
-                            });
-
-                            _usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(requestStep.RequestId) });
-                        }
-                        else
-                        {
-                            await _loggingRepository.LogMessageAsync(new LogMessage
-                            {
-                                Message = $"Adding {userId} failed as this resource does not exists.",
-                                RunId = RunId
-                            });
-
-                            _usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(userId) });
-                        }
+                    }
+                    else
+                    {
+                        userId = requestStep.RequestId;
                     }
 
+                    if (requestStep.Request.Method == HttpMethod.Delete)
+                    {
+                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        {
+                            Message = $"Removing {userId} failed as this resource does not exists.",
+                            RunId = RunId
+                        });
+
+                        _usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(userId) });
+                    }
                     else
                     {
                         await _loggingRepository.LogMessageAsync(new LogMessage
                         {
-                            Message = $"User ID is missing",
+                            Message = $"Adding {userId} failed as this resource does not exists.",
                             RunId = RunId
                         });
 
-                        retryResponses.Add(new RetryResponse
-                        {
-                            RequestId = kvp.Key,
-                            ResponseCode = ResponseCode.IndividualRetry,
-                            HttpStatusCode = HttpStatusCode.NotFound
-                        });
+                        _usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(userId) });
                     }
 
                     retryResponses.Add(new RetryResponse
