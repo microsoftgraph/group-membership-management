@@ -61,12 +61,12 @@ namespace Services.Tests
             }
 
             // batch 1 has two users not found
-            usersNotFoundIds.Add(users[10].ObjectId.ToString()); // this is process as PATCH
-            usersNotFoundIds.Add(users[15].ObjectId.ToString()); // this is process as POST
+            usersNotFoundIds.Add(users[10].ObjectId.ToString()); // this is processed as PATCH
+            usersNotFoundIds.Add(users[15].ObjectId.ToString()); // this is processed as POST
 
             //batch 2 has two user not found
-            usersNotFoundIds.Add(users[25].ObjectId.ToString()); // this is process as PATCH
-            usersNotFoundIds.Add(users[35].ObjectId.ToString()); // this is process as POST
+            usersNotFoundIds.Add(users[25].ObjectId.ToString()); // this is processed as PATCH
+            usersNotFoundIds.Add(users[35].ObjectId.ToString()); // this is processed as POST
 
             _requestAdapter.Setup(x => x.SendNoContentAsync(It.IsAny<RequestInformation>(),
                                    It.IsAny<Dictionary<string, ParsableFactory<IParsable>>>(),
