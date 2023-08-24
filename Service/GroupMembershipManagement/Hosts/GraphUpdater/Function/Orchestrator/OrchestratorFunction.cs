@@ -79,7 +79,7 @@ namespace Hosts.GraphUpdater
                 var destination = JsonParser.GetDestination(syncJob.Destination);
 
                 syncCompleteEvent.Type = queryTypes.Distinct().Count() == 1 ? queryTypes[0] : "Hybrid";
-                syncCompleteEvent.TargetOfficeGroupId = destination.TargetGroupId.ToString();
+                syncCompleteEvent.TargetOfficeGroupId = destination.ObjectId.ToString();
                 syncCompleteEvent.RunId = syncJob.RunId.ToString();
                 syncCompleteEvent.IsDryRunEnabled = false.ToString();
                 syncCompleteEvent.ProjectedMemberCount = graphRequest.ProjectedMemberCount.HasValue ? graphRequest.ProjectedMemberCount.ToString() : "Not provided";
@@ -265,7 +265,7 @@ namespace Hosts.GraphUpdater
                 var destination = JsonParser.GetDestination(syncJob.Destination);
                 var totalUsersNotFound = sourceUsersNotFound.Union(destinationUsersNotFound).ToList();
 
-                if (!context.IsReplaying & totalUsersNotFound.Count > 0) { TrackUsersNotFoundEvent(syncJob.RunId, totalUsersNotFound.Count, destination.TargetGroupId); }
+                if (!context.IsReplaying & totalUsersNotFound.Count > 0) { TrackUsersNotFoundEvent(syncJob.RunId, totalUsersNotFound.Count, destination.ObjectId); }
 
                 var sourceObjectIds = new HashSet<Guid>(sourceUsersNotFound.Select(emp => emp.ObjectId));
                 var sourceUsers = sourceMembers.Where(product => sourceObjectIds.Contains(product.ObjectId)).ToList();
@@ -305,7 +305,7 @@ namespace Hosts.GraphUpdater
                         nameof(CacheUserUpdaterSubOrchestratorFunction),
                         new CacheUserUpdaterRequest
                         {
-                            GroupId = destination.TargetGroupId,
+                            GroupId = destination.ObjectId,
                             UserIds = destinationUsers,
                             RunId = syncJob.RunId,
                             SyncJob = syncJob

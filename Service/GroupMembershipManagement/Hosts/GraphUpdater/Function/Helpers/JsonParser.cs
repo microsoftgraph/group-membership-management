@@ -17,7 +17,7 @@ namespace GraphUpdater.Helpers
             var destination = new Destination
             {
                 Type = destinationToken["type"].ToString(),
-                TargetGroupId = Guid.Parse(destinationToken["value"].ToString())
+                ObjectId = Guid.Parse(destinationToken["value"]["objectId"].Value<string>())
             };
 
             return destination;

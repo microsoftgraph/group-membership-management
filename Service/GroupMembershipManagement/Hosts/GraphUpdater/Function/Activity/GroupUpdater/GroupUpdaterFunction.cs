@@ -42,7 +42,7 @@ namespace Hosts.GraphUpdater
             if (request.Type == RequestType.Add)
             {
                 var addUsersToGraphResponse = await _graphUpdaterService.AddUsersToGroupAsync(
-                    request.Members, destination.TargetGroupId, request.SyncJob.RunId.GetValueOrDefault(), request.IsInitialSync);
+                    request.Members, destination.ObjectId, request.SyncJob.RunId.GetValueOrDefault(), request.IsInitialSync);
 
                 responseStatus = addUsersToGraphResponse.Status;
                 successCount = addUsersToGraphResponse.SuccessCount;
@@ -52,7 +52,7 @@ namespace Hosts.GraphUpdater
             else
             {
                 var removeUsersFromGraphResponse = await _graphUpdaterService.RemoveUsersFromGroupAsync(
-                    request.Members, destination.TargetGroupId, request.SyncJob.RunId.GetValueOrDefault(), request.IsInitialSync);
+                    request.Members, destination.ObjectId, request.SyncJob.RunId.GetValueOrDefault(), request.IsInitialSync);
 
                 responseStatus = removeUsersFromGraphResponse.Status;
                 successCount = removeUsersFromGraphResponse.SuccessCount;

@@ -8,6 +8,6 @@ namespace GraphUpdater.Entities
     internal class Destination
     {
         public string Type { get; set; }
-        public Guid TargetGroupId { get; set; }
+        public Guid ObjectId { get; set; }
     }
 }

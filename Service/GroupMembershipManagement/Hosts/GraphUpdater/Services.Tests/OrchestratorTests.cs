@@ -71,7 +71,7 @@ namespace Services.Tests
             {
                 Id = groupMembership.SyncJobId,   
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
+                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
@@ -182,7 +182,7 @@ namespace Services.Tests
             {
                 Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
+                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = SqlDateTime.MinValue.Value,
@@ -305,7 +305,7 @@ namespace Services.Tests
             {
                 Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
+                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = SqlDateTime.MinValue.Value,
@@ -464,7 +464,7 @@ namespace Services.Tests
             {
                 Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
+                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
@@ -542,7 +542,7 @@ namespace Services.Tests
             {
                 Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
+                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
@@ -627,7 +627,7 @@ namespace Services.Tests
             {
                 Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
+                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = SqlDateTime.MinValue.Value,
@@ -765,7 +765,7 @@ namespace Services.Tests
             {
                 Id = groupMembership.SyncJobId,
                 TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":\"{groupMembership.Destination.ObjectId}\",\"type\":\"GraphUpdater\"}}]",
+                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
