@@ -253,15 +253,15 @@ namespace Services
 
         private bool ShouldProcessJobs(int syncJobsCount, int totalSyncJobsCount)
             {
-                if (syncJobsCount < _jobTriggerConfig.MinimumJobsToTriggerRun)
+                if (syncJobsCount < _jobTriggerConfig.JobCountThreshold)
                 {
                     return true;
                 }
-                else if (syncJobsCount >= _jobTriggerConfig.MinimumJobsToTriggerRun)
+                else if (syncJobsCount >= _jobTriggerConfig.JobCountThreshold)
                 {
                     double percentage = ((double)syncJobsCount / totalSyncJobsCount) * 100;
 
-                    if (percentage > _jobTriggerConfig.jobsPercentageToStopTriggeringRuns)
+                    if (percentage > _jobTriggerConfig.JobPercentThreshold)
                     {
                         return false;
                     }
