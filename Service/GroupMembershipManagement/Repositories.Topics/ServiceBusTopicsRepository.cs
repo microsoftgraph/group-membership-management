@@ -47,8 +47,10 @@ namespace Repositories.ServiceBusTopics
                 await _serviceBusSender.SendMessageAsync(sourceGroupMessage);
             }
 
+            var destinationType = (JArray.Parse(job.Destination)[0] as JObject)["type"].Value<string>(); 
+
             var destinationGroupMessage = CreateMessage(job);
-            destinationGroupMessage.ApplicationProperties.Add("Type", "GroupMembership");
+            destinationGroupMessage.ApplicationProperties.Add("Type", destinationType);
             destinationGroupMessage.ApplicationProperties.Add("TotalParts", totalParts);
             destinationGroupMessage.ApplicationProperties.Add("CurrentPart", index);
             destinationGroupMessage.ApplicationProperties.Add("IsDestinationPart", true);
