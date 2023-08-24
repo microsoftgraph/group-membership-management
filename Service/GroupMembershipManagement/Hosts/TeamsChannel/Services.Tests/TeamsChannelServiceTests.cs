@@ -48,7 +48,7 @@ namespace Services.Tests
             _mockTeamsChannelRepository.Setup<Task<List<AzureADTeamsUser>>>(repo => repo.ReadUsersFromChannelAsync(It.IsIn<AzureADTeamsChannel>(_mockChannels.Keys), It.IsAny<Guid>()))
                 .ReturnsAsync((AzureADTeamsChannel c, Guid g) => _mockChannels[c]);
             _mockTeamsChannelRepository.Setup<Task<string>>(repo => repo.GetChannelTypeAsync(It.IsIn<AzureADTeamsChannel>(_mockChannels.Keys), It.IsAny<Guid>()))
-                .ReturnsAsync((AzureADTeamsChannel tc, Guid _) => tc.ChannelId == "some channel" ? "Private" : "Standard");
+                .ReturnsAsync("private");
 
             _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
@@ -99,7 +99,7 @@ namespace Services.Tests
                     TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
                     Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
-                    Destination = @"[{""type"":""TeamsChannel"",""value"":{""groupId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
+                    Destination = @"[{""type"":""TeamsChannel"",""value"":{""objectId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
                 }
             };
 
@@ -107,31 +107,18 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task VerifyRejectsInvalidDestinationQuery()
+        public async Task VerifyRejectsStandardTeamsChannel()
         {
-            var badSyncInfo = new ChannelSyncInfo
-            {
-                TotalParts = 1,
-                CurrentPart = 2,
-                IsDestinationPart = false,
-                SyncJob = new SyncJob
-                {
-                    RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
-                    Status = SyncStatus.InProgress.ToString(),
-                    TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
-                    Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
-                    Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
-                    Destination = @"[{""type"":""TeamsChannel"",""value"":{""XXgroupIdXX"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
-                }
-            };
+            _mockTeamsChannelRepository.Setup(repo => repo.GetChannelTypeAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid>()))
+               .ReturnsAsync("standard");
 
-            var verification = await _service.VerifyChannelAsync(badSyncInfo);
+            var verification = await _service.VerifyChannelAsync(_syncInfo);
 
             Assert.IsFalse(verification.isGood);
         }
 
         [TestMethod]
-        public async Task VerifyRejectsNonDestinationPrivateChannels()
+        public async Task VerifyRejectsNonDestinationTeamsChannels()
         {
             var badSyncInfo = new ChannelSyncInfo
             {
@@ -145,7 +132,7 @@ namespace Services.Tests
                     TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
                     Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
-                    Destination = @"[{""type"":""TeamsChannel"",""value"":{""groupId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
+                    Destination = @"[{""type"":""TeamsChannel"",""value"":{""objectId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
                 }
             };
 
@@ -156,7 +143,7 @@ namespace Services.Tests
 
 
         [TestMethod]
-        public async Task VerifyAcceptsGoodSync()
+        public async Task VerifyAcceptsValidSync()
         {
             var verification = await _service.VerifyChannelAsync(_syncInfo);
 

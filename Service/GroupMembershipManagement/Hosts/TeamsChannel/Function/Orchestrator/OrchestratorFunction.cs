@@ -69,7 +69,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
                        new LoggerRequest
                        {
                            RunId = runId,
-                           Message = $"Target office group did not validate. Marked as {channelSyncInfo.SyncJob.Status}.",
+                           Message = $"Teams Channel Destination did not validate. Marked as {channelSyncInfo.SyncJob.Status}.",
                            Verbosity = VerbosityLevel.DEBUG
                        });
 

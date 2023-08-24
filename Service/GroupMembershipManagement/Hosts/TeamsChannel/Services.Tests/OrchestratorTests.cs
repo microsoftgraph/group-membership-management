@@ -110,7 +110,7 @@ namespace Services.Tests
                     TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
                     Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
-                    Destination = @"[{""type"":""TeamsChannel"",""value"":{""groupId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
+                    Destination = @"[{""type"":""TeamsChannel"",""value"":{""objectId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
                 }
             };
 
@@ -132,7 +132,7 @@ namespace Services.Tests
                     TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
                     Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
-                    Destination = @"[{""type"":""TeamsChannel"",""value"":{""groupId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
+                    Destination = @"[{""type"":""TeamsChannel"",""value"":{""objectId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
                 }
             };
 
@@ -172,7 +172,7 @@ namespace Services.Tests
                     TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
                     Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
-                    Destination = @"[{""type"":""TeamsChannel"",""value"":{""groupId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
+                    Destination = @"[{""type"":""TeamsChannel"",""value"":{""objectId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
                 }
             };
 
@@ -208,7 +208,7 @@ namespace Services.Tests
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
-                                               It.Is<LogMessage>(m => m.Message.Contains("Target office group did not validate.")),
+                                               It.Is<LogMessage>(m => m.Message.Contains("Teams Channel Destination did not validate.")),
                                                It.IsAny<VerbosityLevel>(),
                                                It.IsAny<string>(),
                                                It.IsAny<string>()

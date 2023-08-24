@@ -51,27 +51,27 @@ namespace TeamsChannel.Service
             var destinationArray = JArray.Parse(channelSyncInfo.SyncJob.Destination);
             var currentDestination = (destinationArray[0] as JObject)["value"];
 
-            if (currentDestination == null || currentDestination["groupId"] == null || currentDestination["channelId"] == null)
-            {
-                await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, invalid destination query!", RunId = runId });
-                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { channelSyncInfo.SyncJob }, SyncStatus.DestinationQueryNotValid);
-                return (null, isGood: false);
-            }
-
             var azureADTeamsChannel = new AzureADTeamsChannel
             {
-                ObjectId = Guid.Parse(currentDestination["groupId"].Value<string>()),
+                ObjectId = Guid.Parse(currentDestination["objectId"].Value<string>()),
                 ChannelId = currentDestination["channelId"].Value<string>()
             };
 
             if (!channelSyncInfo.IsDestinationPart)
             {
                 await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, group {azureADTeamsChannel.ObjectId} and channel {azureADTeamsChannel.ChannelId} is not a destination.", RunId = runId });
-                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { channelSyncInfo.SyncJob }, SyncStatus.PrivateChannelNotDestination);
+                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { channelSyncInfo.SyncJob }, SyncStatus.TeamsChannelNotDestination);
                 return (azureADTeamsChannel, isGood: false);
             }
 
             var destType = await _teamsChannelRepository.GetChannelTypeAsync(azureADTeamsChannel, runId);
+
+            if (destType == "standard")
+            {
+                await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, channel {azureADTeamsChannel.ChannelId} from group {azureADTeamsChannel.ObjectId} is a standard channel.", RunId = runId });
+                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { channelSyncInfo.SyncJob }, SyncStatus.StandardTeamsChannel);
+                return (azureADTeamsChannel, isGood: false);
+            }
 
             await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, Channel {azureADTeamsChannel.ChannelId} of group {azureADTeamsChannel.ObjectId} is of type {destType}.", RunId = runId });
 
