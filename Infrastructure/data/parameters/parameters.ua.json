@@ -58,12 +58,12 @@
           {
             "name": "GraphUpdater",
             "ruleName": "updaterType",
-            "ruleSqlExpression": "Type = 'GraphUpdater'"
+            "ruleSqlExpression": "Type = 'GroupMembership'"
           },
           {
             "name": "TeamsChannelUpdater",
             "ruleName": "updaterType",
-            "ruleSqlExpression": "Type = 'TeamsChannelUpdater'"
+            "ruleSqlExpression": "Type = 'TeamsChannel'"
           }
         ]
       }
