@@ -6,8 +6,8 @@ import {
   type IProcessedStyleSet,
   type IIconProps
 } from '@fluentui/react';
-import { CommandBarButton } from '@fluentui/react/lib/Button';
-import { Stack, type IStackStyles } from '@fluentui/react/lib/Stack';
+import { ActionButton } from '@fluentui/react/lib/Button';
+import { Stack } from '@fluentui/react/lib/Stack';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -24,7 +24,6 @@ const getClassNames = classNamesFunction<
   IPageHeaderStyles
 >();
 
-const stackStyles: Partial<IStackStyles> = { root: { height: 44 } };
 const leftArrowIcon: IIconProps = { iconName: 'ChevronLeftMed' };
 
 export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
@@ -49,8 +48,8 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
   return (
     <Stack className={classNames.root}>
       {
-      !backButtonHidden && <Stack horizontal styles={stackStyles}>
-        <CommandBarButton
+      !backButtonHidden && <Stack horizontal>
+        <ActionButton
           iconProps={leftArrowIcon}
           text={t('back') as string}
           onClick={backButtonOnClick}

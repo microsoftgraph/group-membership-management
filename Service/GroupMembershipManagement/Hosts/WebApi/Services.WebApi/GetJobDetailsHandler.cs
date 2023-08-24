@@ -5,6 +5,7 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using System.Net;
 using SyncJobDetailsDTO = WebApi.Models.DTOs.SyncJobDetails;
 
 namespace Services{
@@ -12,6 +13,7 @@ namespace Services{
     {
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
+        private readonly ILoggingRepository _loggingRepository;
 
         public GetJobDetailsHandler(ILoggingRepository loggingRepository,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
@@ -19,13 +21,26 @@ namespace Services{
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
+            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         protected override async Task<GetJobDetailsResponse> ExecuteCoreAsync(GetJobDetailsRequest request)
         {
             var response = new GetJobDetailsResponse();
             SyncJob job = await _databaseSyncJobsRepository.GetSyncJobAsync(request.SyncJobId);
-            var endpoints = await GetGroupEndpointsAsync(request.SyncJobId);
+            List<string> endpoints = new List<string>();
+
+            try
+            {
+                endpoints = await GetGroupEndpointsAsync(request.SyncJobId);
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Unable to retrieve group endpoints\n{ex.GetBaseException()}"
+                });
+            }
 
             bool isRequestorOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(job.Requestor, job.TargetOfficeGroupId);
             string requestor = isRequestorOwner ? job.Requestor : job.Requestor + " (Not an Owner)";
