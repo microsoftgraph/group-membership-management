@@ -157,7 +157,7 @@ param appConfigurationKeyData array = [
     }
   }        
   {
-    key: 'JobTrigger:MinimalJobs'
+    key: 'JobTrigger:MinimumJobsToTriggerRun'
     value: '100'
     contentType: 'integer'
     tag: {
@@ -165,7 +165,7 @@ param appConfigurationKeyData array = [
     }
   }
   {
-    key: 'JobTrigger:StopThreshold'
+    key: 'JobTrigger:jobsPercentageToStopTriggeringRuns'
     value: '25'
     contentType: 'integer'
     tag: {

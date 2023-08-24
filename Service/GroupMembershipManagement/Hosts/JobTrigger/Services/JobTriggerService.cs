@@ -70,8 +70,8 @@ namespace Services
             var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
             var filteredJobs = ApplyJobTriggerFilters(jobs).ToList();
 			var totalJobs = await _databaseSyncJobsRepository.GetSyncJobCountAsync(true, SyncStatus.All);
-			var proceedJobsFlag = ShouldProcessJobs(filteredJobs.Count, totalJobs);
-			return (filteredJobs, proceedJobsFlag);
+			var allowJobTriggerToRun = ShouldProcessJobs(filteredJobs.Count, totalJobs);
+			return (filteredJobs, allowJobTriggerToRun);
         }
 
         public async Task<string> GetGroupNameAsync(SyncJob job)
@@ -253,15 +253,15 @@ namespace Services
 
         private bool ShouldProcessJobs(int syncJobsCount, int totalSyncJobsCount)
             {
-                if (syncJobsCount < _jobTriggerConfig.MinimalJobs)
+                if (syncJobsCount < _jobTriggerConfig.MinimumJobsToTriggerRun)
                 {
                     return true;
                 }
-                else if (syncJobsCount >= _jobTriggerConfig.MinimalJobs)
+                else if (syncJobsCount >= _jobTriggerConfig.MinimumJobsToTriggerRun)
                 {
                     double percentage = ((double)syncJobsCount / totalSyncJobsCount) * 100;
 
-                    if (percentage > _jobTriggerConfig.StopThreshold)
+                    if (percentage > _jobTriggerConfig.jobsPercentageToStopTriggeringRuns)
                     {
                         return false;
                     }

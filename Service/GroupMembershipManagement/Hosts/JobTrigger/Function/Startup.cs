@@ -32,8 +32,8 @@ namespace Hosts.JobTrigger
             builder.Services.AddOptions<JobTriggerConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.GMMHasGroupReadWriteAllPermissions = GetBoolSetting(configuration, "JobTrigger:IsGroupReadWriteAllGranted", false);
-                settings.MinimalJobs = GetIntSetting(configuration, "JobTrigger:MinimalJobs", 100); 
-                settings.StopThreshold = GetIntSetting(configuration, "JobTrigger:StopThreshold", 25);
+                settings.MinimumJobsToTriggerRun = GetIntSetting(configuration, "JobTrigger:MinimumJobsToTriggerRun", 100); 
+                settings.jobsPercentageToStopTriggeringRuns = GetIntSetting(configuration, "JobTrigger:jobsPercentageToStopTriggeringRuns", 25);
             });
 
             builder.Services.AddSingleton<IJobTriggerConfig>(services =>
@@ -41,8 +41,8 @@ namespace Hosts.JobTrigger
                 var jobTriggerOptions = services.GetService<IOptions<JobTriggerConfig>>().Value;
                 return new JobTriggerConfig(
                     jobTriggerOptions.GMMHasGroupReadWriteAllPermissions, 
-                    jobTriggerOptions.MinimalJobs,
-                    jobTriggerOptions.StopThreshold
+                    jobTriggerOptions.MinimumJobsToTriggerRun,
+                    jobTriggerOptions.jobsPercentageToStopTriggeringRuns
                 );
             });
 

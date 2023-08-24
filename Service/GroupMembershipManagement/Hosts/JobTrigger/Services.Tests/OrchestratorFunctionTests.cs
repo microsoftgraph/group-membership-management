@@ -76,7 +76,7 @@ namespace Services.Tests
         }
 
 		[TestMethod]
-		public async Task ProceedJobsFlagFalse()
+		public async Task allowJobTriggerToRunFalse()
 		{
 			var loggingRepository = new Mock<ILoggingRepository>();
 			var graphRepository = new Mock<IGraphGroupRepository>();
@@ -86,9 +86,9 @@ namespace Services.Tests
 			var emptySyncJobsList = new List<SyncJob>();
 			var loggerJobProperties = new Dictionary<Guid, LogProperties>();
 			loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
-			bool proceedJobsFlag = false;
+			bool allowJobTriggerToRun = false;
 			jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
-											.ReturnsAsync((syncJobs, proceedJobsFlag));
+											.ReturnsAsync((syncJobs, allowJobTriggerToRun));
 			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<object>()))
 						.Returns(() => CallGetSyncJobsSegmentAsync(loggingRepository.Object, jobTriggerService.Object));
 

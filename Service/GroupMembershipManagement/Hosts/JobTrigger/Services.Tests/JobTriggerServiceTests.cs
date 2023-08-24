@@ -538,8 +538,8 @@ namespace Services.Tests
 			_syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
 			var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync();
-			var proceedJobsFlag = bulkSegment.proceedJobsFlag;
-			Assert.AreEqual(true, proceedJobsFlag);
+			var allowJobTriggerToRun = bulkSegment.allowJobTriggerToRun;
+			Assert.AreEqual(true, allowJobTriggerToRun);
 		}
 
 		private class MockEmail<T> : IEmailSenderRecipient

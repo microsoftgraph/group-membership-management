@@ -8,15 +8,15 @@ public class JobTriggerConfig : IJobTriggerConfig
     {
         public JobTriggerConfig() {}
 
-        public JobTriggerConfig(bool gmmHasGroupReadWriteAllPermissions, int minimalJobs, int stopThreshold)
+        public JobTriggerConfig(bool gmmHasGroupReadWriteAllPermissions, int MinimumJobsToTriggerRun, int jobsPercentageToStopTriggeringRuns)
         {
             GMMHasGroupReadWriteAllPermissions = gmmHasGroupReadWriteAllPermissions;
-            MinimalJobs = minimalJobs;
-            StopThreshold = stopThreshold;
+            MinimumJobsToTriggerRun = MinimumJobsToTriggerRun;
+            jobsPercentageToStopTriggeringRuns = jobsPercentageToStopTriggeringRuns;
         }
 
         public bool GMMHasGroupReadWriteAllPermissions { get; set; }
-        public int MinimalJobs { get; set; }  
-        public int StopThreshold { get; set; }  
+        public int MinimumJobsToTriggerRun { get; set; }  
+        public int jobsPercentageToStopTriggeringRuns { get; set; }  
     }
 }

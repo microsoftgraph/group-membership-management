@@ -29,7 +29,7 @@ namespace Hosts.JobTrigger
             var (tableQuerySegment, proceedJobsFlag) = await _jobTriggerService.GetSyncJobsAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
-            if (!proceedJobsFlag)
+            if (!allowJobTriggerToRun)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function is not proceeding with {tableQuerySegment.Count} jobs due to JobTrigger threshold limit exceed." }, VerbosityLevel.DEBUG);
                 return new List<SyncJob>();
