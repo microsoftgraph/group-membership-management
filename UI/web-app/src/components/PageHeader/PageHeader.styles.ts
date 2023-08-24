@@ -7,11 +7,16 @@ import {
 } from './PageHeader.types';
 
 export const getStyles = (props: IPageHeaderStyleProps): IPageHeaderStyles => {
-  const { className } = props;
+  const { className, theme } = props;
 
   return {
     root: [{
-      padding: '19px 0px 19px 36px'
+      padding: '12px 37px',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      display: 'flex',
+      width: '100%',
+      backgroundColor: theme.palette.neutralLight,
     }, className],
   };
 };

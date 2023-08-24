@@ -203,6 +203,11 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
           {t('JobDetailsPage.labels.groupLinks')}
         </Text>
         <Text style={itemData} variant="medium" block>
+          <ul>
+            {job.endpoints.map((str, index) => (
+              <li key={index}>{str}</li>
+            ))}
+          </ul>
         </Text>
       </Stack.Item>
     </Stack>
