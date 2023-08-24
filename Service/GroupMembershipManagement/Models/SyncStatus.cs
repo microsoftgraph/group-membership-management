@@ -20,10 +20,10 @@ namespace Models
         CustomerPaused = 12,
         StuckInProgress = 13,
         ErroredDueToStuckInProgress = 14,
-        PrivateChannelNotDestination = 15,
+        TeamsChannelNotDestination = 15,
         DestinationQueryNotValid = 16,
         GuestUsersCannotBeAddedToUnifiedGroup = 17,
-        TeamsChannelNotPrivate = 18,
+        StandardTeamsChannel = 18,
         TeamsChannelError = 19
     }
 }
