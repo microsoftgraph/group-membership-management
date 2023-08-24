@@ -243,8 +243,14 @@ namespace Hosts.MembershipAggregator
             newMembership.SourceMembers.AddRange(membersToAdd);
             newMembership.SourceMembers.AddRange(membersToRemove);
 
+            var serializerSettings = new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore, // Ignores null values during serialization
+                DefaultValueHandling = DefaultValueHandling.Ignore
+            };
+
             var filePath = GenerateFileName(syncJob, "Aggregated", context);
-            var content = TextCompressor.Compress(JsonConvert.SerializeObject(newMembership));
+            var content = TextCompressor.Compress(JsonConvert.SerializeObject(newMembership, serializerSettings));
 
             return new FileUploaderRequest { FilePath = filePath, Content = content, SyncJob = syncJob };
         }
