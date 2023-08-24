@@ -38,7 +38,7 @@ namespace Hosts.JobTrigger
 
                 if (canWriteToGroup)
                 {
-                    var endpoints = await _jobTriggerService.GetGroupEndpointsAsync(syncJob.TargetOfficeGroupId);
+                    var endpoints = await _jobTriggerService.GetGroupEndpointsAsync(syncJob);
                     await _loggingRepository.LogMessageAsync(new LogMessage
                     {
                         RunId = syncJob.RunId,

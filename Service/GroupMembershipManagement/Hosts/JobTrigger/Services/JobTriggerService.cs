@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
+using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -68,9 +69,10 @@ namespace Services
             return ApplyJobTriggerFilters(jobs).ToList();
         }
 
-        public async Task<string> GetGroupNameAsync(Guid groupId)
+        public async Task<string> GetGroupNameAsync(SyncJob job)
         {
-            return await _graphGroupRepository.GetGroupNameAsync(groupId);
+            var destinationObjectId = (await ParseAndValidateDestination(job)).DestinationObject.Value.ObjectId;
+            return await _graphGroupRepository.GetGroupNameAsync(destinationObjectId);
         }
 
         public async Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters, string templateDirectory = "")
@@ -80,7 +82,8 @@ namespace Services
 
             if (!SyncDisabledNoGroupEmailBody.Equals(emailContentTemplateName, StringComparison.InvariantCultureIgnoreCase))
             {
-                var owners = await _graphGroupRepository.GetGroupOwnersAsync(job.TargetOfficeGroupId);
+                var destinationObjectId = (await ParseAndValidateDestination(job)).DestinationObject.Value.ObjectId;
+                var owners = await _graphGroupRepository.GetGroupOwnersAsync(destinationObjectId);
                 ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
             }
 
@@ -136,14 +139,16 @@ namespace Services
 
         public async Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job, string templateDirectory = "")
         {
+            var destinationObjectId = (await ParseAndValidateDestination(job)).DestinationObject.Value.ObjectId;
+
             foreach (var strat in new JobVerificationStrategy[] {
-                new JobVerificationStrategy { TestFunction = _graphGroupRepository.GroupExists, StatusMessage = $"Destination group {job.TargetOfficeGroupId} exists.", ErrorMessage = $"destination group {job.TargetOfficeGroupId} doesn't exist.", EmailBody = SyncDisabledNoGroupEmailBody },
-                new JobVerificationStrategy { TestFunction = (groupId) => GMMCanWriteToGroupAsync(groupId), StatusMessage = $"GMM is an owner of destination group {job.TargetOfficeGroupId}.", ErrorMessage = $"GMM is not an owner of destination group {job.TargetOfficeGroupId}.", EmailBody = SyncDisabledNoOwnerEmailBody }})
+                new JobVerificationStrategy { TestFunction = _graphGroupRepository.GroupExists, StatusMessage = $"Destination group {destinationObjectId} exists.", ErrorMessage = $"destination group {destinationObjectId} doesn't exist.", EmailBody = SyncDisabledNoGroupEmailBody },
+                new JobVerificationStrategy { TestFunction = (groupId) => GMMCanWriteToGroupAsync(groupId), StatusMessage = $"GMM is an owner of destination group {destinationObjectId}.", ErrorMessage = $"GMM is not an owner of destination group {destinationObjectId}.", EmailBody = SyncDisabledNoOwnerEmailBody }})
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Checking: " + strat.StatusMessage });
                 // right now, we stop after the first failed strategy, because it doesn't make sense to find that the destination group doesn't exist and then check if we own it.
                 // this can change in the future, when/if we have more than two things to check here.
-                if (await strat.TestFunction(job.TargetOfficeGroupId) == false)
+                if (await strat.TestFunction(destinationObjectId) == false)
                 {
                     await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Marking sync job as failed because " + strat.ErrorMessage });
                     await _mailRepository.SendMailAsync(new EmailMessage
@@ -154,7 +159,7 @@ namespace Services
                         SenderPassword = _emailSenderAndRecipients.SenderPassword,
                         ToEmailAddresses = job.Requestor,
                         CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
-                        AdditionalContentParams = new[] { job.TargetOfficeGroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses }
+                        AdditionalContentParams = new[] { destinationObjectId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses }
                     }, job.RunId, templateDirectory);
                     return false;
                 }
@@ -174,9 +179,53 @@ namespace Services
             return isAppIdOwner;
         }
 
-        public async Task<List<string>> GetGroupEndpointsAsync(Guid groupId)
+        public async Task<List<string>> GetGroupEndpointsAsync(SyncJob job)
         {
-            return await _graphGroupRepository.GetGroupEndpointsAsync(groupId);
+            var destinationObjectId = (await ParseAndValidateDestination(job)).DestinationObject.Value.ObjectId;
+            return await _graphGroupRepository.GetGroupEndpointsAsync(destinationObjectId);
+        }
+
+        public async Task<(bool IsValid, DestinationObject DestinationObject)> ParseAndValidateDestination(SyncJob syncJob)
+        {
+            if (string.IsNullOrWhiteSpace(syncJob.Destination)) return (false, null);
+
+            JObject destinationQuery = JArray.Parse(syncJob.Destination)[0] as JObject;
+            Guid objectIdGuid;
+            string type;
+
+            if (destinationQuery["value"] == null ||
+                destinationQuery["type"] == null ||
+                destinationQuery["value"].SelectToken("objectId") == null ||
+                !Guid.TryParse(destinationQuery["value"]["objectId"].Value<string>(), out objectIdGuid)) return (false, null);
+
+            type = destinationQuery["type"].Value<string>();
+
+            if (type == "TeamsChannel")
+            {
+                if (destinationQuery["value"].SelectToken("channelId") == null) return (false, null);
+
+                return (true, new DestinationObject
+                {
+                    Type = type,
+                    Value = new TeamsChannelDestinationValue
+                    {
+                        ObjectId = objectIdGuid,
+                        ChannelId = destinationQuery["value"]["channelId"].Value<string>()
+                    }
+                });
+            }
+            else if (type == "GroupMembership")
+            {
+                return (true, new DestinationObject
+                {
+                    Type = type,
+                    Value = new GroupDestinationValue
+                    {
+                        ObjectId = objectIdGuid,
+                    }
+                });
+            }
+            else { return (false, null); }
         }
 
         private class JobVerificationStrategy

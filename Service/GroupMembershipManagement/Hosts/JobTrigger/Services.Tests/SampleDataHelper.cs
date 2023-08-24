@@ -28,7 +28,8 @@ namespace Services.Tests
                     Status = SyncStatus.Idle.ToString(),
                     TargetOfficeGroupId = Guid.NewGuid(),
                     LastRunTime = lastRunTime ?? SqlDateTime.MinValue.Value,
-                    RunId = Guid.NewGuid()
+                    RunId = Guid.NewGuid(),
+                    Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]"
                 };
 
                 jobs.Add(job);

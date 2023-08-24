@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs;
 using Azure.Messaging.ServiceBus;
 using System.Threading;
 using System.Data.SqlTypes;
+using Newtonsoft.Json;
 
 namespace Services.Tests
 {
@@ -56,8 +57,16 @@ namespace Services.Tests
             _frequency = 0;
 
             _jobTriggerService.Setup(x => x.GroupExistsAndGMMCanWriteToGroupAsync(It.IsAny<SyncJob>(), It.IsAny<string>())).ReturnsAsync(() => _canWriteToGroups);
-            _jobTriggerService.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>())).ReturnsAsync(() => "Test Group");
-            _jobTriggerService.Setup(x => x.GetGroupEndpointsAsync(It.IsAny<Guid>())).ReturnsAsync(() => _endpoints);
+            _jobTriggerService.Setup(x => x.GetGroupNameAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => "Test Group");
+            _jobTriggerService.Setup(x => x.GetGroupEndpointsAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => _endpoints);
+            _jobTriggerService.Setup(x => x.ParseAndValidateDestination(It.IsAny<SyncJob>())).ReturnsAsync(() => (true, new DestinationObject
+            {
+                Type = "GroupMembership",
+                Value = new GroupDestinationValue
+                {
+                    ObjectId = Guid.NewGuid()
+                }
+            }));
 
             _context.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<SyncJob>()))
                                         .Callback<string, object>(async (name, request) =>
@@ -65,6 +74,9 @@ namespace Services.Tests
                                             _frequency = await CallJobTrackerFunctionAsync(request as SyncJob, DateTime.UtcNow);
                                         })
                                         .ReturnsAsync(() => _frequency);
+
+            _context.Setup(x => x.CallActivityAsync<(bool IsValid, DestinationObject DestinationObject)>(It.Is<string>(x => x == nameof(ParseAndValidateDestinationFunction)), It.IsAny<SyncJob>()))
+                   .Returns(async () => await CallParseAndValidateDestinationFunction());
 
             _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
                     .Callback<string, object>(async (name, request) =>
@@ -112,7 +124,51 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task HandleInvalidJSONQuery()
+        public async Task HandleInvalidDestinationQueryException()
+        {
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+            _jobTriggerService.Setup(x => x.ParseAndValidateDestination(It.IsAny<SyncJob>())).Throws<JsonReaderException>();
+
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                                _telemetryClient,
+                                                                _emailSenderAndRecipients.Object,
+                                                                _gmmResources.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
+
+            _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
+            _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<SyncStatus>(s => s == SyncStatus.DestinationQueryNotValid), It.IsAny<SyncJob>()), Times.Once());
+
+            _loggingRespository.Verify(x => x.LogMessageAsync(
+                It.Is<LogMessage>(m => m.Message.Contains("Destination query is not valid")),
+                It.IsAny<VerbosityLevel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()));
+        }
+
+        [TestMethod]
+        public async Task HandleInvalidDestinationQuery()
+        {
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+            _jobTriggerService.Setup(x => x.ParseAndValidateDestination(It.IsAny<SyncJob>())).ReturnsAsync(() => (false, null));
+
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                                _telemetryClient,
+                                                                _emailSenderAndRecipients.Object,
+                                                                _gmmResources.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
+
+            _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
+            _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<SyncStatus>(s => s == SyncStatus.DestinationQueryNotValid), It.IsAny<SyncJob>()), Times.Once());
+
+            _loggingRespository.Verify(x => x.LogMessageAsync(
+                It.Is<LogMessage>(m => m.Message.Contains("Destination query is empty or missing required fields")),
+                It.IsAny<VerbosityLevel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()));
+        }
+
+        [TestMethod]
+        public async Task HandleInvalidSourceQuery()
         {
             _syncJob.Query = "{invalid json query}";
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
@@ -127,7 +183,7 @@ namespace Services.Tests
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid), It.IsAny<SyncJob>()), Times.Once());
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.Contains("JSON query is not valid")),
+                It.Is<LogMessage>(m => m.Message.Contains("Source query is not valid")),
                 It.IsAny<VerbosityLevel>(),
                 It.IsAny<string>(),
                 It.IsAny<string>()));
@@ -148,7 +204,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task HandleEmptyJSONQuery()
+        public async Task HandleEmptySourceQuery()
         {
             _syncJob.Query = null;
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
@@ -163,15 +219,16 @@ namespace Services.Tests
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid), It.IsAny<SyncJob>()), Times.Once());
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.Contains("Job query is empty for job")),
+                It.Is<LogMessage>(m => m.Message.Contains("Source query is empty for job")),
                 It.IsAny<VerbosityLevel>(),
                 It.IsAny<string>(),
                 It.IsAny<string>()));
         }
 
         [TestMethod]
-        public async Task ProcessValidJSONQuery()
+        public async Task ProcessValidSourceAndDestinationQueries()
         {
+
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
 
             _context.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<SyncJob>()))
@@ -188,7 +245,13 @@ namespace Services.Tests
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => !m.Message.Contains("JSON query is not valid") && !m.Message.Contains("Job query is empty for job")),
+                It.Is<LogMessage>(m => !m.Message.Contains("Source query is not valid") && !m.Message.Contains("Source query is empty for job")),
+                It.IsAny<VerbosityLevel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()));
+
+            _loggingRespository.Verify(x => x.LogMessageAsync(
+                It.Is<LogMessage>(m => !m.Message.Contains("Destination query is not valid") && !m.Message.Contains("Destination query is empty for job")),
                 It.IsAny<VerbosityLevel>(),
                 It.IsAny<string>(),
                 It.IsAny<string>()));
@@ -198,7 +261,7 @@ namespace Services.Tests
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>()), Times.Once());
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()), Times.Once());
 
-            _jobTriggerService.Verify(x => x.GetGroupNameAsync(It.IsAny<Guid>()), Times.Once());
+            _jobTriggerService.Verify(x => x.GetGroupNameAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>(), It.IsAny<string>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendMessageAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
@@ -246,7 +309,7 @@ namespace Services.Tests
             await suborchestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => !m.Message.Contains("JSON query is not valid") && !m.Message.Contains("Job query is empty for job")),
+                It.Is<LogMessage>(m => !m.Message.Contains("Source query is not valid") && !m.Message.Contains("Source query is empty for job")),
                 It.IsAny<VerbosityLevel>(),
                 It.IsAny<string>(),
                 It.IsAny<string>()));
@@ -256,7 +319,7 @@ namespace Services.Tests
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>()), Times.Once());
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()), Times.Once());
 
-            _jobTriggerService.Verify(x => x.GetGroupNameAsync(It.IsAny<Guid>()), Times.Once());
+            _jobTriggerService.Verify(x => x.GetGroupNameAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>(), It.IsAny<string>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<SyncStatus>(s => s == SyncStatus.InProgress), It.IsAny<SyncJob>()), Times.Once());
@@ -266,6 +329,7 @@ namespace Services.Tests
                 It.Is<ServiceBusMessage>(m => (string)m.ApplicationProperties["Type"] == "GroupMembership"),
                 It.IsAny<CancellationToken>()),
                 Times.Exactly(2));
+
             serviceBusSender.Verify(x => x.SendMessageAsync(
                 It.Is<ServiceBusMessage>(m => m.ApplicationProperties.ContainsKey("IsDestinationPart")
                                               && (bool)m.ApplicationProperties["IsDestinationPart"]),
@@ -279,10 +343,9 @@ namespace Services.Tests
         {
             var serviceBusSender = new Mock<ServiceBusSender>();
 
-            var inProgressSyncJob = SampleDataHelper.CreateSampleSyncJobs(1, "GroupMembership").First();
-            inProgressSyncJob.Status = SyncStatus.InProgress.ToString();
+            _syncJob.Status = SyncStatus.InProgress.ToString();
 
-            _context.Setup(x => x.GetInput<SyncJob>()).Returns(inProgressSyncJob);
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
             _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()))
                     .Callback<string, object>(async (name, request) =>
                     {
@@ -316,7 +379,7 @@ namespace Services.Tests
             await suborchestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => !m.Message.Contains("JSON query is not valid") && !m.Message.Contains("Job query is empty for job")),
+                It.Is<LogMessage>(m => !m.Message.Contains("Source query is not valid") && !m.Message.Contains("Source query is empty for job")),
                 It.IsAny<VerbosityLevel>(),
                 It.IsAny<string>(),
                 It.IsAny<string>()));
@@ -326,7 +389,7 @@ namespace Services.Tests
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>()), Times.Once());
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()), Times.Once());
 
-            _jobTriggerService.Verify(x => x.GetGroupNameAsync(It.IsAny<Guid>()), Times.Once());
+            _jobTriggerService.Verify(x => x.GetGroupNameAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>(), It.IsAny<string>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<SyncStatus>(s => s == SyncStatus.StuckInProgress), It.IsAny<SyncJob>()), Times.Once());
@@ -335,6 +398,7 @@ namespace Services.Tests
             serviceBusSender.Verify(x => x.SendMessageAsync(
                 It.Is<ServiceBusMessage>(m => (string)m.ApplicationProperties["Type"] == "GroupMembership"),
                 It.IsAny<CancellationToken>()), Times.Exactly(2));
+
             serviceBusSender.Verify(x => x.SendMessageAsync(
                 It.Is<ServiceBusMessage>(m => m.ApplicationProperties.ContainsKey("IsDestinationPart")
                                               && (bool)m.ApplicationProperties["IsDestinationPart"]),
@@ -392,6 +456,11 @@ namespace Services.Tests
             Assert.AreEqual(SyncStatus.QueryNotValid, _syncStatus);
         }
 
+        private async Task<(bool IsValid, DestinationObject DestinationObject)> CallParseAndValidateDestinationFunction()
+        {
+            var parseAndValidateDestinationFunction = new ParseAndValidateDestinationFunction(_loggingRespository.Object, _jobTriggerService.Object);
+            return await parseAndValidateDestinationFunction.ParseAndValidateDestinationAsync(new SyncJob());
+        }
         private async Task<int> CallIdleJobsTrackerFunctionAsync(SyncJob syncJob)
         {
             var jobTrackerFunction = new JobTrackerFunction(_loggingRespository.Object);

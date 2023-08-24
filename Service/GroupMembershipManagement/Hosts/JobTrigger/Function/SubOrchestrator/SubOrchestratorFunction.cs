@@ -4,11 +4,14 @@ using JobTrigger.Activity.EmailSender;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.IdentityModel.Tokens;
 using Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.SyncJobsRepository;
+using Services;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
@@ -64,14 +67,53 @@ namespace Hosts.JobTrigger
 
             var frequency = await context.CallActivityAsync<int>(nameof(JobTrackerFunction), syncJob);
 
-            if (!context.IsReplaying) {
+            DestinationObject destinationObject = null;
+
+            try
+            {
+                var parsedAndValidatedDestination = await context.CallActivityAsync<(bool IsValid, DestinationObject DestinationObject)>(nameof(ParseAndValidateDestinationFunction), syncJob);
+                destinationObject =  parsedAndValidatedDestination.DestinationObject;
+               
+                if (!parsedAndValidatedDestination.IsValid)
+                {
+
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                        new LoggerRequest
+                        {
+                            RunId = (Guid)syncJob.RunId,
+                            Message = $"Destination query is empty or missing required fields for job RowKey:{syncJob.RowKey}"
+                        });
+
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.DestinationQueryNotValid, SyncJob = syncJob });
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationQueryNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                    return;
+                }
+            }
+            catch (JsonReaderException)
+            {
+
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                        new LoggerRequest
+                        {
+                            RunId = (Guid)syncJob.RunId,
+                            Message = $"Destination query is not valid for job RowKey:{syncJob.RowKey}"
+                        });
+
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.DestinationQueryNotValid, SyncJob = syncJob });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationQueryNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                return;
+            }
+
+
+            if (!context.IsReplaying)
+            {
                 if (syncJob.Status == SyncStatus.Idle.ToString())
                 {
-                    TrackIdleJobsEvent(frequency, syncJob.TargetOfficeGroupId);
+                    TrackIdleJobsEvent(frequency, destinationObject.Value.ObjectId);
                 }
                 else if (syncJob.Status == SyncStatus.InProgress.ToString())
                 {
-                    TrackInProgressJobsEvent(frequency, syncJob.TargetOfficeGroupId, syncJob.RunId);
+                    TrackInProgressJobsEvent(frequency, destinationObject.Value.ObjectId, syncJob.RunId);
                 }
             }
 
@@ -80,11 +122,6 @@ namespace Hosts.JobTrigger
                 if (!string.IsNullOrWhiteSpace(syncJob.Query))
                 {
                     var query = JToken.Parse(syncJob.Query);
-
-                    if (!context.IsReplaying)
-                    {
-                        TrackExclusionaryEvent(context, syncJob);
-                    }
                 }
                 else
                 {
@@ -93,7 +130,7 @@ namespace Hosts.JobTrigger
                         new LoggerRequest
                         {
                             RunId = (Guid)syncJob.RunId,
-                            Message = $"Job query is empty for job RowKey:{syncJob.RowKey}"
+                            Message = $"Source query is empty for job RowKey:{syncJob.RowKey}"
                         });
 
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
@@ -108,7 +145,7 @@ namespace Hosts.JobTrigger
                         new LoggerRequest
                         {
                             RunId = (Guid)syncJob.RunId,
-                            Message = $"JSON query is not valid for job RowKey:{syncJob.RowKey}"
+                            Message = $"Source query is not valid for job RowKey:{syncJob.RowKey}"
                         });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
@@ -116,7 +153,13 @@ namespace Hosts.JobTrigger
                 return;
             }
 
+            if (!context.IsReplaying)
+            {
+                TrackExclusionaryEvent(syncJob.Query, destinationObject.Value.ObjectId);
+            }
+
             var groupInformation = await context.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), syncJob);
+
             if (string.IsNullOrEmpty(groupInformation.Name))
             {
                 await context.CallActivityAsync(nameof(EmailSenderFunction),
@@ -127,7 +170,7 @@ namespace Hosts.JobTrigger
                                                     EmailContentTemplateName = SyncDisabledNoGroupEmailBody,
                                                     AdditionalContentParams = new[]
                                                     {
-                                                        syncJob.TargetOfficeGroupId.ToString(),
+                                                        destinationObject.Value.ToString(),
                                                         _emailSenderAndRecipients.SyncDisabledCCAddresses
                                                     },
                                                     FunctionDirectory = executionContext.FunctionAppDirectory
@@ -148,7 +191,7 @@ namespace Hosts.JobTrigger
                                                     EmailContentTemplateName = SyncStartedEmailBody,
                                                     AdditionalContentParams = new[]
                                                     {
-                                                            syncJob.TargetOfficeGroupId.ToString(),
+                                                            destinationObject.Value.ToString(),
                                                             groupInformation.Name,
                                                             _emailSenderAndRecipients.SupportEmailAddresses,
                                                             _gmmResources.LearnMoreAboutGMMUrl,
@@ -204,13 +247,13 @@ namespace Hosts.JobTrigger
             _telemetryClient.TrackEvent("NumberOfJobsStarted", jobsStartedEvent);
         }
 
-        private void TrackIdleJobsEvent(int frequency, Guid targetOfficeGroupId)
+        private void TrackIdleJobsEvent(int frequency, Guid destinationGroupObjectId)
         {
             var jobStarted = frequency >= 1 ? 1 : 0;
 
             var idleJobsEvent = new Dictionary<string, string>
             {
-                { "TargetOfficeGroupId", targetOfficeGroupId.ToString() },
+                { "DestinationGroupObjectId", destinationGroupObjectId.ToString() },
                 { "Frequency", frequency.ToString() },
                 { "JobStarted", jobStarted.ToString() }
             };
@@ -218,11 +261,11 @@ namespace Hosts.JobTrigger
             _telemetryClient.TrackEvent("IdleJobsTracker", idleJobsEvent);
         }
 
-        private void TrackInProgressJobsEvent(int frequency, Guid targetOfficeGroupId, Guid? runId)
+        private void TrackInProgressJobsEvent(int frequency, Guid destinationGroupObjectId, Guid? runId)
         {
             var inProgressJobsEvent = new Dictionary<string, string>
             {
-                { "TargetOfficeGroupId", targetOfficeGroupId.ToString() },
+                { "DestinationGroupObjectId", destinationGroupObjectId.ToString() },
                 { "Frequency", frequency.ToString() },
                 { "RunId", runId.ToString() }
             };
@@ -230,17 +273,17 @@ namespace Hosts.JobTrigger
             _telemetryClient.TrackEvent("InProgressJobsTracker", inProgressJobsEvent);
         }
 
-        private void TrackExclusionaryEvent(IDurableOrchestrationContext context, SyncJob syncJob)
+        private void TrackExclusionaryEvent(string query, Guid destinationGroupObjectId)
         {
-            var query = JArray.Parse(syncJob.Query);
-            var queryTypes = query.Select(x => new
+            var parsedQuery = JArray.Parse(query);
+            var queryTypes = parsedQuery.Select(x => new
             {
                 exclusionary = x["exclusionary"] != null ? (bool)x["exclusionary"] : false
             }).ToList();
 
             var exclusionaryEvent = new Dictionary<string, string>
             {
-                { "DestinationGroupObjectId", syncJob.TargetOfficeGroupId.ToString() },
+                { "DestinationGroupObjectId", destinationGroupObjectId.ToString() },
                 { "TotalNumberOfSourceParts", queryTypes.Count.ToString() },
                 { "NumberOfExclusionarySourceParts", queryTypes.Where(g => g.exclusionary).Count().ToString() }
             };

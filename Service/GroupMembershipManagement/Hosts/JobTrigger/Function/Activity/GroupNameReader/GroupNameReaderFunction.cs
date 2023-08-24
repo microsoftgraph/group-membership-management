@@ -3,6 +3,7 @@
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
+using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
@@ -24,11 +25,12 @@ namespace Hosts.JobTrigger
         public async Task<SyncJobGroup> GetGroupNameAsync([ActivityTrigger] SyncJob syncJob)
         {
             var group = new SyncJobGroup();
+            
             if (syncJob != null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
                 _jobTriggerService.RunId = syncJob.RunId ?? Guid.Empty;
-                var groupName = await _jobTriggerService.GetGroupNameAsync(syncJob.TargetOfficeGroupId);
+                var groupName = await _jobTriggerService.GetGroupNameAsync(syncJob);
                 group.SyncJob = syncJob;
                 group.Name = groupName;
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
