@@ -168,9 +168,9 @@ namespace Services.Tests
         private async Task<List<SyncJob>> CallGetSyncJobsAsync(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
         {
             var GetJobsFunction = new GetJobsFunction(jobTriggerService, loggingRepository);
-            var getJobsSegmentedResponse = await GetJobsFunction.GetJobsToUpdateAsync(
+            var getJobsResponse = await GetJobsFunction.GetJobsToUpdateAsync(
                 null);
-            return getJobsSegmentedResponse;
+            return getJobsResponse;
         }
     }
 }
