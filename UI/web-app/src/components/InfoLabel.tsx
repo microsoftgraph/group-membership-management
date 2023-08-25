@@ -15,7 +15,8 @@ const stackTokens: IStackTokens = {
 };
 
 const titleStyle: React.CSSProperties = {
-  fontWeight: 'bold'
+  fontSize: 14,
+  fontWeight: 600
 }
 
 export const InfoLabel: React.FunctionComponent<InfoLabelProps> = (
@@ -23,7 +24,7 @@ export const InfoLabel: React.FunctionComponent<InfoLabelProps> = (
 ) => {
   return (
     <Stack horizontal tokens={stackTokens}>
-      <Text style={titleStyle} variant="mediumPlus">{props.label}</Text>
+      <Text style={titleStyle}>{props.label}</Text>
       <TooltipHost content={props.description}>
         <Icon iconName="Info" />
       </TooltipHost>

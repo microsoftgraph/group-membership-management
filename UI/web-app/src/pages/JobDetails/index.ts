@@ -2,5 +2,4 @@
 // Licensed under the MIT license.
 
 export * from './JobDetails';
-export * from './JobsPage';
-export * from './OwnerPage';
+export * from './JobDetails.types';

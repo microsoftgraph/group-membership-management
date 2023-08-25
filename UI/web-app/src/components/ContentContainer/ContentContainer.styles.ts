@@ -23,7 +23,12 @@ export const getStyles = (props: IContentContainerStyleProps): IContentContainer
         },
         title: {
             textTransform: "uppercase",
-            flex: 1
+            flex: 1,
+            fontSize: '16px',
+            fontStyle: 'normal',
+            fontWeight: 600,
+            lineHeight: '22px',
+            color: theme.palette.neutralSecondary
         },
         linkButton: {
             // icon
