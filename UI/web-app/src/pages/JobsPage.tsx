@@ -15,7 +15,7 @@ export const JobsPage: React.FunctionComponent = () => {
   return (
     <Page>
       <PageHeader backButtonHidden>
-        <Stack horizontalAlign="space-between" horizontal>
+        <Stack horizontalAlign="space-between" horizontal style={{padding: '19px 0px 19px 36px'}}>
           <WelcomeName />
           <Banner />
         </Stack>

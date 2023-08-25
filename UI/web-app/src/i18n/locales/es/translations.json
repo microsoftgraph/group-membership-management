@@ -11,7 +11,7 @@
     "addOwnerButton": "Agregar GMM como propietario",
     "membershipManagement": "Membership Management",
     "learnMembershipManagement": "Aprenda cómo funciona Membership Management en su organización",
-    "JobDetailsPage": {
+    "JobDetails": {
         "labels": {
             "pageTitle": "Detalle de Membresía",
             "sectionTitle": "Detalle de Membresía",

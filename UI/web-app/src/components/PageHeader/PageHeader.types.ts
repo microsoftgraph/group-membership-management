@@ -10,6 +10,8 @@ import type React from 'react';
 
 export interface IPageHeaderStyles {
   root: IStyle;
+  backButton: IStyle;
+  separator: IStyle;
 }
 
 export interface IPageHeaderStyleProps {

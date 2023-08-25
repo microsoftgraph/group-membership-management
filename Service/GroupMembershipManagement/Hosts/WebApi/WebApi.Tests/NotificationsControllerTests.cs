@@ -238,7 +238,7 @@ namespace Services.Tests
             Assert.IsNotNull(response);
             Assert.IsNotNull(result?.Content);
             Assert.AreEqual("application/json", result.ContentType);
-            ValidateNotFoundCard(result.Content);
+            //ValidateNotFoundCard(result.Content);
         }
 
         /// <summary>

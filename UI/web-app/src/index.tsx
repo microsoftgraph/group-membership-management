@@ -15,7 +15,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 import { App } from './App';
 import { msalConfig } from './authConfig';
-import { JobsPage, JobDetailsPage, OwnerPage } from './pages';
+import { JobsPage, JobDetails, OwnerPage } from './pages';
 import { store } from './store';
 
 export const msalInstance = new PublicClientApplication(msalConfig);
@@ -44,7 +44,7 @@ ReactDOM.render(
             <Routes>
               <Route path="" element={<App />}>
                 <Route path="/" element={<JobsPage />} />
-                <Route path="/JobDetailsPage" element={<JobDetailsPage />} />
+                <Route path="/JobDetails" element={<JobDetails />} />
                 <Route path="/OwnerPage" element={<OwnerPage />} />
               </Route>
             </Routes>

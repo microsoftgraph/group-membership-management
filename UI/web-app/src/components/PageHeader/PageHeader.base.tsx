@@ -48,13 +48,16 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
   return (
     <Stack className={classNames.root}>
       {
-      !backButtonHidden && <Stack horizontal>
-        <ActionButton
-          iconProps={leftArrowIcon}
-          text={t('back') as string}
-          onClick={backButtonOnClick}
-        />
-      </Stack>
+        !backButtonHidden &&
+        <Stack horizontalAlign="start" verticalAlign='center'> 
+          <ActionButton
+            className={classNames.backButton}
+            iconProps={leftArrowIcon}
+            text={t('back') as string}
+            onClick={backButtonOnClick}
+          />
+          <div className={classNames.separator}></div>
+        </Stack>
       }
       {children}
     </Stack>

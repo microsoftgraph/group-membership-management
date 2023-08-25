@@ -71,7 +71,7 @@ namespace WebApi
             builder.Services.AddSingleton(sp =>
             {
                 var telemetryConfiguration = new TelemetryConfiguration();
-                telemetryConfiguration.InstrumentationKey = builder.Configuration.GetValue<string>("APPINSIGHTS_INSTRUMENTATIONKEY");
+                telemetryConfiguration.InstrumentationKey = builder.Configuration.GetValue<string>("Settings:APPINSIGHTS_INSTRUMENTATIONKEY");
                 telemetryConfiguration.TelemetryInitializers.Add(new OperationCorrelationTelemetryInitializer());
                 var tc = new TelemetryClient(telemetryConfiguration);
                 tc.Context.Operation.Name = "WebAPI";

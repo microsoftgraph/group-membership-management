@@ -24,7 +24,6 @@ export interface IBannerStyleProps {
 
 export interface IBannerProps
   extends React.AllHTMLAttributes<HTMLDivElement> {
-  backButtonHidden?: boolean;
   
   /**
    * Optional className to apply to the root of the component.

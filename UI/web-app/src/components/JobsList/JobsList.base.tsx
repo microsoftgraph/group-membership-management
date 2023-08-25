@@ -83,7 +83,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: true,
       isSorted: sortKey === 'targetGroupType',
       isSortedDescending,
-      showSortIconWhenUnsorted: true,
       columnActionsMode: 0
     },
     {
@@ -94,7 +93,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: true,
       isSorted: sortKey === 'targetGroupName',
       isSortedDescending,
-      showSortIconWhenUnsorted: true,
       columnActionsMode: 0
     },
     {
@@ -105,7 +103,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: true,
       isSorted: sortKey === 'lastSuccessfulRunTime',
       isSortedDescending,
-      showSortIconWhenUnsorted: true,
+      showSortIconWhenUnsorted: true
     },
     {
       key: 'estimatedNextRunTime',
@@ -115,7 +113,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: true,
       isSorted: sortKey === 'estimatedNextRunTime',
       isSortedDescending,
-      showSortIconWhenUnsorted: true,
       columnActionsMode: 0
     },
     {
@@ -126,7 +123,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: true,
       isSorted: sortKey === 'enabledOrNot',
       isSortedDescending,
-      showSortIconWhenUnsorted: true,
       columnActionsMode: 0
     },
     {
@@ -137,7 +133,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: true,
       isSorted: sortKey === 'actionRequired',
       isSortedDescending,
-      showSortIconWhenUnsorted: true,
       columnActionsMode: 0
     },
     {
@@ -221,7 +216,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     index?: number,
     ev?: React.FocusEvent<HTMLElement>
   ): void => {
-    navigate('/JobDetailsPage', { replace: false, state: { item: item } });
+    navigate('/JobDetails', { replace: false, state: { item: item } });
   };
 
   const onRefreshClicked = (
@@ -326,7 +321,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
             <ShimmeredDetailsList
               setKey="set"
               onColumnHeaderClick={onColumnHeaderClick}
-              items={items || []}
+              items={sortedItems || []}
               columns={columns}
               enableShimmer={!jobs || jobs.length === 0}
               layoutMode={DetailsListLayoutMode.justified}
