@@ -16,6 +16,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Tests.Repositories;
 using MockDatabaseSyncJobRepository = Repositories.Mocks.MockDatabaseSyncJobRepository;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 
 namespace Services.Tests
 {
@@ -31,7 +33,7 @@ namespace Services.Tests
         private GMMResources _gMMResources = null;
         private MockJobTriggerConfig _jobTriggerConfig = null;
 
-        private const string Organization = "Organization";
+		private const string Organization = "Organization";
         private const string GroupMembership = "GroupMembership";
         private const string EmailSubject = "EmailSubject";
         private const string SyncStartedEmailBody = "SyncStartedEmailBody";
@@ -60,7 +62,8 @@ namespace Services.Tests
                                         new MockKeyVaultSecret<IJobTriggerService>(), _mailRepository,
                                         new MockEmail<IEmailSenderRecipient>(),
                                         _gMMResources,
-                                        _jobTriggerConfig);
+                                        _jobTriggerConfig,
+                                        new TelemetryClient(TelemetryConfiguration.CreateDefault()));
         }
 
         public Guid getDestinationObjectId(SyncJob job)
@@ -350,9 +353,10 @@ namespace Services.Tests
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
                 _gMMResources,
-                _jobTriggerConfig);
+                _jobTriggerConfig,
+				new TelemetryClient(TelemetryConfiguration.CreateDefault()));
 
-            var validStartDateJobs = 5;
+			var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
 
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(validStartDateJobs, Organization, lastRunTime: SqlDateTime.MinValue.Value));
@@ -394,9 +398,10 @@ namespace Services.Tests
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
                 _gMMResources,
-                _jobTriggerConfig);
+                _jobTriggerConfig,
+				new TelemetryClient(TelemetryConfiguration.CreateDefault()));
 
-            var validStartDateJobs = 5;
+			var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
 
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(validStartDateJobs, Organization));
@@ -432,9 +437,10 @@ namespace Services.Tests
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
                 _gMMResources,
-                _jobTriggerConfig);
+                _jobTriggerConfig,
+				new TelemetryClient(TelemetryConfiguration.CreateDefault()));
 
-            var validStartDateJobs = 5;
+			var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
 
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(validStartDateJobs, Organization));
@@ -469,9 +475,10 @@ namespace Services.Tests
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
                 _gMMResources,
-                _jobTriggerConfig);
+                _jobTriggerConfig,
+				new TelemetryClient(TelemetryConfiguration.CreateDefault()));
 
-            var validStartDateJobs = 5;
+			var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
 
             _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(validStartDateJobs, Organization));

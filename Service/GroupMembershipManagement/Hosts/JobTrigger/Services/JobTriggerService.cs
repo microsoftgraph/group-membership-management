@@ -9,10 +9,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.ApplicationInsights;
 
 namespace Services
 {
-    public class JobTriggerService : IJobTriggerService
+	public class JobTriggerService : IJobTriggerService
     {
         private const string EmailSubject = "EmailSubject";
         private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
@@ -79,7 +80,7 @@ namespace Services
 			var totalSyncJobsCount = await _databaseSyncJobsRepository.GetSyncJobCountAsync(true, SyncStatus.All);
             _telemetryClient.TrackMetric(nameof(Metric.SyncJobsCount), syncJobsCount);
             _telemetryClient.TrackMetric(nameof(Metric.TotalSyncJobsCount), totalSyncJobsCount);
-			var allowJobTriggerToRun = ShouldProcessJobs(SyncJobsCount, totalSyncJobsCount);
+			var allowJobTriggerToRun = ShouldProcessJobs(syncJobsCount, totalSyncJobsCount);
 			return (filteredJobs, allowJobTriggerToRun);
         }
 

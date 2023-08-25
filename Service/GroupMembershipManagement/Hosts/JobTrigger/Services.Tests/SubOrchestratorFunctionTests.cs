@@ -296,7 +296,9 @@ namespace Services.Tests
                                                         mailRepository.Object,
                                                         emailSenderAndRecipients.Object,
                                                         gmmResources.Object,
-                                                        jobTriggerConfig.Object);
+                                                        jobTriggerConfig.Object,
+														_telemetryClient
+                                                        );
 
                         await CallTopicMessageSenderFunctionAsync(jobTriggerService: jobTriggerService);
                     });
@@ -366,7 +368,9 @@ namespace Services.Tests
                                                         mailRepository.Object,
                                                         emailSenderAndRecipients.Object,
                                                         gmmResources.Object,
-                                                        jobTriggerConfig.Object);
+                                                        jobTriggerConfig.Object,
+                                                        _telemetryClient
+                                                        );
 
                         await CallTopicMessageSenderFunctionAsync(jobTriggerService: jobTriggerService);
                     });
