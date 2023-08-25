@@ -12,7 +12,7 @@ namespace Services.Contracts
     {
         public Guid RunId { get; set; }
         Task<List<SyncJob>> GetSyncJobsSegmentAsync();
-        Task<(bool IsValid, DestinationObject DestinationObject)> ParseAndValidateDestination(SyncJob syncJob);
+        Task<(bool IsValid, DestinationObject DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob);
         Task<string> GetGroupNameAsync(SyncJob job);
         Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters, string templateDirectory = "");
         Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job, string templateDirectory = "");

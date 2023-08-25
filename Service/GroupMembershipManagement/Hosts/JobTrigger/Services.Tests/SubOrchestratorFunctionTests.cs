@@ -59,7 +59,7 @@ namespace Services.Tests
             _jobTriggerService.Setup(x => x.GroupExistsAndGMMCanWriteToGroupAsync(It.IsAny<SyncJob>(), It.IsAny<string>())).ReturnsAsync(() => _canWriteToGroups);
             _jobTriggerService.Setup(x => x.GetGroupNameAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => "Test Group");
             _jobTriggerService.Setup(x => x.GetGroupEndpointsAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => _endpoints);
-            _jobTriggerService.Setup(x => x.ParseAndValidateDestination(It.IsAny<SyncJob>())).ReturnsAsync(() => (true, new DestinationObject
+            _jobTriggerService.Setup(x => x.ParseAndValidateDestinationAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => (true, new DestinationObject
             {
                 Type = "GroupMembership",
                 Value = new GroupDestinationValue
@@ -127,7 +127,7 @@ namespace Services.Tests
         public async Task HandleInvalidDestinationQueryException()
         {
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
-            _jobTriggerService.Setup(x => x.ParseAndValidateDestination(It.IsAny<SyncJob>())).Throws<JsonReaderException>();
+            _jobTriggerService.Setup(x => x.ParseAndValidateDestinationAsync(It.IsAny<SyncJob>())).Throws<JsonReaderException>();
 
             var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
                                                                 _telemetryClient,
@@ -149,7 +149,7 @@ namespace Services.Tests
         public async Task HandleInvalidDestinationQuery()
         {
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
-            _jobTriggerService.Setup(x => x.ParseAndValidateDestination(It.IsAny<SyncJob>())).ReturnsAsync(() => (false, null));
+            _jobTriggerService.Setup(x => x.ParseAndValidateDestinationAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => (false, null));
 
             var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
                                                                 _telemetryClient,

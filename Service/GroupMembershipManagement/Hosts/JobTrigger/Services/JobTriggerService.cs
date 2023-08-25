@@ -71,7 +71,7 @@ namespace Services
 
         public async Task<string> GetGroupNameAsync(SyncJob job)
         {
-            var destinationObjectId = (await ParseAndValidateDestination(job)).DestinationObject.Value.ObjectId;
+            var destinationObjectId = (await ParseAndValidateDestinationAsync(job)).DestinationObject.Value.ObjectId;
             return await _graphGroupRepository.GetGroupNameAsync(destinationObjectId);
         }
 
@@ -82,7 +82,7 @@ namespace Services
 
             if (!SyncDisabledNoGroupEmailBody.Equals(emailContentTemplateName, StringComparison.InvariantCultureIgnoreCase))
             {
-                var destinationObjectId = (await ParseAndValidateDestination(job)).DestinationObject.Value.ObjectId;
+                var destinationObjectId = (await ParseAndValidateDestinationAsync(job)).DestinationObject.Value.ObjectId;
                 var owners = await _graphGroupRepository.GetGroupOwnersAsync(destinationObjectId);
                 ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
             }
@@ -139,7 +139,7 @@ namespace Services
 
         public async Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job, string templateDirectory = "")
         {
-            var destinationObjectId = (await ParseAndValidateDestination(job)).DestinationObject.Value.ObjectId;
+            var destinationObjectId = (await ParseAndValidateDestinationAsync(job)).DestinationObject.Value.ObjectId;
 
             foreach (var strat in new JobVerificationStrategy[] {
                 new JobVerificationStrategy { TestFunction = _graphGroupRepository.GroupExists, StatusMessage = $"Destination group {destinationObjectId} exists.", ErrorMessage = $"destination group {destinationObjectId} doesn't exist.", EmailBody = SyncDisabledNoGroupEmailBody },
@@ -181,11 +181,11 @@ namespace Services
 
         public async Task<List<string>> GetGroupEndpointsAsync(SyncJob job)
         {
-            var destinationObjectId = (await ParseAndValidateDestination(job)).DestinationObject.Value.ObjectId;
+            var destinationObjectId = (await ParseAndValidateDestinationAsync(job)).DestinationObject.Value.ObjectId;
             return await _graphGroupRepository.GetGroupEndpointsAsync(destinationObjectId);
         }
 
-        public async Task<(bool IsValid, DestinationObject DestinationObject)> ParseAndValidateDestination(SyncJob syncJob)
+        public async Task<(bool IsValid, DestinationObject DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob)
         {
             if (string.IsNullOrWhiteSpace(syncJob.Destination)) return (false, null);
 

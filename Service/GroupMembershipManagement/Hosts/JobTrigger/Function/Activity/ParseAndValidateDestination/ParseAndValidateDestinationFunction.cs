@@ -30,7 +30,7 @@ namespace Hosts.JobTrigger
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ParseAndValidateDestinationFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
             _jobTriggerService.RunId = syncJob.RunId ?? Guid.Empty;
-            var parsedAndValidatedDestination = await _jobTriggerService.ParseAndValidateDestination(syncJob);
+            var parsedAndValidatedDestination = await _jobTriggerService.ParseAndValidateDestinationAsync(syncJob);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ParseAndValidateDestinationFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
 
             return parsedAndValidatedDestination;

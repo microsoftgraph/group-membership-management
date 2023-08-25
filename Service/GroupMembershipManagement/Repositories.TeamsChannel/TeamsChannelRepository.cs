@@ -101,7 +101,7 @@ namespace Repositories.TeamsChannel
         private AzureADTeamsUser? ToTeamsUser(ConversationMember member)
         {
             var aadMember = member as AadUserConversationMember;
-            if (aadMember == null || (aadMember.Roles?.Contains("Owner") ?? false) || (aadMember.Roles?.Contains("owner") ?? false)) { return null; }
+            if (aadMember?.Roles?.Contains("Owner", StringComparer.InvariantCultureIgnoreCase) ?? false) { return null; }
             return new AzureADTeamsUser { ObjectId = Guid.Parse(aadMember.UserId), ConversationMemberId = aadMember.Id };
         }
 

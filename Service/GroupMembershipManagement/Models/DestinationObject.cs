@@ -4,12 +4,11 @@ namespace Models
 {
     public class DestinationValue
     {
-        public virtual Guid ObjectId { get; set; }
+        public Guid ObjectId { get; set; }
     }
 
     public class TeamsChannelDestinationValue : DestinationValue
     {
-        public override Guid ObjectId { get; set; }
         public string ChannelId { get; set; }
 
         public override string ToString()
@@ -20,8 +19,6 @@ namespace Models
 
     public class GroupDestinationValue : DestinationValue
     {
-        public override Guid ObjectId { get; set; }
-
         public override string ToString()
         {
             return $"{{ ObjectId: {ObjectId} }}";

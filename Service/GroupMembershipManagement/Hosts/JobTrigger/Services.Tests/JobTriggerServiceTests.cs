@@ -75,7 +75,7 @@ namespace Services.Tests
             var objectId = Guid.NewGuid();
             job.Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{objectId}\"}}}}]";
 
-            var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestination(job);
+            var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestinationAsync(job);
 
             Assert.AreEqual(true, parsedAndValidated.IsValid);
             Assert.AreEqual(objectId, parsedAndValidated.DestinationObject.Value.ObjectId);
@@ -89,7 +89,7 @@ namespace Services.Tests
             var channelId = "Channel_ID";
             job.Destination = $"[{{\"type\":\"TeamsChannel\",\"value\":{{\"objectId\":\"{objectId}\",\"channelId\":\"{channelId}\"}}}}]";
 
-            var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestination(job);
+            var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestinationAsync(job);
 
             Assert.AreEqual(true, parsedAndValidated.IsValid);
             Assert.AreEqual(objectId, parsedAndValidated.DestinationObject.Value.ObjectId);
@@ -102,7 +102,7 @@ namespace Services.Tests
             SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
             job.Destination = "";
 
-            var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestination(job);
+            var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestinationAsync(job);
 
             Assert.AreEqual(false, parsedAndValidated.IsValid);
             Assert.AreEqual(null, parsedAndValidated.DestinationObject);
@@ -114,7 +114,7 @@ namespace Services.Tests
             SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
             job.Destination = $"[{{\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]";
 
-            var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestination(job);
+            var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestinationAsync(job);
 
             Assert.AreEqual(false, parsedAndValidated.IsValid);
             Assert.AreEqual(null, parsedAndValidated.DestinationObject);
@@ -126,7 +126,7 @@ namespace Services.Tests
             SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
             job.Destination = $"[{{\"type\":\"TeamsChannel\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]";
 
-            var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestination(job);
+            var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestinationAsync(job);
 
             Assert.AreEqual(false, parsedAndValidated.IsValid);
             Assert.AreEqual(null, parsedAndValidated.DestinationObject);
