@@ -14,6 +14,7 @@ export interface IJobsListStyles {
   disabled: IStyle;
   actionRequired: IStyle;
   tabContent: IStyle;
+  columnToEnd: IStyle;
   refresh: IStyle;
   title: IStyle;
 }
