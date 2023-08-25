@@ -72,7 +72,7 @@ namespace Services
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
-        public async Task<(List<SyncJob> jobs, bool jobTriggerThresholdExceeded)> GetSyncJobsSegmentAsync()
+        public async Task<(List<SyncJob> jobs, bool jobTriggerThresholdExceeded)> GetSyncJobsAsync()
         {
             var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
             var filteredJobs = ApplyJobTriggerFilters(jobs).ToList();
