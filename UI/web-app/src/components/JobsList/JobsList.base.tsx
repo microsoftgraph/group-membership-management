@@ -80,6 +80,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       name: t('JobsList.ShimmeredDetailsList.columnNames.type'),
       fieldName: 'targetGroupType',
       minWidth: 109,
+      maxWidth: 109,
       isResizable: true,
       isSorted: sortKey === 'targetGroupType',
       isSortedDescending,
@@ -100,6 +101,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       name: t('JobsList.ShimmeredDetailsList.columnNames.lastRun'),
       fieldName: 'lastSuccessfulRunTime',
       minWidth: 114,
+      maxWidth: 114,
       isResizable: true,
       isSorted: sortKey === 'lastSuccessfulRunTime',
       isSortedDescending,
@@ -110,6 +112,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       name: t('JobsList.ShimmeredDetailsList.columnNames.nextRun'),
       fieldName: 'estimatedNextRunTime',
       minWidth: 123,
+      maxWidth: 123,
       isResizable: true,
       isSorted: sortKey === 'estimatedNextRunTime',
       isSortedDescending,
@@ -120,6 +123,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       name: t('JobsList.ShimmeredDetailsList.columnNames.status'),
       fieldName: 'enabledOrNot',
       minWidth: 83,
+      maxWidth: 83,
       isResizable: true,
       isSorted: sortKey === 'enabledOrNot',
       isSortedDescending,
@@ -129,7 +133,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       key: 'actionRequired',
       name: t('JobsList.ShimmeredDetailsList.columnNames.actionRequired'),
       fieldName: 'actionRequired',
-      minWidth: 140,
+      minWidth: 200,
+      maxWidth: 200,
       isResizable: true,
       isSorted: sortKey === 'actionRequired',
       isSortedDescending,
@@ -139,7 +144,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       key: 'arrow',
       name: '',
       fieldName: '',
-      minWidth: 200,
+      minWidth: 20,
+      maxWidth: 20,
       isResizable: true,
       columnActionsMode: 0
     },
@@ -345,6 +351,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               onActiveItemChanged={onItemClicked}
               onRenderItemColumn={_renderItemColumn}
             />
+            <div className={classNames.columnToEnd}></div>
         </div>
       </div>
       <PagingBar

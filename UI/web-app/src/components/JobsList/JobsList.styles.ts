@@ -33,6 +33,11 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
     },
     tabContent: {
       cursor: 'pointer',
+      display: 'flex',
+      flexDirection: 'column'
+    },
+    columnToEnd: {
+      flexGrow: 1
     },
     refresh: {
       padding: 22.5,
