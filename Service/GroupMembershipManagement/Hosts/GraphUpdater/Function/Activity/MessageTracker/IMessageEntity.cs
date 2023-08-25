@@ -7,8 +7,8 @@ namespace Hosts.GraphUpdater
 {
     public interface IMessageEntity
     {
-        Task Save(MembershipHttpRequest message);
-        Task<MembershipHttpRequest> Get();
-        Task Delete();
+        Task SaveAsync(MembershipHttpRequest message);
+        Task<MembershipHttpRequest> GetAsync();
+        Task DeleteAsync();
     }
 }

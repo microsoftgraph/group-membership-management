@@ -10,18 +10,18 @@ namespace Hosts.GraphUpdater
     public class MessageEntity : IMessageEntity
     {
         public MembershipHttpRequest Message { get; set; }
-        public Task Save(MembershipHttpRequest message)
+        public Task SaveAsync(MembershipHttpRequest message)
         {
             Message = message;
             return Task.CompletedTask;
         }
 
-        public Task<MembershipHttpRequest> Get()
+        public Task<MembershipHttpRequest> GetAsync()
         {
             return Task.FromResult(Message);
         }
 
-        public virtual Task Delete()
+        public virtual Task DeleteAsync()
         {
             Entity.Current.DeleteState();
             return Task.CompletedTask;

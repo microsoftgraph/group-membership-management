@@ -9,27 +9,35 @@ namespace Hosts.GraphUpdater
 {
     public class MessageTrackerFunction : IMessageTracker
     {
+        public const string EntityName = nameof(MessageTrackerFunction);
+        public const string EntityKey = $"{nameof(MessageTrackerFunction)}_{nameof(MessageTrackerFunction)}";
+
         public Queue<string> MessageIds { get; set; } = new Queue<string>();
 
-        public Task Add(string messageId)
+        public Task AddAsync(string messageId)
         {
             MessageIds.Enqueue(messageId);
             return Task.CompletedTask;
         }
 
-        public virtual Task Delete()
+        public virtual Task DeleteAsync()
         {
             Entity.Current.DeleteState();
             return Task.CompletedTask;
         }
 
-        public Task<string> GetNextMessageId()
+        public Task<string> GetNextMessageIdAsync()
         {
             if (MessageIds.Count == 0)
                 return null;
 
             var messageId = MessageIds.Dequeue();
             return Task.FromResult(messageId);
+        }
+
+        public Task<int> GetMessageCountAsync()
+        {
+            return Task.FromResult(MessageIds.Count);
         }
 
         [FunctionName(nameof(MessageTrackerFunction))]

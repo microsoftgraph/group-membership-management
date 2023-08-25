@@ -6,8 +6,9 @@ namespace Hosts.GraphUpdater
 {
     public interface IMessageTracker
     {
-        Task Add(string messageId);
-        Task<string> GetNextMessageId();
-        Task Delete();
+        Task AddAsync(string messageId);
+        Task<string> GetNextMessageIdAsync();
+        Task<int> GetMessageCountAsync();
+        Task DeleteAsync();
     }
 }
