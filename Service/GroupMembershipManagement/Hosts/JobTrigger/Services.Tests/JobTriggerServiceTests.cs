@@ -203,8 +203,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
-			var jobs = bulkSegment.jobs;
+            var response = await _jobTriggerService.GetSyncJobsAsync();
+			var jobs = response.jobs;
 
 			var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -223,8 +223,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
-			var jobs = bulkSegment.jobs;
+            var response = await _jobTriggerService.GetSyncJobsAsync();
+			var jobs = response.jobs;
 
 			var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -365,8 +365,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
-            var jobs = bulkSegment.jobs;
+            var response = await _jobTriggerService.GetSyncJobsAsync();
+            var jobs = response.jobs;
 
             foreach (var job in jobs)
             {
@@ -410,8 +410,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
-			var jobs = bulkSegment.jobs;
+            var response = await _jobTriggerService.GetSyncJobsAsync();
+			var jobs = response.jobs;
 
 			foreach (var job in jobs)
             {
@@ -449,8 +449,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
-			var jobs = bulkSegment.jobs;
+            var response = await _jobTriggerService.GetSyncJobsAsync();
+			var jobs = response.jobs;
 
 			foreach (var job in jobs)
             {
@@ -487,8 +487,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
-			var jobs = bulkSegment.jobs;
+            var response = await _jobTriggerService.GetSyncJobsAsync();
+			var jobs = response.jobs;
 
 			foreach (var job in jobs)
             {
@@ -510,8 +510,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
-            var jobTriggerThresholdExceeded = bulkSegment.jobTriggerThresholdExceeded;
+            var response = await _jobTriggerService.GetSyncJobsAsync();
+            var jobTriggerThresholdExceeded = response.jobTriggerThresholdExceeded;
             Assert.AreEqual(true, jobTriggerThresholdExceeded);
         }
 
@@ -527,8 +527,8 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
-            var jobTriggerThresholdExceeded = bulkSegment.jobTriggerThresholdExceeded;
+            var response = await _jobTriggerService.GetSyncJobsAsync();
+            var jobTriggerThresholdExceeded = response.jobTriggerThresholdExceeded;
             Assert.AreEqual(false, jobTriggerThresholdExceeded);
         }
 
@@ -544,8 +544,8 @@ namespace Services.Tests
 			_syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
 			_syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-			var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
-			var jobTriggerThresholdExceeded = bulkSegment.jobTriggerThresholdExceeded;
+			var response = await _jobTriggerService.GetSyncJobsAsync();
+			var jobTriggerThresholdExceeded = response.jobTriggerThresholdExceeded;
 			Assert.AreEqual(false, jobTriggerThresholdExceeded);
 		}
 
