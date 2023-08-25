@@ -10,7 +10,9 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
   const { className, theme } = props;
 
   return {
-    root: [{}, className],
+    root: [{
+      margin: '0px 36px 12px 36px'
+    }, className],
     enabled: {
       color: theme.palette.black,
       backgroundColor: theme.semanticColors.successBackground,
@@ -42,5 +44,10 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
     refresh: {
       padding: 22.5,
     },
+    jobsList: {
+      backgroundColor: theme.palette.white,
+      borderRadius: 10,
+      padding: '12px 0px 12px 24px',
+    }
   };
 };

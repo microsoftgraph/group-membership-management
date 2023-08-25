@@ -10,13 +10,12 @@ import {
   Toggle,
   IProcessedStyleSet,
   classNamesFunction,
-  Separator
+  ActionButton
 } from '@fluentui/react';
 
 import {
   Stack,
-  type IStackTokens,
-  type IStackItemStyles,
+  type IStackTokens
 } from '@fluentui/react/lib/Stack';
 import React, { useEffect } from 'react';
 import { useTranslation, } from 'react-i18next';
@@ -84,8 +83,6 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  console.log("endpoints:", job.endpoints);
-
   useEffect(() => {
     dispatch(
       fetchJobDetails({
@@ -113,12 +110,13 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
         )}
       </div>
       <div className={classNames.root}>
-        <MembershipDetails job={job} classNames={classNames}/>
+        <MembershipDetails job={job} classNames={classNames} />
+        {/* // Hidden until feature is enabled
         <ContentContainer
           title={t('JobDetails.labels.membershipStatus')}
           children={<MembershipStatusContent job={job} classNames={classNames} />}
           removeButton={true}
-        />
+        /> */}
         <ContentContainer
           title={t('JobDetails.labels.destination')}
           actionText={t('JobDetails.openInAzure')}
@@ -128,17 +126,21 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
         />
         <ContentContainer
           title={t('JobDetails.labels.configuration')}
-          actionText={t('JobDetails.editButton')}
-          useLinkButton={true}
-          linkButtonIconName='edit'
           children={<MembershipConfiguration job={job} classNames={classNames} />}
+          removeButton={true}
+        // Hidden until feature is enabled
+        // actionText={t('JobDetails.editButton')}
+        // useLinkButton={true}
+        // linkButtonIconName='edit'
         />
         <ContentContainer
           title={t('JobDetails.labels.sourceParts')}
-          actionText={t('JobDetails.editButton')}
-          useLinkButton={true}
-          linkButtonIconName='edit'
           children={<label>{jobDetails?.source}</label>}
+          removeButton={true}
+        // Hidden until feature is enabled
+        // actionText={t('JobDetails.editButton')}
+        // useLinkButton={true}
+        // linkButtonIconName='edit'
         />
       </div>
     </Page >
@@ -208,6 +210,27 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
     childrenGap: 30,
   };
 
+  const openOutlookLink = (): void => {
+    // https://outlook-sdf.office.com/mail/group/service.microsoft.com/Oliviaoutlookgroup-testing
+    // https://m365x47587678.sharepoint.com/sites/DestinationGroup
+    var url = `https://outlook.office.com/mail/group/service.microsoft.com/${job.targetGroupName}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const openSharePointLink = (): void => {
+    // https://m365x47587678.sharepoint.com/sites/DestinationGroup
+    // https://microsoft.sharepoint.com/teams/Oliviaoutlookgroup-testing
+    var url = `microsoft.sharepoint.com/teams${job.targetGroupName}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const openYammerLink = (): void => {
+    // https://www.yammer.com/microsoft.com/#/threads/inGroup?type=in_group&feedId=94116864000
+    // var url = `https://outlook.office.com/mail/group/service.microsoft.com/${job.targetGroupName}`;
+    // window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+
   return (
     <Stack
       enableScopedSelectors
@@ -249,23 +272,46 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
           </Stack.Item>
         </Stack>
       </Stack.Item>
-      {job.endpoints ? <>
+      {job.endpoints ? (
         <Stack.Item align="start">
           <Text className={classNames.itemTitle} block>
             {t('JobDetails.labels.groupLinks')}
           </Text>
-          <Text className={classNames.itemData} block>
-            <ul>
-              {job.endpoints.map((str, index) => (
-                <li key={index}>{str}</li>
-              ))}
-            </ul>
-          </Text>
+          <div className={classNames.itemData}>
+            <Stack
+              enableScopedSelectors
+              horizontal
+              tokens={itemAlignmentsStackTokens}
+            >
+              {job.endpoints.includes("Outlook") && (
+                <ActionButton
+                  iconProps={{ iconName: 'Outlook' }}
+                  onClick={() => openOutlookLink}
+                >
+                  Outlook
+                </ActionButton>
+              )}
+              {job.endpoints.includes("SharePoint") && (
+                <ActionButton
+                  iconProps={{ iconName: 'SharePoint' }}
+                  onClick={() => openSharePointLink}
+                >
+                  SharePoint
+                </ActionButton>
+              )}
+              {job.endpoints.includes("Yammer") && (
+                <ActionButton
+                  iconProps={{ iconName: 'Yammer' }}
+                  onClick={() => openYammerLink}
+                >
+                  Yammer
+                </ActionButton>
+              )}
+            </Stack>
+          </div>
         </Stack.Item>
-      </>
-        :
-        <div />
-      }
+      ) : null}
+
     </Stack>
   )
 }

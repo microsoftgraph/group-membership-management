@@ -11,10 +11,6 @@ export const getStyles = (props: IPageSectionStyleProps): IPageSectionStyles => 
 
   return {
     root: [{
-      backgroundColor: theme.palette.white,
-      borderRadius: 10,
-      padding: 14,
-      margin: '0px 24px 12px 24px'
     }, className],
   };
 };

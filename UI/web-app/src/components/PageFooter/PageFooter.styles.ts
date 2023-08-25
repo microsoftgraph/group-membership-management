@@ -12,7 +12,9 @@ export const getStyles = (props: IPageFooterStyleProps): IPageFooterStyles => {
   return {
     root: [{
       padding: '20px 0px 20px 24px',
-      color: theme.palette.neutralSecondaryAlt
+      color: theme.palette.neutralSecondaryAlt,
+      fontSize: 12,
+      fontWeight: '600'
     }, className],
   };
 };

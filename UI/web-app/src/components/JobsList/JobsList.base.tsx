@@ -304,8 +304,9 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   };
 
   return (
-    <div>
-      <div className={classNames.root}>
+  <div className={classNames.root}>
+    <div className={classNames.jobsList}>
+      <div>
         {error && (
           <MessageBar
             messageBarType={MessageBarType.error}
@@ -323,37 +324,38 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         <div className={classNames.title}>
           <Text variant='xLarge'>{t('JobsList.listOfMemberships')}</Text>
         </div>
-          <div className={classNames.tabContent}>
-            <ShimmeredDetailsList
-              setKey="set"
-              onColumnHeaderClick={onColumnHeaderClick}
-              items={sortedItems || []}
-              columns={columns}
-              enableShimmer={!jobs || jobs.length === 0}
-              layoutMode={DetailsListLayoutMode.justified}
-              selectionMode={SelectionMode.none}
-              ariaLabelForShimmer="Content is being fetched"
-              ariaLabelForGrid="Item details"
-              selectionPreservedOnEmptyClick={true}
-              ariaLabelForSelectionColumn={
-                t('JobsList.ShimmeredDetailsList.toggleSelection') as
-                | string
-                | undefined
-              }
-              ariaLabelForSelectAllCheckbox={
-                t('JobsList.ShimmeredDetailsList.toggleAllSelection') as
-                | string
-                | undefined
-              }
-              checkButtonAriaLabel={
-                t('JobsList.ShimmeredDetailsList.selectRow') as string | undefined
-              }
-              onActiveItemChanged={onItemClicked}
-              onRenderItemColumn={_renderItemColumn}
-            />
-            <div className={classNames.columnToEnd}></div>
+        <div className={classNames.tabContent}>
+          <ShimmeredDetailsList
+            setKey="set"
+            onColumnHeaderClick={onColumnHeaderClick}
+            items={sortedItems || []}
+            columns={columns}
+            enableShimmer={!jobs || jobs.length === 0}
+            layoutMode={DetailsListLayoutMode.justified}
+            selectionMode={SelectionMode.none}
+            ariaLabelForShimmer="Content is being fetched"
+            ariaLabelForGrid="Item details"
+            selectionPreservedOnEmptyClick={true}
+            ariaLabelForSelectionColumn={
+              t('JobsList.ShimmeredDetailsList.toggleSelection') as
+              | string
+              | undefined
+            }
+            ariaLabelForSelectAllCheckbox={
+              t('JobsList.ShimmeredDetailsList.toggleAllSelection') as
+              | string
+              | undefined
+            }
+            checkButtonAriaLabel={
+              t('JobsList.ShimmeredDetailsList.selectRow') as string | undefined
+            }
+            onActiveItemChanged={onItemClicked}
+            onRenderItemColumn={_renderItemColumn}
+          />
+          <div className={classNames.columnToEnd}></div>
         </div>
       </div>
+    </div>
       <PagingBar
         pageSize={pageSize}
         pageNumber={pageNumber}
@@ -363,6 +365,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         setPageNumber={setPageNumber}
         setPageSizeCookie={setPageSizeCookie}
       />
-    </div>
+  </div>
   );
 };
