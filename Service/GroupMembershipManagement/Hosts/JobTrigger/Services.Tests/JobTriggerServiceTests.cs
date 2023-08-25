@@ -510,9 +510,9 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
-            var proceedJobsFlag = bulkSegment.proceedJobsFlag;
-            Assert.AreEqual(false, proceedJobsFlag);
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync();
+            var jobTriggerThresholdExceeded = bulkSegment.jobTriggerThresholdExceeded;
+            Assert.AreEqual(true, jobTriggerThresholdExceeded);
         }
 
         [TestMethod]
@@ -527,9 +527,9 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
-            var bulkSegment = await _jobTriggerService.GetSyncJobsAsync();
-            var proceedJobsFlag = bulkSegment.proceedJobsFlag;
-            Assert.AreEqual(true, proceedJobsFlag);
+            var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync();
+            var jobTriggerThresholdExceeded = bulkSegment.jobTriggerThresholdExceeded;
+            Assert.AreEqual(false, jobTriggerThresholdExceeded);
         }
 
 		[TestMethod]
@@ -545,8 +545,8 @@ namespace Services.Tests
 			_syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
 
 			var bulkSegment = await _jobTriggerService.GetSyncJobsSegmentAsync();
-			var allowJobTriggerToRun = bulkSegment.allowJobTriggerToRun;
-			Assert.AreEqual(true, allowJobTriggerToRun);
+			var jobTriggerThresholdExceeded = bulkSegment.jobTriggerThresholdExceeded;
+			Assert.AreEqual(false, jobTriggerThresholdExceeded);
 		}
 
 		private class MockEmail<T> : IEmailSenderRecipient

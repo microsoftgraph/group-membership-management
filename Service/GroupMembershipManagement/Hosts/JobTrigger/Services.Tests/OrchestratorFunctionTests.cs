@@ -32,9 +32,9 @@ namespace Services.Tests
 
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
 
-			bool proceedJobsFlag = true; 
-			jobTriggerService.Setup(x => x.GetSyncJobsAsync())
-											.ReturnsAsync((syncJobs, proceedJobsFlag));
+			bool jobTriggerThresholdExceeded = false; 
+			jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
+											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded));
 			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<object>()))
                         .Returns(() => CallGetSyncJobsAsync(loggingRepository.Object, jobTriggerService.Object));
 
@@ -61,9 +61,9 @@ namespace Services.Tests
             var loggerJobProperties = new Dictionary<Guid, LogProperties>();
 
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
-			bool proceedJobsFlag = true;
-			jobTriggerService.Setup(x => x.GetSyncJobsAsync())
-											.ReturnsAsync((syncJobs, proceedJobsFlag));
+			bool jobTriggerThresholdExceeded = false;
+			jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
+											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded));
 			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<object>()))
                         .Returns(() => CallGetSyncJobsAsync(loggingRepository.Object, jobTriggerService.Object));
 
@@ -76,7 +76,7 @@ namespace Services.Tests
         }
 
 		[TestMethod]
-		public async Task allowJobTriggerToRunFalse()
+		public async Task jobTriggerThresholdExceededTrue()
 		{
 			var loggingRepository = new Mock<ILoggingRepository>();
 			var graphRepository = new Mock<IGraphGroupRepository>();
@@ -86,9 +86,9 @@ namespace Services.Tests
 			var emptySyncJobsList = new List<SyncJob>();
 			var loggerJobProperties = new Dictionary<Guid, LogProperties>();
 			loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
-			bool allowJobTriggerToRun = false;
+			bool jobTriggerThresholdExceeded = true;
 			jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
-											.ReturnsAsync((syncJobs, allowJobTriggerToRun));
+											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded));
 			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<object>()))
 						.Returns(() => CallGetSyncJobsSegmentAsync(loggingRepository.Object, jobTriggerService.Object));
 
@@ -113,9 +113,9 @@ namespace Services.Tests
 
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
 
-			bool proceedJobsFlag = true;
-			jobTriggerService.Setup(x => x.GetSyncJobsAsync())
-											.ReturnsAsync((syncJobs, proceedJobsFlag));
+			bool jobTriggerThresholdExceeded = false;
+			jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
+											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded));
 
 			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<object>()))
                         .Returns(() => CallGetSyncJobsAsync(loggingRepository.Object, jobTriggerService.Object));
@@ -142,9 +142,9 @@ namespace Services.Tests
 
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
 
-			bool proceedJobsFlag = true;
-			jobTriggerService.Setup(x => x.GetSyncJobsAsync())
-				                            .ReturnsAsync(() => (syncJobs1.Concat(syncJobs2).ToList(), proceedJobsFlag));
+			bool jobTriggerThresholdExceeded = false;
+			jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
+				                            .ReturnsAsync(() => (syncJobs1.Concat(syncJobs2).ToList(), jobTriggerThresholdExceeded));
 
 			context.SetupSequence(x => x.CallActivityAsync<List<SyncJob>>(nameof(GetJobsSegmentedFunction), It.IsAny<object>()))
                         .ReturnsAsync(() =>

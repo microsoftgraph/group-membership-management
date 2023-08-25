@@ -72,7 +72,7 @@ namespace Services
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
-        public async Task<(List<SyncJob> jobs, bool proceedJobsFlag)> GetSyncJobsAsync()
+        public async Task<(List<SyncJob> jobs, bool jobTriggerThresholdExceeded)> GetSyncJobsSegmentAsync()
         {
             var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
             var filteredJobs = ApplyJobTriggerFilters(jobs).ToList();
@@ -80,8 +80,8 @@ namespace Services
 			var totalSyncJobsCount = await _databaseSyncJobsRepository.GetSyncJobCountAsync(true, SyncStatus.All);
             _telemetryClient.TrackMetric(nameof(Metric.SyncJobsCount), syncJobsCount);
             _telemetryClient.TrackMetric(nameof(Metric.TotalSyncJobsCount), totalSyncJobsCount);
-			var allowJobTriggerToRun = ShouldProcessJobs(syncJobsCount, totalSyncJobsCount);
-			return (filteredJobs, allowJobTriggerToRun);
+			var jobTriggerThresholdExceeded = HasJobTriggerThresholdExceeded(syncJobsCount, totalSyncJobsCount);
+			return (filteredJobs, jobTriggerThresholdExceeded);
         }
 
         public async Task<string> GetGroupNameAsync(SyncJob job)
@@ -261,11 +261,11 @@ namespace Services
             return allNonDryRunSyncJobs.Concat(allDryRunSyncJobs).Concat(inProgressSyncJobs);
         }
 
-        private bool ShouldProcessJobs(int syncJobsCount, int totalSyncJobsCount)
+        private bool HasJobTriggerThresholdExceeded(int syncJobsCount, int totalSyncJobsCount)
             {
                 if (syncJobsCount < _jobTriggerConfig.JobCountThreshold)
                 {
-                    return true;
+                    return false;
                 }
                 else if (syncJobsCount >= _jobTriggerConfig.JobCountThreshold)
                 {
@@ -273,10 +273,10 @@ namespace Services
 
                     if (percentage > _jobTriggerConfig.JobPercentThreshold)
                     {
-                        return false;
+                        return true;
                     }
                 }
-                return true;
+                return false;
             }
     }
 }
