@@ -105,90 +105,93 @@ namespace Repositories.GraphAzureADUsers
 
             while (pnQueue.Count > 0)
             {
-                using (var batchRequestContent = new BatchRequestContent(_graphClient))
+                var batchRequestContent = new BatchRequestContentCollection(_graphClient);
+
+                int limit = pnQueue.Count >= FILTER_CONDITION_LIMIT ? 10 : pnQueue.Count;
+
+                // add request steps
+                while (batchRequestContent.BatchRequestSteps.Count < BATCH_REQUEST_LIMIT && pnQueue.Count != 0)
                 {
-                    int limit = pnQueue.Count >= FILTER_CONDITION_LIMIT ? 10 : pnQueue.Count;
-
-                    // add request steps
-                    while (batchRequestContent.BatchRequestSteps.Count < BATCH_REQUEST_LIMIT && pnQueue.Count != 0)
+                    var requestPersonnelNumbers = new List<string>();
+                    limit = pnQueue.Count >= FILTER_CONDITION_LIMIT ? 10 : pnQueue.Count;
+                    for (var i = 0; i < limit; i++)
                     {
-                        var requestPersonnelNumbers = new List<string>();
-                        limit = pnQueue.Count >= FILTER_CONDITION_LIMIT ? 10 : pnQueue.Count;
-                        for (var i = 0; i < limit; i++)
-                        {
-                            requestPersonnelNumbers.Add(pnQueue.Dequeue());
-                        }
-
-                        // build filter expression
-                        var filter = $"(onPremisesImmutableId eq '{string.Join("' or onPremisesImmutableId eq '", requestPersonnelNumbers.ToArray())}')";
-                        var requestInformation = _graphClient.Users.ToGetRequestInformation(requestConfiguration =>
-                        {
-                            requestConfiguration.QueryParameters.Select = fields;
-                            requestConfiguration.QueryParameters.Filter = filter;
-                        });
-                        requestsCreated++;
-
-                        await batchRequestContent.AddBatchRequestStepAsync(requestInformation);
+                        requestPersonnelNumbers.Add(pnQueue.Dequeue());
                     }
 
-                    // every 20 requests send a batch or if there are no more requests to make
-                    batchCount++;
-                    batchTimer.Start();
-
-                    var batchResponse = await _graphClient.Batch.PostAsync(batchRequestContent);
-
-                    // process each request in the batch
-                    foreach (var response in await batchResponse.GetResponsesAsync())
+                    // build filter expression
+                    var filter = $"(onPremisesImmutableId eq '{string.Join("' or onPremisesImmutableId eq '", requestPersonnelNumbers.ToArray())}')";
+                    var requestInformation = _graphClient.Users.ToGetRequestInformation(requestConfiguration =>
                     {
-                        // request was successful
-                        if (response.Value.IsSuccessStatusCode)
-                        {
-                            var content = await response.Value.Content.ReadAsStringAsync();
-                            var oDataResponse = JsonConvert.DeserializeObject<ODataResponse<List<User>>>(content);
-
-                            // process each user
-                            foreach (var user in oDataResponse.Value)
-                            {
-                                var profile = new GraphProfileInformation
-                                {
-                                    Id = user.Id,
-                                    PersonnelNumber = user.OnPremisesImmutableId,
-                                    UserPrincipalName = user.UserPrincipalName
-                                };
-
-                                profiles.Add(profile);
-                                _cache.Add(profile.PersonnelNumber, profile);
-                            }
-                        }
-                        else
-                        {
-                            await _loggingRepository.LogMessageAsync(new LogMessage
-                            {
-                                Message = $"Graph Request failures:"
-                                   + $"\nStatusCode {response.Value.StatusCode}"
-                                   + $"\nReasonPhrase {response.Value.ReasonPhrase}"
-                                   + $"\nRequestURI {batchRequestContent.BatchRequestSteps[response.Key].Request.RequestUri}",
-                                RunId = runId
-                            });
-                        }
-                    }
-
-                    batchTimer.Stop();
-                    batchTimes.Add(batchTimer.Elapsed);
-
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Graph Request: {batchCount} of {totalBatches}{Environment.NewLine}"
-                                    + $"    Batch Time Elapsed: {batchTimer.ElapsedMilliseconds} ms{Environment.NewLine}"
-                                    + $"    Total Time Elapsed: {jobTimer.Elapsed}{Environment.NewLine}"
-                                    + $"    Total Profile Count: {profiles.Count}{Environment.NewLine}"
-                                    + $"    Total Users Not Found: {(personnelNumbers.Count - pnQueue.Count) - profiles.Count}{Environment.NewLine}"
-                                    + $"    Total Queue Remaining: {pnQueue.Count}{Environment.NewLine}",
-                        RunId = runId
+                        requestConfiguration.QueryParameters.Select = fields;
+                        requestConfiguration.QueryParameters.Filter = filter;
                     });
+                    requestsCreated++;
 
-                    batchTimer.Reset();
+                    await batchRequestContent.AddBatchRequestStepAsync(requestInformation);
                 }
+
+                // every 20 requests send a batch or if there are no more requests to make
+                batchCount++;
+                batchTimer.Start();
+
+                var batchResponse = await _graphClient.Batch.PostAsync(batchRequestContent);
+
+                // process each request in the batch
+                var responseStatusCodes = await batchResponse.GetResponsesStatusCodesAsync();
+                var responses = await Task.WhenAll(responseStatusCodes.Select(async x => new KeyValuePair<string, HttpResponseMessage>(x.Key, await batchResponse.GetResponseByIdAsync(x.Key))));
+                foreach (var response in responses)
+                {
+                    // request was successful
+                    if (response.Value.IsSuccessStatusCode)
+                    {
+                        var content = await response.Value.Content.ReadAsStringAsync();
+                        var oDataResponse = JsonConvert.DeserializeObject<ODataResponse<List<User>>>(content);
+
+                        // process each user
+                        foreach (var user in oDataResponse.Value)
+                        {
+                            var profile = new GraphProfileInformation
+                            {
+                                Id = user.Id,
+                                PersonnelNumber = user.OnPremisesImmutableId,
+                                UserPrincipalName = user.UserPrincipalName
+                            };
+
+                            profiles.Add(profile);
+                            _cache.Add(profile.PersonnelNumber, profile);
+                        }
+                    }
+                    else
+                    {
+                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        {
+                            Message = $"Graph Request failures:"
+                               + $"\nStatusCode {response.Value.StatusCode}"
+                               + $"\nReasonPhrase {response.Value.ReasonPhrase}"
+                               + $"\nRequestURI {batchRequestContent.BatchRequestSteps[response.Key].Request.RequestUri}",
+                            RunId = runId
+                        });
+                    }
+
+                    response.Value.Dispose();
+                }
+
+                batchTimer.Stop();
+                batchTimes.Add(batchTimer.Elapsed);
+
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Graph Request: {batchCount} of {totalBatches}{Environment.NewLine}"
+                                + $"    Batch Time Elapsed: {batchTimer.ElapsedMilliseconds} ms{Environment.NewLine}"
+                                + $"    Total Time Elapsed: {jobTimer.Elapsed}{Environment.NewLine}"
+                                + $"    Total Profile Count: {profiles.Count}{Environment.NewLine}"
+                                + $"    Total Users Not Found: {(personnelNumbers.Count - pnQueue.Count) - profiles.Count}{Environment.NewLine}"
+                                + $"    Total Queue Remaining: {pnQueue.Count}{Environment.NewLine}",
+                    RunId = runId
+                });
+
+                batchTimer.Reset();
             }
 
             jobTimer.Stop();
@@ -211,7 +214,9 @@ namespace Repositories.GraphAzureADUsers
                 }
 
                 var batchResponse = await SendBatchRequestAsync(batchRequestContent);
-                var allResponses = await batchResponse.GetResponsesAsync();
+                var responseStatusCodes = await batchResponse.GetResponsesStatusCodesAsync();
+                var responses = await Task.WhenAll(responseStatusCodes.Select(async x => new KeyValuePair<string, HttpResponseMessage>(x.Key, await batchResponse.GetResponseByIdAsync(x.Key))));
+                var allResponses = responses.ToDictionary(x => x.Key, x => x.Value);
 
                 var profileResponses = await ProcessIndividualResponsesAsync(allResponses);
                 profiles.AddRange(profileResponses.Profiles);
@@ -245,6 +250,8 @@ namespace Repositories.GraphAzureADUsers
                 {
                     await LogErrorAsync(response.Value, null);
                 }
+
+                response.Value.Dispose();
             }
 
             if (profiles.Count > 0)
@@ -329,9 +336,9 @@ namespace Repositories.GraphAzureADUsers
             return profiles;
         }
 
-        private async Task<BatchRequestContent> CreateBatchRequestContentAsync(Queue<GraphUser> usersToProccess)
+        private async Task<BatchRequestContentCollection> CreateBatchRequestContentAsync(Queue<GraphUser> usersToProccess)
         {
-            var batchRequestContent = new BatchRequestContent(_graphClient);
+            var batchRequestContent = new BatchRequestContentCollection(_graphClient);
 
             while (batchRequestContent.BatchRequestSteps.Count < BATCH_REQUEST_LIMIT && usersToProccess.Count != 0)
             {
@@ -377,7 +384,7 @@ namespace Repositories.GraphAzureADUsers
             return httpResponse;
         }
 
-        private async Task<BatchResponseContent> SendBatchRequestAsync(BatchRequestContent batchRequestContent)
+        private async Task<BatchResponseContentCollection> SendBatchRequestAsync(BatchRequestContentCollection batchRequestContent)
         {
             return await _graphClient.Batch.PostAsync(batchRequestContent);
         }
