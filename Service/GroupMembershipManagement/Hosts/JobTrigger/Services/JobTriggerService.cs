@@ -18,8 +18,11 @@ namespace Services
         private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
         private const string SyncDisabledNoOwnerEmailBody = "SyncDisabledNoOwnerEmailBody";
         private const int JobsBatchSize = 20;
-        private const int MinimumJobsStopTriggering = 100;
-        private const int PercentageOfJobsStopTriggering = 25;
+        enum Metric
+        {
+            SyncJobsCount,
+            TotalSyncJobsCount
+        }
 
         private readonly ILoggingRepository _loggingRepository;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
@@ -30,6 +33,7 @@ namespace Services
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IGMMResources _gmmResources;
         private readonly IJobTriggerConfig _jobTriggerConfig;
+        private readonly TelemetryClient _telemetryClient;
 
         private Guid _runId;
         public Guid RunId
@@ -51,7 +55,8 @@ namespace Services
             IMailRepository mailRepository,
             IEmailSenderRecipient emailSenderAndRecipients,
             IGMMResources gmmResources,
-            IJobTriggerConfig jobTriggerConfig
+            IJobTriggerConfig jobTriggerConfig,
+            TelemetryClient telemetryClient
             )
         {
             _emailSenderAndRecipients = emailSenderAndRecipients;
@@ -63,14 +68,18 @@ namespace Services
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
             _jobTriggerConfig = jobTriggerConfig ?? throw new ArgumentNullException(nameof(jobTriggerConfig));
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         public async Task<(List<SyncJob> jobs, bool proceedJobsFlag)> GetSyncJobsAsync()
         {
             var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
             var filteredJobs = ApplyJobTriggerFilters(jobs).ToList();
-			var totalJobs = await _databaseSyncJobsRepository.GetSyncJobCountAsync(true, SyncStatus.All);
-			var allowJobTriggerToRun = ShouldProcessJobs(filteredJobs.Count, totalJobs);
+            var syncJobsCount = filteredJobs.Count;
+			var totalSyncJobsCount = await _databaseSyncJobsRepository.GetSyncJobCountAsync(true, SyncStatus.All);
+            _telemetryClient.TrackMetric(nameof(Metric.SyncJobsCount), syncJobsCount);
+            _telemetryClient.TrackMetric(nameof(Metric.TotalSyncJobsCount), totalSyncJobsCount);
+			var allowJobTriggerToRun = ShouldProcessJobs(SyncJobsCount, totalSyncJobsCount);
 			return (filteredJobs, allowJobTriggerToRun);
         }
 
