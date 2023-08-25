@@ -37,9 +37,7 @@ export const PageFooterBase: React.FunctionComponent<IPageFooterProps> = (
 
   return (
     <div className={classNames.root}>
-      <Text variant='small'>
         {t('version') as string} #{versionNumber}
-      </Text>
     </div>
   );
 };

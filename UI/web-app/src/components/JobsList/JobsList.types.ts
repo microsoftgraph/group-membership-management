@@ -17,6 +17,7 @@ export interface IJobsListStyles {
   columnToEnd: IStyle;
   refresh: IStyle;
   title: IStyle;
+  jobsList: IStyle;
 }
 
 export interface IJobsListStyleProps {

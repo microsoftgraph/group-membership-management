@@ -67,7 +67,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
         <div className={classNames.appTitle}>{t('membershipManagement')}</div>
       </div>
       <div className={classNames.settingsContainer}>
-          <IconButton iconProps={{iconName: 'settings'}} className={classNames.settingsIcon} styles={buttonStyles} />
+          {/* <IconButton iconProps={{iconName: 'settings'}} className={classNames.settingsIcon} styles={buttonStyles} /> // Hidden until feature is enabled*/}
           <Persona size={PersonaSize.size32} className={classNames.userPersona} {...personaProps} />
       </div>
     </header>

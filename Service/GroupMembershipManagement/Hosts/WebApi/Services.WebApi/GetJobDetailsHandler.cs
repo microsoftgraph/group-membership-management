@@ -32,7 +32,7 @@ namespace Services{
 
             try
             {
-                endpoints = await GetGroupEndpointsAsync(request.SyncJobId);
+                endpoints = await _graphGroupRepository.GetGroupEndpointsAsync(job.TargetOfficeGroupId);
             }
             catch (Exception ex)
             {
@@ -62,9 +62,5 @@ namespace Services{
             return response;
         }
 
-        public async Task<List<string>> GetGroupEndpointsAsync(Guid groupId)
-        {
-            return await _graphGroupRepository.GetGroupEndpointsAsync(groupId);
-        }
     }
 }

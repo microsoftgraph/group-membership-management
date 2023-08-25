@@ -13,7 +13,7 @@ export const getStyles = (props: IPageHeaderStyleProps): IPageHeaderStyles => {
     root: [{
     }, className],
     backButton: {
-      padding: '7px 0px 0px 36px',
+      padding: '24px 0px 24px 36px',
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
@@ -22,7 +22,7 @@ export const getStyles = (props: IPageHeaderStyleProps): IPageHeaderStyles => {
     separator: {
       width: '95%',
       height: '1px',
-      background: '#D1D1D1',
+      background: theme.palette.neutralQuaternaryAlt,
       alignSelf: 'center'
     }
   };
