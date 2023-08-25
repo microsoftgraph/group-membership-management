@@ -688,7 +688,6 @@ namespace Services.Tests
             context.Setup(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()))
                     .Returns(() => Task.FromResult(new GroupUpdaterSubOrchestratorResponse() { Status = Entities.GraphUpdaterStatus.GuestError, SuccessCount = 1, UsersNotFound = new List<AzureADUser>(), UsersAlreadyExist = new List<AzureADUser>() }));
 
-            JobStatusUpdaterRequest updateJobRequest = null;
             context.Setup(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdaterRequest>()))
                    .Callback<string, object>(async (name, request) =>
                    {

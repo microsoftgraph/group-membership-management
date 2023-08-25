@@ -4,7 +4,6 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Hosts.GraphUpdater
