@@ -48,7 +48,7 @@ namespace Hosts.GraphUpdater
 
                 if (request != null)
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Calling {nameof(OrchestratorFunction)} for jobId {request.SyncJob.JobId}", SyncJob = request.SyncJob });
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Calling {nameof(OrchestratorFunction)} for jobId {request.SyncJob.Id}", SyncJob = request.SyncJob });
                     await context.CallSubOrchestratorAsync(nameof(OrchestratorFunction), request);
                 }
 
