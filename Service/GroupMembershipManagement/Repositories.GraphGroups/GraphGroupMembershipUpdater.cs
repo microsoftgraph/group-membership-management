@@ -175,8 +175,8 @@ namespace Repositories.GraphGroups
                 if (!patchRequests.Any())
                     return (ResponseCode.Ok, 0);
 
-                var batchRequestSteps = patchRequests.Select(x => new BatchRequestStep(x.Id, makeRequest(x.ToSend))).ToArray();
-                var batchRequestContent = new BatchRequestContent(_graphServiceClient, batchRequestSteps);
+                var batchRequestContent = new BatchRequestContentCollection(_graphServiceClient);
+                patchRequests.ForEach(x => batchRequestContent.AddBatchRequestStep(new BatchRequestStep(x.Id, makeRequest(x.ToSend))));
 
                 foreach (var idToRetry in await SendBatch(batchRequestContent))
                 {
@@ -361,9 +361,9 @@ namespace Repositories.GraphGroups
             return postResponse;
         }
 
-        private BatchRequestContent CreatePOSTBatchRequestContent(ChunkOfUsers chunkOfUsers, Guid targetGroupId)
+        private BatchRequestContentCollection CreatePOSTBatchRequestContent(ChunkOfUsers chunkOfUsers, Guid targetGroupId)
         {
-            var batchRequestContent = new BatchRequestContent(_graphServiceClient);
+            var batchRequestContent = new BatchRequestContentCollection(_graphServiceClient);
             foreach (var user in chunkOfUsers.ToSend)
             {
                 var httpMethod = user.MembershipAction == MembershipAction.Add ? HttpMethod.Post : HttpMethod.Delete;
@@ -398,14 +398,16 @@ namespace Repositories.GraphGroups
 
         }
 
-        private async Task<List<RetryResponse>> SendBatch(BatchRequestContent tosend)
+        private async Task<List<RetryResponse>> SendBatch(BatchRequestContentCollection tosend)
         {
             try
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sending requests {string.Join(",", tosend.BatchRequestSteps.Keys)}.", RunId = RunId });
 
                 var response = await _graphServiceClient.Batch.PostAsync(tosend);
-                return await GetStepIdsToRetry(await response.GetResponsesAsync(), (Dictionary<string, BatchRequestStep>)tosend.BatchRequestSteps);
+                var responseStatusCodes = await response.GetResponsesStatusCodesAsync();
+                var responses = await Task.WhenAll(responseStatusCodes.Select(async x => new KeyValuePair<string, HttpResponseMessage>(x.Key, await response.GetResponseByIdAsync(x.Key))));
+                return await GetStepIdsToRetry(responses.ToDictionary(x => x.Key, x => x.Value), (Dictionary<string, BatchRequestStep>)tosend.BatchRequestSteps);
             }
             catch (ServiceException ex)
             {

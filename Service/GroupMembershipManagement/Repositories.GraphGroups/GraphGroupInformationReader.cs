@@ -216,7 +216,7 @@ namespace Repositories.GraphGroups
 
             try
             {
-                var batchRequest = new BatchRequestContent(_graphServiceClient);
+                var batchRequest = new BatchRequestContentCollection(_graphServiceClient);
                 var outlookRequestInformation = _graphServiceClient
                                                     .Groups[groupId.ToString()]
                                                     .ToGetRequestInformation(requestConfiguration =>
@@ -323,7 +323,7 @@ namespace Repositories.GraphGroups
             {
                 foreach (var groupIdsChunk in groupIds.Distinct().Chunk(20))
                 {
-                    var batchRequest = new BatchRequestContent(_graphServiceClient);
+                    var batchRequest = new BatchRequestContentCollection(_graphServiceClient);
                     var requestIds = new Dictionary<string, Guid>();
 
                     foreach (var groupId in groupIdsChunk)
