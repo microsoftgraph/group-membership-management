@@ -456,7 +456,27 @@ namespace Services.Tests
             Assert.AreEqual(SyncStatus.QueryNotValid, _syncStatus);
         }
 
-        private async Task<(bool IsValid, DestinationObject DestinationObject)> CallParseAndValidateDestinationFunction()
+		[TestMethod]
+		public async Task HandleUnexpectedExceptionInSubOrchestrator()
+		{
+			// Arrange: Setting up the context to return an exception.
+			_context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+			_context.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<SyncJob>()))
+					.Throws(new Exception("Unexpected exception triggered for testing"));
+			var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+																_telemetryClient,
+																_emailSenderAndRecipients.Object,
+																_gmmResources.Object);
+			await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
+			_context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
+				It.Is<LoggerRequest>(req => req.Message.Contains("Caught unexpected exception in SubOrchestratorFunction, marking sync job as errored. "))), Times.Once());
+			_context.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+				It.Is<JobStatusUpdaterRequest>(req => req.Status == SyncStatus.Error)), Times.Once());
+			_context.Verify(x => x.CallActivityAsync(nameof(TelemetryTrackerFunction),
+				It.Is<TelemetryTrackerRequest>(req => req.JobStatus == SyncStatus.Error && req.ResultStatus == ResultStatus.Failure)), Times.Once());
+		}
+
+		private async Task<(bool IsValid, DestinationObject DestinationObject)> CallParseAndValidateDestinationFunction()
         {
             var parseAndValidateDestinationFunction = new ParseAndValidateDestinationFunction(_loggingRespository.Object, _jobTriggerService.Object);
             return await parseAndValidateDestinationFunction.ParseAndValidateDestinationAsync(new SyncJob());
