@@ -34,9 +34,9 @@ namespace Hosts.JobTrigger
                 });
 
             var syncJobs = new List<SyncJob>();
-            var segmentResponse = await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsSegmentedFunction), null);
+            var response = await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsFunction), null);
 
-            syncJobs = segmentResponse;
+            syncJobs = response;
 
             await context.CallActivityAsync(nameof(LoggerFunction),
              new LoggerRequest

@@ -35,8 +35,8 @@ namespace Services.Tests
 			bool jobTriggerThresholdExceeded = false; 
 			jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
 											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded));
-			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<object>()))
-                        .Returns(() => CallGetSyncJobsAsync(loggingRepository.Object, jobTriggerService.Object));
+			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsFunction)), It.IsAny<object>()))
+                        .Returns(() => CallGetSyncJobsSegmentAsync(loggingRepository.Object, jobTriggerService.Object));
 
             context.Setup(x => x.CallSubOrchestratorAsync(It.Is<string>(x => x == nameof(SubOrchestratorFunction)), It.IsAny<SyncJob>()));
 
@@ -64,8 +64,8 @@ namespace Services.Tests
 			bool jobTriggerThresholdExceeded = false;
 			jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
 											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded));
-			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<object>()))
-                        .Returns(() => CallGetSyncJobsAsync(loggingRepository.Object, jobTriggerService.Object));
+			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsFunction)), It.IsAny<object>()))
+                        .Returns(() => CallGetSyncJobsSegmentAsync(loggingRepository.Object, jobTriggerService.Object));
 
             context.Setup(x => x.CallSubOrchestratorAsync(It.Is<string>(x => x == nameof(SubOrchestratorFunction)), It.IsAny<SyncJob>()));
             var orchestrator = new OrchestratorFunction(loggingRepository.Object);
@@ -89,7 +89,7 @@ namespace Services.Tests
 			bool jobTriggerThresholdExceeded = true;
 			jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
 											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded));
-			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<object>()))
+			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsFunction)), It.IsAny<object>()))
 						.Returns(() => CallGetSyncJobsSegmentAsync(loggingRepository.Object, jobTriggerService.Object));
 
 			context.Setup(x => x.CallSubOrchestratorAsync(It.Is<string>(x => x == nameof(SubOrchestratorFunction)), It.IsAny<SyncJob>()));
@@ -117,8 +117,8 @@ namespace Services.Tests
 			jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
 											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded));
 
-			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<object>()))
-                        .Returns(() => CallGetSyncJobsAsync(loggingRepository.Object, jobTriggerService.Object));
+			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsFunction)), It.IsAny<object>()))
+                        .Returns(() => CallGetSyncJobsSegmentAsync(loggingRepository.Object, jobTriggerService.Object));
 
             context.Setup(x => x.CallSubOrchestratorAsync(It.Is<string>(x => x == nameof(SubOrchestratorFunction)), It.IsAny<SyncJob>()));
             var orchestrator = new OrchestratorFunction(loggingRepository.Object);
@@ -146,7 +146,7 @@ namespace Services.Tests
 			jobTriggerService.Setup(x => x.GetSyncJobsSegmentAsync())
 				                            .ReturnsAsync(() => (syncJobs1.Concat(syncJobs2).ToList(), jobTriggerThresholdExceeded));
 
-			context.SetupSequence(x => x.CallActivityAsync<List<SyncJob>>(nameof(GetJobsSegmentedFunction), It.IsAny<object>()))
+			context.SetupSequence(x => x.CallActivityAsync<List<SyncJob>>(nameof(GetJobsFunction), It.IsAny<object>()))
                         .ReturnsAsync(() =>
                             syncJobs1
                         )
@@ -154,8 +154,8 @@ namespace Services.Tests
                            syncJobs2
                         );
 
-            context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsSegmentedFunction)), It.IsAny<object>()))
-                        .Returns(() => CallGetSyncJobsAsync(loggingRepository.Object, jobTriggerService.Object));
+            context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsFunction)), It.IsAny<object>()))
+                        .Returns(() => CallGetSyncJobsSegmentAsync(loggingRepository.Object, jobTriggerService.Object));
 
             context.Setup(x => x.CallSubOrchestratorAsync(It.Is<string>(x => x == nameof(SubOrchestratorFunction)), It.IsAny<SyncJob>()));
             var orchestrator = new OrchestratorFunction(loggingRepository.Object);
@@ -167,8 +167,8 @@ namespace Services.Tests
 
         private async Task<List<SyncJob>> CallGetSyncJobsAsync(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
         {
-            var getJobsSegmentedFunction = new GetJobsSegmentedFunction(jobTriggerService, loggingRepository);
-            var getJobsSegmentedResponse = await getJobsSegmentedFunction.GetJobsToUpdateAsync(
+            var GetJobsFunction = new GetJobsFunction(jobTriggerService, loggingRepository);
+            var getJobsSegmentedResponse = await GetJobsFunction.GetJobsToUpdateAsync(
                 null);
             return getJobsSegmentedResponse;
         }
