@@ -33,7 +33,7 @@ namespace Hosts.GraphUpdater
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Processing message {message.MessageId}", RunId = runId }, VerbosityLevel.INFO);
 
-            var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
+            var instanceId = await starter.StartNewAsync(nameof(MessageOrchestrator), request);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId}", RunId = runId }, VerbosityLevel.DEBUG);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
