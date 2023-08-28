@@ -19,7 +19,6 @@ namespace Services
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IThresholdNotificationService _thresholdNotificationService;
         private readonly TelemetryClient _telemetryClient;
-        private readonly ILoggingRepository _loggingRepository;
 
         public ResolveNotificationHandler(ILoggingRepository loggingRepository,
                               INotificationRepository notificationRepository,
@@ -33,7 +32,6 @@ namespace Services
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _thresholdNotificationService = thresholdNotificationService ?? throw new ArgumentNullException(nameof(thresholdNotificationService));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         protected override async Task<ResolveNotificationResponse> ExecuteCoreAsync(ResolveNotificationRequest request)
@@ -41,11 +39,6 @@ namespace Services
             var response = new ResolveNotificationResponse();
             var thresholdNotification = await _notificationRepository.GetThresholdNotificationByIdAsync(request.Id);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"ResolveNotificationHandler request: " +
-                $"Id: {request.Id}, UserUPN: {request.UserUPN}, TargetOfficeGroupId: {thresholdNotification?.TargetOfficeGroupId}"
-            });
             if (thresholdNotification == null)
             {
                 response.CardJson = _thresholdNotificationService.CreateNotFoundNotificationCard(request.Id);
@@ -53,14 +46,9 @@ namespace Services
             }
 
             var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserUPN, thresholdNotification.TargetOfficeGroupId);
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"ResolveNotificationHandler isGroupOwner: {isGroupOwner}"
-            });
             if (!isGroupOwner)
             {
-                //response.CardJson = await _thresholdNotificationService.CreateUnauthorizedNotificationCardAsync(thresholdNotification);
-                response.CardJson = await _thresholdNotificationService.CreateNotificationCardAsync(thresholdNotification);
+                response.CardJson = await _thresholdNotificationService.CreateUnauthorizedNotificationCardAsync(thresholdNotification);
                 return response;
             }
 

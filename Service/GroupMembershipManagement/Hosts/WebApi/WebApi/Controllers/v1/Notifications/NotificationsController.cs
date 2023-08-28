@@ -28,7 +28,6 @@ namespace WebApi.Controllers.v1.Notifications
             _notificationCardHandler = getNotificationCardRequestHandler ?? throw new ArgumentNullException(nameof(getNotificationCardRequestHandler));
         }
 
-        [EnableQuery()]
         [HttpPost()]
         [Route("{id}/card")]
         public async Task<ActionResult<string>> GetCardAsync(Guid id)

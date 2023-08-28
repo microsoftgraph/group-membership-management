@@ -55,3 +55,5 @@ steps:
       REACT_APP_AAD_APP_TENANT_ID: $(REACT_APP_AAD_APP_TENANT_ID_${{parameters.environmentAbbreviation}})
       REACT_APP_AAD_APP_SERVICE_BASE_URI: $(REACT_APP_AAD_APP_SERVICE_BASE_URI_${{parameters.environmentAbbreviation}})
       REACT_APP_VERSION_NUMBER: $(Build.BuildNumber)
+      REACT_APP_SHAREPOINTDOMAIN: $(REACT_APP_SHAREPOINTDOMAIN_${{parameters.environmentAbbreviation}})
+      REACT_APP_DOMAINNAME: $(REACT_APP_DOMAINNAME_${{parameters.environmentAbbreviation}})

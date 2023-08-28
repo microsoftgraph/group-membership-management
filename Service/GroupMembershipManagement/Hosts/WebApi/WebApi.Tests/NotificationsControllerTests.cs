@@ -238,7 +238,7 @@ namespace Services.Tests
             Assert.IsNotNull(response);
             Assert.IsNotNull(result?.Content);
             Assert.AreEqual("application/json", result.ContentType);
-            //ValidateNotFoundCard(result.Content);
+            ValidateNotFoundCard(result.Content);
         }
 
         /// <summary>
@@ -262,7 +262,7 @@ namespace Services.Tests
             Assert.IsNotNull(response);
             Assert.IsNotNull(result?.Content);
             Assert.AreEqual("application/json", result.ContentType);
-            //ValidateUnauthorizedCard(result.Content);
+            ValidateUnauthorizedCard(result.Content);
         }
 
         /// <summary>
@@ -285,7 +285,7 @@ namespace Services.Tests
             Assert.IsNotNull(response);
             Assert.IsNotNull(result?.Content);
             Assert.AreEqual("application/json", result.ContentType);
-            //ValidateResolvedCard(result.Content);
+            ValidateResolvedCard(result.Content);
         }
 
         /// <summary>
