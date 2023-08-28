@@ -9,4 +9,5 @@ export interface JobDetails {
   thresholdViolations: number;
   thresholdPercentageForAdditions: number;
   thresholdPercentageForRemovals: number;
+  endpoints: string[];
 }

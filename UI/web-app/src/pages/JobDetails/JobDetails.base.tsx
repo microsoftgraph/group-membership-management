@@ -41,10 +41,12 @@ import {
   type IJobDetailsStyleProps,
   type IJobDetailsStyles,
 } from './JobDetails.types';
+import { JobDetails } from '../../models/JobDetails';
 
 
 export interface IContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
   job: Job,
+  jobDetails?: JobDetails,
   classNames: IProcessedStyleSet<IJobDetailsStyles>
 }
 
@@ -122,7 +124,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
           actionText={t('JobDetails.openInAzure')}
           actionIcon={OpenInNewWindowIcon}
           actionOnClick={openInAzure}
-          children={<MembershipDestination job={job} classNames={classNames} />}
+          children={<MembershipDestination job={job} jobDetails={jobDetails} classNames={classNames} />}
         />
         <ContentContainer
           title={t('JobDetails.labels.configuration')}
@@ -200,7 +202,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
   props: IContentProps
 ) => {
   const { t } = useTranslation();
-  const { job, classNames } = props;
+  const { job, jobDetails, classNames } = props;
 
   const itemAlignmentsStackTokens: IStackTokens = {
     childrenGap: 30,
@@ -210,24 +212,24 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
     childrenGap: 30,
   };
 
+  const SharePointDomain: string = `${process.env.REACT_APP_SHAREPOINTDOMAIN}`;
+  const domainName: string = `${process.env.REACT_APP_DOMAINNAME}`;
+  const groupName: string = job.targetGroupName.replace(/\s/g, '');
+  
   const openOutlookLink = (): void => {
-    // https://outlook-sdf.office.com/mail/group/service.microsoft.com/Oliviaoutlookgroup-testing
-    // https://m365x47587678.sharepoint.com/sites/DestinationGroup
-    var url = `https://outlook.office.com/mail/group/service.microsoft.com/${job.targetGroupName}`;
+    const url = `https://outlook.office.com/mail/group/${domainName}/${groupName}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const openSharePointLink = (): void => {
-    // https://m365x47587678.sharepoint.com/sites/DestinationGroup
-    // https://microsoft.sharepoint.com/teams/Oliviaoutlookgroup-testing
-    var url = `microsoft.sharepoint.com/teams${job.targetGroupName}`;
+    const url = `https://${SharePointDomain}/teams/${groupName}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const openYammerLink = (): void => {
-    // https://www.yammer.com/microsoft.com/#/threads/inGroup?type=in_group&feedId=94116864000
-    // var url = `https://outlook.office.com/mail/group/service.microsoft.com/${job.targetGroupName}`;
-    // window.open(url, '_blank', 'noopener,noreferrer');
+    const domainName: string = `${process.env.REACT_APP_DOMAINNAME}`
+    const url = `https://www.yammer.com/${domainName}/groups/${groupName}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
 
@@ -272,7 +274,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
           </Stack.Item>
         </Stack>
       </Stack.Item>
-      {job.endpoints ? (
+      {jobDetails?.endpoints ? (
         <Stack.Item align="start">
           <Text className={classNames.itemTitle} block>
             {t('JobDetails.labels.groupLinks')}
@@ -283,26 +285,26 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
               horizontal
               tokens={itemAlignmentsStackTokens}
             >
-              {job.endpoints.includes("Outlook") && (
+              {jobDetails?.endpoints?.includes("Outlook") && (
                 <ActionButton
-                  iconProps={{ iconName: 'Outlook' }}
-                  onClick={() => openOutlookLink}
+                  iconProps={{ iconName: 'OutlookLogo' }}
+                  onClick={() => openOutlookLink()}
                 >
                   Outlook
                 </ActionButton>
               )}
-              {job.endpoints.includes("SharePoint") && (
+              {jobDetails?.endpoints?.includes("SharePoint") && (
                 <ActionButton
-                  iconProps={{ iconName: 'SharePoint' }}
-                  onClick={() => openSharePointLink}
+                  iconProps={{ iconName: 'SharePointLogo' }}
+                  onClick={() => openSharePointLink()}
                 >
                   SharePoint
                 </ActionButton>
               )}
-              {job.endpoints.includes("Yammer") && (
+              {jobDetails?.endpoints?.includes("Yammer") && (
                 <ActionButton
-                  iconProps={{ iconName: 'Yammer' }}
-                  onClick={() => openYammerLink}
+                  iconProps={{ iconName: 'YammerLogo' }}
+                  onClick={() => openYammerLink()}
                 >
                   Yammer
                 </ActionButton>
