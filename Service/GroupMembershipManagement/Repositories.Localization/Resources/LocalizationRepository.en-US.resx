@@ -193,7 +193,7 @@
         "items": [
           {
             "type": "TextBlock",
-            "text": "The last synchronization attempt of your GMM group **${$root.groupName}** was larger than the configured alert.",
+            "text": "The most recent attempt to update the membership of your GMM managed group '**${$root.groupName}**' exceeded the configured alert threshold.",
             "wrap": true,
             "color": "Attention"
           },
@@ -1037,10 +1037,10 @@ Regards,
 GMM Team</value>
   </data>
   <data name="SyncThresholdDisablingJobEmailSubject" xml:space="preserve">
-    <value>[THRESHOLD_EXCEEDED] GMM: Synchronization job for group {1} has been disabled.</value>
+    <value>[Action Required] GMM: Synchronization job for group {1} has been disabled.</value>
   </data>
   <data name="SyncThresholdEmailSubject" xml:space="preserve">
-    <value>[THRESHOLD_EXCEEDED] GMM: Action required for group {0}.</value>
+    <value>[Action Required] GMM: Membership Change Alert review for {0}.</value>
   </data>
   <data name="ThresholdNotificationResolution.IgnoreOnce" xml:space="preserve">
     <value>Ignore Thresholds Once</value>
