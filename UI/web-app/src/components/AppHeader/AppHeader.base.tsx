@@ -2,6 +2,7 @@
 // Licensed under the MIT license.import React from "react";
 
 import { classNamesFunction, IButtonStyles, IconButton, IPersonaSharedProps, IProcessedStyleSet, IStyle, Persona, PersonaSize, useTheme } from '@fluentui/react';
+import { useNavigate } from 'react-router-dom';
 import {
   type IAppHeaderProps,
   type IAppHeaderStyleProps,
@@ -43,6 +44,15 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
     }
   }, [dispatch, profilePhoto]);
   
+  const navigate = useNavigate();
+  const onItemClicked = (
+    item?: any,
+    index?: number,
+    ev?: React.FocusEvent<HTMLElement>
+  ): void => {
+    navigate('/AdminConfig', { replace: false, state: { item: 1 } });
+  };
+  
   const personaProps: IPersonaSharedProps = {
     imageUrl: profilePhoto
   }
@@ -65,7 +75,11 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
         <div className={classNames.appTitle}>{strings.membershipManagement}</div>
       </div>
       <div className={classNames.settingsContainer}>
-          {/* <IconButton iconProps={{iconName: 'settings'}} className={classNames.settingsIcon} styles={buttonStyles} /> // Hidden until feature is enabled*/}
+          <IconButton 
+            iconProps={{iconName: 'settings'}} 
+            className={classNames.settingsIcon} 
+            styles={buttonStyles}
+            onClick={onItemClicked} />
           <Persona size={PersonaSize.size32} className={classNames.userPersona} {...personaProps} />
       </div>
     </header>
