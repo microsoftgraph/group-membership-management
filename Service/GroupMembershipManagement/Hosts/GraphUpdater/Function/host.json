@@ -6,14 +6,14 @@
       "extendedSessionsEnabled": true,
       "extendedSessionIdleTimeoutInSeconds": 30,
       "maxConcurrentActivityFunctions": 10,
-      "maxConcurrentOrchestratorFunctions": 2
+      "maxConcurrentOrchestratorFunctions": 5
     }
   },
   "logging": {
     "applicationInsights": {
-      "samplingExcludedTypes": "Request",
       "samplingSettings": {
-        "isEnabled": true
+        "isEnabled": true,
+        "excludedTypes": "Request"
       }
     }
   }
