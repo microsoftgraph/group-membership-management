@@ -1,6 +1,7 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using JobTrigger.Activity.EmailSender;
+using JobTrigger.Activity.SchemaValidator;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -68,9 +69,12 @@ namespace Hosts.JobTrigger
 
             try
             {
+                var hasValidJson = await context.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), syncJob);
+                if (!hasValidJson) { return; }
+
                 var parsedAndValidatedDestination = await context.CallActivityAsync<(bool IsValid, DestinationObject DestinationObject)>(nameof(ParseAndValidateDestinationFunction), syncJob);
-                destinationObject =  parsedAndValidatedDestination.DestinationObject;
-               
+                destinationObject = parsedAndValidatedDestination.DestinationObject;
+
                 if (!parsedAndValidatedDestination.IsValid)
                 {
 
@@ -122,7 +126,7 @@ namespace Hosts.JobTrigger
                 }
                 else
                 {
-              
+
                     await context.CallActivityAsync(nameof(LoggerFunction),
                         new LoggerRequest
                         {
@@ -137,7 +141,7 @@ namespace Hosts.JobTrigger
             }
             catch (JsonReaderException)
             {
-             
+
                 await context.CallActivityAsync(nameof(LoggerFunction),
                         new LoggerRequest
                         {
@@ -211,7 +215,7 @@ namespace Hosts.JobTrigger
             }
             else if (syncJob.Status == SyncStatus.Idle.ToString())
             {
-                    statusValue = SyncStatus.InProgress;
+                statusValue = SyncStatus.InProgress;
             }
 
             await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = statusValue, SyncJob = syncJob });

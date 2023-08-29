@@ -15,6 +15,7 @@ using Repositories.GraphGroups;
 using Microsoft.Graph;
 using Microsoft.Extensions.Configuration;
 using Azure.Messaging.ServiceBus;
+using System.IO;
 
 [assembly: FunctionsStartup(typeof(Hosts.JobTrigger.Startup))]
 
@@ -24,6 +25,8 @@ namespace Hosts.JobTrigger
     {
         protected override string FunctionName => nameof(JobTrigger);
         protected override string DryRunSettingName => string.Empty;
+
+        private const string SCHEMA_DIRECTORY = "JsonSchemas";
 
         public override void Configure(IFunctionsHostBuilder builder)
         {
@@ -55,6 +58,20 @@ namespace Hosts.JobTrigger
             });
 
             builder.Services.AddScoped<IJobTriggerService, JobTriggerService>();
+
+            var rootPath = builder.GetContext().ApplicationRootPath;
+            var jsonSchemasPath = Path.Combine(rootPath, SCHEMA_DIRECTORY);
+            var schemaProvider = new JsonSchemaProvider();
+            if (Directory.Exists(jsonSchemasPath))
+            {
+                var files = Directory.EnumerateFiles(jsonSchemasPath);
+                foreach (var file in files)
+                {
+                    schemaProvider.Schemas.Add(Path.GetFileNameWithoutExtension(file), File.ReadAllText(file));
+                }
+            }
+
+            builder.Services.AddSingleton(schemaProvider);
         }
 
         private bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)

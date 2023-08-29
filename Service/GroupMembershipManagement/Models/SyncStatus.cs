@@ -24,6 +24,7 @@ namespace Models
         DestinationQueryNotValid = 16,
         GuestUsersCannotBeAddedToUnifiedGroup = 17,
         StandardTeamsChannel = 18,
-        TeamsChannelError = 19
+        TeamsChannelError = 19,
+        SchemaError = 20
     }
 }
