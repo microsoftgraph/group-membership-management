@@ -1,6 +1,7 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using JobTrigger.Activity.EmailSender;
+using JobTrigger.Activity.SchemaValidator;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
