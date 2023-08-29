@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OData.Query;
+using Microsoft.O365.ActionableMessages.Utilities;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
@@ -45,10 +46,13 @@ namespace WebApi.Controllers.v1.Notifications
         [HttpPost()]
         public async Task<ActionResult<string>> ResolveNotificationAsync(Guid id, [FromBody] ResolveNotification model)
         {
-            var request = HttpContext.Request;
-            var userUpn = GetUserUpn();
+            var bearerToken = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+            ActionableMessageTokenValidator validator = new ActionableMessageTokenValidator();
 
-            var response = await _resolveNotificationHandler.ExecuteAsync(new ResolveNotificationRequest(id, userUpn, model.Resolution));
+            ActionableMessageTokenValidationResult result = await validator.ValidateTokenAsync(bearerToken, "https://gmm-compute-ag-webapi.azurewebsites.net/");
+
+
+            var response = await _resolveNotificationHandler.ExecuteAsync(new ResolveNotificationRequest(id, result.ActionPerformer, model.Resolution));
             Response.Headers["card-update-in-body"] = "true";
             return Content(response.CardJson, "application/json");
         }
