@@ -5,7 +5,6 @@ import { classNamesFunction, type IProcessedStyleSet } from '@fluentui/react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import React from 'react';
-import { Text } from '@fluentui/react/lib/Text';
 import { TextField } from '@fluentui/react/lib/TextField';
 
 import {
@@ -31,14 +30,10 @@ export const HyperlinkContainerBase: React.FunctionComponent<IHyperlinkContainer
 
         <div className={classNames.card}>
             <div className={classNames.title}>
-                <Text>
-                    {title}
-                </Text>
+                {title}
             </div>
             <div className={classNames.description}>
-                <Text>
-                    {description}
-                </Text>
+                {description}
             </div>
             <div>
                 <TextField

@@ -7,26 +7,32 @@ export const getStyles = (props: IHyperlinkContainerStyleProps): IHyperlinkConta
     const { className, theme } = props;
 
     return {
-        root: [{}, className],
+        root: [{
+            padding: '0px 14px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '15px'
+        }, className],
         card: {
-            paddingTop: 18,
-            paddingBottom: 18,
-            paddingLeft: 24,
-            paddingRight: 24,
             borderRadius: 10,
             marginBottom: 10,
             backgroundColor: theme.palette.white,
-            width: 300,
             margin: 10,
-            outline: `1px solid ${theme.palette.neutralLighterAlt}`
+            outline: `1px solid ${theme.palette.neutralSecondaryAlt}`,
+            display: 'flex',
+            width: '649px',
+            padding: 24,
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: '4px'
         },
         title: {
             fontWeight: 600,
-            fontSize: 16,
-            color: theme.palette.red
+            fontSize: 16
         },
         description:{
-
+            fontSize: 14,
+            fontWeight: 400
         }
     };
 };

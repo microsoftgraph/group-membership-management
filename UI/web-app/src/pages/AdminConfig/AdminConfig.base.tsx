@@ -74,12 +74,12 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
                                 description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}>
                             </HyperlinkContainer>
                         </div>
-                        <div className={classNames.bottomContainer}>
-                            <PrimaryButton text="Save"></PrimaryButton>
-                        </div>
                     </PivotItem>
                 </Pivot>
             </PageSection>
+            <div className={classNames.bottomContainer}>
+                <PrimaryButton text="Save"></PrimaryButton>
+            </div>
         </div >
     )
 }
