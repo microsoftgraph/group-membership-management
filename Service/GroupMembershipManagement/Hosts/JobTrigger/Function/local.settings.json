@@ -20,7 +20,6 @@
     "graphCredentials:TenantId": "<demo-tenant-id>",
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "",
-    "actionableEmailProviderId": "",
-    "ConnectionStrings:JobsContext" : ""
+    "actionableEmailProviderId": ""
   }
 }
