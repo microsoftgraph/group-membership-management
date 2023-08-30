@@ -462,13 +462,13 @@ namespace Services.Tests
 			_context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
 			_context.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<SyncJob>()))
 					.Throws(new Exception("Unexpected exception triggered for testing"));
-                    
+
 			var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
 																_telemetryClient,
 																_emailSenderAndRecipients.Object,
 																_gmmResources.Object);
-
 			await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
+
 			_context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
 				It.Is<LoggerRequest>(req => req.Message.Contains("Caught unexpected exception in SubOrchestratorFunction, marking sync job as errored. "))), Times.Once());
 			_context.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
