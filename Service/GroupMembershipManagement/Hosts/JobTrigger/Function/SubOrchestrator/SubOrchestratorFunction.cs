@@ -122,6 +122,20 @@ namespace Hosts.JobTrigger
                     {
                         // Make sure the query is valid JSON.
                         var query = JToken.Parse(syncJob.Query);
+
+                        var hasValidJson = await context.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), syncJob);
+                        if (!hasValidJson)
+                        {
+                            await context.CallActivityAsync(nameof(TelemetryTrackerFunction),
+                                                            new TelemetryTrackerRequest
+                                                            {
+                                                                JobStatus = SyncStatus.SchemaError,
+                                                                ResultStatus = ResultStatus.Failure,
+                                                                RunId = syncJob.RunId
+                                                            });
+
+                            return;
+                        }
                     }
                     catch (JsonReaderException)
                     {

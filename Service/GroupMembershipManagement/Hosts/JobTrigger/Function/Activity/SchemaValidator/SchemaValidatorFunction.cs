@@ -1,16 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Hosts.JobTrigger;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
+using Newtonsoft.Json;
+using NJsonSchema;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
-using System.Threading.Tasks;
-using NJsonSchema;
-using Hosts.JobTrigger;
 using System.Linq;
-using Newtonsoft.Json;
+using System.Threading.Tasks;
 
 namespace JobTrigger.Activity.SchemaValidator
 {
@@ -48,7 +48,6 @@ namespace JobTrigger.Activity.SchemaValidator
                 return isValidJson;
             }
 
-
             var properties = typeof(SyncJob).GetProperties();
             foreach (var schemaKV in _schemaProvider.Schemas)
             {
@@ -61,6 +60,12 @@ namespace JobTrigger.Activity.SchemaValidator
                         var result = schema.Validate(Convert.ToString(property.GetValue(syncJob)));
                         if (result.Count > 0)
                         {
+                            await _loggingRepository.LogMessageAsync(new LogMessage
+                            {
+                                RunId = syncJob.RunId.GetValueOrDefault(),
+                                Message = $"Schema is not valid for property: {schemaKV.Key}."
+                            });
+
                             isValidJson = false;
                             break;
                         }
