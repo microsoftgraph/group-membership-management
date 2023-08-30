@@ -17,9 +17,13 @@ export const getStyles = (props: IAdminConfigStyleProps): IAdminConfigStyles => 
             fontSize: '20px'
         },
         tiles: {
-            display: 'flex'
+            display: 'flex',
+            flexBasis: '100%',
+            flexWrap: 'wrap',
+            wrapFlow: 'row'
         },
         bottomContainer:{
+            margin: '12px 37px',
             display: 'flex',
             justifyContent: 'flex-end'
         }

@@ -40,6 +40,10 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
 
     // const {  } = props;
 
+    const onClick = () => {
+        console.log('Clicked!');
+    };
+
     return (
         <div className={classNames.root}>
             <PageSection>
@@ -78,7 +82,7 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
                 </Pivot>
             </PageSection>
             <div className={classNames.bottomContainer}>
-                <PrimaryButton text="Save"></PrimaryButton>
+                <PrimaryButton text="Save" onClick={()=>onClick()}></PrimaryButton>
             </div>
         </div >
     )
