@@ -228,7 +228,6 @@ namespace Hosts.JobTrigger
 			}
 			catch (Exception ex)
 			{
-				// Handle the exception, log it, and set the status to error.
 				await context.CallActivityAsync(nameof(LoggerFunction),
 					new LoggerRequest
 					{
@@ -236,7 +235,6 @@ namespace Hosts.JobTrigger
 						Message = $"Caught unexpected exception in {nameof(SubOrchestratorFunction)}, marking sync job as errored. Exception:\n{ex.Message}."
 					});
 
-				// Set the job status to Error.
 				await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
 					new JobStatusUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob });
 
