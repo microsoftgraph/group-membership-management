@@ -38,51 +38,39 @@ namespace Repositories.EntityFramework
         {
             IQueryable<SyncJob> query = _context.SyncJobs;
 
-            if (statusFilters.Contains(SyncStatus.All))
-            {
-                if (!includeFutureJobs)
-                {
-                    DateTime currentUtcTime = DateTime.UtcNow;
-                    query = query.Where(job => job.StartDate <= currentUtcTime);
-                }
-
-                return await query.ToListAsync();
-            }
-
             if (!includeFutureJobs)
             {
-                var statuses = statusFilters.Select(x => x.ToString()).ToList();
                 DateTime currentUtcTime = DateTime.UtcNow;
-                query = query.Where(job => job.StartDate <= currentUtcTime && statuses.Contains(job.Status));
+                query = query.Where(job => job.StartDate <= currentUtcTime);
+            }
+
+            if (!statusFilters.Contains(SyncStatus.All))
+            {
+                var statuses = statusFilters.Select(x => x.ToString()).ToList();
+                query = query.Where(job => statuses.Contains(job.Status));
             }
 
             return await query.ToListAsync();
         }
 
-		public async Task<int> GetSyncJobCountAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
-		{
-			IQueryable<SyncJob> query = _context.SyncJobs;
+        public async Task<int> GetSyncJobCountAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
+        {
+            IQueryable<SyncJob> query = _context.SyncJobs;
 
-			if (statusFilters.Contains(SyncStatus.All))
-			{
-				if (!includeFutureJobs)
-				{
-					DateTime currentUtcTime = DateTime.UtcNow;
-					query = query.Where(job => job.StartDate <= currentUtcTime);
-				}
+            if (!includeFutureJobs)
+            {
+                DateTime currentUtcTime = DateTime.UtcNow;
+                query = query.Where(job => job.StartDate <= currentUtcTime);
+            }
 
-				return await query.CountAsync();
-			}
+            if (!statusFilters.Contains(SyncStatus.All))
+            {
+                var statuses = statusFilters.Select(x => x.ToString()).ToList();
+                query = query.Where(job => statuses.Contains(job.Status));
+            }
 
-			if (!includeFutureJobs)
-			{
-				var statuses = statusFilters.Select(x => x.ToString()).ToList();
-				DateTime currentUtcTime = DateTime.UtcNow;
-				query = query.Where(job => job.StartDate <= currentUtcTime && statuses.Contains(job.Status));
-			}
-
-			return await query.CountAsync();
-		}
+            return await query.CountAsync();
+        }
 
 		public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status)
         {

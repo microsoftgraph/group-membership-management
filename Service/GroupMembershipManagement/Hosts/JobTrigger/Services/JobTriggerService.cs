@@ -271,7 +271,7 @@ namespace Services
                 {
                     double percentage = ((double)syncJobsCount / totalSyncJobsCount) * 100;
 
-                    if (percentage > _jobTriggerConfig.JobPercentThreshold)
+                    if (percentage >= _jobTriggerConfig.JobPercentThreshold)
                     {
                         return true;
                     }

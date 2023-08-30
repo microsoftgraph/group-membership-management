@@ -33,10 +33,7 @@ namespace Hosts.JobTrigger
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
-            var syncJobs = new List<SyncJob>();
-            var response = await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsFunction), null);
-
-            syncJobs = response;
+            var syncJobs =  await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsFunction), null);
 
             await context.CallActivityAsync(nameof(LoggerFunction),
              new LoggerRequest

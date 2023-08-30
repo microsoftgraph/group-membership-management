@@ -36,15 +36,7 @@ namespace Hosts.JobTrigger
                 settings.JobPercentThreshold = GetIntSetting(configuration, "JobTrigger:JobPercentThreshold", 25);
             });
 
-            builder.Services.AddSingleton<IJobTriggerConfig>(services =>
-            {
-                var jobTriggerOptions = services.GetService<IOptions<JobTriggerConfig>>().Value;
-                return new JobTriggerConfig(
-                    jobTriggerOptions.GMMHasGroupReadWriteAllPermissions, 
-                    jobTriggerOptions.JobCountThreshold,
-                    jobTriggerOptions.JobPercentThreshold
-                );
-            });
+            builder.Services.AddSingleton<IJobTriggerConfig>(services => services.GetService<IOptions<JobTriggerConfig>>().Value);
 
             builder.Services.AddSingleton<IKeyVaultSecret<IJobTriggerService>>(services => new KeyVaultSecret<IJobTriggerService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
             .AddSingleton((services) =>

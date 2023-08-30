@@ -31,7 +31,7 @@ namespace Hosts.JobTrigger
 
             if (jobTriggerThresholdExceeded)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} function is not proceeding with {tableQuery.Count} jobs due to JobTrigger threshold limit exceed." }, VerbosityLevel.DEBUG);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} function is not proceeding with {tableQuery.Count} jobs due to JobTrigger threshold limit exceeded." }, VerbosityLevel.DEBUG);
                 return new List<SyncJob>();
             }
 
