@@ -1,26 +1,27 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Messaging.ServiceBus;
 using Hosts.JobTrigger;
 using JobTrigger.Activity.EmailSender;
+using JobTrigger.Activity.SchemaValidator;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
+using Moq;
+using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.ServiceBusTopics;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
-using Azure.Messaging.ServiceBus;
-using System.Threading;
 using System.Data.SqlTypes;
-using Newtonsoft.Json;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Services.Tests
 {
@@ -40,6 +41,8 @@ namespace Services.Tests
         TelemetryClient _telemetryClient;
         List<string> _endpoints;
         int _frequency;
+        JsonSchemaProvider _jsonSchemaProvider;
+        bool _jsonValidationResult;
 
         [TestInitialize]
         public void Setup()
@@ -55,6 +58,7 @@ namespace Services.Tests
             _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             _endpoints = new List<string> { "Yammer", "Teams" };
             _frequency = 0;
+            _jsonSchemaProvider = new JsonSchemaProvider();
 
             _jobTriggerService.Setup(x => x.GroupExistsAndGMMCanWriteToGroupAsync(It.IsAny<SyncJob>(), It.IsAny<string>())).ReturnsAsync(() => _canWriteToGroups);
             _jobTriggerService.Setup(x => x.GetGroupNameAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => "Test Group");
@@ -67,6 +71,12 @@ namespace Services.Tests
                     ObjectId = Guid.NewGuid()
                 }
             }));
+
+            _jobTriggerService.Setup(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()))
+                              .Callback<SyncStatus, SyncJob>((status, job) =>
+                              {
+                                  _syncStatus = status;
+                              });
 
             _context.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<SyncJob>()))
                                         .Callback<string, object>(async (name, request) =>
@@ -121,6 +131,48 @@ namespace Services.Tests
                        await CallLoggerFunctionAsync(request as LoggerRequest);
                    });
 
+            _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SyncJob>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        _jsonValidationResult = await CallSchemaValidatorFunctionAsync(request as SyncJob);
+                    }).ReturnsAsync(() => _jsonValidationResult);
+
+            var jobTriggerFolderName = "JobTrigger";
+            var schemaFolderName = "JsonSchemas";
+            var currentDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            var jsonSchemaDirectory = Path.Combine(currentDirectory, schemaFolderName);
+
+            if (!Directory.Exists(jsonSchemaDirectory))
+            {
+
+                var jobtriggerIndex = currentDirectory.IndexOf(jobTriggerFolderName, StringComparison.InvariantCultureIgnoreCase);
+                if (jobtriggerIndex != -1)
+                {
+                    currentDirectory = currentDirectory.Substring(0, jobtriggerIndex + jobTriggerFolderName.Length);
+                    var directories = Directory.EnumerateDirectories(currentDirectory,
+                                                                     schemaFolderName,
+                                                                     new EnumerationOptions
+                                                                     {
+                                                                         MatchCasing = MatchCasing.CaseInsensitive,
+                                                                         RecurseSubdirectories = true
+                                                                     });
+
+                    if (directories.Any())
+                    {
+                        jsonSchemaDirectory = directories.FirstOrDefault();
+                    }
+                }
+            }
+
+            if (jsonSchemaDirectory != null && Directory.Exists(jsonSchemaDirectory))
+            {
+                var files = Directory.EnumerateFiles(jsonSchemaDirectory);
+                foreach (var file in files)
+                {
+                    _jsonSchemaProvider.Schemas.Add(Path.GetFileNameWithoutExtension(file), File.ReadAllText(file));
+                }
+            }
+
         }
 
         [TestMethod]
@@ -168,7 +220,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task HandleInvalidSourceQuery()
+        public async Task HandleInvalidQueryJson()
         {
             _syncJob.Query = "{invalid json query}";
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
@@ -183,7 +235,100 @@ namespace Services.Tests
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid), It.IsAny<SyncJob>()), Times.Once());
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.Contains("Source query is not valid")),
+                It.Is<LogMessage>(m => m.Message.Contains("Unable to parse json query")),
+                It.IsAny<VerbosityLevel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()));
+        }
+
+        [TestMethod]
+        public async Task HandleInvalidJson()
+        {
+            _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SyncJob>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        var job = request as SyncJob;
+                        job.Query = "{invalid-json}";
+                        _jsonValidationResult = await CallSchemaValidatorFunctionAsync(request as SyncJob);
+                    }).ReturnsAsync(() => _jsonValidationResult);
+
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                                _telemetryClient,
+                                                                _emailSenderAndRecipients.Object,
+                                                                _gmmResources.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
+
+            _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
+            _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<SyncStatus>(s => s == SyncStatus.SchemaError), It.IsAny<SyncJob>()), Times.Once());
+
+            _loggingRespository.Verify(x => x.LogMessageAsync(
+                It.Is<LogMessage>(m => m.Message.Contains("Unable to parse json for property")),
+                It.IsAny<VerbosityLevel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()));
+        }
+
+        [TestMethod]
+        public async Task HandleNoSchemasLoaded()
+        {
+            _jsonSchemaProvider.Schemas.Clear();
+
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                                _telemetryClient,
+                                                                _emailSenderAndRecipients.Object,
+                                                                _gmmResources.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
+
+            _loggingRespository.Verify(x => x.LogMessageAsync(
+                It.Is<LogMessage>(m => m.Message.Contains("No json schemas have been loaded")),
+                It.IsAny<VerbosityLevel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()));
+        }
+
+        [TestMethod]
+        public async Task HandleSchemasForUnknowProperty()
+        {
+            _jsonSchemaProvider.Schemas.Clear();
+            _jsonSchemaProvider.Schemas.Add("Test", "");
+
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                                _telemetryClient,
+                                                                _emailSenderAndRecipients.Object,
+                                                                _gmmResources.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
+
+            _loggingRespository.Verify(x => x.LogMessageAsync(
+                It.Is<LogMessage>(m => m.Message.Contains("Skipping schema validation for property")),
+                It.IsAny<VerbosityLevel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()));
+        }
+
+        [TestMethod]
+        public async Task HandleValidQueryJsonButWrongSchema()
+        {
+            // invalid property -> sources
+            _syncJob.Query = $"[{{\"type\":\"GroupMembership\",\"sources\": \"{Guid.NewGuid()}\"}}]";
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                                _telemetryClient,
+                                                                _emailSenderAndRecipients.Object,
+                                                                _gmmResources.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
+
+            _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
+            _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(SyncStatus.SchemaError, It.IsAny<SyncJob>()), Times.Once());
+
+            _loggingRespository.Verify(x => x.LogMessageAsync(
+                It.Is<LogMessage>(m => m.Message.Contains("Schema is not valid for property")),
                 It.IsAny<VerbosityLevel>(),
                 It.IsAny<string>(),
                 It.IsAny<string>()));
@@ -219,7 +364,7 @@ namespace Services.Tests
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid), It.IsAny<SyncJob>()), Times.Once());
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.Contains("Source query is empty for job")),
+                It.Is<LogMessage>(m => m.Message.Contains("Source query is empty")),
                 It.IsAny<VerbosityLevel>(),
                 It.IsAny<string>(),
                 It.IsAny<string>()));
@@ -438,8 +583,7 @@ namespace Services.Tests
                                         })
                                         .ReturnsAsync(() => _frequency);
 
-            _context.Setup(x => x.CallActivityAsync<bool>(It.Is<string>(x => x == nameof(GroupVerifierFunction)), It.IsAny<GroupVerifierRequest>()))
-                    .ReturnsAsync(false);
+            _canWriteToGroups = false;
 
             var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
                             _telemetryClient,
@@ -449,6 +593,7 @@ namespace Services.Tests
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()), Times.Once());
             Assert.AreEqual(SyncStatus.NotOwnerOfDestinationGroup, _syncStatus);
 
+            _canWriteToGroups = true;
             _syncJob.Query = "";
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
             suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
@@ -545,6 +690,12 @@ namespace Services.Tests
         {
             var loggerFunction = new LoggerFunction(_loggingRespository.Object);
             await loggerFunction.LogMessageAsync(request);
+        }
+
+        private async Task<bool> CallSchemaValidatorFunctionAsync(SyncJob job)
+        {
+            var validatorFunction = new SchemaValidatorFunction(_loggingRespository.Object, _jobTriggerService.Object, _jsonSchemaProvider);
+            return await validatorFunction.ValidateSchemasAsync(job);
         }
     }
 }
