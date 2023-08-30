@@ -69,9 +69,6 @@ namespace Hosts.JobTrigger
 
             try
             {
-                var hasValidJson = await context.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), syncJob);
-                if (!hasValidJson) { return; }
-
                 var parsedAndValidatedDestination = await context.CallActivityAsync<(bool IsValid, DestinationObject DestinationObject)>(nameof(ParseAndValidateDestinationFunction), syncJob);
                 destinationObject = parsedAndValidatedDestination.DestinationObject;
 
@@ -123,6 +120,20 @@ namespace Hosts.JobTrigger
                 if (!string.IsNullOrWhiteSpace(syncJob.Query))
                 {
                     var query = JToken.Parse(syncJob.Query);
+
+                    var hasValidJson = await context.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), syncJob);
+                    if (!hasValidJson)
+                    {
+                        await context.CallActivityAsync(nameof(TelemetryTrackerFunction),
+                                                        new TelemetryTrackerRequest
+                                                        {
+                                                            JobStatus = SyncStatus.SchemaError,
+                                                            ResultStatus = ResultStatus.Failure,
+                                                            RunId = syncJob.RunId
+                                                        });
+
+                        return;
+                    }
                 }
                 else
                 {
@@ -131,7 +142,7 @@ namespace Hosts.JobTrigger
                         new LoggerRequest
                         {
                             RunId = (Guid)syncJob.RunId,
-                            Message = $"Source query is empty for job RowKey:{syncJob.RowKey}"
+                            Message = $"Source query is empty for job:{syncJob.Id}"
                         });
 
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
@@ -146,7 +157,7 @@ namespace Hosts.JobTrigger
                         new LoggerRequest
                         {
                             RunId = (Guid)syncJob.RunId,
-                            Message = $"Source query is not valid for job RowKey:{syncJob.RowKey}"
+                            Message = $"Unable to parse json query for job:{syncJob.Id}"
                         });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
