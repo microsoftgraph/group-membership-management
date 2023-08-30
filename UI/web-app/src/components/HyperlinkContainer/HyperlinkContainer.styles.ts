@@ -18,10 +18,10 @@ export const getStyles = (props: IHyperlinkContainerStyleProps): IHyperlinkConta
             marginBottom: 10,
             backgroundColor: theme.palette.white,
             margin: 10,
-            outline: `1px solid ${theme.palette.neutralSecondaryAlt}`,
-            display: 'flex',
+            outline: `1px solid ${theme.palette.neutralQuaternary}`,
             width: '649px',
             padding: 24,
+            display: 'flex',
             flexDirection: 'column',
             alignItems: 'flex-start',
             gap: '4px'
