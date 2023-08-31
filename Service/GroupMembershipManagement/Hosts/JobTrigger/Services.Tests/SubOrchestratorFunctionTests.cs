@@ -15,10 +15,10 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.ServiceBusTopics;
 using Services.Contracts;
+using Services.Tests.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -137,42 +137,7 @@ namespace Services.Tests
                         _jsonValidationResult = await CallSchemaValidatorFunctionAsync(request as SyncJob);
                     }).ReturnsAsync(() => _jsonValidationResult);
 
-            var jobTriggerFolderName = "JobTrigger";
-            var schemaFolderName = "JsonSchemas";
-            var currentDirectory = AppDomain.CurrentDomain.BaseDirectory;
-            var jsonSchemaDirectory = Path.Combine(currentDirectory, schemaFolderName);
-
-            if (!Directory.Exists(jsonSchemaDirectory))
-            {
-
-                var jobtriggerIndex = currentDirectory.IndexOf(jobTriggerFolderName, StringComparison.InvariantCultureIgnoreCase);
-                if (jobtriggerIndex != -1)
-                {
-                    currentDirectory = currentDirectory.Substring(0, jobtriggerIndex + jobTriggerFolderName.Length);
-                    var directories = Directory.EnumerateDirectories(currentDirectory,
-                                                                     schemaFolderName,
-                                                                     new EnumerationOptions
-                                                                     {
-                                                                         MatchCasing = MatchCasing.CaseInsensitive,
-                                                                         RecurseSubdirectories = true
-                                                                     });
-
-                    if (directories.Any())
-                    {
-                        jsonSchemaDirectory = directories.FirstOrDefault();
-                    }
-                }
-            }
-
-            if (jsonSchemaDirectory != null && Directory.Exists(jsonSchemaDirectory))
-            {
-                var files = Directory.EnumerateFiles(jsonSchemaDirectory);
-                foreach (var file in files)
-                {
-                    _jsonSchemaProvider.Schemas.Add(Path.GetFileNameWithoutExtension(file), File.ReadAllText(file));
-                }
-            }
-
+            _jsonSchemaProvider = SchemaProviderFactory.CreateJsonSchemaProvider();
         }
 
         [TestMethod]
