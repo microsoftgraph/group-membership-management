@@ -1,9 +1,18 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "Query",
   "type": "array",
-  "items": [
-    {
+  "items": {
+    "$ref": "#/definitions/Query"
+  },
+  "definitions": {
+    "Query": {
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "source"
+      ],
       "properties": {
         "type": {
           "type": "string"
@@ -11,18 +20,14 @@
         "source": {
           "type": [
             "string",
+            "array",
             "object"
           ]
         },
         "exclusionary": {
           "type": "boolean"
         }
-      },
-      "additionalProperties": false,
-      "required": [
-        "type",
-        "source"
-      ]
+      }
     }
-  ]
+  }
 }
