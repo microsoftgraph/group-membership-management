@@ -32,6 +32,7 @@ using Repositories.NotificationsRepository;
 using Services.Contracts.Notifications;
 using Services.Notifications;
 using WebApi.Configuration;
+using WebApi.Models;
 
 namespace WebApi
 {
@@ -206,6 +207,12 @@ namespace WebApi
                 settings.HandleInactiveJobsEnabled = GetBoolSetting(configuration, "AzureMaintenance:HandleInactiveJobsEnabled", false);
                 settings.NumberOfDaysBeforeDeletion = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforeDeletion", 0);
             });
+
+            builder.Services.AddOptions<WebApiSettings>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.ApiHostname = configuration.GetValue<string>("Settings:apiHostname");
+            });
+
             builder.Services.AddSingleton<IHandleInactiveJobsConfig>(services =>
             {
                 return new HandleInactiveJobsConfig(
