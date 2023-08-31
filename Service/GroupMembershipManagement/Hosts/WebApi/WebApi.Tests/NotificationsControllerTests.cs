@@ -22,6 +22,8 @@ using WebApi.Models.Requests;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.O365.ActionableMessages.Utilities;
+using WebApi.Models;
+using WebApi.Configuration;
 
 namespace Services.Tests
 {
@@ -55,11 +57,17 @@ namespace Services.Tests
         private TelemetryClient _telemetryClient = null!;
         private Mock<IActionableMessageTokenValidator> _mockTokenValidator = null!;
         private ActionableMessageTokenValidationResult _tokenValidationResult = null!;
+        private IOptions<WebApiSettings> _webApiSettings = null!;
 
         [TestInitialize]
         public void Initialize()
         {
+
             _hostname = "api.test.gmm.microsoft.com";
+            _webApiSettings = Options.Create(new WebApiSettings
+            {
+                ApiHostname = _hostname
+            });
             _providerId = Guid.NewGuid();
             _userUPN = "testuser@contoso.net";
             _nonExistantNotificationId = Guid.Empty;
@@ -194,7 +202,7 @@ namespace Services.Tests
                 new Claim(ClaimTypes.Upn, _userUPN),
             };
 
-            _notificationsController = new NotificationsController(_resolveNotificationsHandler, _notificationCardHandler, _mockTokenValidator.Object);
+            _notificationsController = new NotificationsController(_resolveNotificationsHandler, _notificationCardHandler, _mockTokenValidator.Object, _webApiSettings);
             _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
             _tokenValidationResult = new ActionableMessageTokenValidationResult();
             _tokenValidationResult.ActionPerformer = _userUPN;
