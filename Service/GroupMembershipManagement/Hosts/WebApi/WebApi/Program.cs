@@ -218,6 +218,8 @@ namespace WebApi
                 settings.ActionableEmailProviderId = configuration.GetValue<Guid>("Settings:ActionableEmailProviderId");
                 settings.ApiHostname = apiHostName;
             });
+
+            builder.Services.AddScoped<IActionableMessageTokenValidator, ActionableMessageTokenValidator>();
             builder.Services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
             builder.Services.AddScoped<IDatabaseMigrationsRepository, DatabaseMigrationsRepository>();
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
