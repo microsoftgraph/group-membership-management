@@ -81,12 +81,16 @@ namespace Repositories.EntityFramework
         {
             foreach (var job in jobs)
             {
+                var jobEntity = _context.SyncJobs.Single(x => x.Id == job.Id);
+
                 if (status != null)
                 {
-                    job.Status = status.ToString();
+                    jobEntity.Status = status.ToString();
                 }
-                var entry = _context.Set<SyncJob>().Add(job);
-                entry.State = EntityState.Modified;
+                else
+                {
+                    jobEntity.Status = job.Status;
+                }
             }
 
             await _context.SaveChangesAsync();
