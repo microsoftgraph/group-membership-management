@@ -21,7 +21,7 @@ using WebApi.Controllers.v1.Notifications;
 using WebApi.Models.Requests;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using System.Net.Http;
+using Microsoft.O365.ActionableMessages.Utilities;
 
 namespace Services.Tests
 {
@@ -53,6 +53,8 @@ namespace Services.Tests
         private List<ThresholdNotification> _thresholdNotifications = null!;
         private ResolveNotification _resolveNotificationModel = null!;
         private TelemetryClient _telemetryClient = null!;
+        private Mock<IActionableMessageTokenValidator> _mockTokenValidator = null!;
+        private ActionableMessageTokenValidationResult _tokenValidationResult = null!;
 
         [TestInitialize]
         public void Initialize()
@@ -78,6 +80,7 @@ namespace Services.Tests
             _notificationRepository = new Mock<INotificationRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            _mockTokenValidator = new Mock<IActionableMessageTokenValidator>();
 
             _groupTypes = new List<string>
             {
@@ -153,6 +156,9 @@ namespace Services.Tests
             _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
                 .ReturnsAsync(() => syncJob);
 
+            _mockTokenValidator.Setup(x => x.ValidateTokenAsync(It.IsAny<string>(), It.IsAny<string>()
+                )).ReturnsAsync(() => _tokenValidationResult);
+
             // Items for testing
             _thresholdNotification = _thresholdNotifications[Random.Shared.Next(0, _notificationCount)];
             _groupId = _thresholdNotification.TargetOfficeGroupId;
@@ -187,8 +193,11 @@ namespace Services.Tests
             {
                 new Claim(ClaimTypes.Upn, _userUPN),
             };
-            _notificationsController = new NotificationsController(_resolveNotificationsHandler, _notificationCardHandler);
-            _notificationsController.ControllerContext = CreateControllerContext(claims);
+
+            _notificationsController = new NotificationsController(_resolveNotificationsHandler, _notificationCardHandler, _mockTokenValidator.Object);
+            _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
+            _tokenValidationResult = new ActionableMessageTokenValidationResult();
+            _tokenValidationResult.ActionPerformer = _userUPN;
         }
         /// <summary>
         /// /notifications/{id}/resolve - Resolve notification with Ignore Once
@@ -253,8 +262,7 @@ namespace Services.Tests
             {
                 new Claim(ClaimTypes.Upn, "notAnOwner@contoso.net")
             };
-
-            _notificationsController.ControllerContext = CreateControllerContext(claims);
+            _tokenValidationResult.ActionPerformer = "notAnOwner@contoso.net";
 
             var response = await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
             var result = response.Result as ContentResult;
@@ -356,8 +364,7 @@ namespace Services.Tests
             {
                 new Claim(ClaimTypes.Upn, "notAnOwner@contoso.com"),
             };
-
-            _notificationsController.ControllerContext = CreateControllerContext(claims);
+            _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
 
             var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
             var result = response.Result as ContentResult;
@@ -458,14 +465,13 @@ namespace Services.Tests
             Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
         }
 
-        private ControllerContext CreateControllerContext(List<Claim> claims)
+        private ControllerContext CreateControllerContext(List<Claim> claims, string mockBearerToken)
         {
             var identity = new ClaimsIdentity(claims, "TestAuthType");
             var principal = new ClaimsPrincipal(identity);
             var httpContext = new DefaultHttpContext();
-            var bearerToken = "bearerToken";
 
-            httpContext.Request.Headers["Authorization"] = "Bearer " + bearerToken;
+            httpContext.Request.Headers["Authorization"] = "Bearer " + mockBearerToken;
             httpContext.User = principal;
 
             return new ControllerContext { HttpContext = httpContext };

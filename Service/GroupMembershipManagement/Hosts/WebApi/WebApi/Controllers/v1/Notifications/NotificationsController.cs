@@ -20,13 +20,16 @@ namespace WebApi.Controllers.v1.Notifications
     {
         private readonly IRequestHandler<NotificationCardRequest, NotificationCardResponse> _notificationCardHandler;
         private readonly IRequestHandler<ResolveNotificationRequest, ResolveNotificationResponse> _resolveNotificationHandler;
+        private readonly IActionableMessageTokenValidator _actionableMessageTokenValidator;
 
         public NotificationsController(
             IRequestHandler<ResolveNotificationRequest, ResolveNotificationResponse> notificationCardHandler,
-            IRequestHandler<NotificationCardRequest, NotificationCardResponse> getNotificationCardRequestHandler)
+            IRequestHandler<NotificationCardRequest, NotificationCardResponse> getNotificationCardRequestHandler,
+            IActionableMessageTokenValidator actionableMessageTokenValidator)
         {
             _resolveNotificationHandler = notificationCardHandler ?? throw new ArgumentNullException(nameof(notificationCardHandler));
             _notificationCardHandler = getNotificationCardRequestHandler ?? throw new ArgumentNullException(nameof(getNotificationCardRequestHandler));
+            _actionableMessageTokenValidator = actionableMessageTokenValidator ?? throw new ArgumentNullException(nameof(actionableMessageTokenValidator));
         }
 
         [EnableQuery()]
@@ -48,8 +51,7 @@ namespace WebApi.Controllers.v1.Notifications
         public async Task<ActionResult<string>> ResolveNotificationAsync(Guid id, [FromBody] ResolveNotification model)
         {
             var bearerToken = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-            ActionableMessageTokenValidator validator = new ActionableMessageTokenValidator();
-            ActionableMessageTokenValidationResult result = await validator.ValidateTokenAsync(bearerToken, "https://gmm-compute-ag-webapi.azurewebsites.net/");
+            ActionableMessageTokenValidationResult result = await _actionableMessageTokenValidator.ValidateTokenAsync(bearerToken, "https://gmm-compute-ag-webapi.azurewebsites.net/");
 
             var response = await _resolveNotificationHandler.ExecuteAsync(new ResolveNotificationRequest(id, result.ActionPerformer, model.Resolution));
             Response.Headers["card-update-in-body"] = "true";
