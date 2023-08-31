@@ -49,9 +49,7 @@ namespace WebApi.Controllers.v1.Notifications
         {
             var bearerToken = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
             ActionableMessageTokenValidator validator = new ActionableMessageTokenValidator();
-
             ActionableMessageTokenValidationResult result = await validator.ValidateTokenAsync(bearerToken, "https://gmm-compute-ag-webapi.azurewebsites.net/");
-
 
             var response = await _resolveNotificationHandler.ExecuteAsync(new ResolveNotificationRequest(id, result.ActionPerformer, model.Resolution));
             Response.Headers["card-update-in-body"] = "true";

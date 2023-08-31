@@ -21,6 +21,8 @@ using WebApi.Controllers.v1.Notifications;
 using WebApi.Models.Requests;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using System.Net.Http;
+
 namespace Services.Tests
 {
     [TestClass]
@@ -461,6 +463,9 @@ namespace Services.Tests
             var identity = new ClaimsIdentity(claims, "TestAuthType");
             var principal = new ClaimsPrincipal(identity);
             var httpContext = new DefaultHttpContext();
+            var bearerToken = "bearerToken";
+
+            httpContext.Request.Headers["Authorization"] = "Bearer " + bearerToken;
             httpContext.User = principal;
 
             return new ControllerContext { HttpContext = httpContext };
