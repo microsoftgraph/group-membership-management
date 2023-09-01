@@ -32,28 +32,41 @@ namespace Hosts.GraphUpdater
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             _graphUpdaterService.RunId = request.RunId;
+            var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobId);
 
+            try
+            {
 
             var groupExistsResult = await _graphUpdaterService.GroupExistsAsync(request.GroupId, request.RunId);
 
-            if (groupExistsResult)
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.GroupId} exists." });
-            }
-            else
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.GroupId} doesn't exist." });
-                var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobId);
-                if (syncJob != null)
-                    await _graphUpdaterService.SendEmailAsync(
-                        syncJob.Requestor,
-                        SyncDisabledNoGroupEmailBody,
-                        new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses },
-                        request.RunId, null, null, null, request.AdaptiveCardTemplateDirectory);
-            }
+                if (groupExistsResult)
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.GroupId} exists." });
+                }
+                else
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.GroupId} doesn't exist." });
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return groupExistsResult;
+                    if (syncJob != null)
+                        await _graphUpdaterService.SendEmailAsync(
+                            syncJob.Requestor,
+                            SyncDisabledNoGroupEmailBody,
+                            new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses },
+                            request.RunId, null, null, null, request.AdaptiveCardTemplateDirectory);
+                }
+
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+                return groupExistsResult;
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message.Contains("ClientSecretCredential authentication failed: The cache contains multiple tokens satisfying the requirements. Try to clear token cache"))
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Marking sync job status as transient error. Exception:\n{ex.Message}", RunId = request.RunId });
+                    await _graphUpdaterService.UpdateSyncJobStatusAsync(syncJob, SyncStatus.TransientError, false, request.RunId);
+                }
+                throw;
+            }
         }
     }
 }

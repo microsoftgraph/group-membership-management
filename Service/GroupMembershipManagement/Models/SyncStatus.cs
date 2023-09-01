@@ -25,6 +25,7 @@ namespace Models
         GuestUsersCannotBeAddedToUnifiedGroup = 17,
         StandardTeamsChannel = 18,
         TeamsChannelError = 19,
-        SchemaError = 20
+        SchemaError = 20,
+        TransientError = 21
     }
 }

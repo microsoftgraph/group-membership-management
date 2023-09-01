@@ -74,14 +74,13 @@ namespace Services
 
         public async Task<(List<SyncJob> jobs, bool jobTriggerThresholdExceeded)> GetSyncJobsAsync()
         {
-            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress);
-            var filteredJobs = ApplyJobTriggerFilters(jobs).ToList();
-            var syncJobsCount = filteredJobs.Count;
-			var totalSyncJobsCount = await _databaseSyncJobsRepository.GetSyncJobCountAsync(true, SyncStatus.All);
-            _telemetryClient.TrackMetric(nameof(Metric.SyncJobsCount), syncJobsCount);
-            _telemetryClient.TrackMetric(nameof(Metric.TotalSyncJobsCount), totalSyncJobsCount);
-			var jobTriggerThresholdExceeded = HasJobTriggerThresholdExceeded(syncJobsCount, totalSyncJobsCount);
-			return (filteredJobs, jobTriggerThresholdExceeded);
+            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(false,
+                        SyncStatus.Idle,
+                        SyncStatus.InProgress,
+                        SyncStatus.StuckInProgress,
+                        SyncStatus.TransientError
+                       );
+            return ApplyJobTriggerFilters(jobs).ToList();
         }
 
         public async Task<string> GetGroupNameAsync(SyncJob job)

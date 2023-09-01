@@ -20,6 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Net.Http;
 
 namespace Tests.Services
 {
@@ -114,6 +115,12 @@ namespace Tests.Services
                                             );
 
             _durableOrchestrationContext.Setup(x => x.GetInput<GroupMembershipRequest>()).Returns(() => _groupMembershipRequest);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()))
+                                       .Callback<string, object>(async (name, request) =>
+                                       {
+                                           await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
+                                       });
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
                                         .Callback<string, object>(async (name, request) =>
@@ -913,6 +920,31 @@ namespace Tests.Services
             Assert.AreEqual(SyncStatus.SecurityGroupNotFound, response.Status);
         }
 
+        [TestMethod]
+        public async Task TestTransientExceptionAsync()
+        {
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
+                                        .Throws<HttpRequestException>();
+
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+
+            await Assert.ThrowsExceptionAsync<HttpRequestException>(async () => await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object));
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                        It.Is<LogMessage>(m => m.Message.StartsWith("Caught HttpRequestException")),
+                        It.IsAny<VerbosityLevel>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>()
+                    ), Times.Once);
+
+
+            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
+                                                It.IsAny<IEnumerable<SyncJob>>(),
+                                                It.Is<SyncStatus>(s => s == SyncStatus.TransientError)
+                                            ), Times.Once);
+        }
+
         private async Task<bool> CallGroupValidatorFunctionAsync(GroupValidatorRequest request)
         {
             var function = new GroupValidatorFunction(_loggingRepository.Object, _membershipCalculator, _emailSenderRecipient.Object);
@@ -977,6 +1009,12 @@ namespace Tests.Services
         {
             var function = new SubsequentDeltaUsersReaderFunction(_loggingRepository.Object, _membershipCalculator);
             return await function.GetDeltaUsersAsync(request);
+        }
+
+        private async Task CallJobStatusUpdaterFunctionAsync(JobStatusUpdaterRequest request)
+        {
+            var function = new JobStatusUpdaterFunction(_loggingRepository.Object, _membershipCalculator);
+            await function.UpdateJobStatusAsync(request);
         }
     }
 }
