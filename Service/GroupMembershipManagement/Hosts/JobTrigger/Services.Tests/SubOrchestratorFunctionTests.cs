@@ -200,7 +200,7 @@ namespace Services.Tests
             _jobTriggerService.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid), It.IsAny<SyncJob>()), Times.Once());
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.Contains("Unable to parse json query")),
+                It.Is<LogMessage>(m => m.Message.Contains("Source query is not valid")),
                 It.IsAny<VerbosityLevel>(),
                 It.IsAny<string>(),
                 It.IsAny<string>()));
