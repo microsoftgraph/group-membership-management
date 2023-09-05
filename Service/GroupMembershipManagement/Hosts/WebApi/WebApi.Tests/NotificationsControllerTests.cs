@@ -372,6 +372,7 @@ namespace Services.Tests
             {
                 new Claim(ClaimTypes.Upn, "notAnOwner@contoso.com"),
             };
+            _tokenValidationResult.ActionPerformer = "notAnOwner@contoso.net";
             _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
 
             var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
