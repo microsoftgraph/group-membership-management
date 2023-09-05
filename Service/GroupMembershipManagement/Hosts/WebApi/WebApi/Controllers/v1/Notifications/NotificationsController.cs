@@ -41,10 +41,11 @@ namespace WebApi.Controllers.v1.Notifications
         [Route("{id}/card")]
         public async Task<ActionResult<string>> GetCardAsync(Guid id)
         {
-            var request = HttpContext.Request;
-            var userUpn = GetUserUpn();
+            var bearerToken = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+            var currentSettings = _webApiSettings.Value;
+            ActionableMessageTokenValidationResult result = await _actionableMessageTokenValidator.ValidateTokenAsync(bearerToken, currentSettings.ApiHostname);
 
-            var response = await _notificationCardHandler.ExecuteAsync(new NotificationCardRequest(id, userUpn));
+            var response = await _notificationCardHandler.ExecuteAsync(new NotificationCardRequest(id, result.ActionPerformer));
             Response.Headers["card-update-in-body"] = "true";
             return Content(response.CardJson, "application/json");
         }
