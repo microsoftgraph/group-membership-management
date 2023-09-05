@@ -19,6 +19,7 @@ export interface IJobDetailsStyles {
     jobEnabled: IStyle;
     jobDisabled: IStyle;
     membershipStatus: IStyle;
+    footer: IStyle;
 }
 
 export interface IJobDetailsStyleProps {

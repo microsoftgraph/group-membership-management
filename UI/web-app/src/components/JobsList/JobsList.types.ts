@@ -18,6 +18,7 @@ export interface IJobsListStyles {
   refresh: IStyle;
   title: IStyle;
   jobsList: IStyle;
+  footer: IStyle;
 }
 
 export interface IJobsListStyleProps {

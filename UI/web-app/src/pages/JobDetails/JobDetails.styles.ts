@@ -11,7 +11,7 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
 
     return {
         root: [{
-            padding: '9px 36px 5px 36px'
+            padding: '9px 36px 0px 36px'
         }, className],
         itemTitle:{
             fontSize: 14,
@@ -68,6 +68,10 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
         membershipStatus: {
             display: "flex",
             alignItems: "flex-start"
+        },
+        footer: {
+            display: 'flex',
+            justifyContent: 'space-between'
         }
     };
 };

@@ -10,7 +10,6 @@ import {
   type IPageStyleProps,
   type IPageStyles,
 } from './Page.types';
-import { PageFooter } from '../PageFooter';
 
 const getClassNames = classNamesFunction<IPageStyleProps, IPageStyles>();
 
@@ -26,6 +25,5 @@ export const PageBase: React.FunctionComponent<IPageProps> = (
   return (
     <div className={classNames.root}>
       {children}
-      <PageFooter />
     </div>);
 };

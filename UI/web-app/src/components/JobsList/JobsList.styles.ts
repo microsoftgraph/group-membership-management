@@ -48,6 +48,10 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       backgroundColor: theme.palette.white,
       borderRadius: 10,
       padding: '12px 0px 12px 24px',
+    },
+    footer: {
+      display: 'flex',
+      justifyContent: 'space-between'
     }
   };
 };

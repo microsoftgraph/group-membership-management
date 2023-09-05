@@ -42,6 +42,7 @@ import {
   type IJobDetailsStyles,
 } from './JobDetails.types';
 import { JobDetails } from '../../models/JobDetails';
+import { PageVersion } from '../../components/PageVersion';
 
 
 export interface IContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
@@ -144,6 +145,9 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
         // useLinkButton={true}
         // linkButtonIconName='edit'
         />
+        <div className={classNames.footer}>
+          <PageVersion />
+        </div>
       </div>
     </Page >
   );
@@ -215,7 +219,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
   const SharePointDomain: string = `${process.env.REACT_APP_SHAREPOINTDOMAIN}`;
   const domainName: string = `${process.env.REACT_APP_DOMAINNAME}`;
   const groupName: string = job.targetGroupName.replace(/\s/g, '');
-  
+
   const openOutlookLink = (): void => {
     const url = `https://outlook.office.com/mail/group/${domainName}/${groupName}`;
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -259,7 +263,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
               {t('JobDetails.labels.name')}
             </Text>
             <Text className={classNames.itemData} block>
-              {job.targetGroupName}
+              {job.targetGroupName ?? '-'}
             </Text>
           </Stack.Item>
 
