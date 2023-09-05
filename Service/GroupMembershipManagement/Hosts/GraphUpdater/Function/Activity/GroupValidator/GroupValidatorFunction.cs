@@ -9,6 +9,7 @@ using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
+using Microsoft.Identity.Client;
 
 namespace Hosts.GraphUpdater
 {
@@ -58,9 +59,9 @@ namespace Hosts.GraphUpdater
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
                 return groupExistsResult;
             }
-            catch (Exception ex)
+            catch (MsalClientException ex)
             {
-                if (ex.Message.Contains("ClientSecretCredential authentication failed: The cache contains multiple tokens satisfying the requirements. Try to clear token cache"))
+                if (ex.ErrorCode == "MULTIPLE_MATCHING_TOKENS_DETECTED")
                 {
                     await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Marking sync job status as transient error. Exception:\n{ex.Message}", RunId = request.RunId });
                     await _graphUpdaterService.UpdateSyncJobStatusAsync(syncJob, SyncStatus.TransientError, false, request.RunId);

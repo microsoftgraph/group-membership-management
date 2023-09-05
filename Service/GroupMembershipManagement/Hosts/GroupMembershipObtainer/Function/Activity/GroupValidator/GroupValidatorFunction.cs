@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Identity.Client;
 using Models;
 using Polly;
 using Repositories.Contracts;
@@ -69,9 +70,9 @@ namespace Hosts.GroupMembershipObtainer
                 await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
                 return isExistingGroup;
             }
-            catch (Exception ex)
+            catch (MsalClientException ex)
             {
-                if (ex.Message.Contains("ClientSecretCredential authentication failed: The cache contains multiple tokens satisfying the requirements. Try to clear token cache"))
+                if (ex.ErrorCode == "MULTIPLE_MATCHING_TOKENS_DETECTED")
                 {
                     await _log.LogMessageAsync(new LogMessage { Message = $"Marking sync job status as transient error. Exception:\n{ex.Message}", RunId = request.RunId });
                     await _calculator.UpdateSyncJobStatusAsync(request.SyncJob, SyncStatus.TransientError);
