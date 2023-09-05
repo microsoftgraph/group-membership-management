@@ -222,7 +222,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
   };
 
   const openSharePointLink = (): void => {
-    const url = `https://${SharePointDomain}/teams/${groupName}`;
+    const url = `https://${SharePointDomain}/sites/${groupName}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
