@@ -11,21 +11,21 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
-  type IPageFooterProps,
-  type IPageFooterStyleProps,
-  type IPageFooterStyles,
-} from './PageFooter.types';
+  type IPageVersionProps,
+  type IPageVersionStyleProps,
+  type IPageVersionStyles,
+} from './PageVersion.types';
 
 const getClassNames = classNamesFunction<
-  IPageFooterStyleProps,
-  IPageFooterStyles
+  IPageVersionStyleProps,
+  IPageVersionStyles
 >();
 
-export const PageFooterBase: React.FunctionComponent<IPageFooterProps> = (
-  props: IPageFooterProps
+export const PageVersionBase: React.FunctionComponent<IPageVersionProps> = (
+  props: IPageVersionProps
 ) => {
   const { className, styles } = props;
-  const classNames: IProcessedStyleSet<IPageFooterStyles> = getClassNames(
+  const classNames: IProcessedStyleSet<IPageVersionStyles> = getClassNames(
     styles,
     {
       className,

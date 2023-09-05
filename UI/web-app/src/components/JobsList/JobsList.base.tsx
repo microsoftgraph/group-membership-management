@@ -42,6 +42,7 @@ import {
 } from '@fluentui/react-icons-mdl2';
 import { useCookies } from 'react-cookie';
 import { PagingBar } from '../PagingBar';
+import { PageVersion } from '../PageVersion';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -356,6 +357,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         </div>
       </div>
     </div>
+    <div className={classNames.footer}>
+      <PageVersion/>
       <PagingBar
         pageSize={pageSize}
         pageNumber={pageNumber}
@@ -365,6 +368,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         setPageNumber={setPageNumber}
         setPageSizeCookie={setPageSizeCookie}
       />
+    </div>
   </div>
   );
 };
