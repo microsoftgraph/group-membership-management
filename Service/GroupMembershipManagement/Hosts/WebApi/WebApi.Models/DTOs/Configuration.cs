@@ -11,6 +11,6 @@ namespace WebApi.Models.DTOs
             DashboardUrl = dashboardUrl;
         }
         public Guid Id { get; set; }
-        public string? DashboardUrl { get; private set; }
+        public string? DashboardUrl { get; set; }
     }
 }
