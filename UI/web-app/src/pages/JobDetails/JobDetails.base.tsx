@@ -162,14 +162,14 @@ const MembershipDetails: React.FunctionComponent<IContentProps> = (
           {t('JobDetails.labels.pageTitle')}
         </Text>
       </div>
-      <div>
+      {/* <div> // Hidden until feature is enabled
         <Text className={classNames.subtitle}>
           {t('JobDetails.labels.lastModifiedby')}
           <Text variant="medium" style={{ marginLeft: 5 }}>
             {'DATA UNAVAILABLE'}
           </Text>
         </Text>
-      </div>
+      </div> */}
     </div>
   )
 }
@@ -371,7 +371,7 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
         </div>
       </Stack.Item>
 
-      <Stack.Item align="start">
+      {/* <Stack.Item align="start"> // Hidden until feature is enabled
         <InfoLabel
           label={t('JobDetails.labels.endDate')}
           description={t('JobDetails.descriptions.endDate')}
@@ -381,7 +381,7 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
             00/00/0000
           </Text>
         </div>
-      </Stack.Item>
+      </Stack.Item> */}
 
       <Stack.Item align="start">
         <InfoLabel
