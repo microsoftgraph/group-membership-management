@@ -22,7 +22,9 @@ namespace Repositories.EntityFramework.Contexts
                   .ValueGeneratedOnAdd()
                   .HasDefaultValueSql("NEWID()");
 
-            modelBuilder.Entity<Configuration>();
+            modelBuilder.Entity<Configuration>().Property(p => p.Id)
+                  .ValueGeneratedOnAdd()
+                  .HasDefaultValueSql("NEWSEQUENTIALID()");
         }
 
         public GMMContext(DbContextOptions<GMMContext> options)

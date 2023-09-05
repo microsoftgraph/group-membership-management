@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hosts\WebApi\WebApi.Models\WebApi.Models.csproj" />
     <ProjectReference Include="..\Repositories.Contracts\Repositories.Contracts.csproj" />
     <ProjectReference Include="..\Repositories.EntityFramework.Contexts\Repositories.EntityFramework.Contexts.csproj" />
   </ItemGroup>
