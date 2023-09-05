@@ -6,10 +6,10 @@ using System;
 namespace Models
 {
 
-    public class Configuration
+    public class Settings
     {
-        public Guid Id { get; set; }
+        public string Key { get; set; }
 
-        public string? DashboardUrl { get; set; }
+        public string Value { get; set; }
     }
 }

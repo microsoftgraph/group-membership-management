@@ -6,8 +6,8 @@ using WebApi.Models.DTOs;
 
 namespace Services.Messages.Responses
 {
-    public class GetConfigurationResponse : ResponseBase
+    public class GetSettingsResponse : ResponseBase
     {
-        public Configuration Model { get; set; }
+        public Settings Model { get; set; }
     }
 }
