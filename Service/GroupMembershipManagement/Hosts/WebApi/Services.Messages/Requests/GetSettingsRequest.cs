@@ -5,13 +5,13 @@ using Services.Messages.Contracts.Requests;
 
 namespace Services.Messages.Requests
 {
-    public class GetConfigurationRequest : RequestBase
+    public class GetSettingsRequest : RequestBase
     {
-        public GetConfigurationRequest(Guid id)
+        public GetSettingsRequest(string key)
         {
-            this.Id = id;
+            this.Key = key;
         }
 
-        public Guid Id { get; }
+        public string Key { get; }
     }
 }

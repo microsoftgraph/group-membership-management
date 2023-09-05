@@ -157,17 +157,17 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.ToTable("SyncJobs");
                 });
 
-            modelBuilder.Entity("Models.Configuration", b =>
+            modelBuilder.Entity("Models.Settings", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("NEWSEQUENTIALID()");
+                    b.Property<string>("Key")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<string?>("DashboardUrl")
-                    .HasColumnType("nvarchar(max)");
+                    b.Property<string>("Value")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.ToTable("Configuration");
+                    b.HasKey("Key");
+
+                    b.ToTable("Settings");
                 });
 #pragma warning restore 612, 618
         }
