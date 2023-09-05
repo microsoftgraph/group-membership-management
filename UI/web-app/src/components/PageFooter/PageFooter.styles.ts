@@ -11,10 +11,10 @@ export const getStyles = (props: IPageFooterStyleProps): IPageFooterStyles => {
 
   return {
     root: [{
-      padding: '20px 0px 20px 24px',
+      padding: '20px 0px 20px 36px',
       color: theme.palette.neutralSecondaryAlt,
       fontSize: 12,
-      fontWeight: '600'
+      fontWeight: '400'
     }, className],
   };
 };
