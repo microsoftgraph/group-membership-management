@@ -221,7 +221,7 @@ namespace Hosts.GroupMembershipObtainer
             }
             catch (HttpRequestException httpEx)
             {
-                _ = _log.LogMessageAsync(new LogMessage { Message = $"Caught HttpRequestException, marking sync job status as transient error. Exception:\n{httpEx}", RunId = request.RunId });
+                if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"Caught HttpRequestException, marking sync job status as transient error. Exception:\n{httpEx}", RunId = request.RunId });
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = request.SyncJob, Status = SyncStatus.TransientError });
                 throw;
             }
