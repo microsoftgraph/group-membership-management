@@ -108,7 +108,9 @@ export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (odataQueryOpt
           ' hrs ago';
 
       var nextRunTime = moment(index['estimatedNextRunTime']);
-      var hoursLeft = Math.abs(currentTime.diff(nextRunTime, 'hours'));
+      var isPast = nextRunTime.isBefore(moment()); // Check if nextRunTime is in the past
+      var hoursLeft = isPast ? 0 : Math.abs(currentTime.diff(nextRunTime, 'hours'));
+
       index['estimatedNextRunTime'] =
         hoursAgo > index['period'] ||
           index['status'] === SyncStatus.CustomerPaused
