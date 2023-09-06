@@ -6,6 +6,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph.Models;
+using Microsoft.Identity.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
@@ -19,6 +20,7 @@ using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using ExecutionContext = Microsoft.Azure.WebJobs.ExecutionContext;
 
@@ -33,6 +35,101 @@ namespace Services.Tests
         {
             LearnMoreAboutGMMUrl = "http://learn-more-url"
         };
+
+        [TestMethod]
+        public async Task TestMsalTransientExceptionAsync()
+        {
+            MockLoggingRepository mockLoggingRepo;
+            TelemetryClient mockTelemetryClient;
+            MockMailRepository mockMailRepo;
+            MockGraphUpdaterService mockGraphUpdaterService;
+            DryRunValue dryRun;
+            EmailSenderRecipient mailSenders;
+            MockDatabaseSyncJobRepository mockSyncJobRepo;
+            MockGraphGroupRepository mockGroupRepo;
+            ThresholdConfig thresholdConfig;
+            MockLocalizationRepository localizationRepository;
+            MockBlobStorageRepository blobStorageRepository;
+            MockDeltaCachingConfig mockDeltaCachingConfig;
+
+            mockDeltaCachingConfig = new MockDeltaCachingConfig();
+            blobStorageRepository = new MockBlobStorageRepository();
+            mockLoggingRepo = new MockLoggingRepository();
+            mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            mockMailRepo = new MockMailRepository();
+            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
+            dryRun = new DryRunValue(false);
+            thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
+            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
+                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+
+
+            mockGroupRepo = new MockGraphGroupRepository();
+            mockSyncJobRepo = new MockDatabaseSyncJobRepository();
+            localizationRepository = new MockLocalizationRepository();
+
+            var groupMembership = GetGroupMembership();
+            var destinationMembers = GetGroupMembership();
+            var syncJob = new SyncJob
+            {
+                Id = groupMembership.SyncJobId,
+                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
+                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
+                ThresholdPercentageForAdditions = -1,
+                ThresholdPercentageForRemovals = -1,
+                LastRunTime = SqlDateTime.MinValue.Value,
+                Requestor = "user@domail.com",
+                Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
+                RunId = Guid.NewGuid()
+            };
+
+            mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
+
+            var input = new MembershipHttpRequest
+            {
+                FilePath = "/file/path/name.json",
+                SyncJob = syncJob
+            };
+
+            var fileDownloaderRequest = new FileDownloaderRequest
+            {
+                FilePath = input.FilePath,
+                SyncJob = syncJob
+            };
+
+            blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
+
+            var context = new Mock<IDurableOrchestrationContext>();
+            var executionContext = new Mock<ExecutionContext>();
+            context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
+            context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
+                    .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
+                    .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
+            context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
+                    .ThrowsAsync(new MsalClientException("MULTIPLE_MATCHING_TOKENS_DETECTED", "MULTIPLE_MATCHING_TOKENS_DETECTED"));
+
+            JobStatusUpdaterRequest updateJobRequest = null;
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()))
+                    .Callback<string, object>((name, request) =>
+                    {
+                        updateJobRequest = request as JobStatusUpdaterRequest;
+                    });
+
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
+            await Assert.ThrowsExceptionAsync<MsalClientException>(async () => await orchestrator.RunOrchestratorAsync(context.Object, executionContext.Object));
+
+            Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
+            Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Caught MsalClientException, marking sync job status as transient error.")));
+            Assert.AreEqual(SyncStatus.TransientError, updateJobRequest.Status);
+
+            var logProperties = mockLoggingRepo.SyncJobPropertiesHistory[syncJob.RunId.Value].Properties;
+
+            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
+            Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
+            Assert.AreEqual(logProperties["Id"], syncJob.Id.ToString());
+        }
 
         [TestMethod]
         public async Task RunOrchestratorValidSyncTest()
@@ -265,6 +362,104 @@ namespace Services.Tests
             Assert.AreEqual(ownerEmails, mockMailRepo.SentEmails[0].ToEmailAddresses);
 
             context.Verify(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()), Times.Exactly(2));
+        }
+
+        [TestMethod]
+        public async Task TestHttpTransientExceptionAsync()
+        {
+            MockLoggingRepository mockLoggingRepo;
+            TelemetryClient mockTelemetryClient;
+            MockMailRepository mockMailRepo;
+            MockGraphUpdaterService mockGraphUpdaterService;
+            DryRunValue dryRun;
+            EmailSenderRecipient mailSenders;
+            MockDatabaseSyncJobRepository mockSyncJobRepo;
+            MockGraphGroupRepository mockGroupRepo;
+            ThresholdConfig thresholdConfig;
+            MockLocalizationRepository localizationRepository;
+            MockBlobStorageRepository blobStorageRepository;
+            MockDeltaCachingConfig mockDeltaCachingConfig;
+
+            mockDeltaCachingConfig = new MockDeltaCachingConfig();
+            blobStorageRepository = new MockBlobStorageRepository();
+            mockLoggingRepo = new MockLoggingRepository();
+            mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            mockMailRepo = new MockMailRepository();
+            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
+            dryRun = new DryRunValue(false);
+            thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
+            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
+                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+
+
+            mockGroupRepo = new MockGraphGroupRepository();
+            mockSyncJobRepo = new MockDatabaseSyncJobRepository();
+            localizationRepository = new MockLocalizationRepository();
+
+            var groupMembership = GetGroupMembership();
+            var destinationMembers = GetGroupMembership();
+            var syncJob = new SyncJob
+            {
+                Id = groupMembership.SyncJobId,
+                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
+                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
+                ThresholdPercentageForAdditions = -1,
+                ThresholdPercentageForRemovals = -1,
+                LastRunTime = SqlDateTime.MinValue.Value,
+                Requestor = "user@domail.com",
+                Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
+                RunId = Guid.NewGuid()
+            };
+
+            mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
+
+            var input = new MembershipHttpRequest
+            {
+                FilePath = "/file/path/name.json",
+                SyncJob = syncJob
+            };
+
+            var fileDownloaderRequest = new FileDownloaderRequest
+            {
+                FilePath = input.FilePath,
+                SyncJob = syncJob
+            };
+
+            blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
+
+            var context = new Mock<IDurableOrchestrationContext>();
+            var executionContext = new Mock<ExecutionContext>();
+            context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
+            context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
+                    .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
+                    .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
+            context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
+                    .ReturnsAsync(true);
+
+            JobStatusUpdaterRequest updateJobRequest = null;
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()))
+                    .Callback<string, object>((name, request) =>
+                    {
+                        updateJobRequest = request as JobStatusUpdaterRequest;
+                    });
+
+            context.Setup(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()))
+               .Throws<HttpRequestException>();
+
+            var orchestrator = new OrchestratorFunction(mockTelemetryClient, mockGraphUpdaterService, mailSenders, _gmmResources, mockLoggingRepo, mockDeltaCachingConfig);
+            await Assert.ThrowsExceptionAsync<HttpRequestException>(async () => await orchestrator.RunOrchestratorAsync(context.Object, executionContext.Object));
+
+            Assert.IsFalse(mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorFunction) + " function completed"));
+            Assert.IsTrue(mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Caught HttpRequestException, marking sync job status as transient error.")));
+            Assert.AreEqual(SyncStatus.TransientError, updateJobRequest.Status);
+
+            var logProperties = mockLoggingRepo.SyncJobPropertiesHistory[syncJob.RunId.Value].Properties;
+
+            Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
+            Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
+            Assert.AreEqual(logProperties["Id"], syncJob.Id.ToString());
         }
 
         [TestMethod]
@@ -705,7 +900,7 @@ namespace Services.Tests
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
             Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
             Assert.AreEqual(logProperties["Id"], syncJob.Id.ToString());
-            
+
             graphUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup, false, It.IsAny<Guid>()));
             context.Verify(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()), Times.Exactly(2));
         }
@@ -880,8 +1075,8 @@ namespace Services.Tests
             "    'ObjectId': 'dc04c21f-091a-44a9-a661-9211dd9ccf35'" +
             "  }," +
             "  'SyncJobId': '601f6c70-8fe1-496f-8446-befb15b5249a'," +
-            "  'SourceMembers': []," +           
-            "  'RunId': '501f6c70-8fe1-496f-8446-befb15b5249a'," +          
+            "  'SourceMembers': []," +
+            "  'RunId': '501f6c70-8fe1-496f-8446-befb15b5249a'," +
             "  'Errored': false," +
             "  'IsLastMessage': true" +
             "}";

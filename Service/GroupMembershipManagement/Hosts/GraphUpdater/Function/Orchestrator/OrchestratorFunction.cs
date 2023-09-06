@@ -5,6 +5,7 @@ using GraphUpdater.Helpers;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Identity.Client;
 using Models;
 using Models.ServiceBus;
 using Newtonsoft.Json;
@@ -19,6 +20,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
+using static System.Net.WebRequestMethods;
 
 namespace Hosts.GraphUpdater
 {
@@ -230,6 +232,15 @@ namespace Hosts.GraphUpdater
             {
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Caught HttpRequestException, marking sync job status as transient error. Exception:\n{httpEx}", SyncJob = syncJob });
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), CreateJobStatusUpdaterRequest(groupMembership.SyncJobId, SyncStatus.TransientError, syncJob.ThresholdViolations, groupMembership.RunId));
+                throw;
+            }
+            catch (MsalClientException msalEx)
+            {
+                if (msalEx.ErrorCode == "MULTIPLE_MATCHING_TOKENS_DETECTED")
+                {
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Caught MsalClientException, marking sync job status as transient error. Exception:\n{msalEx}", SyncJob = syncJob });
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), CreateJobStatusUpdaterRequest(groupMembership.SyncJobId, SyncStatus.TransientError, syncJob.ThresholdViolations, groupMembership.RunId));
+                }
                 throw;
             }
             catch (Exception ex)

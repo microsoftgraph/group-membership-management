@@ -9,7 +9,6 @@ using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
-using Microsoft.Identity.Client;
 
 namespace Hosts.GraphUpdater
 {
@@ -33,41 +32,28 @@ namespace Hosts.GraphUpdater
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             _graphUpdaterService.RunId = request.RunId;
-            var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobId);
 
-            try
-            {
 
             var groupExistsResult = await _graphUpdaterService.GroupExistsAsync(request.GroupId, request.RunId);
 
-                if (groupExistsResult)
-                {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.GroupId} exists." });
-                }
-                else
-                {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.GroupId} doesn't exist." });
-
-                    if (syncJob != null)
-                        await _graphUpdaterService.SendEmailAsync(
-                            syncJob.Requestor,
-                            SyncDisabledNoGroupEmailBody,
-                            new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses },
-                            request.RunId, null, null, null, request.AdaptiveCardTemplateDirectory);
-                }
-
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-                return groupExistsResult;
-            }
-            catch (MsalClientException ex)
+            if (groupExistsResult)
             {
-                if (ex.ErrorCode == "MULTIPLE_MATCHING_TOKENS_DETECTED")
-                {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Marking sync job status as transient error. Exception:\n{ex.Message}", RunId = request.RunId });
-                    await _graphUpdaterService.UpdateSyncJobStatusAsync(syncJob, SyncStatus.TransientError, false, request.RunId);
-                }
-                throw;
+                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.GroupId} exists." });
             }
+            else
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.GroupId} doesn't exist." });
+                var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobId);
+                if (syncJob != null)
+                    await _graphUpdaterService.SendEmailAsync(
+                        syncJob.Requestor,
+                        SyncDisabledNoGroupEmailBody,
+                        new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses },
+                        request.RunId, null, null, null, request.AdaptiveCardTemplateDirectory);
+            }
+
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            return groupExistsResult;
         }
     }
 }
