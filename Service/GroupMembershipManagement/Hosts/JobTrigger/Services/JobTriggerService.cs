@@ -80,7 +80,13 @@ namespace Services
                         SyncStatus.StuckInProgress,
                         SyncStatus.TransientError
                        );
-            return ApplyJobTriggerFilters(jobs).ToList();
+            var filteredJobs = ApplyJobTriggerFilters(jobs).ToList();
+            var syncJobsCount = filteredJobs.Count;
+			var totalSyncJobsCount = await _databaseSyncJobsRepository.GetSyncJobCountAsync(true, SyncStatus.All);
+            _telemetryClient.TrackMetric(nameof(Metric.SyncJobsCount), syncJobsCount);
+            _telemetryClient.TrackMetric(nameof(Metric.TotalSyncJobsCount), totalSyncJobsCount);
+			var jobTriggerThresholdExceeded = HasJobTriggerThresholdExceeded(syncJobsCount, totalSyncJobsCount);
+			return (filteredJobs, jobTriggerThresholdExceeded);
         }
 
         public async Task<string> GetGroupNameAsync(SyncJob job)
