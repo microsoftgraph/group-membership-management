@@ -44,7 +44,7 @@ namespace WebApi.Controllers.v1.Notifications
         {
             var bearerToken = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
             var currentSettings = _webApiSettings.Value;
-            ActionableMessageTokenValidationResult result = await _actionableMessageTokenValidator.ValidateTokenAsync(bearerToken, currentSettings.ApiHostname);
+            ActionableMessageTokenValidationResult result = await _actionableMessageTokenValidator.ValidateTokenAsync(bearerToken, $"https://{currentSettings.ApiHostname}");
 
             var response = await _notificationCardHandler.ExecuteAsync(new NotificationCardRequest(id, result.ActionPerformer));
             Response.Headers["card-update-in-body"] = "true";
@@ -58,7 +58,7 @@ namespace WebApi.Controllers.v1.Notifications
         {
             var bearerToken = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
             var currentSettings = _webApiSettings.Value;
-            ActionableMessageTokenValidationResult result = await _actionableMessageTokenValidator.ValidateTokenAsync(bearerToken, currentSettings.ApiHostname);
+            ActionableMessageTokenValidationResult result = await _actionableMessageTokenValidator.ValidateTokenAsync(bearerToken, $"https://{currentSettings.ApiHostname}");
 
             var response = await _resolveNotificationHandler.ExecuteAsync(new ResolveNotificationRequest(id, result.ActionPerformer, model.Resolution));
             Response.Headers["card-update-in-body"] = "true";
