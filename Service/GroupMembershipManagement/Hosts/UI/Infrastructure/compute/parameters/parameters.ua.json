@@ -5,6 +5,9 @@
     "branch": {
       "value": "<webapp-source-branch>"
     },
+    "location": {
+      "value": "<location>"
+    },
     "repositoryUrl": {
       "value": "<repository-Url>"
     },

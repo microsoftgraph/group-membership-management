@@ -17,8 +17,7 @@ steps:
       location: ${{parameters.location}}
       csmFile: ${{ parameters.root }}/webapp_arm_templates/UI/Infrastructure/compute/template.bicep
       csmParametersFile: ${{ parameters.root }}/webapp_arm_templates/UI/Infrastructure/compute/parameters/parameters.${{parameters.environmentAbbreviation}}.json
-      overrideParameters: -location "${{parameters.location}}"
-                          -solutionAbbreviation "${{parameters.solutionAbbreviation}}"
+      overrideParameters: -solutionAbbreviation "${{parameters.solutionAbbreviation}}"
       deploymentMode: 'Incremental'
       deploymentOutputs: deploymentOutputs
 
