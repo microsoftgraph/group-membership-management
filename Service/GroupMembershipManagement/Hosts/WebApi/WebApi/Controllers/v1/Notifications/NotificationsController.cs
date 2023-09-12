@@ -37,38 +37,33 @@ namespace WebApi.Controllers.v1.Notifications
             _webApiSettings = webApiSettings ?? throw new ArgumentNullException(nameof(webApiSettings));
         }
 
-        [EnableQuery()]
         [HttpPost()]
         [Route("{id}/card")]
         public async Task<ActionResult<string>> GetCardAsync(Guid id)
         {
-            var bearerToken = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-            var currentSettings = _webApiSettings.Value;
-            ActionableMessageTokenValidationResult result = await _actionableMessageTokenValidator.ValidateTokenAsync(bearerToken, $"https://{currentSettings.ApiHostname}");
-
-            var response = await _notificationCardHandler.ExecuteAsync(new NotificationCardRequest(id, result.ActionPerformer));
+            var userUpn = await GetUserUpn(); 
+            var response = await _notificationCardHandler.ExecuteAsync(new NotificationCardRequest(id, userUpn));
             Response.Headers["card-update-in-body"] = "true";
             return Content(response.CardJson, "application/json");
         }
 
-        [EnableQuery()]
         [Route("{id}/resolve")]
         [HttpPost()]
         public async Task<ActionResult<string>> ResolveNotificationAsync(Guid id, [FromBody] ResolveNotification model)
         {
-            var bearerToken = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-            var currentSettings = _webApiSettings.Value;
-            ActionableMessageTokenValidationResult result = await _actionableMessageTokenValidator.ValidateTokenAsync(bearerToken, $"https://{currentSettings.ApiHostname}");
-
-            var response = await _resolveNotificationHandler.ExecuteAsync(new ResolveNotificationRequest(id, result.ActionPerformer, model.Resolution));
+            var userUpn = await GetUserUpn();
+            var response = await _resolveNotificationHandler.ExecuteAsync(new ResolveNotificationRequest(id, userUpn, model.Resolution));
             Response.Headers["card-update-in-body"] = "true";
             return Content(response.CardJson, "application/json");
         }
 
-        private string? GetUserUpn()
+        private async Task<string> GetUserUpn()
         {
-            var identity = HttpContext.User.Identity as ClaimsIdentity;
-            return identity?.Claims.Where(x => x.Type == ClaimTypes.Upn).FirstOrDefault()?.Value;
+            var bearerToken = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+            var currentSettings = _webApiSettings.Value;
+            ActionableMessageTokenValidationResult result = await _actionableMessageTokenValidator.ValidateTokenAsync(bearerToken, $"https://{currentSettings.ApiHostname}");
+
+            return result.ActionPerformer;
         }
     }
 }
