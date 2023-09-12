@@ -24,7 +24,7 @@ export const getStyles = (props: IContentContainerStyleProps): IContentContainer
         title: {
             textTransform: "uppercase",
             flex: 1,
-            fontSize: '16px',
+            fontSize: 16,
             fontStyle: 'normal',
             fontWeight: 600,
             lineHeight: '22px',
