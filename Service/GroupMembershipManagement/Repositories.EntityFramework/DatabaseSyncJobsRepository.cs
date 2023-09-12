@@ -92,7 +92,8 @@ namespace Repositories.EntityFramework
                     jobEntity.Status = job.Status;
                 }
             }
-
+            // We need to call this because we are modifying a property and not performing a CRUD operation 
+            _context.ChangeTracker.DetectChanges();
             await _context.SaveChangesAsync();
         }
 
