@@ -47,7 +47,6 @@ namespace WebApi.Controllers.v1.Notifications
             return Content(response.CardJson, "application/json");
         }
 
-        [EnableQuery()]
         [Route("{id}/resolve")]
         [HttpPost()]
         public async Task<ActionResult<string>> ResolveNotificationAsync(Guid id, [FromBody] ResolveNotification model)
