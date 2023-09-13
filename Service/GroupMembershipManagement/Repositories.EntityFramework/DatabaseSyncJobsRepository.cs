@@ -81,19 +81,24 @@ namespace Repositories.EntityFramework
         {
             foreach (var job in jobs)
             {
-                var jobEntity = _context.SyncJobs.Single(x => x.Id == job.Id);
-
                 if (status != null)
                 {
-                    jobEntity.Status = status.ToString();
+                    job.Status = status.ToString();
+                }
+
+                // Check if the entity already exists in the context, and if not, attach it.
+                var existingEntity = await _context.Set<SyncJob>().FindAsync(job.Id);
+                if (existingEntity != null)
+                {
+                    // If the entity already exists, mark it as modified.
+                    _context.Entry(existingEntity).CurrentValues.SetValues(job);
                 }
                 else
                 {
-                    jobEntity.Status = job.Status;
+                    _context.Attach(job);
+                    _context.Entry(job).State = EntityState.Modified;
                 }
             }
-            // We need to call this because we are modifying a property and not performing a CRUD operation 
-            _context.ChangeTracker.DetectChanges();
             await _context.SaveChangesAsync();
         }
 
