@@ -85,20 +85,10 @@ namespace Repositories.EntityFramework
                 {
                     job.Status = status.ToString();
                 }
-
-                // Check if the entity already exists in the context, and if not, attach it.
-                var existingEntity = await _context.Set<SyncJob>().FindAsync(job.Id);
-                if (existingEntity != null)
-                {
-                    // If the entity already exists, mark it as modified.
-                    _context.Entry(existingEntity).CurrentValues.SetValues(job);
-                }
-                else
-                {
-                    _context.Attach(job);
-                    _context.Entry(job).State = EntityState.Modified;
-                }
+                var entry = _context.Set<SyncJob>().Add(job);
+                entry.State = EntityState.Modified;
             }
+
             await _context.SaveChangesAsync();
         }
 
