@@ -92,6 +92,12 @@ namespace Repositories.EntityFramework
             await _context.SaveChangesAsync();
         }
 
+        public async Task UpdateSyncJobFromNotificationAsync(SyncJob job, SyncStatus status)
+        {
+            job.Status = status.ToString();
+            await _context.SaveChangesAsync();
+        }
+
         public async Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs)
         {
             foreach (var job in jobs)

@@ -90,5 +90,15 @@ namespace Repositories.SyncJobs.Tests
         {
             throw new NotImplementedException();
         }
+
+        public async Task UpdateSyncJobFromNotificationAsync(SyncJob job, SyncStatus status)
+        {
+            var dbJob = Jobs.FirstOrDefault(x => x.Id == job.Id);
+            if (dbJob != null)
+            {
+                dbJob.Status = status.ToString();
+            }
+            await Task.CompletedTask;
+        }
     }
 }

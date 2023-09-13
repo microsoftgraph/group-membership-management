@@ -86,13 +86,13 @@ namespace Services
             {
                 job.IgnoreThresholdOnce = true;
                 job.Status = SyncStatus.Idle.ToString();
-                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.Idle);
+                await _syncJobRepository.UpdateSyncJobFromNotificationAsync(job, SyncStatus.Idle);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resolved Notification. Setting the status of the sync back to Idle."});
             }
             else if (notification.Resolution == ThresholdNotificationResolution.Paused)
             {
                 job.Status = SyncStatus.CustomerPaused.ToString();
-                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.CustomerPaused);
+                await _syncJobRepository.UpdateSyncJobFromNotificationAsync(job, SyncStatus.CustomerPaused);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resolved Notification. Setting the status of the sync to CustomerPaused."});
             }
         }
