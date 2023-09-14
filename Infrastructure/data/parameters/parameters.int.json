@@ -13,9 +13,9 @@
           "ruleSqlExpression": "Type = 'GroupMembership'"
         },
         {
-          "name": "TeamsChannel",
+          "name": "TeamsChannelMembership",
           "ruleName": "syncType",
-          "ruleSqlExpression": "Type = 'TeamsChannel'"
+          "ruleSqlExpression": "Type = 'TeamsChannelMembership'"
         },
         {
           "name": "GroupOwnership",
@@ -63,7 +63,7 @@
           {
             "name": "TeamsChannelUpdater",
             "ruleName": "updaterType",
-            "ruleSqlExpression": "Type = 'TeamsChannel'"
+            "ruleSqlExpression": "Type = 'TeamsChannelMembership'"
           }
         ]
       }
