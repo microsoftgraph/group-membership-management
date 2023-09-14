@@ -88,7 +88,7 @@ export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (odataQueryOpt
     
     const mapped = payload.jobs.map((index) => {
       const currentTime = moment.utc();
-      var lastRunTime = moment(index['lastSuccessfulRunTime']);
+      var lastRunTime = moment.utc(index['lastSuccessfulRunTime']);
       var hoursAgo = currentTime.diff(lastRunTime, 'hours');
       index['lastSuccessfulRunTime'] =
         hoursAgo > index['period']
@@ -107,8 +107,8 @@ export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (odataQueryOpt
           hoursAgo.toString() +
           ' hrs ago';
 
-      var nextRunTime = moment(index['estimatedNextRunTime']);
-      var isPast = nextRunTime.isBefore(moment()); // Check if nextRunTime is in the past
+      var nextRunTime = moment.utc(index['estimatedNextRunTime']);
+      var isPast = nextRunTime.isBefore(moment.utc()); // Check if nextRunTime is in the past
       var hoursLeft = isPast ? 0 : Math.abs(currentTime.diff(nextRunTime, 'hours'));
 
       index['estimatedNextRunTime'] =
