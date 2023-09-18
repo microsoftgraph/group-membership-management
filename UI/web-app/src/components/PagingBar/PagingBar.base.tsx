@@ -49,7 +49,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
             setPageSize(item.key.toString());
             setPageNumber(1);
             setPageSizeCookie(item.key.toString());
-            getJobsByPage(parseInt(item.key.toString()), 1);
+            getJobsByPage();
         }
     }
 
@@ -59,7 +59,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
 
         let newPageNumber = pageNumber + direction;
         setPageNumber(newPageNumber);
-        getJobsByPage(parseInt(pageSize), newPageNumber);
+        getJobsByPage();
     }
 
     const onPageNumberChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string | undefined): void => {
@@ -70,7 +70,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
             return;
 
         setPageNumber(parseInt(newValue));
-        getJobsByPage(parseInt(pageSize), parseInt(newValue));
+        getJobsByPage();
     }
 
     return (

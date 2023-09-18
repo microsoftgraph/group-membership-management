@@ -87,6 +87,38 @@
             "of": "of",
             "display": "Display",
             "items": "Items per page"
+        },
+        "JobsListFilter": {
+            "filters": {
+                "ID": {
+                    "label": "ID",
+                    "placeholder": "Search",
+                    "validationErrorMessage": "Invalid GUID!"
+                },
+                "status": {
+                    "label": "Status",
+                    "options": {
+                        "all": "All",
+                        "enabled": "Enabled",
+                        "disabled": "Disabled"
+                    }
+                },
+                "actionRequired": {
+                    "label": "Action Required",
+                    "options": {
+                        "all": "All",
+                        "thresholdExceeded": "Threshold Exceeded",
+                        "customerPaused": "Customer Paused",
+                        "membershipDataNotFound": "No users in the source",
+                        "destinationGroupNotFound": "Destination Group Not Found",
+                        "notOwnerOfDestinationGroup": "Not Owner Of Destination Group",
+                        "securityGroupNotFound": "Security Group Not Found"
+                    }
+                }
+            },
+            "filterButtonText": "Filter",
+            "clearButtonTooltip": "Clear Filters"
+
         }
     },
     "welcome": "Welcome",

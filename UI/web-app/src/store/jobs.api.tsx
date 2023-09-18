@@ -85,7 +85,7 @@ export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (odataQueryOpt
     );
 
     const payload: JobsResponse = response;
-
+    
     const mapped = payload.jobs.map((index) => {
       const currentTime = moment.utc();
       var lastRunTime = moment(index['lastSuccessfulRunTime']);
@@ -124,7 +124,7 @@ export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (odataQueryOpt
           ' hrs left';
 
       index['enabledOrNot'] =
-        index['status'] === SyncStatus.CustomerPaused ? 'Disabled' : 'Enabled';
+        (index['status'] === SyncStatus.Idle || index['status'] === SyncStatus.InProgress) ? 'Enabled' : 'Disabled';
 
       index['arrow'] = '';
 

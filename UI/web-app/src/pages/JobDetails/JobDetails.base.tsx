@@ -370,7 +370,7 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
               {new Intl.DateTimeFormat().format(Date.parse(jobDetails.lastSuccessfulStartTime))}
             </Text>
           ) : (
-            <Shimmer width="120%" />
+            <Shimmer width="100%" />
           )}
         </div>
       </Stack.Item>
@@ -428,7 +428,7 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
               {format(t('JobDetails.labels.frequencyDescription'), job.period)}
             </Text>
           ) : (
-            <Shimmer width="120%" />
+            <Shimmer width="100%" />
           )}
         </div>
       </Stack.Item>
@@ -446,7 +446,7 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
               {jobDetails.thresholdPercentageForAdditions}%
             </Text>
           ) : (
-            <Shimmer width="120%" />
+            <Shimmer width="100%" />
           )}
         </div>
       </Stack.Item>
@@ -464,7 +464,7 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
               {jobDetails.thresholdPercentageForRemovals}%
             </Text>
           ) : (
-            <Shimmer width="120%" />
+            <Shimmer width="100%" />
           )}
         </div>
       </Stack.Item>

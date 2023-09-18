@@ -86,6 +86,38 @@
             "of": "de",
             "display": "Mostrando",
             "items": "Elementos por página"
+        },
+        "JobsListFilter": {
+            "filters": {
+                "ID": {
+                    "label": "ID",
+                    "placeholder": "Buscar",
+                    "validationErrorMessage": "GUID inválido!"
+                },
+                "status": {
+                    "label": "Estado",
+                    "options": {
+                        "all": "Todos",
+                        "enabled": "Activo",
+                        "disabled": "Inactivo"
+                    }
+                },
+                "actionRequired": {
+                    "label": "Acción requerida",
+                    "options": {
+                        "all": "Todos",
+                        "thresholdExceeded": "Límite excedido",
+                        "customerPaused": "Pausado por el cliente",
+                        "membershipDataNotFound": "Datos de membresía no encontrados",
+                        "destinationGroupNotFound": "Grupo de destino no encontrado",
+                        "notOwnerOfDestinationGroup": "No es propietario del grupo de destino",
+                        "securityGroupNotFound": "Grupo de seguridad no encontrado"
+                    }
+                }
+            },
+            "filterButtonText": "Filtrar",
+            "clearButtonTooltip": "Eliminar filtros"
+
         }
     },
     "welcome": "Bienvenido",

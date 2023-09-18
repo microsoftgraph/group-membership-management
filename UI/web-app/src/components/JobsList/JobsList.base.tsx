@@ -15,7 +15,7 @@ import {
   selectAllJobs,
   selectGetJobsError,
   setGetJobsError,
-  getTotalNumberOfPages
+  getTotalNumberOfPages,
 } from '../../store/jobs.slice';
 import { AppDispatch } from '../../store';
 
@@ -26,7 +26,7 @@ import {
   MessageBar,
   MessageBarType,
   IconButton,
-  IIconProps
+  IIconProps,
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { Text } from '@fluentui/react/lib/Text';
@@ -43,6 +43,8 @@ import {
 import { useCookies } from 'react-cookie';
 import { PagingBar } from '../PagingBar';
 import { PageVersion } from '../PageVersion';
+import { JobsListFilter } from '../JobsListFilter/JobsListFilter';
+import { SyncStatus } from '../../models/Status';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -52,7 +54,6 @@ const getClassNames = classNamesFunction<
 export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   props: IJobsListProps
 ) => {
-
   const { className, styles } = props;
 
   const classNames: IProcessedStyleSet<IJobsListStyles> = getClassNames(
@@ -67,12 +68,21 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const dispatch = useDispatch<AppDispatch>();
   const jobs = useSelector(selectAllJobs);
   const [pageNumber, setPageNumber] = useState(1);
-  const [pageSize, setPageSize] = useState("10");
+  const [pageSize, setPageSize] = useState('10');
   const totalNumberOfPages = useSelector(getTotalNumberOfPages);
   const navigate = useNavigate();
 
+  const [filterStatus, setFilterStatus] = useState<string | undefined>(
+    undefined
+  );
+  const [filterActionRequired, setFilterActionRequired] = useState<
+    string | undefined
+  >(undefined);
+  const [filterID, setFilterID] = useState<string | undefined>(undefined);
+
   const [sortKey, setSortKey] = useState<string | undefined>(undefined);
   const [isSortedDescending, setIsSortedDescending] = useState(false);
+  const [isShimmerEnabled, setIsShimmerEnabled] = useState(false);
   const items = jobs;
 
   const columns = [
@@ -85,7 +95,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: true,
       isSorted: sortKey === 'targetGroupType',
       isSortedDescending,
-      columnActionsMode: 0
+      columnActionsMode: 0,
     },
     {
       key: 'targetGroupName',
@@ -95,7 +105,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: true,
       isSorted: sortKey === 'targetGroupName',
       isSortedDescending,
-      columnActionsMode: 0
+      columnActionsMode: 0,
     },
     {
       key: 'lastSuccessfulRunTime',
@@ -106,7 +116,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: true,
       isSorted: sortKey === 'lastSuccessfulRunTime',
       isSortedDescending,
-      showSortIconWhenUnsorted: true
+      showSortIconWhenUnsorted: true,
     },
     {
       key: 'estimatedNextRunTime',
@@ -117,7 +127,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: true,
       isSorted: sortKey === 'estimatedNextRunTime',
       isSortedDescending,
-      columnActionsMode: 0
+      columnActionsMode: 0,
     },
     {
       key: 'enabledOrNot',
@@ -128,7 +138,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: true,
       isSorted: sortKey === 'enabledOrNot',
       isSortedDescending,
-      columnActionsMode: 0
+      columnActionsMode: 0,
     },
     {
       key: 'actionRequired',
@@ -139,7 +149,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: true,
       isSorted: sortKey === 'actionRequired',
       isSortedDescending,
-      columnActionsMode: 0
+      columnActionsMode: 0,
     },
     {
       key: 'arrow',
@@ -148,7 +158,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       minWidth: 20,
       maxWidth: 20,
       isResizable: true,
-      columnActionsMode: 0
+      columnActionsMode: 0,
     },
   ];
 
@@ -171,14 +181,14 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const [cookies, setCookie] = useCookies(['pageSize']);
   const setPageSizeCookie = (pageSize: string): void => {
     setCookie('pageSize', pageSize, { path: '/' });
-  }
+  };
 
   function onColumnHeaderClick(event?: any, column?: IColumn) {
     if (column) {
       let isSortedDescending = !!column.isSorted && !column.isSortedDescending;
       setIsSortedDescending(isSortedDescending);
       setSortKey(column.key);
-      getJobsByPage(parseInt(pageSize), pageNumber, column.key + (isSortedDescending ? ' desc' : ''));
+      getJobsByPage();
     }
   }
 
@@ -188,33 +198,75 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     dispatch(setGetJobsError());
   };
 
-  const getJobsByPage = (currentPageSize?: number, currentPageNumber?: number, orderBy?: string): void => {
-
+  const getJobsByPage = (): void => {
+    setIsShimmerEnabled(true);
     let orderByString: string | undefined = undefined;
-    if (orderBy !== undefined)
-      orderByString = orderBy;
-    else if (sortKey !== undefined) {
+    if (sortKey !== undefined) {
       orderByString = sortKey + (isSortedDescending ? ' desc' : '');
     }
 
+    console.log(filterActionRequired);
+    let filterString: string | undefined = undefined;
+    if (filterID !== undefined && filterID !== '')
+      filterString = 'targetOfficeGroupId eq ' + filterID;
+    if (
+      filterActionRequired !== undefined &&
+      filterActionRequired !== '' &&
+      filterActionRequired !== 'All'
+    )
+      filterString =
+        (filterString === undefined ? '' : filterString + ' and ') +
+        "status eq '" +
+        filterActionRequired +
+        "'";
+    if (
+      filterStatus !== undefined &&
+      filterStatus !== '' &&
+      filterStatus !== 'All'
+    ) {
+      if (filterStatus === 'Enabled')
+        filterString =
+          (filterString === undefined ? '' : filterString + ' and ') +
+          "status eq '" +
+          SyncStatus.Idle +
+          "' or status eq '" +
+          SyncStatus.InProgress +
+          "'";
+      else if (filterStatus === 'Disabled')
+        filterString =
+          (filterString === undefined ? '' : filterString + ' and ') +
+          "not (status eq '" +
+          SyncStatus.Idle +
+          "' or status eq '" +
+          SyncStatus.InProgress +
+          "')";
+    }
+
     let odataQueryOptions = new OdataQueryOptions();
-    odataQueryOptions.pageSize = currentPageSize ?? parseInt(pageSize);
-    odataQueryOptions.itemsToSkip = ((currentPageNumber ?? pageNumber) - 1) * odataQueryOptions.pageSize;
-    odataQueryOptions.orderBy = orderByString
+    odataQueryOptions.pageSize = parseInt(pageSize) ?? cookies.pageSize;
+    odataQueryOptions.itemsToSkip =
+      (pageNumber - 1) * odataQueryOptions.pageSize;
+    odataQueryOptions.orderBy = orderByString;
+    odataQueryOptions.filter = filterString;
+
     dispatch(fetchJobs(odataQueryOptions));
-  }
+  };
 
   useEffect(() => {
-
-    if (cookies.pageSize === undefined || cookies.pageSize === 'undefined' || cookies.pageSize === '') {
+    if (
+      cookies.pageSize === undefined ||
+      cookies.pageSize === 'undefined' ||
+      cookies.pageSize === ''
+    ) {
       setPageSizeCookie('10');
-    }
-    else {
+    } else {
       setPageSize(cookies.pageSize);
     }
 
     if (!jobs) {
-      getJobsByPage(cookies.pageSize ?? pageSize ?? 10);
+      getJobsByPage();
+    } else {
+      setIsShimmerEnabled(false);
     }
   }, [dispatch, jobs]);
 
@@ -305,70 +357,90 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   };
 
   return (
-  <div className={classNames.root}>
-    <div className={classNames.jobsList}>
-      <div>
-        {error && (
-          <MessageBar
-            messageBarType={MessageBarType.error}
-            isMultiline={false}
-            onDismiss={onDismiss}
-            dismissButtonAriaLabel={
-              t('JobsList.MessageBar.dismissButtonAriaLabel') as
-              | string
-              | undefined
-            }
-          >
-            {error}
-          </MessageBar>
-        )}
-        <div className={classNames.title}>
-          <Text variant='xLarge'>{t('JobsList.listOfMemberships')}</Text>
-        </div>
-        <div className={classNames.tabContent}>
-          <ShimmeredDetailsList
-            setKey="set"
-            onColumnHeaderClick={onColumnHeaderClick}
-            items={sortedItems || []}
-            columns={columns}
-            enableShimmer={!jobs || jobs.length === 0}
-            layoutMode={DetailsListLayoutMode.justified}
-            selectionMode={SelectionMode.none}
-            ariaLabelForShimmer="Content is being fetched"
-            ariaLabelForGrid="Item details"
-            selectionPreservedOnEmptyClick={true}
-            ariaLabelForSelectionColumn={
-              t('JobsList.ShimmeredDetailsList.toggleSelection') as
-              | string
-              | undefined
-            }
-            ariaLabelForSelectAllCheckbox={
-              t('JobsList.ShimmeredDetailsList.toggleAllSelection') as
-              | string
-              | undefined
-            }
-            checkButtonAriaLabel={
-              t('JobsList.ShimmeredDetailsList.selectRow') as string | undefined
-            }
-            onActiveItemChanged={onItemClicked}
-            onRenderItemColumn={_renderItemColumn}
-          />
-          <div className={classNames.columnToEnd}></div>
+    <div className={classNames.root}>
+      <div className={classNames.jobsListFilter}>
+        <JobsListFilter
+          setFilterStatus={setFilterStatus}
+          setFilterActionRequired={setFilterActionRequired}
+          setFilterID={setFilterID}
+          getJobsByPage={getJobsByPage}
+          filterActionRequired={filterActionRequired}
+          filterID={filterID}
+          filterStatus={filterStatus}
+        />
+      </div>
+      <div className={classNames.jobsList}>
+        <div>
+          {error && (
+            <MessageBar
+              className={classNames.errorMessageBar}
+              messageBarType={MessageBarType.error}
+              isMultiline={false}
+              onDismiss={onDismiss}
+              dismissButtonAriaLabel={
+                t('JobsList.MessageBar.dismissButtonAriaLabel') as
+                  | string
+                  | undefined
+              }
+            >
+              {error}
+            </MessageBar>
+          )}
+          <div className={classNames.title}>
+            <Text variant="xLarge">{t('JobsList.listOfMemberships')}</Text>
+          </div>
+          <div className={classNames.tabContent}>
+            <ShimmeredDetailsList
+              setKey="set"
+              onColumnHeaderClick={onColumnHeaderClick}
+              items={sortedItems || []}
+              columns={columns}
+              enableShimmer={!jobs || isShimmerEnabled}
+              layoutMode={DetailsListLayoutMode.justified}
+              selectionMode={SelectionMode.none}
+              ariaLabelForShimmer="Content is being fetched"
+              ariaLabelForGrid="Item details"
+              selectionPreservedOnEmptyClick={true}
+              ariaLabelForSelectionColumn={
+                t('JobsList.ShimmeredDetailsList.toggleSelection') as
+                  | string
+                  | undefined
+              }
+              ariaLabelForSelectAllCheckbox={
+                t('JobsList.ShimmeredDetailsList.toggleAllSelection') as
+                  | string
+                  | undefined
+              }
+              checkButtonAriaLabel={
+                t('JobsList.ShimmeredDetailsList.selectRow') as
+                  | string
+                  | undefined
+              }
+              onActiveItemChanged={onItemClicked}
+              onRenderItemColumn={_renderItemColumn}
+            />
+
+            {jobs?.length === 0 && (
+              <div className={classNames.noMembershipsFoundText}>
+                <Text variant="medium">{'No memberships found.'}</Text>
+              </div>
+            )}
+            <div className={classNames.columnToEnd}></div>
+          </div>
         </div>
       </div>
+      <div className={classNames.footer}>
+        <PageVersion />
+        <PagingBar
+          pageSize={pageSize}
+          pageNumber={pageNumber}
+          totalNumberOfPages={totalNumberOfPages ?? 1}
+          getJobsByPage={getJobsByPage}
+          setPageSize={setPageSize}
+          setPageNumber={setPageNumber}
+          setPageSizeCookie={setPageSizeCookie}
+        />
+      </div>
     </div>
-    <div className={classNames.footer}>
-      <PageVersion/>
-      <PagingBar
-        pageSize={pageSize}
-        pageNumber={pageNumber}
-        totalNumberOfPages={totalNumberOfPages ?? 1}
-        getJobsByPage={getJobsByPage}
-        setPageSize={setPageSize}
-        setPageNumber={setPageNumber}
-        setPageSizeCookie={setPageSizeCookie}
-      />
-    </div>
-  </div>
   );
 };

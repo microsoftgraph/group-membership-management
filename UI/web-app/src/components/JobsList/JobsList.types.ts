@@ -18,7 +18,10 @@ export interface IJobsListStyles {
   refresh: IStyle;
   title: IStyle;
   jobsList: IStyle;
+  jobsListFilter: IStyle;
   footer: IStyle;
+  noMembershipsFoundText: IStyle;
+  errorMessageBar: IStyle;
 }
 
 export interface IJobsListStyleProps {

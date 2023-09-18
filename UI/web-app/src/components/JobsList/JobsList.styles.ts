@@ -47,11 +47,23 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
     jobsList: {
       backgroundColor: theme.palette.white,
       borderRadius: 10,
-      padding: '12px 0px 12px 24px',
+      padding: '12px 24px 12px 24px',
+    },
+    jobsListFilter: {
+      marginBottom: 12,
     },
     footer: {
       display: 'flex',
       justifyContent: 'space-between'
+    },
+    noMembershipsFoundText: {
+      textAlign: 'center',
+      padding: 24
+    },
+    errorMessageBar: {
+      borderRadius: 5,
+      marginBottom: 22,
     }
+
   };
 };

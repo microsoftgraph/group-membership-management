@@ -8,6 +8,8 @@ export enum SyncStatus {
   DestinationGroupNotFound = 'DestinationGroupNotFound',
   NotOwnerOfDestinationGroup = 'NotOwnerOfDestinationGroup',
   SecurityGroupNotFound = 'SecurityGroupNotFound',
+  Idle = 'Idle',
+  InProgress = 'InProgress',
 }
 
 export enum ActionRequired {
