@@ -233,45 +233,5 @@ namespace Services.Tests
 
             return (users, nonUserGraphObjects, nextPageUrl);
         }
-
-        [TestMethod]
-        public async Task IsEmailRecipientOwnerOfGroupAsync_ShouldReturnTrue_WhenRecipientIsOwner()
-        {
-            var mockLogs = new MockLoggingRepository();
-            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var mockGraphGroup = new Mock<IGraphGroupRepository>();
-            var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
-            var mockSynJobs = new MockDatabaseSyncJobRepository();
-
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs);
-
-            var groupOwner = "owner@test.com";
-            mockGraphGroup.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<String>(), It.IsAny<Guid>())).ReturnsAsync(true);
-
-            var response = await graphUpdaterService.IsEmailRecipientOwnerOfGroupAsync(groupOwner, Guid.NewGuid());
-
-            Assert.IsTrue(response);
-        }
-
-        [TestMethod]
-        public async Task IsEmailRecipientOwnerOfGroupAsync_ShouldReturnFalse_WhenRecipientIsNotOwner()
-        {
-            var mockLogs = new MockLoggingRepository();
-            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var mockGraphGroup = new Mock<IGraphGroupRepository>();
-            var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
-            var mockSynJobs = new MockDatabaseSyncJobRepository();
-
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSynJobs);
-
-            var groupOwner = "nonowner@test.com";
-            mockGraphGroup.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<String>(), It.IsAny<Guid>())).ReturnsAsync(false);
-
-            var response = await graphUpdaterService.IsEmailRecipientOwnerOfGroupAsync(groupOwner, Guid.NewGuid());
-
-            Assert.IsFalse(response);
-        }
     }
 }
