@@ -85,7 +85,7 @@ namespace Repositories.EntityFramework
                 {
                     job.Status = status.ToString();
                 }
-                var entry = _context.Set<SyncJob>().Add(job); // This function is called update but it is performing an Add, we might need to rename this
+                var entry = _context.Set<SyncJob>().Add(job);
                 entry.State = EntityState.Modified;
             }
 

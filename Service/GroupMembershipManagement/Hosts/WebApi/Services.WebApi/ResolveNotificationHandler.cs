@@ -53,14 +53,9 @@ namespace Services
             }
 
             var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserUPN, thresholdNotification.TargetOfficeGroupId);
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"ResolveNotificationHandler isGroupOwner: {isGroupOwner}"
-            });
             if (!isGroupOwner)
             {
-                //response.CardJson = await _thresholdNotificationService.CreateUnauthorizedNotificationCardAsync(thresholdNotification);
-                response.CardJson = await _thresholdNotificationService.CreateNotificationCardAsync(thresholdNotification);
+                response.CardJson = await _thresholdNotificationService.CreateUnauthorizedNotificationCardAsync(thresholdNotification);
                 return response;
             }
 
