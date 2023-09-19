@@ -1,20 +1,51 @@
-steps:
-  - task: CopyFiles@2
-    displayName: 'Copy GmmUI webapp package'
-    inputs:
-      SourceFolder:  public/UI
-      Contents: '**\web-app\**'
-      TargetFolder: '$(build.artifactstagingdirectory)/webapp_package/'
+parameters:
+- name: repoToCheckout
+  type: string
+- name: checkoutPath
+  type: string
+- name: buildRelease
+  type: boolean
 
-  - task: CopyFiles@2
-    displayName: 'Copy GmmUI webapp arm templates'
-    inputs:
-      SourceFolder: public/Service/GroupMembershipManagement/Hosts/UI
-      Contents: '**\Infrastructure\**'
-      TargetFolder: '$(build.artifactstagingdirectory)/webapp_arm_templates/UI'
+stages:
 
-  - task: PublishBuildArtifacts@1
-    displayName: 'Publish web app artifacts'
-    inputs:
-      PathtoPublish: '$(build.artifactstagingdirectory)'
-      ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'
+- stage: Build_WebAPP
+  dependsOn: Build_Common
+  jobs:
+  - job: Build_WebAPP
+    ${{ if parameters.buildRelease }}:
+      strategy:
+        maxParallel: 2
+        matrix:
+          debug:
+            BuildConfiguration: debug
+          release:
+            BuildConfiguration: release
+    ${{ else }}:
+      variables:
+        BuildConfiguration: 'debug'
+
+    steps:
+
+    - ${{ if ne(parameters.repoToCheckout, '') }}:
+      - checkout: ${{ parameters.repoToCheckout }}
+        path: ${{ parameters.checkoutPath }}
+
+    - task: CopyFiles@2
+      displayName: 'Copy GmmUI webapp package'
+      inputs:
+        SourceFolder:  UI
+        Contents: '**\web-app\**'
+        TargetFolder: '$(build.artifactstagingdirectory)/webapp_package/'
+
+    - task: CopyFiles@2
+      displayName: 'Copy GmmUI webapp arm templates'
+      inputs:
+        SourceFolder: Service/GroupMembershipManagement/Hosts/UI
+        Contents: '**\Infrastructure\**'
+        TargetFolder: '$(build.artifactstagingdirectory)/webapp_arm_templates/UI'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish web app artifacts'
+      inputs:
+        PathtoPublish: '$(build.artifactstagingdirectory)'
+        ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'
