@@ -81,3 +81,9 @@ stages:
     repoToCheckout: ${{ parameters.repoToCheckout }}
     checkoutPath: ${{ parameters.checkoutPath }}
     buildRelease: ${{ parameters.buildRelease }}
+
+- template: yaml/build-webapp.yml
+  parameters:
+    repoToCheckout: ${{ parameters.repoToCheckout }}
+    checkoutPath: ${{ parameters.checkoutPath }}
+    buildRelease: ${{ parameters.buildRelease }}
