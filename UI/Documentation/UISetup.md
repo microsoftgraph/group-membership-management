@@ -44,7 +44,9 @@ Add the following variables to your build/release pipeline:
 - REACT_APP_DOMAINNAME_`<ENVIRONMENTABBREVIATION>` (Set value as the domain name for your tenant, i.e. m365x1234567.sharepoint.com)
 - REACT_APP_VERSION_NUMBER (Optional: this value is pulled from the build pipeline)
 
-### Deploy WebAPI & UI via Build/Release
+## Post-Deployment tasks
+
+* Go to the static web app in your compute resource group. You should see a URL in the Overview page. Copy that URL. Go to `<solutionAbbreviation>`-ui-`<environmentAbbreviation>` application in Azure Active Directory -> `Authentication` -> Add that URL as a Redirect URI -> Click `Save`
 
 ### Run UI locally
 

@@ -414,6 +414,7 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
         * Use `"env"` for `<SourceEnvironmentAbbreviation>` and the absolute path to your private repositoty for `<RepoPath>`.
     * This command will go into each of the `parameters` folders and copy and rename the `parameters.env.json` file to `parameters.<EnvironmentAbbreviation>.json`. These new parameter files will be used to by the ARM templates to deploy the resources of the new environment.
     * You may create an AAD Group and provide the values for sqlAdministratorsGroupId and sqlAdministratorsGroupName in [your param file](/Infrastructure/data/parameters).
+    * You also want to provide values for `branch` and `repositoryUrl` in [your UI param file](/Service/GroupMembershipManagement/Hosts/UI/Infrastrure/compute/parameters). You can provide "" for `customDomainName` if you have not set up a custom domain.
 
 ### To remove a GMM environment:
 
