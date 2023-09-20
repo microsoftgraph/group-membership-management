@@ -99,6 +99,10 @@ var appSettings = [
     value: appInsights.properties.ConnectionString
   }
   {
+    name: 'ASPNETCORE_ENVIRONMENT'
+    value: 'development'
+  }
+  {
     name: 'ConnectionStrings:JobsContext'
     value: '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   }
