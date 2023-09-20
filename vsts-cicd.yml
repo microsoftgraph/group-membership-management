@@ -66,7 +66,7 @@ stages:
          name: 'PlaceMembershipObtainer'
          coverageThreshold: 45
       - function:
-         name: 'TeamsChannel'
+         name: 'TeamsChannelMembershipObtainer'
          coverageThreshold: 72
       - function:
          name: 'AzureMaintenance'
