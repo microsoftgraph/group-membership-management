@@ -215,7 +215,7 @@ namespace Services
 
             type = destinationQuery["type"].Value<string>();
 
-            if (type == "TeamsChannel")
+            if (type == "TeamsChannelMembership")
             {
                 if (destinationQuery["value"].SelectToken("channelId") == null) return (false, null);
 

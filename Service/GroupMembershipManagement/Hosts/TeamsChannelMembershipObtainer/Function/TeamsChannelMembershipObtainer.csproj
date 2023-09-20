@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AzureFunctionsVersion>v4</AzureFunctionsVersion>
+    <AssemblyName>Hosts.$(MSBuildProjectName)</AssemblyName>
+    <RootNamespace>Hosts.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- Prevent the Microsoft.Extensions.Http package from getting deleted on publish https://github.com/Azure/azure-functions-host/issues/5894  -->
+    <_FunctionsSkipCleanOutput>true</_FunctionsSkipCleanOutput>
+</PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" Version="2.10.0" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" Version="5.11.0" />
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="6.0.16" />
+    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.2.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.TeamsChannel\Repositories.TeamsChannel.csproj" />
+	<ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
+	<ProjectReference Include="..\Services.Contracts\TeamsChannelMembershipObtainer.Service.Contracts.csproj" />
+    <ProjectReference Include="..\Services\TeamsChannelMembershipObtainer.Service\TeamsChannelMembershipObtainer.Service.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="host.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="local.settings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+</Project>

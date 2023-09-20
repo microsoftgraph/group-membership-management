@@ -90,7 +90,7 @@ namespace Services.Tests
             SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
             var objectId = Guid.NewGuid();
             var channelId = "Channel_ID";
-            job.Destination = $"[{{\"type\":\"TeamsChannel\",\"value\":{{\"objectId\":\"{objectId}\",\"channelId\":\"{channelId}\"}}}}]";
+            job.Destination = $"[{{\"type\":\"TeamsChannelMembership\",\"value\":{{\"objectId\":\"{objectId}\",\"channelId\":\"{channelId}\"}}}}]";
 
             var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestinationAsync(job);
 
@@ -127,7 +127,7 @@ namespace Services.Tests
         public async Task TestInvalidTeamsDestinationQuery()
         {
             SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
-            job.Destination = $"[{{\"type\":\"TeamsChannel\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]";
+            job.Destination = $"[{{\"type\":\"TeamsChannelMembership\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]";
 
             var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestinationAsync(job);
 
