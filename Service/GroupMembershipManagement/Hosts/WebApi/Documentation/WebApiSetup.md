@@ -61,6 +61,8 @@ Note: Individual users can be added and granted the proper permission, if you de
 
 The WebpAPI will be called by the GMM UI. In order to allow it to call the WebAPI, it needs to be added as trusted client application.
 
+Create UI application by following `UI\Documentation\UISetup.md`.
+
 1. From the Azure Portal locate and open "Azure Active Directory"
 2. On the left menu select "App Registrations"
 3. Search for the webapi application, the name follows this convention `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>` i.e. gmm-webapi-int.
@@ -70,6 +72,8 @@ The WebpAPI will be called by the GMM UI. In order to allow it to call the WebAP
 7. Provide the Application/Client ID of your GMM UI application, the name follows this convention `<solutionAbbreviation>`-ui-`<environmentAbbreviation>` i.e. gmm-ui-int.
 Make sure to select the Authorized scope.
 8. Click "Add application"
+
+*The following steps need to be completed after a successful deployment*
 
 ## Grant Permissions
 
@@ -112,7 +116,7 @@ BEGIN
 END
 ```
 
-Verify it ran successufully by running:
+Verify it ran successfully by running:
 ```
 SELECT * FROM sys.database_principals WHERE name = N'<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-webapi'
 ```

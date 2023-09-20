@@ -106,7 +106,7 @@ These two keyvaults will be created by the ARM templates, so no action is needed
 
 ## ARM templates and parameter files overview
 
-GMM leverages infrastructure as code through the use of ARM templates. Most of the Azure resources needed by GMM are created by the ARM templates on the `Public` repository. We use parameter files to pass user specific information or settings to the ARM templates. ARM templates and paramter files can be found within the `Infrastructure` folders of the parent project and each of the functions apps:
+GMM leverages infrastructure as code through the use of ARM templates. Most of the Azure resources needed by GMM are created by the ARM templates on the `Public` repository. We use parameter files to pass user specific information or settings to the ARM templates. ARM templates and parameter files can be found within the `Infrastructure` folders of the parent project and each of the functions apps:
 
     -   Documentation
     -   Infrastructure
@@ -160,7 +160,6 @@ The steps in this document will setup a single environment i.e. prodv2, if you w
     - `Private` repository:
         - Your `Private` repo will refer to your `Public` repo as a submodule.
         - Create your `Private` repo based off the [group-membership-management-tenant ](https://github.com/microsoftgraph/group-membership-management-tenant) repo by following the [Manually Importing a Repo](https://docs.microsoft.com/en-us/azure/devops/repos/git/import-git-repository?view=azure-devops#manually-import-a-repo) documentation.
-        - Open the `vsts-cicd.yml` file of your newly created repo and replace `<ProjectName>/<RepositoryName>` with your project name and your `Public` repository name.
         - Create the `Public` submodule by running the following command from your `Private` repo:
 
                 git submodule add <url-of-public-repo> <name-of-public-repo>
@@ -303,7 +302,7 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
 
 1. In your `Private` repo, locate and open file [vsts-cicd.yml](https://github.com/microsoftgraph/group-membership-management-tenant/blob/main/vsts-cicd.yml)
 2. Locate the `yaml/deploy-pipeline.yml` template of the `env` environment. It should look like this:
-
+```
     - template: yaml/deploy-pipeline.yml
     parameters:
         solutionAbbreviation: '$(SolutionAbbreviation)'
@@ -351,7 +350,7 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
             eq(variables['Build.SourceBranch'], 'refs/heads/develop'),
             in(variables['Build.Reason'], 'IndividualCI', 'Manual')
         )
-
+```
 3. Copy and paste the template located in step two, then replace the values for these settings accordingly using the name of your new environment:
     - environmentAbbreviation
     - serviceConnection
@@ -362,6 +361,7 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
 4. In your `Private` repo, locate and open file [vsts-cicd.yml](https://github.com/microsoftgraph/group-membership-management-tenant/blob/main/vsts-cicd.yml)
 
 5. Locate the `yaml/copy-deploy-webapp.yml` template of the `env` environment. It should look like this:
+```
     - template: yaml/copy-deploy-webapp.yml
     parameters:
         alias: ''
@@ -380,7 +380,7 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
             in(variables['Build.SourceBranch'], 'refs/heads/main'),
             in(variables['Build.Reason'], 'IndividualCI', 'Manual')
         )
-
+```
 6. Edit the following fields of the duplicated template:
     * There are three parameters that you must be set to your `<EnvironmentAbbreviation>`:
 
@@ -394,13 +394,13 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
 
 9. Locate the `repositories` information at the top. It should look like this:
     resources:
-    repositories:
-    - repository: group-membership-management
+      repositories:
+      - repository: group-membership-management
         type: git
-        name: external-gmm/STW-Sol-GrpMM-public
-        ref: refs/tags/<tag>
+        name: <ADO-PROJECT>/<ADO-GMM-PUBLIC-REPOSITORY>
+        ref: refs/tags/<TAG>
 
-10. Change <tag> to the latest tag. the latest Git tag for a repository can be found on the main overview page on GitHub.Specifically, the latest tag is shown next to the total number of branches at the top of the page, above the list of project files and folders.
+10. Replace `<ADO-PROJECT>/<ADO-GMM-PUBLIC-REPOSITORY>` with your project name and your `Public` repository name. Change `<TAG>` to the latest tag. The latest Git tag for a repository can be found on the main overview page on GitHub. Specifically, the latest tag is shown next to the total number of branches at the top of the page, above the list of project files and folders.
 
 11. Save your changes.
 
@@ -413,6 +413,7 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
                                 -RepoPath "<RepoPath>"
         * Use `"env"` for `<SourceEnvironmentAbbreviation>` and the absolute path to your private repositoty for `<RepoPath>`.
     * This command will go into each of the `parameters` folders and copy and rename the `parameters.env.json` file to `parameters.<EnvironmentAbbreviation>.json`. These new parameter files will be used to by the ARM templates to deploy the resources of the new environment.
+    * You may create an AAD Group and provide the values for sqlAdministratorsGroupId and sqlAdministratorsGroupName in [your param file](/Infrastructure/data/parameters).
 
 ### To remove a GMM environment:
 
@@ -475,46 +476,12 @@ The following PowerShell scripts create a Service Principal and set up a Service
     Where:
     *  `<OrganizationName>` - This is the name of your organization used in Azure DevOps.
     *  `<ProjectName>` - This is the name of the project in Azure DevOps we just created in a previous step.
+
 4. Give service connection access to the keyvaults
 
     Go to your <SolutionAbbreviation>-prereqs-<EnvironmentAbbreviation> keyvault > Click on 'Access policies' > Click on Create > Select Get, List, and Set secrets permissions and then add your <SolutionAbbreviation>-serviceconnection-<EnvironmentAbbreviation> as the principal.
 
-## Grant the service connection access to SQL Server Database
-
-Your service connecion needs MSI access to the SQL Server DB so it can deploy the DACPAC file.
-
-Once the SQL server and databases are created as part of the deployment we will need to run these SQL statements before we can deploy the DACPAC file and run scripts on the jobs database.
-
-SyncJobs DB
-- Server name follows this naming convention `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>`.
-- Database name follows this naming convention `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-jobs`.
-
-1. Connect to your SQL Server Database using Sql Server Management Studio (SSMS) or Azure Data Studio.
-- Server name : `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>.database.windows.net`
-- User name: Your account.
-- Authentication: Azure Active Directory - Universal with MFA
-- Database name: `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>`
-
-2. Run these SQL commands
-
-SyncJobs DB
-
-- This script needs to run only once.
-- Make sure you are connected to SyncJobs database: `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-jobs`.
-
-```
-IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'<SolutionAbbreviation>-serviceconnection-<EnvironmentAbbreviation>')
-BEGIN
-    ALTER ROLE db_datareader ADD MEMBER [<SolutionAbbreviation>-serviceconnection-<EnvironmentAbbreviation>] -- gives permission to read to database
-    ALTER ROLE db_datawriter ADD MEMBER [<SolutionAbbreviation>-serviceconnection-<EnvironmentAbbreviation>] -- gives permission to write to database
-END
-```
-
-Verify it ran successufully by running:
-```
-SELECT * FROM sys.database_principals WHERE name = N'<SolutionAbbreviation>-serviceconnection-<EnvironmentAbbreviation>'
-```
-You should see one record for your service connection resource.
+5. For testing purposes, "`<SolutionAbbreviation>`-serviceconnection-`<EnvironmentAbbreviation>`" must be assigned the 'Owner' role in your data resource group to successfully run the pipeline. Please note that this is for testing only and is not recommended for production use. In a production environment or when operating as a company, it is advised to define a custom role that aligns with the principle of least privilege for enhanced security. This custom role should only provide the minimum permissions necessary for the pipeline to function correctly, thereby minimizing potential security risks.
     
 ## Set up email notifications
 
@@ -531,7 +498,7 @@ Please follow the instructions in the [Notifier Setup](./Documentation/NotifierS
 An environment is necessary to manage deployment approvals. To create the environment:
 
 1. On Azure DevOps left menu locate Pipelines menu click on `Environments`.
-2. Click the `New environments` button.
+2. Click on `New environments` or `Create environment` button depending on which one is presented to you.
 3. Fill in the `Name` field following this naming convention: <SolutionAbbreviation>-<EnvironmentAbbreviation>
 4. Add a description (optional).
 5. Click on `Create` button.
@@ -593,19 +560,19 @@ In Azure DevOps, we need to create a pipeline that will create your resources an
             3. Search for the name of the user or group and select it from the results list.
             4. Locate the `Object ID` field. This is the value that you will need to copy.
 
-    12. Once all variables have been created click on the "Save" button.
-    13. Run your pipeline.
+    12. Follow [Update Build/Release Pipeline variables](UI\Documentation\UISetup.md) to create additional variables and deploy WebAPI & UI.
+    13. Once all variables have been created click on the "Save" button.
+    14. Run your pipeline.
 
     When running the pipeline for the first time you might be prompted to authorize resources, click on "Authorize resources" buttons.
 
     *Points to remember while running the pipeline:*
         * *If you see an error task `mspremier.BuildQualityChecks.QualityChecks-task.BuildQualityChecks` is missing, install it from [here](https://marketplace.visualstudio.com/items?itemName=mspremier.BuildQualityChecks&ssr=false&referrer=https%3A%2F%2Fapp.vssps.visualstudio.com%2F#overview)*
-        * *If you see an error `no hosted parallelism has been purchased or granted`, please fill out [this](https://aka.ms/azpipelines-parallelism-request) form to request a free parallelism grant*
+        * *If you see an error `no hosted parallelism has been purchased or granted`, please fill out [this](https://aka.ms/azpipelines-parallelism-request) form to request a free parallelism grant. Please note that it could take 2-3 business days to approve the request.*        
         * *If you see an error `MissingSubscriptionRegistration`, go to Subscription -> Resource Providers and register the missing provider*
+        * *If you see deployment failing at RunJobScheduler, run Set-PostDeploymentRoles (next step) and rerun the release*    
 
-    Note: For testing purposes, "`<SolutionAbbreviation>`-serviceconnection-`<EnvironmentAbbreviation>`" must be assigned the 'Owner' role in order to successfully run the pipeline. Please note that this is for testing only and is not recommended for production use. In a production environment or when operating as a company, it is advised to define a custom role that aligns with the principle of least privilege for enhanced security. This custom role should only provide the minimum permissions necessary for the pipeline to function correctly, thereby minimizing potential security risks 
-
-    14. if you want to set up AzureUserReader Durable Function, please follow the instruction here: [AzureUserReader](Service\GroupMembershipManagement\Hosts\AzureUserReader\Documentation\README.md). Otherwise, you can remove this function from vstss-cicd.yml file
+    15. If you want to set up AzureUserReader Durable Function, please follow the instruction here: [AzureUserReader](Service\GroupMembershipManagement\Hosts\AzureUserReader\Documentation\README.md). Otherwise, you can remove this function from vsts-cicd.yml file
 
 ## Post-Deployment tasks
 
@@ -622,15 +589,10 @@ From your `PowerShell 7.x` command prompt navigate to the `Scripts/PostDeploymen
         1. . ./Set-PostDeploymentRoles.ps1
         2. Set-PostDeploymentRoles  -SolutionAbbreviation "<solutionAbbreviation>" `
                                     -EnvironmentAbbreviation "<environmentAbbreviation>" `
-                                    -StorageAccountName "<storageAccountName>" `
-                                    -AppConfigName "<appConfigName>" `
-                                    -LogAnalyticsWorkspaceResourceName "<logAnalyticsWorkspaceResourceName>"
+                                    -Verbose
 
 Where:
 * `<SolutionAbbreviation>` and `<EnvironmentAbbreviation>` are as before.
-* `<storageAccountName>` - can be found in the data key vault secrets under `jobsStorageAccountName`. It will have the form of: `jobs<environmentAbbreviation><randomId>`.
-* `<appConfigName>` - will have the form of "`<SolutionAbbreviation>`-appConfig-`<EnvironmentAbbreviation>`"
-* `<logAnalyticsWorkspaceResourceName>` - will be the name of your LogAnalytics resource (Also known as a Workspace) and will have the form of "`<SolutionAbbreviation>`-data-`<EnvironmentAbbreviation>`"
 
 ### SQL Server - Jobs table access
 
@@ -653,8 +615,48 @@ Run this commands, in your SQL Server database where the jobs table was created:
 
 Repeat the steps above for each function.
 
+*Points to remember:*
+        * *Try logging into SQL database via Azure Portal by adding the IP address*
+
 Note:
 PlaceMembershipObtainer is not being deployed by default, if you need to deploy it, you will need to grant access to the database as well.
+
+## Grant the service connection access to SQL Server Database
+
+Your service connection needs MSI access to the SQL Server DB so it can deploy the DACPAC file.
+
+Once the SQL server and databases are created as part of the deployment we will need to run these SQL statements before we can deploy the DACPAC file and run scripts on the jobs database.
+
+SyncJobs DB
+- Server name follows this naming convention `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>`.
+- Database name follows this naming convention `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-jobs`.
+
+1. Connect to your SQL Server Database using Sql Server Management Studio (SSMS) or Azure Data Studio.
+- Server name : `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>.database.windows.net`
+- User name: Your account.
+- Authentication: Azure Active Directory - Universal with MFA
+- Database name: `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>`
+
+2. Run these SQL commands
+
+SyncJobs DB
+
+- This script needs to run only once.
+- Make sure you are connected to SyncJobs database: `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-jobs`.
+
+```
+IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'<SolutionAbbreviation>-serviceconnection-<EnvironmentAbbreviation>')
+BEGIN
+    ALTER ROLE db_datareader ADD MEMBER [<SolutionAbbreviation>-serviceconnection-<EnvironmentAbbreviation>] -- gives permission to read to database
+    ALTER ROLE db_datawriter ADD MEMBER [<SolutionAbbreviation>-serviceconnection-<EnvironmentAbbreviation>] -- gives permission to write to database
+END
+```
+
+Verify it ran successufully by running:
+```
+SELECT * FROM sys.database_principals WHERE name = N'<SolutionAbbreviation>-serviceconnection-<EnvironmentAbbreviation>'
+```
+You should see one record for your service connection resource.
 
 ### Create the jobs table:
 
@@ -877,6 +879,13 @@ In the event that you are setting up GMM in a demo tenant refer to [Setting GMM 
 Please refer to [Create React App](UI/web-app/README.md) for additional guidance.  
 Please refer to [WebAPI](Service/GroupMembershipManagement/Hosts/WebApi/Documentation/WebApiSetup.md) for additional guidance.  
 Please refer to [GMM UI](UI/Documentation/UISetup.md) for additional guidance.
+
+# Create the jobs table in SQL database
+
+* Go to https://`<solutionAbbreviation>`-compute-`<environmentAbbreviation>`-webapi.azurewebsites.net/swagger/index.html
+* Hit the endpoint `admin/databaseMigration`. This will create the jobs table in `<solutionAbbreviation>`-data-`<environmentAbbreviation>`-jobs database
+    * *Note: To hit the endpoint, update the value of config setting `ConnectionStrings:JobsContext` in `<solutionAbbreviation>`-compute-`<environmentAbbreviation>`-webapi with the value of `jobsMSIConnectionString` which you can find in your data key vault*
+* Run [this script](/Infrastructure/Copy-SyncJobsToSQL.ps1) to copy the jobs from storage account to sql database
 
 # Steps to debug and troubleshoot a failing sync
 
