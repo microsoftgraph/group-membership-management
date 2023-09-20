@@ -58,6 +58,8 @@ Note: Individual users can be added and granted the proper permission, if you de
 
 The WebpAPI will be called by the GMM UI. In order to allow it to call the WebAPI, it needs to be added as trusted client application.
 
+Create UI application by following `UI\Documentation\UISetup.md`.
+
 1. From the Azure Portal locate and open "Microsoft Entra ID"
 2. On the left menu select "App Registrations"
 3. Search for the webapi application, the name follows this convention `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>` i.e. gmm-webapi-int.
@@ -80,6 +82,7 @@ Make sure to select the Authorized scope.
 9. Check "user_impersonation" on and click "Add permissions"
 10. Click "Grant admin consent for <tenant-name>"
 
+*The following steps need to be completed after a successful deployment*
 
 ## Grant Permissions
 
