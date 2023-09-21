@@ -17,7 +17,7 @@ export const JobsPage: React.FunctionComponent = () => {
       <PageHeader backButtonHidden>
         <Stack horizontalAlign="space-between" horizontal style={{padding: '19px 0px 19px 36px'}}>
           <WelcomeName />
-          {/* <Banner /> // Hidden until feature is enabled */}
+          <Banner />
         </Stack>
       </PageHeader>
       <PageSection>

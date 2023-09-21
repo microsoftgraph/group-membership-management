@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-export interface Settings {
+export interface Setting {
     key: string;
     value: string;
 }

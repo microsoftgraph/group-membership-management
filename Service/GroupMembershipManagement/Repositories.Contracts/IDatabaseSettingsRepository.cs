@@ -2,15 +2,17 @@
 // Licensed under the MIT license.
 
 using Models;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Repositories.Contracts
 {
     public interface IDatabaseSettingsRepository
     {
-        Task<Settings> GetSettingsAsync(string key);
-        Task InsertSettingsAsync(Settings settings);
-        Task UpdateSettingsAsync(Settings settings);
-        Task DeleteSettingsAsync(string key);
+        Task<Setting> GetSettingByKeyAsync(string key);
+        Task<List<Setting>> GetSettingsAsync();
+        Task InsertSettingAsync(Setting setting);
+        Task UpdateSettingAsync(Setting setting, string newSettingValue);
+        Task DeleteSettingAsync(string key);
     }
 }

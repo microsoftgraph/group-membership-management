@@ -10,7 +10,7 @@ namespace Repositories.EntityFramework.Contexts
     {
         public DbSet<SyncJob> SyncJobs { get; set; }
         public DbSet<PurgedSyncJob> PurgedSyncJobs { get; set; }
-        public DbSet<Settings> Settings { get; set; }
+        public DbSet<Setting> Settings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -22,7 +22,7 @@ namespace Repositories.EntityFramework.Contexts
                   .ValueGeneratedOnAdd()
                   .HasDefaultValueSql("NEWID()");
 
-            modelBuilder.Entity<Settings>().HasKey(s => s.Key);
+            modelBuilder.Entity<Setting>().HasKey(s => s.Key);
         }
 
         public GMMContext(DbContextOptions<GMMContext> options)

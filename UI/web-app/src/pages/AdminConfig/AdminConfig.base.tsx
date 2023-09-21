@@ -5,24 +5,22 @@ import { useTranslation } from 'react-i18next';
 import {
     classNamesFunction,
     IProcessedStyleSet,
-    IStyleSet, Label, ILabelStyles, Pivot, PivotItem, PrimaryButton
+    Pivot, PivotItem, PrimaryButton
 } from '@fluentui/react';
-
+import { useTheme } from '@fluentui/react/lib/Theme';
 import {
     IAdminConfigProps, IAdminConfigStyleProps, IAdminConfigStyles,
 } from './AdminConfig.types';
 import { PageSection } from '../../components/PageSection';
 import { HyperlinkContainer } from '../../components/HyperlinkContainer';
+import { Page } from '../../components/Page';
+import { PageHeader } from '../../components/PageHeader';
 
 
 const getClassNames = classNamesFunction<
     IAdminConfigStyleProps,
     IAdminConfigStyles
 >();
-
-const labelStyles: Partial<IStyleSet<ILabelStyles>> = {
-    root: { marginTop: 10 },
-};
 
 export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
     props: IAdminConfigProps
@@ -32,58 +30,67 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
     const classNames: IProcessedStyleSet<IAdminConfigStyles> = getClassNames(
         styles,
         {
-            className
+            className,
+            theme: useTheme(),
         }
     );
 
     const { t } = useTranslation();
-
-    // const {  } = props;
 
     const onClick = () => {
         console.log('Clicked!');
     };
 
     return (
-        <div className={classNames.root}>
-            <PageSection>
-                <div className={classNames.title}>
-                    {t('AdminConfig.labels.pageTitle')}
-                </div>
-            </PageSection>
-            <PageSection>
-                <Pivot>
-                    <PivotItem
-                        headerText={t('AdminConfig.labels.hyperlinks') as string}
-                        headerButtonProps={{
-                            'data-order': 1,
-                            'data-title': t('AdminConfig.labels.hyperlinks') as string,
-                        }}
-                    >
-                        <div className={classNames.tiles}>
-                            <HyperlinkContainer
-                                title={t('AdminConfig.hyperlinkContainer.dashboardTitle')}
-                                description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}>
-                            </HyperlinkContainer>
-                            <HyperlinkContainer
-                                title={t('AdminConfig.hyperlinkContainer.dashboardTitle')}
-                                description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}>
-                            </HyperlinkContainer>
-                            <HyperlinkContainer
-                                title={t('AdminConfig.hyperlinkContainer.dashboardTitle')}
-                                description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}>
-                            </HyperlinkContainer>
-                            <HyperlinkContainer
-                                title={t('AdminConfig.hyperlinkContainer.dashboardTitle')}
-                                description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}>
-                            </HyperlinkContainer>
+        <Page>
+            <PageHeader />
+            <div className={classNames.root}>
+                <div className={classNames.card}>
+                    <PageSection>
+                        <div className={classNames.title}>
+                            {t('AdminConfig.labels.pageTitle')}
                         </div>
-                    </PivotItem>
-                </Pivot>
-            </PageSection>
-            <div className={classNames.bottomContainer}>
-                <PrimaryButton text="Save" onClick={()=>onClick()}></PrimaryButton>
-            </div>
-        </div >
+                    </PageSection>
+                </div>
+                <div className={classNames.card}>
+                    <PageSection>
+                        <Pivot>
+                            <PivotItem
+                                headerText={t('AdminConfig.labels.hyperlinks') as string}
+                                headerButtonProps={{
+                                    'data-order': 1,
+                                    'data-title': t('AdminConfig.labels.hyperlinks') as string,
+                                }}
+                            >
+                                <div className={classNames.description}>
+                                    {t('AdminConfig.labels.description')}
+                                </div>
+                                <div className={classNames.tiles}>
+                                    <HyperlinkContainer
+                                        title={t('AdminConfig.hyperlinkContainer.dashboardTitle')}
+                                        description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}>
+                                    </HyperlinkContainer>
+                                    <HyperlinkContainer
+                                        title={t('AdminConfig.hyperlinkContainer.dashboardTitle')}
+                                        description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}>
+                                    </HyperlinkContainer>
+                                    <HyperlinkContainer
+                                        title={t('AdminConfig.hyperlinkContainer.dashboardTitle')}
+                                        description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}>
+                                    </HyperlinkContainer>
+                                    <HyperlinkContainer
+                                        title={t('AdminConfig.hyperlinkContainer.dashboardTitle')}
+                                        description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}>
+                                    </HyperlinkContainer>
+                                </div>
+                            </PivotItem>
+                        </Pivot>
+                    </PageSection>
+                </div>
+                <div className={classNames.bottomContainer}>
+                    <PrimaryButton text="Save" onClick={() => onClick()}></PrimaryButton>
+                </div>
+            </div >
+        </Page>
     )
 }

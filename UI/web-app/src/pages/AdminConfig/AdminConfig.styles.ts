@@ -7,14 +7,28 @@ import {
 } from './AdminConfig.types';
 
 export const getStyles = (props: IAdminConfigStyleProps): IAdminConfigStyles => {
-    const { className } = props;
+    const { className, theme } = props;
 
     return {
         root: [{
+            padding: '9px 36px 0px 36px'
         }, className],
+        card: {
+            paddingTop: 18,
+            paddingBottom: 18,
+            paddingLeft: 22,
+            paddingRight: 22,
+            borderRadius: 10,
+            marginBottom: 12,
+            backgroundColor: theme.palette.white
+        },
         title: {
-            fontWeight: 'bold',
-            fontSize: '20px'
+            fontWeight: 600,
+            fontSize: 24,
+            fontFamily: 'Segoe UI'
+        },
+        description: {
+            padding: '10px 13px',
         },
         tiles: {
             display: 'flex',
@@ -23,7 +37,7 @@ export const getStyles = (props: IAdminConfigStyleProps): IAdminConfigStyles => 
             wrapFlow: 'row'
         },
         bottomContainer:{
-            margin: '12px 37px',
+            marginBottom: 24,
             display: 'flex',
             justifyContent: 'flex-end'
         }

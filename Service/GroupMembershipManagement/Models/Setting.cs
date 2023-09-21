@@ -6,8 +6,15 @@ using System;
 namespace Models
 {
 
-    public class Settings
+    public class Setting
     {
+        public Setting()
+        {
+        }
+        public Setting(string key)
+        {
+            Key = key;
+        }
         public string Key { get; set; }
 
         public string Value { get; set; }
