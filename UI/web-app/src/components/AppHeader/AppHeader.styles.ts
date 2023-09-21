@@ -21,13 +21,7 @@ export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
       className,
     ],
     appIcon: {
-      ...theme.fonts.large,
-      border: 'solid 1px',
-      color: theme.palette.themePrimary,
-      borderRadius: '50%',
-      background: theme.palette.white,
       boxSizing: 'border-box',
-      textAlign: 'center', 
       height: 32,
       width: 32,
       margin: '8px 0px'
