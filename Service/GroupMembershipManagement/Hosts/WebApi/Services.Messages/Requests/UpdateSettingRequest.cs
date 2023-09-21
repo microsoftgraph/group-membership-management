@@ -5,13 +5,15 @@ using Services.Messages.Contracts.Requests;
 
 namespace Services.Messages.Requests
 {
-    public class GetSettingsRequest : RequestBase
+    public class UpdateSettingRequest : RequestBase
     {
-        public GetSettingsRequest(string key)
+        public UpdateSettingRequest(string key, string value)
         {
             this.Key = key;
+            this.Value = value;
         }
 
         public string Key { get; }
+        public string Value { get; }
     }
 }

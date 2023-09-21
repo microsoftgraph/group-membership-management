@@ -25,9 +25,7 @@ export const HyperlinkContainerBase: React.FunctionComponent<IHyperlinkContainer
     });
     const { t } = useTranslation();
 
-
     return (
-
         <div className={classNames.card}>
             <div className={classNames.title}>
                 {title}

@@ -3,9 +3,9 @@
 
 namespace WebApi.Models.DTOs
 {
-    public class Settings
+    public class Setting
     {
-        public Settings(string key, string value)
+        public Setting(string key, string value)
         {
             Key = key;
             Value = value;

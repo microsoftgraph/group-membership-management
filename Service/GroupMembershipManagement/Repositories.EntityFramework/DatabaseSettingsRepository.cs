@@ -17,30 +17,35 @@ namespace Repositories.EntityFramework
             _context = gmmContext ?? throw new ArgumentNullException(nameof(gmmContext));
         }
 
-        public async Task InsertSettingsAsync(Settings settings)
+        public async Task InsertSettingAsync(Setting setting)
         {
-            if (settings == null)
-                throw new ArgumentNullException(nameof(settings));
+            if (setting == null)
+                throw new ArgumentNullException(nameof(setting));
 
-            _context.Settings.Add(settings);
+            _context.Settings.Add(setting);
             await _context.SaveChangesAsync();
         }
 
-        public async Task<Settings> GetSettingsAsync(string key)
+        public async Task<Setting> GetSettingByKeyAsync(string key)
         {
             return await _context.Settings.FirstOrDefaultAsync(s => s.Key == key);
         }
 
-        public async Task UpdateSettingsAsync(Settings settings)
+        public async Task<List<Setting>> GetSettingsAsync()
         {
-            if (settings == null)
-                throw new ArgumentNullException(nameof(settings));
+            return await _context.Settings.ToListAsync();
+        }
 
-            _context.Settings.Update(settings);
+        public async Task UpdateSettingAsync(Setting setting, string newSettingValue)
+        {
+            if (setting == null)
+                throw new ArgumentNullException(nameof(setting));
+
+            setting.Value = newSettingValue;
             await _context.SaveChangesAsync();
         }
 
-        public async Task DeleteSettingsAsync(string key)
+        public async Task DeleteSettingAsync(string key)
         {
             var settings = await _context.Settings.FirstOrDefaultAsync(s => s.Key == key);
 

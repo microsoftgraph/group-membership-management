@@ -15,20 +15,33 @@ namespace WebApi.Controllers.v1.Settings
     [Route("api/v{version:apiVersion}/settings")]
     public class SettingsController : ControllerBase
     {
-        private readonly IRequestHandler<GetSettingsRequest, GetSettingsResponse> _getSettingsRequestHandler;
+        private readonly IRequestHandler<GetSettingRequest, GetSettingResponse> _getSettingRequestHandler;
+        private readonly IRequestHandler<UpdateSettingRequest, UpdateSettingResponse> _updateSettingRequestHandler;
 
-        public SettingsController(IRequestHandler<GetSettingsRequest, GetSettingsResponse> getSettingsRequestHandler)
+        public SettingsController(
+            IRequestHandler<GetSettingRequest, GetSettingResponse> getSettingRequestHandler,
+            IRequestHandler<UpdateSettingRequest, UpdateSettingResponse> updateSettingRequestHandler)
         {
-            _getSettingsRequestHandler = getSettingsRequestHandler ?? throw new ArgumentNullException(nameof(getSettingsRequestHandler));
+            _getSettingRequestHandler = getSettingRequestHandler ?? throw new ArgumentNullException(nameof(getSettingRequestHandler));
+            _updateSettingRequestHandler = updateSettingRequestHandler ?? throw new ArgumentNullException(nameof(updateSettingRequestHandler));
         }
 
         [EnableQuery()]
         [Authorize(Roles = "Admin")]
         [HttpGet()]
-        public async Task<ActionResult<string>> GetSettingsAsync(string key)
+        public async Task<ActionResult<string>> GetSettingByKeyAsync(string key)
         {
-            var response = await _getSettingsRequestHandler.ExecuteAsync(new GetSettingsRequest(key));
+            var response = await _getSettingRequestHandler.ExecuteAsync(new GetSettingRequest(key));
             return Ok(response.Model);
         }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("{key}")]
+        public async Task<ActionResult<Setting>> UpdateSettingAsync(string key, [FromBody] string value)
+        {
+            var response = await _updateSettingRequestHandler.ExecuteAsync(new UpdateSettingRequest(key, value));
+            return Ok(response.Model); 
+        }
+
     }
 }

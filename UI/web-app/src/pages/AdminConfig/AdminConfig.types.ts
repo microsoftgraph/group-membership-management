@@ -10,14 +10,16 @@ import type React from 'react';
 
 export interface IAdminConfigStyles {
     root: IStyle;
+    card: IStyle;
     title: IStyle;
+    description: IStyle;
     tiles: IStyle;
     bottomContainer: IStyle;
 }
 
 export interface IAdminConfigStyleProps {
     className?: string;
-    theme?: ITheme;
+    theme: ITheme;
 }
 
 export interface IAdminConfigProps

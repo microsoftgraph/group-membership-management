@@ -5,31 +5,24 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
-using SettingsDTO = WebApi.Models.DTOs.Settings;
+using SettingDTO = WebApi.Models.DTOs.Setting;
 
 namespace Services{
-    public class GetSettingsHandler : RequestHandlerBase<GetSettingsRequest, GetSettingsResponse>
+    public class GetSettingHandler : RequestHandlerBase<GetSettingRequest, GetSettingResponse>
     {
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
-        public GetSettingsHandler(ILoggingRepository loggingRepository, 
+        public GetSettingHandler(ILoggingRepository loggingRepository, 
                                 IDatabaseSettingsRepository databaseSettingsRepository) : base(loggingRepository)
         {
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
         }
 
-        protected override async Task<GetSettingsResponse> ExecuteCoreAsync(GetSettingsRequest request)
+        protected override async Task<GetSettingResponse> ExecuteCoreAsync(GetSettingRequest request)
         {
-            var response = new GetSettingsResponse();
-            Settings settings = await _databaseSettingsRepository.GetSettingsAsync(request.Key);
-
-            var dto = new SettingsDTO
-                (
-                    key: settings.Key,
-                    value: settings.Value
-                );
-
+            var response = new GetSettingResponse();
+            var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(request.Key);
+            var dto = new SettingDTO (setting.Key, setting.Value);
             response.Model = dto;
-
             return response;
         }
     }
