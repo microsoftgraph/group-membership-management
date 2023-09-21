@@ -4,9 +4,6 @@
 import { classNamesFunction, IButtonStyles, IconButton, IPersonaSharedProps, IProcessedStyleSet, IStyle, Persona, PersonaSize, useTheme } from '@fluentui/react';
 import { useTranslation } from 'react-i18next';
 import {
-  AccountManagementIcon,
-} from '@fluentui/react-icons-mdl2';
-import {
   type IAppHeaderProps,
   type IAppHeaderStyleProps,
   type IAppHeaderStyles,
@@ -16,6 +13,7 @@ import { AppDispatch } from '../../store';
 import { useEffect } from 'react';
 import { selectProfilePhoto } from '../../store/profile.slice';
 import { getProfilePhoto } from '../../store/profile.api';
+import logo from '../../logo.svg';
 
 const getClassNames = classNamesFunction<
   IAppHeaderStyleProps,
@@ -62,7 +60,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
     <header className={classNames.root}>
       <div className={classNames.titleContainer}>
         <div className={classNames.appIcon}>
-          <AccountManagementIcon />
+          <img src={logo} alt="Membership Management Icon"  style={{ height: 32, width: 32 }} />
         </div>
         <div className={classNames.appTitle}>{t('membershipManagement')}</div>
       </div>

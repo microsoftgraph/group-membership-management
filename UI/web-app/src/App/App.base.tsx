@@ -19,6 +19,7 @@ import { AppHeader } from '../components/AppHeader';
 import { type AppDispatch } from '../store';
 import { fetchAccount } from '../store/account.api';
 import { selectAccount } from '../store/account.slice';
+import { Loader } from '../components/Loader';
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
@@ -58,7 +59,9 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
     );
   } else {
     return (
-      <div className={classNames.root}> {t('loading')} </div>
+      <div className={classNames.root}>
+        <Loader />
+      </div>
     );
   }
 };
