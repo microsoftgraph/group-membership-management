@@ -10,7 +10,7 @@ Basically, this script is designed to create an Azure AD app and write its crede
 This should be able to work when the AD app and the target key vault are in the same tenant. Just pass the same tenant ID to both
 parameters.
 
-To find the tenant ID for a tenant, you can run Connect-AzAccount in Powershell, or open the Azure portal, click on "Azure Active Directory",
+To find the tenant ID for a tenant, you can run Connect-AzAccount in Powershell, or open the Azure portal, click on "Microsoft Entra ID",
 and it should be there.
 
 You'll be promped to sign in twice. First as someone who can create the Azure AD app in the given tenant and assign it permissions,
@@ -18,7 +18,7 @@ then as someone who can write to the prereqs key vault in the other. Make sure y
 that contains the key vault.
 
 .PARAMETER SubscriptionName
-Subscription Name
+Subscription Name on you primary tenant where the keyvaults exists.
 
 .PARAMETER SolutionAbbreviation
 Solution Abbreviation
@@ -29,6 +29,11 @@ Environment Abbreviation
 .PARAMETER TenantId
 Azure tenant id where keyvaults exists.
 The application is going to be created in this tenant and its settings stored in the data keyvault.
+
+.PARAMETER SecondaryTenantId
+Secondary / Demo tenant id.
+This is the tenant where the WebAPI application is going to be created.
+If you have only one tenant, this is the same as TenantId.
 
 .PARAMETER CertificateName
 Certificate name
@@ -43,6 +48,7 @@ Set-WebApiAzureADApplication	-SubscriptionName "<subscription-name>" `
 								-SolutionAbbreviation "<solution-abbreviation>" `
 								-EnvironmentAbbreviation "<environment-abbreviation>" `
 								-TenantId "<tenant-id>" `
+								-SecondaryTenantId "<secondary-tenant-id>" `
 								-Clean $false `
 								-Verbose
 #>
@@ -50,39 +56,39 @@ Set-WebApiAzureADApplication	-SubscriptionName "<subscription-name>" `
 function Set-WebApiAzureADApplication {
 	[CmdletBinding()]
 	param(
-		[Parameter(Mandatory=$True)]
+		[Parameter(Mandatory = $True)]
 		[string] $SubscriptionName,
-		[Parameter(Mandatory=$True)]
+		[Parameter(Mandatory = $True)]
 		[string] $SolutionAbbreviation,
-		[Parameter(Mandatory=$True)]
+		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation,
-		[Parameter(Mandatory=$True)]
+		[Parameter(Mandatory = $True)]
 		[Guid] $TenantId,
-		[Parameter(Mandatory=$False)]
+		[Parameter(Mandatory = $True)]
+		[Guid] $SecondaryTenantId,
+		[Parameter(Mandatory = $False)]
 		[string] $CertificateName,
-		[Parameter(Mandatory=$False)]
+		[Parameter(Mandatory = $False)]
 		[boolean] $Clean = $False,
-		[Parameter(Mandatory=$False)]
+		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
 	)
 	Write-Verbose "Set-WebApiAzureADApplication starting..."
 
-    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
-    . ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
-    Install-AzModuleIfNeeded
+	. ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
+	Install-AzModuleIfNeeded
 
-    Write-Host "Please sign in as an account that can make Azure AD Apps in your target tenant."
-	# Connect to keyvault tenant
-	# we are going to create the multitenant app here first
-	Connect-AzAccount -Tenant $TenantId
-	Set-AzContext -Subscription $SubscriptionName
+	Write-Host "Please sign in to your secondary/demo tenant."
+
+	Connect-AzAccount -Tenant $SecondaryTenantId
 
 	#region Delete Application / Service Principal if they already exist
-    $webApiAppDisplayName = "$SolutionAbbreviation-webapi-$EnvironmentAbbreviation"
+	$webApiAppDisplayName = "$SolutionAbbreviation-webapi-$EnvironmentAbbreviation"
 	$webApiApp = (Get-AzADApplication -DisplayName $webApiAppDisplayName)
 
-	if($Clean){
+	if ($Clean) {
 		$webApiApp | ForEach-Object {
 
 			$displayName = $_.DisplayName;
@@ -96,33 +102,32 @@ function Set-WebApiAzureADApplication {
 				Write-Host "Failed to remove $displayName..." -ForegroundColor Red;
 			}
 		}
-    }
-    #endregion
+	}
+	#endregion
 
-    # These are the function apps that need to interact with swagger.
+	# These are the function apps that need to interact with swagger.
 
 	# Add this url -> "https://localhost:7224/swagger/oauth2-redirect.html" if you want to test the WebAPI locally.
-    $replyUrls = @("https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/swagger/oauth2-redirect.html")
+	$replyUrls = @("https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/swagger/oauth2-redirect.html")
 
 	#region Create Appplication
-	if($null -eq $webApiApp)
-	{
+	if ($null -eq $webApiApp) {
 		Write-Verbose "Creating Azure AD app $webApiAppDisplayName"
 
 		$requiredResourceAccess = @{
-			ResourceAppId = "00000003-0000-0000-c000-000000000000";
+			ResourceAppId  = "00000003-0000-0000-c000-000000000000";
 			ResourceAccess = @(
 				@{
-					Id = "e1fe6dd8-ba31-4d61-89e7-88639da4683d";
+					Id   = "e1fe6dd8-ba31-4d61-89e7-88639da4683d";
 					Type = "Scope"
 				}
 			)
-			}
+		}
 
 		$webApiApp = New-AzADApplication	-DisplayName $webApiAppDisplayName `
-											-AvailableToOtherTenants $false `
-											-ReplyUrls $replyUrls `
-											-RequiredResourceAccess $requiredResourceAccess
+			-AvailableToOtherTenants $false `
+			-ReplyUrls $replyUrls `
+			-RequiredResourceAccess $requiredResourceAccess
 
 		New-AzADServicePrincipal -ApplicationId $webApiApp.AppId
 
@@ -143,27 +148,27 @@ function Set-WebApiAzureADApplication {
 		Update-AzADApplication -ApplicationId $webApiApp.AppId -Api $api
 
 		$webSettings = $webApiApp.Web
-        $webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
+		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
 		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $true
 
 		# Create new app roles
-		[String[]]$memberTypes = "User","Application"
+		[String[]]$memberTypes = "User", "Application"
 
 		$readerRole = @{
-			DisplayName = "Reader"
-			Description = "Read-only role"
-			Value = "Reader"
-			Id = [Guid]::NewGuid().ToString()
-			IsEnabled = $True
+			DisplayName        = "Reader"
+			Description        = "Read-only role"
+			Value              = "Reader"
+			Id                 = [Guid]::NewGuid().ToString()
+			IsEnabled          = $True
 			AllowedMemberTypes = @($memberTypes)
 		}
 
 		$adminRole = @{
-			DisplayName = "Admin"
-			Description = "Admin role"
-			Value = "Admin"
-			Id = [Guid]::NewGuid().ToString()
-			IsEnabled = $True
+			DisplayName        = "Admin"
+			Description        = "Admin role"
+			Value              = "Admin"
+			Id                 = [Guid]::NewGuid().ToString()
+			IsEnabled          = $True
 			AllowedMemberTypes = @($memberTypes)
 		}
 
@@ -171,15 +176,14 @@ function Set-WebApiAzureADApplication {
 		$appRoles += $readerRole
 		$appRoles += $adminRole
 
-        Update-AzADApplication -ObjectId $webApiApp.Id `
-		                       -IdentifierUris "api://$($webApiApp.AppId)" `
-							   -DisplayName $webApiAppDisplayName `
-							   -Web $webSettings `
-							   -AppRole $appRoles `
-							   -AvailableToOtherTenants $false
+		Update-AzADApplication  -ObjectId $webApiApp.Id `
+								-IdentifierUris "api://$($webApiApp.AppId)" `
+								-DisplayName $webApiAppDisplayName `
+								-Web $webSettings `
+								-AppRole $appRoles `
+								-AvailableToOtherTenants $false
 	}
-	else
-	{
+	else {
 		$webApiApp.Web.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
 		$webApiApp.Web.ImplicitGrantSetting.EnableIdTokenIssuance = $true
 
@@ -187,7 +191,7 @@ function Set-WebApiAzureADApplication {
 		$optionalClaim = $webApiApp.OptionalClaim;
 		$hasUpnClaim = $false;
 
-		foreach($claim in $optionalClaim.AccessToken) {
+		foreach ($claim in $optionalClaim.AccessToken) {
 			if ("upn" -eq $claim.Name) {
 				$hasUpnClaim = $true;
 			}
@@ -195,45 +199,51 @@ function Set-WebApiAzureADApplication {
 
 		if (!$hasUpnClaim) {
 			$optionalClaim.AccessToken += @{
-				Name = "upn"
-				Source = $null
-				Essential = $false
+				Name                 = "upn"
+				Source               = $null
+				Essential            = $false
 				AdditionalProperties = @()
 			}
 		}
 
 		Write-Verbose "Updating Azure AD app $webApiAppDisplayName"
 		Update-AzADApplication	-ObjectId $($webApiApp.Id) `
-                                -DisplayName $webApiAppDisplayName `
+								-DisplayName $webApiAppDisplayName `
 								-AvailableToOtherTenants $false `
 								-OptionalClaim $optionalClaim `
 								-Web $webSettings
-    }
+	}
 
 	Start-Sleep -Seconds 30
 
 	# These need to go into the key vault
-	$webApiAppTenantId = $TenantId;
+	$webApiAppTenantId = $SecondaryTenantId;
 	$webApiAppClientId = $webApiApp.AppId;
 
 	# Create new secret
 	$endDate = [System.DateTime]::Now.AddYears(1)
-    $webApiAppClientSecret = Get-AzADApplication -ApplicationId $webApiAppClientId | New-AzADAppCredential -StartDate $(get-date) -EndDate $endDate
+	$webApiAppClientSecret = Get-AzADApplication -ApplicationId $webApiAppClientId | New-AzADAppCredential -StartDate $(get-date) -EndDate $endDate
 
-   Write-Host (Get-AzContext)
+	Write-Host (Get-AzContext)
+
+	if ($TenantId -ne $SecondaryTenantId) {
+		Write-Host "Please sign in to your primary tenant."
+		Connect-AzAccount -Tenant $TenantId
+	}
+
+	Set-AzContext -Subscription $SubscriptionName
 
 	$keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-    $keyVault = Get-AzKeyVault -VaultName $keyVaultName
+	$keyVault = Get-AzKeyVault -VaultName $keyVaultName
 
-    if($null -eq $keyVault)
-	{
+	if ($null -eq $keyVault) {
 		throw "The KeyVault Group ($keyVaultName) does not exist. Unable to continue."
-    }
+	}
 
 	# Store Application (client) ID in KeyVault
-    Write-Verbose "Application (client) ID is $webApiAppClientId"
+	Write-Verbose "Application (client) ID is $webApiAppClientId"
 
-    $webApiClientIdKeyVaultSecretName = "webApiClientId"
+	$webApiClientIdKeyVaultSecretName = "webApiClientId"
 	$webApiClientIdSecret = ConvertTo-SecureString -AsPlainText -Force $webApiAppClientId
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $webApiClientIdKeyVaultSecretName `
@@ -242,10 +252,10 @@ function Set-WebApiAzureADApplication {
 
 	# Store Application secret in KeyVault
 	$webApiAppClientSecretName = "webApiClientSecret"
-    $webApiClientSecret = ConvertTo-SecureString -AsPlainText -Force $($webApiAppClientSecret.SecretText)
+	$webApiClientSecret = ConvertTo-SecureString -AsPlainText -Force $($webApiAppClientSecret.SecretText)
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-							-Name $webApiAppClientSecretName `
-							-SecretValue $webApiClientSecret
+						 -Name $webApiAppClientSecretName `
+						 -SecretValue $webApiClientSecret
 	Write-Verbose "$webApiAppClientSecretName added to vault for $webApiAppDisplayName."
 
 	# Store tenantID in KeyVault
@@ -254,25 +264,26 @@ function Set-WebApiAzureADApplication {
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $webApiTenantSecretName `
 						 -SecretValue $webApiTenantSecret
-    Write-Verbose "$webApiTenantSecretName added to vault for $webApiAppDisplayName."
+	Write-Verbose "$webApiTenantSecretName added to vault for $webApiAppDisplayName."
 
 	# Store certificate name in KeyVault
 	$webApiAppCertificateName = "webApiCertificateName"
 	$webApiAppCertificate = Get-AzKeyVaultSecret -VaultName $keyVault.VaultName -Name $webApiAppCertificateName
-    $setWebApiCertificate = $false
+	$setWebApiCertificate = $false
 
-	if(!$webApiAppCertificate -and !$CertificateName){
+	if (!$webApiAppCertificate -and !$CertificateName) {
 		$CertificateName = "not-set"
 		$setWebApiCertificate = $true
-	} elseif ($CertificateName) {
+	}
+ elseif ($CertificateName) {
 		$setWebApiCertificate = $true
 	}
 
-	if($setWebApiCertificate){
+	if ($setWebApiCertificate) {
 		$webApiAppCertificateSecret = ConvertTo-SecureString -AsPlainText -Force $CertificateName
 		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-								-Name $webApiAppCertificateName `
-								-SecretValue $webApiAppCertificateSecret
+							 -Name $webApiAppCertificateName `
+							 -SecretValue $webApiAppCertificateSecret
 		Write-Verbose "$webApiAppCertificateName added to vault for $webApiAppDisplayName."
 	}
 
