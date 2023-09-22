@@ -10,7 +10,7 @@ Basically, this script is designed to create an Azure AD app and write its crede
 This should be able to work when the AD app and the target key vault are in the same tenant. Just pass the same tenant ID to both
 parameters.
 
-To find the tenant ID for a tenant, you can run Connect-AzureAD in Powershell, or open the Azure portal, click on "Azure Active Directory",
+To find the tenant ID for a tenant, you can run Connect-AzAccount in Powershell, or open the Azure portal, click on "Microsoft Entra ID",
 and it should be there.
 
 You'll be promped to sign in twice. First as someone who can create the Azure AD app in the given tenant and assign it permissions,
@@ -30,6 +30,11 @@ Environment Abbreviation
 Azure tenant id where keyvaults exists.
 The application is going to be created in this tenant and its settings stored in the data keyvault.
 
+.PARAMETER SecondaryTenantId
+Secondary / Demo tenant id.
+This is the tenant where the UI application is going to be created.
+If you have only one tenant, this is the same as TenantId.
+
 .PARAMETER CertificateName
 Certificate name
 Optional
@@ -40,49 +45,50 @@ When re-running the script, this flag is used to indicate if we need to recreate
 .EXAMPLE
 # these are arbitrary guids and subscription names, you'll have to change them.
 Set-UIAzureADApplication	-SubscriptionName "<subscription-name>" `
-								-SolutionAbbreviation "<solution-abbreviation>" `
-								-EnvironmentAbbreviation "<environment-abbreviation>" `
-								-TenantId "<keyvault-tenant-id>" `
-								-Clean $false `
-								-Verbose
+							-SolutionAbbreviation "<solution-abbreviation>" `
+							-EnvironmentAbbreviation "<environment-abbreviation>" `
+							-TenantId "<tenant-id>" `
+							-SecondaryTenantId "<secondary-tenant-id>" `
+							-Clean $false `
+							-Verbose
 #>
 
 function Set-UIAzureADApplication {
 	[CmdletBinding()]
 	param(
-		[Parameter(Mandatory=$True)]
+		[Parameter(Mandatory = $True)]
 		[string] $SubscriptionName,
-		[Parameter(Mandatory=$True)]
+		[Parameter(Mandatory = $True)]
 		[string] $SolutionAbbreviation,
-		[Parameter(Mandatory=$True)]
+		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation,
-		[Parameter(Mandatory=$True)]
+		[Parameter(Mandatory = $True)]
 		[Guid] $TenantId,
-		[Parameter(Mandatory=$False)]
+		[Parameter(Mandatory = $True)]
+		[Guid] $SecondaryTenantId,
+		[Parameter(Mandatory = $False)]
 		[string] $CertificateName,
-		[Parameter(Mandatory=$False)]
+		[Parameter(Mandatory = $False)]
 		[boolean] $Clean = $False,
-		[Parameter(Mandatory=$False)]
+		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
 	)
 	Write-Verbose "Set-UIAzureADApplication starting..."
 
-    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
-    . ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
-    Install-AzModuleIfNeeded
+	. ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
+	Install-AzModuleIfNeeded
 
-    Write-Host "Please sign in as an account that can make Azure AD Apps in your target tenant."
-	# Connect to keyvault tenant
-	# we are going to create the multitenant app here first
-	Connect-AzAccount -Tenant $TenantId
-	Set-AzContext -Subscription $SubscriptionName
+	Write-Host "Please sign in to your secondary/demo tenant."
+
+	Connect-AzAccount -Tenant $SecondaryTenantId
 
 	#region Delete Application / Service Principal if they already exist
-    $uiAppDisplayName = "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
+	$uiAppDisplayName = "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
 	$uiApp = (Get-AzADApplication -DisplayName $uiAppDisplayName)
 
-	if($Clean){
+	if ($Clean) {
 		$uiApp | ForEach-Object {
 
 			$displayName = $_.DisplayName;
@@ -96,63 +102,62 @@ function Set-UIAzureADApplication {
 				Write-Host "Failed to remove $displayName..." -ForegroundColor Red;
 			}
 		}
-    }
-    #endregion
+	}
+	#endregion
 
-    if ($EnvironmentAbbreviation -eq "prodv2")
-	{
+	if ($EnvironmentAbbreviation -eq "prodv2") {
 		$url = "https://$SolutionAbbreviation.microsoft.com"
 
-	} else {
+	}
+	else {
 		$url = "https://$EnvironmentAbbreviation.$SolutionAbbreviation.microsoft.com"
 	}
 
 	$replyUrls = @("http://localhost:3000", $url)
 
 	#region Create Appplication
-	if($null -eq $uiApp)
-	{
+	if ($null -eq $uiApp) {
 		Write-Verbose "Creating Azure AD app $uiAppDisplayName"
 
 		$requiredResourceAccess = @{
-			ResourceAppId = "00000003-0000-0000-c000-000000000000";
+			ResourceAppId  = "00000003-0000-0000-c000-000000000000";
 			ResourceAccess = @(
 				@{
-					Id = "e1fe6dd8-ba31-4d61-89e7-88639da4683d";
+					Id   = "e1fe6dd8-ba31-4d61-89e7-88639da4683d";
 					Type = "Scope"
 				}
 			)
-			}
+		}
 
 		$uiApp = New-AzADApplication	-DisplayName $uiAppDisplayName `
-											-AvailableToOtherTenants $false `
-											-SPARedirectUri $replyUrls `
-											-RequiredResourceAccess $requiredResourceAccess
+										-AvailableToOtherTenants $false `
+										-SPARedirectUri $replyUrls `
+										-RequiredResourceAccess $requiredResourceAccess
 
 		New-AzADServicePrincipal -ApplicationId $uiApp.AppId
 
 		$webSettings = $uiApp.Web
-        $webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
+		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
 		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $true
 
 		# Create new app roles
-		[String[]]$memberTypes = "User","Application"
+		[String[]]$memberTypes = "User", "Application"
 
 		$readerRole = @{
-			DisplayName = "Reader"
-			Description = "Read-only role"
-			Value = "Reader"
-			Id = [Guid]::NewGuid().ToString()
-			IsEnabled = $True
+			DisplayName        = "Reader"
+			Description        = "Read-only role"
+			Value              = "Reader"
+			Id                 = [Guid]::NewGuid().ToString()
+			IsEnabled          = $True
 			AllowedMemberTypes = @($memberTypes)
 		}
 
 		$adminRole = @{
-			DisplayName = "Admin"
-			Description = "Admin role"
-			Value = "Admin"
-			Id = [Guid]::NewGuid().ToString()
-			IsEnabled = $True
+			DisplayName        = "Admin"
+			Description        = "Admin role"
+			Value              = "Admin"
+			Id                 = [Guid]::NewGuid().ToString()
+			IsEnabled          = $True
 			AllowedMemberTypes = @($memberTypes)
 		}
 
@@ -160,49 +165,54 @@ function Set-UIAzureADApplication {
 		$appRoles += $readerRole
 		$appRoles += $adminRole
 
-        Update-AzADApplication -ObjectId $uiApp.Id `
-		                       -IdentifierUris "api://$($uiApp.AppId)" `
-							   -DisplayName $uiAppDisplayName `
-							   -Web $webSettings `
-							   -AppRole $appRoles `
-							   -AvailableToOtherTenants $false
+		Update-AzADApplication  -ObjectId $uiApp.Id `
+								-IdentifierUris "api://$($uiApp.AppId)" `
+								-DisplayName $uiAppDisplayName `
+								-Web $webSettings `
+								-AppRole $appRoles `
+								-AvailableToOtherTenants $false
 	}
-	else
-	{
+	else {
 		$uiApp.Web.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
 		$uiApp.Web.ImplicitGrantSetting.EnableIdTokenIssuance = $true
 
 		Write-Verbose "Updating Azure AD app $uiAppDisplayName"
 		Update-AzADApplication	-ObjectId $($uiApp.Id) `
-                                -DisplayName $uiAppDisplayName `
+								-DisplayName $uiAppDisplayName `
 								-AvailableToOtherTenants $false `
 								-Web $webSettings
-    }
+	}
 
 	Start-Sleep -Seconds 30
 
 	# These need to go into the key vault
-	$uiAppTenantId = $TenantId;
+	$uiAppTenantId = $SecondaryTenantId;
 	$uiAppClientId = $uiApp.AppId;
 
 	# Create new secret
 	$endDate = [System.DateTime]::Now.AddYears(1)
-    $uiAppClientSecret = Get-AzADApplication -ApplicationId $uiAppClientId | New-AzADAppCredential -StartDate $(get-date) -EndDate $endDate
+	$uiAppClientSecret = Get-AzADApplication -ApplicationId $uiAppClientId | New-AzADAppCredential -StartDate $(get-date) -EndDate $endDate
 
-   Write-Host (Get-AzContext)
+	Write-Host (Get-AzContext)
+
+	if ($TenantId -ne $SecondaryTenantId) {
+		Write-Host "Please sign in to your primary tenant."
+		Connect-AzAccount -Tenant $TenantId
+	}
+
+	Set-AzContext -Subscription $SubscriptionName
 
 	$keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-    $keyVault = Get-AzKeyVault -VaultName $keyVaultName
+	$keyVault = Get-AzKeyVault -VaultName $keyVaultName
 
-    if($null -eq $keyVault)
-	{
+	if ($null -eq $keyVault) {
 		throw "The KeyVault Group ($keyVaultName) does not exist. Unable to continue."
-    }
+	}
 
 	# Store Application (client) ID in KeyVault
-    Write-Verbose "Application (client) ID is $uiAppClientId"
+	Write-Verbose "Application (client) ID is $uiAppClientId"
 
-    $uiAppIdKeyVaultSecretName = "uiAppId"
+	$uiAppIdKeyVaultSecretName = "uiAppId"
 	$uiAppIdSecret = ConvertTo-SecureString -AsPlainText -Force $uiAppClientId
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $uiAppIdKeyVaultSecretName `
@@ -211,10 +221,10 @@ function Set-UIAzureADApplication {
 
 	# Store Application secret in KeyVault
 	$uiAppClientSecretName = "uiPasswordCredentialValue"
-    $uiPasswordCredentialValue = ConvertTo-SecureString -AsPlainText -Force $($uiAppClientSecret.SecretText)
+	$uiPasswordCredentialValue = ConvertTo-SecureString -AsPlainText -Force $($uiAppClientSecret.SecretText)
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-							-Name $uiAppClientSecretName `
-							-SecretValue $uiPasswordCredentialValue
+						 -Name $uiAppClientSecretName `
+						 -SecretValue $uiPasswordCredentialValue
 	Write-Verbose "$uiAppClientSecretName added to vault for $uiAppDisplayName."
 
 	# Store tenantID in KeyVault
@@ -223,7 +233,7 @@ function Set-UIAzureADApplication {
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $uiTenantSecretName `
 						 -SecretValue $uiTenantSecret
-    Write-Verbose "$uiTenantSecretName added to vault for $uiAppDisplayName."
+	Write-Verbose "$uiTenantSecretName added to vault for $uiAppDisplayName."
 
 	Write-Verbose "Set-UIAzureADApplication completed."
 }
