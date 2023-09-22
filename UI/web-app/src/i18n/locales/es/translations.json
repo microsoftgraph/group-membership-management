@@ -117,8 +117,8 @@
             },
             "filterButtonText": "Filtrar",
             "clearButtonTooltip": "Eliminar filtros"
-
-        }
+        },
+        "NoResults": "No se encontro ninguna membresía"
     },
     "welcome": "Bienvenido",
     "back": "Regresar",

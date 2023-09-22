@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { IDropdownStyles, ITextFieldStyles, ITooltipHostStyles } from '@fluentui/react';
 import {
   IJobsListFilterStyleProps,
   IJobsListFilterStyles,
@@ -19,7 +18,8 @@ export const getStyles = (props: IJobsListFilterStyleProps): IJobsListFilterStyl
     },
     filterButton: {
       borderRadius: 4,
-      border: '1px solid #D1D1D1',
+      border: '1px solid',
+      borderColor: theme.palette.neutralQuaternary,
       width: 30,
       minWidth: 56,
       padding: '12px 5px',
@@ -30,19 +30,26 @@ export const getStyles = (props: IJobsListFilterStyleProps): IJobsListFilterStyl
     filterButtonStackItem: {
       paddingTop: 29,
     },
+    dropdownTitle: {
+      borderRadius: 4,
+      borderStyle: 'solid',
+      borderWidth: 1,
+      borderColor: theme.palette.neutralQuaternary,
+      backgroud: theme.palette.white,
+      width: 150
+    },
+    textFieldFieldGroup: {
+      borderRadius: 4,
+      border: '1px solid',
+      borderColor: theme.palette.neutralQuaternary,
+      backgroud: theme.palette.white,
+      width: 150
+    },
+    clearFilterTooltip: {
+      display: 'inline-block',
+    },
+    clearFilterIconButton: {
+      fontSize: 20,
+    }
   };
 };
-
-export const dropdownStyles : Partial<IDropdownStyles> = {
-  dropdown: { width: 150 },
-  title: { borderRadius: 4, border: '1px solid #D2D0CE', backgroud: '#FFF', width: 150 },
-};
-
-export const textFieldStyles :  Partial<ITextFieldStyles> = {
-  fieldGroup:{ borderRadius: 4, border: '1px solid #D2D0CE', backgroud: '#FFF', width: 150  },
-}
-
-export const clearFilterTooltipStyles : Partial<ITooltipHostStyles> = { 
-  root: { display: 'inline-block' },
-}
- 

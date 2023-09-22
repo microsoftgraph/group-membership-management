@@ -422,7 +422,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
 
             {jobs?.length === 0 && (
               <div className={classNames.noMembershipsFoundText}>
-                <Text variant="medium">{'No memberships found.'}</Text>
+                <Text variant="medium">{t('JobsList.NoResults')}</Text>
               </div>
             )}
             <div className={classNames.columnToEnd}></div>

@@ -16,6 +16,10 @@ export interface IJobsListFilterStyles {
   filterButton: IStyle;
   clearFilterButton: IStyle;
   filterButtonStackItem: IStyle;
+  dropdownTitle: IStyle;
+  textFieldFieldGroup: IStyle;
+  clearFilterTooltip: IStyle;
+  clearFilterIconButton: IStyle;
 }
 
 export interface IJobsListFilterStyleProps {

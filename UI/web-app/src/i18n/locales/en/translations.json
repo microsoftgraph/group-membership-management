@@ -118,8 +118,8 @@
             },
             "filterButtonText": "Filter",
             "clearButtonTooltip": "Clear Filters"
-
-        }
+        },
+        "NoResults": "No memberships found."
     },
     "welcome": "Welcome",
     "back": "Back to dashboard",

@@ -23,11 +23,6 @@ import {
   IJobsListFilterStyles,
 } from './JobsListFilter.types';
 import { SyncStatus } from '../../models/Status';
-import {
-  clearFilterTooltipStyles,
-  dropdownStyles,
-  textFieldStyles,
-} from './JobsListFilter.styles';
 import { useState } from 'react';
 
 const getClassNames = classNamesFunction<
@@ -195,7 +190,9 @@ export const JobsListFilterBase: React.FunctionComponent<
                 t('JobsList.JobsListFilter.filters.ID.placeholder') as string
               }
               errorMessage={idValidationErrorMessage}
-              styles={textFieldStyles}
+              styles={{
+                fieldGroup: classNames.textFieldFieldGroup,
+              }}
             />
           </Stack.Item>
 
@@ -210,7 +207,9 @@ export const JobsListFilterBase: React.FunctionComponent<
               onChange={onChangeStatus}
               defaultSelectedKey="All"
               options={statusDropdownOptions}
-              styles={dropdownStyles}
+              styles={{
+                title: classNames.dropdownTitle
+              }}
             />
           </Stack.Item>
 
@@ -229,7 +228,9 @@ export const JobsListFilterBase: React.FunctionComponent<
               onChange={onChangeActionRequired}
               defaultSelectedKey="All"
               options={actionRequiredDropdownOptions}
-              styles={dropdownStyles}
+              styles={{
+                title: classNames.dropdownTitle
+              }}
             />
           </Stack.Item>
 
@@ -252,7 +253,9 @@ export const JobsListFilterBase: React.FunctionComponent<
               content={
                 t('JobsList.JobsListFilter.clearButtonTooltip') as string
               }
-              styles={clearFilterTooltipStyles}
+              styles={{
+                root: classNames.clearFilterTooltip,
+              }}
               directionalHint={DirectionalHint.topRightEdge}
               calloutProps={{
                 beakWidth: 8,
@@ -261,7 +264,7 @@ export const JobsListFilterBase: React.FunctionComponent<
               <IconButton
                 iconProps={{
                   iconName: 'ClearFilter',
-                  styles: { root: { fontSize: 20 } },
+                  styles: { root: classNames.clearFilterIconButton },
                 }}
                 onClick={clearFilters}
               />
