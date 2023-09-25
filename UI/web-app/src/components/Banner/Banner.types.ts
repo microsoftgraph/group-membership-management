@@ -14,6 +14,7 @@ export interface IBannerStyles {
   message: IStyle;
   messageContainer: IStyle;
   toggle: IStyle;
+  link: IStyle;
 }
 
 export interface IBannerStyleProps {

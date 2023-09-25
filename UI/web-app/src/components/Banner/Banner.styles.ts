@@ -41,5 +41,8 @@ export const getStyles = (props: IBannerStyleProps): IBannerStyles => {
       height: 24,
       width: 24
     },
+    link: {
+      color: theme.semanticColors.bodyText
+    }
   };
 };

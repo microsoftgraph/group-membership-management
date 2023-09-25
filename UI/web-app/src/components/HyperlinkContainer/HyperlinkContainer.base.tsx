@@ -18,15 +18,14 @@ export const getClassNames = classNamesFunction<IHyperlinkContainerStyleProps, I
 export const HyperlinkContainerBase: React.FunctionComponent<IHyperlinkContainerProps> = (
     props: IHyperlinkContainerProps
 ) => {
-    const { title, description, link: initialLink, className, styles } = props;
+    const { title, description, link, onUpdateLink, className, styles } = props;
     const classNames: IProcessedStyleSet<IHyperlinkContainerStyles> = getClassNames(styles, {
         className,
         theme: useTheme(),
     });
     const { t } = useTranslation();
-    const [link, setLink] = useState(initialLink);
-    const handleInputChange = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-        setLink(newValue || '');
+    const handleLinkChange = (newValue: string) => {
+        onUpdateLink(newValue); // Call the callback function when the link changes
     };
 
     return (
@@ -42,7 +41,10 @@ export const HyperlinkContainerBase: React.FunctionComponent<IHyperlinkContainer
                     label={t('AdminConfig.hyperlinkContainer.address') as string}
                     placeholder={t('AdminConfig.hyperlinkContainer.addHyperlink') as string}
                     value = {link}
-                    onChange={handleInputChange}
+                    onChange={(e, newValue) => handleLinkChange(newValue?? '')}
+                    styles={{
+                        fieldGroup: classNames.textFieldFieldGroup,
+                      }}
                 ></TextField>
             </div>
         </div>

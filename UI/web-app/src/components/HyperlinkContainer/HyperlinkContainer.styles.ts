@@ -33,6 +33,13 @@ export const getStyles = (props: IHyperlinkContainerStyleProps): IHyperlinkConta
         description:{
             fontSize: 14,
             fontWeight: 400
+        },
+        textFieldFieldGroup:{
+            borderRadius: 4,
+            border: '1px solid',
+            borderColor: theme.palette.neutralQuaternary,
+            backgroud: theme.palette.white,
+            width: 150
         }
     };
 };
