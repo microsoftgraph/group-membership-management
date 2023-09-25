@@ -82,7 +82,8 @@ var syncDisabledCCEmailAddresses = resourceId(subscription().subscriptionId, pre
 var supportEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'supportEmailAddresses')
 var membershipStorageAccountName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountName')
 var membershipContainerName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipContainerName')
-var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
+var graphUpdaterStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUpdaterStorageAccountProd')
+var graphUpdaterStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUpdaterStorageAccountStaging')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
 var serviceBusConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusConnectionString')
@@ -109,8 +110,6 @@ var commonSettings = {
 
 var appSettings = {
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
@@ -125,7 +124,6 @@ var appSettings = {
   syncCompletedCCEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(syncCompletedCCEmailAddresses, '2019-09-01').secretUriWithVersion})'
   syncDisabledCCEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(syncDisabledCCEmailAddresses, '2019-09-01').secretUriWithVersion})'
   supportEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(supportEmailAddresses, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_MAX_DYNAMIC_APPLICATION_SCALE_OUT: maximumElasticWorkerCount
   appConfigurationEndpoint: appConfigurationEndpoint
   membershipStorageAccountName: '@Microsoft.KeyVault(SecretUri=${reference(membershipStorageAccountName, '2019-09-01').secretUriWithVersion})'
   membershipContainerName: '@Microsoft.KeyVault(SecretUri=${reference(membershipContainerName, '2019-09-01').secretUriWithVersion})'
@@ -137,6 +135,8 @@ var appSettings = {
 var stagingSettings = {
   WEBSITE_CONTENTSHARE: toLower('functionApp-GraphUpdater-staging')
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GraphUpdaterStaging'
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
   'AzureWebJobs.StarterFunction.Disabled': 1
   'AzureWebJobs.OrchestratorFunction.Disabled': 1
   'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled': 1
@@ -149,23 +149,21 @@ var stagingSettings = {
   'AzureWebJobs.JobReaderFunction.Disabled': 1
   'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 1
   'AzureWebJobs.LoggerFunction.Disabled': 1
+  'AzureWebJobs.CacheUpdaterFunction.Disabled': 1
+  'AzureWebJobs.CacheUserUpdaterSubOrchestratorFunction.Disabled': 1
+  'AzureWebJobs.MessageEntity.Disabled': 1
+  'AzureWebJobs.MessageOrchestrator.Disabled': 1
+  'AzureWebJobs.MessageProcessorOrchestrator.Disabled': 1
+  'AzureWebJobs.MessageTrackerFunction.Disabled': 1
+  'AzureWebJobs.StatusReaderFunction.Disabled': 1
+  'AzureWebJobs.TelemetryTrackerFunction.Disabled': 1
 }
 
 var productionSettings = {
   WEBSITE_CONTENTSHARE: toLower('functionApp-GraphUpdater')
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GraphUpdater'
-  'AzureWebJobs.StarterFunction.Disabled': 0
-  'AzureWebJobs.OrchestratorFunction.Disabled': 0
-  'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.EmailSenderFunction.Disabled': 0
-  'AzureWebJobs.FileDownloaderFunction.Disabled': 0
-  'AzureWebJobs.GroupNameReaderFunction.Disabled': 0
-  'AzureWebJobs.GroupOwnersReaderFunction.Disabled': 0
-  'AzureWebJobs.GroupUpdaterFunction.Disabled': 0
-  'AzureWebJobs.GroupValidatorFunction.Disabled': 0
-  'AzureWebJobs.JobReaderFunction.Disabled': 0
-  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 0
-  'AzureWebJobs.LoggerFunction.Disabled': 0
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
 }
 
 module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
@@ -262,22 +260,24 @@ module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   ]
 }
 
-resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
+resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-GraphUpdater/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppTemplate_GraphUpdater
     dataKeyVaultPoliciesTemplate
+    prereqsKeyVaultPoliciesTemplate
   ]
 }
 
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
+resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
   name: '${functionAppName}-GraphUpdater/staging/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
     functionAppSlotTemplate_GraphUpdater
     dataKeyVaultPoliciesTemplate
+    prereqsKeyVaultPoliciesTemplate
   ]
 }
