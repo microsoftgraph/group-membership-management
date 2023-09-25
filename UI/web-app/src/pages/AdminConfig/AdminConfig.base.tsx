@@ -15,7 +15,11 @@ import { PageSection } from '../../components/PageSection';
 import { HyperlinkContainer } from '../../components/HyperlinkContainer';
 import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
-
+import { selectSelectedSetting } from '../../store/settings.slice';
+import { useDispatch, useSelector } from 'react-redux';
+import { useEffect, useState } from 'react';
+import { fetchSettingByKey, postSetting } from '../../store/settings.api';
+import { AppDispatch } from '../../store';
 
 const getClassNames = classNamesFunction<
     IAdminConfigStyleProps,
@@ -34,11 +38,22 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
             theme: useTheme(),
         }
     );
-
     const { t } = useTranslation();
+    const dispatch = useDispatch<AppDispatch>();
+
+    useEffect(() => {
+        dispatch(fetchSettingByKey('dashboardUrl'));
+      }, [dispatch]);
+      
+    const dashboardUrl = useSelector(selectSelectedSetting);
+    
+    console.log("admin config, dashboardSetting: ", dashboardUrl);
+
+    const [updatedDashboardUrl, setUpdatedDashboardUrl] = useState('');
 
     const onClick = () => {
         console.log('Clicked!');
+        dispatch(postSetting({key: 'dashboardUrl', value: updatedDashboardUrl}));
     };
 
     return (
@@ -68,19 +83,8 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
                                 <div className={classNames.tiles}>
                                     <HyperlinkContainer
                                         title={t('AdminConfig.hyperlinkContainer.dashboardTitle')}
-                                        description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}>
-                                    </HyperlinkContainer>
-                                    <HyperlinkContainer
-                                        title={t('AdminConfig.hyperlinkContainer.dashboardTitle')}
-                                        description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}>
-                                    </HyperlinkContainer>
-                                    <HyperlinkContainer
-                                        title={t('AdminConfig.hyperlinkContainer.dashboardTitle')}
-                                        description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}>
-                                    </HyperlinkContainer>
-                                    <HyperlinkContainer
-                                        title={t('AdminConfig.hyperlinkContainer.dashboardTitle')}
-                                        description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}>
+                                        description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}
+                                        link={updatedDashboardUrl || (dashboardUrl?.value ?? '')}>
                                     </HyperlinkContainer>
                                 </div>
                             </PivotItem>

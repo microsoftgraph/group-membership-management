@@ -33,6 +33,7 @@ import {
     styles?: IStyleFunctionOrObject<IHyperlinkContainerStyleProps, IHyperlinkContainerStyles>;
     title: string;
     description: string;
+    link: string;
   }
 
 
