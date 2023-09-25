@@ -43,8 +43,9 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
       dispatch(getProfilePhoto());
     }
   }, [dispatch, profilePhoto]);
-  
+
   const navigate = useNavigate();
+
   const onItemClicked = (
     item?: any,
     index?: number,
@@ -52,7 +53,10 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
   ): void => {
     navigate('/AdminConfig', { replace: false, state: { item: 1 } });
   };
-  
+  const onLogoClicked = () => {
+    navigate('/', { replace: false, state: { item: 1 } });
+  };
+
   const personaProps: IPersonaSharedProps = {
     imageUrl: profilePhoto
   }
@@ -67,20 +71,22 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
   }
 
   return (
-    <header className={classNames.root}>
-      <div className={classNames.titleContainer}>
-        <div className={classNames.appIcon}>
-          <img src={logo} alt="Membership Management Icon"  style={{ height: 32, width: 32 }} />
+<header className={classNames.root}>
+      <a href="/" className={classNames.mainButton} onClick={onLogoClicked}>
+        <div className={classNames.titleContainer}>
+          <div className={classNames.appIcon}>
+            <img src={logo} alt="Membership Management Icon" style={{ height: 32, width: 32 }} />
+          </div>
+          <div className={classNames.appTitle}>{strings.membershipManagement}</div>
         </div>
-        <div className={classNames.appTitle}>{strings.membershipManagement}</div>
-      </div>
+      </a>
       <div className={classNames.settingsContainer}>
-          <IconButton 
-            iconProps={{iconName: 'settings'}} 
-            className={classNames.settingsIcon} 
-            styles={buttonStyles}
-            onClick={onItemClicked} />
-          <Persona size={PersonaSize.size32} className={classNames.userPersona} {...personaProps} />
+        <IconButton
+          iconProps={{ iconName: 'settings' }}
+          className={classNames.settingsIcon}
+          styles={buttonStyles}
+          onClick={onItemClicked} />
+        <Persona size={PersonaSize.size32} className={classNames.userPersona} {...personaProps} />
       </div>
     </header>
   );

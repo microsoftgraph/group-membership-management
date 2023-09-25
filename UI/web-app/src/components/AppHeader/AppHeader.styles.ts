@@ -20,6 +20,15 @@ export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
       },
       className,
     ],
+    mainButton:{
+      textDecoration: 'none',
+      color: 'inherit',
+      padding: 0,
+      margin: 0,
+      fontSize: 'inherit',
+      fontStyle: 'inherit',
+      fontWeight: 'inherit'
+    },
     appIcon: {
       boxSizing: 'border-box',
       height: 32,

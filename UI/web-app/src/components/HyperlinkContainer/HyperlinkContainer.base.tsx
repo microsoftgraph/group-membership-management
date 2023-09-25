@@ -18,15 +18,30 @@ export const getClassNames = classNamesFunction<IHyperlinkContainerStyleProps, I
 export const HyperlinkContainerBase: React.FunctionComponent<IHyperlinkContainerProps> = (
     props: IHyperlinkContainerProps
 ) => {
-    const { title, description, link, onUpdateLink, className, styles } = props;
+    const { title, description, link, onUpdateLink, setHyperlinkError, className, styles } = props;
     const classNames: IProcessedStyleSet<IHyperlinkContainerStyles> = getClassNames(styles, {
         className,
         theme: useTheme(),
     });
     const { t } = useTranslation();
     const handleLinkChange = (newValue: string) => {
-        onUpdateLink(newValue); // Call the callback function when the link changes
+        onUpdateLink(newValue); 
     };
+
+    const getErrorMessage = (value: string): string => {
+        const isValid = isValidURL(value);
+        setHyperlinkError(!isValid);
+        return isValid ? '' : t('AdminConfig.hyperlinkContainer.invalidUrl') as string;
+    };
+
+    const isValidURL = (url: string): boolean => {
+        try {
+            new URL(url);
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
 
     return (
         <div className={classNames.card}>
@@ -40,11 +55,12 @@ export const HyperlinkContainerBase: React.FunctionComponent<IHyperlinkContainer
                 <TextField
                     label={t('AdminConfig.hyperlinkContainer.address') as string}
                     placeholder={t('AdminConfig.hyperlinkContainer.addHyperlink') as string}
-                    value = {link}
-                    onChange={(e, newValue) => handleLinkChange(newValue?? '')}
+                    value={link}
+                    onChange={(e, newValue) => handleLinkChange(newValue ?? '')}
                     styles={{
                         fieldGroup: classNames.textFieldFieldGroup,
-                      }}
+                    }}
+                    onGetErrorMessage={getErrorMessage}
                 ></TextField>
             </div>
         </div>

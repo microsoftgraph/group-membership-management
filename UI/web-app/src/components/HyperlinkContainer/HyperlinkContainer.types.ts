@@ -36,6 +36,7 @@ import {
     description: string;
     link: string;
     onUpdateLink: (link: string) => void;
+    setHyperlinkError: (error: boolean) => void;
   }
 
 
