@@ -9,6 +9,7 @@ import {
   IProcessedStyleSet,
   IStyle,
   IconButton,
+  Link,
   classNamesFunction,
   useTheme,
 } from '@fluentui/react';
@@ -17,7 +18,8 @@ import { InfoIcon } from '@fluentui/react-icons-mdl2';
 import { useStrings } from '../../localization/hooks';
 
 import { fetchSettingByKey } from '../../store/settings.api';
-import { SettingsState } from '../../store/settings.slice';
+import { selectSelectedSetting } from '../../store/settings.slice';
+import { AppDispatch } from '../../store';
 
 const getClassNames = classNamesFunction<IBannerStyleProps, IBannerStyles>();
 
@@ -26,22 +28,19 @@ export const BannerBase: React.FunctionComponent<IBannerProps> = (props) => {
   const strings = useStrings();
   const [collapsed, setCollapsed] = useState(false);
   const theme = useTheme();
-  const dispatch = useDispatch();
-  
-  // const dashboardUrl: string = useSelector((state: SettingsState) => {
-  //   if(state.settings && state.settings.length > 0) {
-  //     return state.settings[0].value;
-  //   }
-  //   else {
-  //     return '';
-  //   }
-  // });
-  const dashboardUrl: string = "dashboardUrl";
+  const dispatch = useDispatch<AppDispatch>();
 
-  // useEffect(() => {
-  //   dispatch(fetchSettingByKey(dashboardUrl));
-  // }, [dispatch, dashboardUrl]);
-  
+  useEffect(() => {
+    dispatch(fetchSettingByKey('dashboardUrl'));
+  }, [dispatch]);
+
+  const dashboardUrl = useSelector(selectSelectedSetting);
+
+  const openLink = (): void => {
+    window.open(dashboardUrl?.value, '_blank', 'noopener,noreferrer');
+  };
+
+  console.log("dashboardUrl:", dashboardUrl);
 
   const classNames: IProcessedStyleSet<IBannerStyles> = getClassNames(styles, {
     collapsed,
@@ -65,13 +64,17 @@ export const BannerBase: React.FunctionComponent<IBannerProps> = (props) => {
     rootHovered: disabledStyles,
     rootPressed: disabledStyles
   }
-  
+
   return (
     <div className={classNames.root}>
       {!collapsed && (
         <div className={classNames.messageContainer}>
           <InfoIcon className={classNames.icon} />
-          <div className={classNames.message}>{strings.bannerMessage} {dashboardUrl}</div>
+          <div className={classNames.message}>
+            {strings.bannerMessage}
+            <Link href={dashboardUrl?.value ?? ''} onClick={() => openLink()}> {strings.bannerMessage} </Link>
+            {strings.bannerMessage}
+          </div>
         </div>
       )}
       <IconButton

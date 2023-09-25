@@ -68,7 +68,12 @@ export const postSetting = createAsyncThunk('settings/postSetting', async (data:
     };
 
     try {
-        const response = await fetch(config.settings, options); // Use the appropriate API endpoint for posting data
+        const response = await fetch(
+            config.settings+
+            `?key=${encodeURIComponent(
+                data.key
+            )}`, options
+        )
 
         if (!response.ok) {
             throw new Error('Failed to post setting data!');
