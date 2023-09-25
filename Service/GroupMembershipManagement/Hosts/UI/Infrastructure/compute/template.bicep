@@ -4,7 +4,7 @@
 param solutionAbbreviation string = 'gmm'
 
 @description('Resource location.')
-param location string
+param location string = 'westus2'
 
 @description('Name of the public source branch where webapp repo exists.')
 param branch string
