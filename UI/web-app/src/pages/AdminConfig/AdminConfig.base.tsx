@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import {
     classNamesFunction,
     IProcessedStyleSet,
+    MessageBar, MessageBarType,
     Pivot, PivotItem, PrimaryButton
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
@@ -40,24 +41,53 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
     );
     const { t } = useTranslation();
     const dispatch = useDispatch<AppDispatch>();
+    const [updatedDashboardUrl, setUpdatedDashboardUrl] = useState('');
+    const [successMessage, setSuccessMessage] = useState<string | undefined>(undefined);
+    const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
 
     useEffect(() => {
         dispatch(fetchSettingByKey('dashboardUrl'));
-      }, [dispatch]);
-      
+    }, [dispatch]);
+
+    useEffect(() => {
+        clearMessageBars();
+    }, [updatedDashboardUrl]);
+
     const dashboardUrl = useSelector(selectSelectedSetting);
-    
+
     console.log("admin config, dashboardSetting: ", dashboardUrl);
 
-    const [updatedDashboardUrl, setUpdatedDashboardUrl] = useState('');
+    const clearMessageBars = () => {
+        setSuccessMessage(undefined);
+        setErrorMessage(undefined);
+    };
+
+    const handleLinkUpdate = (newValue: string) => {
+        setUpdatedDashboardUrl(newValue);
+        setSuccessMessage(undefined);
+        setErrorMessage(undefined);
+    };
 
     const onClick = () => {
         console.log('Clicked!');
-        dispatch(postSetting({key: 'dashboardUrl', value: updatedDashboardUrl}));
+        clearMessageBars();
+        dispatch(postSetting({ key: 'dashboardUrl', value: updatedDashboardUrl }))
+            .then(() => {
+                setSuccessMessage('Settings saved successfully');
+            })
+            .catch((error) => {
+                setErrorMessage('Failed to save settings');
+            });
     };
 
     return (
         <Page>
+            {successMessage && (
+                <MessageBar messageBarType={MessageBarType.success}>{successMessage}</MessageBar>
+            )}
+            {errorMessage && (
+                <MessageBar messageBarType={MessageBarType.error}>{errorMessage}</MessageBar>
+            )}
             <PageHeader />
             <div className={classNames.root}>
                 <div className={classNames.card}>
@@ -84,7 +114,8 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
                                     <HyperlinkContainer
                                         title={t('AdminConfig.hyperlinkContainer.dashboardTitle')}
                                         description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}
-                                        link={updatedDashboardUrl || (dashboardUrl?.value ?? '')}>
+                                        link={updatedDashboardUrl || (dashboardUrl?.value ?? '')}
+                                        onUpdateLink = {handleLinkUpdate}>
                                     </HyperlinkContainer>
                                 </div>
                             </PivotItem>

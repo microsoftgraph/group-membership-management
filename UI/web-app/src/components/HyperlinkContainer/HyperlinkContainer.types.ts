@@ -14,6 +14,7 @@ import {
     card: IStyle;
     title: IStyle;
     description: IStyle;
+    textFieldFieldGroup: IStyle;
   }
 
   export interface IHyperlinkContainerStyleProps {
@@ -34,6 +35,7 @@ import {
     title: string;
     description: string;
     link: string;
+    onUpdateLink: (link: string) => void;
   }
 
 

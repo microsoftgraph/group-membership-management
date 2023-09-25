@@ -72,7 +72,13 @@ export const BannerBase: React.FunctionComponent<IBannerProps> = (props) => {
           <InfoIcon className={classNames.icon} />
           <div className={classNames.message}>
             {strings.bannerMessage}
-            <Link href={dashboardUrl?.value ?? ''} onClick={() => openLink()}> {strings.bannerMessage} </Link>
+            <Link
+              href={dashboardUrl?.value ?? ''}
+              onClick={() => openLink()}
+              underline={true}
+              className={classNames.link}>
+              {strings.bannerMessage}
+            </Link>
             {strings.bannerMessage}
           </div>
         </div>
