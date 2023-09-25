@@ -13,3 +13,6 @@ param tenantId string
 
 @description('Enter storage account name.')
 param storageAccountName string
+
+@description('Resource location.')
+param location string
