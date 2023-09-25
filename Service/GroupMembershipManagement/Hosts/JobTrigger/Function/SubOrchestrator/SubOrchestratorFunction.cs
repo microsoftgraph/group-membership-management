@@ -183,7 +183,7 @@ namespace Hosts.JobTrigger
                                                         EmailContentTemplateName = SyncDisabledNoGroupEmailBody,
                                                         AdditionalContentParams = new[]
                                                         {
-                                                        destinationObject.Value.ToString(),
+                                                        destinationObject.Value.ObjectId.ToString(),
                                                         _emailSenderAndRecipients.SyncDisabledCCAddresses
                                                         },
                                                         FunctionDirectory = executionContext.FunctionAppDirectory
@@ -204,7 +204,7 @@ namespace Hosts.JobTrigger
                                                         EmailContentTemplateName = SyncStartedEmailBody,
                                                         AdditionalContentParams = new[]
                                                         {
-                                                            destinationObject.Value.ToString(),
+                                                            destinationObject.Value.ObjectId.ToString(),
                                                             groupInformation.Name,
                                                             _emailSenderAndRecipients.SupportEmailAddresses,
                                                             _gmmResources.LearnMoreAboutGMMUrl,
