@@ -23,6 +23,7 @@ steps:
                         -tenantId "${{parameters.tenantId}}"
                         -solutionAbbreviation "${{parameters.solutionAbbreviation}}"
                         -storageAccountName "$(data_storageAccountName)"
+                        -location "${{parameters.location}}"
     deploymentMode: 'Incremental'
 
 - task: AzureResourceManagerTemplateDeployment@3
