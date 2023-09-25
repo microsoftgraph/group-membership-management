@@ -114,6 +114,17 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.JobReaderFunction.Disabled'
       'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
       'AzureWebJobs.LoggerFunction.Disabled'
+      'AzureWebJobs.CacheUpdaterFunction.Disabled'
+      'AzureWebJobs.CacheUserUpdaterSubOrchestratorFunction.Disabled'
+      'AzureWebJobs.MessageEntity.Disabled'
+      'AzureWebJobs.MessageOrchestrator.Disabled'
+      'AzureWebJobs.MessageProcessorOrchestrator.Disabled'
+      'AzureWebJobs.MessageTrackerFunction.Disabled'
+      'AzureWebJobs.StatusReaderFunction.Disabled'
+      'AzureWebJobs.TelemetryTrackerFunction.Disabled'
+      'WEBSITE_CONTENTSHARE'
+      'AzureWebJobsStorage'
+      'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
     ]
   }
 }
