@@ -43,7 +43,7 @@ export const fetchSettingByKey = createAsyncThunk('settings/fetchSettingByKey', 
     }
 });
 
-export const postSetting = createAsyncThunk('settings/postSetting', async (data: Setting) => {
+export const updateSetting = createAsyncThunk('settings/updateSetting', async (data: Setting) => {
     const account = msalInstance.getActiveAccount();
     if (account == null) {
         throw Error(
@@ -64,23 +64,25 @@ export const postSetting = createAsyncThunk('settings/postSetting', async (data:
     const options = {
         method: 'POST',
         headers,
-        body: JSON.stringify(data), // Convert data to JSON and send it in the request body
+        body: JSON.stringify(data.value),
     };
 
     try {
         const response = await fetch(
             config.settings+
-            `?key=${encodeURIComponent(
+            `/${encodeURIComponent(
                 data.key
             )}`, options
-        )
+        ).then(async (response) => await response.json());
+
+        const payload: Setting = response;
 
         if (!response.ok) {
-            throw new Error('Failed to post setting data!');
+            throw new Error('Failed to update setting data!');
         }
 
-        return data; // Return the posted data on success
+        return payload;
     } catch (error) {
-        throw new Error('Failed to post setting data!');
+        throw new Error('Failed to update setting data!');
     }
 });

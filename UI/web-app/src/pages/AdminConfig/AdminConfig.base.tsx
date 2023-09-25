@@ -19,7 +19,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { selectSelectedSetting } from '../../store/settings.slice';
 import { useDispatch, useSelector } from 'react-redux';
 import { useEffect, useState } from 'react';
-import { fetchSettingByKey, postSetting } from '../../store/settings.api';
+import { fetchSettingByKey, updateSetting } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
 
 const getClassNames = classNamesFunction<
@@ -44,6 +44,7 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
     const [updatedDashboardUrl, setUpdatedDashboardUrl] = useState('');
     const [successMessage, setSuccessMessage] = useState<string | undefined>(undefined);
     const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
+    const [hyperlinkError, setHyperlinkError] = useState(false);
 
     useEffect(() => {
         dispatch(fetchSettingByKey('dashboardUrl'));
@@ -71,7 +72,7 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
     const onClick = () => {
         console.log('Clicked!');
         clearMessageBars();
-        dispatch(postSetting({ key: 'dashboardUrl', value: updatedDashboardUrl }))
+        dispatch(updateSetting({ key: 'dashboardUrl', value: updatedDashboardUrl }))
             .then(() => {
                 setSuccessMessage('Settings saved successfully');
             })
@@ -115,7 +116,8 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
                                         title={t('AdminConfig.hyperlinkContainer.dashboardTitle')}
                                         description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}
                                         link={updatedDashboardUrl || (dashboardUrl?.value ?? '')}
-                                        onUpdateLink = {handleLinkUpdate}>
+                                        onUpdateLink = {handleLinkUpdate}
+                                        setHyperlinkError= {setHyperlinkError}>
                                     </HyperlinkContainer>
                                 </div>
                             </PivotItem>
@@ -123,7 +125,7 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
                     </PageSection>
                 </div>
                 <div className={classNames.bottomContainer}>
-                    <PrimaryButton text="Save" onClick={() => onClick()}></PrimaryButton>
+                    <PrimaryButton text="Save" onClick={() => onClick() } disabled={hyperlinkError}></PrimaryButton>
                 </div>
             </div >
         </Page>

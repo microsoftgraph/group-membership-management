@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { fetchSettingByKey, postSetting } from './settings.api';
+import { fetchSettingByKey, updateSetting } from './settings.api';
 import type { RootState } from './store';
 import { Setting } from '../models/Settings';
 
@@ -44,15 +44,15 @@ const settingsSlice = createSlice({
       state.selectedSettingLoading = false;
       state.getSettingsError = action.error.message;
     });
-    builder.addCase(postSetting.pending, (state) => {
+    builder.addCase(updateSetting.pending, (state) => {
       state.selectedSettingLoading = true;
       state.selectedSetting = undefined;
     });
-    builder.addCase(postSetting.fulfilled, (state, action) => {
+    builder.addCase(updateSetting.fulfilled, (state, action) => {
       state.selectedSettingLoading = false;
       state.selectedSetting = action.payload;
     });
-    builder.addCase(postSetting.rejected, (state, action) => {
+    builder.addCase(updateSetting.rejected, (state, action) => {
       state.selectedSettingLoading = false;
       state.getSettingsError = action.error.message;
     });

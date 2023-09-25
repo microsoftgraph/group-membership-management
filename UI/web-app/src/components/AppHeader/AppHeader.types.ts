@@ -10,6 +10,7 @@ import type React from 'react';
 
 export interface IAppHeaderStyles {
   root: IStyle;
+  mainButton: IStyle;
   appIcon: IStyle;
   appTitle: IStyle;
   settingsContainer: IStyle;
