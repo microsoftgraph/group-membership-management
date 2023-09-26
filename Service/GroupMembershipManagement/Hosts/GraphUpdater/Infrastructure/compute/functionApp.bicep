@@ -122,9 +122,7 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.MessageTrackerFunction.Disabled'
       'AzureWebJobs.StatusReaderFunction.Disabled'
       'AzureWebJobs.TelemetryTrackerFunction.Disabled'
-      'WEBSITE_CONTENTSHARE'
       'AzureWebJobsStorage'
-      'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
     ]
   }
 }
