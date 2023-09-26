@@ -84,7 +84,7 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
   properties: {
     appSettingNames: [
       'AzureFunctionsJobHost__extensions__durableTask__hubName'
-      'AzureWebJobs.StarterFunction.Disabled'
+      'AzureWebJobs.ServiceBusStarterFunction.Disabled'
       'AzureWebJobs.OrchestratorFunction.Disabled'
       'AzureWebJobs.MembershipSubOrchestratorFunction.Disabled'
       'AzureWebJobs.DeltaCalculatorFunction.Disabled'
@@ -93,6 +93,8 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
       'AzureWebJobs.JobTrackerEntity.Disabled'
       'AzureWebJobs.LoggerFunction.Disabled'
+      'AzureWebJobs.TelemetryTrackerFunction.Disabled'
+      'AzureWebJobs.TopicMessageSenderFunction.Disabled'
       'AzureWebJobsStorage'
     ]
   }
