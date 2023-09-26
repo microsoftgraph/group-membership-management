@@ -39,7 +39,7 @@ export const getStyles = (props: IHyperlinkContainerStyleProps): IHyperlinkConta
             border: '1px solid',
             borderColor: theme.palette.neutralQuaternary,
             backgroud: theme.palette.white,
-            width: 150
+            width: 500
         }
     };
 };

@@ -56,8 +56,6 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
 
     const dashboardUrl = useSelector(selectSelectedSetting);
 
-    console.log("admin config, dashboardSetting: ", dashboardUrl);
-
     const clearMessageBars = () => {
         setSuccessMessage(undefined);
         setErrorMessage(undefined);
@@ -70,14 +68,13 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
     };
 
     const onClick = () => {
-        console.log('Clicked!');
         clearMessageBars();
         dispatch(updateSetting({ key: 'dashboardUrl', value: updatedDashboardUrl }))
             .then(() => {
-                setSuccessMessage('Settings saved successfully');
+                setSuccessMessage('Setting saved successfully');
             })
             .catch((error) => {
-                setErrorMessage('Failed to save settings');
+                setErrorMessage('Failed to save setting');
             });
     };
 

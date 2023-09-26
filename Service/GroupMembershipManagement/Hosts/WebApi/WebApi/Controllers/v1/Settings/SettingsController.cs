@@ -16,11 +16,11 @@ namespace WebApi.Controllers.v1.Settings
     public class SettingsController : ControllerBase
     {
         private readonly IRequestHandler<GetSettingRequest, GetSettingResponse> _getSettingRequestHandler;
-        private readonly IRequestHandler<UpdateSettingRequest, UpdateSettingResponse> _updateSettingRequestHandler;
+        private readonly IRequestHandler<UpdateSettingRequest, NullResponse> _updateSettingRequestHandler;
 
         public SettingsController(
             IRequestHandler<GetSettingRequest, GetSettingResponse> getSettingRequestHandler,
-            IRequestHandler<UpdateSettingRequest, UpdateSettingResponse> updateSettingRequestHandler)
+            IRequestHandler<UpdateSettingRequest, NullResponse> updateSettingRequestHandler)
         {
             _getSettingRequestHandler = getSettingRequestHandler ?? throw new ArgumentNullException(nameof(getSettingRequestHandler));
             _updateSettingRequestHandler = updateSettingRequestHandler ?? throw new ArgumentNullException(nameof(updateSettingRequestHandler));
@@ -37,10 +37,9 @@ namespace WebApi.Controllers.v1.Settings
 
         [Authorize(Roles = "Admin")]
         [HttpPost("{key}")]
-        public async Task<ActionResult<Setting>> UpdateSettingAsync(string key, [FromBody] string value)
+        public async Task UpdateSettingAsync(string key, [FromBody] string value)
         {
-            var response = await _updateSettingRequestHandler.ExecuteAsync(new UpdateSettingRequest(key, value));
-            return Ok(response.Model); 
+            await _updateSettingRequestHandler.ExecuteAsync(new UpdateSettingRequest(key, value));
         }
 
     }

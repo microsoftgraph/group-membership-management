@@ -61,6 +61,7 @@ export const HyperlinkContainerBase: React.FunctionComponent<IHyperlinkContainer
                         fieldGroup: classNames.textFieldFieldGroup,
                     }}
                     onGetErrorMessage={getErrorMessage}
+                    validateOnLoad={false}
                 ></TextField>
             </div>
         </div>

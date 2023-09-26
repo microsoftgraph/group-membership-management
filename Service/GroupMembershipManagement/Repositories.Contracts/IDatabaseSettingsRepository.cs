@@ -11,8 +11,6 @@ namespace Repositories.Contracts
     {
         Task<Setting> GetSettingByKeyAsync(string key);
         Task<List<Setting>> GetSettingsAsync();
-        Task InsertSettingAsync(Setting setting);
         Task UpdateSettingAsync(Setting setting, string newSettingValue);
-        Task DeleteSettingAsync(string key);
     }
 }

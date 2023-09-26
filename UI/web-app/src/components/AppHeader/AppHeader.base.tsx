@@ -46,13 +46,10 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
 
   const navigate = useNavigate();
 
-  const onItemClicked = (
-    item?: any,
-    index?: number,
-    ev?: React.FocusEvent<HTMLElement>
-  ): void => {
+  const onSettingsButtonClicked = (): void => {
     navigate('/AdminConfig', { replace: false, state: { item: 1 } });
   };
+  
   const onLogoClicked = () => {
     navigate('/', { replace: false, state: { item: 1 } });
   };
@@ -85,7 +82,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
           iconProps={{ iconName: 'settings' }}
           className={classNames.settingsIcon}
           styles={buttonStyles}
-          onClick={onItemClicked} />
+          onClick={onSettingsButtonClicked} />
         <Persona size={PersonaSize.size32} className={classNames.userPersona} {...personaProps} />
       </div>
     </header>
