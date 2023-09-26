@@ -111,6 +111,7 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.AzureUserReaderFunction.Disabled'
       'AzureWebJobs.PersonnelNumberReaderFunction.Disabled'
       'AzureWebJobs.UploadUsersFunction.Disabled'
+      'AzureWebJobsStorage'
     ]
   }
 }
