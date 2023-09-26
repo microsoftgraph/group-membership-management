@@ -21,6 +21,7 @@ param location string
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('ma${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
 var stagingStorageAccountName = substring('ma${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
+
 module azureMaintenanceStorageAccountProd 'storageAccount.bicep' = {
   name: 'amProdstorageAccountTemplate'
   params: {
