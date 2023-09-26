@@ -95,9 +95,10 @@ var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVault
 var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientSecret')
 var graphAppCertificateName = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppCertificateName')
 var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppTenantId')
-var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
+var nonProdServiceStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'nonProdServiceStorageAccountProd')
+var nonProdServiceStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'nonProdServiceStorageAccountStaging')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-NonProdService'
@@ -118,9 +119,9 @@ var commonSettings = {
 }
 
 var appSettings =  {
+  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(nonProdServiceStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-NonProdService')
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
@@ -134,7 +135,7 @@ var appSettings =  {
 }
 
 var stagingSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-NonProdService-staging')
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(nonProdServiceStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}NonProdServiceStaging'
   'AzureWebJobs.StarterFunction.Disabled': 1
   'AzureWebJobs.OrchestratorFunction.Disabled': 1
@@ -146,7 +147,7 @@ var stagingSettings = {
 }
 
 var productionSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-NonProdService')
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(nonProdServiceStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}NonProdService'
   'AzureWebJobs.StarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
@@ -251,7 +252,7 @@ module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   ]
 }
 
-resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
+resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-NonProdService/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
@@ -261,7 +262,7 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   ]
 }
 
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
+resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
   name: '${functionAppName}-NonProdService/staging/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, stagingSettings)
