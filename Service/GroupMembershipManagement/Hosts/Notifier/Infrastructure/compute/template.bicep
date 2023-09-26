@@ -109,6 +109,8 @@ var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataKe
 var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountConnectionString')
 var notificationsTableName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notificationsTableName')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
+var notifierStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierStorageAccountProd')
+var notifierStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierStorageAccountStaging')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-Notifier'
@@ -129,9 +131,9 @@ var commonSettings = {
 }
 
 var appSettings = {
+  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(notifierStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-Notifier')
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   notifierTriggerSchedule: '0 */5 * * * *'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
@@ -152,6 +154,7 @@ var appSettings = {
 }
 
 var stagingSettings = {
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(notifierStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTSHARE: toLower('functionApp-Notifier-staging')
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}NotifierStaging'
   'AzureWebJobs.StarterFunction.Disabled': 1
@@ -163,14 +166,8 @@ var stagingSettings = {
 }
 
 var productionSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-Notifier')
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(notifierStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}Notifier'
-  'AzureWebJobs.StarterFunction.Disabled': 0
-  'AzureWebJobs.OrchestratorFunction.Disabled': 0
-  'AzureWebJobs.RetrieveNotificationsFunction.Disabled': 0
-  'AzureWebJobs.LoggerFunction.Disabled': 0
-  'AzureWebJobs.UpdateNotificationStatusFunction.Disabled': 0
-  'AzureWebJobs.SendNotificationFunction.Disabled': 0
 }
 
 module functionAppTemplate_Notifier 'functionApp.bicep' = {
@@ -262,7 +259,7 @@ module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   ]
 }
 
-resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
+resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-Notifier/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
@@ -272,7 +269,7 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   ]
 }
 
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
+resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
   name: '${functionAppName}-Notifier/staging/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, stagingSettings)
