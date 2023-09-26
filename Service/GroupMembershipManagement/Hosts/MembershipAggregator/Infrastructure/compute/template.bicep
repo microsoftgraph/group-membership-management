@@ -164,7 +164,7 @@ var appSettings = {
 var stagingSettings = {
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}MembershipAggregatorStaging'
-  'AzureWebJobs.StarterFunction.Disabled': 1
+  'AzureWebJobs.ServiceBusStarterFunction.Disabled': 1
   'AzureWebJobs.OrchestratorFunction.Disabled': 1
   'AzureWebJobs.MembershipSubOrchestratorFunction.Disabled': 1
   'AzureWebJobs.DeltaCalculatorFunction.Disabled': 1
@@ -173,12 +173,14 @@ var stagingSettings = {
   'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 1
   'AzureWebJobs.JobTrackerEntity.Disabled': 1
   'AzureWebJobs.LoggerFunction.Disabled': 1
+  'AzureWebJobs.TelemetryTrackerFunction.Disabled': 1
+  'AzureWebJobs.TopicMessageSenderFunction.Disabled': 1
 }
 
 var productionSettings = {
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}MembershipAggregator'
-  'AzureWebJobs.StarterFunction.Disabled': 0
+  'AzureWebJobs.ServiceBusStarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
   'AzureWebJobs.MembershipSubOrchestratorFunction.Disabled': 0
   'AzureWebJobs.DeltaCalculatorFunction.Disabled': 0
@@ -187,6 +189,8 @@ var productionSettings = {
   'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 0
   'AzureWebJobs.JobTrackerEntity.Disabled': 0
   'AzureWebJobs.LoggerFunction.Disabled': 0
+  'AzureWebJobs.TelemetryTrackerFunction.Disabled': 0
+  'AzureWebJobs.TopicMessageSenderFunction.Disabled': 0
 }
 
 module functionAppTemplate_MembershipAggregator 'functionApp.bicep' = {
