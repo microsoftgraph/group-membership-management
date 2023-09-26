@@ -14,7 +14,7 @@ namespace WebApi.Configuration
         public static IServiceCollection InjectMessageHandlers(this IServiceCollection services)
         {
             services.AddTransient<IRequestHandler<GetSettingRequest, GetSettingResponse>, GetSettingHandler>();
-            services.AddTransient<IRequestHandler<UpdateSettingRequest, UpdateSettingResponse>, UpdateSettingHandler>();
+            services.AddTransient<IRequestHandler<UpdateSettingRequest, NullResponse>, UpdateSettingHandler>();
 
             services.AddTransient<IRequestHandler<GetJobsRequest, GetJobsResponse>, GetJobsHandler>();
             services.AddTransient<IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse>, GetJobDetailsHandler>();

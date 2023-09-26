@@ -40,12 +40,10 @@ export const BannerBase: React.FunctionComponent<IBannerProps> = (props) => {
     window.open(dashboardUrl?.value, '_blank', 'noopener,noreferrer');
   };
 
-  console.log("dashboardUrl:", dashboardUrl);
-
   const classNames: IProcessedStyleSet<IBannerStyles> = getClassNames(styles, {
     collapsed,
     className,
-    theme,
+    theme
   });
 
   const buttonProps: IButtonProps = {

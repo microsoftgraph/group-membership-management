@@ -15,7 +15,6 @@ namespace Services.Tests
     public class SettingsControllerTests
     {
         private HttpContext _context = null!;
-        private List<Setting> _settingsEntities = null!;
         private Setting _settingEntity = null!;
         private SettingsController _settingsController = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
@@ -38,13 +37,7 @@ namespace Services.Tests
                     HttpContext = _context
                 }
             };
-            _settingsEntities = Enumerable.Range(0, 2).Select(x => new Setting
-            {
-                Key = "testKey",
-                Value = "testValue"
-            }).ToList();
             _settingEntity = new Setting { Key = "testKey", Value = "testValue " };
-
 
             _settingsRepository.Setup(x => x.GetSettingByKeyAsync("testKey")).ReturnsAsync(() => _settingEntity);
             _settingsRepository.Setup(x => x.UpdateSettingAsync(It.IsAny<Setting>(), It.IsAny<string>()));
@@ -69,13 +62,15 @@ namespace Services.Tests
         [TestMethod]
         public async Task UpdateSettingTestAsync()
         {
-            var response = await _settingsController.UpdateSettingAsync("testKey", "updatedValue");
-            var result = response.Result as ContentResult;
-
+            await _settingsController.UpdateSettingAsync("testKey", "updatedValue");
             _settingsRepository.Verify(x => x.UpdateSettingAsync(_settingEntity, "updatedValue"), Times.Once());
 
-            //Assert.IsNotNull(result);
-            //Assert.IsNotNull(result.Content);
+            var setting = await _settingsController.GetSettingByKeyAsync("testKey");
+            var result = setting.Result as OkObjectResult;
+            var settingDTO = result.Value as SettingDTO;
+
+            Assert.IsNotNull(settingDTO);
+            Assert.AreEqual(settingDTO.Value, "updatedValue");
         }
     }
 }

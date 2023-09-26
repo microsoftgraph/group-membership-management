@@ -61,15 +61,7 @@ const settingsSlice = createSlice({
 
 export const { setSettings, setGetSettingsError } = settingsSlice.actions;
 
-export const selectAllSettings = (state: RootState) => state.settings.settings;
-
 export const selectSelectedSetting = (state: RootState) => state.settings.selectedSetting;
-
-export const selectSelectedSettingLoading = (state: RootState) => state.settings.selectedSettingLoading;
-
-export const selectGetSettingsError = (state: RootState) => state.settings.getSettingsError;
-
-export const selectSettingByKey = (key: string) => (state: RootState) => state.settings.settings?.find(setting => setting.key === key);
 
 export default settingsSlice.reducer;
 
