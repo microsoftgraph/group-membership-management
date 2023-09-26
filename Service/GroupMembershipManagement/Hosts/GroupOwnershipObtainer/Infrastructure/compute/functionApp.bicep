@@ -70,6 +70,8 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.LoggerFunction.Disabled'
       'AzureWebJobs.TelemetryTrackerFunction.Disabled'
       'AzureWebJobs.UsersSenderFunction.Disabled'
+      'AzureWebJobs.QueueMessageSenderFunction.Disabled'
+      'AzureWebJobs.FeatureFlagFunction.Disabled'
     ]
   }
 }
