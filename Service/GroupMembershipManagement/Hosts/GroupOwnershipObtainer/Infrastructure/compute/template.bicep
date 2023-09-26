@@ -148,6 +148,8 @@ var stagingSettings = {
   'AzureWebJobs.LoggerFunction.Disabled': 1
   'AzureWebJobs.TelemetryTrackerFunction.Disabled': 1
   'AzureWebJobs.UsersSenderFunction.Disabled': 1
+  'AzureWebJobs.QueueMessageSenderFunction.Disabled': 1
+  'AzureWebJobs.FeatureFlagFunction.Disabled': 1
 }
 
 var productionSettings = {
@@ -162,6 +164,8 @@ var productionSettings = {
   'AzureWebJobs.LoggerFunction.Disabled': 0
   'AzureWebJobs.TelemetryTrackerFunction.Disabled': 0
   'AzureWebJobs.UsersSenderFunction.Disabled': 0
+  'AzureWebJobs.QueueMessageSenderFunction.Disabled': 0
+  'AzureWebJobs.FeatureFlagFunction.Disabled': 0
 }
 
 module functionAppTemplate_GroupOwnershipObtainer 'functionApp.bicep' = {
