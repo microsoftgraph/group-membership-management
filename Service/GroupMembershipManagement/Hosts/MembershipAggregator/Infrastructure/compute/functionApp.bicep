@@ -83,8 +83,6 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
   parent: functionApp
   properties: {
     appSettingNames: [
-      'graphUpdaterUrl'
-      'graphUpdaterFunctionKey'
       'AzureFunctionsJobHost__extensions__durableTask__hubName'
       'AzureWebJobs.StarterFunction.Disabled'
       'AzureWebJobs.OrchestratorFunction.Disabled'
@@ -95,6 +93,7 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
       'AzureWebJobs.JobTrackerEntity.Disabled'
       'AzureWebJobs.LoggerFunction.Disabled'
+      'AzureWebJobsStorage'
     ]
   }
 }
