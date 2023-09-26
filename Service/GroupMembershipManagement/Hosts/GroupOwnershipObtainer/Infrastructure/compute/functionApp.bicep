@@ -72,6 +72,7 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.UsersSenderFunction.Disabled'
       'AzureWebJobs.QueueMessageSenderFunction.Disabled'
       'AzureWebJobs.FeatureFlagFunction.Disabled'
+      'AzureWebJobsStorage'
     ]
   }
 }
