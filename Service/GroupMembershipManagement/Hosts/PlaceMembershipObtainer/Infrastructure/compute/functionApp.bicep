@@ -70,6 +70,7 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.WorkspacesReaderFunction.Disabled'
       'AzureWebJobs.UsersReaderFunction.Disabled'
       'AzureWebJobs.SubsequentUsersReaderFunction.Disabled'
+      'AzureWebJobsStorage'
     ]
   }
 }
