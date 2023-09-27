@@ -238,10 +238,10 @@ namespace Hosts.MembershipAggregator
             var membersToAdd = JsonConvert.DeserializeObject<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToAddJSON));
             var membersToRemove = JsonConvert.DeserializeObject<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToRemoveJSON));
 
-            var newMembership = (GroupMembership)membership.Clone();
-            newMembership.SourceMembers.Clear();
-            newMembership.SourceMembers.AddRange(membersToAdd);
-            newMembership.SourceMembers.AddRange(membersToRemove);
+            var ManageMembership = (GroupMembership)membership.Clone();
+            ManageMembership.SourceMembers.Clear();
+            ManageMembership.SourceMembers.AddRange(membersToAdd);
+            ManageMembership.SourceMembers.AddRange(membersToRemove);
 
             var serializerSettings = new JsonSerializerSettings
             {
@@ -250,7 +250,7 @@ namespace Hosts.MembershipAggregator
             };
 
             var filePath = GenerateFileName(syncJob, "Aggregated", context);
-            var content = TextCompressor.Compress(JsonConvert.SerializeObject(newMembership, serializerSettings));
+            var content = TextCompressor.Compress(JsonConvert.SerializeObject(ManageMembership, serializerSettings));
 
             return new FileUploaderRequest { FilePath = filePath, Content = content, SyncJob = syncJob };
         }

@@ -30,6 +30,10 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
     actionRequired: {
       color: theme.semanticColors.errorIcon,
     },
+    titleContainer: {
+      display: 'flex',
+      justifyContent: 'space-between',
+    },
     title: {
       paddingLeft: 12
     },

@@ -25,6 +25,7 @@ import {
   MessageBarType,
   IconButton,
   IIconProps,
+  PrimaryButton
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { Text } from '@fluentui/react/lib/Text';
@@ -190,6 +191,10 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       getJobsByPage();
     }
   }
+
+  const onManageMembershipsButtonClick = (): void => {
+    navigate('/ManageMembership', { replace: false, state: { item: 1 } });
+  };
 
   const error = useSelector(selectGetJobsError);
 
@@ -384,6 +389,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           <div className={classNames.title}>
             <Text variant="xLarge">{strings.JobsList.listOfMemberships}</Text>
           </div>
+          <PrimaryButton onClick={onManageMembershipsButtonClick}>{t('JobsList.manageMembershipButton')}</PrimaryButton>
           <div className={classNames.tabContent}>
             <ShimmeredDetailsList
               setKey="set"

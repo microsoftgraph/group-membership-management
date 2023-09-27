@@ -12,11 +12,12 @@ export interface IJobsListStyles {
   root: IStyle;
   enabled: IStyle;
   disabled: IStyle;
+  titleContainer: IStyle;
+  title: IStyle;
   actionRequired: IStyle;
   tabContent: IStyle;
   columnToEnd: IStyle;
   refresh: IStyle;
-  title: IStyle;
   jobsList: IStyle;
   jobsListFilter: IStyle;
   footer: IStyle;

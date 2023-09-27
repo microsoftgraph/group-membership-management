@@ -29,7 +29,7 @@ const leftArrowIcon: IIconProps = { iconName: 'ChevronLeftMed' };
 export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
   props: IPageHeaderProps
 ) => {
-  const { backButtonHidden, children, className, styles } = props;
+  const { backButtonHidden, children, className, styles, rightButton } = props;
   const classNames: IProcessedStyleSet<IPageHeaderStyles> = getClassNames(
     styles,
     {
@@ -49,13 +49,16 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
     <Stack className={classNames.root}>
       {
         !backButtonHidden &&
-        <Stack horizontalAlign="start" verticalAlign='center'> 
-          <ActionButton
-            className={classNames.backButton}
-            iconProps={leftArrowIcon}
-            text={strings.back as string}
-            onClick={backButtonOnClick}
-          />
+        <Stack verticalAlign='center'>
+          <Stack className={classNames.actionButtonsContainer} horizontal horizontalAlign={rightButton ? "space-between" : "start"} verticalAlign='center'>
+            <ActionButton
+              className={classNames.backButton}
+              iconProps={leftArrowIcon}
+              text={strings.back as string}
+              onClick={backButtonOnClick}
+            />
+            {rightButton}
+          </Stack>
           <div className={classNames.separator}></div>
         </Stack>
       }

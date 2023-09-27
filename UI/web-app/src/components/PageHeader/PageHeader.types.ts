@@ -10,6 +10,7 @@ import type React from 'react';
 
 export interface IPageHeaderStyles {
   root: IStyle;
+  actionButtonsContainer: IStyle;
   backButton: IStyle;
   separator: IStyle;
 }
@@ -22,6 +23,7 @@ export interface IPageHeaderStyleProps {
 export interface IPageHeaderProps
   extends React.AllHTMLAttributes<HTMLDivElement> {
   backButtonHidden?: boolean;
+  rightButton?: React.ReactNode;
   
   /**
    * Optional className to apply to the root of the component.
