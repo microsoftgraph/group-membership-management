@@ -2,7 +2,6 @@
 // Licensed under the MIT license.import React from "react";
 
 import { classNamesFunction, IButtonStyles, IconButton, IPersonaSharedProps, IProcessedStyleSet, IStyle, Persona, PersonaSize, useTheme } from '@fluentui/react';
-import { useTranslation } from 'react-i18next';
 import {
   type IAppHeaderProps,
   type IAppHeaderStyleProps,
@@ -14,6 +13,7 @@ import { useEffect } from 'react';
 import { selectProfilePhoto } from '../../store/profile.slice';
 import { getProfilePhoto } from '../../store/profile.api';
 import logo from '../../logo.svg';
+import { useStrings } from '../../localization/hooks';
 
 const getClassNames = classNamesFunction<
   IAppHeaderStyleProps,
@@ -25,7 +25,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
 ) => {
   const { className, styles } = props;
   const theme = useTheme();
-  const { t } = useTranslation();
+  const strings = useStrings();
   const classNames: IProcessedStyleSet<IAppHeaderStyles> = getClassNames(
     styles,
     {
@@ -62,7 +62,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
         <div className={classNames.appIcon}>
           <img src={logo} alt="Membership Management Icon"  style={{ height: 32, width: 32 }} />
         </div>
-        <div className={classNames.appTitle}>{t('membershipManagement')}</div>
+        <div className={classNames.appTitle}>{strings.membershipManagement}</div>
       </div>
       <div className={classNames.settingsContainer}>
           {/* <IconButton iconProps={{iconName: 'settings'}} className={classNames.settingsIcon} styles={buttonStyles} /> // Hidden until feature is enabled*/}

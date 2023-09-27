@@ -1,13 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { useTranslation } from 'react-i18next';
-import '../i18n/config';
 import { DefaultButton } from '@fluentui/react/lib/Button';
 import { useNavigate } from 'react-router-dom';
+import { useStrings } from '../localization/hooks';
 
 const AddOwner = () => {
-  const { t } = useTranslation();
+  const strings = useStrings();
   const navigate = useNavigate();
   const onClick = (
     item?: any,
@@ -19,7 +18,7 @@ const AddOwner = () => {
 
   return (
     <div>
-      <DefaultButton onClick={onClick}>{t('addOwnerButton')}</DefaultButton>
+      <DefaultButton onClick={onClick}>{strings.addOwnerButton}</DefaultButton>
     </div>
   );
 };

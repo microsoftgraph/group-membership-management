@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   IButtonProps,
   IButtonStyles,
@@ -14,12 +13,13 @@ import {
 } from '@fluentui/react';
 import { IBannerProps, IBannerStyleProps, IBannerStyles } from './Banner.types';
 import { InfoIcon } from '@fluentui/react-icons-mdl2';
+import { useStrings } from '../../localization/hooks';
 
 const getClassNames = classNamesFunction<IBannerStyleProps, IBannerStyles>();
 
 export const BannerBase: React.FunctionComponent<IBannerProps> = (props) => {
   const { className, styles } = props;
-  const { t } = useTranslation();
+  const strings = useStrings();
   const [collapsed, setCollapsed] = useState(false);
   const theme = useTheme();
 
@@ -51,7 +51,7 @@ export const BannerBase: React.FunctionComponent<IBannerProps> = (props) => {
       {!collapsed && (
         <div className={classNames.messageContainer}>
           <InfoIcon className={classNames.icon} />
-          <div className={classNames.message}>{t('bannerMessage')}</div>
+          <div className={classNames.message}>{strings.bannerMessage}</div>
         </div>
       )}
       <IconButton

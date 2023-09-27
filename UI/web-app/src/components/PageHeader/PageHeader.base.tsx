@@ -11,13 +11,13 @@ import { Stack } from '@fluentui/react/lib/Stack';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 
 import {
   type IPageHeaderProps,
   type IPageHeaderStyleProps,
   type IPageHeaderStyles,
 } from './PageHeader.types';
+import { useStrings } from '../../localization/hooks';
 
 const getClassNames = classNamesFunction<
   IPageHeaderStyleProps,
@@ -37,7 +37,7 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
       theme: useTheme(),
     }
   );
-  const { t } = useTranslation();
+  const strings = useStrings();
 
   const navigate = useNavigate();
 
@@ -53,7 +53,7 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
           <ActionButton
             className={classNames.backButton}
             iconProps={leftArrowIcon}
-            text={t('back') as string}
+            text={strings.back as string}
             onClick={backButtonOnClick}
           />
           <div className={classNames.separator}></div>

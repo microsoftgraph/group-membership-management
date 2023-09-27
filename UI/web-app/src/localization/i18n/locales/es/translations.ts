@@ -92,7 +92,8 @@ export const strings: IStrings = {
       of: "de",
       display: "Mostrando",
       items: "Elementos por página"
-    }
+    },
+    NoResults: "No se encontro ninguna membresía"
   },
   welcome: "Bienvenido",
   back: "Regresar",

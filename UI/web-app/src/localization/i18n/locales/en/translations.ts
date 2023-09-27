@@ -92,7 +92,8 @@ export const strings: IStrings = {
       of: "of",
       display: "Display",
       items: "Items per page"
-    }
+    },
+    NoResults: "No memberships found."
   },
   welcome: "Welcome",
   back: "Back to dashboard",

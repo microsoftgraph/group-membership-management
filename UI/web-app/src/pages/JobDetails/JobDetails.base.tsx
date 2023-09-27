@@ -18,7 +18,6 @@ import {
   type IStackTokens
 } from '@fluentui/react/lib/Stack';
 import React, { useEffect } from 'react';
-import { useTranslation, } from 'react-i18next';
 import { useSelector, useDispatch } from 'react-redux';
 import { useLocation } from 'react-router-dom';
 import { InfoLabel } from '../../components/InfoLabel';
@@ -43,6 +42,7 @@ import {
 } from './JobDetails.types';
 import { JobDetails } from '../../models/JobDetails';
 import { PageVersion } from '../../components/PageVersion';
+import { useStrings } from '../../localization/hooks';
 
 
 export interface IContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
@@ -59,7 +59,7 @@ const getClassNames = classNamesFunction<
 export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   props: IJobDetailsProps
 ) => {
-  const { t } = useTranslation();
+  const strings = useStrings();
   const { className, styles } = props;
   const classNames: IProcessedStyleSet<IJobDetailsStyles> = getClassNames(
     styles,
@@ -105,7 +105,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
             isMultiline={false}
             onDismiss={onMessageBarDismiss}
             dismissButtonAriaLabel={
-              t('JobDetails.MessageBar.dismissButtonAriaLabel') as string
+              strings.JobDetails.MessageBar.dismissButtonAriaLabel as string
             }
           >
             {error}
@@ -116,32 +116,32 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
         <MembershipDetails job={job} classNames={classNames} />
         {/* // Hidden until feature is enabled
         <ContentContainer
-          title={t('JobDetails.labels.membershipStatus')}
+          title={strings.JobDetails.labels.membershipStatus}
           children={<MembershipStatusContent job={job} classNames={classNames} />}
           removeButton={true}
         /> */}
         <ContentContainer
-          title={t('JobDetails.labels.destination')}
-          actionText={t('JobDetails.openInAzure')}
+          title={strings.JobDetails.labels.destination}
+          actionText={strings.JobDetails.openInAzure}
           actionIcon={OpenInNewWindowIcon}
           actionOnClick={openInAzure}
           children={<MembershipDestination job={job} jobDetails={jobDetails} classNames={classNames} />}
         />
         <ContentContainer
-          title={t('JobDetails.labels.configuration')}
+          title={strings.JobDetails.labels.configuration}
           children={<MembershipConfiguration job={job} classNames={classNames} />}
           removeButton={true}
         // Hidden until feature is enabled
-        // actionText={t('JobDetails.editButton')}
+        // actionText={strings.JobDetails.editButton}
         // useLinkButton={true}
         // linkButtonIconName='edit'
         />
         <ContentContainer
-          title={t('JobDetails.labels.sourceParts')}
+          title={strings.JobDetails.labels.sourceParts}
           children={<label>{jobDetails?.source}</label>}
           removeButton={true}
         // Hidden until feature is enabled
-        // actionText={t('JobDetails.editButton')}
+        // actionText={strings.JobDetails.editButton}
         // useLinkButton={true}
         // linkButtonIconName='edit'
         />
@@ -157,18 +157,18 @@ const MembershipDetails: React.FunctionComponent<IContentProps> = (
   props: IContentProps
 ) => {
   const { classNames } = props;
-  const { t } = useTranslation();
+  const strings = useStrings();
 
   return (
     <div className={classNames.card}>
       <div>
         <Text className={classNames.title} block>
-          {t('JobDetails.labels.pageTitle')}
+          {strings.JobDetails.labels.pageTitle}
         </Text>
       </div>
       {/* <div> // Hidden until feature is enabled
         <Text className={classNames.subtitle}>
-          {t('JobDetails.labels.lastModifiedby')}
+          {strings.JobDetails.labels.lastModifiedby}
           <Text variant="medium" style={{ marginLeft: 5 }}>
             {'DATA UNAVAILABLE'}
           </Text>
@@ -181,12 +181,12 @@ const MembershipDetails: React.FunctionComponent<IContentProps> = (
 const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
   props: IContentProps
 ) => {
-  const { t } = useTranslation();
+  const strings = useStrings();
   const { job, classNames } = props;
 
   return (
     <div className={classNames.membershipStatus}>
-      <label className={classNames.toggleLabel}>{t('JobDetails.labels.sync')}</label>
+      <label className={classNames.toggleLabel}>{strings.JobDetails.labels.sync}</label>
       <Toggle
         inlineLabel={true}
         checked={job.enabledOrNot === 'Enabled'}
@@ -205,7 +205,7 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
 const MembershipDestination: React.FunctionComponent<IContentProps> = (
   props: IContentProps
 ) => {
-  const { t } = useTranslation();
+  const strings = useStrings();
   const { job, jobDetails, classNames } = props;
 
   const itemAlignmentsStackTokens: IStackTokens = {
@@ -250,8 +250,8 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
         >
           <Stack.Item align="start">
             <InfoLabel
-              label={t('JobDetails.labels.type')}
-              description={t('JobDetails.descriptions.type')}
+              label={strings.JobDetails.labels.type}
+              description={strings.JobDetails.descriptions.type}
             />
             <Text className={classNames.itemData} block>
               {job.targetGroupType}
@@ -260,7 +260,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
 
           <Stack.Item align="start">
             <Text className={classNames.itemTitle} block>
-              {t('JobDetails.labels.name')}
+              {strings.JobDetails.labels.name}
             </Text>
             <Text className={classNames.itemData} block>
               {job.targetGroupName ?? '-'}
@@ -269,8 +269,8 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
 
           <Stack.Item align="start">
             <InfoLabel
-              label={t('JobDetails.labels.ID')}
-              description={t('JobDetails.descriptions.id')}
+              label={strings.JobDetails.labels.ID}
+              description={strings.JobDetails.descriptions.id}
             />
             <Text className={classNames.itemData} block>
               {job.targetGroupId}
@@ -281,7 +281,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
       {jobDetails?.endpoints ? (
         <Stack.Item align="start">
           <Text className={classNames.itemTitle} block>
-            {t('JobDetails.labels.groupLinks')}
+            {strings.JobDetails.labels.groupLinks}
           </Text>
           <div className={classNames.itemData}>
             <Stack
@@ -325,7 +325,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
 const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
   props: IContentProps
 ) => {
-  const { t } = useTranslation();
+  const strings = useStrings();
   const { job, classNames } = props;
   const jobDetails = useSelector(selectSelectedJobDetails);
 
@@ -361,8 +361,8 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
     >
       <Stack.Item align="start">
         <InfoLabel
-          label={t('JobDetails.labels.startDate')}
-          description={t('JobDetails.descriptions.startDate')}
+          label={strings.JobDetails.labels.startDate}
+          description={strings.JobDetails.descriptions.startDate}
         />
         <div className={classNames.itemData}>
           {jobDetails != null ? (
@@ -377,8 +377,8 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
 
       {/* <Stack.Item align="start"> // Hidden until feature is enabled
         <InfoLabel
-          label={t('JobDetails.labels.endDate')}
-          description={t('JobDetails.descriptions.endDate')}
+          label={strings.JobDetails.labels.endDate}
+          description={strings.JobDetails.descriptions.endDate}
         />
         <div className={classNames.itemData}>
           <Text variant="medium" block>
@@ -389,8 +389,8 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
 
       <Stack.Item align="start">
         <InfoLabel
-          label={t('JobDetails.labels.lastRun')}
-          description={t('JobDetails.descriptions.lastRun')}
+          label={strings.JobDetails.labels.lastRun}
+          description={strings.JobDetails.descriptions.lastRun}
         />
         <div className={classNames.itemData}>
           <Text variant="medium" block>
@@ -404,8 +404,8 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
 
       <Stack.Item align="start">
         <InfoLabel
-          label={t('JobDetails.labels.nextRun')}
-          description={t('JobDetails.descriptions.nextRun')}
+          label={strings.JobDetails.labels.nextRun}
+          description={strings.JobDetails.descriptions.nextRun}
         />
         <div className={classNames.itemData}>
           <Text variant="medium" block>
@@ -419,13 +419,13 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
 
       <Stack.Item align="start">
         <InfoLabel
-          label={t('JobDetails.labels.frequency')}
-          description={t('JobDetails.descriptions.frequency')}
+          label={strings.JobDetails.labels.frequency}
+          description={strings.JobDetails.descriptions.frequency}
         />
         <div className={classNames.itemData}>
           {jobDetails != null ? (
             <Text variant="medium" block>
-              {format(t('JobDetails.labels.frequencyDescription'), job.period)}
+              {format(strings.JobDetails.labels.frequencyDescription, job.period)}
             </Text>
           ) : (
             <Shimmer width="100%" />
@@ -435,10 +435,8 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
 
       <Stack.Item align="start">
         <InfoLabel
-          label={t('JobDetails.labels.increaseThreshold')}
-          description={t(
-            'JobDetails.descriptions.increaseThreshold'
-          )}
+          label={strings.JobDetails.labels.increaseThreshold}
+          description={strings.JobDetails.descriptions.increaseThreshold}
         />
         <div className={classNames.itemData}>
           {jobDetails != null ? (
@@ -453,10 +451,8 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
 
       <Stack.Item align="start">
         <InfoLabel
-          label={t('JobDetails.labels.decreaseThreshold')}
-          description={t(
-            'JobDetails.descriptions.decreaseThreshold'
-          )}
+          label={strings.JobDetails.labels.decreaseThreshold}
+          description={strings.JobDetails.descriptions.decreaseThreshold}
         />
         <div className={classNames.itemData}>
           {jobDetails != null ? (

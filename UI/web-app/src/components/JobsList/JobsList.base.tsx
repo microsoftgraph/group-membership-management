@@ -6,8 +6,6 @@ import {
   IColumn,
   SelectionMode,
 } from '@fluentui/react/lib/DetailsList';
-import { useTranslation } from 'react-i18next';
-import '../../i18n/config';
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { OdataQueryOptions, fetchJobs } from '../../store/jobs.api';
@@ -45,6 +43,7 @@ import { PagingBar } from '../PagingBar';
 import { PageVersion } from '../PageVersion';
 import { JobsListFilter } from '../JobsListFilter/JobsListFilter';
 import { SyncStatus } from '../../models/Status';
+import { useStrings } from '../../localization/hooks';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -64,7 +63,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     }
   );
 
-  const { t } = useTranslation();
+  const strings = useStrings();
   const dispatch = useDispatch<AppDispatch>();
   const jobs = useSelector(selectAllJobs);
   const [pageNumber, setPageNumber] = useState(1);
@@ -88,7 +87,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const columns = [
     {
       key: 'targetGroupType',
-      name: t('JobsList.ShimmeredDetailsList.columnNames.type'),
+      name: strings.JobsList.ShimmeredDetailsList.columnNames.type,
       fieldName: 'targetGroupType',
       minWidth: 109,
       maxWidth: 109,
@@ -99,7 +98,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     },
     {
       key: 'targetGroupName',
-      name: t('JobsList.ShimmeredDetailsList.columnNames.name'),
+      name: strings.JobsList.ShimmeredDetailsList.columnNames.name,
       fieldName: 'targetGroupName',
       minWidth: 439,
       isResizable: true,
@@ -109,7 +108,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     },
     {
       key: 'lastSuccessfulRunTime',
-      name: t('JobsList.ShimmeredDetailsList.columnNames.lastRun'),
+      name: strings.JobsList.ShimmeredDetailsList.columnNames.lastRun,
       fieldName: 'lastSuccessfulRunTime',
       minWidth: 114,
       maxWidth: 114,
@@ -120,7 +119,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     },
     {
       key: 'estimatedNextRunTime',
-      name: t('JobsList.ShimmeredDetailsList.columnNames.nextRun'),
+      name: strings.JobsList.ShimmeredDetailsList.columnNames.nextRun,
       fieldName: 'estimatedNextRunTime',
       minWidth: 123,
       maxWidth: 123,
@@ -131,7 +130,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     },
     {
       key: 'enabledOrNot',
-      name: t('JobsList.ShimmeredDetailsList.columnNames.status'),
+      name: strings.JobsList.ShimmeredDetailsList.columnNames.status,
       fieldName: 'enabledOrNot',
       minWidth: 83,
       maxWidth: 83,
@@ -142,7 +141,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     },
     {
       key: 'actionRequired',
-      name: t('JobsList.ShimmeredDetailsList.columnNames.actionRequired'),
+      name: strings.JobsList.ShimmeredDetailsList.columnNames.actionRequired,
       fieldName: 'actionRequired',
       minWidth: 200,
       maxWidth: 200,
@@ -377,17 +376,13 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               messageBarType={MessageBarType.error}
               isMultiline={false}
               onDismiss={onDismiss}
-              dismissButtonAriaLabel={
-                t('JobsList.MessageBar.dismissButtonAriaLabel') as
-                  | string
-                  | undefined
-              }
+              dismissButtonAriaLabel={strings.JobsList.MessageBar.dismissButtonAriaLabel}
             >
               {error}
             </MessageBar>
           )}
           <div className={classNames.title}>
-            <Text variant="xLarge">{t('JobsList.listOfMemberships')}</Text>
+            <Text variant="xLarge">{strings.JobsList.listOfMemberships}</Text>
           </div>
           <div className={classNames.tabContent}>
             <ShimmeredDetailsList
@@ -401,28 +396,16 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               ariaLabelForShimmer="Content is being fetched"
               ariaLabelForGrid="Item details"
               selectionPreservedOnEmptyClick={true}
-              ariaLabelForSelectionColumn={
-                t('JobsList.ShimmeredDetailsList.toggleSelection') as
-                  | string
-                  | undefined
-              }
-              ariaLabelForSelectAllCheckbox={
-                t('JobsList.ShimmeredDetailsList.toggleAllSelection') as
-                  | string
-                  | undefined
-              }
-              checkButtonAriaLabel={
-                t('JobsList.ShimmeredDetailsList.selectRow') as
-                  | string
-                  | undefined
-              }
+              ariaLabelForSelectionColumn={strings.JobsList.ShimmeredDetailsList.toggleSelection}
+              ariaLabelForSelectAllCheckbox={strings.JobsList.ShimmeredDetailsList.toggleAllSelection}
+              checkButtonAriaLabel={strings.JobsList.ShimmeredDetailsList.selectRow}
               onActiveItemChanged={onItemClicked}
               onRenderItemColumn={_renderItemColumn}
             />
 
             {jobs?.length === 0 && (
               <div className={classNames.noMembershipsFoundText}>
-                <Text variant="medium">{t('JobsList.NoResults')}</Text>
+                <Text variant="medium">{strings.JobsList.NoResults}</Text>
               </div>
             )}
             <div className={classNames.columnToEnd}></div>

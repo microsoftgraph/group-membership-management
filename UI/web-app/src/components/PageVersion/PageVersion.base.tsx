@@ -8,13 +8,13 @@ import {
 import { Text } from '@fluentui/react/lib/Text';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import React from 'react';
-import { useTranslation } from 'react-i18next';
 
 import {
   type IPageVersionProps,
   type IPageVersionStyleProps,
   type IPageVersionStyles,
 } from './PageVersion.types';
+import { useStrings } from '../../localization/hooks';
 
 const getClassNames = classNamesFunction<
   IPageVersionStyleProps,
@@ -33,11 +33,11 @@ export const PageVersionBase: React.FunctionComponent<IPageVersionProps> = (
     }
   );
   const versionNumber = `${process.env.REACT_APP_VERSION_NUMBER}` || '1.0.0';
-  const { t } = useTranslation();
+  const strings = useStrings();
 
   return (
     <div className={classNames.root}>
-        {t('version') as string} #{versionNumber}
+        {strings.version as string} #{versionNumber}
     </div>
   );
 };

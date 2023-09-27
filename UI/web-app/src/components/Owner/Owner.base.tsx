@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { useTranslation } from 'react-i18next';
-import '../../i18n/config';
 import { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
@@ -23,6 +21,7 @@ import {
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
+import { useStrings } from '../../localization/hooks';
 
 const getClassNames = classNamesFunction<IOwnerStyleProps, IOwnerStyles>();
 
@@ -37,8 +36,8 @@ export const OwnerBase: React.FunctionComponent<IOwnerProps> = (
     theme: useTheme(),
   });
 
-  const { t } = useTranslation();
-  const groupIdPlaceHolder = t('groupIdPlaceHolder');
+  const strings = useStrings();
+  const groupIdPlaceHolder = strings.groupIdPlaceHolder;
   const dispatch = useDispatch<AppDispatch>();
   const owner = useSelector(selectOwner);
 
@@ -55,7 +54,7 @@ export const OwnerBase: React.FunctionComponent<IOwnerProps> = (
 
   return (
     <div className={classNames.root}>
-      <Text variant="large">{t('groupIdHeader')}</Text>
+      <Text variant="large">{strings.groupIdHeader}</Text>
       <p />
       <TextField
         ariaLabel={groupIdPlaceHolder}
@@ -64,19 +63,19 @@ export const OwnerBase: React.FunctionComponent<IOwnerProps> = (
         tabIndex={0}
       />
       <p />
-      <DefaultButton onClick={onClick}>{t('okButton')}</DefaultButton>
+      <DefaultButton onClick={onClick}>{strings.okButton}</DefaultButton>
       <p />
       {(() => {
         if (owner.status === '') {
           return <div />;
         } else if (owner.status === 'false 403 Forbidden') {
-          return <div>{t('addOwner403Message')}</div>;
+          return <div>{strings.addOwner403Message}</div>;
         } else if (owner.status === 'false 400 Bad Request') {
-          return <div>{t('addOwner400Message')}</div>;
+          return <div>{strings.addOwner400Message}</div>;
         } else if (owner.status === 'true 204 No Content') {
-          return <div>{t('addOwner204Message')}</div>;
+          return <div>{strings.addOwner204Message}</div>;
         } else {
-          return <div>{t('addOwnerErrorMessage')}</div>;
+          return <div>{strings.addOwnerErrorMessage}</div>;
         }
       })()}
     </div>

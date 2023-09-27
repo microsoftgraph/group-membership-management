@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { useTranslation } from 'react-i18next';
 import {
     classNamesFunction,
     IProcessedStyleSet,
@@ -14,6 +13,7 @@ import {
 import {
     IPagingBarProps, IPagingBarStyleProps, IPagingBarStyles,
 } from './PagingBar.types';
+import { useStrings } from '../../localization/hooks';
 
 
 const getClassNames = classNamesFunction<
@@ -33,7 +33,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
         }
     );
 
-    const { t } = useTranslation();
+    const strings = useStrings();
     const { pageSize, pageNumber, totalNumberOfPages, setPageSize, setPageNumber, setPageSizeCookie, getJobsByPage } = props;
 
     const pageSizeOptions: IDropdownOption[] = [
@@ -78,34 +78,34 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
             <div className={classNames.divContainer}>
                 <IconButton
                     iconProps={{ iconName: 'ChevronLeft' }}
-                    title={t('JobsList.PagingBar.previous') as string}
+                    title={strings.JobsList.PagingBar.previousPage as string}
                     onClick={() => navigateToPage(-1)}
                 />
-                <label>{t('JobsList.PagingBar.previousPage')}</label>
+                <label>{strings.JobsList.PagingBar.previousPage}</label>
                 <div className={classNames.divContainer}>
-                    <label className={classNames.leftLabelMessage}>{t('JobsList.PagingBar.page')}</label>
+                    <label className={classNames.leftLabelMessage}>{strings.JobsList.PagingBar.page}</label>
                     <TextField
                         style={{ width: 55 }}
                         value={pageNumber.toString()}
                         onChange={onPageNumberChanged}
                     />
-                    <label className={classNames.rightLabelMessage}>{t('JobsList.PagingBar.of')} {(totalNumberOfPages ? totalNumberOfPages : 1)}</label>
+                    <label className={classNames.rightLabelMessage}>{strings.JobsList.PagingBar.of} {(totalNumberOfPages ? totalNumberOfPages : 1)}</label>
                 </div>
-                <label>{t('JobsList.PagingBar.nextPage')}</label>
+                <label>{strings.JobsList.PagingBar.nextPage}</label>
                 <IconButton
                     iconProps={{ iconName: 'ChevronRight' }}
-                    title={t('JobsList.PagingBar.next') as string}
+                    title={strings.JobsList.PagingBar.nextPage as string}
                     onClick={() => navigateToPage(1)}
                 />
             </div>
             <div className={classNames.divContainer}>
-                <label className={classNames.leftLabelMessage}>{t('JobsList.PagingBar.display')}</label>
+                <label className={classNames.leftLabelMessage}>{strings.JobsList.PagingBar.display}</label>
                 <Dropdown
                     options={pageSizeOptions}
                     defaultSelectedKey={pageSize}
                     onChange={onPageSizeChanged}
                 />
-                <label className={classNames.rightLabelMessage}>{t('JobsList.PagingBar.items')}</label>
+                <label className={classNames.rightLabelMessage}>{strings.JobsList.PagingBar.items}</label>
             </div>
         </div >
     )

@@ -91,6 +91,7 @@ export type IStrings = {
       display: string;
       items: string;
     };
+    NoResults: string;
   };
   welcome: string;
   back: string;
