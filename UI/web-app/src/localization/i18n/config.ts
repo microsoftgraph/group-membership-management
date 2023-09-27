@@ -7,10 +7,10 @@ i18n.use(initReactI18next).init({
   lng: 'en',
   resources: {
     en: {
-      translations: require('./locales/en/translations.json')
+      translations: require('./locales/en/translations').strings
     },
     es: {
-      translations: require('./locales/es/translations.json')
+      translations: require('./locales/es/translations').strings
     }
   },
   ns: ['translations'],
