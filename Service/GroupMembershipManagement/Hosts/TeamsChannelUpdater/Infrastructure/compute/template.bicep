@@ -83,9 +83,10 @@ var syncDisabledCCEmailAddresses = resourceId(subscription().subscriptionId, pre
 var supportEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'supportEmailAddresses')
 var membershipStorageAccountName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountName')
 var membershipContainerName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipContainerName')
-var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
+var teamsChannelUpdaterStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'teamsChannelUpdaterStorageAccountProd')
+var teamsChannelUpdaterStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'teamsChannelUpdaterStorageAccountStaging')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-TeamsChannelUpdater'
@@ -106,10 +107,10 @@ var commonSettings = {
 }
 
 var appSettings = {
+  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-TeamsChannelUpdater')
   'AzureFunctionsJobHost:extensions:durableTask:extendedSessionsEnabled': toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
@@ -131,7 +132,7 @@ var appSettings = {
 }
 
 var stagingSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-TeamsChannelUpdater-staging')
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelUpdaterStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelUpdaterStaging'
   'AzureWebJobs.StarterFunction.Disabled': 1
   'AzureWebJobs.OrchestratorFunction.Disabled': 1
@@ -148,7 +149,7 @@ var stagingSettings = {
 }
 
 var productionSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-TeamsChannelUpdater')
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelUpdater'
   'AzureWebJobs.StarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
@@ -256,7 +257,7 @@ module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   ]
 }
 
-resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
+resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-TeamsChannelUpdater/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
@@ -266,7 +267,7 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   ]
 }
 
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
+resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
   name: '${functionAppName}-TeamsChannelUpdater/staging/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, stagingSettings)
