@@ -88,8 +88,8 @@ var membershipAggregatorStagingUrl = resourceId(subscription().subscriptionId, d
 var membershipAggregatorStagingFunctionKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipAggregatorStagingFunctionKey')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
-var teamsChannelStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'teamsChannelStorageAccountProd')
-var teamsChannelStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'teamsChannelStorageAccountStaging')
+var teamsChannelMembershipObtainerStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'teamsChannelMembershipObtainerStorageAccountProd')
+var teamsChannelMembershipObtainerStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'teamsChannelMembershipObtainerStorageAccountStaging')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-TeamsChannelMembershipObtainer'
@@ -110,8 +110,8 @@ var commonSettings = {
 }
 
 var appSettings = {
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTSHARE: toLower('functionApp-TeamsChannel')
+  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-TeamsChannelMembershipObtainer')
   'AzureFunctionsJobHost:extensions:durableTask:extendedSessionsEnabled': toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   serviceBusSyncJobTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobTopic, '2019-09-01').secretUriWithVersion})'
@@ -136,13 +136,13 @@ var appSettings = {
 }
 
 var stagingSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-TeamsChannelMembershipObtainer-staging')
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelMembershipObtainerStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelMembershipObtainerStaging'
   'TeamsChannelMembershipObtainer:IsTeamsChannelMembershipObtainerDryRunEnabled': 1
 }
 
 var productionSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-TeamsChannelMembershipObtainer')
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelMembershipObtainer'
   'TeamsChannelMembershipObtainer:IsTeamsChannelMembershipObtainerDryRunEnabled': 0
 }
@@ -239,11 +239,15 @@ module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   ]
 }
 
+<<<<<<< HEAD
 <<<<<<< HEAD:Service/GroupMembershipManagement/Hosts/TeamsChannel/Infrastructure/compute/template.bicep
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-TeamsChannel/appsettings'
 =======
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
+=======
+resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
+>>>>>>> 9acb6d9a (Updated TeamsChannelMembershipObtainer to use its own storage account)
   name: '${functionAppName}-TeamsChannelMembershipObtainer/appsettings'
 >>>>>>> cb8ba2ab (Updated folders, namespaces, and tests):Service/GroupMembershipManagement/Hosts/TeamsChannelMembershipObtainer/Infrastructure/compute/template.bicep
   kind: 'string'
@@ -254,11 +258,15 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   ]
 }
 
+<<<<<<< HEAD
 <<<<<<< HEAD:Service/GroupMembershipManagement/Hosts/TeamsChannel/Infrastructure/compute/template.bicep
 resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
   name: '${functionAppName}-TeamsChannel/staging/appsettings'
 =======
 resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
+=======
+resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
+>>>>>>> 9acb6d9a (Updated TeamsChannelMembershipObtainer to use its own storage account)
   name: '${functionAppName}-TeamsChannelMembershipObtainer/staging/appsettings'
 >>>>>>> cb8ba2ab (Updated folders, namespaces, and tests):Service/GroupMembershipManagement/Hosts/TeamsChannelMembershipObtainer/Infrastructure/compute/template.bicep
   kind: 'string'
