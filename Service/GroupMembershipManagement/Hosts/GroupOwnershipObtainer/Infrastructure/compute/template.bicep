@@ -149,6 +149,7 @@ var stagingSettings = {
   'AzureWebJobs.UsersSenderFunction.Disabled': 1
   'AzureWebJobs.QueueMessageSenderFunction.Disabled': 1
   'AzureWebJobs.FeatureFlagFunction.Disabled': 1
+  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}GroupOwnershipObtainerStaging'
 }
 
 var productionSettings = {

@@ -75,6 +75,7 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.SendEmailFunction.Disabled'
       'AzureWebJobs.ExpireNotificationsFunction.Disabled'
       'AzureWebJobsStorage'
+      'AzureFunctionsWebHost__hostid'
     ]
   }
 }

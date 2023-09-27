@@ -157,6 +157,7 @@ var stagingSettings = {
   'AzureWebJobs.MessageTrackerFunction.Disabled': 1
   'AzureWebJobs.StatusReaderFunction.Disabled': 1
   'AzureWebJobs.TelemetryTrackerFunction.Disabled': 1
+  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}GraphUpdaterStaging'
 }
 
 var productionSettings = {

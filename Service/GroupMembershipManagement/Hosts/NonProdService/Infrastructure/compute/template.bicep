@@ -144,6 +144,7 @@ var stagingSettings = {
   'AzureWebJobs.GroupUpdaterFunction.Disabled': 1
   'AzureWebJobs.LoggerFunction.Disabled': 1
   'AzureWebJobs.TenantUserReaderFunction.Disabled': 1
+  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}NonProdServiceStaging'
 }
 
 var productionSettings = {

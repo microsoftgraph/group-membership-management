@@ -104,6 +104,7 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.UpdateNotificationStatusFunction.Disabled'
       'AzureWebJobs.SendNotificationFunction.Disabled'
       'AzureWebJobsStorage'
+      'AzureFunctionsWebHost__hostid'
     ]
   }
 }

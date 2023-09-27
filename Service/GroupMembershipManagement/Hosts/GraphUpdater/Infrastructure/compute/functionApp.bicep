@@ -123,6 +123,7 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.StatusReaderFunction.Disabled'
       'AzureWebJobs.TelemetryTrackerFunction.Disabled'
       'AzureWebJobsStorage'
+      'AzureFunctionsWebHost__hostid'
     ]
   }
 }

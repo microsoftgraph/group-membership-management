@@ -71,6 +71,7 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.SyncJobsReaderFunction.Disabled'
       'AzureWebJobs.TopicMessageSenderFunction.Disabled'
       'AzureWebJobsStorage'
+      'AzureFunctionsWebHost__hostid'
     ]
   }
 }

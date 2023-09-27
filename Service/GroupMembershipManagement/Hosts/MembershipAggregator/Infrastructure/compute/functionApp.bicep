@@ -96,6 +96,7 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.TelemetryTrackerFunction.Disabled'
       'AzureWebJobs.TopicMessageSenderFunction.Disabled'
       'AzureWebJobsStorage'
+      'AzureFunctionsWebHost__hostid'
     ]
   }
 }

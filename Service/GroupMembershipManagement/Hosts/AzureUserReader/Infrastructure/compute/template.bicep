@@ -133,6 +133,7 @@ var stagingSettings = {
   'AzureWebJobs.AzureUserReaderFunction.Disabled': 1
   'AzureWebJobs.PersonnelNumberReaderFunction.Disabled': 1
   'AzureWebJobs.UploadUsersFunction.Disabled': 1
+  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}AzureUserReaderStaging'
 }
 
 var productionSettings = {
@@ -148,7 +149,7 @@ module functionAppTemplate_AzureUserReader 'functionApp.bicep' = {
     location: location
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
-    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup    
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     secretSettings: commonSettings
   }
   dependsOn: [

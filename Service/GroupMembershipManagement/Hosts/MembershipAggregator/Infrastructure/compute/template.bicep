@@ -175,6 +175,7 @@ var stagingSettings = {
   'AzureWebJobs.LoggerFunction.Disabled': 1
   'AzureWebJobs.TelemetryTrackerFunction.Disabled': 1
   'AzureWebJobs.TopicMessageSenderFunction.Disabled': 1
+  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}MembershipAggregatorStaging'
 }
 
 var productionSettings = {

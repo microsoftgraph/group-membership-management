@@ -163,6 +163,7 @@ var stagingSettings = {
   'AzureWebJobs.LoggerFunction.Disabled': 1
   'AzureWebJobs.UpdateNotificationStatusFunction.Disabled': 1
   'AzureWebJobs.SendNotificationFunction.Disabled': 1
+  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}NotifierStaging'
 }
 
 var productionSettings = {

@@ -161,6 +161,7 @@ var stagingSettings = {
   'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 1
   'AzureWebJobs.SyncJobsReaderFunction.Disabled': 1
   'AzureWebJobs.TopicMessageSenderFunction.Disabled': 1
+  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}JobTriggerStaging'
 }
 
 var productionSettings = {

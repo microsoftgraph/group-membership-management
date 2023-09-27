@@ -140,6 +140,7 @@ var stagingSettings = {
   'AzureWebJobs.RemoveInactiveJobsFunction.Disabled': 1
   'AzureWebJobs.SendEmailFunction.Disabled': 1
   'AzureWebJobs.ExpireNotificationsFunction.Disabled': 1
+  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}AzureMaintenanceStaging'
 }
 
 var productionSettings = {
