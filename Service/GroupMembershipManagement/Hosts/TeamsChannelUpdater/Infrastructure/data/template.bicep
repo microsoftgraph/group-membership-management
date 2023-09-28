@@ -24,7 +24,7 @@ var prodStorageAccountName = substring('tcu${solutionAbbreviation}${environmentA
 var stagingStorageAccountName = substring('tcu${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
 
 module teamsChannelUpdaterStorageAccountProd 'storageAccount.bicep' = {
-  name: 'jtProdstorageAccountTemplate'
+  name: 'tcuProdstorageAccountTemplate'
   params: {
     name: prodStorageAccountName
     sku: storageAccountSku
@@ -35,7 +35,7 @@ module teamsChannelUpdaterStorageAccountProd 'storageAccount.bicep' = {
 }
 
 module teamsChannelUpdaterStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'jtStagingstorageAccountTemplate'
+  name: 'tcuStagingstorageAccountTemplate'
   params: {
     name: stagingStorageAccountName
     sku: storageAccountSku
