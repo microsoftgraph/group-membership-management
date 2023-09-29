@@ -79,6 +79,7 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.UsersReaderFunction.Disabled'
       'AzureWebJobs.UsersSenderFunction.Disabled'
       'AzureWebJobsStorage'
+      'AzureFunctionsWebHost__hostid'
     ]
   }
 }

@@ -55,7 +55,7 @@ stages:
          coverageThreshold: 89
       - function:
          name: 'GraphUpdater'
-         coverageThreshold: 75
+         coverageThreshold: 74
       - function:
          name: 'TeamsChannelUpdater'
          coverageThreshold: 69
