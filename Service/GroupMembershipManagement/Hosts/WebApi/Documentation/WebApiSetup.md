@@ -71,6 +71,19 @@ The WebpAPI will be called by the GMM UI. In order to allow it to call the WebAP
 Make sure to select the Authorized scope.
 8. Click "Add application"
 
+## Add the WebAPI application to the GMM UI as API Permission
+1. From the Azure Portal locate and open "Azure Active Directory"
+2. On the left menu select "App Registrations"
+3. Search for the ui application, the name follows this convention `<solutionAbbreviation>`-ui-`<environmentAbbreviation>` i.e. gmm-ui-int.
+4. Click on the name of your application.
+5. On the left menu select "API Permissions".
+6. Click on "Add a permission"
+7. Click on "APIs my organization uses" and type the WebAPI Application ID
+8. Select the WebAPI application and click on "Delegated permissions"
+9. Check "user_impersonation" on and click "Add permissions"
+10. Click "Grant admin consent for <tenant-name>"
+
+
 ## Grant Permissions
 
 This step needs to be completed after all the resources have been deployed to your Azure tenant.
