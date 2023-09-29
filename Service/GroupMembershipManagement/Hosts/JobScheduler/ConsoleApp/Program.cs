@@ -26,12 +26,15 @@ namespace JobScheduler
             var gmmContext = new GMMContext(new DbContextOptionsBuilder<GMMContext>()
                                         .UseSqlServer(appSettings.SQLDatabaseConnectionString)
                                         .Options);
+            var readContext = new GMMContext(new DbContextOptionsBuilder<GMMContext>()
+                                        .UseSqlServer(appSettings.ReplicaSqlServerConnectionString)
+                                        .Options);
 
             // Injections
             var logAnalyticsSecret = new LogAnalyticsSecret<LoggingRepository>(appSettings.LogAnalyticsCustomerId, appSettings.LogAnalyticsPrimarySharedKey, "JobScheduler");
             var appConfigVerbosity = new AppConfigVerbosity { Verbosity = VerbosityLevel.INFO };
             var loggingRepository = new LoggingRepository(logAnalyticsSecret);
-            var syncJobRepository = new DatabaseSyncJobsRepository(gmmContext);
+            var syncJobRepository = new DatabaseSyncJobsRepository(gmmContext, readContext);
 
 
             var telemetryConfiguration = new TelemetryConfiguration();

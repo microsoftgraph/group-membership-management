@@ -11,32 +11,34 @@ namespace Repositories.EntityFramework
     public class DatabaseSyncJobsRepository : IDatabaseSyncJobsRepository
     {
         private readonly GMMContext _context;
+        private readonly GMMContext _readContext;
 
-        public DatabaseSyncJobsRepository(GMMContext gmmContext)
+        public DatabaseSyncJobsRepository(GMMContext gmmContext, GMMContext readContext)
         {
             _context = gmmContext ?? throw new ArgumentNullException(nameof(gmmContext));
+            _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
 
         public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
         {
-            return await _context.SyncJobs.SingleOrDefaultAsync(job => job.Id == syncJobId);
+            return await _readContext.SyncJobs.SingleOrDefaultAsync(job => job.Id == syncJobId);
         }
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
-            return await _context.SyncJobs.ToListAsync();
+            return await _readContext.SyncJobs.ToListAsync();
         }
 
         public IQueryable<SyncJob> GetSyncJobs(bool asNoTracking = false)
         {
             return asNoTracking ?
-                    _context.SyncJobs.AsNoTracking()
-                    : _context.SyncJobs;
+                    _readContext.SyncJobs.AsNoTracking()
+                    : _readContext.SyncJobs;
         }
 
         public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
         {
-            IQueryable<SyncJob> query = _context.SyncJobs;
+            IQueryable<SyncJob> query = _readContext.SyncJobs;
 
             if (!includeFutureJobs)
             {
@@ -55,7 +57,7 @@ namespace Repositories.EntityFramework
 
         public async Task<int> GetSyncJobCountAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
         {
-            IQueryable<SyncJob> query = _context.SyncJobs;
+            IQueryable<SyncJob> query = _readContext.SyncJobs;
 
             if (!includeFutureJobs)
             {
