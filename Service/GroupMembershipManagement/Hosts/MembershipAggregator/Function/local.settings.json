@@ -8,6 +8,7 @@
     "logAnalyticsPrimarySharedKey": "",
     "jobsStorageAccountConnectionString": "",
     "ConnectionStrings:JobsContext": "",
+    "ConnectionStrings:JobsContextReadOnly": "",
     "notificationsTableName": "notifications",
     "graphUpdaterUrl": "",
     "graphUpdaterFunctionKey": "",
