@@ -6,6 +6,7 @@ using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Repositories.GraphGroups
@@ -217,6 +218,11 @@ namespace Repositories.GraphGroups
         public async Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds)
         {
             return await _graphGroupInformationReader.GetGroupsAsync(groupIds, RunId);
+        }
+
+        public async Task<List<AzureADGroup>> SearchGroupsAsync(string query)
+        {
+            return await _graphGroupInformationReader.SearchGroupsAsync(query);
         }
     }
 }

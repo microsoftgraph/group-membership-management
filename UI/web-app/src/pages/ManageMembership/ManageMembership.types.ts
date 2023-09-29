@@ -14,7 +14,15 @@ export interface IManageMembershipStyles {
     title: IStyle;
     stepTitle: IStyle;
     stepDescription: IStyle;
+    dropdownTitle: IStyle;
+    dropdownField: IStyle;
     bottomContainer: IStyle;
+    circlesContainer: IStyle;
+    circleIcon: IStyle;
+    nextButtonContainer: IStyle;
+    endpointsContainer: IStyle;
+    outlookWarning: IStyle;
+    outlookContainer: IStyle;
 }
 
 export interface IManageMembershipStyleProps {

@@ -39,10 +39,46 @@ export const getStyles = (props: IManageMembershipStyleProps): IManageMembership
             fontSize: 16,
             fontFamily: 'Segoe UI'
         },
-        bottomContainer:{
-            marginBottom: 24,
+        dropdownTitle: {
+            borderRadius: 4,
+            borderStyle: 'solid',
+            borderWidth: 1,
+            borderColor: theme.palette.neutralQuaternary,
+            background: theme.palette.white,
+            width: 500
+        },
+        dropdownField: {
+            width: 500
+        },
+        bottomContainer: {
             display: 'flex',
-            justifyContent: 'flex-end'
+            justifyContent: 'space-between',
+            alignItems: 'center',
+        },
+        circlesContainer: {
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'row',
+            justifyContent: 'center',
+            gap: 20
+        },
+        circleIcon: {
+            color: theme.palette.themePrimary,
+        },
+        nextButtonContainer: {
+            marginLeft: 20
+        },
+        endpointsContainer: {
+            display: 'flex',
+            flexDirection: 'column'
+        },
+        outlookWarning: {
+            width: 'fit-content',
+        },
+        outlookContainer:{
+            display: 'flex',
+            flexDirection: 'row',
+            gap: 70
         }
     };
 };

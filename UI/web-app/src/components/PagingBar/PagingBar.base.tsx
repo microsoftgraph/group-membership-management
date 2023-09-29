@@ -17,8 +17,8 @@ import { useStrings } from '../../localization/hooks';
 
 
 const getClassNames = classNamesFunction<
-  IPagingBarStyleProps,
-  IPagingBarStyles
+    IPagingBarStyleProps,
+    IPagingBarStyles
 >();
 
 export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
@@ -29,7 +29,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
     const classNames: IProcessedStyleSet<IPagingBarStyles> = getClassNames(
         styles,
         {
-        className
+            className
         }
     );
 
@@ -80,6 +80,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
                     iconProps={{ iconName: 'ChevronLeft' }}
                     title={strings.JobsList.PagingBar.previousPage as string}
                     onClick={() => navigateToPage(-1)}
+                    disabled={pageNumber === 1 || totalNumberOfPages === 0}
                 />
                 <label>{strings.JobsList.PagingBar.previousPage}</label>
                 <div className={classNames.divContainer}>
@@ -96,6 +97,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
                     iconProps={{ iconName: 'ChevronRight' }}
                     title={strings.JobsList.PagingBar.nextPage as string}
                     onClick={() => navigateToPage(1)}
+                    disabled={pageNumber === totalNumberOfPages || totalNumberOfPages === 0} 
                 />
             </div>
             <div className={classNames.divContainer}>

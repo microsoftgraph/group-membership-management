@@ -31,6 +31,8 @@ namespace Repositories.GraphGroups
                                   GraphGroupMetricTracker graphGroupMetricTracker)
                                   : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
         { }
+        private int MaxResultCount { get; set; } = 25;
+        private int MaxRetry { get; set; } = 2;
 
         public async Task<bool> GroupExistsAsync(Guid groupId, Guid? runId)
         {
@@ -386,6 +388,44 @@ namespace Repositories.GraphGroups
             }
 
             return groups;
+        }
+
+        public async Task<List<AzureADGroup>> SearchGroupsAsync(string query)
+        {
+            try
+            {
+                var results = new List<AzureADGroup>();
+
+                var groupCollectionPage = await _graphServiceClient.Groups
+                                                                   .GetAsync(requestConfiguration =>
+                                                                   {
+                                                                       requestConfiguration
+                                                                        .QueryParameters
+                                                                        .Filter = $"(startsWith(mail,'{query}') or startswith(displayName, '{query}')";
+                                                                   });
+
+                if (groupCollectionPage.Value.Count > 0)
+                {
+                    foreach (var group in groupCollectionPage.Value)
+                    {
+                        var azureAdGroup = new AzureADGroup
+                        {
+                            ObjectId = new Guid(group.Id),
+                            Name = group.DisplayName,
+                        };
+
+                        results.Add(azureAdGroup);
+                    }
+                }
+
+                return results;
+
+            }
+            catch (Exception ex)
+            {
+                // Handle exceptions
+                throw ex;
+            }
         }
     }
 }
