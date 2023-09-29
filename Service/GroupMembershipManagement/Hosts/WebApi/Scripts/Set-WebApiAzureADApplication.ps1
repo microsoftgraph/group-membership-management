@@ -28,7 +28,6 @@ Environment Abbreviation
 
 .PARAMETER TenantId
 Azure tenant id where keyvaults exists.
-The application is going to be created in this tenant and its settings stored in the data keyvault.
 
 .PARAMETER SecondaryTenantId
 Secondary / Demo tenant id.
@@ -43,7 +42,6 @@ Optional
 When re-running the script, this flag is used to indicate if we need to recreate the application or use the existing one.
 
 .EXAMPLE
-# these are arbitrary guids and subscription names, you'll have to change them.
 Set-WebApiAzureADApplication	-SubscriptionName "<subscription-name>" `
 								-SolutionAbbreviation "<solution-abbreviation>" `
 								-EnvironmentAbbreviation "<environment-abbreviation>" `
