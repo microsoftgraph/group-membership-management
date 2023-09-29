@@ -401,7 +401,7 @@ namespace Repositories.GraphGroups
                                                                    {
                                                                        requestConfiguration
                                                                         .QueryParameters
-                                                                        .Filter = $"(startsWith(mail,'{query}') or startswith(displayName, '{query}')";
+                                                                        .Filter = $"(startsWith(mail,'{query}') or startswith(displayName, '{query}') or (startsWith(id,'{query}')";
                                                                    });
 
                 if (groupCollectionPage.Value.Count > 0)

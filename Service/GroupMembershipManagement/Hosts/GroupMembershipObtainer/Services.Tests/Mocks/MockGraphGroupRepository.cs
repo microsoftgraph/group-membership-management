@@ -172,6 +172,11 @@ namespace Tests.FunctionApps.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task<List<AzureADGroup>> SearchGroupsAsync(string query)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class MockException : Exception { }

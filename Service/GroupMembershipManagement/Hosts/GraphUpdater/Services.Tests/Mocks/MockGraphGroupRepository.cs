@@ -148,5 +148,10 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task<List<AzureADGroup>> SearchGroupsAsync(string query)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
