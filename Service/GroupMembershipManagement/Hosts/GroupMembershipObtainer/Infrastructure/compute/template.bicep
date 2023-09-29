@@ -155,6 +155,7 @@ var stagingSettings = {
   'AzureWebJobs.SubsequentUsersReaderFunction.Disabled': 1
   'AzureWebJobs.UsersReaderFunction.Disabled': 1
   'AzureWebJobs.UsersSenderFunction.Disabled': 1
+  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}GroupMembershipObtainerStaging'
 }
 
 var productionSettings = {
