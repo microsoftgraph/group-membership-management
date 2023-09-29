@@ -2,6 +2,7 @@
   "logAnalyticsCustomerId": "",
   "logAnalyticsPrimarySharedKey": "",
   "ConnectionStrings:JobsContext": "",
+  "ConnectionStrings:JobsContextReadOnly": "",
   "resetJobs": "",
   "daysToAddForReset": "",
   "distributeJobs": "",
@@ -15,5 +16,6 @@
   "runTimeRangeInDays": "",
   "workspaceId": "",
   "APPINSIGHTS_INSTRUMENTATIONKEY": "",
-  "sqlDatabaseConnectionString": ""
+  "sqlDatabaseConnectionString": "",
+  "replicaSqlServerConnectionString": ""
 }

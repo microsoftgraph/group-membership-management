@@ -93,6 +93,10 @@ namespace Hosts.FunctionBase
                 options.UseSqlServer(GetValueOrThrow("ConnectionStrings:JobsContext")),
                 ServiceLifetime.Scoped
             );
+            builder.Services.AddDbContext<GMMContext>(options =>
+                options.UseSqlServer(GetValueOrThrow("ConnectionStrings:JobsContextReadOnly")),
+                ServiceLifetime.Scoped
+            );
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
 
             builder.Services.AddSingleton<IAppConfigVerbosity>(services =>
