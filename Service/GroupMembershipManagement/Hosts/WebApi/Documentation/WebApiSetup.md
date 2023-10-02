@@ -19,17 +19,14 @@ From your `PowerShell 7.x` command prompt navigate to the `Service\GroupMembersh
     2.    Set-WebApiAzureADApplication	-SubscriptionName "<subscription-name>" `
                                         -SolutionAbbreviation "<solution-abbreviation>" `
                                         -EnvironmentAbbreviation "<environment-abbreviation>" `
-                                        -AppTenantId "<app-tenant-id>" `
-                                        -KeyVaultTenantId "<keyvault-tenant-id>" `
+                                        -TenantId "<tenant-id>" `
                                         -Clean $false `
                                         -Verbose
 Follow the instructions on the screen.
 
 Note:
-AppTenantId <app-tenant-id> - If the application is going to be installed in a different tenant, set that tenant id here.
-KeyVaultTenantId <keyvault-tenant-id> - This is the tenant where your GMM resources are located, i.e. keyvaults, storage account.
-
-If you only have one tenant, these will be set to the same tenant id.
+TenantId <tenant-id> - This is the tenant where your GMM resources are located, i.e. keyvaults, storage account.
+DevTenantId <dev-tenant-id> - If the application is going to be installed in a different tenant, set that tenant id here. This is an optional parameter, if not provided TenantId value is used by default.
 
 ## Create an AAD Group for GMM Admins
 
@@ -37,14 +34,14 @@ Login and follow these steps in the tenant that was set in "AppTenantId" to run 
 
 In order to control access to the WebAPI, several roles are created when the WebAPI application is created by the script below, 'Reader', 'Admin'.
 
-1. Create a new Azure Active Directory Group or use an existing one.
+1. Create a new Microsoft Entra ID Group or use an existing one.
 2. Add members to the group, members of this group will act as GMM administrators. Administrators will have access to all jobs present in GMM and will be able to perform any CRUD action on them.
 
 ## Add Admin role to you GMM Admins group
 
 Login and follow these steps in the tenant that was set in "AppTenantId" to run the Set-WebApiAzureADApplication.ps1 script in the previous step.
 
-1. From the Azure Portal locate and open "Azure Active Directory"
+1. From the Azure Portal locate and open "Microsoft Entra ID"
 2. On the left menu select "Enterprise Applications"
 3. Search for the webapi application, the name follows this convention `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>` i.e. gmm-webapi-int.
 You might need to change the "Application Type" filter to "All Applications".
@@ -61,7 +58,7 @@ Note: Individual users can be added and granted the proper permission, if you de
 
 The WebpAPI will be called by the GMM UI. In order to allow it to call the WebAPI, it needs to be added as trusted client application.
 
-1. From the Azure Portal locate and open "Azure Active Directory"
+1. From the Azure Portal locate and open "Microsoft Entra ID"
 2. On the left menu select "App Registrations"
 3. Search for the webapi application, the name follows this convention `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>` i.e. gmm-webapi-int.
 4. Click on the name of your application.
@@ -72,7 +69,7 @@ Make sure to select the Authorized scope.
 8. Click "Add application"
 
 ## Add the WebAPI application to the GMM UI as API Permission
-1. From the Azure Portal locate and open "Azure Active Directory"
+1. From the Azure Portal locate and open "Microsoft Entra ID"
 2. On the left menu select "App Registrations"
 3. Search for the ui application, the name follows this convention `<solutionAbbreviation>`-ui-`<environmentAbbreviation>` i.e. gmm-ui-int.
 4. Click on the name of your application.
@@ -107,7 +104,7 @@ Database name follows this naming convention `<SolutionAbbreviation>-data-<Envir
 1. Connect to your SQL Server Database using Sql Server Management Studio (SSMS) or Azure Data Studio.
 - Server name : `<server-name>.database.windows.net`
 - User name: Use your Azure account.
-- Authentication: Azure Active Directory - Universal with MFA
+- Authentication: Microsoft Entra ID - Universal with MFA
 - Database name: `<database-name>`
 
 2. Run these SQL command
@@ -154,7 +151,7 @@ Then, once the deployment finishes, follow these steps:
 
 Finally, you will need to update your App registration to include this custom domain. To do so, make sure you:
 1. Login and follow these steps in the tenant where the application was created.
-1. From the Azure Portal locate and open "Azure Active Directory"
+1. From the Azure Portal locate and open "Microsoft Entra ID"
 1. On the left menu, select "App registrations"
 1. Search for the webapi application, the name follows this convention `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>` i.e. gmm-webapi-int.
 1. Click on the name of your application.
