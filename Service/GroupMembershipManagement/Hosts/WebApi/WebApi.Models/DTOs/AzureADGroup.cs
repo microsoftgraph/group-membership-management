@@ -3,20 +3,23 @@
 
 namespace WebApi.Models.DTOs
 {
-    public class Group
+    public class AzureADGroup
     {
-        public Group(
+        public AzureADGroup(
             Guid id,
             //string alias,
-            string name)
+            string name,
+            List<string> endpoints)
         {
             Id = id;
             //Alias = alias;
             Name = name;
+            Endpoints = endpoints;
         }
 
         public Guid Id { get; set; }
         //public string Alias { get; set; }
         public string Name { get; set; }
+        public List<string> Endpoints { get; set; }
     }
 }

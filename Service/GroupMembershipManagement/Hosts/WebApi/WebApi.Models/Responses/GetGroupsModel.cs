@@ -3,7 +3,7 @@
 
 namespace WebApi.Models.Responses
 {
-    public class GetGroupsModel : List<DTOs.Group>
+    public class GetGroupsModel : List<DTOs.AzureADGroup>
     {
         public GetGroupsModel()
         {
