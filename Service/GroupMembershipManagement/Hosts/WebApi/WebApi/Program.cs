@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.AspNetCore.OData;
-using Microsoft.AspNetCore.OData.Routing.Conventions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
@@ -19,6 +18,7 @@ using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.IdentityModel.Validators;
 using Microsoft.O365.ActionableMessages.Utilities;
 using Microsoft.OpenApi.Models;
 using Repositories.Contracts;
@@ -106,6 +106,13 @@ namespace WebApi
                     },
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKeys = tenantSigningKeys.Concat(tenantSigningKeysv2).Concat(officeSigningKeys)
+                };
+
+                options.TokenValidationParameters.EnableAadSigningKeyIssuerValidation();
+                options.Events.OnMessageReceived = async context =>
+                {
+                    context.Options.TokenValidationParameters.ConfigurationManager ??= options.ConfigurationManager as BaseConfigurationManager;
+                    await Task.CompletedTask.ConfigureAwait(false);
                 };
             });
 
