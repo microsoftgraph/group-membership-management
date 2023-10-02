@@ -30,10 +30,9 @@ Environment Abbreviation
 Azure tenant id where keyvaults exists.
 The application is going to be created in this tenant and its settings stored in the data keyvault.
 
-.PARAMETER SecondaryTenantId
-Secondary / Demo tenant id.
-This is the tenant where the UI application is going to be created.
-If you have only one tenant, this is the same as TenantId.
+.PARAMETER DevTenantId
+If you are testing GMM using a dev tenant, but your Azure Resources exist in a Subscription tied to your organization's tenant, you will need to provide both of these tenant ids.
+If you are deploying everything in your organization's tenant, you do not need to provide this value.
 
 .PARAMETER CertificateName
 Certificate name
@@ -48,7 +47,6 @@ Set-UIAzureADApplication	-SubscriptionName "<subscription-name>" `
 							-SolutionAbbreviation "<solution-abbreviation>" `
 							-EnvironmentAbbreviation "<environment-abbreviation>" `
 							-TenantId "<tenant-id>" `
-							-SecondaryTenantId "<secondary-tenant-id>" `
 							-Clean $false `
 							-Verbose
 #>
@@ -64,8 +62,8 @@ function Set-UIAzureADApplication {
 		[string] $EnvironmentAbbreviation,
 		[Parameter(Mandatory = $True)]
 		[Guid] $TenantId,
-		[Parameter(Mandatory = $True)]
-		[Guid] $SecondaryTenantId,
+		[Parameter(Mandatory = $False)]
+		[Guid] $DevTenantId,
 		[Parameter(Mandatory = $False)]
 		[string] $CertificateName,
 		[Parameter(Mandatory = $False)]
@@ -80,9 +78,14 @@ function Set-UIAzureADApplication {
 	. ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
 	Install-AzModuleIfNeeded
 
-	Write-Host "Please sign in to your secondary/demo tenant."
+	if($null -eq $DevTenantId) {
+		$DevTenantId = $TenantId
+		Write-Host "Please sign in to your tenant."
+	} else {
+		Write-Host "Please sign in to your dev tenant."
+	}
 
-	Connect-AzAccount -Tenant $SecondaryTenantId
+	Connect-AzAccount -Tenant $DevTenantId
 
 	#region Delete Application / Service Principal if they already exist
 	$uiAppDisplayName = "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
@@ -186,7 +189,7 @@ function Set-UIAzureADApplication {
 	Start-Sleep -Seconds 30
 
 	# These need to go into the key vault
-	$uiAppTenantId = $SecondaryTenantId;
+	$uiAppTenantId = $DevTenantId;
 	$uiAppClientId = $uiApp.AppId;
 
 	# Create new secret
@@ -195,7 +198,7 @@ function Set-UIAzureADApplication {
 
 	Write-Host (Get-AzContext)
 
-	if ($TenantId -ne $SecondaryTenantId) {
+	if ($TenantId -ne $DevTenantId) {
 		Write-Host "Please sign in to your primary tenant."
 		Connect-AzAccount -Tenant $TenantId
 	}
