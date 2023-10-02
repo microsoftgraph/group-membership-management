@@ -239,17 +239,8 @@ module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   ]
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD:Service/GroupMembershipManagement/Hosts/TeamsChannel/Infrastructure/compute/template.bicep
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
-  name: '${functionAppName}-TeamsChannel/appsettings'
-=======
-resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
-=======
-resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
->>>>>>> 9acb6d9a (Updated TeamsChannelMembershipObtainer to use its own storage account)
   name: '${functionAppName}-TeamsChannelMembershipObtainer/appsettings'
->>>>>>> cb8ba2ab (Updated folders, namespaces, and tests):Service/GroupMembershipManagement/Hosts/TeamsChannelMembershipObtainer/Infrastructure/compute/template.bicep
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
@@ -258,17 +249,8 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   ]
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD:Service/GroupMembershipManagement/Hosts/TeamsChannel/Infrastructure/compute/template.bicep
 resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
-  name: '${functionAppName}-TeamsChannel/staging/appsettings'
-=======
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
-=======
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
->>>>>>> 9acb6d9a (Updated TeamsChannelMembershipObtainer to use its own storage account)
   name: '${functionAppName}-TeamsChannelMembershipObtainer/staging/appsettings'
->>>>>>> cb8ba2ab (Updated folders, namespaces, and tests):Service/GroupMembershipManagement/Hosts/TeamsChannelMembershipObtainer/Infrastructure/compute/template.bicep
   kind: 'string'
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
