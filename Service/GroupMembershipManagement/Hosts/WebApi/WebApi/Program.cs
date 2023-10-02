@@ -267,6 +267,12 @@ namespace WebApi
 
             }
 
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<GMMContext>();
+                db.Database.Migrate();
+            }
+
             app.UseAzureAppConfiguration();
 
             app.UseHttpsRedirection();
