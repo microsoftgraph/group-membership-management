@@ -229,7 +229,7 @@ namespace WebApi
             builder.Services.AddScoped<IActionableMessageTokenValidator, ActionableMessageTokenValidator>();
             builder.Services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
             builder.Services.AddScoped<IDatabaseMigrationsRepository, DatabaseMigrationsRepository>();
-            builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
+            builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();            
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -258,6 +258,12 @@ namespace WebApi
                     }
                 });
 
+            }
+            
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<GMMContext>();
+                db.Database.Migrate();
             }
 
             app.UseAzureAppConfiguration();
