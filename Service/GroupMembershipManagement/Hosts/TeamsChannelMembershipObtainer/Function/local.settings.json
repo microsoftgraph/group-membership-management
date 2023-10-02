@@ -27,7 +27,7 @@
     "serviceBusTopicConnection": "",
     "supportEmailAddresses": "",
     "syncDisabledCCEmailAddresses": "",
-    "TeamsChannelMembershipObtainer:IsTeamsChannelMembershipObtainerDryRunEnabled": "",
+    "TeamsChannelMembershipObtainer:IsDryRunEnabled": "",
     "WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG": "",
     "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING": "",
     "WEBSITE_CONTENTSHARE": "",

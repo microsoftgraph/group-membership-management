@@ -29,7 +29,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
     {
         protected override string FunctionName => nameof(TeamsChannelMembershipObtainer);
 
-        protected override string DryRunSettingName => "TeamsChannel:IsTeamsChannelDryRunEnabled";
+        protected override string DryRunSettingName => "TeamsChannelMembershipObtainer:IsDryRunEnabled";
 
         public override void Configure(IFunctionsHostBuilder builder)
         {
