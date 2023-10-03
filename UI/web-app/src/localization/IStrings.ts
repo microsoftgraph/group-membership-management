@@ -91,6 +91,37 @@ export type IStrings = {
       display: string;
       items: string;
     };
+    JobsListFilter: {
+      filters: {
+        ID: {
+          label: string;
+          placeholder: string;
+          validationErrorMessage: string;
+        };
+        status: {
+          label: string;
+          options: {
+            all: string;
+            enabled: string;
+            disabled: string;
+          };
+        };
+        actionRequired: {
+          label: string;
+          options: {
+            all: string;
+            thresholdExceeded: string;
+            customerPaused: string;
+            membershipDataNotFound: string;
+            destinationGroupNotFound: string;
+            notOwnerOfDestinationGroup: string;
+            securityGroupNotFound: string;
+          };
+        };
+      };
+      filterButtonText: string;
+      clearButtonTooltip: string;
+    };
     NoResults: string;
   };
   welcome: string;

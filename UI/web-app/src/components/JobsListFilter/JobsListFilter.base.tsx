@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { useTranslation } from 'react-i18next';
-import '../../i18n/config';
 import {
   classNamesFunction,
   IProcessedStyleSet,
@@ -24,6 +22,7 @@ import {
 } from './JobsListFilter.types';
 import { SyncStatus } from '../../models/Status';
 import { useState } from 'react';
+import { useStrings } from '../../localization/hooks';
 
 const getClassNames = classNamesFunction<
   IJobsListFilterStyleProps,
@@ -50,7 +49,7 @@ export const JobsListFilterBase: React.FunctionComponent<
     }
   );
 
-  const { t } = useTranslation();
+  const strings = useStrings();
   const [ID, setID] = useState<string>('');
   const [statusSelectedItem, setStatusSelectedItem] =
     useState<IDropdownOption>();
@@ -66,58 +65,46 @@ export const JobsListFilterBase: React.FunctionComponent<
   const statusDropdownOptions = [
     {
       key: 'All',
-      text: t('JobsList.JobsListFilter.filters.status.options.all'),
+      text: strings.JobsList.JobsListFilter.filters.status.options.all,
     },
     {
       key: 'Enabled',
-      text: t('JobsList.JobsListFilter.filters.status.options.enabled'),
+      text: strings.JobsList.JobsListFilter.filters.status.options.enabled,
     },
     {
       key: 'Disabled',
-      text: t('JobsList.JobsListFilter.filters.status.options.disabled'),
+      text: strings.JobsList.JobsListFilter.filters.status.options.disabled,
     },
   ];
 
   const actionRequiredDropdownOptions = [
     {
       key: 'All',
-      text: t('JobsList.JobsListFilter.filters.actionRequired.options.all'),
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.all,
     },
     {
       key: SyncStatus.ThresholdExceeded,
-      text: t(
-        'JobsList.JobsListFilter.filters.actionRequired.options.thresholdExceeded'
-      ),
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.thresholdExceeded,
     },
     {
       key: SyncStatus.CustomerPaused,
-      text: t(
-        'JobsList.JobsListFilter.filters.actionRequired.options.customerPaused'
-      ),
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.customerPaused,
     },
     {
       key: SyncStatus.MembershipDataNotFound,
-      text: t(
-        'JobsList.JobsListFilter.filters.actionRequired.options.membershipDataNotFound'
-      ),
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.membershipDataNotFound,
     },
     {
       key: SyncStatus.DestinationGroupNotFound,
-      text: t(
-        'JobsList.JobsListFilter.filters.actionRequired.options.destinationGroupNotFound'
-      ),
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.destinationGroupNotFound,
     },
     {
       key: SyncStatus.NotOwnerOfDestinationGroup,
-      text: t(
-        'JobsList.JobsListFilter.filters.actionRequired.options.notOwnerOfDestinationGroup'
-      ),
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.notOwnerOfDestinationGroup,
     },
     {
       key: SyncStatus.SecurityGroupNotFound,
-      text: t(
-        'JobsList.JobsListFilter.filters.actionRequired.options.securityGroupNotFound'
-      ),
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.securityGroupNotFound,
     },
   ];
 
@@ -128,9 +115,7 @@ export const JobsListFilterBase: React.FunctionComponent<
     const inputGuid = newValue || '';
 
     if (inputGuid !== '' && !isGuidValid(inputGuid)) {
-      setIdValidationErrorMessage(
-        t('JobsList.JobsListFilter.filters.ID.validationErrorMessage') as string
-      );
+      setIdValidationErrorMessage(strings.JobsList.JobsListFilter.filters.ID.validationErrorMessage);
     } else {
       setIdValidationErrorMessage(undefined);
     }
@@ -183,12 +168,10 @@ export const JobsListFilterBase: React.FunctionComponent<
         <Stack horizontal tokens={itemAlignmentsStackTokens}>
           <Stack.Item align="start">
             <TextField
-              label={t('JobsList.JobsListFilter.filters.ID.label') as string}
+              label={strings.JobsList.JobsListFilter.filters.ID.label}
               value={ID}
               onChange={onChangeID}
-              placeholder={
-                t('JobsList.JobsListFilter.filters.ID.placeholder') as string
-              }
+              placeholder={strings.JobsList.JobsListFilter.filters.ID.placeholder}
               errorMessage={idValidationErrorMessage}
               styles={{
                 fieldGroup: classNames.textFieldFieldGroup,
@@ -198,9 +181,7 @@ export const JobsListFilterBase: React.FunctionComponent<
 
           <Stack.Item align="start">
             <Dropdown
-              label={
-                t('JobsList.JobsListFilter.filters.status.label') as string
-              }
+              label={strings.JobsList.JobsListFilter.filters.status.label}
               selectedKey={
                 statusSelectedItem ? statusSelectedItem.key : undefined
               }
@@ -215,11 +196,7 @@ export const JobsListFilterBase: React.FunctionComponent<
 
           <Stack.Item align="start">
             <Dropdown
-              label={
-                t(
-                  'JobsList.JobsListFilter.filters.actionRequired.label'
-                ) as string
-              }
+              label={strings.JobsList.JobsListFilter.filters.actionRequired.label}
               selectedKey={
                 actionRequiredSelectedItem
                   ? actionRequiredSelectedItem.key
@@ -239,7 +216,7 @@ export const JobsListFilterBase: React.FunctionComponent<
             className={classNames.filterButtonStackItem}
           >
             <DefaultButton
-              text={t('JobsList.JobsListFilter.filterButtonText') as string}
+              text={strings.JobsList.JobsListFilter.filterButtonText}
               onClick={getFilteredJobs}
               className={classNames.filterButton}
             />
@@ -250,9 +227,7 @@ export const JobsListFilterBase: React.FunctionComponent<
             className={classNames.filterButtonStackItem}
           >
             <TooltipHost
-              content={
-                t('JobsList.JobsListFilter.clearButtonTooltip') as string
-              }
+              content={strings.JobsList.JobsListFilter.clearButtonTooltip}
               styles={{
                 root: classNames.clearFilterTooltip,
               }}
