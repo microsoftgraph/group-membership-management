@@ -16,6 +16,9 @@ export interface IManageMembershipStyles {
     stepDescription: IStyle;
     dropdownTitle: IStyle;
     dropdownField: IStyle;
+    searchField: IStyle;
+    comboBoxContainer: IStyle;
+    comboBoxInput: IStyle;
     bottomContainer: IStyle;
     circlesContainer: IStyle;
     circleIcon: IStyle;
@@ -23,6 +26,7 @@ export interface IManageMembershipStyles {
     endpointsContainer: IStyle;
     outlookWarning: IStyle;
     outlookContainer: IStyle;
+    ownershipWarning: IStyle;
 }
 
 export interface IManageMembershipStyleProps {

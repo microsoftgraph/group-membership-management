@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 
 import React, { useState } from 'react';
-import { IProcessedStyleSet, PrimaryButton, classNamesFunction, useTheme, Dropdown, IDropdownOption, ActionButton, MessageBar, MessageBarType, MessageBarButton, Icon, DropdownMenuItemType, ComboBox, IComboBoxOption } from '@fluentui/react';
+import { useDispatch, useSelector } from 'react-redux';
+import { IProcessedStyleSet, PrimaryButton, classNamesFunction, useTheme, Dropdown, IDropdownOption, ActionButton, MessageBar, MessageBarType, MessageBarButton, Icon, DropdownMenuItemType, ComboBox, IComboBoxOption, DefaultButton, IComboBox, Spinner, Dialog, DialogType, DialogFooter } from '@fluentui/react';
 import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
 import { PageSection } from '../../components/PageSection';
@@ -10,6 +11,11 @@ import { IManageMembershipProps, IManageMembershipStyleProps, IManageMembershipS
 import { useTranslation } from 'react-i18next';
 import { HelpPanel } from '../../components/HelpPanel';
 import { IGroup } from '../../interfaces/IGroup.interfaces';
+import { Group } from '../../models/Group';
+import { searchGroups } from '../../store/groups.api';
+import { selectGroups } from '../../store/groups.slice';
+import { isAppIDOwnerOfGroup, getGroupEndpoints } from '../../store/groups.api';
+import { useNavigate } from 'react-router-dom';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -29,40 +35,110 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     }
   );
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const onClick = () => {
     window.alert('Hi Paul! 👁️👄👁️');
   };
 
-  const groupA: IGroup = { Id: '21830b1f-100f-40ee-a34b-fd3fa738bc76', Alias: 'abril@microsoft.com', Name: 'Abrils Group' };
-
   const optionsDestinationType: IDropdownOption[] = [
     { key: 'Group', text: 'Group' },
     { key: 'Channel', text: 'Channel' }
   ];
-  const optionsSearchDestination: IComboBoxOption[] = [
-    { key: 'GroupP', text: `${groupA.Name} Alias: ${groupA.Alias} ID: ${groupA.Id}}`, itemType: DropdownMenuItemType.Divider },
-  ];
 
+  const dispatch = useDispatch();
   const [selectedSearchDestination, setSelectedSearchDestination] = useState<string | undefined>(undefined);
+  const [groupEndpoints, setGroupEndpoints] = useState<string[]>([]);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isOwner, setIsOwner] = useState<boolean | null>(null);
+  const [showDialog, setShowDialog] = useState(false);
+  const groupsState = useSelector(selectGroups);
 
   const togglePanel = () => {
     setIsPanelOpen(!isPanelOpen);
   };
 
+  const onBackButtonClick = () => {
+    setShowDialog(true);
+  };
+
+  const handleDialogClose = () => {
+    setShowDialog(false);
+  };
+
+  const handleConfirmExit = () => {
+    navigate(-1);
+    setShowDialog(false);
+  };
+
+
+
   const needHelpButton: React.ReactNode = (
     <ActionButton iconProps={{ iconName: 'help' }} text={t('needHelp') as string} onClick={togglePanel}></ActionButton>
   );
 
+  const debounce = (func: (...args: any[]) => void, delay: number) => {
+    let timeout: NodeJS.Timeout;
+    return (...args: any[]) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), delay);
+    };
+  };
 
-  const onSearchDestinationChange = (event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
-    if (option) {
-      setSelectedSearchDestination(option.text);
-    } else {
-      setSelectedSearchDestination(undefined);
+  const handleSearch = debounce(() => {
+    if (searchQuery.length > 3) {
+      dispatch(searchGroups(searchQuery));
+    }
+  }, 200);
+
+  const checkOwnership = async (groupId: string) => {
+    try {
+      const action = await dispatch(isAppIDOwnerOfGroup(groupId));
+      if (isAppIDOwnerOfGroup.fulfilled.match(action)) {
+        const ownershipStatus: boolean = action.payload;
+        setIsOwner(ownershipStatus);
+        console.log("group id to check ownership of: " + groupId, "ownershipStatus: ", ownershipStatus);
+
+        if (ownershipStatus) {
+          console.log('Service principal is the owner of the group: ', groupId);
+        } else {
+          console.log('Service principal is not the owner of the group: ', groupId);
+        }
+      }
+    } catch (error) {
+      setIsOwner(null);
+      console.error('Error checking ownership:', error);
     }
   };
+
+  const onSearchDestinationChange = async (event: React.FormEvent<IComboBox>, option?: IComboBoxOption) => {
+    if (option) {
+      const selectedGroupId = option.key as string;
+      setSelectedSearchDestination(option.text);
+
+      // Check ownership
+      checkOwnership(selectedGroupId);
+
+      // Fetch group endpoints
+      try {
+        const action = await dispatch(getGroupEndpoints(selectedGroupId));
+
+        // Check if the action is fulfilled and update the state with the fetched endpoints
+        if (getGroupEndpoints.fulfilled.match(action)) {
+          setGroupEndpoints(action.payload);
+        }
+      } catch (error) {
+        console.error('Error fetching group endpoints:', error);
+      }
+    }
+  };
+
+  const ownershipWarning = isOwner === false ? (
+    <div className={classNames.ownershipWarning}>
+      Warning: GMM is not the owner of this group! It will not be able to manage membership for this group until you add it <a href="">here</a>.
+    </div>
+  ) : null;
 
   const SharePointDomain: string = `${process.env.REACT_APP_SHAREPOINTDOMAIN}`;
   const domainName: string = `${process.env.REACT_APP_DOMAINNAME}`;
@@ -91,7 +167,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
 
   return (
     <Page>
-      <PageHeader rightButton={needHelpButton} />
+      <PageHeader rightButton={needHelpButton} onBackButtonClick={onBackButtonClick} />
       <HelpPanel togglePanel={togglePanel} isPanelOpen={isPanelOpen}></HelpPanel>
       <div className={classNames.root}>
         <div className={classNames.card}>
@@ -114,54 +190,66 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
               <div>
                 {t('ManageMembership.labels.searchDestination') as string}
                 <ComboBox
+                  styles={{
+                    root: classNames.searchField, container: classNames.comboBoxContainer,
+                    input: classNames.comboBoxInput
+                  }}
                   placeholder="Search for a group"
-                  options={optionsSearchDestination}
-                  // styles={{ title: classNames.dropdownTitle, dropdown: classNames.dropdownField }}
+                  useComboBoxAsMenuWidth
+                  options={groupsState?.searchResults?.map(group => ({ key: group.id, text: group.name })) || []}
                   required
-                  // onChange={onSearchDestinationChange}
+                  allowFreeform
+                  onChange={onSearchDestinationChange}
+                  onPendingValueChanged={(option?: IComboBoxOption, index?: number, value?: string) => {
+                    if (value !== undefined) {
+                      setSearchQuery(value);
+                      handleSearch();
+                    }
+                  }}
                 />
               </div>
-              Selected Destination: {selectedSearchDestination}
-              {selectedSearchDestination && (
+              {groupsState.loading ? (
+                <Spinner />
+              ) : (
                 <div>
                   {t('ManageMembership.labels.appsUsed')}
                   {selectedSearchDestination ? (
                     <div className={classNames.endpointsContainer}>
-                      {/* {selectedSearchDestination?.endpoints?.includes("Outlook") && ( */}
-                      <div className={classNames.outlookContainer}>
+                      {groupEndpoints.includes("Outlook") && (
+                        <div className={classNames.outlookContainer}>
+                          <ActionButton
+                            iconProps={{ iconName: 'OutlookLogo' }}
+                            onClick={() => openOutlookLink()}
+                          >
+                            Outlook
+                          </ActionButton>
+                          <MessageBar
+                            messageBarType={MessageBarType.warning}
+                            className={classNames.outlookWarning}
+                            isMultiline={false}
+                            actions={
+                              <MessageBarButton onClick={() => onClickOutlookWarning()}>{t('learnMore')}</MessageBarButton>
+                            }>
+                            {t('ManageMembership.labels.outlookWarning')}
+                          </MessageBar>
+                        </div>)}
+                      {groupEndpoints.includes("SharePoint") && (
                         <ActionButton
-                          iconProps={{ iconName: 'OutlookLogo' }}
-                          onClick={() => openOutlookLink()}
+                          iconProps={{ iconName: 'SharePointLogo' }}
+                          onClick={() => openSharePointLink()}
                         >
-                          Outlook
+                          SharePoint
                         </ActionButton>
-                        <MessageBar
-                          messageBarType={MessageBarType.warning}
-                          className={classNames.outlookWarning}
-                          isMultiline={false}
-                          actions={
-                            <MessageBarButton onClick={() => onClickOutlookWarning()}>{t('learnMore')}</MessageBarButton>
-                          }>
-                          {t('ManageMembership.labels.outlookWarning')}
-                        </MessageBar>
-                      </div>
-                      {/* )} */}
-                      {/* {selectedSearchDestination?.endpoints?.includes("SharePoint") && ( */}
-                      <ActionButton
-                        iconProps={{ iconName: 'SharePointLogo' }}
-                        onClick={() => openSharePointLink()}
-                      >
-                        SharePoint
-                      </ActionButton>
-                      {/* )} */}
-                      {/* {selectedSearchDestination?.endpoints?.includes("Yammer") && ( */}
-                      <ActionButton
-                        iconProps={{ iconName: 'YammerLogo' }}
-                        onClick={() => openYammerLink()}
-                      >
-                        Yammer
-                      </ActionButton>
-                      {/* )} */}
+                      )}
+                      {groupEndpoints.includes("Yammer") && (
+                        <ActionButton
+                          iconProps={{ iconName: 'YammerLogo' }}
+                          onClick={() => openYammerLink()}
+                        >
+                          Yammer
+                        </ActionButton>
+                      )}
+                      {ownershipWarning}
                     </div>
                   ) : null}
                 </div>
@@ -181,6 +269,24 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
           </div>
         </div>
       </div >
+      <Dialog
+        hidden={!showDialog}
+        onDismiss={handleDialogClose}
+        dialogContentProps={{
+          type: DialogType.normal,
+          title: 'Abandon Onboarding?',
+          subText: 'Are you sure you want to abandon the in-progress onboarding and go back?',
+        }}
+        modalProps={{
+          isBlocking: true,
+          styles: { main: { maxWidth: 450 } },
+        }}
+      >
+        <DialogFooter>
+          <PrimaryButton onClick={handleConfirmExit} text="Yes, go back" />
+          <DefaultButton onClick={handleDialogClose} text="Cancel" />
+        </DialogFooter>
+      </Dialog>
     </Page>
   )
 };

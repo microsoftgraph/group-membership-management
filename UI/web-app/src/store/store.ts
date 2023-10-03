@@ -7,13 +7,15 @@ import accountReducer from './account.slice';
 import jobsReducer from './jobs.slice';
 import ownerReducer from './owner.slice';
 import profileReducer from './profile.slice';
+import groupsReducer from './groups.slice';
 
 export const store = configureStore({
   reducer: {
     account: accountReducer,
     jobs: jobsReducer,
     owner: ownerReducer,
-    profile: profileReducer
+    profile: profileReducer,
+    groups: groupsReducer
   }
 });
 

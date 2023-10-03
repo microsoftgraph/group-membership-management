@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-export interface IGroup {
+export interface Group {
     id: string;
     name: string;
-}
+  }
+  

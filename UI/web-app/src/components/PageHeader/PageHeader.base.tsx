@@ -29,7 +29,7 @@ const leftArrowIcon: IIconProps = { iconName: 'ChevronLeftMed' };
 export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
   props: IPageHeaderProps
 ) => {
-  const { backButtonHidden, children, className, styles, rightButton } = props;
+  const { backButtonHidden, onBackButtonClick, children, className, styles, rightButton } = props;
   const classNames: IProcessedStyleSet<IPageHeaderStyles> = getClassNames(
     styles,
     {
@@ -55,7 +55,7 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
               className={classNames.backButton}
               iconProps={leftArrowIcon}
               text={strings.back as string}
-              onClick={backButtonOnClick}
+              onClick={onBackButtonClick ?? backButtonOnClick}
             />
             {rightButton}
           </Stack>

@@ -23,6 +23,7 @@ export interface IPageHeaderStyleProps {
 export interface IPageHeaderProps
   extends React.AllHTMLAttributes<HTMLDivElement> {
   backButtonHidden?: boolean;
+  onBackButtonClick?: () => void;
   rightButton?: React.ReactNode;
   
   /**

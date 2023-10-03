@@ -50,6 +50,20 @@ export const getStyles = (props: IManageMembershipStyleProps): IManageMembership
         dropdownField: {
             width: 500
         },
+        searchField: {
+            width: 500,
+            borderColor: theme.palette.neutralQuaternary,
+        },
+        comboBoxContainer: {
+            borderStyle: 'none',
+        },
+        comboBoxInput: {
+            borderStyle: 'none',
+            width: '100%',
+        },
+        ownershipWarning:{
+            color: theme.semanticColors.errorText
+        },
         bottomContainer: {
             display: 'flex',
             justifyContent: 'space-between',
