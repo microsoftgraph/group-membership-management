@@ -17,14 +17,14 @@ namespace WebApi.Controllers.v1.Group
     [Route("api/v{version:apiVersion}/Groups")]
     public class GroupInformationController : ControllerBase
     {
-        private readonly IRequestHandler<GetGroupInformationRequest, GetGroupInformationResponse> _getGroupRequestHandler;
+        private readonly IRequestHandler<SearchGroupsRequest, SearchGroupsResponse> _searchGroupsRequestHandler;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly string _gmmAppId = "c3ac1017-f7ec-4f0e-a417-80275bf5ee58"; //todo: reference kv secret
 
-        public GroupInformationController(IRequestHandler<GetGroupInformationRequest, GetGroupInformationResponse> getGroupRequestHandler, 
+        public GroupInformationController(IRequestHandler<SearchGroupsRequest, SearchGroupsResponse> searchGroupsRequestHandler,
             IGraphGroupRepository graphGroupRepository)
         {
-            _getGroupRequestHandler = getGroupRequestHandler ?? throw new ArgumentNullException(nameof(getGroupRequestHandler));
+            _searchGroupsRequestHandler = searchGroupsRequestHandler ?? throw new ArgumentNullException(nameof(searchGroupsRequestHandler));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
@@ -38,8 +38,16 @@ namespace WebApi.Controllers.v1.Group
                 return default;
             }
 
-            var response = await _getGroupRequestHandler.ExecuteAsync(new GetGroupInformationRequest { Query = query });
+            var response = await _searchGroupsRequestHandler.ExecuteAsync(new SearchGroupsRequest { Query = query });
             return Ok(response.Model);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("groupEndpoints")]
+        public async Task<ActionResult<List<string>>> GetGroupEndpointsAsync(Guid groupId)
+        {
+            var endpoints = await _graphGroupRepository.GetGroupEndpointsAsync(groupId);
+            return endpoints;
         }
 
 

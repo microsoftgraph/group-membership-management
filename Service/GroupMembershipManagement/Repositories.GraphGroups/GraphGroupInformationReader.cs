@@ -32,7 +32,6 @@ namespace Repositories.GraphGroups
                                   : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
         { }
         private int MaxResultCount { get; set; } = 25;
-        private int MaxRetry { get; set; } = 2;
 
         public async Task<bool> GroupExistsAsync(Guid groupId, Guid? runId)
         {
@@ -395,14 +394,27 @@ namespace Repositories.GraphGroups
             try
             {
                 var results = new List<AzureADGroup>();
+                string filter;
+
+                if (Guid.TryParse(query, out _))
+                {
+                    filter = $"id eq '{query}'";
+                }
+                else
+                {
+                    filter = $"startswith(displayName,'{query}') or startswith(mail,'{query}') or startswith(mailNickname,'{query}')";
+                }
 
                 var groupCollectionPage = await _graphServiceClient.Groups
-                                                                   .GetAsync(requestConfiguration =>
-                                                                   {
-                                                                       requestConfiguration
-                                                                        .QueryParameters
-                                                                        .Filter = $"(startsWith(mail,'{query}') or startswith(displayName, '{query}') or (startsWith(id,'{query}')";
-                                                                   });
+                                   .GetAsync(requestConfiguration =>
+                                   {
+                                       requestConfiguration
+                                        .QueryParameters
+                                        .Filter = filter;
+                                       requestConfiguration
+                                        .QueryParameters
+                                        .Top = MaxResultCount;
+                                   });
 
                 if (groupCollectionPage.Value.Count > 0)
                 {

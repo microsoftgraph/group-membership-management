@@ -10,24 +10,23 @@ using GroupDTO = WebApi.Models.DTOs.AzureADGroup;
 
 namespace Services
 {
-    public class GetGroupInformationHandler : RequestHandlerBase<GetGroupInformationRequest, GetGroupInformationResponse>
+    public class SearchGroupsHandler : RequestHandlerBase<SearchGroupsRequest, SearchGroupsResponse>
     {
         private readonly IGraphGroupRepository _graphGroupRepository;
-        public GetGroupInformationHandler(ILoggingRepository loggingRepository,
+        public SearchGroupsHandler(ILoggingRepository loggingRepository,
                               IGraphGroupRepository graphGroupRepository) : base(loggingRepository)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
-        protected override async Task<GetGroupInformationResponse> ExecuteCoreAsync(GetGroupInformationRequest request)
+        protected override async Task<SearchGroupsResponse> ExecuteCoreAsync(SearchGroupsRequest request)
         {
-            var response = new GetGroupInformationResponse();
+            var response = new SearchGroupsResponse();
             var groups = await _graphGroupRepository.SearchGroupsAsync(request.Query);
 
-            foreach ( var group in groups )
+            foreach (var group in groups)
             {
-                var endpoints = await _graphGroupRepository.GetGroupEndpointsAsync(group.ObjectId);
-                var dto = new GroupDTO(group.ObjectId, group.Name, endpoints);
+                var dto = new GroupDTO(group.ObjectId, group.Name);
 
                 response.Model.Add(dto);
             }
