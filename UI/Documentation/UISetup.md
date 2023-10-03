@@ -28,9 +28,9 @@ If you only have one tenant, these will be set to the same tenant id.
 
 ## Update UI/Web API application settings
 
-- Go to `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>` application in Azure Active Directory -> `Expose an API` under `Manage` -> `Add a client application` -> provide the client id of `<solutionAbbreviation>`-ui-`<environmentAbbreviation>` -> Make sure that Authorized scopes is checked -> Click `Add application`
+- Go to `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>` application in Microsoft Entra ID -> `Expose an API` under `Manage` -> `Add a client application` -> provide the client id of `<solutionAbbreviation>`-ui-`<environmentAbbreviation>` -> Make sure that Authorized scopes is checked -> Click `Add application`
 
-- Go to `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>` application in Azure Active Directory -> `Manifest` under `Manage` -> Set `"accessTokenAcceptedVersion": 2`, -> Click `Save`
+- Go to `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>` application in Microsoft Entra ID -> `Manifest` under `Manage` -> Set `"accessTokenAcceptedVersion": 2`, -> Click `Save`
 
 ## Update Build/Release Pipeline variables
 
@@ -46,7 +46,7 @@ Add the following variables to your build/release pipeline:
 
 ## Post-Deployment tasks
 
-* Go to the static web app in your compute resource group. You should see a URL in the Overview page. Copy that URL. Go to `<solutionAbbreviation>`-ui-`<environmentAbbreviation>` application in Azure Active Directory -> `Authentication` -> Add that URL as a Redirect URI -> Click `Save`
+* Go to the static web app in your compute resource group. You should see a URL in the Overview page. Copy that URL. Go to `<solutionAbbreviation>`-ui-`<environmentAbbreviation>` application in Microsoft Entra ID -> `Authentication` -> Add that URL as a Redirect URI -> Click `Save`
 
 ### Run UI locally
 
