@@ -23,7 +23,7 @@ namespace Services.Tests
         private GroupInformationController _groupInformationController = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
-        private GetGroupInformationHandler _getGroupInformationHandler = null!;
+        private SearchGroupsHandler _searchGroupsHandler = null!;
 
         [TestInitialize]
         public void Initialize()
@@ -32,8 +32,8 @@ namespace Services.Tests
             _groups = new List<AzureADGroup>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
-            _getGroupInformationHandler = new GetGroupInformationHandler(_loggingRepository.Object, _graphGroupRepository.Object);
-            _groupInformationController = new GroupInformationController(_getGroupInformationHandler, _graphGroupRepository.Object)
+            _searchGroupsHandler = new SearchGroupsHandler(_loggingRepository.Object, _graphGroupRepository.Object);
+            _groupInformationController = new GroupInformationController(_searchGroupsHandler, _graphGroupRepository.Object)
             {
                 ControllerContext = new ControllerContext
                 {
