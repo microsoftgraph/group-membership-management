@@ -10,12 +10,11 @@ import { PageSection } from '../../components/PageSection';
 import { IManageMembershipProps, IManageMembershipStyleProps, IManageMembershipStyles } from './ManageMembership.types';
 import { useTranslation } from 'react-i18next';
 import { HelpPanel } from '../../components/HelpPanel';
-import { IGroup } from '../../interfaces/IGroup.interfaces';
-import { Group } from '../../models/Group';
 import { searchGroups } from '../../store/groups.api';
 import { selectGroups } from '../../store/groups.slice';
 import { isAppIDOwnerOfGroup, getGroupEndpoints } from '../../store/groups.api';
 import { useNavigate } from 'react-router-dom';
+import { AppDispatch } from '../../store';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -46,7 +45,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     { key: 'Channel', text: 'Channel' }
   ];
 
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const [selectedSearchDestination, setSelectedSearchDestination] = useState<string | undefined>(undefined);
   const [groupEndpoints, setGroupEndpoints] = useState<string[]>([]);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -117,14 +116,11 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       const selectedGroupId = option.key as string;
       setSelectedSearchDestination(option.text);
 
-      // Check ownership
       checkOwnership(selectedGroupId);
 
-      // Fetch group endpoints
       try {
         const action = await dispatch(getGroupEndpoints(selectedGroupId));
 
-        // Check if the action is fulfilled and update the state with the fetched endpoints
         if (getGroupEndpoints.fulfilled.match(action)) {
           setGroupEndpoints(action.payload);
         }
