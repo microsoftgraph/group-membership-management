@@ -146,6 +146,7 @@ var stagingSettings = {
   'AzureWebJobs.TelemetryTrackerFunction.Disabled': 1
   'AzureWebJobs.TeamsChannelUpdaterSubOrchestratorFunction.Disabled': 1
   'AzureWebJobs.TeamsUpdaterFunction.Disabled': 1
+  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}TeamsChannelUpdaterStaging'
 }
 
 var productionSettings = {
