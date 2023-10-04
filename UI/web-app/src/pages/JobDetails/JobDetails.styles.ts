@@ -51,6 +51,7 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             borderRadius: 50,
             textAlign: 'center',
             height: 20,
+            lineHeight: 20,
             paddingLeft: 5,
             paddingRight: 5,
             marginLeft: 15
@@ -61,6 +62,7 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             borderRadius: 50,
             textAlign: 'center',
             height: 20,
+            lineHeight: 20,
             paddingLeft: 5,
             paddingRight: 5,
             marginLeft: 15

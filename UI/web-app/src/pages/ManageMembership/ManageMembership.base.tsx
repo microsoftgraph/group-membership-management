@@ -37,7 +37,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const navigate = useNavigate();
 
   const onClick = () => {
-    window.alert('Hi Paul! 👁️👄👁️');
+    window.alert('To be configured later');
   };
 
   const optionsDestinationType: IDropdownOption[] = [
@@ -70,8 +70,6 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     navigate(-1);
     setShowDialog(false);
   };
-
-
 
   const needHelpButton: React.ReactNode = (
     <ActionButton iconProps={{ iconName: 'help' }} text={t('needHelp') as string} onClick={togglePanel}></ActionButton>
@@ -129,6 +127,12 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       }
     }
   };
+
+  const hasRequiredEndpoints = () => {
+    if (!groupEndpoints) return false;
+    return ["Outlook", "Yammer", "SharePoint"].some(endpoint => groupEndpoints.includes(endpoint));
+};
+
 
   const ownershipWarning = isOwner === false ? (
     <div className={classNames.ownershipWarning}>
@@ -208,9 +212,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
                 <Spinner />
               ) : (
                 <div>
-                  {t('ManageMembership.labels.appsUsed')}
-                  {selectedSearchDestination ? (
+                  {selectedSearchDestination && hasRequiredEndpoints() ? (
                     <div className={classNames.endpointsContainer}>
+                      {groupEndpoints ?? t('ManageMembership.labels.appsUsed')}
                       {groupEndpoints.includes("Outlook") && (
                         <div className={classNames.outlookContainer}>
                           <ActionButton
