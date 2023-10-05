@@ -50,6 +50,13 @@ namespace Hosts.JobTrigger
             {
                 if (!string.IsNullOrEmpty(syncJob.Status) && syncJob.Status == SyncStatus.StuckInProgress.ToString())
                 {
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                            new LoggerRequest
+                            {
+                                RunId = (Guid)syncJob.RunId,
+                                Message = $"Job is stuck InProgress after retry, setting status to ErroredDueToStuckInProgress"
+                            });
+
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.ErroredDueToStuckInProgress, SyncJob = syncJob });
                     return;
                 }
