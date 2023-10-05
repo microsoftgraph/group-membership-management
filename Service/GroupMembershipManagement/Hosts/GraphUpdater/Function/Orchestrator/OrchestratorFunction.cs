@@ -78,11 +78,13 @@ namespace Hosts.GraphUpdater
                                                            RunId = graphRequest.SyncJob.RunId.GetValueOrDefault()
                                                        });
 
-                var queryTypes = JsonParser.GetQueryTypes(syncJob.Query);
+                var sourceTypeCounts = JsonParser.GetQueryTypes(syncJob.Query);
                 var destination = JsonParser.GetDestination(syncJob.Destination);
 
-                syncCompleteEvent.Type = queryTypes.Distinct().Count() == 1 ? queryTypes[0] : "Hybrid";
-                syncCompleteEvent.TargetOfficeGroupId = destination.ObjectId.ToString();
+                syncCompleteEvent.Type = destination.Type.ToString();
+                syncCompleteEvent.SourceTypesCounts = sourceTypeCounts;
+                //syncCompleteEvent.TargetOfficeGroupId = destination.ObjectId.ToString();
+                syncCompleteEvent.Destination = syncJob.Destination;
                 syncCompleteEvent.RunId = syncJob.RunId.ToString();
                 syncCompleteEvent.IsDryRunEnabled = false.ToString();
                 syncCompleteEvent.ProjectedMemberCount = graphRequest.ProjectedMemberCount.HasValue ? graphRequest.ProjectedMemberCount.ToString() : "Not provided";
