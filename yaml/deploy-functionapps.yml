@@ -76,7 +76,7 @@ steps:
     scriptLocation: 'inlineScript'
     inlineScript: 'az resource update --resource-type Microsoft.Web/sites -g ${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }} -n ${{ parameters.solutionAbbreviation }}-compute-${{ parameters.environmentAbbreviation }}-${{ parameters.name }}/config/web --set properties.functionAppScaleLimit=1'
 
-- task: AzurePowerShell@4
+- task: AzurePowerShell@5
   displayName: 'Azure PowerShell script: PostDeployment ${{ parameters.name }}'
   inputs:
     azureSubscription: ${{parameters.serviceConnection}}

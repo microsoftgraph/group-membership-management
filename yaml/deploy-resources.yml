@@ -1,4 +1,4 @@
-parameters:  
+parameters:
 - name: solutionAbbreviation
   type: string
 - name: environmentAbbreviation
@@ -51,7 +51,7 @@ steps:
     deploymentMode: 'Incremental'
     deploymentOutputs: dataoutputs
 
-- task: AzurePowerShell@4
+- task: AzurePowerShell@5
   displayName: 'run main script'
   inputs:
     azureSubscription: ${{parameters.serviceConnection}}
@@ -76,7 +76,7 @@ steps:
   displayName: 'set data output variables'
   name: dataVariables
 
-- task: AzurePowerShell@4
+- task: AzurePowerShell@5
   displayName: 'run infrastructure script'
   inputs:
     azureSubscription: ${{parameters.serviceConnection}}
