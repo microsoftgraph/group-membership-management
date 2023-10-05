@@ -165,7 +165,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| distinct TargetOfficeGroupId\n| summarize Count = count()\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| distinct Destination\n| summarize Count = count()\n\n'
                   ControlType: 'AnalyticsGrid'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Sync Count'
@@ -198,292 +198,9 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '3': {
             position: {
-              x: 13
-              y: 0
-              colSpan: 3
-              rowSpan: 6
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'resourceTypeMode'
-                  isOptional: true
-                }
-                {
-                  name: 'ComponentId'
-                  isOptional: true
-                }
-                {
-                  name: 'Scope'
-                  value: {
-                    resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.operationalinsights/workspaces/${resourceGroup}'
-                    ]
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'PartId'
-                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
-                  isOptional: true
-                }
-                {
-                  name: 'Version'
-                  value: '2.0'
-                  isOptional: true
-                }
-                {
-                  name: 'TimeRange'
-                  value: 'P1D'
-                  isOptional: true
-                }
-                {
-                  name: 'DashboardId'
-                  isOptional: true
-                }
-                {
-                  name: 'DraftRequestParameters'
-                  isOptional: true
-                }
-                {
-                  name: 'Query'
-                  value: 'customEvents\n| where name == "SyncComplete"\n'
-                  isOptional: true
-                }
-                {
-                  name: 'ControlType'
-                  value: 'AnalyticsGrid'
-                  isOptional: true
-                }
-                {
-                  name: 'SpecificChart'
-                  isOptional: true
-                }
-                {
-                  name: 'PartTitle'
-                  value: 'Analytics'
-                  isOptional: true
-                }
-                {
-                  name: 'PartSubTitle'
-                  value: resourceGroup
-                  isOptional: true
-                }
-                {
-                  name: 'Dimensions'
-                  isOptional: true
-                }
-                {
-                  name: 'LegendOptions'
-                  isOptional: true
-                }
-                {
-                  name: 'IsQueryContainTimeRange'
-                  value: false
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
-              settings: {
-                content: {
-                  GridColumnsWidth: {
-                    Service: '117px'
-                    Groups: '93px'
-                  }
-                  Query: 'ApplicationLog_CL \n | where location_s == "JobTrigger" and Message startswith "Linked services:" \n | project TimeGenerated, TargetOfficeGroupId_g, Services = split(tostring(extract("services:(.*)", 1, Message)),",") \n | mv-expand Service = Services \n | summarize Groups=dcount(TargetOfficeGroupId_g) by tostring(Service) \n | order by Groups\n\n'
-                }
-              }
-              partHeader: {
-                title: 'Services'
-                subtitle: resourceGroup
-              }
-            }
-          }
-          '4': {
-            position: {
-              x: 16
-              y: 0
-              colSpan: 4
-              rowSpan: 2
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'resourceTypeMode'
-                  isOptional: true
-                }
-                {
-                  name: 'ComponentId'
-                  isOptional: true
-                }
-                {
-                  name: 'Scope'
-                  value: {
-                    resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
-                    ]
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'PartId'
-                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
-                  isOptional: true
-                }
-                {
-                  name: 'Version'
-                  value: '2.0'
-                  isOptional: true
-                }
-                {
-                  name: 'TimeRange'
-                  value: 'P1D'
-                  isOptional: true
-                }
-                {
-                  name: 'DashboardId'
-                  isOptional: true
-                }
-                {
-                  name: 'DraftRequestParameters'
-                  isOptional: true
-                }
-                {
-                  name: 'Query'
-                  value: 'customEvents\n| where name == "NumberOfJobsStarted"'
-                  isOptional: true
-                }
-                {
-                  name: 'ControlType'
-                  value: 'AnalyticsGrid'
-                  isOptional: true
-                }
-                {
-                  name: 'SpecificChart'
-                  isOptional: true
-                }
-                {
-                  name: 'PartTitle'
-                  value: '# of Jobs Started'
-                  isOptional: true
-                }
-                {
-                  name: 'PartSubTitle'
-                  value: resourceGroup
-                  isOptional: true
-                }
-                {
-                  name: 'Dimensions'
-                  isOptional: true
-                }
-                {
-                  name: 'LegendOptions'
-                  isOptional: true
-                }
-                {
-                  name: 'IsQueryContainTimeRange'
-                  value: false
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
-              settings: {
-                content: {
-                  Query: 'customEvents\n| where name == "NumberOfJobsStarted"\n| order by timestamp desc\n| project timestamp,    \n    RunId = tostring(customDimensions["RunId"])\n| distinct RunId\n| summarize Count = count()'
-                  PartTitle: '# of Jobs Started'
-                  PartSubTitle: resourceGroup
-                }
-              }
-            }
-          }
-          '5': {
-            position: {
-              x: 0
-              y: 1
-              colSpan: 1
-              rowSpan: 1
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'id'
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_Azure_Storage/PartType/StorageBrowserPart'
-              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Storage/storageAccounts/${jobsStorageAccountName}/storageexplorer'
-            }
-          }
-          '6': {
-            position: {
-              x: 0
-              y: 2
-              colSpan: 1
-              rowSpan: 1
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'demoMode'
-                  isOptional: true
-                }
-                {
-                  name: 'initiator'
-                  value: 'PinnedAzBladePart'
-                }
-                {
-                  name: 'scope'
-                  value: {
-                    resources: [
-                      {
-                        resourceId: '/subscriptions/${subscriptionId}/resourcegroups/${resourceGroup}/providers/microsoft.operationalinsights/workspaces/${resourceGroup}'
-                      }
-                    ]
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'cachedResourceType'
-                  isOptional: true
-                }
-                {
-                  name: 'workspaceResourceId'
-                  isOptional: true
-                }
-                {
-                  name: 'query'
-                  isOptional: true
-                }
-                {
-                  name: 'isQueryBase64Compressed'
-                  isOptional: true
-                }
-                {
-                  name: 'timespanInIsoFormat'
-                  isOptional: true
-                }
-                {
-                  name: 'isQueryEditorVisible'
-                  isOptional: true
-                }
-                {
-                  name: 'environment'
-                  isOptional: true
-                }
-                {
-                  name: 'telemetryInfo'
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/AnalyticsPart'
-              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.OperationalInsights/workspaces/${resourceGroup}/logs'
-            }
-          }
-          '7': {
-            position: {
               x: 10
               y: 0
-              colSpan: 3
+              colSpan: 4
               rowSpan: 2
             }
             metadata: {
@@ -572,10 +289,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   GridColumnsWidth: {
                     Count: '81px'
                   }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| order by TargetOfficeGroupId, timestamp\n| where TargetOfficeGroupId != prev(TargetOfficeGroupId)\n| summarize Count = count() by Type\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    SourceTypesCounts = tostring(customDimensions["SourceTypesCounts"])\n| where Result == "Success" and DryRun == false\n| extend Message = replace("{|}", "", SourceTypesCounts) // Remove curly braces\n| extend Message = split(Message, ",") // Split by comma to create an array\n| mv-expand Message\n| extend SourceType = tostring(split(Message, ":")[0]) // Extract the type\n| extend Count = toint(trim(" ", tostring(split(Message, ":")[1]))) // Extract the count and convert to int\n| order by Destination, timestamp\n| where Destination != prev(Destination) and Destination != \'\'\n| summarize Count = sum(Count) by SourceType // Sum the counts for each type\n| project SourceType, Count // Project the type and total count\n\n'
                   ControlType: 'AnalyticsGrid'
                   SpecificChart: 'StackedColumn'
-                  PartTitle: 'Syncs By Type'
+                  PartTitle: 'Source Parts By Type'
                   Dimensions: {
                     xAxis: {
                       name: 'timestamp'
@@ -601,9 +318,316 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   }
                 }
               }
+            }
+          }
+          '4': {
+            position: {
+              x: 14
+              y: 0
+              colSpan: 3
+              rowSpan: 2
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourcegroups/${resourceGroup}/providers/microsoft.operationalinsights/workspaces/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'customEvents\n| where name == "SyncComplete"\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  GridColumnsWidth: {
+                    Service: '117px'
+                    Groups: '93px'
+                  }
+                  Query: 'ApplicationLog_CL \n | where location_s == "JobTrigger" and Message startswith "Linked services:" \n | project TimeGenerated, Destination_s, Services = split(tostring(extract("services:(.*)", 1, Message)),",") \n | mv-expand Service = Services \n | summarize Groups=dcount(Destination_s) by tostring(Service) \n | order by Groups\n\n'
+                }
+              }
               partHeader: {
-                title: 'Syncs By Type'
+                title: 'Services'
                 subtitle: resourceGroup
+              }
+            }
+          }
+          '5': {
+            position: {
+              x: 0
+              y: 1
+              colSpan: 1
+              rowSpan: 1
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'id'
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_Azure_Storage/PartType/StorageBrowserPart'
+              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Storage/storageAccounts/${jobsStorageAccountName}/storageexplorer'
+            }
+          }
+          '6': {
+            position: {
+              x: 0
+              y: 2
+              colSpan: 1
+              rowSpan: 1
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'demoMode'
+                  isOptional: true
+                }
+                {
+                  name: 'initiator'
+                  value: 'PinnedAzBladePart'
+                }
+                {
+                  name: 'scope'
+                  value: {
+                    resources: [
+                      {
+                        resourceId: '/subscriptions/${subscriptionId}/resourcegroups/${resourceGroup}/providers/microsoft.operationalinsights/workspaces/${resourceGroup}'
+                      }
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'cachedResourceType'
+                  isOptional: true
+                }
+                {
+                  name: 'workspaceResourceId'
+                  isOptional: true
+                }
+                {
+                  name: 'query'
+                  isOptional: true
+                }
+                {
+                  name: 'isQueryBase64Compressed'
+                  isOptional: true
+                }
+                {
+                  name: 'timespanInIsoFormat'
+                  isOptional: true
+                }
+                {
+                  name: 'isQueryEditorVisible'
+                  isOptional: true
+                }
+                {
+                  name: 'environment'
+                  isOptional: true
+                }
+                {
+                  name: 'telemetryInfo'
+                  isOptional: true
+                }
+                {
+                  name: 'tabTitle'
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/AnalyticsPart'
+              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.OperationalInsights/workspaces/${resourceGroup}/logs'
+            }
+          }
+          '7': {
+            position: {
+              x: 1
+              y: 2
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: ''
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| summarize by Destination, Type, Bin = bin(timestamp, 1d)\n| summarize count() by Bin, Type\n\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'Sync Jobs Successful By Destination'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'Bin'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'count_'
+                        type: 'long'
+                      }
+                    ]
+                    splitBy: [
+                      {
+                        name: 'Type'
+                        type: 'string'
+                      }
+                    ]
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
               }
             }
           }
@@ -697,7 +721,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Onboarding = tobool(customDimensions["IsInitialSync"])\n| where Result == "Success" and DryRun == false and Onboarding == true\n| summarize count() by bin(timestamp, 1d), Type\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Onboarding = tobool(customDimensions["IsInitialSync"])\n| where Result == "Success" and DryRun == false and Onboarding == true\n| summarize count() by bin(timestamp, 1d), Type\n\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Onboardings Per Day'
@@ -730,8 +754,128 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '9': {
             position: {
-              x: 16
+              x: 13
               y: 2
+              colSpan: 4
+              rowSpan: 2
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'customEvents\n| where name == "NumberOfJobsStarted"'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: '# of Jobs Started'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "NumberOfJobsStarted"\n| order by timestamp desc\n| project timestamp,    \n    RunId = tostring(customDimensions["RunId"])\n| distinct RunId\n| summarize Count = count()\n'
+                  PartTitle: '# of Jobs Started'
+                  Partsubtitle: resourceGroup
+                }
+              }
+            }
+          }
+          '10': {
+            position: {
+              x: 0
+              y: 3
+              colSpan: 1
+              rowSpan: 1
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'ResourceId'
+                  value: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                }
+              ]
+              type: 'Extension/AppInsightsExtension/PartType/CuratedBladeFailuresPinnedPart'
+              isAdapter: true
+              asset: {
+                idInputName: 'ResourceId'
+                type: 'ApplicationInsights'
+              }
+              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}/failures'
+            }
+          }
+          '11': {
+            position: {
+              x: 13
+              y: 4
               colSpan: 4
               rowSpan: 2
             }
@@ -818,40 +962,1097 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "NumberOfJobsCompleted"\n| order by timestamp desc\n| project timestamp,    \n    RunId = tostring(customDimensions["RunId"]),\n    Status = tostring(customDimensions["Status"]),\n    ResultStatus = tostring(customDimensions["ResultStatus"])\n| where ResultStatus == "Success" or ResultStatus == "Failure"\n| distinct RunId\n| summarize Count = count()'
+                  Query: 'customEvents\n| where name == "NumberOfJobsCompleted"\n| order by timestamp desc\n| project timestamp,    \n    RunId = tostring(customDimensions["RunId"]),\n    Status = tostring(customDimensions["Status"]),\n    ResultStatus = tostring(customDimensions["ResultStatus"])\n| where ResultStatus == "Success" or ResultStatus == "Failure"\n| distinct RunId\n| summarize Count = count()\n\n'
                   PartTitle: '# of Jobs Completed'
-                  PartSubTitle: resourceGroup
+                  Partsubtitle: resourceGroup
                 }
               }
             }
           }
-          '10': {
+          '12': {
             position: {
-              x: 0
-              y: 3
-              colSpan: 1
-              rowSpan: 1
+              x: 1
+              y: 6
+              colSpan: 6
+              rowSpan: 4
             }
             metadata: {
               inputs: [
                 {
-                  name: 'ResourceId'
-                  value: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}'
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: ''
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
                 }
               ]
-              type: 'Extension/AppInsightsExtension/PartType/CuratedBladeFailuresPinnedPart'
-              isAdapter: true
-              asset: {
-                idInputName: 'ResourceId'
-                type: 'ApplicationInsights'
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    ToAdd = toint(customDimensions["MembersAdded"]),\n    ToRemove = toint(customDimensions["MembersRemoved"])\n| where Result == "Success" and DryRun == false\n| summarize UsersAdded = sum(ToAdd), UsersRemoved = sum(ToRemove) by bin(timestamp, 1d)\n\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'Total Members Added and Removed'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'timestamp'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'UsersAdded'
+                        type: 'long'
+                      }
+                      {
+                        name: 'UsersRemoved'
+                        type: 'long'
+                      }
+                    ]
+                    splitBy: []
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
               }
-              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}/failures'
             }
           }
-          '11': {
+          '13': {
             position: {
-              x: 16
-              y: 4
+              x: 7
+              y: 6
+              colSpan: 5
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'sharedTimeRange'
+                  isOptional: true
+                }
+                {
+                  name: 'options'
+                  value: {
+                    chart: {
+                      metrics: [
+                        {
+                          resourceMetadata: {
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                          }
+                          name: 'customMetrics/MembersAdded'
+                          aggregationType: 1
+                          namespace: 'microsoft.insights/components/kusto'
+                          metricVisualization: {
+                            displayName: 'MembersAdded'
+                          }
+                        }
+                        {
+                          resourceMetadata: {
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                          }
+                          name: 'customMetrics/MembersRemoved'
+                          aggregationType: 1
+                          namespace: 'microsoft.insights/components/kusto'
+                          metricVisualization: {
+                            displayName: 'MembersRemoved'
+                          }
+                        }
+                      ]
+                      title: 'Sync Members Added and Removed'
+                      titleKind: 2
+                      visualization: {
+                        chartType: 2
+                        legendVisualization: {
+                          isVisible: true
+                          position: 2
+                          hideSubtitle: false
+                        }
+                        axisVisualization: {
+                          x: {
+                            isVisible: true
+                            axisType: 2
+                          }
+                          y: {
+                            isVisible: true
+                            axisType: 1
+                          }
+                        }
+                      }
+                      timespan: {
+                        relative: {
+                          duration: 604800000
+                        }
+                        showUTCTime: false
+                        grain: 1
+                      }
+                    }
+                  }
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/HubsExtension/PartType/MonitorChartPart'
+              settings: {
+                content: {
+                  options: {
+                    chart: {
+                      metrics: [
+                        {
+                          resourceMetadata: {
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                          }
+                          name: 'customMetrics/MembersAdded'
+                          aggregationType: 1
+                          namespace: 'microsoft.insights/components/kusto'
+                          metricVisualization: {
+                            displayName: 'MembersAdded'
+                          }
+                        }
+                        {
+                          resourceMetadata: {
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                          }
+                          name: 'customMetrics/MembersRemoved'
+                          aggregationType: 1
+                          namespace: 'microsoft.insights/components/kusto'
+                          metricVisualization: {
+                            displayName: 'MembersRemoved'
+                          }
+                        }
+                      ]
+                      title: 'Sync Members Added and Removed'
+                      titleKind: 2
+                      visualization: {
+                        chartType: 2
+                        legendVisualization: {
+                          isVisible: true
+                          position: 2
+                          hideSubtitle: false
+                        }
+                        axisVisualization: {
+                          x: {
+                            isVisible: true
+                            axisType: 2
+                          }
+                          y: {
+                            isVisible: true
+                            axisType: 1
+                          }
+                        }
+                        disablePinning: true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          '14': {
+            position: {
+              x: 12
+              y: 6
+              colSpan: 5
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'sharedTimeRange'
+                  isOptional: true
+                }
+                {
+                  name: 'options'
+                  value: {
+                    chart: {
+                      metrics: [
+                        {
+                          resourceMetadata: {
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                          }
+                          name: 'customMetrics/MembersAddedFromOnboarding'
+                          aggregationType: 1
+                          namespace: 'microsoft.insights/components/kusto'
+                          metricVisualization: {
+                            displayName: 'MembersAddedFromOnboarding'
+                          }
+                        }
+                        {
+                          resourceMetadata: {
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                          }
+                          name: 'customMetrics/MembersRemovedFromOnboarding'
+                          aggregationType: 1
+                          namespace: 'microsoft.insights/components/kusto'
+                          metricVisualization: {
+                            displayName: 'MembersRemovedFromOnboarding'
+                          }
+                        }
+                      ]
+                      title: 'Onboarding Members Added and Removed'
+                      titleKind: 2
+                      visualization: {
+                        chartType: 2
+                        legendVisualization: {
+                          isVisible: true
+                          position: 2
+                          hideSubtitle: false
+                        }
+                        axisVisualization: {
+                          x: {
+                            isVisible: true
+                            axisType: 2
+                          }
+                          y: {
+                            isVisible: true
+                            axisType: 1
+                          }
+                        }
+                      }
+                      timespan: {
+                        relative: {
+                          duration: 604800000
+                        }
+                        showUTCTime: false
+                        grain: 1
+                      }
+                    }
+                  }
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/HubsExtension/PartType/MonitorChartPart'
+              settings: {
+                content: {
+                  options: {
+                    chart: {
+                      metrics: [
+                        {
+                          resourceMetadata: {
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                          }
+                          name: 'customMetrics/MembersAddedFromOnboarding'
+                          aggregationType: 1
+                          namespace: 'microsoft.insights/components/kusto'
+                          metricVisualization: {
+                            displayName: 'MembersAddedFromOnboarding'
+                          }
+                        }
+                        {
+                          resourceMetadata: {
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                          }
+                          name: 'customMetrics/MembersRemovedFromOnboarding'
+                          aggregationType: 1
+                          namespace: 'microsoft.insights/components/kusto'
+                          metricVisualization: {
+                            displayName: 'MembersRemovedFromOnboarding'
+                          }
+                        }
+                      ]
+                      title: 'Onboarding Members Added and Removed'
+                      titleKind: 2
+                      visualization: {
+                        chartType: 2
+                        legendVisualization: {
+                          isVisible: true
+                          position: 2
+                          hideSubtitle: false
+                        }
+                        axisVisualization: {
+                          x: {
+                            isVisible: true
+                            axisType: 2
+                          }
+                          y: {
+                            isVisible: true
+                            axisType: 1
+                          }
+                        }
+                        disablePinning: true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          '15': {
+            position: {
+              x: 1
+              y: 10
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: ''
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    ToAdd = toint(customDimensions["MembersAdded"]),\n    ToRemove = toint(customDimensions["MembersRemoved"])\n| where Result == "Success" and DryRun == false and Destination != \'\'\n| extend DestinationType = tostring(parse_json(Destination)[0].type)\n| summarize UsersAdded = sum(ToAdd) by bin(timestamp, 1d), DestinationType\n\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'Total Members Added by Destination'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'timestamp'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'UsersAdded'
+                        type: 'long'
+                      }
+                    ]
+                    splitBy: [
+                      {
+                        name: 'DestinationType'
+                        type: 'string'
+                      }
+                    ]
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+            }
+          }
+          '16': {
+            position: {
+              x: 7
+              y: 10
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: ''
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    ToAdd = toint(customDimensions["MembersAdded"]),\n    ToRemove = toint(customDimensions["MembersRemoved"])\n| where Result == "Success" and DryRun == false and Destination != \'\'\n| extend DestinationType = tostring(parse_json(Destination)[0].type)\n| summarize UsersRemoved = sum(ToRemove) by bin(timestamp, 1d), DestinationType\n\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'Total Members Removed by Destination'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'timestamp'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'UsersRemoved'
+                        type: 'long'
+                      }
+                    ]
+                    splitBy: [
+                      {
+                        name: 'DestinationType'
+                        type: 'string'
+                      }
+                    ]
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+            }
+          }
+          '17': {
+            position: {
+              x: 13
+              y: 10
+              colSpan: 5
+              rowSpan: 2
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '10b3c2a8-28c3-4b74-a637-e5305b696ec4'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P7D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: ''
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'FrameControlChart'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  value: 'StackedColumn'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  value: {
+                    xAxis: {
+                      name: 'DurationBin'
+                      type: 'string'
+                    }
+                    yAxis: [
+                      {
+                        name: 'Jobs'
+                        type: 'int'
+                      }
+                    ]
+                    splitBy: []
+                    aggregation: 'Sum'
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  value: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project MembersAdded = toint(customDimensions["MembersAdded"]),\n    MembersRemoved = toint(customDimensions["MembersRemoved"]),\n    Destination = toguid(customDimensions["Destination"]),\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    RunId = toguid(customDimensions["RunId"])\n| where Result == "Success" and DryRun == "False"\n| distinct RunId, MembersAdded, MembersRemoved\n| summarize NoOps = countif(MembersAdded == 0 and MembersRemoved == 0), Total = count()\n| extend NoOpsPercent = todouble(NoOps) / Total * 100\n\n'
+                  ControlType: 'AnalyticsGrid'
+                }
+              }
+              partHeader: {
+                title: 'No-Op Syncs'
+                subtitle: ''
+              }
+            }
+          }
+          '18': {
+            position: {
+              x: 13
+              y: 12
+              colSpan: 5
+              rowSpan: 2
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: ''
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Sync Job Reliability %'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  GridColumnsWidth: {
+                    ReliabilityPercentage: '458.993px'
+                  }
+                  Query: 'let P1 = toscalar(\n    customEvents\n\t| where name == "IdleJobsTracker"\n\t| order by timestamp desc\n\t| project timestamp,\n\t\t\t  Id = tostring(customDimensions["Destination"]),\n\t\t\t  Frequency = toint(customDimensions["Frequency"]),\n\t\t\t  JobStarted = toint(customDimensions["JobStarted"])\n\t| summarize StartReliabilityPercentage = (toreal(countif(JobStarted >= 1)) / sum(Frequency)) * 100\n);\nlet P2 = toscalar(\n    customEvents\n\t| where name == "InProgressJobsTracker"\n\t| order by timestamp desc\n\t| project timestamp,\n\t\tId = tostring(customDimensions["Destination"]),\n\t\tFrequency = toint(customDimensions["Frequency"]),\n\t\tRunId = toguid(customDimensions["RunId"])\n\t| where Frequency > 0\n\t| summarize max(Frequency) by RunId\n\t| join kind=rightouter (\n\t\tcustomEvents\n\t\t| where name == "NumberOfJobsStarted"\n\t\t| order by timestamp desc\n\t\t| project timestamp,\n\t\t\tJobStartedRunId = toguid(customDimensions["RunId"])\n\t\t| distinct JobStartedRunId)\n\t\ton $left.RunId == $right.JobStartedRunId\n\t| summarize\n\t\tCountOfJobsThatDidNotGoOverPeriod = (toreal(countif(isnull(RunId)))),\n\t\tCountOfAllExpectedJobs =  (countif(JobStartedRunId != "") + sum(max_Frequency) - countif(max_Frequency > 0))\n\t| project InProgressReliabilityPercentage = CountOfJobsThatDidNotGoOverPeriod / CountOfAllExpectedJobs * 100\n);\nprint ReliabilityPercentage = (P1 + P2) / 2\n\n'
+                  ControlType: 'AnalyticsGrid'
+                }
+              }
+              partHeader: {
+                title: 'Sync Job Reliability %'
+                subtitle: resourceGroup
+              }
+            }
+          }
+          '19': {
+            position: {
+              x: 1
+              y: 14
+              colSpan: 5
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '10b3c2a8-28c3-4b74-a637-e5305b696ec4'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P7D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: ''
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'FrameControlChart'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  value: 'StackedColumn'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  value: {
+                    xAxis: {
+                      name: 'DurationBin'
+                      type: 'string'
+                    }
+                    yAxis: [
+                      {
+                        name: 'Jobs'
+                        type: 'int'
+                      }
+                    ]
+                    splitBy: []
+                    aggregation: 'Sum'
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  value: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project MembersAdded = toint(customDimensions["MembersAdded"]),\n          Destination = tostring(customDimensions["Destination"]),\n          Result = customDimensions["Result"],\n          DryRun = customDimensions["IsDryRunEnabled"],\n          RunId = toguid(customDimensions["RunId"])\n| where Result == "Success" and DryRun == "False"\n| extend DestinationJson = parse_json(Destination)\n| project MembersAdded, \n          ObjectId = tostring(DestinationJson[0]["value"]["objectId"]),\n          ChannelId = tostring(DestinationJson[0]["value"]["channelId"]),\n          RunId\n| distinct MembersAdded, ObjectId, ChannelId, RunId\n| order by MembersAdded desc\n\n'
+                  ControlType: 'AnalyticsGrid'
+                }
+              }
+              partHeader: {
+                title: 'Members Added to Destination'
+                subtitle: 'Descending order'
+              }
+            }
+          }
+          '20': {
+            position: {
+              x: 6
+              y: 14
+              colSpan: 5
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '10b3c2a8-28c3-4b74-a637-e5305b696ec4'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P7D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: ''
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'FrameControlChart'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  value: 'StackedColumn'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  value: {
+                    xAxis: {
+                      name: 'DurationBin'
+                      type: 'string'
+                    }
+                    yAxis: [
+                      {
+                        name: 'Jobs'
+                        type: 'int'
+                      }
+                    ]
+                    splitBy: []
+                    aggregation: 'Sum'
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  value: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project MembersRemoved = toint(customDimensions["MembersRemoved"]),\n          Destination = tostring(customDimensions["Destination"]),\n          Result = customDimensions["Result"],\n          DryRun = customDimensions["IsDryRunEnabled"],\n          RunId = toguid(customDimensions["RunId"])\n| where Result == "Success" and DryRun == "False"\n| extend DestinationJson = parse_json(Destination)\n| project MembersRemoved, \n          ObjectId = tostring(DestinationJson[0]["value"]["objectId"]),\n          ChannelId = tostring(DestinationJson[0]["value"]["channelId"]),\n          RunId\n| distinct MembersRemoved, ObjectId, ChannelId, RunId\n| order by MembersRemoved desc\n'
+                  ControlType: 'AnalyticsGrid'
+                }
+              }
+              partHeader: {
+                title: 'Members Removed from Destination'
+                subtitle: 'Descending order'
+              }
+            }
+          }
+          '21': {
+            position: {
+              x: 12
+              y: 14
               colSpan: 6
               rowSpan: 2
             }
@@ -947,969 +2148,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '12': {
+          '22': {
             position: {
               x: 1
-              y: 2
-              colSpan: 6
-              rowSpan: 4
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'resourceTypeMode'
-                  isOptional: true
-                }
-                {
-                  name: 'ComponentId'
-                  isOptional: true
-                }
-                {
-                  name: 'Scope'
-                  value: {
-                    resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
-                    ]
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'PartId'
-                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
-                  isOptional: true
-                }
-                {
-                  name: 'Version'
-                  value: '2.0'
-                  isOptional: true
-                }
-                {
-                  name: 'TimeRange'
-                  value: 'P1D'
-                  isOptional: true
-                }
-                {
-                  name: 'DashboardId'
-                  isOptional: true
-                }
-                {
-                  name: 'DraftRequestParameters'
-                  isOptional: true
-                }
-                {
-                  name: 'Query'
-                  value: ''
-                  isOptional: true
-                }
-                {
-                  name: 'ControlType'
-                  value: 'AnalyticsGrid'
-                  isOptional: true
-                }
-                {
-                  name: 'SpecificChart'
-                  isOptional: true
-                }
-                {
-                  name: 'PartTitle'
-                  value: 'Analytics'
-                  isOptional: true
-                }
-                {
-                  name: 'PartSubTitle'
-                  value: resourceGroup
-                  isOptional: true
-                }
-                {
-                  name: 'Dimensions'
-                  isOptional: true
-                }
-                {
-                  name: 'LegendOptions'
-                  isOptional: true
-                }
-                {
-                  name: 'IsQueryContainTimeRange'
-                  value: false
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
-              settings: {
-                content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| summarize by TargetOfficeGroupId, Type, Bin = bin(timestamp, 1d)\n| summarize count() by Bin, Type\n\n'
-                  ControlType: 'FrameControlChart'
-                  SpecificChart: 'StackedColumn'
-                  PartTitle: 'Sync Jobs Successful'
-                  Dimensions: {
-                    xAxis: {
-                      name: 'Bin'
-                      type: 'datetime'
-                    }
-                    yAxis: [
-                      {
-                        name: 'count_'
-                        type: 'long'
-                      }
-                    ]
-                    splitBy: [
-                      {
-                        name: 'Type'
-                        type: 'string'
-                      }
-                    ]
-                    aggregation: 'Sum'
-                  }
-                  LegendOptions: {
-                    isEnabled: true
-                    position: 'Bottom'
-                  }
-                }
-              }
-            }
-          }
-          '13': {
-            position: {
-              x: 7
-              y: 6
-              colSpan: 5
-              rowSpan: 4
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'sharedTimeRange'
-                  isOptional: true
-                }
-                {
-                  name: 'options'
-                  value: {
-                    chart: {
-                      metrics: [
-                        {
-                          resourceMetadata: {
-                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}'
-                          }
-                          name: 'customMetrics/MembersAdded'
-                          aggregationType: 1
-                          namespace: 'microsoft.insights/components/kusto'
-                          metricVisualization: {
-                            displayName: 'MembersAdded'
-                          }
-                        }
-                        {
-                          resourceMetadata: {
-                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}'
-                          }
-                          name: 'customMetrics/MembersRemoved'
-                          aggregationType: 1
-                          namespace: 'microsoft.insights/components/kusto'
-                          metricVisualization: {
-                            displayName: 'MembersRemoved'
-                          }
-                        }
-                      ]
-                      title: 'Sync Members Added and Removed'
-                      titleKind: 2
-                      visualization: {
-                        chartType: 2
-                        legendVisualization: {
-                          isVisible: true
-                          position: 2
-                          hideSubtitle: false
-                        }
-                        axisVisualization: {
-                          x: {
-                            isVisible: true
-                            axisType: 2
-                          }
-                          y: {
-                            isVisible: true
-                            axisType: 1
-                          }
-                        }
-                      }
-                      timespan: {
-                        relative: {
-                          duration: 604800000
-                        }
-                        showUTCTime: false
-                        grain: 1
-                      }
-                    }
-                  }
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/HubsExtension/PartType/MonitorChartPart'
-              settings: {
-                content: {
-                  options: {
-                    chart: {
-                      metrics: [
-                        {
-                          resourceMetadata: {
-                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}'
-                          }
-                          name: 'customMetrics/MembersAdded'
-                          aggregationType: 1
-                          namespace: 'microsoft.insights/components/kusto'
-                          metricVisualization: {
-                            displayName: 'MembersAdded'
-                          }
-                        }
-                        {
-                          resourceMetadata: {
-                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}'
-                          }
-                          name: 'customMetrics/MembersRemoved'
-                          aggregationType: 1
-                          namespace: 'microsoft.insights/components/kusto'
-                          metricVisualization: {
-                            displayName: 'MembersRemoved'
-                          }
-                        }
-                      ]
-                      title: 'Sync Members Added and Removed'
-                      titleKind: 2
-                      visualization: {
-                        chartType: 2
-                        legendVisualization: {
-                          isVisible: true
-                          position: 2
-                          hideSubtitle: false
-                        }
-                        axisVisualization: {
-                          x: {
-                            isVisible: true
-                            axisType: 2
-                          }
-                          y: {
-                            isVisible: true
-                            axisType: 1
-                          }
-                        }
-                        disablePinning: true
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-          '14': {
-            position: {
-              x: 12
-              y: 6
-              colSpan: 5
-              rowSpan: 4
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'sharedTimeRange'
-                  isOptional: true
-                }
-                {
-                  name: 'options'
-                  value: {
-                    chart: {
-                      metrics: [
-                        {
-                          resourceMetadata: {
-                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}'
-                          }
-                          name: 'customMetrics/MembersAddedFromOnboarding'
-                          aggregationType: 1
-                          namespace: 'microsoft.insights/components/kusto'
-                          metricVisualization: {
-                            displayName: 'MembersAddedFromOnboarding'
-                          }
-                        }
-                        {
-                          resourceMetadata: {
-                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}'
-                          }
-                          name: 'customMetrics/MembersRemovedFromOnboarding'
-                          aggregationType: 1
-                          namespace: 'microsoft.insights/components/kusto'
-                          metricVisualization: {
-                            displayName: 'MembersRemovedFromOnboarding'
-                          }
-                        }
-                      ]
-                      title: 'Onboarding Members Added and Removed'
-                      titleKind: 2
-                      visualization: {
-                        chartType: 2
-                        legendVisualization: {
-                          isVisible: true
-                          position: 2
-                          hideSubtitle: false
-                        }
-                        axisVisualization: {
-                          x: {
-                            isVisible: true
-                            axisType: 2
-                          }
-                          y: {
-                            isVisible: true
-                            axisType: 1
-                          }
-                        }
-                      }
-                      timespan: {
-                        relative: {
-                          duration: 604800000
-                        }
-                        showUTCTime: false
-                        grain: 1
-                      }
-                    }
-                  }
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/HubsExtension/PartType/MonitorChartPart'
-              settings: {
-                content: {
-                  options: {
-                    chart: {
-                      metrics: [
-                        {
-                          resourceMetadata: {
-                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}'
-                          }
-                          name: 'customMetrics/MembersAddedFromOnboarding'
-                          aggregationType: 1
-                          namespace: 'microsoft.insights/components/kusto'
-                          metricVisualization: {
-                            displayName: 'MembersAddedFromOnboarding'
-                          }
-                        }
-                        {
-                          resourceMetadata: {
-                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}'
-                          }
-                          name: 'customMetrics/MembersRemovedFromOnboarding'
-                          aggregationType: 1
-                          namespace: 'microsoft.insights/components/kusto'
-                          metricVisualization: {
-                            displayName: 'MembersRemovedFromOnboarding'
-                          }
-                        }
-                      ]
-                      title: 'Onboarding Members Added and Removed'
-                      titleKind: 2
-                      visualization: {
-                        chartType: 2
-                        legendVisualization: {
-                          isVisible: true
-                          position: 2
-                          hideSubtitle: false
-                        }
-                        axisVisualization: {
-                          x: {
-                            isVisible: true
-                            axisType: 2
-                          }
-                          y: {
-                            isVisible: true
-                            axisType: 1
-                          }
-                        }
-                        disablePinning: true
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-          '15': {
-            position: {
-              x: 1
-              y: 6
-              colSpan: 6
-              rowSpan: 4
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'resourceTypeMode'
-                  isOptional: true
-                }
-                {
-                  name: 'ComponentId'
-                  isOptional: true
-                }
-                {
-                  name: 'Scope'
-                  value: {
-                    resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}'
-                    ]
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'PartId'
-                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
-                  isOptional: true
-                }
-                {
-                  name: 'Version'
-                  value: '2.0'
-                  isOptional: true
-                }
-                {
-                  name: 'TimeRange'
-                  value: 'P1D'
-                  isOptional: true
-                }
-                {
-                  name: 'DashboardId'
-                  isOptional: true
-                }
-                {
-                  name: 'DraftRequestParameters'
-                  isOptional: true
-                }
-                {
-                  name: 'Query'
-                  value: ''
-                  isOptional: true
-                }
-                {
-                  name: 'ControlType'
-                  value: 'AnalyticsGrid'
-                  isOptional: true
-                }
-                {
-                  name: 'SpecificChart'
-                  isOptional: true
-                }
-                {
-                  name: 'PartTitle'
-                  value: 'Analytics'
-                  isOptional: true
-                }
-                {
-                  name: 'PartSubTitle'
-                  value: resourceGroup
-                  isOptional: true
-                }
-                {
-                  name: 'Dimensions'
-                  isOptional: true
-                }
-                {
-                  name: 'LegendOptions'
-                  isOptional: true
-                }
-                {
-                  name: 'IsQueryContainTimeRange'
-                  value: false
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
-              settings: {
-                content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    ToAdd = toint(customDimensions["MembersAdded"]),\n    ToRemove = toint(customDimensions["MembersRemoved"])\n| where Result == "Success" and DryRun == false\n| summarize UsersAdded = sum(ToAdd), UsersRemoved = sum(ToRemove) by bin(timestamp, 1d)\n\n'
-                  ControlType: 'FrameControlChart'
-                  SpecificChart: 'StackedColumn'
-                  PartTitle: 'Total Members Added and Removed'
-                  Dimensions: {
-                    xAxis: {
-                      name: 'timestamp'
-                      type: 'datetime'
-                    }
-                    yAxis: [
-                      {
-                        name: 'UsersAdded'
-                        type: 'long'
-                      }
-                      {
-                        name: 'UsersRemoved'
-                        type: 'long'
-                      }
-                    ]
-                    splitBy: []
-                    aggregation: 'Sum'
-                  }
-                  LegendOptions: {
-                    isEnabled: true
-                    position: 'Bottom'
-                  }
-                }
-              }
-            }
-          }
-          '16': {
-            position: {
-              x: 6
-              y: 10
-              colSpan: 5
-              rowSpan: 4
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'resourceTypeMode'
-                  isOptional: true
-                }
-                {
-                  name: 'ComponentId'
-                  isOptional: true
-                }
-                {
-                  name: 'Scope'
-                  value: {
-                    resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}'
-                    ]
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'PartId'
-                  value: '10b3c2a8-28c3-4b74-a637-e5305b696ec4'
-                  isOptional: true
-                }
-                {
-                  name: 'Version'
-                  value: '2.0'
-                  isOptional: true
-                }
-                {
-                  name: 'TimeRange'
-                  value: 'P7D'
-                  isOptional: true
-                }
-                {
-                  name: 'DashboardId'
-                  isOptional: true
-                }
-                {
-                  name: 'DraftRequestParameters'
-                  isOptional: true
-                }
-                {
-                  name: 'Query'
-                  value: ''
-                  isOptional: true
-                }
-                {
-                  name: 'ControlType'
-                  value: 'FrameControlChart'
-                  isOptional: true
-                }
-                {
-                  name: 'SpecificChart'
-                  value: 'StackedColumn'
-                  isOptional: true
-                }
-                {
-                  name: 'PartTitle'
-                  value: 'Analytics'
-                  isOptional: true
-                }
-                {
-                  name: 'PartSubTitle'
-                  value: resourceGroup
-                  isOptional: true
-                }
-                {
-                  name: 'Dimensions'
-                  value: {
-                    xAxis: {
-                      name: 'DurationBin'
-                      type: 'string'
-                    }
-                    yAxis: [
-                      {
-                        name: 'Jobs'
-                        type: 'int'
-                      }
-                    ]
-                    splitBy: []
-                    aggregation: 'Sum'
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'LegendOptions'
-                  value: {
-                    isEnabled: true
-                    position: 'Bottom'
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'IsQueryContainTimeRange'
-                  value: false
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
-              settings: {
-                content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project MembersRemoved = toint(customDimensions["MembersRemoved"]),\n    Destination = toguid(customDimensions["TargetOfficeGroupId"]),\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    RunId = toguid(customDimensions["RunId"])\n| where Result == "Success" and DryRun == "False"\n| distinct MembersRemoved, Destination, RunId\n| order by MembersRemoved desc\n\n'
-                  ControlType: 'AnalyticsGrid'
-                }
-              }
-              partHeader: {
-                title: 'Members Removed from Destination'
-                subtitle: 'Descending order'
-              }
-            }
-          }
-          '17': {
-            position: {
-              x: 11
-              y: 10
-              colSpan: 6
-              rowSpan: 2
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'resourceTypeMode'
-                  isOptional: true
-                }
-                {
-                  name: 'ComponentId'
-                  isOptional: true
-                }
-                {
-                  name: 'Scope'
-                  value: {
-                    resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}'
-                    ]
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'PartId'
-                  value: '10b3c2a8-28c3-4b74-a637-e5305b696ec4'
-                  isOptional: true
-                }
-                {
-                  name: 'Version'
-                  value: '2.0'
-                  isOptional: true
-                }
-                {
-                  name: 'TimeRange'
-                  value: 'P7D'
-                  isOptional: true
-                }
-                {
-                  name: 'DashboardId'
-                  isOptional: true
-                }
-                {
-                  name: 'DraftRequestParameters'
-                  isOptional: true
-                }
-                {
-                  name: 'Query'
-                  value: ''
-                  isOptional: true
-                }
-                {
-                  name: 'ControlType'
-                  value: 'FrameControlChart'
-                  isOptional: true
-                }
-                {
-                  name: 'SpecificChart'
-                  value: 'StackedColumn'
-                  isOptional: true
-                }
-                {
-                  name: 'PartTitle'
-                  value: 'Analytics'
-                  isOptional: true
-                }
-                {
-                  name: 'PartSubTitle'
-                  value: resourceGroup
-                  isOptional: true
-                }
-                {
-                  name: 'Dimensions'
-                  value: {
-                    xAxis: {
-                      name: 'DurationBin'
-                      type: 'string'
-                    }
-                    yAxis: [
-                      {
-                        name: 'Jobs'
-                        type: 'int'
-                      }
-                    ]
-                    splitBy: []
-                    aggregation: 'Sum'
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'LegendOptions'
-                  value: {
-                    isEnabled: true
-                    position: 'Bottom'
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'IsQueryContainTimeRange'
-                  value: false
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
-              settings: {
-                content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project MembersAdded = toint(customDimensions["MembersAdded"]),\n    MembersRemoved = toint(customDimensions["MembersRemoved"]),\n    Destination = toguid(customDimensions["TargetOfficeGroupId"]),\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    RunId = toguid(customDimensions["RunId"])\n| where Result == "Success" and DryRun == "False"\n| distinct RunId, MembersAdded, MembersRemoved\n| summarize NoOps = countif(MembersAdded == 0 and MembersRemoved == 0), Total = count()\n| extend NoOpsPercent = todouble(NoOps) / Total * 100'
-                  ControlType: 'AnalyticsGrid'
-                }
-              }
-              partHeader: {
-                title: 'No-Op Syncs'
-                subtitle: ''
-              }
-            }
-          }
-          '18': {
-            position: {
-              x: 11
-              y: 12
-              colSpan: 6
-              rowSpan: 2
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'resourceTypeMode'
-                  isOptional: true
-                }
-                {
-                  name: 'ComponentId'
-                  isOptional: true
-                }
-                {
-                  name: 'Scope'
-                  value: {
-                    resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
-                    ]
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'PartId'
-                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
-                  isOptional: true
-                }
-                {
-                  name: 'Version'
-                  value: '2.0'
-                  isOptional: true
-                }
-                {
-                  name: 'TimeRange'
-                  value: 'P1D'
-                  isOptional: true
-                }
-                {
-                  name: 'DashboardId'
-                  isOptional: true
-                }
-                {
-                  name: 'DraftRequestParameters'
-                  isOptional: true
-                }
-                {
-                  name: 'Query'
-                  value: ''
-                  isOptional: true
-                }
-                {
-                  name: 'ControlType'
-                  value: 'AnalyticsGrid'
-                  isOptional: true
-                }
-                {
-                  name: 'SpecificChart'
-                  isOptional: true
-                }
-                {
-                  name: 'PartTitle'
-                  value: 'Sync Job Reliability %'
-                  isOptional: true
-                }
-                {
-                  name: 'PartSubTitle'
-                  value: resourceGroup
-                  isOptional: true
-                }
-                {
-                  name: 'Dimensions'
-                  isOptional: true
-                }
-                {
-                  name: 'LegendOptions'
-                  isOptional: true
-                }
-                {
-                  name: 'IsQueryContainTimeRange'
-                  value: false
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
-              settings: {
-                content: {
-                  GridColumnsWidth: {
-                    ReliabilityPercentage: '458.993px'
-                  }
-                  Query: 'let P1 = toscalar(\n    customEvents\n\t| where name == "IdleJobsTracker"\n\t| order by timestamp desc\n\t| project timestamp,\n\t\t\t  Id = tostring(customDimensions["TargetOfficeGroupId"]),\n\t\t\t  Frequency = toint(customDimensions["Frequency"]),\n\t\t\t  JobStarted = toint(customDimensions["JobStarted"])\n\t| summarize StartReliabilityPercentage = (toreal(countif(JobStarted >= 1)) / sum(Frequency)) * 100\n);\nlet P2 = toscalar(\n    customEvents\n\t| where name == "InProgressJobsTracker"\n\t| order by timestamp desc\n\t| project timestamp,\n\t\tId = tostring(customDimensions["TargetOfficeGroupId"]),\n\t\tFrequency = toint(customDimensions["Frequency"]),\n\t\tRunId = toguid(customDimensions["RunId"])\n\t| where Frequency > 0\n\t| summarize max(Frequency) by RunId\n\t| join kind=rightouter (\n\t\tcustomEvents\n\t\t| where name == "NumberOfJobsStarted"\n\t\t| order by timestamp desc\n\t\t| project timestamp,\n\t\t\tJobStartedRunId = toguid(customDimensions["RunId"])\n\t\t| distinct JobStartedRunId)\n\t\ton $left.RunId == $right.JobStartedRunId\n\t| summarize\n\t\tCountOfJobsThatDidNotGoOverPeriod = (toreal(countif(isnull(RunId)))),\n\t\tCountOfAllExpectedJobs =  (countif(JobStartedRunId != "") + sum(max_Frequency) - countif(max_Frequency > 0))\n\t| project InProgressReliabilityPercentage = CountOfJobsThatDidNotGoOverPeriod / CountOfAllExpectedJobs * 100\n);\nprint ReliabilityPercentage = (P1 + P2) / 2\n'
-                  ControlType: 'AnalyticsGrid'
-                }
-              }
-              partHeader: {
-                title: 'Sync Job Reliability %'
-                subtitle: resourceGroup
-              }
-            }
-          }
-          '19': {
-            position: {
-              x: 1
-              y: 10
-              colSpan: 5
-              rowSpan: 4
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'resourceTypeMode'
-                  isOptional: true
-                }
-                {
-                  name: 'ComponentId'
-                  isOptional: true
-                }
-                {
-                  name: 'Scope'
-                  value: {
-                    resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}'
-                    ]
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'PartId'
-                  value: '10b3c2a8-28c3-4b74-a637-e5305b696ec4'
-                  isOptional: true
-                }
-                {
-                  name: 'Version'
-                  value: '2.0'
-                  isOptional: true
-                }
-                {
-                  name: 'TimeRange'
-                  value: 'P7D'
-                  isOptional: true
-                }
-                {
-                  name: 'DashboardId'
-                  isOptional: true
-                }
-                {
-                  name: 'DraftRequestParameters'
-                  isOptional: true
-                }
-                {
-                  name: 'Query'
-                  value: ''
-                  isOptional: true
-                }
-                {
-                  name: 'ControlType'
-                  value: 'FrameControlChart'
-                  isOptional: true
-                }
-                {
-                  name: 'SpecificChart'
-                  value: 'StackedColumn'
-                  isOptional: true
-                }
-                {
-                  name: 'PartTitle'
-                  value: 'Analytics'
-                  isOptional: true
-                }
-                {
-                  name: 'PartSubTitle'
-                  value: resourceGroup
-                  isOptional: true
-                }
-                {
-                  name: 'Dimensions'
-                  value: {
-                    xAxis: {
-                      name: 'DurationBin'
-                      type: 'string'
-                    }
-                    yAxis: [
-                      {
-                        name: 'Jobs'
-                        type: 'int'
-                      }
-                    ]
-                    splitBy: []
-                    aggregation: 'Sum'
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'LegendOptions'
-                  value: {
-                    isEnabled: true
-                    position: 'Bottom'
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'IsQueryContainTimeRange'
-                  value: false
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
-              settings: {
-                content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project MembersAdded = toint(customDimensions["MembersAdded"]),\n    Destination = toguid(customDimensions["TargetOfficeGroupId"]),\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"],\n    RunId = toguid(customDimensions["RunId"])\n| where Result == "Success" and DryRun == "False"\n| distinct MembersAdded, Destination, RunId\n| order by MembersAdded desc\n\n'
-                  ControlType: 'AnalyticsGrid'
-                }
-              }
-              partHeader: {
-                title: 'Members Added to Destination'
-                subtitle: 'Descending order'
-              }
-            }
-          }
-          '20': {
-            position: {
-              x: 1
-              y: 14
+              y: 18
               colSpan: 6
               rowSpan: 4
             }
@@ -2004,10 +2246,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '21': {
+          '23': {
             position: {
               x: 7
-              y: 14
+              y: 18
               colSpan: 6
               rowSpan: 4
             }
@@ -2102,10 +2344,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '22': {
+          '24': {
             position: {
               x: 13
-              y: 14
+              y: 18
               colSpan: 6
               rowSpan: 4
             }
@@ -2200,10 +2442,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '23': {
+          '25': {
             position: {
               x: 1
-              y: 18
+              y: 22
               colSpan: 19
               rowSpan: 2
             }
@@ -2313,17 +2555,17 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     From300kTo400k: '137px'
                     MoreThan400k: '126px'
                   }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),    \n    Result = tostring(customDimensions["Result"]),\n    MemberCount = toint(customDimensions["ProjectedMemberCount"])\n| where Result == "Success"\n| summarize MaxMemberCount = max(MemberCount) by TargetOfficeGroupId\n| summarize All = countif(MaxMemberCount >= 0), MoreThan1k = countif(MaxMemberCount >= 1000), MoreThan5k = countif(MaxMemberCount >= 5000), MoreThan10k = countif(MaxMemberCount >= 10000), MoreThan25k = countif(MaxMemberCount >= 25000), MoreThan50k = countif(MaxMemberCount >= 50000), MoreThan75k = countif(MaxMemberCount >= 75000), MoreThan100k = countif(MaxMemberCount >= 100000), MoreThan200k = countif(MaxMemberCount >= 200000), MoreThan300k = countif(MaxMemberCount >= 300000), MoreThan400k = countif(MaxMemberCount >= 400000)\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),    \n    Result = tostring(customDimensions["Result"]),\n    MemberCount = toint(customDimensions["ProjectedMemberCount"])\n| where Result == "Success"\n| summarize MaxMemberCount = max(MemberCount) by Destination\n| summarize All = countif(MaxMemberCount >= 0), MoreThan1k = countif(MaxMemberCount >= 1000), MoreThan5k = countif(MaxMemberCount >= 5000), MoreThan10k = countif(MaxMemberCount >= 10000), MoreThan25k = countif(MaxMemberCount >= 25000), MoreThan50k = countif(MaxMemberCount >= 50000), MoreThan75k = countif(MaxMemberCount >= 75000), MoreThan100k = countif(MaxMemberCount >= 100000), MoreThan200k = countif(MaxMemberCount >= 200000), MoreThan300k = countif(MaxMemberCount >= 300000), MoreThan400k = countif(MaxMemberCount >= 400000)\n\n'
                   PartTitle: 'Group Counts based on Size Buckets'
-                  PartSubTitle: resourceGroup
+                  Partsubtitle: resourceGroup
                 }
               }
             }
           }
-          '24': {
+          '26': {
             position: {
               x: 1
-              y: 20
+              y: 24
               colSpan: 17
               rowSpan: 2
             }
@@ -2433,17 +2675,17 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     From300kTo400k: '137px'
                     MoreThan400k: '126px'
                   }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),    \n    Result = tostring(customDimensions["Result"]),\n    MemberCount = toint(customDimensions["ProjectedMemberCount"])\n| where Result == "Success"\n| summarize MaxMemberCount = max(MemberCount) by TargetOfficeGroupId\n| summarize LessThan1k = countif(MaxMemberCount < 1000), From1kTo5k = countif(MaxMemberCount >= 1000 and MaxMemberCount < 5000), From5kTo10k = countif(MaxMemberCount >= 5000 and MaxMemberCount < 10000), From10kTo25k = countif(MaxMemberCount >= 10000 and MaxMemberCount < 25000), From25kTo50k = countif(MaxMemberCount >= 25000 and MaxMemberCount < 50000), From50kTo75k = countif(MaxMemberCount >= 50000 and MaxMemberCount < 75000), From75kTo100k = countif(MaxMemberCount >= 75000 and MaxMemberCount < 100000), From100kTo200k = countif(MaxMemberCount >= 100000 and MaxMemberCount < 200000), From200kTo300k = countif(MaxMemberCount >= 200000 and MaxMemberCount < 300000), From300kTo400k = countif(MaxMemberCount >= 300000 and MaxMemberCount < 400000), MoreThan400k = countif(MaxMemberCount >= 400000)\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),    \n    Result = tostring(customDimensions["Result"]),\n    MemberCount = toint(customDimensions["ProjectedMemberCount"])\n| where Result == "Success"\n| summarize MaxMemberCount = max(MemberCount) by Destination\n| summarize LessThan1k = countif(MaxMemberCount < 1000), From1kTo5k = countif(MaxMemberCount >= 1000 and MaxMemberCount < 5000), From5kTo10k = countif(MaxMemberCount >= 5000 and MaxMemberCount < 10000), From10kTo25k = countif(MaxMemberCount >= 10000 and MaxMemberCount < 25000), From25kTo50k = countif(MaxMemberCount >= 25000 and MaxMemberCount < 50000), From50kTo75k = countif(MaxMemberCount >= 50000 and MaxMemberCount < 75000), From75kTo100k = countif(MaxMemberCount >= 75000 and MaxMemberCount < 100000), From100kTo200k = countif(MaxMemberCount >= 100000 and MaxMemberCount < 200000), From200kTo300k = countif(MaxMemberCount >= 200000 and MaxMemberCount < 300000), From300kTo400k = countif(MaxMemberCount >= 300000 and MaxMemberCount < 400000), MoreThan400k = countif(MaxMemberCount >= 400000)\n\n'
                   PartTitle: 'Group Counts based on Size Buckets'
-                  PartSubTitle: resourceGroup
+                  Partsubtitle: resourceGroup
                 }
               }
             }
           }
-          '25': {
+          '27': {
             position: {
               x: 1
-              y: 22
+              y: 26
               colSpan: 7
               rowSpan: 3
             }
@@ -2535,7 +2777,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     SourceGroupObjectId: '259px'
                     NestedGroupCount: '167px'
                   }
-                  Query: 'customEvents\n| where name == "NestedGroupCount"\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["DestinationGroupObjectId"]),\n    SourceGroupObjectId = tostring(customDimensions["SourceGroupObjectId"]),\n    NestedGroupCount = toint(customDimensions["NestedGroupCount"])    \n| distinct TargetOfficeGroupId, SourceGroupObjectId, NestedGroupCount\n| order by NestedGroupCount desc'
+                  Query: 'customEvents\n| where name == "NestedGroupCount"\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    SourceGroupObjectId = tostring(customDimensions["SourceGroupObjectId"]),\n    NestedGroupCount = toint(customDimensions["NestedGroupCount"])   \n| extend DestinationJson = parse_json(Destination)\n| project SourceGroupObjectId,\n          NestedGroupCount,\n          ObjectId = tostring(DestinationJson[0]["value"]["objectId"]),\n          ChannelId = tostring(DestinationJson[0]["value"]["channelId"])\n| distinct ObjectId, ChannelId, SourceGroupObjectId, NestedGroupCount\n| order by NestedGroupCount desc\n\n'
                   ControlType: 'AnalyticsGrid'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'NestedGroupCount'
@@ -2570,10 +2812,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '26': {
+          '28': {
             position: {
               x: 8
-              y: 22
+              y: 26
               colSpan: 7
               rowSpan: 3
             }
@@ -2701,10 +2943,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '27': {
+          '29': {
             position: {
               x: 15
-              y: 22
+              y: 26
               colSpan: 6
               rowSpan: 3
             }
@@ -2796,17 +3038,17 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     Total: '150px'
                     Exclusionary: '150px'
                   }
-                  Query: 'customEvents\n| where name == "ExclusionarySourcePartsCount"\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["DestinationGroupObjectId"]),\n    Exclusionary = toint(customDimensions["NumberOfExclusionarySourceParts"]),\n    Total = toint(customDimensions["TotalNumberOfSourceParts"]) \n| distinct TargetOfficeGroupId, Exclusionary, Total\n| order by Exclusionary desc\n'
+                  Query: 'customEvents\n| where name == "ExclusionarySourcePartsCount"\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Exclusionary = toint(customDimensions["NumberOfExclusionarySourceParts"]),\n    Total = toint(customDimensions["TotalNumberOfSourceParts"]) \n| extend DestinationJson = parse_json(Destination)\n| project Exclusionary,\n          Total,\n          ObjectId = tostring(DestinationJson[0]["value"]["objectId"]),\n          ChannelId = tostring(DestinationJson[0]["value"]["channelId"])\n| distinct ObjectId, ChannelId, Exclusionary, Total\n| order by Exclusionary desc\n\n'
                   PartTitle: 'ExclusionarySourcePartsCount'
-                  PartSubTitle: resourceGroup
+                  Partsubtitle: resourceGroup
                 }
               }
             }
           }
-          '28': {
+          '30': {
             position: {
               x: 1
-              y: 26
+              y: 30
               colSpan: 7
               rowSpan: 2
             }
@@ -2826,10 +3068,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '29': {
+          '31': {
             position: {
               x: 1
-              y: 28
+              y: 32
               colSpan: 14
               rowSpan: 2
             }
@@ -2926,15 +3168,15 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   }
                   Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)\n'
                   PartTitle: 'Overall Sync Job Run Durations'
-                  PartSubTitle: resourceGroup
+                  Partsubtitle: resourceGroup
                 }
               }
             }
           }
-          '30': {
+          '32': {
             position: {
               x: 1
-              y: 30
+              y: 34
               colSpan: 3
               rowSpan: 4
             }
@@ -2954,10 +3196,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '31': {
+          '33': {
             position: {
               x: 4
-              y: 30
+              y: 34
               colSpan: 11
               rowSpan: 2
             }
@@ -3058,10 +3300,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '32': {
+          '34': {
             position: {
               x: 4
-              y: 32
+              y: 36
               colSpan: 11
               rowSpan: 2
             }
@@ -3162,10 +3404,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '33': {
+          '35': {
             position: {
               x: 1
-              y: 34
+              y: 38
               colSpan: 3
               rowSpan: 8
             }
@@ -3185,10 +3427,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '34': {
+          '36': {
             position: {
               x: 4
-              y: 34
+              y: 38
               colSpan: 11
               rowSpan: 2
             }
@@ -3289,10 +3531,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '35': {
+          '37': {
             position: {
               x: 4
-              y: 36
+              y: 40
               colSpan: 11
               rowSpan: 2
             }
@@ -3393,10 +3635,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '36': {
+          '38': {
             position: {
               x: 4
-              y: 38
+              y: 42
               colSpan: 11
               rowSpan: 2
             }
@@ -3497,10 +3739,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '37': {
+          '39': {
             position: {
               x: 4
-              y: 40
+              y: 44
               colSpan: 11
               rowSpan: 2
             }
@@ -3600,10 +3842,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '38': {
+          '40': {
             position: {
               x: 1
-              y: 42
+              y: 46
               colSpan: 6
               rowSpan: 4
             }
@@ -3720,10 +3962,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '39': {
+          '41': {
             position: {
               x: 7
-              y: 42
+              y: 46
               colSpan: 6
               rowSpan: 4
             }
@@ -3839,10 +4081,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '40': {
+          '42': {
             position: {
               x: 13
-              y: 42
+              y: 46
               colSpan: 6
               rowSpan: 4
             }
@@ -3964,10 +4206,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '41': {
+          '43': {
             position: {
               x: 1
-              y: 47
+              y: 51
               colSpan: 9
               rowSpan: 2
             }
@@ -3987,10 +4229,131 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '42': {
+          '44': {
+            position: {
+              x: 1
+              y: 53
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: ''
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where (Result == "PartialSuccess" or Result == "Failure") and DryRun == false\n| summarize by Destination, Result, Bin = bin(timestamp, 1d)\n| summarize count() by Bin, Result\n\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'StackedColumn'
+                  PartTitle: 'Jobs with PartialSuccess or Failure'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'Bin'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'count_'
+                        type: 'long'
+                      }
+                    ]
+                    splitBy: [
+                      {
+                        name: 'Result'
+                        type: 'string'
+                      }
+                    ]
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+            }
+          }
+          '45': {
             position: {
               x: 7
-              y: 49
+              y: 53
               colSpan: 9
               rowSpan: 4
             }
@@ -4080,16 +4443,16 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   GridColumnsWidth: {
                     Message: '379px'
                   }
-                  Query: 'ApplicationLog_CL\n| where (location_s == "GraphUpdater" and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress" and Message !has "StuckInProgress")\n| project TimeGenerated, Message, RunId_g\n| order by TimeGenerated desc'
+                  Query: 'ApplicationLog_CL\n| where ((location_s == "GraphUpdater" or location_s == "TeamsChannelUpdater") and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress" and Message !has "StuckInProgress")\n| project TimeGenerated, Message, RunId_g\n| order by TimeGenerated desc\n'
                   PartTitle: 'Jobs marked as Error'
                 }
               }
             }
           }
-          '43': {
+          '46': {
             position: {
               x: 1
-              y: 53
+              y: 57
               colSpan: 8
               rowSpan: 4
             }
@@ -4176,15 +4539,17 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
+                  Query: 'ApplicationLog_CL \n|  project TimeGenerated, Message, RunId_g, tostring(Destination_s)\n|  where Message has \'setting status to ErroredDueToStuckInProgress\'\n|  where TimeGenerated > ago(30d) and TimeGenerated < ago(1d)\n|  extend DestinationJson = parse_json(Destination_s)\n|  project TimeGenerated,\n           ObjectId = tostring(DestinationJson[0]["value"]["objectId"]),\n           ChannelId = tostring(DestinationJson[0]["value"]["channelId"]),\n           RunId_g\n|  order by TimeGenerated desc\n'
                   PartTitle: 'Jobs potentially stuck InProgress'
+                  IsQueryContainTimeRange: true
                 }
               }
             }
           }
-          '44': {
+          '47': {
             position: {
               x: 9
-              y: 53
+              y: 57
               colSpan: 7
               rowSpan: 4
             }
@@ -4271,17 +4636,17 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'ApplicationLog_CL\n| project TimeGenerated, Message, location_s, RunId_g, TargetOfficeGroupId_g\n| where Message has "Threshold Exceeded"\n| distinct TargetOfficeGroupId_g, RunId_g, TimeGenerated\n| order by TimeGenerated desc'
+                  Query: 'ApplicationLog_CL\n| project TimeGenerated, Message, location_s, RunId_g, Destination_s\n| where Message has "Threshold Exceeded"\n| extend DestinationJson = parse_json(Destination_s)\n| project TimeGenerated, Message, location_s, RunId_g,\n            ObjectId = tostring(DestinationJson[0]["value"]["objectId"]),\n            ChannelId = tostring(DestinationJson[0]["value"]["channelId"])\n| distinct ObjectId, ChannelId, RunId_g, TimeGenerated\n| order by TimeGenerated desc\n'
                   PartTitle: 'Threshold Exceeded Jobs'
                   PartSubTitle: 'ApplicationLog_CL'
                 }
               }
             }
           }
-          '45': {
+          '48': {
             position: {
               x: 1
-              y: 57
+              y: 61
               colSpan: 8
               rowSpan: 4
             }
@@ -4299,7 +4664,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'Scope'
                   value: {
                     resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}'
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
                     ]
                   }
                   isOptional: true
@@ -4392,7 +4757,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     RunId: '279px'
                     TimeElapsed: '133px'
                   }
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| project TimeElapsed = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) * 1s,\n    Destination = customDimensions["TargetOfficeGroupId"],\n    RunId = customDimensions["RunId"],\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"]\n| where Result == "Success" and DryRun == "False"\n| project TimeElapsed, Destination, RunId\n| order by TimeElapsed desc\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project TimeElapsed = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) * 1s,\n    Destination = tostring(customDimensions["Destination"]),\n    RunId = customDimensions["RunId"],\n    Result = customDimensions["Result"],\n    DryRun = customDimensions["IsDryRunEnabled"]\n| where Result == "Success" and DryRun == "False"\n| extend DestinationJson = parse_json(Destination)\n| project TimeElapsed,\n          ObjectId = tostring(DestinationJson[0]["value"]["objectId"]),\n          ChannelId = tostring(DestinationJson[0]["value"]["channelId"]), \n          RunId\n| order by TimeElapsed desc\n\n'
                   ControlType: 'AnalyticsGrid'
                   PartTitle: 'Sync Job Run Durations List'
                   PartSubTitle: 'Descending order'
@@ -4400,10 +4765,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '46': {
+          '49': {
             position: {
               x: 9
-              y: 57
+              y: 61
               colSpan: 8
               rowSpan: 4
             }
@@ -4504,10 +4869,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '47': {
+          '50': {
             position: {
               x: 1
-              y: 61
+              y: 65
               colSpan: 16
               rowSpan: 5
             }
@@ -4605,136 +4970,15 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   }
                   Query: 'customEvents\n| where name == "TrackNullColumns"\n| project timestamp,    \n    Column = tostring(customDimensions["Column"]),\n    CurrentNulls = toint(customDimensions["CurrentNull"]),\n    PreviousNulls = toint(customDimensions["PreviousNull"]),\n    CurrentRows = toint(customDimensions["CurrentRows"]),\n    PreviousRows = toint(customDimensions["PreviousRows"])\n| summarize arg_max(timestamp, *) by Column\n| extend Delta = CurrentNulls - PreviousNulls,\n         CurrentNullPercent = (toreal(CurrentNulls) / CurrentRows) * 100,\n         PreviousNullPercent = (toreal(PreviousNulls) / PreviousRows) * 100\n| project timestamp, Column, CurrentNulls, PreviousNulls, Delta, CurrentNullPercent, PreviousNullPercent\n| order by Delta desc\n\n'
                   PartTitle: 'Null Calculator'
-                  PartSubTitle: resourceGroup
+                  Partsubtitle: resourceGroup
                 }
               }
             }
           }
-          '48': {
+          '51': {
             position: {
               x: 1
-              y: 49
-              colSpan: 6
-              rowSpan: 4
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'resourceTypeMode'
-                  isOptional: true
-                }
-                {
-                  name: 'ComponentId'
-                  isOptional: true
-                }
-                {
-                  name: 'Scope'
-                  value: {
-                    resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
-                    ]
-                  }
-                  isOptional: true
-                }
-                {
-                  name: 'PartId'
-                  value: '1c38a923-16a8-4a6b-8f25-8eb90e14df70'
-                  isOptional: true
-                }
-                {
-                  name: 'Version'
-                  value: '2.0'
-                  isOptional: true
-                }
-                {
-                  name: 'TimeRange'
-                  value: 'P1D'
-                  isOptional: true
-                }
-                {
-                  name: 'DashboardId'
-                  isOptional: true
-                }
-                {
-                  name: 'DraftRequestParameters'
-                  isOptional: true
-                }
-                {
-                  name: 'Query'
-                  value: ''
-                  isOptional: true
-                }
-                {
-                  name: 'ControlType'
-                  value: 'AnalyticsGrid'
-                  isOptional: true
-                }
-                {
-                  name: 'SpecificChart'
-                  isOptional: true
-                }
-                {
-                  name: 'PartTitle'
-                  value: 'Analytics'
-                  isOptional: true
-                }
-                {
-                  name: 'PartSubTitle'
-                  value: resourceGroup
-                  isOptional: true
-                }
-                {
-                  name: 'Dimensions'
-                  isOptional: true
-                }
-                {
-                  name: 'LegendOptions'
-                  isOptional: true
-                }
-                {
-                  name: 'IsQueryContainTimeRange'
-                  value: false
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
-              settings: {
-                content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where (Result == "PartialSuccess" or Result == "Failure") and DryRun == false\n| summarize by TargetOfficeGroupId, Result, Bin = bin(timestamp, 1d)\n| summarize count() by Bin, Result'
-                  ControlType: 'FrameControlChart'
-                  SpecificChart: 'StackedColumn'
-                  PartTitle: 'Jobs with PartialSuccess or Failure'
-                  Dimensions: {
-                    xAxis: {
-                      name: 'Bin'
-                      type: 'datetime'
-                    }
-                    yAxis: [
-                      {
-                        name: 'count_'
-                        type: 'long'
-                      }
-                    ]
-                    splitBy: [
-                      {
-                        name: 'Result'
-                        type: 'string'
-                      }
-                    ]
-                    aggregation: 'Sum'
-                  }
-                  LegendOptions: {
-                    isEnabled: true
-                    position: 'Bottom'
-                  }
-                }
-              }
-            }
-          }
-          '49': {
-            position: {
-              x: 1
-              y: 66
+              y: 71
               colSpan: 10
               rowSpan: 2
             }
@@ -4752,10 +4996,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '50': {
+          '52': {
             position: {
               x: 1
-              y: 68
+              y: 73
               colSpan: 6
               rowSpan: 4
             }
@@ -4868,10 +5112,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '51': {
+          '53': {
             position: {
               x: 7
-              y: 68
+              y: 73
               colSpan: 6
               rowSpan: 4
             }
@@ -4984,10 +5228,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '52': {
+          '54': {
             position: {
               x: 1
-              y: 72
+              y: 77
               colSpan: 6
               rowSpan: 4
             }
@@ -5130,35 +5374,48 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 value: 'Past 7 days'
               }
               filteredPartIds: [
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae1681fc'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae1681fe'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168204'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168206'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae16820a'
-                'StartboardPart-MonitorChartPart-9939d273-1847-4ad5-b2d0-e19dae16820c'
-                'StartboardPart-MonitorChartPart-9939d273-1847-4ad5-b2d0-e19dae16820e'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168210'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168212'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae16821a'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae16821c'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae16821e'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168220'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168222'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168226'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae16822a'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae16822c'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168230'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168232'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168234'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168236'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168238'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae16823a'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae16823e'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168240'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168242'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168244'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae168246'
-                'StartboardPart-LogsDashboardPart-9939d273-1847-4ad5-b2d0-e19dae1683fd'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bad2'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bad4'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bad6'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600badc'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bade'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bae0'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bae4'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bae6'
+                'StartboardPart-MonitorChartPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bae8'
+                'StartboardPart-MonitorChartPart-a2bd3c8b-8f16-4ac8-b4f4-15310600baea'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600baec'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600baee'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600baf0'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600baf2'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600baf4'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600baf6'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600baf8'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb00'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb02'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb04'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb06'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb08'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb0c'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb10'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb12'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb16'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb18'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb1a'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb1c'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb1e'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb20'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb22'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb26'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb28'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb2a'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb2c'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb2e'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb30'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb32'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb36'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb38'
+                'StartboardPart-LogsDashboardPart-a2bd3c8b-8f16-4ac8-b4f4-15310600bb3a'
               ]
             }
           }
