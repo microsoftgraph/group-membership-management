@@ -22,7 +22,21 @@ namespace Repositories.EntityFramework.Contexts
                   .HasDefaultValueSql("NEWID()");
         }
 
-        public GMMContext(DbContextOptions<GMMContext> options)
+        public GMMContext(DbContextOptions options)
+            : base(options)
+        {
+        }
+    }
+    public class GMMWriteContext : GMMContext
+    {
+        public GMMWriteContext(DbContextOptions<GMMWriteContext> options)
+            : base(options)
+        {
+        }
+    }
+    public class GMMReadContext : GMMContext
+    {
+        public GMMReadContext(DbContextOptions<GMMReadContext> options)
             : base(options)
         {
         }

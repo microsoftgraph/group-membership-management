@@ -51,10 +51,10 @@ namespace WebApi
             var apiHostName = builder.Configuration.GetValue<string>("Settings:ApiHostname");
             var secureApiHostName = $"https://{apiHostName}";
 
-            builder.Services.AddDbContext<GMMContext>(options =>
+            builder.Services.AddDbContext<GMMWriteContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContext")));
 
-            builder.Services.AddDbContext<GMMContext>(options =>
+            builder.Services.AddDbContext<GMMReadContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContextReadOnly")));
 
             builder.Services.Configure<WebAPISettings>(builder.Configuration.GetSection("WebAPI:Settings"));
