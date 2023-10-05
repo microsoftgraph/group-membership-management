@@ -20,5 +20,6 @@ namespace Hosts.TeamsChannelUpdater
         public string Result { get; set; } = "N/A";
         public string SyncJobTimeElapsedSeconds { get; set; } = "N/A";
         public string Type { get; set; } = "N/A";
+        public string SourceTypesCounts { get; set; } = "N/A";
     }
 }
