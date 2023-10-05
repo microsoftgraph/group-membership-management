@@ -40,8 +40,6 @@ namespace Services.Tests
             _settingEntity = new Setting { Key = "testKey", Value = "testValue " };
 
             _settingsRepository.Setup(x => x.GetSettingByKeyAsync("testKey")).ReturnsAsync(() => _settingEntity);
-            _settingsRepository.Setup(x => x.UpdateSettingAsync(It.IsAny<Setting>(), It.IsAny<string>()));
-
         }
 
         [TestMethod]
@@ -62,15 +60,18 @@ namespace Services.Tests
         [TestMethod]
         public async Task UpdateSettingTestAsync()
         {
+            _settingsRepository.Setup(x => x.UpdateSettingAsync(It.IsAny<Setting>(), It.IsAny<string>()))
+                               .Callback<Setting, string>((s, v) => s.Value = v);
+
             await _settingsController.UpdateSettingAsync("testKey", "updatedValue");
             _settingsRepository.Verify(x => x.UpdateSettingAsync(_settingEntity, "updatedValue"), Times.Once());
 
-            var setting = await _settingsController.GetSettingByKeyAsync("testKey");
-            var result = setting.Result as OkObjectResult;
-            var settingDTO = result.Value as SettingDTO;
+            var settingResponse = await _settingsController.GetSettingByKeyAsync("testKey");
+            var result = settingResponse.Result as OkObjectResult;
+            var settingDTO = result?.Value as SettingDTO;
 
             Assert.IsNotNull(settingDTO);
-            Assert.AreEqual(settingDTO.Value, "updatedValue");
+            Assert.AreEqual("updatedValue", settingDTO?.Value);
         }
     }
 }
