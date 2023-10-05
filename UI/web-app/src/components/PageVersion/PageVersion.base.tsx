@@ -5,7 +5,6 @@ import {
   classNamesFunction,
   type IProcessedStyleSet
 } from '@fluentui/react';
-import { Text } from '@fluentui/react/lib/Text';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import React from 'react';
 
@@ -37,7 +36,7 @@ export const PageVersionBase: React.FunctionComponent<IPageVersionProps> = (
 
   return (
     <div className={classNames.root}>
-        {strings.version as string} #{versionNumber}
+        {strings.version} #{versionNumber}
     </div>
   );
 };

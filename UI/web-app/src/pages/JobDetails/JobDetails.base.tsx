@@ -104,9 +104,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
             messageBarType={MessageBarType.error}
             isMultiline={false}
             onDismiss={onMessageBarDismiss}
-            dismissButtonAriaLabel={
-              strings.JobDetails.MessageBar.dismissButtonAriaLabel as string
-            }
+            dismissButtonAriaLabel={strings.JobDetails.MessageBar.dismissButtonAriaLabel}
           >
             {error}
           </MessageBar>

@@ -131,6 +131,28 @@ export const strings: IStrings = {
     },
     NoResults: 'No memberships found.',
   },
+  ManageMembership: {
+    manageMembershipButton: 'Manage Membership',
+    labels: {
+      pageTitle: 'Manage Membership',
+      step1title: 'Step 1: Select Destination',
+      step1description: 'Please select the destination type and the destination whose membership you want to manage.',
+      selectDestinationType: 'Select Destination Type',
+      searchDestination: 'Search destination',
+      appsUsed: 'This group uses the following apps:',
+      outlookWarning: 'There are important settings that should be considered before sending email to this Outlook group. Follow the instructions on your organization.'
+    }
+  },
+  HelpPanel: {
+    specificGuidanceTitle: 'Specific Guidance',
+    specificGuidanceDescription: 'If you are looking for more specific guidance we invite you to check out our website to find more details about the XMM processes of your organization.',
+    openSite: 'Open site'
+  },
+  needHelp: 'Need help?',
+  next: 'Next',
+  close: 'Close',
+  learnMore: 'Learn more',
+  errorItemNotFound: 'Item not found',
   welcome: 'Welcome',
   back: 'Back to dashboard',
   version: 'Version',

@@ -3,18 +3,29 @@
 
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { IProcessedStyleSet, PrimaryButton, classNamesFunction, useTheme, Dropdown, IDropdownOption, ActionButton, MessageBar, MessageBarType, MessageBarButton, Icon, DropdownMenuItemType, ComboBox, IComboBoxOption, DefaultButton, IComboBox, Spinner, Dialog, DialogType, DialogFooter } from '@fluentui/react';
+import { 
+  IProcessedStyleSet, 
+  classNamesFunction, 
+  useTheme, 
+  Dropdown, IDropdownOption, 
+  ActionButton, DefaultButton, PrimaryButton,
+  MessageBar, MessageBarType, MessageBarButton, 
+  Icon, 
+  ComboBox, IComboBoxOption, IComboBox,
+  Spinner, 
+  Dialog, DialogType, DialogFooter
+} from '@fluentui/react';
+import { useNavigate } from 'react-router-dom';
 import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
 import { PageSection } from '../../components/PageSection';
 import { IManageMembershipProps, IManageMembershipStyleProps, IManageMembershipStyles } from './ManageMembership.types';
-import { useTranslation } from 'react-i18next';
 import { HelpPanel } from '../../components/HelpPanel';
 import { searchGroups } from '../../store/groups.api';
 import { selectGroups } from '../../store/groups.slice';
 import { isAppIDOwnerOfGroup, getGroupEndpoints } from '../../store/groups.api';
-import { useNavigate } from 'react-router-dom';
 import { AppDispatch } from '../../store';
+import { useStrings } from '../../localization/hooks';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -33,7 +44,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       theme: useTheme(),
     }
   );
-  const { t } = useTranslation();
+  const strings = useStrings();
   const navigate = useNavigate();
 
   const onClick = () => {
@@ -72,7 +83,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   };
 
   const needHelpButton: React.ReactNode = (
-    <ActionButton iconProps={{ iconName: 'help' }} text={t('needHelp') as string} onClick={togglePanel}></ActionButton>
+    <ActionButton iconProps={{ iconName: 'help' }} text={strings.needHelp} onClick={togglePanel}></ActionButton>
   );
 
   const debounce = (func: (...args: any[]) => void, delay: number) => {
@@ -172,9 +183,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       <div className={classNames.root}>
         <div className={classNames.card}>
           <PageSection>
-            <div className={classNames.title}>{t('ManageMembership.labels.pageTitle')}</div>
-            <div className={classNames.stepTitle}>{t('ManageMembership.labels.step1title')}</div>
-            <div className={classNames.stepDescription}>{t('ManageMembership.labels.step1description')}</div>
+            <div className={classNames.title}>{strings.ManageMembership.labels.pageTitle}</div>
+            <div className={classNames.stepTitle}>{strings.ManageMembership.labels.step1title}</div>
+            <div className={classNames.stepDescription}>{strings.ManageMembership.labels.step1description}</div>
           </PageSection>
         </div>
         <div className={classNames.card}>
@@ -182,13 +193,13 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             <div>
               <Dropdown
                 placeholder="Select an option"
-                label={t('ManageMembership.labels.selectDestinationType') as string}
+                label={strings.ManageMembership.labels.selectDestinationType}
                 options={optionsDestinationType}
                 styles={{ title: classNames.dropdownTitle, dropdown: classNames.dropdownField }}
                 required
               />
               <div>
-                {t('ManageMembership.labels.searchDestination') as string}
+                {strings.ManageMembership.labels.searchDestination}
                 <ComboBox
                   styles={{
                     root: classNames.searchField,
@@ -215,7 +226,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
                 <div>
                   {selectedSearchDestination && hasRequiredEndpoints() ? (
                     <div className={classNames.endpointsContainer}>
-                      {groupEndpoints ?? t('ManageMembership.labels.appsUsed')}
+                      {groupEndpoints ?? strings.ManageMembership.labels.appsUsed}
                       {groupEndpoints.includes("Outlook") && (
                         <div className={classNames.outlookContainer}>
                           <ActionButton
@@ -229,9 +240,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
                             className={classNames.outlookWarning}
                             isMultiline={false}
                             actions={
-                              <MessageBarButton onClick={() => onClickOutlookWarning()}>{t('learnMore')}</MessageBarButton>
+                              <MessageBarButton onClick={() => onClickOutlookWarning()}>{strings.learnMore}</MessageBarButton>
                             }>
-                            {t('ManageMembership.labels.outlookWarning')}
+                            {strings.ManageMembership.labels.outlookWarning}
                           </MessageBar>
                         </div>)}
                       {groupEndpoints.includes("SharePoint") && (
@@ -266,7 +277,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             <Icon iconName='CircleRing' className={classNames.circleIcon}></Icon>
           </div>
           <div className={classNames.nextButtonContainer}>
-            <PrimaryButton text={t('next') as string} onClick={() => onClick()} disabled></PrimaryButton>
+            <PrimaryButton text={strings.next} onClick={() => onClick()} disabled></PrimaryButton>
           </div>
         </div>
       </div >

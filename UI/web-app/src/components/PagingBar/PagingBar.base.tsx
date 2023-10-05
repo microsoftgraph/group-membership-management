@@ -78,7 +78,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
             <div className={classNames.divContainer}>
                 <IconButton
                     iconProps={{ iconName: 'ChevronLeft' }}
-                    title={strings.JobsList.PagingBar.previousPage as string}
+                    title={strings.JobsList.PagingBar.previousPage}
                     onClick={() => navigateToPage(-1)}
                     disabled={pageNumber === 1 || totalNumberOfPages === 0}
                 />
@@ -95,7 +95,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
                 <label>{strings.JobsList.PagingBar.nextPage}</label>
                 <IconButton
                     iconProps={{ iconName: 'ChevronRight' }}
-                    title={strings.JobsList.PagingBar.nextPage as string}
+                    title={strings.JobsList.PagingBar.nextPage}
                     onClick={() => navigateToPage(1)}
                     disabled={pageNumber === totalNumberOfPages || totalNumberOfPages === 0} 
                 />

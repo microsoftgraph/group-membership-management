@@ -392,12 +392,15 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               {error}
             </MessageBar>
           )}
-          <div className={classNames.title}>
-            <Text variant="xLarge">{strings.JobsList.listOfMemberships}</Text>
-          </div>
-          {!isProduction ?
+          <div className={classNames.titleContainer}>
+            <div className={classNames.title}>
+              <Text variant="xLarge">{strings.JobsList.listOfMemberships}</Text>
+            </div>
+            {!isProduction ?
               <PrimaryButton onClick={onManageMembershipsButtonClick}>{strings.ManageMembership.manageMembershipButton}</PrimaryButton>
-              : null}
+              : null
+            }
+          </div>
           <div className={classNames.tabContent}>
             <ShimmeredDetailsList
               setKey="set"

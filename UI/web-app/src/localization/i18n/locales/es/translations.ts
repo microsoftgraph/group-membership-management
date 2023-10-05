@@ -133,6 +133,28 @@ export const strings: IStrings = {
     },
     NoResults: 'No se encontro ninguna membresía',
   },
+  ManageMembership: {
+    manageMembershipButton: 'Administrar membresía',
+    labels: {
+      pageTitle: 'Manejo de Membresía',
+      step1title: 'Step 1: Select Destination',
+      step1description: 'Por favor selecciona el tipo de destino y el destino cuya membresía quieres administrar.',
+      selectDestinationType: 'Seleccionar tipo de destino',
+      searchDestination: 'Buscar destino',
+      appsUsed: 'Este grupo utiliza las siguientes aplicaciones.',
+      outlookWarning: 'Hay configuraciones importantes a considerar antes de enviar correo a este grupo de Outlook. Sigue las instrucciones de tu organización.'
+    }
+  },
+  HelpPanel: {
+    specificGuidanceTitle: 'Guía específica',
+    specificGuidanceDescription: 'Si estás buscando ayuda específica para tu organización, te invitamos a revisar el siguiente sitio para encontrar más detalles sobre cómo funciona XMM en tu organización.',
+    openSite: 'Abrir sitio'
+  },
+  needHelp: '¿Necesitas ayuda?',
+  next: 'Siguiente',
+  close: 'Cerrar',
+  learnMore: 'Aprende más',
+  errorItemNotFound: 'Elemento no encontrado',
   welcome: 'Bienvenido',
   back: 'Regresar',
   version: 'Versión',

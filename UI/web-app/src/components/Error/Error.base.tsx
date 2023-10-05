@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 import * as React from "react";
-import { useTranslation } from 'react-i18next';
 import {
   IProcessedStyleSet,
   classNamesFunction,
@@ -13,6 +12,7 @@ import {
   IErrorStyleProps,
   IErrorStyles,
 } from './Error.types';
+import { useStrings } from "../../localization/hooks";
 
 const getClassNames = classNamesFunction<
   IErrorStyleProps,
@@ -21,7 +21,7 @@ const getClassNames = classNamesFunction<
 
 export const ErrorBase: React.FunctionComponent<IErrorProps> = (props) => {
   const { className, styles } = props;
-  const { t } = useTranslation();
+  const strings = useStrings();
   const classNames: IProcessedStyleSet<IErrorStyles> = getClassNames(
     styles,
     {
@@ -32,7 +32,7 @@ export const ErrorBase: React.FunctionComponent<IErrorProps> = (props) => {
 
   return (
     <div className={classNames.root}>
-      <div className={classNames.text}> {t('errorItemNotFound')} </div>
+      <div className={classNames.text}> {strings.errorItemNotFound} </div>
     </div>
   );
 };

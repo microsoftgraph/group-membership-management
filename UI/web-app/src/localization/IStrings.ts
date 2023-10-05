@@ -124,6 +124,28 @@ export type IStrings = {
     };
     NoResults: string;
   };
+  ManageMembership: {
+    manageMembershipButton: string;
+    labels: {
+      pageTitle: string;
+      step1title: string;
+      step1description: string;
+      selectDestinationType: string;
+      searchDestination: string;
+      appsUsed: string;
+      outlookWarning: string;
+    }
+  };
+  HelpPanel:{
+    specificGuidanceTitle: string;
+    specificGuidanceDescription: string;
+    openSite: string;
+  },
+  needHelp: string;
+  next: string;
+  close: string;
+  learnMore: string;
+  errorItemNotFound: string;
   welcome: string;
   back: string;
   version: string;

@@ -54,7 +54,7 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
             <ActionButton
               className={classNames.backButton}
               iconProps={leftArrowIcon}
-              text={strings.back as string}
+              text={strings.back}
               onClick={onBackButtonClick ?? backButtonOnClick}
             />
             {rightButton}
