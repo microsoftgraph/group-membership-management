@@ -17,6 +17,7 @@ using Models.Helpers;
 using Models;
 using Hosts.GroupMembershipObtainer;
 using System.Net.Http;
+using GroupMembershipObtainer.Helpers;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -69,14 +70,16 @@ namespace Hosts.GroupMembershipObtainer
 
                     if (!context.IsReplaying)
                     {
+                        //var destination = JsonParser.GetDestination(request.SyncJob.Destination);
+
                         if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
                         {
                             var nestedGroupEvent = new Dictionary<string, string>
-                        {
-                            { "SourceGroupObjectId", request.SourceGroup.ObjectId.ToString() },
-                            { "DestinationGroupObjectId", request.SyncJob.TargetOfficeGroupId.ToString() },
-                            { "NestedGroupCount", transitiveGroupCount.ToString() }
-                        };
+                            {
+                                { "SourceGroupObjectId", request.SourceGroup.ObjectId.ToString() },
+                                { "Destination", request.SyncJob.Destination },
+                                { "NestedGroupCount", transitiveGroupCount.ToString() }
+                            };
                             _telemetryClient.TrackEvent("NestedGroupCount", nestedGroupEvent);
                         }
                     }
