@@ -83,7 +83,6 @@ namespace Hosts.GraphUpdater
 
                 syncCompleteEvent.Type = destination.Type.ToString();
                 syncCompleteEvent.SourceTypesCounts = sourceTypeCounts;
-                //syncCompleteEvent.TargetOfficeGroupId = destination.ObjectId.ToString();
                 syncCompleteEvent.Destination = syncJob.Destination;
                 syncCompleteEvent.RunId = syncJob.RunId.ToString();
                 syncCompleteEvent.IsDryRunEnabled = false.ToString();

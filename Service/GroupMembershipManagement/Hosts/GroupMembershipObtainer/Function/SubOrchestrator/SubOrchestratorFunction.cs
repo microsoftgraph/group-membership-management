@@ -70,8 +70,6 @@ namespace Hosts.GroupMembershipObtainer
 
                     if (!context.IsReplaying)
                     {
-                        //var destination = JsonParser.GetDestination(request.SyncJob.Destination);
-
                         if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
                         {
                             var nestedGroupEvent = new Dictionary<string, string>
