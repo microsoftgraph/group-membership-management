@@ -65,11 +65,12 @@ namespace Hosts.TeamsChannelUpdater
                                                            JobId = graphRequest.SyncJob.Id,
                                                            RunId = graphRequest.SyncJob.RunId.GetValueOrDefault()
                                                        });
-                var queryTypes = JsonParser.GetQueryTypes(syncJob.Query);
+                var sourceTypesCounts = JsonParser.GetQueryTypes(syncJob.Query);
                 var destination = JsonParser.GetDestination(syncJob.Destination);
 
-                syncCompleteEvent.Type = queryTypes.Distinct().Count() == 1 ? queryTypes[0] : "Hybrid";
-                syncCompleteEvent.Destination = (destination.ToString());
+                syncCompleteEvent.Type = destination.Type;
+                syncCompleteEvent.Destination = syncJob.Destination;
+                syncCompleteEvent.SourceTypesCounts = sourceTypesCounts;
                 syncCompleteEvent.RunId = syncJob.RunId.ToString();
                 syncCompleteEvent.IsDryRunEnabled = false.ToString();
                 syncCompleteEvent.ProjectedMemberCount = graphRequest.ProjectedMemberCount.HasValue ? graphRequest.ProjectedMemberCount.ToString() : "Not provided";
