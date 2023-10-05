@@ -11,8 +11,10 @@ export const strings: IStrings = {
   addOwner403Message: 'No tiene permiso para completar esta operación.',
   addOwnerErrorMessage:
     'Estamos teniendo problemas para agregar GMM como propietario. Inténtalo de nuevo más tarde.',
-  bannerMessage:
+  bannerMessageStart:
     '¿Necesitas ayuda? Haz click aquí para aprender más sobre como Membership Management funciona en tu organización.',
+  bannerMessageLink: 'Haz click aquí',
+  bannerMessageEnd: ' para aprender más sobre como Membership Management funciona en tu organización.',
   okButton: 'Aceptar',
   groupIdHeader: 'Introduzca el ID de grupo',
   groupIdPlaceHolder: 'ID de grupo',
@@ -20,6 +22,20 @@ export const strings: IStrings = {
   membershipManagement: 'Membership Management',
   learnMembershipManagement:
     'Aprenda cómo funciona Membership Management en su organización',
+  AdminConfig: {
+      labels: {
+          pageTitle: "Configuración de Administrador",
+          hyperlinks: "Ligas",
+          description: "Incluye ligas con información específica sobre cómo funciona XMM en tu organización para que los usuarios puedan aprovecharlo al máximo."
+      },
+      hyperlinkContainer: {
+          address: "URL",
+          addHyperlink: "URL de la liga",
+          dashboardTitle: "Dashboard",
+          dashboardDescription: "Esta es la liga que se muestra en la esquina superior derecha del dashboard. Te lleva a un sitio interno que tiene todos los detalles sobre cómo aprovechar XMM en tu organización. Esto podría incluir preguntas frecuentes, información de contacto, SLAs, etc.",
+          invalidUrl: "URL inválida"
+      }
+  },
   JobDetails: {
     labels: {
       pageTitle: 'Detalle de Membresía',

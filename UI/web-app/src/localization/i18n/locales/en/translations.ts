@@ -11,15 +11,29 @@ export const strings: IStrings = {
   addOwner403Message: 'You do not have permission to complete this operation.',
   addOwnerErrorMessage:
     'We are having trouble adding GMM as the owner. Please try again later.',
-  bannerMessage:
-    'Need help? Click here to learn more about how Membership Management works in your organization.',
+  bannerMessageStart: "Need help? ",
+  bannerMessageLink: "Click here",
+  bannerMessageEnd: " to learn more about how Membership Management works in your organization.",
   okButton: 'OK',
   groupIdHeader: 'Enter Group ID',
   groupIdPlaceHolder: 'Group ID',
   addOwnerButton: 'Add GMM as an owner',
   membershipManagement: 'Membership Management',
-  learnMembershipManagement:
-    'Learn how Membership Management works in your organization',
+  learnMembershipManagement:'Learn how Membership Management works in your organization',
+  AdminConfig: {
+      labels: {
+          pageTitle: "Admin Configuration",
+          hyperlinks: "Hyperlinks",
+          description: "Provide hyperlinks to the following organization specific information so that your users are empowered to leverage XMM to its fullest."
+      },
+      hyperlinkContainer: {
+          address: "Address",
+          addHyperlink: "Add hyperlink",
+          dashboardTitle: "Dashboard",
+          dashboardDescription: "This is the link that shows on the top right corner of the dashboard. It takes you to an internal site that has all the details on how to leverage XMM at your organization. This could include FAQs, contact information, SLAs, etc.",
+          invalidUrl: "Invalid URL"
+      }
+  },
   JobDetails: {
     labels: {
       pageTitle: 'Membership Details',
