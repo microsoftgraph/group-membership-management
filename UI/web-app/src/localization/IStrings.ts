@@ -8,13 +8,29 @@ export type IStrings = {
   addOwner400Message: string;
   addOwner403Message: string;
   addOwnerErrorMessage: string;
-  bannerMessage: string;
+  bannerMessageStart: string;
+  bannerMessageLink: string;
+  bannerMessageEnd: string;
   okButton: string;
   groupIdHeader: string;
   groupIdPlaceHolder: string;
   addOwnerButton: string;
   membershipManagement: string;
   learnMembershipManagement: string;
+  AdminConfig:{
+    labels: {
+      pageTitle: string;
+      hyperlinks: string;
+      description: string;
+    },
+    hyperlinkContainer: {
+      address: string;
+      addHyperlink: string;
+      dashboardTitle: string;
+      dashboardDescription: string;
+      invalidUrl: string;
+    }
+  },
   JobDetails: {
     labels: {
       pageTitle: string;

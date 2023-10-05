@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { useTranslation } from 'react-i18next';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
     classNamesFunction,
     IProcessedStyleSet,
@@ -17,10 +18,9 @@ import { HyperlinkContainer } from '../../components/HyperlinkContainer';
 import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
 import { selectSelectedSetting } from '../../store/settings.slice';
-import { useDispatch, useSelector } from 'react-redux';
-import { useEffect, useState } from 'react';
 import { fetchSettingByKey, updateSetting } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
+import { useStrings } from '../../localization/hooks';
 
 const getClassNames = classNamesFunction<
     IAdminConfigStyleProps,
@@ -39,7 +39,7 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
             theme: useTheme(),
         }
     );
-    const { t } = useTranslation();
+    const strings = useStrings();
     const dispatch = useDispatch<AppDispatch>();
     const [updatedDashboardUrl, setUpdatedDashboardUrl] = useState('');
     const [successMessage, setSuccessMessage] = useState<string | undefined>(undefined);
@@ -91,7 +91,7 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
                 <div className={classNames.card}>
                     <PageSection>
                         <div className={classNames.title}>
-                            {t('AdminConfig.labels.pageTitle')}
+                            {strings.AdminConfig.labels.pageTitle}
                         </div>
                     </PageSection>
                 </div>
@@ -99,19 +99,19 @@ export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
                     <PageSection>
                         <Pivot>
                             <PivotItem
-                                headerText={t('AdminConfig.labels.hyperlinks') as string}
+                                headerText={strings.AdminConfig.labels.hyperlinks}
                                 headerButtonProps={{
                                     'data-order': 1,
-                                    'data-title': t('AdminConfig.labels.hyperlinks') as string,
+                                    'data-title': strings.AdminConfig.labels.hyperlinks,
                                 }}
                             >
                                 <div className={classNames.description}>
-                                    {t('AdminConfig.labels.description')}
+                                    {strings.AdminConfig.labels.description}
                                 </div>
                                 <div className={classNames.tiles}>
                                     <HyperlinkContainer
-                                        title={t('AdminConfig.hyperlinkContainer.dashboardTitle')}
-                                        description={t('AdminConfig.hyperlinkContainer.dashboardDescription')}
+                                        title={strings.AdminConfig.hyperlinkContainer.dashboardTitle}
+                                        description={strings.AdminConfig.hyperlinkContainer.dashboardDescription}
                                         link={updatedDashboardUrl || (dashboardUrl?.value ?? '')}
                                         onUpdateLink = {handleLinkUpdate}
                                         setHyperlinkError= {setHyperlinkError}>

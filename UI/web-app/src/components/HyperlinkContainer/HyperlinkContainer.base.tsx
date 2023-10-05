@@ -1,17 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+import React from 'react';
 import { classNamesFunction, type IProcessedStyleSet } from '@fluentui/react';
-import { useTranslation } from 'react-i18next';
 import { useTheme } from '@fluentui/react/lib/Theme';
-import React, { useState } from 'react';
 import { TextField } from '@fluentui/react/lib/TextField';
-
 import {
     type IHyperlinkContainerProps,
     type IHyperlinkContainerStyleProps,
     type IHyperlinkContainerStyles,
 } from './HyperlinkContainer.types';
+import { useStrings } from '../../localization/hooks';
 
 export const getClassNames = classNamesFunction<IHyperlinkContainerStyleProps, IHyperlinkContainerStyles>();
 
@@ -23,7 +22,8 @@ export const HyperlinkContainerBase: React.FunctionComponent<IHyperlinkContainer
         className,
         theme: useTheme(),
     });
-    const { t } = useTranslation();
+    const strings = useStrings();
+
     const handleLinkChange = (newValue: string) => {
         onUpdateLink(newValue); 
     };
@@ -31,7 +31,7 @@ export const HyperlinkContainerBase: React.FunctionComponent<IHyperlinkContainer
     const getErrorMessage = (value: string): string => {
         const isValid = isValidURL(value);
         setHyperlinkError(!isValid);
-        return isValid ? '' : t('AdminConfig.hyperlinkContainer.invalidUrl') as string;
+        return isValid ? '' : strings.AdminConfig.hyperlinkContainer.invalidUrl;
     };
 
     const isValidURL = (url: string): boolean => {
@@ -53,8 +53,8 @@ export const HyperlinkContainerBase: React.FunctionComponent<IHyperlinkContainer
             </div>
             <div>
                 <TextField
-                    label={t('AdminConfig.hyperlinkContainer.address') as string}
-                    placeholder={t('AdminConfig.hyperlinkContainer.addHyperlink') as string}
+                    label={strings.AdminConfig.hyperlinkContainer.address}
+                    placeholder={strings.AdminConfig.hyperlinkContainer.addHyperlink}
                     value={link}
                     onChange={(e, newValue) => handleLinkChange(newValue ?? '')}
                     styles={{
