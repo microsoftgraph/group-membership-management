@@ -109,8 +109,8 @@ stages:
             Contents: '**\Infrastructure\**'
             TargetFolder: '$(build.artifactstagingdirectory)/functions_arm_templates/${{ app.function.name }}'
 
-        - task: PublishBuildArtifacts@1
-          displayName: 'publish functions artifacts'
-          inputs:
-            PathtoPublish: '$(build.artifactstagingdirectory)'
-            ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'
+        # - task: PublishBuildArtifacts@1
+        #   displayName: 'publish functions artifacts'
+        #   inputs:
+        #     PathtoPublish: '$(build.artifactstagingdirectory)'
+        #     ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'

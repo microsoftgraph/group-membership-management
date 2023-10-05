@@ -70,11 +70,11 @@ stages:
         SourceFolder: Scripts
         TargetFolder: '$(build.artifactstagingdirectory)/Scripts'
 
-    - task: PublishBuildArtifacts@1
-      displayName: 'publish artifact'
-      inputs:
-        PathtoPublish: '$(build.artifactstagingdirectory)'
-        ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'
+    # - task: PublishBuildArtifacts@1
+    #   displayName: 'publish artifact'
+    #   inputs:
+    #     PathtoPublish: '$(build.artifactstagingdirectory)'
+    #     ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'
 
 - template: yaml/build-webapi.yml
   parameters:

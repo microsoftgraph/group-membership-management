@@ -108,8 +108,8 @@ stages:
         Contents: '**\Infrastructure\**'
         TargetFolder: '$(build.artifactstagingdirectory)/webapi_arm_templates'
 
-    - task: PublishBuildArtifacts@1
-      displayName: 'publish webapi artifacts'
-      inputs:
-        PathtoPublish: '$(build.artifactstagingdirectory)'
-        ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'
+    # - task: PublishBuildArtifacts@1
+    #   displayName: 'publish webapi artifacts'
+    #   inputs:
+    #     PathtoPublish: '$(build.artifactstagingdirectory)'
+    #     ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'

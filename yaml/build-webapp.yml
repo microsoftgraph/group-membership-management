@@ -13,8 +13,8 @@ steps:
       Contents: '**\Infrastructure\**'
       TargetFolder: '$(build.artifactstagingdirectory)/webapp_arm_templates/UI'
 
-  - task: PublishBuildArtifacts@1
-    displayName: 'Publish web app artifacts'
-    inputs:
-      PathtoPublish: '$(build.artifactstagingdirectory)'
-      ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'
+  # - task: PublishBuildArtifacts@1
+  #   displayName: 'Publish web app artifacts'
+  #   inputs:
+  #     PathtoPublish: '$(build.artifactstagingdirectory)'
+  #     ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'
