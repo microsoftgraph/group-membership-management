@@ -10,12 +10,12 @@ namespace Repositories.EntityFramework
 {
     public class DatabaseSyncJobsRepository : IDatabaseSyncJobsRepository
     {
-        private readonly GMMContext _context;
-        private readonly GMMContext _readContext;
+        private readonly GMMWriteContext _writeContext;
+        private readonly GMMReadContext _readContext;
 
-        public DatabaseSyncJobsRepository(GMMContext gmmContext, GMMContext readContext)
+        public DatabaseSyncJobsRepository(GMMWriteContext writeContext, GMMReadContext readContext)
         {
-            _context = gmmContext ?? throw new ArgumentNullException(nameof(gmmContext));
+            _writeContext = writeContext ?? throw new ArgumentNullException(nameof(writeContext));
             _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
 
@@ -87,39 +87,39 @@ namespace Repositories.EntityFramework
                 {
                     job.Status = status.ToString();
                 }
-                var entry = _context.Set<SyncJob>().Add(job);
+                var entry = _writeContext.Set<SyncJob>().Add(job);
                 entry.State = EntityState.Modified;
             }
 
-            await _context.SaveChangesAsync();
+            await _writeContext.SaveChangesAsync();
         }
 
         public async Task UpdateSyncJobFromNotificationAsync(SyncJob job, SyncStatus status)
         {
             job.Status = status.ToString();
-            await _context.SaveChangesAsync();
+            await _writeContext.SaveChangesAsync();
         }
 
         public async Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs)
         {
             foreach (var job in jobs)
             {
-                var entry = _context.Set<SyncJob>().Add(job);
+                var entry = _writeContext.Set<SyncJob>().Add(job);
                 entry.State = EntityState.Deleted;
             }
 
-            await _context.SaveChangesAsync();
+            await _writeContext.SaveChangesAsync();
         }
 
         public async Task BatchUpdateSyncJobsAsync(List<SyncJob> jobs)
         {
             foreach (var job in jobs)
             {
-                _context.Set<SyncJob>().Attach(job);
-                _context.Entry(job).Property(x => x.StartDate).IsModified = true;
+                _writeContext.Set<SyncJob>().Attach(job);
+                _writeContext.Entry(job).Property(x => x.StartDate).IsModified = true;
             }
 
-            await _context.SaveChangesAsync();
+            await _writeContext.SaveChangesAsync();
         }
     }
 }
