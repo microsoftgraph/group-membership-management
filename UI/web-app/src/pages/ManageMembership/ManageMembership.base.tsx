@@ -42,7 +42,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
 
   const optionsDestinationType: IDropdownOption[] = [
     { key: 'Group', text: 'Group' },
-    { key: 'Channel', text: 'Channel' }
+    { key: 'Channel', text: 'Channel', disabled: true }
   ];
 
   const dispatch = useDispatch<AppDispatch>();
@@ -131,7 +131,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const hasRequiredEndpoints = () => {
     if (!groupEndpoints) return false;
     return ["Outlook", "Yammer", "SharePoint"].some(endpoint => groupEndpoints.includes(endpoint));
-};
+  };
 
 
   const ownershipWarning = isOwner === false ? (
@@ -191,7 +191,8 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
                 {t('ManageMembership.labels.searchDestination') as string}
                 <ComboBox
                   styles={{
-                    root: classNames.searchField, container: classNames.comboBoxContainer,
+                    root: classNames.searchField,
+                    container: classNames.comboBoxContainer,
                     input: classNames.comboBoxInput
                   }}
                   placeholder="Search for a group"

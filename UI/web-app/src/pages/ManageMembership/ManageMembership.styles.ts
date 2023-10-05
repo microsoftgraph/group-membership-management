@@ -52,14 +52,22 @@ export const getStyles = (props: IManageMembershipStyleProps): IManageMembership
         },
         searchField: {
             width: 500,
+            borderRadius: 4,
+            borderStyle: 'solid',
+            borderWidth: 1,
             borderColor: theme.palette.neutralQuaternary,
+            selectors: {
+                '&::after': {
+                    borderColor: theme.palette.neutralQuaternary,
+                    content: 'none'
+                }
+            }
         },
         comboBoxContainer: {
-            borderStyle: 'none',
+            width: 500
         },
         comboBoxInput: {
-            borderStyle: 'none',
-            width: '100%',
+            width: '100%'
         },
         ownershipWarning:{
             color: theme.semanticColors.errorText

@@ -57,3 +57,4 @@ Add the following variables to `.env`:
 - REACT_APP_SHAREPOINTDOMAIN_`<ENVIRONMENTABBREVIATION>` (Set value as the SharePoint domain for your tenant, i.e. m365x1234567.onmicrosoft.com )
 - REACT_APP_DOMAINNAME_`<ENVIRONMENTABBREVIATION>` (Set value as the domain name for your tenant, i.e. m365x1234567.sharepoint.com)
 - REACT_APP_VERSION_NUMBER (Optional: this value is pulled from the build pipeline)
+- REACT_APP_ENVIRONMENT_ABBREVIATION: (Set value as your `<environmentAbbreviation>` value)

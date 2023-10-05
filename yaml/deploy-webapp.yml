@@ -57,3 +57,4 @@ steps:
       REACT_APP_VERSION_NUMBER: $(Build.BuildNumber)
       REACT_APP_SHAREPOINTDOMAIN: $(REACT_APP_SHAREPOINTDOMAIN_${{parameters.environmentAbbreviation}})
       REACT_APP_DOMAINNAME: $(REACT_APP_DOMAINNAME_${{parameters.environmentAbbreviation}})
+      REACT_APP_ENVIRONMENT_ABBREVIATION: ${{parameters.environmentAbbreviation}}

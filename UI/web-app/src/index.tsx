@@ -21,6 +21,7 @@ import {
   OwnerPage,
   ManageMembership
 } from './pages';
+import { Error } from './components/Error';
 import { store } from './store';
 
 export const msalInstance = new PublicClientApplication(msalConfig);
@@ -52,6 +53,7 @@ ReactDOM.render(
                 <Route path="/JobDetails" element={<JobDetails />} />
                 <Route path="/OwnerPage" element={<OwnerPage />} />
                 <Route path="/ManageMembership" element={<ManageMembership />} />
+                <Route path="/Error" element={<Error />} />
               </Route>
             </Routes>
           </BrowserRouter>

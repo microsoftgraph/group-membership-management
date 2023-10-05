@@ -84,6 +84,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const [isSortedDescending, setIsSortedDescending] = useState(false);
   const [isShimmerEnabled, setIsShimmerEnabled] = useState(false);
   const items = jobs;
+  const isProduction: boolean = `${process.env.REACT_APP_ENVIRONMENT_ABBREVIATION}` === 'prodv2'; // todo
 
   const columns = [
     {
@@ -279,6 +280,11 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     index?: number,
     ev?: React.FocusEvent<HTMLElement>
   ): void => {
+    if (!item) {
+      navigate('/Error', { replace: false, state: { item: 1 } });
+      console.log("item was undefined");
+    }
+
     navigate('/JobDetails', { replace: false, state: { item: item } });
   };
 
@@ -389,7 +395,9 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           <div className={classNames.title}>
             <Text variant="xLarge">{strings.JobsList.listOfMemberships}</Text>
           </div>
-          <PrimaryButton onClick={onManageMembershipsButtonClick}>{t('JobsList.manageMembershipButton')}</PrimaryButton>
+          {!isProduction ?
+              <PrimaryButton onClick={onManageMembershipsButtonClick}>{strings.ManageMembership.manageMembershipButton}</PrimaryButton>
+              : null}
           <div className={classNames.tabContent}>
             <ShimmeredDetailsList
               setKey="set"
