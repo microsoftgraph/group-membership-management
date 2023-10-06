@@ -13,6 +13,8 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<Status> Statuses { get; set; } = null!;
         public DbSet<Setting> Settings { get; set; } = null!;
 
+        public DbSet<EmailType> EmailTypes { get; set; }
+        public DbSet<JobEmailStatus> JobEmailStatuses { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<SyncJob>().Property(t => t.Id)
@@ -40,6 +42,24 @@ namespace Repositories.EntityFramework.Contexts
 
             modelBuilder.Entity<Status>()
                         .ToTable("Statuses");
+            modelBuilder.Entity<Setting>().HasKey(s => s.Key);
+            modelBuilder.Entity<JobEmailStatus>().Property(t => t.JobEmailStatusId)
+                .ValueGeneratedOnAdd()
+                .HasDefaultValueSql("NEWSEQUENTIALID()");
+
+            modelBuilder.Entity<EmailType>().HasData(
+                    new EmailType { EmailTypeId = 1, EmailTypeName = "OnBoarding" }
+                );
+
+            modelBuilder.Entity<JobEmailStatus>()
+                .HasOne(j => j.SyncJob)
+                .WithMany()  
+                .HasForeignKey(j => j.SyncJobId);
+
+            modelBuilder.Entity<JobEmailStatus>()
+                .HasOne(j => j.EmailType)
+                .WithMany()  
+                .HasForeignKey(j => j.EmailTypeId);
         }
 
         public GMMContext(DbContextOptions<GMMContext> options)
