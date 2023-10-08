@@ -400,7 +400,7 @@ See [GMM Environments](##GMM-environments) and [ARM templates and parameter file
         name: <ADO-PROJECT>/<ADO-GMM-PUBLIC-REPOSITORY>
         ref: refs/tags/<TAG>
 
-10. Replace `<ADO-PROJECT>/<ADO-GMM-PUBLIC-REPOSITORY>` with your project name and your `Public` repository name. Change `<TAG>` to the latest tag. The latest Git tag for a repository can be found on the main overview page on GitHub. Specifically, the latest tag is shown next to the total number of branches at the top of the page, above the list of project files and folders.
+10. Replace `<ADO-PROJECT>/<ADO-GMM-PUBLIC-REPOSITORY>` with your project name and your `Public` repository name. Change `<TAG>` to the latest tag. The latest Git tag for a repository can be found next to the commit. If you see multiple tags on a commit, please specify one among those. Alternatively, you can replace the line `ref: refs/tags/<TAG>` to `ref: main` so that it will pick up the latest commit from the `main` branch during build/release.
 
 11. Save your changes.
 
