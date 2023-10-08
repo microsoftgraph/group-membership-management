@@ -160,9 +160,15 @@ The steps in this document will setup a single environment i.e. prodv2, if you w
     - `Private` repository:
         - Your `Private` repo will refer to your `Public` repo as a submodule.
         - Create your `Private` repo based off the [group-membership-management-tenant ](https://github.com/microsoftgraph/group-membership-management-tenant) repo by following the [Manually Importing a Repo](https://docs.microsoft.com/en-us/azure/devops/repos/git/import-git-repository?view=azure-devops#manually-import-a-repo) documentation.
-        - Create the `Public` submodule by running the following command from your `Private` repo:
+        - You should see `public` submodule within your `Private` repo.
+        - Run the following commands to clone `Private` repo with the submodule:
 
-                git submodule add <url-of-public-repo> <name-of-public-repo>
+                git clone <url-of-private-repo>
+                ls # you should see public submodule
+                cd \public
+                ls # no contents within public submodule
+                git submodule update --init --recursive
+                ls # you should see contents within public submodule
 
         - Let’s say that a new commit is added to the main branch of your `Public` repository. To add that new commit to the submodule in the `Private` repository, run the following commands:
 
