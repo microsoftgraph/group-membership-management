@@ -12,7 +12,7 @@ using Repositories.EntityFramework.Contexts;
 namespace Repositories.EntityFramework.Contexts.Migrations
 {
     [DbContext(typeof(GMMContext))]
-    [Migration("20231006221555_email")]
+    [Migration("20231009225902_email")]
     partial class email
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -32,6 +32,9 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EmailTypeId"), 1L, 1);
 
+                    b.Property<string>("EmailContentTemplateName")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("EmailTypeName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -44,6 +47,13 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         new
                         {
                             EmailTypeId = 1,
+                            EmailContentTemplateName = "SyncCompletedEmailBody",
+                            EmailTypeName = "OnBoarding"
+                        },
+                        new
+                        {
+                            EmailTypeId = 2,
+                            EmailContentTemplateName = "SyncStartedEmailBody",
                             EmailTypeName = "OnBoarding"
                         });
                 });
@@ -55,11 +65,11 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasDefaultValueSql("NEWSEQUENTIALID()");
 
+                    b.Property<bool>("DisableEmail")
+                        .HasColumnType("bit");
+
                     b.Property<int>("EmailTypeId")
                         .HasColumnType("int");
-
-                    b.Property<bool>("Status")
-                        .HasColumnType("bit");
 
                     b.Property<Guid>("SyncJobId")
                         .HasColumnType("uniqueidentifier");

@@ -15,7 +15,8 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                 {
                     EmailTypeId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    EmailTypeName = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    EmailTypeName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    EmailContentTemplateName = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -29,7 +30,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     JobEmailStatusId = table.Column<Guid>(type: "uniqueidentifier", nullable: false, defaultValueSql: "NEWSEQUENTIALID()"),
                     SyncJobId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     EmailTypeId = table.Column<int>(type: "int", nullable: false),
-                    Status = table.Column<bool>(type: "bit", nullable: false)
+                    DisableEmail = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -50,8 +51,13 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
             migrationBuilder.InsertData(
                 table: "EmailTypes",
-                columns: new[] { "EmailTypeId", "EmailTypeName" },
-                values: new object[] { 1, "OnBoarding" });
+                columns: new[] { "EmailTypeId", "EmailContentTemplateName", "EmailTypeName" },
+                values: new object[] { 1, "SyncCompletedEmailBody", "OnBoarding" });
+
+            migrationBuilder.InsertData(
+                table: "EmailTypes",
+                columns: new[] { "EmailTypeId", "EmailContentTemplateName", "EmailTypeName" },
+                values: new object[] { 2, "SyncStartedEmailBody", "OnBoarding" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_JobEmailStatuses_EmailTypeId",

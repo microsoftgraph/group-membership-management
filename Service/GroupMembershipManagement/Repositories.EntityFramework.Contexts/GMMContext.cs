@@ -48,7 +48,8 @@ namespace Repositories.EntityFramework.Contexts
                 .HasDefaultValueSql("NEWSEQUENTIALID()");
 
             modelBuilder.Entity<EmailType>().HasData(
-                    new EmailType { EmailTypeId = 1, EmailTypeName = "OnBoarding" }
+                    new EmailType { EmailTypeId = 1, EmailTypeName = "OnBoarding", EmailContentTemplateName = "SyncCompletedEmailBody" },
+                    new EmailType { EmailTypeId = 2, EmailTypeName = "OnBoarding", EmailContentTemplateName = "SyncStartedEmailBody" }
                 );
 
             modelBuilder.Entity<JobEmailStatus>()

@@ -13,5 +13,6 @@ namespace Models
 
         [Required]
         public string EmailTypeName { get; set; }
+        public string EmailContentTemplateName { get; set; }
     }
 }

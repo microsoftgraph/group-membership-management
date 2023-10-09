@@ -18,7 +18,7 @@ namespace Models
         [ForeignKey("EmailType")]
         public int EmailTypeId { get; set; }
 
-        public bool Status { get; set; }
+        public bool DisableEmail { get; set; }
 
         // Navigation properties
         public virtual SyncJob SyncJob { get; set; }
