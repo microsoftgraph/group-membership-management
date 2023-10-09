@@ -129,6 +129,8 @@ namespace Models
         [NotMapped]
         public string ETag { get; set; }
 
+        public Status StatusDetails { get; set; }
+
         public Dictionary<string, string> ToDictionary() =>
             DictionaryHelper.ToDictionary(this, new DictionaryHelper.Options
             {

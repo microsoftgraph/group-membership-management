@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Repositories.EntityFramework.Contexts;
 
@@ -11,9 +12,10 @@ using Repositories.EntityFramework.Contexts;
 namespace Repositories.EntityFramework.Contexts.Migrations
 {
     [DbContext(typeof(GMMContext))]
-    partial class GMMContextModelSnapshot : ModelSnapshot
+    [Migration("20231005201814_add_status_table")]
+    partial class add_status_table
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -88,29 +90,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("PurgedSyncJobs", (string)null);
-                });
-
-            modelBuilder.Entity("Models.Setting", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("NEWSEQUENTIALID()");
-
-                    b.Property<string>("Key")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Value")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Key")
-                        .IsUnique()
-                        .HasFilter("[Key] IS NOT NULL");
-
-                    b.ToTable("Settings");
+                    b.ToTable("PurgedSyncJobs");
                 });
 
             modelBuilder.Entity("Models.SyncJob", b =>
@@ -176,7 +156,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SyncJobs", (string)null);
+                    b.ToTable("SyncJobs");
                 });
 #pragma warning restore 612, 618
         }

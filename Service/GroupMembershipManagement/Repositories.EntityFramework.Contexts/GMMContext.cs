@@ -8,9 +8,10 @@ namespace Repositories.EntityFramework.Contexts
 {
     public class GMMContext : DbContext
     {
-        public DbSet<SyncJob> SyncJobs { get; set; }
-        public DbSet<PurgedSyncJob> PurgedSyncJobs { get; set; }
-        public DbSet<Setting> Settings { get; set; }
+        public DbSet<SyncJob> SyncJobs { get; set; } = null!;
+        public DbSet<PurgedSyncJob> PurgedSyncJobs { get; set; } = null!;
+        public DbSet<Status> Statuses { get; set; } = null!;
+        public DbSet<Setting> Settings { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -28,6 +29,17 @@ namespace Repositories.EntityFramework.Contexts
                 .HasDefaultValueSql("NEWSEQUENTIALID()");
 
             modelBuilder.Entity<Setting>().HasIndex(s => s.Key).IsUnique();
+
+            modelBuilder.Entity<SyncJob>()
+                        .HasOne(s => s.StatusDetails)
+                        .WithOne()
+                        .HasForeignKey<SyncJob>(x => x.Status)
+                        .HasPrincipalKey<Status>(x => x.Name)
+                        .IsRequired(false)
+                        .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<Status>()
+                        .ToTable("Statuses");
         }
 
         public GMMContext(DbContextOptions<GMMContext> options)

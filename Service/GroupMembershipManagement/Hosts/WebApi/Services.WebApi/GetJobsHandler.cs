@@ -31,11 +31,25 @@ namespace Services
                 TotalNumberOfPages = 1
             };
 
+            var odataSettings = new ODataQuerySettings
+            {
+                EnsureStableOrdering = true
+            };
+
             var jobsQuery = _databaseSyncJobsRepository.GetSyncJobs(true);
+
+            if (request.QueryOptions?.OrderBy?.OrderByClause == null)
+            {
+                jobsQuery = jobsQuery
+                            .OrderBy(x => x.StatusDetails.SortPriority)
+                            .ThenBy(x => x.Status);
+
+                odataSettings.EnsureStableOrdering = false;
+            }
 
             if (request.QueryOptions != null)
             {
-                jobsQuery = (IQueryable<SyncJob>)request.QueryOptions.ApplyTo(jobsQuery);
+                jobsQuery = (IQueryable<SyncJob>)request.QueryOptions.ApplyTo(jobsQuery, odataSettings);
 
                 var countQuery = (IQueryable<SyncJob>)request.QueryOptions.ApplyTo(
                        _databaseSyncJobsRepository.GetSyncJobs(true),
