@@ -85,7 +85,13 @@ namespace Services.Tests
                 StartDate = DateTime.UtcNow.AddMonths(-1),
                 ThresholdPercentageForAdditions = 10,
                 ThresholdPercentageForRemovals = 10,
-                Period = 6
+                Period = 6,
+                StatusDetails = new Status
+                {
+                    Id = (int)SyncStatus.Idle,
+                    Name = SyncStatus.Idle.ToString(),
+                    SortPriority = 1000
+                }
             }).ToList();
 
             _jobEntities.ForEach(x =>
