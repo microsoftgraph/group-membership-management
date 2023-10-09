@@ -161,7 +161,7 @@ The steps in this document will setup a single environment i.e. prodv2, if you w
         - Your `Private` repo will refer to your `Public` repo as a submodule.
         - Create your `Private` repo based off the [group-membership-management-tenant ](https://github.com/microsoftgraph/group-membership-management-tenant) repo by following the [Manually Importing a Repo](https://docs.microsoft.com/en-us/azure/devops/repos/git/import-git-repository?view=azure-devops#manually-import-a-repo) documentation.
         - You should see `public` submodule within your `Private` repo.
-        - Run the following commands to clone `Private` repo with the submodule:
+        - Run the following commands in PowerShell to clone `Private` repo with the submodule:
 
                 git clone <url-of-private-repo>
                 ls # you should see public submodule
