@@ -8,18 +8,19 @@ using Repositories.EntityFramework.Contexts;
 
 namespace Repositories.EntityFramework
 {
-    public class DatabaseEmailStatusesRepository : IDatabaseEmailStatusesRepository
+    public class DatabaseJobEmailStatusesRepository : IDatabaseJobEmailStatusesRepository
     {
         private readonly GMMContext _context;
 
-        public DatabaseEmailStatusesRepository(GMMContext gmmContext)
+        public DatabaseJobEmailStatusesRepository(GMMContext gmmContext)
         {
             _context = gmmContext ?? throw new ArgumentNullException(nameof(gmmContext));
         }
 
-        public async Task<EmailStatus> GetOnBoardingEmailStatusAsync(Guid syncJobId, int emailTypeId)
+        public async Task<bool> IsEmailDisabledForJob(Guid jobId, int emailTypeId)
         {
-            return await _context.EmailStatuses.SingleOrDefaultAsync(job => job.SyncJobId == syncJobId && job.EmailTypeId == emailTypeId);
+            return await _context.JobEmailStatuses
+                .AnyAsync(j => j.JobId == jobId && j.EmailTypeId == emailTypeId && j.Status);
         }
 
     }

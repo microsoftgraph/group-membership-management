@@ -257,6 +257,9 @@ namespace WebApi
             builder.Services.AddScoped<IDatabaseMigrationsRepository, DatabaseMigrationsRepository>();
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
             builder.Services.AddScoped<IDatabaseSettingsRepository, DatabaseSettingsRepository>();
+            builder.Services.AddScoped<IDatabaseEmailTypesRepository, DatabaseEmailTypesRepository>();
+            builder.Services.AddScoped<IDatabaseJobEmailStatusesRepository, DatabaseJobEmailStatusesRepository>();
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.

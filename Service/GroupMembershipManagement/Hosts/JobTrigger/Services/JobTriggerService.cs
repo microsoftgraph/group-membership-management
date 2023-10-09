@@ -92,6 +92,17 @@ namespace Services
 
         public async Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters, string templateDirectory = "")
         {
+            bool isEmailDisabled = IsEmailDisabled(job.JobId, emailContentTemplateName);
+
+            if (isEmailDisabled) 
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = job.RunId,
+                    Message = $"Email is disabled for job {job.JobId}."
+                });
+                return;
+            }
             string ownerEmails = null;
             string ccAddress = _emailSenderAndRecipients.SupportEmailAddresses;
 
@@ -117,6 +128,17 @@ namespace Services
             };
 
             await _mailRepository.SendMailAsync(message, job.RunId, templateDirectory);
+        }
+
+        public async Task<bool> IsEmailDisabled(Guid jobId, string emailTemplateName)
+        {
+            var emailTypeId = await _emailTypesRepository.GetEmailTypeIdByEmailTemplateName(emailTemplateName);
+
+            if (!emailTypeId.HasValue)
+            {
+                return false; 
+            }
+            return await _jobEmailStatusesRepository.IsEmailDisabledForJob(jobId, emailTypeId.Value);
         }
 
         public async Task UpdateSyncJobStatusAsync(SyncStatus status, SyncJob job)
