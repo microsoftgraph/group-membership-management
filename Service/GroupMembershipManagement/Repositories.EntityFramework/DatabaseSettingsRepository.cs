@@ -10,21 +10,23 @@ namespace Repositories.EntityFramework
 {
     public class DatabaseSettingsRepository : IDatabaseSettingsRepository
     {
-        private readonly GMMContext _context;
+        private readonly GMMWriteContext _writeContext;
+        private readonly GMMReadContext _readContext;
 
-        public DatabaseSettingsRepository(GMMContext gmmContext)
+        public DatabaseSettingsRepository(GMMWriteContext writeContext, GMMReadContext readContext)
         {
-            _context = gmmContext ?? throw new ArgumentNullException(nameof(gmmContext));
+            _writeContext = writeContext ?? throw new ArgumentNullException(nameof(writeContext));
+            _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
 
         public async Task<Setting> GetSettingByKeyAsync(string key)
         {
-            return await _context.Settings.FirstOrDefaultAsync(s => s.Key == key);
+            return await _readContext.Settings.FirstOrDefaultAsync(s => s.Key == key);
         }
 
         public async Task<List<Setting>> GetSettingsAsync()
         {
-            return await _context.Settings.ToListAsync();
+            return await _readContext.Settings.ToListAsync();
         }
 
         public async Task UpdateSettingAsync(Setting setting, string newSettingValue)
@@ -33,7 +35,7 @@ namespace Repositories.EntityFramework
                 throw new ArgumentNullException(nameof(setting));
 
             setting.Value = newSettingValue;
-            await _context.SaveChangesAsync();
+            await _writeContext.SaveChangesAsync();
         }
     }
 }

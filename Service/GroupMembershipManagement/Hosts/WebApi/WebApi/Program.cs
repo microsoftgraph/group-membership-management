@@ -273,7 +273,7 @@ namespace WebApi
 
             using (var scope = app.Services.CreateScope())
             {
-                var db = scope.ServiceProvider.GetRequiredService<GMMContext>();
+                var db = scope.ServiceProvider.GetRequiredService<GMMWriteContext>();
                 db.Database.Migrate();
             }
 

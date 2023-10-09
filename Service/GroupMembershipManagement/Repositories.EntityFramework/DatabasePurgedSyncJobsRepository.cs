@@ -11,27 +11,29 @@ namespace Repositories.EntityFramework
 {
     public class DatabasePurgedSyncJobsRepository : IDatabasePurgedSyncJobsRepository
     {
-        private readonly GMMContext _context;
+        private readonly GMMWriteContext _writeContext;
+        private readonly GMMReadContext _readContext;
 
-        public DatabasePurgedSyncJobsRepository(GMMContext gmmContext)
+        public DatabasePurgedSyncJobsRepository(GMMWriteContext writeContext, GMMReadContext readContext)
         {
-            _context = gmmContext ?? throw new ArgumentNullException(nameof(gmmContext));
+            _writeContext = writeContext ?? throw new ArgumentNullException(nameof(writeContext));
+            _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
 
         public async Task<int> InsertPurgedSyncJobsAsync(IEnumerable<PurgedSyncJob> jobs)
         {
             foreach (var job in jobs)
             {                
-                var entry = _context.Set<PurgedSyncJob>().Add(job);
+                var entry = _writeContext.Set<PurgedSyncJob>().Add(job);
                 entry.State = EntityState.Added;
             }
 
-            return await _context.SaveChangesAsync();
+            return await _writeContext.SaveChangesAsync();
         }
 
         public async Task<IEnumerable<PurgedSyncJob>> GetPurgedSyncJobsAsync(DateTime cutOffDate)
         { 
-            return await _context.PurgedSyncJobs
+            return await _readContext.PurgedSyncJobs
                                     .Where(job => job.PurgedAt <= cutOffDate)
                                     .ToListAsync();           
         }
@@ -40,11 +42,11 @@ namespace Repositories.EntityFramework
         {
             foreach (var job in jobs)
             {
-                var entry = _context.Set<PurgedSyncJob>().Add(job);
+                var entry = _writeContext.Set<PurgedSyncJob>().Add(job);
                 entry.State = EntityState.Deleted;
             }
 
-            return await _context.SaveChangesAsync();
+            return await _writeContext.SaveChangesAsync();
         }
     }
 }
