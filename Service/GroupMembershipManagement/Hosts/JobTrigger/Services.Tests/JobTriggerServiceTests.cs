@@ -18,6 +18,8 @@ using Tests.Repositories;
 using MockDatabaseSyncJobRepository = Repositories.Mocks.MockDatabaseSyncJobRepository;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using System.Collections.Generic;
+using Repositories.Logging;
 
 namespace Services.Tests
 {
@@ -511,7 +513,50 @@ namespace Services.Tests
             Assert.AreEqual(validStartDateJobs, jobs.Count);
         }
 
-        [TestMethod]
+		[TestMethod]
+		public async Task VerifyEmailNotSentIfDisabled()
+		{
+			var _mailRepository = new Mock<IMailRepository>();
+
+			_mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
+			SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
+			var emailTemplateName = SyncStartedEmailBody;
+			var emailTypeId = 1;
+			var mockEmailTypesData = new Dictionary<string, int?>
+		    {
+			    { emailTemplateName, emailTypeId }
+		    };
+			var _databaseEmailTypesRepository = new MockDatabaseEmailTypesRepository(mockEmailTypesData);
+
+			var jobId = job.Id;
+			var mockJobEmailStatusesData = new Dictionary<(Guid, int), bool>
+		    {
+			    { (jobId, emailTypeId), true }
+		    };
+			var _databaseJobEmailStatusesRepository = new MockDatabaseJobEmailStatusesRepository(mockJobEmailStatusesData);
+
+			_jobTriggerService = new JobTriggerService(
+				_loggingRepository,
+				_syncJobRepository,
+				_databaseEmailTypesRepository,
+				_databaseJobEmailStatusesRepository,
+				_serviceBusTopicsRepository,
+				_graphGroupRepository,
+				new MockKeyVaultSecret<IJobTriggerService>(),
+				_mailRepository.Object,
+				new MockEmail<IEmailSenderRecipient>(),
+				_gMMResources,
+				_jobTriggerConfig,
+				new TelemetryClient(TelemetryConfiguration.CreateDefault()));
+
+			await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
+			var expectedLogMessage = $"Email is disabled for job {job.Id}.";
+			_mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""), Times.Never());
+			Assert.AreEqual(1, _loggingRepository.MessagesLoggedCount);
+			Assert.AreEqual(expectedLogMessage, _loggingRepository.MessagesLogged[0].Message);
+		}
+
+		[TestMethod]
         public async Task VerifyJobsCountExceedMinimalNumberHigherThanThreshold()
         {
             var jobsProceedNow = 5;
