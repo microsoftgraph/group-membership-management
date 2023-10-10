@@ -26,6 +26,8 @@ namespace Services.Tests
     {
         private JobTriggerService _jobTriggerService = null;
         private MockDatabaseSyncJobRepository _syncJobRepository = null;
+        private MockDatabaseEmailTypesRepository _emailTypesRepository = null;
+        private MockDatabaseJobEmailStatusesRepository _jobEmailStatusesRepository = null;
         private MockLoggingRepository _loggingRepository = null;
         private MockServiceBusTopicsRepository _serviceBusTopicsRepository = null;
         private MockGraphGroupRepository _graphGroupRepository;
@@ -48,7 +50,8 @@ namespace Services.Tests
             };
 
             _syncJobRepository = new MockDatabaseSyncJobRepository();
-
+            _emailTypesRepository = new MockDatabaseEmailTypesRepository();
+            _jobEmailStatusesRepository = new MockDatabaseJobEmailStatusesRepository();
             _loggingRepository = new MockLoggingRepository();
             _serviceBusTopicsRepository = new MockServiceBusTopicsRepository();
             _graphGroupRepository = new MockGraphGroupRepository();
@@ -57,6 +60,8 @@ namespace Services.Tests
             _jobTriggerService = new JobTriggerService(
                                         _loggingRepository,
                                         _syncJobRepository,
+                                        _emailTypesRepository,
+                                        _jobEmailStatusesRepository,
                                         _serviceBusTopicsRepository,
                                         _graphGroupRepository,
                                         new MockKeyVaultSecret<IJobTriggerService>(), _mailRepository,
@@ -347,6 +352,8 @@ namespace Services.Tests
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
+                _emailTypesRepository,
+                _jobEmailStatusesRepository,
                 _serviceBusTopicsRepository,
                 _graphGroupRepository,
                 new MockKeyVaultSecret<IJobTriggerService>(),
@@ -392,7 +399,9 @@ namespace Services.Tests
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
-                _serviceBusTopicsRepository,
+                _emailTypesRepository,
+				_jobEmailStatusesRepository,
+				_serviceBusTopicsRepository,
                 _graphGroupRepository,
                 new MockKeyVaultSecret<IJobTriggerService>(),
                 _mailRepository.Object,
@@ -431,7 +440,9 @@ namespace Services.Tests
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
-                _serviceBusTopicsRepository,
+				_emailTypesRepository,
+				_jobEmailStatusesRepository,
+				_serviceBusTopicsRepository,
                 _graphGroupRepository,
                 new MockKeyVaultSecret<IJobTriggerService>(),
                 _mailRepository.Object,
@@ -469,7 +480,9 @@ namespace Services.Tests
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
-                _serviceBusTopicsRepository,
+			    _emailTypesRepository,
+				_jobEmailStatusesRepository,
+				_serviceBusTopicsRepository,
                 _graphGroupRepository,
                 new MockKeyVaultSecret<IJobTriggerService>(),
                 _mailRepository.Object,
