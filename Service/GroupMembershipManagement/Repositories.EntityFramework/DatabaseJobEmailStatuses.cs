@@ -20,7 +20,7 @@ namespace Repositories.EntityFramework
         public async Task<bool> IsEmailDisabledForJob(Guid jobId, int emailTypeId)
         {
             return await _context.JobEmailStatuses
-                .AnyAsync(j => j.JobId == jobId && j.EmailTypeId == emailTypeId && j.Status);
+                .AnyAsync(j => j.SyncJobId == jobId && j.EmailTypeId == emailTypeId && j.DisableEmail);
         }
 
     }

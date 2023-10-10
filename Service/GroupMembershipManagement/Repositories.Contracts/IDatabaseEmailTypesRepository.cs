@@ -7,7 +7,7 @@ namespace Repositories.Contracts
 {
     public interface IDatabaseEmailTypesRepository
     {
-        Task<int?> GetEmailTypeIdByEmailTemplateName(string emailTemplateName)
+        Task<int?> GetEmailTypeIdByEmailTemplateName(string emailTemplateName);
 
     }
 }       
