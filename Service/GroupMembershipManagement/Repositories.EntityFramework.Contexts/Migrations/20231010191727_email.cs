@@ -52,12 +52,12 @@ namespace Repositories.EntityFramework.Contexts.Migrations
             migrationBuilder.InsertData(
                 table: "EmailTypes",
                 columns: new[] { "EmailTypeId", "EmailContentTemplateName", "EmailTypeName" },
-                values: new object[] { 1, "SyncCompletedEmailBody", "OnBoarding" });
+                values: new object[] { 1, "SyncStartedEmailBody", "OnBoarding" });
 
             migrationBuilder.InsertData(
                 table: "EmailTypes",
                 columns: new[] { "EmailTypeId", "EmailContentTemplateName", "EmailTypeName" },
-                values: new object[] { 2, "SyncStartedEmailBody", "OnBoarding" });
+                values: new object[] { 2, "SyncCompletedEmailBody", "OnBoarding" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_JobEmailStatuses_EmailTypeId",

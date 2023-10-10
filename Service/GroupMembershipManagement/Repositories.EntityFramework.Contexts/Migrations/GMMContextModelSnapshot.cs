@@ -45,13 +45,13 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         new
                         {
                             EmailTypeId = 1,
-                            EmailContentTemplateName = "SyncCompletedEmailBody",
+                            EmailContentTemplateName = "SyncStartedEmailBody",
                             EmailTypeName = "OnBoarding"
                         },
                         new
                         {
                             EmailTypeId = 2,
-                            EmailContentTemplateName = "SyncStartedEmailBody",
+                            EmailContentTemplateName = "SyncCompletedEmailBody",
                             EmailTypeName = "OnBoarding"
                         });
                 });

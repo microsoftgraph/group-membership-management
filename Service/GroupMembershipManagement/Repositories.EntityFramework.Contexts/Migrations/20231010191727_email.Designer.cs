@@ -12,7 +12,7 @@ using Repositories.EntityFramework.Contexts;
 namespace Repositories.EntityFramework.Contexts.Migrations
 {
     [DbContext(typeof(GMMContext))]
-    [Migration("20231009225902_email")]
+    [Migration("20231010191727_email")]
     partial class email
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -47,13 +47,13 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         new
                         {
                             EmailTypeId = 1,
-                            EmailContentTemplateName = "SyncCompletedEmailBody",
+                            EmailContentTemplateName = "SyncStartedEmailBody",
                             EmailTypeName = "OnBoarding"
                         },
                         new
                         {
                             EmailTypeId = 2,
-                            EmailContentTemplateName = "SyncStartedEmailBody",
+                            EmailContentTemplateName = "SyncCompletedEmailBody",
                             EmailTypeName = "OnBoarding"
                         });
                 });
