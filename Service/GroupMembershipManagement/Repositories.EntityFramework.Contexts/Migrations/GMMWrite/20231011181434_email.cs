@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Repositories.EntityFramework.Contexts.Migrations
+namespace Repositories.EntityFramework.Contexts.Migrations.GMMWrite
 {
     public partial class email : Migration
     {
@@ -77,6 +77,9 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
             migrationBuilder.DropTable(
                 name: "EmailTypes");
+
+            migrationBuilder.DropTable(
+                name: "SyncJobs");
         }
     }
 }

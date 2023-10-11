@@ -22,65 +22,6 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
 
-            modelBuilder.Entity("Models.EmailType", b =>
-                {
-                    b.Property<int>("EmailTypeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EmailTypeId"), 1L, 1);
-
-                    b.Property<string>("EmailContentTemplateName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("EmailTypeName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("EmailTypeId");
-
-                    b.ToTable("EmailTypes");
-
-                    b.HasData(
-                        new
-                        {
-                            EmailTypeId = 1,
-                            EmailContentTemplateName = "SyncStartedEmailBody",
-                            EmailTypeName = "OnBoarding"
-                        },
-                        new
-                        {
-                            EmailTypeId = 2,
-                            EmailContentTemplateName = "SyncCompletedEmailBody",
-                            EmailTypeName = "OnBoarding"
-                        });
-                });
-
-            modelBuilder.Entity("Models.JobEmailStatus", b =>
-                {
-                    b.Property<Guid>("JobEmailStatusId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("NEWSEQUENTIALID()");
-
-                    b.Property<bool>("DisableEmail")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("EmailTypeId")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("SyncJobId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("JobEmailStatusId");
-
-                    b.HasIndex("EmailTypeId");
-
-                    b.HasIndex("SyncJobId");
-
-                    b.ToTable("JobEmailStatuses");
-                });
-
             modelBuilder.Entity("Models.PurgedSyncJob", b =>
                 {
                     b.Property<Guid>("Id")
@@ -238,24 +179,6 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.ToTable("SyncJobs", (string)null);
                 });
 
-            modelBuilder.Entity("Models.JobEmailStatus", b =>
-                {
-                    b.HasOne("Models.EmailType", "EmailType")
-                        .WithMany()
-                        .HasForeignKey("EmailTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Models.SyncJob", "SyncJob")
-                        .WithMany()
-                        .HasForeignKey("SyncJobId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("EmailType");
-
-                    b.Navigation("SyncJob");
-                });
 #pragma warning restore 612, 618
         }
     }
