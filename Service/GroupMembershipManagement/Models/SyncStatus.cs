@@ -26,6 +26,8 @@ namespace Models
         StandardTeamsChannel = 18,
         TeamsChannelError = 19,
         SchemaError = 20,
-        TransientError = 21
+        TransientError = 21,
+        New = 22,
+        DevPaused = 23
     }
 }

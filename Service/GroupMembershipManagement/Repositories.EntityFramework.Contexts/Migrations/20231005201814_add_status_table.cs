@@ -16,7 +16,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                 name: "Statuses",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false),
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false, defaultValueSql: "NEWSEQUENTIALID()"),
                     Name = table.Column<string>(type: "nvarchar(255)", nullable: true),
                     SortPriority = table.Column<int>(type: "int", nullable: false)
                 },
@@ -36,15 +36,15 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                 SyncStatus.ThresholdExceeded
             };
 
-            foreach (SyncStatus status in Enum.GetValues<SyncStatus>().OrderBy(x => x))
+            foreach (SyncStatus status in Enum.GetValues<SyncStatus>().OrderBy(x => x.ToString()))
             {
                 migrationBuilder.InsertData(
                     table: "Statuses",
-                    columns: new[] { "Id", "Name", "SortPriority" },
-                    columnTypes: new[] { "int", "nvarchar(255)", "int" },
+                    columns: new[] { "Name", "SortPriority" },
+                    columnTypes: new[] { "nvarchar(255)", "int" },
                     values: new object[,]
                     {
-                        { (int)status, status.ToString(), statusWithActionRequired.Contains(status)? 500 : defaultSortPriority }
+                        { status.ToString(), statusWithActionRequired.Contains(status)? 500 : defaultSortPriority }
                     });
             }
 
