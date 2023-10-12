@@ -10,16 +10,18 @@ namespace Repositories.EntityFramework
 {
     public class DatabaseJobEmailStatusesRepository : IDatabaseJobEmailStatusesRepository
     {
-        private readonly GMMContext _context;
+        private readonly GMMWriteContext _writeContext;
+        private readonly GMMReadContext _readContext;
 
-        public DatabaseJobEmailStatusesRepository(GMMContext gmmContext)
+        public DatabaseJobEmailStatusesRepository(GMMWriteContext writeContext, GMMReadContext readContext)
         {
-            _context = gmmContext ?? throw new ArgumentNullException(nameof(gmmContext));
+            _writeContext = writeContext ?? throw new ArgumentNullException(nameof(writeContext));
+            _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
 
         public async Task<bool> IsEmailDisabledForJob(Guid jobId, int emailTypeId)
         {
-            return await _context.JobEmailStatuses
+            return await _readContext.JobEmailStatuses
                 .AnyAsync(j => j.SyncJobId == jobId && j.EmailTypeId == emailTypeId && j.DisableEmail);
         }
 
