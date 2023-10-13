@@ -12,7 +12,7 @@ using Repositories.EntityFramework.Contexts;
 namespace Repositories.EntityFramework.Contexts.Migrations
 {
     [DbContext(typeof(GMMContext))]
-    [Migration("20231013020432_add_settings_table")]
+    [Migration("20231013172320_add_settings_table")]
     partial class add_settings_table
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -95,13 +95,22 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
             modelBuilder.Entity("Models.Setting", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWSEQUENTIALID()");
+
                     b.Property<string>("Key")
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Value")
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("Key");
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasFilter("[Key] IS NOT NULL");
 
                     b.ToTable("Settings");
                 });
