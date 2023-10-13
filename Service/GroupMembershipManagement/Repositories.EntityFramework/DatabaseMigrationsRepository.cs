@@ -9,10 +9,10 @@ namespace Repositories.EntityFramework
 {
     public class DatabaseMigrationsRepository : IDatabaseMigrationsRepository
     {
-        private readonly GMMWriteContext _writeContext;
+        private readonly GMMContext _writeContext;
         private readonly DbContextOptions<GMMContext> _contextOptions;
 
-        public DatabaseMigrationsRepository(GMMWriteContext writeContext, DbContextOptions<GMMContext> gmmContextOptions)
+        public DatabaseMigrationsRepository(GMMContext writeContext, DbContextOptions<GMMContext> gmmContextOptions)
         {
             _writeContext = writeContext ?? throw new ArgumentNullException(nameof(writeContext));
             _contextOptions = gmmContextOptions ?? throw new ArgumentNullException(nameof(gmmContextOptions));

@@ -51,7 +51,7 @@ namespace WebApi
             var apiHostName = builder.Configuration.GetValue<string>("Settings:ApiHostname");
             var secureApiHostName = $"https://{apiHostName}";
 
-            builder.Services.AddDbContext<GMMWriteContext>(options =>
+            builder.Services.AddDbContext<GMMContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContext")));
 
             builder.Services.AddDbContext<GMMReadContext>(options =>
@@ -75,7 +75,7 @@ namespace WebApi
             builder.Services.AddSingleton(sp =>
             {
                 var telemetryConfiguration = new TelemetryConfiguration();
-                telemetryConfiguration.InstrumentationKey = builder.Configuration.GetValue<string>("Settings:APPINSIGHTS_INSTRUMENTATIONKEY");
+                telemetryConfiguration.InstrumentationKey = builder.Configuration.GetValue<string>("APPINSIGHTS_INSTRUMENTATIONKEY");
                 telemetryConfiguration.TelemetryInitializers.Add(new OperationCorrelationTelemetryInitializer());
                 var tc = new TelemetryClient(telemetryConfiguration);
                 tc.Context.Operation.Name = "WebAPI";
@@ -273,7 +273,7 @@ namespace WebApi
 
             using (var scope = app.Services.CreateScope())
             {
-                var db = scope.ServiceProvider.GetRequiredService<GMMWriteContext>();
+                var db = scope.ServiceProvider.GetRequiredService<GMMContext>();
                 db.Database.Migrate();
             }
 

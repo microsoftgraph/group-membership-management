@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Design;
 
 namespace Repositories.EntityFramework.Contexts
 {
-    public class GMMWriteContextFactory : IDesignTimeDbContextFactory<GMMWriteContext>
+    public class GMMContextFactory : IDesignTimeDbContextFactory<GMMContext>
     {
-        public GMMWriteContext CreateDbContext(string[] args)
+        public GMMContext CreateDbContext(string[] args)
         {
-            var optionsBuilder = new DbContextOptionsBuilder<GMMWriteContext>();
+            var optionsBuilder = new DbContextOptionsBuilder<GMMContext>();
             optionsBuilder.UseSqlServer(@"<write connection string>");
-            return new GMMWriteContext(optionsBuilder.Options);
+            return new GMMContext(optionsBuilder.Options);
         }
     }
 
@@ -20,7 +20,7 @@ namespace Repositories.EntityFramework.Contexts
     {
         public GMMReadContext CreateDbContext(string[] args)
         {
-            var optionsBuilder = new DbContextOptionsBuilder<GMMReadContext>();
+            var optionsBuilder = new DbContextOptionsBuilder<GMMContext>();
             optionsBuilder.UseSqlServer(@"<read connection string>");
             return new GMMReadContext(optionsBuilder.Options);
         }

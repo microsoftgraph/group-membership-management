@@ -25,21 +25,15 @@ namespace Repositories.EntityFramework.Contexts
             modelBuilder.Entity<Setting>().HasKey(s => s.Key);
         }
 
-        public GMMContext(DbContextOptions options)
+        public GMMContext(DbContextOptions<GMMContext> options)
             : base(options)
         {
         }
     }
-    public class GMMWriteContext : GMMContext
-    {
-        public GMMWriteContext(DbContextOptions<GMMWriteContext> options)
-            : base(options)
-        {
-        }
-    }
+
     public class GMMReadContext : GMMContext
     {
-        public GMMReadContext(DbContextOptions<GMMReadContext> options)
+        public GMMReadContext(DbContextOptions<GMMContext> options)
             : base(options)
         {
         }

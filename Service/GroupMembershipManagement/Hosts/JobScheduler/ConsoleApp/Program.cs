@@ -23,10 +23,10 @@ namespace JobScheduler
         {
             var appSettings = AppSettings.LoadAppSettings();
 
-            var writeContext = new GMMWriteContext(new DbContextOptionsBuilder<GMMWriteContext>()
+            var writeContext = new GMMContext(new DbContextOptionsBuilder<GMMContext>()
                                         .UseSqlServer(appSettings.SQLDatabaseConnectionString)
                                         .Options);
-            var readContext = new GMMReadContext(new DbContextOptionsBuilder<GMMReadContext>()
+            var readContext = new GMMReadContext(new DbContextOptionsBuilder<GMMContext>()
                                         .UseSqlServer(appSettings.ReplicaSqlServerConnectionString)
                                         .Options);
 

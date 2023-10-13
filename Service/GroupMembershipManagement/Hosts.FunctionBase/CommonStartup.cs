@@ -89,7 +89,7 @@ namespace Hosts.FunctionBase
                 settings.Verbosity = configuration.GetValue<VerbosityLevel>("GMM:LoggingVerbosity");
             });
 
-            builder.Services.AddDbContext<GMMWriteContext>(options =>
+            builder.Services.AddDbContext<GMMContext>(options =>
                 options.UseSqlServer(GetValueOrThrow("ConnectionStrings:JobsContext")),
                 ServiceLifetime.Scoped
             );
