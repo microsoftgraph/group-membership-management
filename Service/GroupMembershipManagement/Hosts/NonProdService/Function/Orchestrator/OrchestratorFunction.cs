@@ -32,6 +32,11 @@ namespace Hosts.NonProdService
                 runId
                 );
 
+            await context.CallSubOrchestratorAsync<GraphUpdaterStatus>(
+                nameof(LoadTestingPrepSubOrchestratorFunction),
+                runId
+                );
+
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
         }
     }
