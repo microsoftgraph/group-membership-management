@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.GraphAzureADUsers;
 using Repositories.GraphGroups;
 using Services.Contracts;
 
@@ -30,7 +31,8 @@ namespace Hosts.NonProdService
            {
                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
            })
-            .AddSingleton<IGraphGroupRepository, GraphGroupRepository>();
+            .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
+            .AddSingleton<IGraphUserRepository, GraphUserRepository>();
 
             builder.Services.AddSingleton<INonProdService, Services.NonProdService>();
         }
