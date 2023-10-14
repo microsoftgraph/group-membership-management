@@ -18,6 +18,7 @@
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
 	<ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
+	<ProjectReference Include="..\..\..\Repositories.GraphUsers\Repositories.GraphAzureADUsers.csproj" />
 	<ProjectReference Include="..\..\..\Repositories.Localization\Repositories.Localization.csproj" />
 	<ProjectReference Include="..\..\..\Repositories.Logging\Repositories.Logging.csproj" />
 	<ProjectReference Include="..\..\..\Repositories.Mail\Repositories.Mail.csproj" />
