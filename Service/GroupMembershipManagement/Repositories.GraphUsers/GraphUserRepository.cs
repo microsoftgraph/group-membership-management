@@ -7,6 +7,7 @@ using Microsoft.Kiota.Abstractions;
 using Models;
 using Newtonsoft.Json;
 using Polly;
+using Polly.Retry;
 using Polly.Wrap;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -368,7 +369,7 @@ namespace Repositories.GraphAzureADUsers
 
         private async Task<HttpResponseMessage> SendSingleRequestAsync(GraphUser user, Guid? runId)
         {
-            var retryPolicy = GetRetryPolicy(runId);
+            var retryPolicy = GetHttpResponseMessageRetryPolicy(runId);
             HttpResponseMessage httpResponse = await retryPolicy.ExecuteAsync(async () =>
             {
                 var nativeResponseHandler = new NativeResponseHandler();
@@ -389,7 +390,7 @@ namespace Repositories.GraphAzureADUsers
             return await _graphClient.Batch.PostAsync(batchRequestContent);
         }
 
-        private AsyncPolicyWrap<HttpResponseMessage> GetRetryPolicy(Guid? runId)
+        private AsyncPolicyWrap<HttpResponseMessage> GetHttpResponseMessageRetryPolicy(Guid? runId)
         {
             HttpStatusCode[] httpsStatusCodesWithRetryAfterHeader = {
                 HttpStatusCode.TooManyRequests, // 429
@@ -433,6 +434,46 @@ namespace Repositories.GraphAzureADUsers
             return retryAfterPolicy.WrapAsync(exceptionHandlingPolicy);
         }
 
+        protected AsyncRetryPolicy GetRetryPolicy(Guid? runId)
+        {
+            var retryLimit = 4;
+            var timeOutRetryLimit = 2;
+            var currentRetryIndex = 0;
+            var retryPolicy = Policy.Handle<ServiceException>(ex =>
+            {
+                if (ex.Message != null
+                    && ex.Message.Contains("The request timed out")
+                    && currentRetryIndex >= timeOutRetryLimit)
+                {
+                    return false;
+                }
+
+                return true;
+            })
+                    .WaitAndRetryAsync(
+                       retryCount: retryLimit,
+                       retryAttempt => TimeSpan.FromMinutes(2),
+                       onRetry: async (ex, waitTime, retryIndex, context) =>
+                       {
+                           currentRetryIndex = retryIndex;
+
+                           var currentLimit = retryLimit;
+                           if (ex.Message != null && ex.Message.Contains("The request timed out"))
+                           {
+                               currentLimit = timeOutRetryLimit;
+                           }
+
+                           await _loggingRepository.LogMessageAsync(new LogMessage
+                           {
+                               Message = $"Got a transient exception. Retrying. This was try {retryIndex} out of {currentLimit}.\n{ex}",
+                               RunId = runId
+                           });
+                       }
+                    );
+
+            return retryPolicy;
+        }
+
         private async Task LogErrorAsync(HttpResponseMessage response, Guid? runId)
         {
             var content = await response.Content.ReadAsStringAsync();
@@ -458,6 +499,24 @@ namespace Repositories.GraphAzureADUsers
                 UserPrincipalName = user.UserPrincipalName,
                 OnPremisesImmutableId = user.OnPremisesImmutableId
             };
+        }
+
+        public async Task<int?> GetUsersCountAsync(Guid? runId)
+        {
+            int? users = null;
+            var retryPolicy = GetRetryPolicy(runId);
+            await retryPolicy.ExecuteAsync(async () =>
+           {
+
+               var response = await _graphClient.Users.GetAsync((requestConfiguration) =>
+                {
+                    requestConfiguration.Headers.Add("ConsistencyLevel", "eventual");
+                    requestConfiguration.QueryParameters.Count = true;
+                });
+               users = (int)response.OdataCount;
+
+           });
+            return users;
         }
     }
 }

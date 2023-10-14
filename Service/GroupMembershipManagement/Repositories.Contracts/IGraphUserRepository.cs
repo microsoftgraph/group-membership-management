@@ -13,5 +13,7 @@ namespace Repositories.Contracts
         public Task<IList<GraphProfileInformation>> GetAzureADObjectIdsAsync(IList<string> personnelNumbers, Guid? runId);
 
         public Task<List<GraphProfileInformation>> AddUsersAsync(List<GraphUser> users, Guid? runId);
+
+        public Task<int?> GetUsersCountAsync(Guid? runId);
     }
 }
