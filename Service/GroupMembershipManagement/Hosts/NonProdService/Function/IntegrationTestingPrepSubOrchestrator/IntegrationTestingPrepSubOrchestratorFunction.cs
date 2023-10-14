@@ -44,7 +44,7 @@ namespace Hosts.NonProdService
         [FunctionName(nameof(IntegrationTestingPrepSubOrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            var runId = context.NewGuid();
+            var runId = context.GetInput<Guid>();
 
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(IntegrationTestingPrepSubOrchestratorFunction)} function started", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
 
