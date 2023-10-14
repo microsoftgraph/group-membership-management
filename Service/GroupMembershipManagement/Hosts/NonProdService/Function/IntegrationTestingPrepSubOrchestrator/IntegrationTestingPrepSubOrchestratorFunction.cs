@@ -44,11 +44,19 @@ namespace Hosts.NonProdService
         [FunctionName(nameof(IntegrationTestingPrepSubOrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            var runId = context.GetInput<Guid>();
+            var request = context.GetInput<IntegrationTestingPrepSubOrchestratorRequest>();
+            var runId = request.RunId;
+            var tenantUserCount = request.TenantUserCount;
 
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(IntegrationTestingPrepSubOrchestratorFunction)} function started", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
 
             var tenantUsersRequired = GetMinimumUsersRequiredForTenant();
+            if (tenantUserCount < tenantUsersRequired)
+            {
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Insufficient users in tenant. {tenantUserCount} is less than the minimum requirement of {tenantUsersRequired} users." });
+                throw new Exception($"Error occurred in the {nameof(IntegrationTestingPrepSubOrchestratorFunction)}, because {tenantUserCount} is less than the minimum requirement of {tenantUsersRequired} users.");
+            }
+
             var tenantUsers = await context.CallActivityAsync<List<AzureADUser>>(
                 nameof(TenantUserReaderFunction),
                 new TenantUserReaderRequest
@@ -60,8 +68,7 @@ namespace Hosts.NonProdService
             if (tenantUsers == null)
             {
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Error with {nameof(TenantUserReaderFunction)}, check exception" });
-
-                throw new Exception($"Error occurred in the {nameof(TenantUserReaderFunction)}, because there are not enough users in tenant to meet minimum requirement of {tenantUsersRequired}");
+                throw new Exception($"Error occurred in the {nameof(TenantUserReaderFunction)}.");
             }
 
             // Create and populate each group
