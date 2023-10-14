@@ -291,7 +291,7 @@ namespace Repositories.GraphGroups
             return endpoints;
         }
 
-        public async Task CreateGroupAsync(string newGroupName, Guid? runId)
+        public async Task CreateGroupAsync(string newGroupName, TestGroupType testGroupType, Guid? runId)
         {
             try
             {
@@ -300,10 +300,14 @@ namespace Repositories.GraphGroups
                     return;
                 }
 
+                var description = testGroupType == TestGroupType.IntegrationTesting
+                    ? $"Integration test group: {newGroupName}"
+                    : $"Load test group: {newGroupName}";
+
                 var group = await _graphServiceClient.Groups.PostAsync(new Group
                 {
                     DisplayName = newGroupName,
-                    Description = $"Integration test group: {newGroupName}",
+                    Description = description,
                     MailNickname = new Guid().ToString(),
                     MailEnabled = false,
                     SecurityEnabled = true

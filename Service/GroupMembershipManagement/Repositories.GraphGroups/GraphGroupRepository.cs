@@ -98,9 +98,9 @@ namespace Repositories.GraphGroups
             return await _graphGroupOwnerReader.GetGroupOwnersAsync(groupObjectId, RunId, top);
         }
 
-        public async Task CreateGroup(string newGroupName)
+        public async Task CreateGroup(string newGroupName, TestGroupType testGroupType)
         {
-            await _graphGroupInformationReader.CreateGroupAsync(newGroupName, RunId);
+            await _graphGroupInformationReader.CreateGroupAsync(newGroupName, testGroupType, RunId);
         }
 
         public async Task<List<AzureADUser>> GetTenantUsers(int userCount)

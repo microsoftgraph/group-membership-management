@@ -84,6 +84,7 @@ namespace Hosts.NonProdService
                     new GroupCreatorAndRetrieverRequest
                     {
                         GroupName = groupName.ToString(),
+                        TestGroupType = TestGroupType.IntegrationTesting,
                         RunId = runId
                     });
 

@@ -26,7 +26,7 @@ namespace Hosts.NonProdService
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupCreatorAndRetrieverFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
-            await _graphGroupRepository.CreateGroup(request.GroupName);
+            await _graphGroupRepository.CreateGroup(request.GroupName, request.TestGroupType);
 
             var group = await _graphGroupRepository.GetGroup(request.GroupName);
 

@@ -23,7 +23,7 @@ namespace Repositories.Contracts
         Task<bool> GroupExists(Guid objectId);
         Task<bool> GroupExists(string groupName);
         Task<AzureADGroup> GetGroup(string groupName);
-        Task CreateGroup(string newGroupName);
+        Task CreateGroup(string newGroupName, TestGroupType testGroupType);
         Task<List<AzureADUser>> GetTenantUsers(int userCount);
         Task<List<AzureADUser>> GetUsersInGroupTransitively(Guid objectId);
         Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)> AddUsersToGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup);
