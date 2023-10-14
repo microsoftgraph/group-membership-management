@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace Hosts.NonProdService
 {
-    public class OrchestratorFunction
+    public class IntegrationTestingPrepSubOrchestratorFunction
     {
         private readonly INonProdService _nonProdService = null;
 
@@ -36,17 +36,17 @@ namespace Hosts.NonProdService
             { GroupEnums.TestGroup10kMembers, 10000 }
         };
 
-        public OrchestratorFunction(INonProdService nonProdService)
+        public IntegrationTestingPrepSubOrchestratorFunction(INonProdService nonProdService)
         {
             _nonProdService = nonProdService ?? throw new ArgumentNullException(nameof(nonProdService));
         }
 
-        [FunctionName(nameof(OrchestratorFunction))]
+        [FunctionName(nameof(IntegrationTestingPrepSubOrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var runId = context.NewGuid();
 
-            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
+            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(IntegrationTestingPrepSubOrchestratorFunction)} function started", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
 
             var tenantUsersRequired = GetMinimumUsersRequiredForTenant();
             var tenantUsers = await context.CallActivityAsync<List<AzureADUser>>(
@@ -118,7 +118,7 @@ namespace Hosts.NonProdService
                         });
             }
 
-            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
+            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(IntegrationTestingPrepSubOrchestratorFunction)} function completed", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
         }
 
         private int GetMinimumUsersRequiredForTenant()
