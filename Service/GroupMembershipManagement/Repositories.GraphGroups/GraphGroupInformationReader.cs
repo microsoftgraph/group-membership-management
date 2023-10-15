@@ -291,7 +291,7 @@ namespace Repositories.GraphGroups
             return endpoints;
         }
 
-        public async Task CreateGroupAsync(string newGroupName, TestGroupType testGroupType, Guid? runId)
+        public async Task CreateGroupAsync(string newGroupName, TestGroupType testGroupType, List<Guid> groupOwnerIds, Guid? runId)
         {
             try
             {
@@ -300,18 +300,36 @@ namespace Repositories.GraphGroups
                     return;
                 }
 
-                var description = testGroupType == TestGroupType.IntegrationTesting
-                    ? $"Integration test group: {newGroupName}"
-                    : $"Load test group: {newGroupName}";
-
-                var group = await _graphServiceClient.Groups.PostAsync(new Group
+                var groupDefinition = new Group
                 {
                     DisplayName = newGroupName,
-                    Description = description,
                     MailNickname = new Guid().ToString(),
                     MailEnabled = false,
                     SecurityEnabled = true
-                });
+                };
+
+                if (testGroupType == TestGroupType.IntegrationTesting)
+                {
+                    groupDefinition.Description = $"Integration test group: {newGroupName}";
+                }
+                else
+                {
+                    groupDefinition.Description = $"Load test group: {newGroupName}";
+                    groupDefinition.GroupTypes = new List<string> { "Unified" };
+                }
+
+                if (groupOwnerIds != null && groupOwnerIds.Count > 1)
+                {
+                    groupOwnerIds.ForEach((ownerId) =>
+                    {
+                        groupDefinition.Owners.Add(new DirectoryObject
+                        {
+                            Id = $"{ownerId}"
+                        });
+                    });
+                }
+
+                var group = await _graphServiceClient.Groups.PostAsync(groupDefinition);
             }
             catch (Exception e)
             {

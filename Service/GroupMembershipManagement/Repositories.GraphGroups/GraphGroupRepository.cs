@@ -12,7 +12,6 @@ namespace Repositories.GraphGroups
 {
     public class GraphGroupRepository : IGraphGroupRepository
     {
-        private readonly GraphServiceClient _graphServiceClient;
         private readonly ILoggingRepository _loggingRepository;
         private readonly GraphGroupInformationRepository _graphGroupInformationReader;
         private readonly GraphGroupOwnerReader _graphGroupOwnerReader;
@@ -28,7 +27,7 @@ namespace Repositories.GraphGroups
                                     TelemetryClient telemetryClient,
                                     ILoggingRepository loggingRepository)
         {
-            _graphServiceClient = graphServiceClient ?? throw new ArgumentNullException(nameof(graphServiceClient));
+            if (graphServiceClient == null) throw new ArgumentNullException(nameof(graphServiceClient));
             _ = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
 
@@ -98,9 +97,9 @@ namespace Repositories.GraphGroups
             return await _graphGroupOwnerReader.GetGroupOwnersAsync(groupObjectId, RunId, top);
         }
 
-        public async Task CreateGroup(string newGroupName, TestGroupType testGroupType)
+        public async Task CreateGroup(string newGroupName, TestGroupType testGroupType, List<Guid> groupOwnerIds)
         {
-            await _graphGroupInformationReader.CreateGroupAsync(newGroupName, testGroupType, RunId);
+            await _graphGroupInformationReader.CreateGroupAsync(newGroupName, testGroupType, groupOwnerIds, RunId);
         }
 
         public async Task<List<AzureADUser>> GetTenantUsers(int userCount)
