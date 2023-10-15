@@ -46,7 +46,7 @@ namespace Hosts.NonProdService
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Successfully created group with name {request.GroupName}, if it did not exist already", RunId = request.RunId });
 
-            var usersInGroup = await _graphGroupRepository.GetUsersInGroupTransitively(group.ObjectId);
+            var usersInGroup = request.RetrieveMembers ? await _graphGroupRepository.GetUsersInGroupTransitively(group.ObjectId) : null;
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupCreatorAndRetrieverFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 

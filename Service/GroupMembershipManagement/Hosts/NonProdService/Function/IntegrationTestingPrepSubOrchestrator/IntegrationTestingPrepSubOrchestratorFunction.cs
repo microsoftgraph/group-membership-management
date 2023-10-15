@@ -85,6 +85,7 @@ namespace Hosts.NonProdService
                     {
                         GroupName = groupName.ToString(),
                         TestGroupType = TestGroupType.IntegrationTesting,
+                        RetrieveMembers = true,
                         RunId = runId
                     });
 
