@@ -2,8 +2,10 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 using Repositories.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.NonProdService
@@ -23,9 +25,18 @@ namespace Hosts.NonProdService
 
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(LoadTestingPrepSubOrchestratorFunction)} function started", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
 
-            // Do stuff here.            
+            var calcResponse = await context.CallActivityAsync<LoadTestingGroupCalculatorResponse>(
+                nameof(LoadTestingGroupCalculatorFunction),
+                new LoadTestingGroupCalculatorRequest
+                {
+                    NumberOfGroups = 2000,
+                    NumberOfUsers = tenantUserCount,
+                    RunId = runId
+                });
 
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(LoadTestingPrepSubOrchestratorFunction)} function completed", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
         }
+
+        
     }
 }
