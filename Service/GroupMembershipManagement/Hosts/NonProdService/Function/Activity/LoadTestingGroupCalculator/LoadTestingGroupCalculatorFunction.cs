@@ -36,20 +36,20 @@ namespace Hosts.NonProdService
 
             // find largest group size that can be completely filled
             var maxGroupSize = _groupSizes.LastOrDefault(num => num < numberOfUsers);
-            var maxGroupIndex = _groupSizes.IndexOf(maxGroupSize);
+            var maxGroupSizeIndex = _groupSizes.IndexOf(maxGroupSize);
 
             // Get group size distribution sequence
-            var sequence = DistinctFibonacciSequence(maxGroupIndex + 1);
+            var sequence = DistinctFibonacciSequence(maxGroupSizeIndex + 1);
             var sum = sequence.Sum();
 
             var totalGroupCount = 0;
             // Determine how many groups of each size to create
-            for(var i = 0; maxGroupIndex - i > 0; i++)
+            for(var i = 0; maxGroupSizeIndex - i > 0; i++)
             {
                 // Round up to nearest whole number
                 var groupCount = (int)(((decimal)sequence[i] / sum) * numberOfGroups);
-                groupSizesAndCounts.Add(_groupSizes[maxGroupIndex-i], numberOfGroups);
-                totalGroupCount += numberOfGroups;
+                groupSizesAndCounts.Add(_groupSizes[maxGroupSizeIndex-i], groupCount);
+                totalGroupCount += groupCount;
             }
 
             // Smallest group size gets the remaining number of groups that need to be created to match the requested number of groups
