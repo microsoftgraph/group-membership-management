@@ -23,6 +23,10 @@ namespace Hosts.NonProdService
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
+        /// <summary>
+        /// Creates a dictionary of group sizes and the number of groups of that size to create.
+        /// It attempts to create many more smaller groups than larger groups to more closely resemble production usage.
+        /// </summary>
         [FunctionName(nameof(LoadTestingGroupCalculatorFunction))]
         public async Task<LoadTestingGroupCalculatorResponse> GenerateGroup([ActivityTrigger] LoadTestingGroupCalculatorRequest request, ILogger log)
         {
@@ -48,8 +52,13 @@ namespace Hosts.NonProdService
             {
                 // Round up to nearest whole number
                 var groupCount = (int)(((decimal)sequence[i] / sum) * numberOfGroups);
-                groupSizesAndCounts.Add(_groupSizes[maxGroupSizeIndex-i], groupCount);
-                totalGroupCount += groupCount;
+                // Small values for "numberOfGroups" with a large value for "numberOfUsers" can result
+                // in the groups not being created for the larger group sizes.It's better to not include
+                // a group size if the group count is 0.
+                if (groupCount > 0) {
+                    totalGroupCount += groupCount;
+                    groupSizesAndCounts.Add(_groupSizes[maxGroupSizeIndex-i], groupCount);
+                }    
             }
 
             // Smallest group size gets the remaining number of groups that need to be created to match the requested number of groups
@@ -66,6 +75,7 @@ namespace Hosts.NonProdService
         public List<int> DistinctFibonacciSequence(int sequenceLength)
         {
             List<int> sequence = new List<int>();
+            // First two numbers in the sequence are always 1, so by setting b to 2, we can skip the first iteration.
             int a = 1;
             int b = 2;
 
