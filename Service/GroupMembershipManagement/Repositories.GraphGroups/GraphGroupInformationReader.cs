@@ -303,7 +303,6 @@ namespace Repositories.GraphGroups
                 var groupDefinition = new Group
                 {
                     DisplayName = newGroupName,
-                    MailNickname = new Guid().ToString(),
                     MailEnabled = false,
                     SecurityEnabled = true
                 };
@@ -311,11 +310,13 @@ namespace Repositories.GraphGroups
                 if (testGroupType == TestGroupType.IntegrationTesting)
                 {
                     groupDefinition.Description = $"Integration test group: {newGroupName}";
+                    groupDefinition.MailNickname = new Guid().ToString();
                 }
                 else
                 {
                     groupDefinition.Description = $"Load test group: {newGroupName}";
                     groupDefinition.GroupTypes = new List<string> { "Unified" };
+                    groupDefinition.MailNickname = Guid.NewGuid().ToString();
                 }
 
                 if (groupOwnerIds != null && groupOwnerIds.Count > 1)
