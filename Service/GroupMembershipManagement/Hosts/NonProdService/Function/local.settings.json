@@ -10,6 +10,8 @@
     "graphCredentials:KeyVaultName": "gmm-prereqs-<env>",
     "graphCredentials:KeyVaultTenantId": "<demo-tenant-id>",
     "graphCredentials:TenantId": "<demo-tenant-id>",
+    "ConnectionStrings:JobsContext": "",
+    "ConnectionStrings:JobsContextReadOnly": "",
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
     "APPINSIGHTS_INSTRUMENTATIONKEY": ""
   }

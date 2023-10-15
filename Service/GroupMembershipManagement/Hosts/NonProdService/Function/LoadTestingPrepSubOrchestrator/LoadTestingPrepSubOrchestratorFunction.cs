@@ -65,6 +65,14 @@ namespace Hosts.NonProdService
                 groupSizesAndIds.Add(groupSize, groupIds);
             }
 
+            // Retrieve existing SyncJobs
+            var syncJobs = await context.CallActivityAsync<LoadTestingSyncJobRetrieverResponse>(
+                nameof(LoadTestingSyncJobRetrieverFunction),
+                new LoadTestingSyncJobRetrieverRequest
+                {
+                    RunId = runId
+                });
+
             // Create sync jobs for the groups, if they don't already exist.
 
             // Call JobScheduler to spread out the new jobs.

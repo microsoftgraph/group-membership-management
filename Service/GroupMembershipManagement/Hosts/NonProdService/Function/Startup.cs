@@ -30,10 +30,10 @@ namespace Hosts.NonProdService
             base.Configure(builder);
 
             builder.Services.AddSingleton<IKeyVaultSecret<INonProdService>>(services => new KeyVaultSecret<INonProdService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
-           .AddSingleton((services) =>
-           {
-               return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
-           })
+            .AddSingleton((services) =>
+            {
+                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
+            })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
             .AddSingleton<IGraphUserRepository, GraphUserRepository>()
             .AddOptions<LoadTestingPrepSubOrchestratorOptions>().Configure<IConfiguration>((settings, configuration) =>
