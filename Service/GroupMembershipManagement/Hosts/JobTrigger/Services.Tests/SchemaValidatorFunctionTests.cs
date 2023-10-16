@@ -73,8 +73,8 @@ namespace Services.Tests
                 { "[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000000\"},{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000000\"}]" },
                 { "[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000000\"},{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000000\",\"exclusionary\":true}]" },
                 { "[{\"type\":\"GroupOwnership\",\"source\":[\"GroupMembership\"]}]" },
-                { "[{\"type\":\"GroupOwnership\",\"source\":[\"GroupMembership\"]},{\"type\":\"GroupOwnership\",\"source\":[\"TeamsChannel\"]}]" },
-                { "[{\"type\":\"TeamsChannel\",\"source\":{\"group\":\"00000000-0000-0000-0000-000000000000\",\"channel\":\"0:00000000000000000000000000000000@thread.tacv2\"}}]" }
+                { "[{\"type\":\"GroupOwnership\",\"source\":[\"GroupMembership\"]},{\"type\":\"GroupOwnership\",\"source\":[\"00000000-0000-0000-0000-000000000000\"]}]" },
+                { "[{\"type\":\"TeamsChannelMembership\",\"source\":{\"group\":\"00000000-0000-0000-0000-000000000000\",\"channel\":\"0:00000000000000000000000000000000@thread.tacv2\"}}]" }
             };
         }
 
@@ -86,7 +86,7 @@ namespace Services.Tests
                 { "[{\"type\":\"GroupMembership\",\"source\":123,{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000000\"}]" },
                 { "[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000000\"},{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000000\",\"exclusionary\":\"abc\"}]" },
                 { "[{\"type\":123,\"source\":[\"GroupMembership\"]}]" },
-                { "[{\"type\":\"GroupOwnership\",\"source\":[\"GroupMembership\"]},{\"type\":\"GroupOwnership\",\"source\":[\"TeamsChannel\"],\"test\":123}]" },
+                { "[{\"type\":\"GroupOwnership\",\"source\":[\"GroupMembership\"]},{\"type\":\"GroupOwnership\",\"source\":[\"TeamsChannelMembership\"],\"test\":123}]" },
             };
         }
     }

@@ -29,7 +29,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
 
         [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
-            [ServiceBusTrigger("%serviceBusSyncJobTopic%", "TeamsChannel", Connection = "serviceBusTopicConnection")] ServiceBusReceivedMessage message,
+            [ServiceBusTrigger("%serviceBusSyncJobTopic%", "TeamsChannelMembership", Connection = "serviceBusTopicConnection")] ServiceBusReceivedMessage message,
             [DurableClient] IDurableOrchestrationClient starter)
         {
 
@@ -44,7 +44,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
 
             var runId = channelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"TeamsChannel recieved a message. Query: {channelSyncInfo.SyncJob.Query}.", RunId = runId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"TeamsChannelMembershipObtainer recieved a message. Query: {channelSyncInfo.SyncJob.Query}.", RunId = runId });
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
 
