@@ -96,7 +96,9 @@ namespace Repositories.EntityFramework
 
         public async Task UpdateSyncJobFromNotificationAsync(SyncJob job, SyncStatus status)
         {
+            var entry = _writeContext.Set<SyncJob>().Add(job);
             job.Status = status.ToString();
+            entry.State = EntityState.Modified;
             await _writeContext.SaveChangesAsync();
         }
 
