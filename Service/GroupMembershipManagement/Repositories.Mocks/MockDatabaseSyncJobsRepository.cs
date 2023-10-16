@@ -21,6 +21,13 @@ namespace Repositories.Mocks
             await Task.CompletedTask;
         }
 
+        public async Task<Guid> CreateSyncJobAsync(SyncJob job)
+        {
+            job.Id = Guid.NewGuid();
+            Jobs.Add(job);
+            return await Task.FromResult(job.Id);
+        }
+
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
             return await Task.FromResult(Jobs);

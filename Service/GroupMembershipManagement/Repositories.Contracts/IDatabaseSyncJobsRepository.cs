@@ -11,6 +11,7 @@ namespace Repositories.Contracts
 {
     public interface IDatabaseSyncJobsRepository
     {
+        Task<Guid> CreateSyncJobAsync(SyncJob job);
         Task<SyncJob> GetSyncJobAsync(Guid syncJobId);
         IQueryable<SyncJob> GetSyncJobs(bool asNoTracking = false);
         Task<List<SyncJob>> GetSyncJobsAsync();

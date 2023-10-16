@@ -19,6 +19,13 @@ namespace Repositories.EntityFramework
             _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
 
+        public async Task<Guid> CreateSyncJobAsync(SyncJob job)
+        {
+            var entry = await _writeContext.Set<SyncJob>().AddAsync(job);
+            await _writeContext.SaveChangesAsync();
+            return entry.Entity.Id;
+        }
+        
         public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
         {
             return await _readContext.SyncJobs.SingleOrDefaultAsync(job => job.Id == syncJobId);
