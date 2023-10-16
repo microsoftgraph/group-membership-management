@@ -88,7 +88,7 @@ namespace Services.Tests
                 Period = 6,
                 StatusDetails = new Status
                 {
-                    Id = (int)SyncStatus.Idle,
+                    Id = Guid.Parse("AC3604F9-5869-EE11-9937-6045BDE913DD"),
                     Name = SyncStatus.Idle.ToString(),
                     SortPriority = 1000
                 }
