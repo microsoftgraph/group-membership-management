@@ -42,6 +42,11 @@ namespace WebApi
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Services.AddControllers(options =>
+            {
+                options.InputFormatters.Insert(0, JsonPatchFormatter.GetJsonPatchInputFormatter());
+            });
+
             var azureAdConfigSection = builder.Configuration.GetSection("AzureAd");
             var azureAdTenantId = azureAdConfigSection.GetValue<string>("TenantId");
             var azureAdClientId = azureAdConfigSection.GetValue<string>("ClientId");

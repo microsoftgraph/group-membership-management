@@ -28,6 +28,6 @@ namespace Models
         SchemaError = 20,
         TransientError = 21,
         New = 22,
-        DevPaused = 23
+        DeveloperPaused = 23
     }
 }

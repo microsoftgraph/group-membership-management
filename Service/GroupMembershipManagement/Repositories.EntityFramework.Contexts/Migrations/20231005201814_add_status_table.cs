@@ -42,7 +42,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                 { Guid.Parse("A33604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.CustomerPaused },
                 { Guid.Parse("A43604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.DestinationGroupNotFound },
                 { Guid.Parse("A53604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.DestinationQueryNotValid },
-                { Guid.Parse("A63604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.DevPaused },
+                { Guid.Parse("A63604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.DeveloperPaused },
                 { Guid.Parse("A73604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.Error },
                 { Guid.Parse("A83604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.ErroredDueToStuckInProgress },
                 { Guid.Parse("A93604F9-5869-EE11-9937-6045BDE913DD"), SyncStatus.FileNotFound },

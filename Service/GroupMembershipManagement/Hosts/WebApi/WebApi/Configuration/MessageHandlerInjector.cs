@@ -22,6 +22,9 @@ namespace WebApi.Configuration
             services.AddTransient<IRequestHandler<NotificationCardRequest, NotificationCardResponse>, NotificationCardHandler>();
 
             services.AddTransient<IRequestHandler<ResolveNotificationRequest, ResolveNotificationResponse>, ResolveNotificationHandler>();
+
+            services.AddTransient<IRequestHandler<PatchJobRequest, PatchJobResponse>, PatchJobHandler>();
+
             return services;
         }
     }
