@@ -43,7 +43,7 @@ namespace Hosts.NonProdService
                     var destination = "[{\"type\":\"GroupMembership\",\"value\":{\"objectId\":\"" + groupId + "\"}}]";
 
                     var filter = $"EmployeeId <= {groupSize}";
-                    var query = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\": \"" + filter + "\",}}]";
+                    var query = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\": \"" + filter + "\"}}]";
 
                     var syncJob = new SyncJob
                     {
