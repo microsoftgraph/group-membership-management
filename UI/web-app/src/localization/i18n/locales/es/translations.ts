@@ -83,6 +83,10 @@ export const strings: IStrings = {
     MessageBar: {
       dismissButtonAriaLabel: 'Cerrar',
     },
+    Errors:{
+      jobInProgress: 'La sincronización esta en progreso. Por favor intente más tarde.',
+      notGroupOwner: 'No eres propietario de este grupo.',
+    },
     openInAzure: 'Abrir en Azure',
     viewDetails: 'Ver Detalles',
     editButton: 'Editar',

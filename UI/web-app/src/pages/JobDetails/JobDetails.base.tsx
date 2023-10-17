@@ -10,25 +10,28 @@ import {
   Toggle,
   IProcessedStyleSet,
   classNamesFunction,
-  ActionButton
+  ActionButton,
+  IToggleProps
 } from '@fluentui/react';
 
 import {
   Stack,
   type IStackTokens
 } from '@fluentui/react/lib/Stack';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useLocation } from 'react-router-dom';
 import { InfoLabel } from '../../components/InfoLabel';
 import { PageHeader } from '../../components/PageHeader';
 import { type Job } from '../../models/Job';
 import { type AppDispatch } from '../../store';
-import { fetchJobDetails } from '../../store/jobDetails.api';
+import { fetchJobDetails, patchJobDetails } from '../../store/jobDetails.api';
 import {
   selectSelectedJobDetails,
   setGetJobDetailsError,
   selectGetJobDetailsError,
+  selectPatchJobDetailsResponse,
+  selectPatchJobDetailsError
 } from '../../store/jobs.slice';
 
 import { ContentContainer } from '../../components/ContentContainer/ContentContainer'
@@ -43,6 +46,8 @@ import {
 import { JobDetails } from '../../models/JobDetails';
 import { PageVersion } from '../../components/PageVersion';
 import { useStrings } from '../../localization/hooks';
+import { PatchJobRequest } from '../../models/PatchJobRequest';
+import { PatchJobResponse } from '../../models/PatchJobResponse';
 
 
 export interface IContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
@@ -114,12 +119,11 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
       </div>
       <div className={classNames.root}>
         <MembershipDetails job={job} classNames={classNames} />
-        {/* // Hidden until feature is enabled
         <ContentContainer
           title={strings.JobDetails.labels.membershipStatus}
           children={<MembershipStatusContent job={job} classNames={classNames} />}
           removeButton={true}
-        /> */}
+        />
         <ContentContainer
           title={strings.JobDetails.labels.destination}
           actionText={strings.JobDetails.openInAzure}
@@ -181,22 +185,67 @@ const MembershipDetails: React.FunctionComponent<IContentProps> = (
 const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
   props: IContentProps
 ) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const patchResponse: PatchJobResponse = useSelector(selectPatchJobDetailsResponse);
+  const patchError = useSelector(selectPatchJobDetailsError);
+
   const strings = useStrings();
   const { job, classNames } = props;
 
+  const [jobStatus, setJobStatus] = useState(job.enabledOrNot);
+
+  const statusToggleProps: IToggleProps = {
+    inlineLabel: true,
+    checked: jobStatus === 'Enabled',
+    onChange: () => {
+      var patchJobRequest: PatchJobRequest = {
+        syncJobId: job.syncJobId,
+        operations: [
+          {
+            op: "replace",
+            path: "/Status",
+            value: jobStatus === 'Enabled' ? 'CustomerPaused' : 'Idle'
+          }
+        ]
+      };
+
+      dispatch(patchJobDetails(patchJobRequest))
+        .then((response: any) => {
+          if (response.payload.ok) {
+            setJobStatus(jobStatus === 'Enabled' ? 'Disabled' : 'Enabled');
+          }
+        });
+    }
+  }
+
+  const displayMessage = (errorCode: string | undefined): string => {
+    switch (errorCode) {
+      case 'JobInProgress':
+        return strings.JobDetails.Errors.jobInProgress;
+      case 'NotGroupOwner':
+        return strings.JobDetails.Errors.notGroupOwner;
+      default:
+        return '';
+    }
+  }
+
   return (
     <div className={classNames.membershipStatus}>
-      <label className={classNames.toggleLabel}>{strings.JobDetails.labels.sync}</label>
-      <Toggle
-        inlineLabel={true}
-        checked={job.enabledOrNot === 'Enabled'}
-      />
-      <div>
-        {job.enabledOrNot === 'Disabled' ? (
-          <div className={classNames.jobDisabled}> {job.enabledOrNot}</div>
-        ) : (
-          <div className={classNames.jobEnabled}> {job.enabledOrNot}</div>
-        )}
+      <div className={classNames.membershipStatus}>
+        <label className={classNames.toggleLabel}>{strings.JobDetails.labels.sync}</label>
+        <Toggle
+          {...statusToggleProps}
+        />
+        <div>
+          {jobStatus === 'Disabled' ? (
+            <div className={classNames.jobDisabled}> {jobStatus}</div>
+          ) : (
+            <div className={classNames.jobEnabled}> {jobStatus}</div>
+          )}
+        </div>
+      </div>
+      <div className={classNames.membershipStatusMessage}>
+        {!patchResponse?.ok && (displayMessage(patchResponse?.errorCode))}
       </div>
     </div>
   )

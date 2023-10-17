@@ -69,6 +69,9 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             display: "flex",
             alignItems: "flex-start"
         },
+        membershipStatusMessage: {
+            paddingLeft: 50
+        },
         footer: {
             display: 'flex',
             justifyContent: 'space-between'

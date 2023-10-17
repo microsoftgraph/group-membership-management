@@ -80,6 +80,10 @@ export const strings: IStrings = {
     MessageBar: {
       dismissButtonAriaLabel: 'Close',
     },
+    Errors:{
+      jobInProgress: 'Job is in progress. Please try again later.',
+      notGroupOwner: 'You are not an owner of this group.',
+    },
     openInAzure: 'Open in Azure',
     viewDetails: 'View Details',
     editButton: 'Edit',

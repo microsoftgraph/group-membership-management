@@ -19,6 +19,7 @@ export interface IJobDetailsStyles {
     jobEnabled: IStyle;
     jobDisabled: IStyle;
     membershipStatus: IStyle;
+    membershipStatusMessage: IStyle;
     footer: IStyle;
 }
 

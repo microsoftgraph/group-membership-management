@@ -17,7 +17,7 @@ import {
 } from '../../store/jobs.slice';
 import { AppDispatch } from '../../store';
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   classNamesFunction,
   IProcessedStyleSet,
@@ -70,6 +70,12 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const [pageSize, setPageSize] = useState('10');
   const totalNumberOfPages = useSelector(getTotalNumberOfPages);
   const navigate = useNavigate();
+  const location = useNavigate();
+
+  useEffect(() => {
+    if(jobs)
+      dispatch(fetchJobs());
+  }, [location, navigate]);
 
   const [filterStatus, setFilterStatus] = useState<string | undefined>(
     undefined

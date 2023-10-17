@@ -75,6 +75,10 @@ export type IStrings = {
     MessageBar: {
       dismissButtonAriaLabel: string;
     };
+    Errors:{
+      jobInProgress: string;
+      notGroupOwner: string;
+    }
     openInAzure: string;
     viewDetails: string;
     editButton: string;

@@ -3,7 +3,7 @@
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-import { fetchJobDetails } from './jobDetails.api';
+import { fetchJobDetails, patchJobDetails } from './jobDetails.api';
 import { fetchJobs } from './jobs.api';
 import type { RootState } from './store';
 import { type Job } from '../models/Job';
@@ -18,6 +18,8 @@ export interface JobsState {
   selectedJobLoading: boolean;
   getJobsError: string | undefined;
   getJobDetailsError: string | undefined;
+  patchJobDetailsResponse: any | undefined;
+  patchJobDetailsError: string | undefined;
 }
 
 // Define the initial state using that type
@@ -28,6 +30,8 @@ const initialState: JobsState = {
   selectedJobLoading: false,
   getJobsError: undefined,
   getJobDetailsError: undefined,
+  patchJobDetailsResponse: undefined,
+  patchJobDetailsError: undefined
 };
 
 export const jobsSlice = createSlice({
@@ -70,6 +74,16 @@ export const jobsSlice = createSlice({
     builder.addCase(fetchJobDetails.rejected, (state, action) => {
       state.getJobDetailsError = action.error.message;
     });
+
+    // patchJobDetails
+    builder.addCase(patchJobDetails.pending, (state) => {
+    });
+    builder.addCase(patchJobDetails.fulfilled, (state, action) => {
+      state.patchJobDetailsResponse = action.payload;
+    });
+    builder.addCase(patchJobDetails.rejected, (state, action) => {
+      state.patchJobDetailsError = action.error.message;
+    });
   },
 });
 
@@ -90,5 +104,8 @@ export const selectGetJobDetailsError = (state: RootState) =>
   state.jobs.getJobDetailsError;
 
 export const getTotalNumberOfPages = (state: RootState) => state.jobs.totalNumberOfPages;
+
+export const selectPatchJobDetailsResponse = (state: RootState) => state.jobs.patchJobDetailsResponse;
+export const selectPatchJobDetailsError = (state: RootState) => state.jobs.patchJobDetailsError;
 
 export default jobsSlice.reducer;
