@@ -42,7 +42,8 @@ namespace Hosts.NonProdService
 
                     var destination = "[{\"type\":\"GroupMembership\",\"value\":{\"objectId\":\"" + groupId + "\"}}]";
 
-                    var filter = $"EmployeeId <= {groupSize}";
+                    var offset = groupSize * 0.1;
+                    var filter = $"(EmployeeId > 0 AND EmployeeId <= {groupSize} AND RAND() < 0.5) OR (EmployeeId > {offset} AND EmployeeId <= {groupSize + offset} AND RAND() >= 0.5)";
                     var query = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\": \"" + filter + "\"}}]";
 
                     var syncJob = new SyncJob
