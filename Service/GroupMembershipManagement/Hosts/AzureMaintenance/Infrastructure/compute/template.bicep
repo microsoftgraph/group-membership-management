@@ -142,7 +142,7 @@ var stagingSettings = {
   'AzureWebJobs.RemoveInactiveJobsFunction.Disabled': 1
   'AzureWebJobs.SendEmailFunction.Disabled': 1
   'AzureWebJobs.ExpireNotificationsFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}AzureMaintenanceStaging'
+  AzureFunctionsWebHost__hostid: 'AzureMaintenanceStaging'
 }
 
 var productionSettings = {
@@ -161,6 +161,7 @@ var productionSettings = {
   'AzureWebJobs.RemoveInactiveJobsFunction.Disabled': 0
   'AzureWebJobs.SendEmailFunction.Disabled': 0
   'AzureWebJobs.ExpireNotificationsFunction.Disabled': 0
+  AzureFunctionsWebHost__hostid: 'AzureMaintenance'
 }
 
 module functionAppTemplate_AzureMaintenance 'functionApp.bicep' = {

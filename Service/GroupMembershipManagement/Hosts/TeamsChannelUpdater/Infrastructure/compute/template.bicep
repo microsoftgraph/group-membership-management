@@ -148,7 +148,7 @@ var stagingSettings = {
   'AzureWebJobs.TelemetryTrackerFunction.Disabled': 1
   'AzureWebJobs.TeamsChannelUpdaterSubOrchestratorFunction.Disabled': 1
   'AzureWebJobs.TeamsUpdaterFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}TeamsChannelUpdaterStaging'
+  AzureFunctionsWebHost__hostid: 'TeamsChannelUpdaterStaging'
 }
 
 var productionSettings = {
@@ -166,6 +166,7 @@ var productionSettings = {
   'AzureWebJobs.TelemetryTrackerFunction.Disabled': 0
   'AzureWebJobs.TeamsChannelUpdaterSubOrchestratorFunction.Disabled': 0
   'AzureWebJobs.TeamsUpdaterFunction.Disabled': 0
+  AzureFunctionsWebHost__hostid: 'TeamsChannelUpdater'
 }
 
 module functionAppTemplate_TeamsChannelUpdater 'functionApp.bicep' = {

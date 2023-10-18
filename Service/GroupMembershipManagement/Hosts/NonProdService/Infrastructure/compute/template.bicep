@@ -146,7 +146,7 @@ var stagingSettings = {
   'AzureWebJobs.GroupUpdaterFunction.Disabled': 1
   'AzureWebJobs.LoggerFunction.Disabled': 1
   'AzureWebJobs.TenantUserReaderFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}NonProdServiceStaging'
+  AzureFunctionsWebHost__hostid: 'NonProdServiceStaging'
 }
 
 var productionSettings = {
@@ -159,6 +159,7 @@ var productionSettings = {
   'AzureWebJobs.GroupUpdaterFunction.Disabled': 0
   'AzureWebJobs.LoggerFunction.Disabled': 0
   'AzureWebJobs.TenantUserReaderFunction.Disabled': 0
+  AzureFunctionsWebHost__hostid: 'NonProdService'
 }
 
 module functionAppTemplate_NonProdService 'functionApp.bicep' = {

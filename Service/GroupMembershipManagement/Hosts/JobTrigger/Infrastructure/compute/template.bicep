@@ -163,12 +163,13 @@ var stagingSettings = {
   'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 1
   'AzureWebJobs.SyncJobsReaderFunction.Disabled': 1
   'AzureWebJobs.TopicMessageSenderFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}JobTriggerStaging'
+  AzureFunctionsWebHost__hostid: 'JobTriggerStaging'
 }
 
 var productionSettings = {
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(jobTriggerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobTrigger'
+  AzureFunctionsWebHost__hostid: 'JobTrigger'
 }
 
 module functionAppTemplate_JobTrigger 'functionApp.bicep' = {

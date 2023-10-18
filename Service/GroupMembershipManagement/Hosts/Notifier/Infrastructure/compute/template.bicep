@@ -165,12 +165,13 @@ var stagingSettings = {
   'AzureWebJobs.LoggerFunction.Disabled': 1
   'AzureWebJobs.UpdateNotificationStatusFunction.Disabled': 1
   'AzureWebJobs.SendNotificationFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}NotifierStaging'
+  AzureFunctionsWebHost__hostid: 'NotifierStaging'
 }
 
 var productionSettings = {
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(notifierStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}Notifier'
+  AzureFunctionsWebHost__hostid: 'Notifier'
 }
 
 module functionAppTemplate_Notifier 'functionApp.bicep' = {

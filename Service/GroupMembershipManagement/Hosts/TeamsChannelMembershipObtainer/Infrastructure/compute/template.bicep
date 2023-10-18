@@ -141,12 +141,14 @@ var stagingSettings = {
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelMembershipObtainerStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelMembershipObtainerStaging'
   'TeamsChannelMembershipObtainer:IsDryRunEnabled': 1
+  AzureFunctionsWebHost__hostid: 'TeamsChannelMOStaging'
 }
 
 var productionSettings = {
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelMembershipObtainer'
   'TeamsChannelMembershipObtainer:IsDryRunEnabled': 0
+  AzureFunctionsWebHost__hostid: 'TeamsChannelMO'
 }
 
 module functionAppTemplate_TeamsChannelMembershipObtainer 'functionApp.bicep' = {

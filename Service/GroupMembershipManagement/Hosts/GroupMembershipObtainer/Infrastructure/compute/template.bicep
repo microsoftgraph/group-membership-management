@@ -157,12 +157,13 @@ var stagingSettings = {
   'AzureWebJobs.SubsequentUsersReaderFunction.Disabled': 1
   'AzureWebJobs.UsersReaderFunction.Disabled': 1
   'AzureWebJobs.UsersSenderFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}GroupMembershipObtainerStaging'
+  AzureFunctionsWebHost__hostid: 'GroupMembershipObtainerStaging'
 }
 
 var productionSettings = {
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(groupMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GroupMembershipObtainer'
+  AzureFunctionsWebHost__hostid: 'GroupMembershipObtainer'
 }
 
 module functionAppTemplate_GroupMembershipObtainer 'functionApp.bicep' = {

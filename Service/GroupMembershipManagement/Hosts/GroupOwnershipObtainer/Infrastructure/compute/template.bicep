@@ -151,7 +151,7 @@ var stagingSettings = {
   'AzureWebJobs.UsersSenderFunction.Disabled': 1
   'AzureWebJobs.QueueMessageSenderFunction.Disabled': 1
   'AzureWebJobs.FeatureFlagFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}GroupOwnershipObtainerStaging'
+  AzureFunctionsWebHost__hostid: 'GroupOwnershipObtainerStaging'
 }
 
 var productionSettings = {
@@ -168,6 +168,7 @@ var productionSettings = {
   'AzureWebJobs.UsersSenderFunction.Disabled': 0
   'AzureWebJobs.QueueMessageSenderFunction.Disabled': 0
   'AzureWebJobs.FeatureFlagFunction.Disabled': 0
+  AzureFunctionsWebHost__hostid: 'GroupOwnershipObtainer'
 }
 
 module functionAppTemplate_GroupOwnershipObtainer 'functionApp.bicep' = {

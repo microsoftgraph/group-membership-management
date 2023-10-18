@@ -135,12 +135,13 @@ var stagingSettings = {
   'AzureWebJobs.AzureUserReaderFunction.Disabled': 1
   'AzureWebJobs.PersonnelNumberReaderFunction.Disabled': 1
   'AzureWebJobs.UploadUsersFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}AzureUserReaderStaging'
+  AzureFunctionsWebHost__hostid: 'AzureUserReaderStaging'
 }
 
 var productionSettings = {
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(azureUserReaderStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureUserReader'
+  AzureFunctionsWebHost__hostid: 'AzureUserReader'
 }
 
 module functionAppTemplate_AzureUserReader 'functionApp.bicep' = {

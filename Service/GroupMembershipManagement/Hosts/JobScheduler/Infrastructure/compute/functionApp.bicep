@@ -110,6 +110,7 @@ resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
       'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled'
       'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled'
       'AzureWebJobs.PostCallbackFunction.Disabled'
+      'AzureFunctionsWebHost__hostid'
     ]
   }
 }

@@ -194,6 +194,7 @@ var productionSettings = {
   'AzureWebJobs.LoggerFunction.Disabled': 0
   'AzureWebJobs.TelemetryTrackerFunction.Disabled': 0
   'AzureWebJobs.TopicMessageSenderFunction.Disabled': 0
+  AzureFunctionsWebHost__hostid: 'MembershipAggregator'
 }
 
 module functionAppTemplate_MembershipAggregator 'functionApp.bicep' = {

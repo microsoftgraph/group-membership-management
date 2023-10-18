@@ -142,6 +142,7 @@ var stagingSettings = {
   'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 1
   'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled': 1
   'AzureWebJobs.PostCallbackFunction.Disabled': 1
+  AzureFunctionsWebHost__hostid: 'JobSchedulerStaging'
 }
 
 var productionSettings = {
@@ -160,6 +161,7 @@ var productionSettings = {
   'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 0
   'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled': 0
   'AzureWebJobs.PostCallbackFunction.Disabled': 0
+  AzureFunctionsWebHost__hostid: 'JobScheduler'
 }
 
 module functionAppTemplate_JobScheduler 'functionApp.bicep' = {

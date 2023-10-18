@@ -159,12 +159,13 @@ var stagingSettings = {
   'AzureWebJobs.MessageTrackerFunction.Disabled': 1
   'AzureWebJobs.StatusReaderFunction.Disabled': 1
   'AzureWebJobs.TelemetryTrackerFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: '${environmentAbbreviation}GraphUpdaterStaging'
+  AzureFunctionsWebHost__hostid: 'GraphUpdaterStaging'
 }
 
 var productionSettings = {
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GraphUpdater'
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureFunctionsWebHost__hostid: 'GraphUpdater'
 }
 
 module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {

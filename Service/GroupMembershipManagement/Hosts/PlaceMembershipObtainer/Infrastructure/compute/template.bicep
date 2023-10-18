@@ -147,6 +147,7 @@ var stagingSettings = {
   'AzureWebJobs.WorkspacesReaderFunction.Disabled': 1
   'AzureWebJobs.UsersReaderFunction.Disabled': 1
   'AzureWebJobs.SubsequentUsersReaderFunction.Disabled': 1
+  AzureFunctionsWebHost__hostid: 'PlaceMembershipObtainerStaging'
 }
 
 var productionSettings = {
@@ -162,6 +163,7 @@ var productionSettings = {
   'AzureWebJobs.WorkspacesReaderFunction.Disabled': 0
   'AzureWebJobs.UsersReaderFunction.Disabled': 0
   'AzureWebJobs.SubsequentUsersReaderFunction.Disabled': 0
+  AzureFunctionsWebHost__hostid: 'PlaceMembershipObtainer'
 }
 
 module functionAppTemplate_PlaceMembershipObtainer 'functionApp.bicep' = {
