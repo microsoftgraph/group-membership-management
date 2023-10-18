@@ -84,8 +84,9 @@ export const strings: IStrings = {
       dismissButtonAriaLabel: 'Cerrar',
     },
     Errors:{
-      jobInProgress: 'La sincronización esta en progreso. Por favor intente más tarde.',
+      jobInProgress: 'La sincronización está en progreso. Por favor intente más tarde.',
       notGroupOwner: 'No eres propietario de este grupo.',
+      internalError: 'No podemos procesar su solicitud en este momento. Por favor, inténtelo de nuevo más tarde.'
     },
     openInAzure: 'Abrir en Azure',
     viewDetails: 'Ver Detalles',

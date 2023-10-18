@@ -211,21 +211,23 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
 
       dispatch(patchJobDetails(patchJobRequest))
         .then((response: any) => {
-          if (response.payload.ok) {
+          if (response.payload?.ok) {
             setJobStatus(jobStatus === 'Enabled' ? 'Disabled' : 'Enabled');
           }
         });
     }
   }
 
-  const displayMessage = (errorCode: string | undefined): string => {
+  const displayMessage = (errorCode: string | undefined): string | undefined => {
     switch (errorCode) {
       case 'JobInProgress':
         return strings.JobDetails.Errors.jobInProgress;
       case 'NotGroupOwner':
         return strings.JobDetails.Errors.notGroupOwner;
+      case 'InternalError':
+        return strings.JobDetails.Errors.internalError;
       default:
-        return '';
+        return undefined;
     }
   }
 
@@ -245,7 +247,7 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
         </div>
       </div>
       <div className={classNames.membershipStatusMessage}>
-        {!patchResponse?.ok && (displayMessage(patchResponse?.errorCode))}
+        {!patchResponse?.ok && (displayMessage(patchResponse?.errorCode ?? patchError))}
       </div>
     </div>
   )

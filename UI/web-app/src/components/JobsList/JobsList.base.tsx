@@ -70,7 +70,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const [pageSize, setPageSize] = useState('10');
   const totalNumberOfPages = useSelector(getTotalNumberOfPages);
   const navigate = useNavigate();
-  const location = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if(jobs)

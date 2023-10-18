@@ -83,6 +83,7 @@ export const strings: IStrings = {
     Errors:{
       jobInProgress: 'Job is in progress. Please try again later.',
       notGroupOwner: 'You are not an owner of this group.',
+      internalError: 'We can\'t process your request at this time. Please try again later',
     },
     openInAzure: 'Open in Azure',
     viewDetails: 'View Details',

@@ -78,6 +78,7 @@ export type IStrings = {
     Errors:{
       jobInProgress: string;
       notGroupOwner: string;
+      internalError: string;
     }
     openInAzure: string;
     viewDetails: string;

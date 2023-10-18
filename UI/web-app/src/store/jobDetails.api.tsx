@@ -104,6 +104,8 @@ export const patchJobDetails = createAsyncThunk(
 
           if(response.status === 403) {
             patchResponse.errorCode = 'NotGroupOwner';
+          } else if(response.status === 500) {
+            patchResponse.errorCode = 'InternalError';
           }
 
           return patchResponse;
@@ -113,7 +115,7 @@ export const patchJobDetails = createAsyncThunk(
       return response;
 
     } catch (error) {
-      throw new Error('Failed to update job details!');
+      throw new Error('InternalError');
     }
   }
 );
