@@ -54,6 +54,9 @@ param servicePlanSku string = 'Y1'
 @description('Resource location.')
 param location string
 
+@description('The email address used for the Requestor field of the load testing sync jobs.')
+param loadTestingRequestorEmail string
+
 @description('Enter function app name.')
 param functionAppName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
 
@@ -85,6 +88,15 @@ param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbre
 
 @description('Name of the resource group where the \'data\' key vault is located.')
 param dataKeyVaultResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
+
+@description('The number of sync jobs to create for load testing.')
+param loadTestingJobCount int = 100
+
+@description('The amount that sync job membership should change represented as a percentage.')
+param loadTestingSyncJobChangePercent int = 10
+
+@description('The probability that a sync job membership will change represented as a percentage.')
+param loadTestingSyncJobProbabilityOfChangePercent int = 50
 
 @description('Provides the endpoint for the app configuration resource.')
 param appConfigurationEndpoint string = 'https://${solutionAbbreviation}-appconfig-${environmentAbbreviation}.azconfig.io'
@@ -133,6 +145,10 @@ var appSettings =  {
   'graphCredentials:KeyVaultTenantId': tenantId
   'ConnectionStrings:JobsContext': '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   'ConnectionStrings:JobsContextReadOnly': '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  'LoadTesting:RequestorEmail': loadTestingRequestorEmail
+  'LoadTesting:JobCount': loadTestingJobCount
+  'LoadTesting:SyncJobChangePercent': loadTestingSyncJobChangePercent
+  'LoadTesting:SyncJobProbabilityOfChangePercent': loadTestingSyncJobProbabilityOfChangePercent
   appConfigurationEndpoint: appConfigurationEndpoint
 }
 

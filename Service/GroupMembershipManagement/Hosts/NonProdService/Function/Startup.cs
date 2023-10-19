@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
+using NonProdService.Activity.LoadTestingSyncJobCreator;
 using NonProdService.LoadTestingPrepSubOrchestrator;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -35,10 +36,17 @@ namespace Hosts.NonProdService
                 return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
             })
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
-            .AddSingleton<IGraphUserRepository, GraphUserRepository>()
-            .AddOptions<LoadTestingPrepSubOrchestratorOptions>().Configure<IConfiguration>((settings, configuration) =>
+            .AddSingleton<IGraphUserRepository, GraphUserRepository>();
+
+            builder.Services.AddOptions<LoadTestingPrepSubOrchestratorOptions>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.DestinationGroupOwnerId = configuration.GetValue<Guid>("graphCredentials:ClientId");
+                settings.GroupCount = configuration.GetValue<int>("loadTesting:jobCount");
+            });
+
+            builder.Services.AddOptions<LoadTestingSyncJobCreatorOptions>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                configuration.GetSection("LoadTesting").Bind(settings);
             });
 
             builder.Services.AddSingleton<INonProdService, Services.NonProdService>();

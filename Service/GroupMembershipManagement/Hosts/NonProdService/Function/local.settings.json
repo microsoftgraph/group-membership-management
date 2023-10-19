@@ -12,6 +12,10 @@
     "graphCredentials:TenantId": "<demo-tenant-id>",
     "ConnectionStrings:JobsContext": "",
     "ConnectionStrings:JobsContextReadOnly": "",
+    "LoadTesting:RequestorEmail": "admin@<demo-tenant-M365domain>",
+    "LoadTesting:JobCount": 100,
+    "LoadTesting:SyncJobChangePercent": 10,
+    "LoadTesting:SyncJobProbabilityOfChangePercent": 50,
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
     "APPINSIGHTS_INSTRUMENTATIONKEY": ""
   }

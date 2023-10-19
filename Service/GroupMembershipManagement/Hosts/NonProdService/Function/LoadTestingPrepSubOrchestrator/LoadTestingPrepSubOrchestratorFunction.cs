@@ -26,6 +26,7 @@ namespace Hosts.NonProdService
             var request = context.GetInput<LoadTestingPrepSubOrchestratorRequest>();
             var runId = request.RunId;
             var tenantUserCount = request.TenantUserCount;
+            var options = _options.Value;
 
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(LoadTestingPrepSubOrchestratorFunction)} function started", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
 
@@ -34,7 +35,7 @@ namespace Hosts.NonProdService
                 nameof(LoadTestingGroupCalculatorFunction),
                 new LoadTestingGroupCalculatorRequest
                 {
-                    NumberOfGroups = 5,
+                    NumberOfGroups = options.GroupCount,
                     NumberOfUsers = tenantUserCount,
                     RunId = runId
                 });
@@ -55,7 +56,7 @@ namespace Hosts.NonProdService
                         {
                             GroupName = $"LoadTesting_DestinationGroup_{groupSize}_{i+1}",
                             TestGroupType = TestGroupType.LoadTesting,
-                            GroupOwnersIds = new List<Guid>() { _options.Value.DestinationGroupOwnerId },
+                            GroupOwnersIds = new List<Guid>() { options.DestinationGroupOwnerId },
                             RetrieveMembers = false,
                             RunId = runId
                         });
@@ -82,8 +83,6 @@ namespace Hosts.NonProdService
                     SyncJobs = syncJobsResponse.SyncJobs,
                     RunId = runId
                 });
-
-            // Call JobScheduler to spread out the new jobs.
 
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(LoadTestingPrepSubOrchestratorFunction)} function completed", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
         }
