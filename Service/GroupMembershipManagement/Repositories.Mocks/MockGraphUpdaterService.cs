@@ -112,10 +112,5 @@ namespace Repositories.Mocks
         {
             throw new NotImplementedException();
         }
-
-        Task<PolicyResult<bool>> IGraphUpdaterService.GroupExistsAsync(Guid groupId, Guid runId)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

@@ -80,7 +80,7 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
-        public Task CreateGroup(string newGroupName)
+        public Task CreateGroup(string newGroupName, TestGroupType testGroupType, List<Guid> ownerIds)
         {
             throw new NotImplementedException();
         }
