@@ -12,8 +12,10 @@ export const getStyles = (props: IPageHeaderStyleProps): IPageHeaderStyles => {
   return {
     root: [{
     }, className],
+    actionButtonsContainer:{
+      padding: '12px 0px 12px 36px',
+    },
     backButton: {
-      padding: '24px 0px 24px 36px',
       display: 'flex',
       alignItems: 'center',
       gap: '8px',

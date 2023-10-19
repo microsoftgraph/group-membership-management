@@ -75,7 +75,7 @@ export const BannerBase: React.FunctionComponent<IBannerProps> = (props) => {
               onClick={() => openLink()}
               underline={true}
               className={classNames.link}>
-              {strings.bannerMessageLink}
+              {strings.clickHere}
             </Link>
             {strings.bannerMessageEnd}
           </div>

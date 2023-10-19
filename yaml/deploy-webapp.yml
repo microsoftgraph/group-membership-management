@@ -41,12 +41,20 @@ steps:
         }
       pwsh: true
 
+  - task: PowerShell@2
+    name: 'InstallPnpm'
+    displayName: 'Install pnpm'
+    inputs:
+      targetType: inline
+      script: npm install -g pnpm
+      pwsh: true
+
   - task: AzureStaticWebApp@0
     name: DeployStaticWebApp
     displayName: Deploy Static Web App
     inputs:
       app_location: 'web-app'
-      app_build_command: 'npm ci && npm run build'
+      app_build_command: 'pnpm install && pnpm run build'
       cwd: '${{ parameters.root }}/webapp_package'
       azure_static_web_apps_api_token: $(deployment_token)
     env:
@@ -57,3 +65,4 @@ steps:
       REACT_APP_VERSION_NUMBER: $(Build.BuildNumber)
       REACT_APP_SHAREPOINTDOMAIN: $(REACT_APP_SHAREPOINTDOMAIN_${{parameters.environmentAbbreviation}})
       REACT_APP_DOMAINNAME: $(REACT_APP_DOMAINNAME_${{parameters.environmentAbbreviation}})
+      REACT_APP_ENVIRONMENT_ABBREVIATION: ${{parameters.environmentAbbreviation}}

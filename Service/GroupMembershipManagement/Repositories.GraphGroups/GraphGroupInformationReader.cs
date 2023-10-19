@@ -32,6 +32,8 @@ namespace Repositories.GraphGroups
                                   : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
         { }
 
+        private int MaxGroupResultCount { get; set; } = 25;
+
         public async Task<bool> GroupExistsAsync(Guid groupId, Guid? runId)
         {
             try
@@ -409,6 +411,46 @@ namespace Repositories.GraphGroups
             }
 
             return groups;
+        }
+
+        public async Task<List<AzureADGroup>> SearchGroupsAsync(string filter)
+        {
+            try
+            {
+                var results = new List<AzureADGroup>();
+                var groupCollectionPage = await _graphServiceClient.Groups
+                                   .GetAsync(requestConfiguration =>
+                                   {
+                                       requestConfiguration
+                                        .QueryParameters
+                                        .Filter = filter;
+                                       requestConfiguration
+                                        .QueryParameters
+                                        .Top = MaxGroupResultCount;
+                                   });
+
+                if (groupCollectionPage.Value.Count > 0)
+                {
+                    foreach (var group in groupCollectionPage.Value)
+                    {
+                        var azureAdGroup = new AzureADGroup
+                        {
+                            ObjectId = new Guid(group.Id),
+                            Name = group.DisplayName,
+                        };
+
+                        results.Add(azureAdGroup);
+                    }
+                }
+
+                return results;
+
+            }
+            catch (Exception e)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error searching for groups: {e}" });
+                throw;
+            }
         }
     }
 }

@@ -13,6 +13,10 @@ namespace WebApi.Configuration
     {
         public static IServiceCollection InjectMessageHandlers(this IServiceCollection services)
         {
+            services.AddTransient<IRequestHandler<SearchDestinationsRequest, SearchDestinationsResponse>, SearchDestinationsHandler>();
+            services.AddTransient<IRequestHandler<GetGroupEndpointsRequest, GetGroupEndpointsResponse>, GetGroupEndpointsHandler>();
+            services.AddTransient<IRequestHandler<GetGroupOnboardingStatusRequest, GetGroupOnboardingStatusResponse>, GetGroupOnboardingStatusHandler>();
+            
             services.AddTransient<IRequestHandler<GetSettingRequest, GetSettingResponse>, GetSettingHandler>();
             services.AddTransient<IRequestHandler<UpdateSettingRequest, NullResponse>, UpdateSettingHandler>();
 

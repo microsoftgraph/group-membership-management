@@ -9,7 +9,7 @@ export type IStrings = {
   addOwner403Message: string;
   addOwnerErrorMessage: string;
   bannerMessageStart: string;
-  bannerMessageLink: string;
+  clickHere: string;
   bannerMessageEnd: string;
   okButton: string;
   groupIdHeader: string;
@@ -17,7 +17,7 @@ export type IStrings = {
   addOwnerButton: string;
   membershipManagement: string;
   learnMembershipManagement: string;
-  AdminConfig:{
+  AdminConfig: {
     labels: {
       pageTitle: string;
       hyperlinks: string;
@@ -145,7 +145,41 @@ export type IStrings = {
     };
     NoResults: string;
   };
+  ManageMembership: {
+    manageMembershipButton: string;
+    labels: {
+      abandonOnboarding: string;
+      abandonOnboardingDescription: string;
+      confirmAbandon: string;
+      pageTitle: string;
+      step1title: string;
+      step1description: string;
+      selectDestinationType: string;
+      selectDestinationTypePlaceholder: string;
+      searchDestination: string;
+      searchDestinationPlaceholder: string;
+      noResultsFound: string;
+      appsUsed: string;
+      outlookWarning: string;
+      ownershipWarning: string;
+      step2title: string;
+      step2description: string;
+      advancedQuery: string;
+      advancedView: string;
+      query: string;
+      validQuery: string;
+      invalidQuery: string;
+      validateQuery: string;
+    }
+  };
+  needHelp: string;
+  next: string;
+  close: string;
+  cancel: string;
+  learnMore: string;
+  errorItemNotFound: string;
   welcome: string;
   back: string;
+  backToDashboard: string;
   version: string;
 };

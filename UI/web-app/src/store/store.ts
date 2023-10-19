@@ -8,6 +8,7 @@ import jobsReducer from './jobs.slice';
 import ownerReducer from './owner.slice';
 import profileReducer from './profile.slice';
 import settingsReducer from './settings.slice';
+import manageMembershipReducer from './manageMembership.slice';
 
 export const store = configureStore({
   reducer: {
@@ -15,7 +16,8 @@ export const store = configureStore({
     jobs: jobsReducer,
     owner: ownerReducer,
     profile: profileReducer,
-    settings: settingsReducer
+    settings: settingsReducer,
+    manageMembership: manageMembershipReducer
   }
 });
 

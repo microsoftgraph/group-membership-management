@@ -25,6 +25,7 @@ import {
   MessageBarType,
   IconButton,
   IIconProps,
+  PrimaryButton
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { Text } from '@fluentui/react/lib/Text';
@@ -89,6 +90,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const [isSortedDescending, setIsSortedDescending] = useState(false);
   const [isShimmerEnabled, setIsShimmerEnabled] = useState(false);
   const items = jobs;
+  const env = process.env.REACT_APP_ENVIRONMENT_ABBREVIATION?.toLowerCase();
+  const isLowerEnvironment = env !== 'ua' && env !== 'prodv2';
 
   const columns = [
     {
@@ -196,6 +199,10 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       getJobsByPage();
     }
   }
+
+  const onManageMembershipsButtonClick = (): void => {
+    navigate('/ManageMembership', { replace: false, state: { item: 1 } });
+  };
 
   const error = useSelector(selectGetJobsError);
 
@@ -387,8 +394,14 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               {error}
             </MessageBar>
           )}
-          <div className={classNames.title}>
-            <Text variant="xLarge">{strings.JobsList.listOfMemberships}</Text>
+          <div className={classNames.titleContainer}>
+            <div className={classNames.title}>
+              <Text variant="xLarge">{strings.JobsList.listOfMemberships}</Text>
+            </div>
+            {isLowerEnvironment ?
+              <PrimaryButton onClick={onManageMembershipsButtonClick}>{strings.ManageMembership.manageMembershipButton}</PrimaryButton>
+              : null
+            }
           </div>
           <div className={classNames.tabContent}>
             <ShimmeredDetailsList

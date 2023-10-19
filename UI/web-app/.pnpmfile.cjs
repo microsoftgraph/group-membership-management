@@ -11,6 +11,7 @@ function readPackage(packageJson, context) {
   const dependencyChanges = [
     new PackageUpgradeStrategy('nth-check', ['^1.0.2'], '2.0.1'),
     new PackageUpgradeStrategy('webpack', ['^5.64.4'], '5.76.0'),
+    new PackageUpgradeStrategy('postcss', ['^8.4.24'], '8.4.31'),
   ];
 
   const logger = new Logger(context);

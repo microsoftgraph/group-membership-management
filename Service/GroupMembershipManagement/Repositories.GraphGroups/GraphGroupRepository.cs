@@ -217,5 +217,10 @@ namespace Repositories.GraphGroups
         {
             return await _graphGroupInformationReader.GetGroupsAsync(groupIds, RunId);
         }
+
+        public async Task<List<AzureADGroup>> SearchDestinationsAsync(string query)
+        {
+            return await _graphGroupInformationReader.SearchGroupsAsync(query);
+        }
     }
 }
