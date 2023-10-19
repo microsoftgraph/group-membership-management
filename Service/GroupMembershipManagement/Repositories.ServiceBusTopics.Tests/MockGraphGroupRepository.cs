@@ -135,7 +135,7 @@ namespace Repositories.ServiceBusTopics.Tests
             throw new NotImplementedException();
         }
 
-        public Task CreateGroup(string newGroupName)
+        public Task CreateGroup(string newGroupName, TestGroupType testGroupType, List<Guid> ownerIds)
         {
             throw new NotImplementedException();
         }
