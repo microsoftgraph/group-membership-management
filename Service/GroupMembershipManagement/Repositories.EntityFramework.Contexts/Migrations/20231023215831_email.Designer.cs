@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Repositories.EntityFramework.Contexts;
 
@@ -11,9 +12,10 @@ using Repositories.EntityFramework.Contexts;
 namespace Repositories.EntityFramework.Contexts.Migrations
 {
     [DbContext(typeof(GMMContext))]
-    partial class GMMContextModelSnapshot : ModelSnapshot
+    [Migration("20231023215831_email")]
+    partial class email
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -172,6 +174,23 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.ToTable("Settings");
                 });
 
+            modelBuilder.Entity("Models.Status", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("SortPriority")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Statuses", (string)null);
+                });
+
             modelBuilder.Entity("Models.SyncJob", b =>
                 {
                     b.Property<Guid>("Id")
@@ -221,6 +240,9 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.Property<string>("Status")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid?>("StatusDetailsId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("TargetOfficeGroupId")
                         .HasColumnType("uniqueidentifier");
 
@@ -235,7 +257,9 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SyncJobs", (string)null);
+                    b.HasIndex("StatusDetailsId");
+
+                    b.ToTable("SyncJobs");
                 });
 
             modelBuilder.Entity("Models.JobEmailStatus", b =>
@@ -257,6 +281,14 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.Navigation("SyncJob");
                 });
 
+            modelBuilder.Entity("Models.SyncJob", b =>
+                {
+                    b.HasOne("Models.Status", "StatusDetails")
+                        .WithMany()
+                        .HasForeignKey("StatusDetailsId");
+
+                    b.Navigation("StatusDetails");
+                });
 #pragma warning restore 612, 618
         }
     }
