@@ -10,8 +10,8 @@ using Repositories.EntityFramework.Contexts;
 
 namespace Repositories.EntityFramework.Contexts.Migrations.GMMWrite
 {
-    [DbContext(typeof(GMMWriteContext))]
-    partial class GMMWriteContextModelSnapshot : ModelSnapshot
+    [DbContext(typeof(GMMContext))]
+    partial class GMMContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)
         {

@@ -10,10 +10,10 @@ namespace Repositories.EntityFramework
 {
     public class DatabaseEmailTypesRepository : IDatabaseEmailTypesRepository
     {
-        private readonly GMMWriteContext _writeContext;
+        private readonly GMMContext _writeContext;
         private readonly GMMReadContext _readContext;
 
-        public DatabaseEmailTypesRepository(GMMWriteContext writeContext, GMMReadContext readContext)
+        public DatabaseEmailTypesRepository(GMMContext writeContext, GMMReadContext readContext)
         {
             _writeContext = writeContext ?? throw new ArgumentNullException(nameof(writeContext));
             _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));

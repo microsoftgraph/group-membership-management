@@ -11,7 +11,7 @@ using Repositories.EntityFramework.Contexts;
 
 namespace Repositories.EntityFramework.Contexts.Migrations.GMMWrite
 {
-    [DbContext(typeof(GMMWriteContext))]
+    [DbContext(typeof(GMMContext))]
     [Migration("20231011181434_email")]
     partial class email
     {
