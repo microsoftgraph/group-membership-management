@@ -17,7 +17,6 @@ using Models.Helpers;
 using Models;
 using Hosts.GroupMembershipObtainer;
 using System.Net.Http;
-using GroupMembershipObtainer.Helpers;
 
 namespace Hosts.GroupMembershipObtainer
 {
