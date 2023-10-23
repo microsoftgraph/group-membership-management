@@ -65,7 +65,7 @@ namespace Hosts.NonProdService
                     {
                         Status = "Idle",
                         Period = 24,
-                        Requestor = "",
+                        Requestor = options.RequestorEmail,
                         TargetOfficeGroupId = groupId,
                         Destination = destination,
                         AllowEmptyDestination = false,
