@@ -44,6 +44,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramewor
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.NotificationRepository", "..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj", "{7FBBA476-521E-4F27-9FD1-F29743D4DBA7}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework.Contexts", "..\..\..\Repositories.EntityFramework.Contexts\Repositories.EntityFramework.Contexts.csproj", "{4DC3AB68-6A3E-4E02-BDEC-4C84BB2E90AC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -134,6 +136,10 @@ Global
 		{7FBBA476-521E-4F27-9FD1-F29743D4DBA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7FBBA476-521E-4F27-9FD1-F29743D4DBA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7FBBA476-521E-4F27-9FD1-F29743D4DBA7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4DC3AB68-6A3E-4E02-BDEC-4C84BB2E90AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4DC3AB68-6A3E-4E02-BDEC-4C84BB2E90AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4DC3AB68-6A3E-4E02-BDEC-4C84BB2E90AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4DC3AB68-6A3E-4E02-BDEC-4C84BB2E90AC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -147,7 +147,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("PurgedSyncJobs");
+                    b.ToTable("PurgedSyncJobs", (string)null);
                 });
 
             modelBuilder.Entity("Models.Setting", b =>
