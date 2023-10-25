@@ -93,7 +93,7 @@ function Set-Environment {
 
     Set-Subscription
 
-    foreach ($namespace in @("Microsoft.ServiceBus", "Microsoft.Insights", "Microsoft.OperationalInsights", "Microsoft.AlertsManagement", "Microsoft.Storage", "Microsoft.AppConfiguration"))
+    foreach ($namespace in @("Microsoft.ServiceBus", "Microsoft.Insights", "Microsoft.OperationalInsights", "Microsoft.AlertsManagement", "Microsoft.Storage", "Microsoft.AppConfiguration", "Microsoft.Sql", "Microsoft.Web", "Microsoft.DataFactory"))
     {
         Write-Host "Checking if the resource provider $namespace is registered..."
         $provider = Get-AzResourceProvider -ProviderNamespace $namespace
