@@ -47,15 +47,15 @@ namespace Repositories.EntityFramework.Contexts
                 .ValueGeneratedOnAdd()
                 .HasDefaultValueSql("NEWSEQUENTIALID()");
 
-            modelBuilder.Entity<EmailType>().HasData(
-                    new EmailType { EmailTypeId = 1, EmailTypeName = "OnBoarding", EmailContentTemplateName = "SyncStartedEmailBody" },
-                    new EmailType { EmailTypeId = 2, EmailTypeName = "OnBoarding", EmailContentTemplateName = "SyncCompletedEmailBody" }
-                );
-
             modelBuilder.Entity<JobEmailStatus>()
                 .HasOne(j => j.SyncJob)
                 .WithMany()  
-                .HasForeignKey(j => j.SyncJobId);
+                .HasForeignKey(j => j.SyncJobId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            modelBuilder.Entity<JobEmailStatus>()
+                .HasIndex(j => new { j.SyncJobId, j.EmailTypeId })
+                .IsUnique();
 
         }
 

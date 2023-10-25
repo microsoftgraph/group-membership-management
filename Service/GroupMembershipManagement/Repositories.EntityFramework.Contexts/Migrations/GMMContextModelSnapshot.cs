@@ -76,7 +76,8 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
                     b.HasIndex("EmailTypeId");
 
-                    b.HasIndex("SyncJobId");
+                    b.HasIndex("SyncJobId", "EmailTypeId")
+                        .IsUnique();
 
                     b.ToTable("JobEmailStatuses");
                 });

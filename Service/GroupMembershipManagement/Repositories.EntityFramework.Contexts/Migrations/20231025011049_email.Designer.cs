@@ -12,7 +12,7 @@ using Repositories.EntityFramework.Contexts;
 namespace Repositories.EntityFramework.Contexts.Migrations
 {
     [DbContext(typeof(GMMContext))]
-    [Migration("20231023215831_email")]
+    [Migration("20231025011049_email")]
     partial class email
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -78,7 +78,8 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
                     b.HasIndex("EmailTypeId");
 
-                    b.HasIndex("SyncJobId");
+                    b.HasIndex("SyncJobId", "EmailTypeId")
+                        .IsUnique();
 
                     b.ToTable("JobEmailStatuses");
                 });
@@ -181,7 +182,8 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Name")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("SortPriority")
                         .HasColumnType("int");
@@ -238,10 +240,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Status")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid?>("StatusDetailsId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<Guid>("TargetOfficeGroupId")
                         .HasColumnType("uniqueidentifier");
@@ -257,7 +256,9 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("StatusDetailsId");
+                    b.HasIndex("Status")
+                        .IsUnique()
+                        .HasFilter("[Status] IS NOT NULL");
 
                     b.ToTable("SyncJobs");
                 });
@@ -284,8 +285,10 @@ namespace Repositories.EntityFramework.Contexts.Migrations
             modelBuilder.Entity("Models.SyncJob", b =>
                 {
                     b.HasOne("Models.Status", "StatusDetails")
-                        .WithMany()
-                        .HasForeignKey("StatusDetailsId");
+                        .WithOne()
+                        .HasForeignKey("Models.SyncJob", "Status")
+                        .HasPrincipalKey("Models.Status", "Name")
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("StatusDetails");
                 });
