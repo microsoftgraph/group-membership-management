@@ -49,7 +49,7 @@ namespace Hosts.GraphUpdater
                         syncJob.Requestor,
                         SyncDisabledNoGroupEmailBody,
                         new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses },
-                        request.RunId, null, null, null, request.AdaptiveCardTemplateDirectory);
+                        request.RunId, request.JobId, null, null, null, request.AdaptiveCardTemplateDirectory);
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);

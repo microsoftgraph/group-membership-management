@@ -27,8 +27,9 @@ namespace Services.Tests
             var mockMail = new MockMailRepository();
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSynJobs = new MockDatabaseSyncJobRepository();
-
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs);
+			var mockEmailType = new MockDatabaseEmailTypesRepository();
+			var mockJobEmailStatuse = new MockDatabaseJobEmailStatusesRepository();
+			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs, mockEmailType, mockJobEmailStatuse);
 
             var runId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
@@ -58,8 +59,9 @@ namespace Services.Tests
             var mockMail = new MockMailRepository();
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSynJobs = new MockDatabaseSyncJobRepository();
-
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs);
+			var mockEmailType = new MockDatabaseEmailTypesRepository();
+			var mockJobEmailStatuse = new MockDatabaseJobEmailStatusesRepository();
+			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSynJobs, mockEmailType, mockJobEmailStatuse);
 
             var runId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
@@ -79,5 +81,6 @@ namespace Services.Tests
             Assert.AreEqual(GraphUpdaterStatus.Ok, status.Status);
             Assert.AreEqual(newUsers.Count - usersToRemove.Count, mockGraphGroup.GroupsToUsers[groupId].Count);
         }
+
     }
 }

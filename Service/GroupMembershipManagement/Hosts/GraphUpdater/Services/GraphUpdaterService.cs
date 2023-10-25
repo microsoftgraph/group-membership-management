@@ -26,8 +26,9 @@ namespace Services
         private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
-
-        private Guid _runId;
+		private readonly IDatabaseEmailTypesRepository _databaseEmailTypesRepository;
+		private readonly IDatabaseJobEmailStatusesRepository _databaseJobEmailStatusesRepository;
+		private Guid _runId;
         public Guid RunId
         {
             get { return _runId; }
@@ -44,7 +45,9 @@ namespace Services
                 IGraphGroupRepository graphGroupRepository,
                 IMailRepository mailRepository,
                 IEmailSenderRecipient emailSenderAndRecipients,
-                IDatabaseSyncJobsRepository syncJobRepository)
+                IDatabaseSyncJobsRepository syncJobRepository,
+				IDatabaseEmailTypesRepository databaseEmailTypesRepository,
+			    IDatabaseJobEmailStatusesRepository databaseJobEmailStatusesRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
@@ -52,7 +55,9 @@ namespace Services
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
-        }
+			_databaseJobEmailStatusesRepository = databaseJobEmailStatusesRepository ?? throw new ArgumentNullException(nameof(databaseJobEmailStatusesRepository));
+			_databaseEmailTypesRepository = databaseEmailTypesRepository ?? throw new ArgumentNullException(nameof(databaseEmailTypesRepository));
+		}
 
         public async Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId)
         {
@@ -84,9 +89,20 @@ namespace Services
             return await _graphGroupRepository.GroupExists(groupId);
         }
 
-        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
+        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId,Guid syncJobId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
         {
-            await _mailRepository.SendMailAsync(new EmailMessage
+			bool isEmailDisabled = await IsEmailDisabled(syncJobId, contentTemplate);
+
+			if (isEmailDisabled)
+			{
+				await _loggingRepository.LogMessageAsync(new LogMessage
+				{
+					RunId = runId,
+					Message = $"Email is disabled for job {syncJobId}."
+				});
+				return;
+			}
+			await _mailRepository.SendMailAsync(new EmailMessage
             {
                 Subject = emailSubject ?? EmailSubject,
                 Content = contentTemplate,
@@ -98,8 +114,17 @@ namespace Services
                 AdditionalSubjectParams = additionalSubjectParams
             }, runId, adaptiveCardTemplateDirectory);
         }
+		public async Task<bool> IsEmailDisabled(Guid jobId, string emailTemplateName)
+		{
+			var emailTypeId = await _databaseEmailTypesRepository.GetEmailTypeIdByEmailTemplateName(emailTemplateName);
 
-        public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)
+			if (!emailTypeId.HasValue)
+			{
+				return false;
+			}
+			return await _databaseJobEmailStatusesRepository.IsEmailDisabledForJob(jobId, emailTypeId.Value);
+		}
+		public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set job status to {status}.", RunId = runId });
 
