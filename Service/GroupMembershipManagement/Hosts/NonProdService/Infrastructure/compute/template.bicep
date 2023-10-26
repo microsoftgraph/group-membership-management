@@ -54,9 +54,6 @@ param servicePlanSku string = 'Y1'
 @description('Resource location.')
 param location string
 
-@description('The email address used for the Requestor field of the load testing sync jobs.')
-param loadTestingRequestorEmail string
-
 @description('Enter function app name.')
 param functionAppName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
 
@@ -88,6 +85,9 @@ param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbre
 
 @description('Name of the resource group where the \'data\' key vault is located.')
 param dataKeyVaultResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
+
+@description('The email address used for the Requestor field of the load testing sync jobs.')
+param loadTestingRequestorEmail string = ''
 
 @description('The number of sync jobs to create for load testing.')
 param loadTestingJobCount int = 100

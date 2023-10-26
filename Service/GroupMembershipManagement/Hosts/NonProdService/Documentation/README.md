@@ -22,7 +22,3 @@ Before using this function, you must do the following to give GMM the proper per
 ![APIPermissionsNonProd](./APIPermissionsNonProd.png)
 
 8. You are now ready to run the NonProdService function!
-
-## Required Parameters
-
-1. You must specify the "loadTestingRequestorEmail" parameter with a valid email address to use when creating load testing sync jobs.
