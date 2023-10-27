@@ -43,7 +43,7 @@ import { PagingBar } from '../PagingBar';
 import { PageVersion } from '../PageVersion';
 import { JobsListFilter } from '../JobsListFilter/JobsListFilter';
 import { SyncStatus } from '../../models/Status';
-import { useStrings } from '../../localization/hooks';
+import { useStrings } from '../../localization';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,

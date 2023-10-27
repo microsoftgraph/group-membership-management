@@ -14,7 +14,7 @@ import { useEffect } from 'react';
 import { selectProfilePhoto } from '../../store/profile.slice';
 import { getProfilePhoto } from '../../store/profile.api';
 import logo from '../../logo.svg';
-import { useStrings } from '../../localization/hooks';
+import { useStrings } from '../../localization';
 
 const getClassNames = classNamesFunction<
   IAppHeaderStyleProps,

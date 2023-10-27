@@ -15,12 +15,8 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 import { App } from './App';
 import { msalConfig } from './authConfig';
-import { 
-  AdminConfig,
-  JobsPage, 
-  JobDetails, 
-  OwnerPage
-} from './pages';
+import { LocalizationProvider } from './localization';
+import { AdminConfig, JobsPage, JobDetails, OwnerPage } from './pages';
 import { store } from './store';
 
 export const msalInstance = new PublicClientApplication(msalConfig);
@@ -43,20 +39,22 @@ initializeIcons();
 ReactDOM.render(
   <ThemeProvider>
     <MsalProvider instance={msalInstance}>
-      <React.StrictMode>
-        <Provider store={store}>
-          <BrowserRouter>
-            <Routes>
-              <Route path="" element={<App />}>
-                <Route path="/" element={<JobsPage />} />
-                <Route path="/JobDetails" element={<JobDetails />} />
-                <Route path="/OwnerPage" element={<OwnerPage />} />
-                <Route path="/AdminConfig" element={<AdminConfig />} />
-              </Route>
-            </Routes>
-          </BrowserRouter>
-        </Provider>
-      </React.StrictMode>
+      <LocalizationProvider>
+        <React.StrictMode>
+          <Provider store={store}>
+            <BrowserRouter>
+              <Routes>
+                <Route path="" element={<App />}>
+                  <Route path="/" element={<JobsPage />} />
+                  <Route path="/JobDetails" element={<JobDetails />} />
+                  <Route path="/OwnerPage" element={<OwnerPage />} />
+                  <Route path="/AdminConfig" element={<AdminConfig />} />
+                </Route>
+              </Routes>
+            </BrowserRouter>
+          </Provider>
+        </React.StrictMode>
+      </LocalizationProvider>
     </MsalProvider>
   </ThemeProvider>,
 

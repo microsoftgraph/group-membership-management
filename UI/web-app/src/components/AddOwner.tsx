@@ -3,7 +3,7 @@
 
 import { DefaultButton } from '@fluentui/react/lib/Button';
 import { useNavigate } from 'react-router-dom';
-import { useStrings } from '../localization/hooks';
+import { useStrings } from '../localization';
 
 const AddOwner = () => {
   const strings = useStrings();

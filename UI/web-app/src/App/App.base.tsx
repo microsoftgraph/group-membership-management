@@ -9,7 +9,7 @@ import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Outlet } from 'react-router-dom';
 import { selectProfile } from '../store/profile.slice';
-import { getProfile } from "../store/profile.api";
+import { getProfile } from '../store/profile.api';
 import {
   type IAppProps,
   type IAppStyleProps,
@@ -20,7 +20,7 @@ import { type AppDispatch } from '../store';
 import { fetchAccount } from '../store/account.api';
 import { selectAccount } from '../store/account.slice';
 import { Loader } from '../components/Loader';
-import { LocalizationProvider } from '../localization/LocalizationProvider';
+import { useLocalization } from '../localization';
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
@@ -34,27 +34,34 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
     theme,
   });
   const account = useSelector(selectAccount);
-  const profile = useSelector(selectProfile)
+  const profile = useSelector(selectProfile);
   const dispatch = useDispatch<AppDispatch>();
   const context = useMsal();
+  const localization = useLocalization();
 
+  // run once after load.
   useEffect(() => {
-    dispatch(fetchAccount(context));
-    dispatch(getProfile());
-  }, [dispatch, profile]);
+    if (!account) {
+      dispatch(fetchAccount(context));
+      dispatch(getProfile());
+    }
+  });
+
+  // run if the localization context change or the user's preferred language changes.
+  useEffect(() => {
+    localization.setUserPreferredLanguage(profile?.userPreferredLanguage);
+  }, [localization, profile?.userPreferredLanguage]);
 
   if (account != null) {
     return (
-      <LocalizationProvider userPreferredLanguage={profile.userPreferredLanguage}>
-        <div className={classNames.root}>
-          <AppHeader />
-          <div className={classNames.body}>
-            <div className={classNames.content}>
-              <Outlet />
-            </div>
+      <div className={classNames.root}>
+        <AppHeader />
+        <div className={classNames.body}>
+          <div className={classNames.content}>
+            <Outlet />
           </div>
         </div>
-      </LocalizationProvider>
+      </div>
     );
   } else {
     return (

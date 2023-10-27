@@ -13,7 +13,7 @@ import {
   ILoaderStyleProps,
   ILoaderStyles,
 } from './Loader.types';
-import { useStrings } from '../../localization/hooks';
+import { useStrings } from '../../localization';
 
 const getClassNames = classNamesFunction<
   ILoaderStyleProps,

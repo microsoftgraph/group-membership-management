@@ -10,7 +10,7 @@ import {
     type IHyperlinkContainerStyleProps,
     type IHyperlinkContainerStyles,
 } from './HyperlinkContainer.types';
-import { useStrings } from '../../localization/hooks';
+import { useStrings } from '../../localization';
 
 export const getClassNames = classNamesFunction<IHyperlinkContainerStyleProps, IHyperlinkContainerStyles>();
 
