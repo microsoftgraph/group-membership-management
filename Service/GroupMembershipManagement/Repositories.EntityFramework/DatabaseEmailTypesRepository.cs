@@ -8,12 +8,12 @@ using Repositories.EntityFramework.Contexts;
 
 namespace Repositories.EntityFramework
 {
-    public class DatabaseEmailTypesRepository : IEmailTypesRepository
+    public class EmailTypesRepository : IEmailTypesRepository
     {
         private readonly GMMContext _writeContext;
         private readonly GMMReadContext _readContext;
 
-        public DatabaseEmailTypesRepository(GMMContext writeContext, GMMReadContext readContext)
+        public EmailTypesRepository(GMMContext writeContext, GMMReadContext readContext)
         {
             _writeContext = writeContext ?? throw new ArgumentNullException(nameof(writeContext));
             _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));

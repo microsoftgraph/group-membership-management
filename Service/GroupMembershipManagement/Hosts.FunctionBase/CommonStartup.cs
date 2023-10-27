@@ -100,8 +100,8 @@ namespace Hosts.FunctionBase
             );
             
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
-            builder.Services.AddScoped<IEmailTypesRepository, DatabaseEmailTypesRepository>();
-            builder.Services.AddScoped<IDatabaseJobEmailStatusesRepository, DatabaseJobEmailStatusesRepository>();
+            builder.Services.AddScoped<IEmailTypesRepository, EmailTypesRepository>();
+            builder.Services.AddScoped<IJobEmailStatusesRepository, JobEmailStatusesRepository>();
 
             builder.Services.AddSingleton<IAppConfigVerbosity>(services =>
             {

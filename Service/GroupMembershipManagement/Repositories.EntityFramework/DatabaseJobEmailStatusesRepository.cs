@@ -8,12 +8,12 @@ using Repositories.EntityFramework.Contexts;
 
 namespace Repositories.EntityFramework
 {
-    public class DatabaseJobEmailStatusesRepository : IDatabaseJobEmailStatusesRepository
+    public class JobEmailStatusesRepository : IJobEmailStatusesRepository
     {
         private readonly GMMContext _writeContext;
         private readonly GMMReadContext _readContext;
 
-        public DatabaseJobEmailStatusesRepository(GMMContext writeContext, GMMReadContext readContext)
+        public JobEmailStatusesRepository(GMMContext writeContext, GMMReadContext readContext)
         {
             _writeContext = writeContext ?? throw new ArgumentNullException(nameof(writeContext));
             _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));

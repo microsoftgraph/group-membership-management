@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Repositories.Contracts
 {
-    public interface IDatabaseJobEmailStatusesRepository
+    public interface IJobEmailStatusesRepository
     {
         Task<bool> IsEmailDisabledForJob(Guid jobId, int emailTypeId);
     }

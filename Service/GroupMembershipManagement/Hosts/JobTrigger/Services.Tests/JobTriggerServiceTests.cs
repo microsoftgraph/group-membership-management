@@ -526,20 +526,20 @@ namespace Services.Tests
 		    {
 			    { emailTemplateName, emailTypeId }
 		    };
-			var _databaseEmailTypesRepository = new MockDatabaseEmailTypesRepository(mockEmailTypesData);
+			var _emailTypesRepository = new MockDatabaseEmailTypesRepository(mockEmailTypesData);
 
 			var jobId = job.Id;
 			var mockJobEmailStatusesData = new Dictionary<(Guid, int), bool>
 		    {
 			    { (jobId, emailTypeId), true }
 		    };
-			var _databaseJobEmailStatusesRepository = new MockDatabaseJobEmailStatusesRepository(mockJobEmailStatusesData);
+			var _jobEmailStatusesRepository = new MockDatabaseJobEmailStatusesRepository(mockJobEmailStatusesData);
 
 			_jobTriggerService = new JobTriggerService(
 				_loggingRepository,
 				_syncJobRepository,
-				_databaseEmailTypesRepository,
-				_databaseJobEmailStatusesRepository,
+				_emailTypesRepository,
+				_jobEmailStatusesRepository,
 				_serviceBusTopicsRepository,
 				_graphGroupRepository,
 				new MockKeyVaultSecret<IJobTriggerService>(),

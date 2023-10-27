@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Repositories.Mocks
 {
-    public class MockDatabaseJobEmailStatusesRepository : IDatabaseJobEmailStatusesRepository
+    public class MockDatabaseJobEmailStatusesRepository : IJobEmailStatusesRepository
     {
         private readonly Dictionary<(Guid, int), bool> _jobEmailStatuses;
 
