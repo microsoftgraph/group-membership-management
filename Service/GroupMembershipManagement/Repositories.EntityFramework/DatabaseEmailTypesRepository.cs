@@ -8,7 +8,7 @@ using Repositories.EntityFramework.Contexts;
 
 namespace Repositories.EntityFramework
 {
-    public class DatabaseEmailTypesRepository : IDatabaseEmailTypesRepository
+    public class DatabaseEmailTypesRepository : IEmailTypesRepository
     {
         private readonly GMMContext _writeContext;
         private readonly GMMReadContext _readContext;

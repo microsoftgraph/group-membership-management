@@ -27,7 +27,7 @@ namespace Services
 
         private readonly ILoggingRepository _loggingRepository;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
-        private readonly IDatabaseEmailTypesRepository _databaseEmailTypesRepository;
+        private readonly IEmailTypesRepository _databaseEmailTypesRepository;
         private readonly IDatabaseJobEmailStatusesRepository _databaseJobEmailStatusesRepository;
         private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
@@ -52,7 +52,7 @@ namespace Services
         public JobTriggerService(
             ILoggingRepository loggingRepository,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
-            IDatabaseEmailTypesRepository databaseEmailTypesRepository,
+            IEmailTypesRepository databaseEmailTypesRepository,
             IDatabaseJobEmailStatusesRepository databaseJobEmailStatusesRepository,
             IServiceBusTopicsRepository serviceBusTopicsRepository,
             IGraphGroupRepository graphGroupRepository,

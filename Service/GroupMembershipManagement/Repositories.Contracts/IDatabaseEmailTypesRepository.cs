@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Repositories.Contracts
 {
-    public interface IDatabaseEmailTypesRepository
+    public interface IEmailTypesRepository
     {
         Task<int?> GetEmailTypeIdByEmailTemplateName(string emailTemplateName);
 
