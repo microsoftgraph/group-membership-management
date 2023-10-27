@@ -28,8 +28,8 @@ namespace Services.Tests
     {
         private JobTriggerService _jobTriggerService = null;
         private MockDatabaseSyncJobRepository _syncJobRepository = null;
-        private MockDatabaseEmailTypesRepository _emailTypesRepository = null;
-        private MockDatabaseJobEmailStatusesRepository _jobEmailStatusesRepository = null;
+        private MockEmailTypesRepository _emailTypesRepository = null;
+        private MockJobEmailStatusesRepository _jobEmailStatusesRepository = null;
         private MockLoggingRepository _loggingRepository = null;
         private MockServiceBusTopicsRepository _serviceBusTopicsRepository = null;
         private MockGraphGroupRepository _graphGroupRepository;
@@ -52,8 +52,8 @@ namespace Services.Tests
             };
 
             _syncJobRepository = new MockDatabaseSyncJobRepository();
-            _emailTypesRepository = new MockDatabaseEmailTypesRepository();
-            _jobEmailStatusesRepository = new MockDatabaseJobEmailStatusesRepository();
+            _emailTypesRepository = new MockEmailTypesRepository();
+            _jobEmailStatusesRepository = new MockJobEmailStatusesRepository();
             _loggingRepository = new MockLoggingRepository();
             _serviceBusTopicsRepository = new MockServiceBusTopicsRepository();
             _graphGroupRepository = new MockGraphGroupRepository();
@@ -526,14 +526,14 @@ namespace Services.Tests
 		    {
 			    { emailTemplateName, emailTypeId }
 		    };
-			var _emailTypesRepository = new MockDatabaseEmailTypesRepository(mockEmailTypesData);
+			var _emailTypesRepository = new MockEmailTypesRepository(mockEmailTypesData);
 
 			var jobId = job.Id;
 			var mockJobEmailStatusesData = new Dictionary<(Guid, int), bool>
 		    {
 			    { (jobId, emailTypeId), true }
 		    };
-			var _jobEmailStatusesRepository = new MockDatabaseJobEmailStatusesRepository(mockJobEmailStatusesData);
+			var _jobEmailStatusesRepository = new MockJobEmailStatusesRepository(mockJobEmailStatusesData);
 
 			_jobTriggerService = new JobTriggerService(
 				_loggingRepository,
