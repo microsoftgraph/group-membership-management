@@ -1,42 +1,44 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { type AccountInfo } from '@azure/msal-browser';
-import { type IMsalContext } from '@azure/msal-react';
 import { createAsyncThunk } from '@reduxjs/toolkit';
 
-import { msalInstance } from '../index';
 import { type Account } from '../models/Account';
+import { ThunkConfig } from './store';
+import { setLoggingIn, setLoggedIn } from './account.slice';
 
-export const fetchAccount = createAsyncThunk(
-  'account/fetchAccount',
-  async (context: IMsalContext) => {
-    const account: AccountInfo | null = msalInstance.getActiveAccount();
+export const login = createAsyncThunk<void, void, ThunkConfig>(
+  'account/login',
+  async (_, { dispatch, getState, extra }) => {
+    const { authenticationService } = extra;
+    const { loggingIn, loggedIn } = getState().account;
 
-    if (account == null) {
-      try {
-        context.instance.loginRedirect({
-          scopes: ['User.Read'],
-        });
-      } catch (error) {
-        console.log(error);
-      }
-
-      const account = context.accounts[0];
-
-      if (account) {
-        const payload: Account = {
-          ...account,
-        };
-
-        return payload;
-      }
-    } else {
-      const payload: Account = {
-        ...account,
-      };
-
-      return payload;
+    if (!loggedIn && !loggingIn) {
+      dispatch(setLoggingIn(true));
+      await authenticationService.loginAsync();
+      dispatch(setLoggingIn(false));
+      dispatch(setLoggedIn(true));
+      dispatch(fetchAccount());
     }
+  }
+);
+
+export const fetchAccount = createAsyncThunk<Account, void, ThunkConfig>(
+  'account/fetchAccount',
+  async (_, { rejectWithValue, getState, extra }) => {
+    const { authenticationService } = extra;
+    const { loggedIn } = getState().account;
+
+    if (!loggedIn) {
+      return rejectWithValue('You must login before attempting to retrieve an active account.');
+    }
+
+    const account = authenticationService.getActiveAccount();
+
+    if (!account) {
+      return rejectWithValue('No active account found. Have you logged in?');
+    }
+
+    return account;
   }
 );

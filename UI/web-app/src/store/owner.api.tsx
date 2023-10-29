@@ -3,27 +3,16 @@
 
 import { createAsyncThunk } from '@reduxjs/toolkit';
 
-import { graphRequest } from '../authConfig';
-import { msalInstance } from '../index';
+import { ThunkConfig } from './store';
+import { TokenType } from '../auth';
 
-export const addOwner = createAsyncThunk(
+export const addOwner = createAsyncThunk<string | undefined, string, ThunkConfig>(
   'owner/addOwner',
-  async (groupId: string) => {
-    const account = msalInstance.getActiveAccount();
-    if (account == null) {
-      throw Error(
-        'No active account! Verify a user has been signed in and setActiveAccount has been called.'
-      );
-    }
-
-    const authResult = await msalInstance.acquireTokenSilent({
-      ...graphRequest,
-      account,
-    });
-
+  async (groupId, {extra}) => {
+    const { authenticationService } = extra;
+    const token = await authenticationService.getTokenAsync(TokenType.Graph);
     const headers = new Headers();
-    const bearer = `Bearer ${authResult.accessToken}`;
-    headers.append('Authorization', bearer);
+    headers.append('Authorization', `Bearer ${token}`);
     headers.append('Scopes', 'Group.ReadWrite.All');
     headers.append('Content-Type', 'application/json');
 

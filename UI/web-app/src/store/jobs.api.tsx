@@ -4,9 +4,10 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import moment from 'moment';
 import { SyncStatus, ActionRequired } from '../models/Status';
-import { loginRequest, config } from '../authConfig';
-import { msalInstance } from '../index';
+import { config } from '../authConfig';
 import { type Job } from '../models/Job';
+import { ThunkConfig } from './store';
+import { TokenType } from '../auth';
 
 export class OdataQueryOptions {
   pageSize?: number;
@@ -20,22 +21,15 @@ export interface JobsResponse {
   totalNumberOfPages: number;
 }
 
-export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (odataQueryOptions?: OdataQueryOptions | undefined) => {
-  const account = msalInstance.getActiveAccount();
-  if (account == null) {
-    throw Error(
-      'No active account! Verify a user has been signed in and setActiveAccount has been called.'
-    );
-  }
-
-  const authResult = await msalInstance.acquireTokenSilent({
-    ...loginRequest,
-    account,
-  });
-
+export const fetchJobs = createAsyncThunk<
+  JobsResponse,
+  OdataQueryOptions | undefined,
+  ThunkConfig
+>('jobs/fetchJobs', async (odataQueryOptions, { extra }) => {
+  const { authenticationService } = extra;
+  const token = await authenticationService.getTokenAsync(TokenType.GMM);
   const headers = new Headers();
-  const bearer = `Bearer ${authResult.accessToken}`;
-  headers.append('Authorization', bearer);
+  headers.append('Authorization', `Bearer ${token}`);
 
   const options = {
     method: 'GET',
@@ -43,34 +37,33 @@ export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (odataQueryOpt
   };
 
   try {
-
     let odataQuery: String = '';
     if (odataQueryOptions !== undefined) {
       if (odataQueryOptions.pageSize !== undefined) {
-        odataQuery = "?$top=" + odataQueryOptions.pageSize;
+        odataQuery = '?$top=' + odataQueryOptions.pageSize;
       }
 
       if (odataQueryOptions.itemsToSkip !== undefined) {
         if (odataQuery !== '') {
-          odataQuery += "&$skip=" + odataQueryOptions.itemsToSkip;
+          odataQuery += '&$skip=' + odataQueryOptions.itemsToSkip;
         } else {
-          odataQuery = "?$skip=" + odataQueryOptions.itemsToSkip;
+          odataQuery = '?$skip=' + odataQueryOptions.itemsToSkip;
         }
       }
 
       if (odataQueryOptions.filter !== undefined) {
         if (odataQuery !== '') {
-          odataQuery += "&$filter=" + odataQueryOptions.filter;
+          odataQuery += '&$filter=' + odataQueryOptions.filter;
         } else {
-          odataQuery = "?$filter=" + odataQueryOptions.filter;
+          odataQuery = '?$filter=' + odataQueryOptions.filter;
         }
       }
 
       if (odataQueryOptions.orderBy !== undefined) {
         if (odataQuery !== '') {
-          odataQuery += "&$orderby=" + odataQueryOptions.orderBy;
+          odataQuery += '&$orderby=' + odataQueryOptions.orderBy;
         } else {
-          odataQuery = "?$orderby=" + odataQueryOptions.orderBy;
+          odataQuery = '?$orderby=' + odataQueryOptions.orderBy;
         }
       }
     }
@@ -78,14 +71,18 @@ export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (odataQueryOpt
     const response = await fetch(config.getJobs + odataQuery, options).then(
       async (response) => {
         let jobs = await response.json();
-        let totalNumberOfPages  = response.headers.get('X-Total-Pages')?.toString() ?? '1';
-        var jobsResponse: JobsResponse = { jobs: jobs, totalNumberOfPages: parseInt(totalNumberOfPages) };
+        let totalNumberOfPages =
+          response.headers.get('X-Total-Pages')?.toString() ?? '1';
+        var jobsResponse: JobsResponse = {
+          jobs: jobs,
+          totalNumberOfPages: parseInt(totalNumberOfPages),
+        };
         return jobsResponse;
       }
     );
 
     const payload: JobsResponse = response;
-    
+
     const mapped = payload.jobs.map((index) => {
       const currentTime = moment.utc();
       var lastRunTime = moment.utc(index['lastSuccessfulRunTime']);
@@ -93,38 +90,43 @@ export const fetchJobs = createAsyncThunk('jobs/fetchJobs', async (odataQueryOpt
       index['lastSuccessfulRunTime'] =
         hoursAgo > index['period']
           ? moment
-            .utc(index['lastSuccessfulRunTime'])
-            .local()
-            .format('MM/DD/YYYY') +
-          ' >' +
-          index['period'] +
-          ' hrs ago'
+              .utc(index['lastSuccessfulRunTime'])
+              .local()
+              .format('MM/DD/YYYY') +
+            ' >' +
+            index['period'] +
+            ' hrs ago'
           : moment
-            .utc(index['lastSuccessfulRunTime'])
-            .local()
-            .format('MM/DD/YYYY') +
-          ' ' +
-          hoursAgo.toString() +
-          ' hrs ago';
+              .utc(index['lastSuccessfulRunTime'])
+              .local()
+              .format('MM/DD/YYYY') +
+            ' ' +
+            hoursAgo.toString() +
+            ' hrs ago';
 
       var nextRunTime = moment.utc(index['estimatedNextRunTime']);
       var isPast = nextRunTime.isBefore(moment.utc()); // Check if nextRunTime is in the past
-      var hoursLeft = isPast ? 0 : Math.abs(currentTime.diff(nextRunTime, 'hours'));
+      var hoursLeft = isPast
+        ? 0
+        : Math.abs(currentTime.diff(nextRunTime, 'hours'));
 
       index['estimatedNextRunTime'] =
         hoursAgo > index['period'] ||
-          index['status'] === SyncStatus.CustomerPaused
+        index['status'] === SyncStatus.CustomerPaused
           ? ''
           : moment
-            .utc(index['estimatedNextRunTime'])
-            .local()
-            .format('MM/DD/YYYY') +
-          ' ' +
-          hoursLeft.toString() +
-          ' hrs left';
+              .utc(index['estimatedNextRunTime'])
+              .local()
+              .format('MM/DD/YYYY') +
+            ' ' +
+            hoursLeft.toString() +
+            ' hrs left';
 
       index['enabledOrNot'] =
-        (index['status'] === SyncStatus.Idle || index['status'] === SyncStatus.InProgress) ? 'Enabled' : 'Disabled';
+        index['status'] === SyncStatus.Idle ||
+        index['status'] === SyncStatus.InProgress
+          ? 'Enabled'
+          : 'Disabled';
 
       index['arrow'] = '';
 

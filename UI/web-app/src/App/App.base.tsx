@@ -1,26 +1,26 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { useMsal } from '@azure/msal-react';
 import { classNamesFunction, type IProcessedStyleSet } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import React, { useEffect } from 'react';
 
 import { useSelector, useDispatch } from 'react-redux';
 import { Outlet } from 'react-router-dom';
-import { selectProfile } from '../store/profile.slice';
-import { getProfile } from '../store/profile.api';
+
+
 import {
   type IAppProps,
   type IAppStyleProps,
   type IAppStyles,
 } from './App.types';
 import { AppHeader } from '../components/AppHeader';
-import { type AppDispatch } from '../store';
-import { fetchAccount } from '../store/account.api';
-import { selectAccount } from '../store/account.slice';
 import { Loader } from '../components/Loader';
 import { useLocalization } from '../localization';
+import { AppDispatch } from '../store';
+import { login } from '../store/account.api';
+import { selectLoggedIn } from '../store/account.slice';
+import { selectProfile } from '../store/profile.slice';
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
@@ -33,17 +33,16 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
     className,
     theme,
   });
-  const account = useSelector(selectAccount);
-  const profile = useSelector(selectProfile);
+
   const dispatch = useDispatch<AppDispatch>();
-  const context = useMsal();
+  const profile = useSelector(selectProfile);
+  const loggedIn = useSelector(selectLoggedIn);
   const localization = useLocalization();
 
   // run once after load.
   useEffect(() => {
-    if (!account) {
-      dispatch(fetchAccount(context));
-      dispatch(getProfile());
+    if (!loggedIn) {
+      dispatch(login());
     }
   });
 
@@ -52,7 +51,7 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
     localization.setUserPreferredLanguage(profile?.userPreferredLanguage);
   }, [localization, profile?.userPreferredLanguage]);
 
-  if (account != null) {
+  if (loggedIn) {
     return (
       <div className={classNames.root}>
         <AppHeader />
