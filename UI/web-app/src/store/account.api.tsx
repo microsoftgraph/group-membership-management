@@ -30,12 +30,16 @@ export const fetchAccount = createAsyncThunk<Account, void, ThunkConfig>(
     const { loggedIn } = getState().account;
 
     if (!loggedIn) {
+      // this will be localized, but I need to localization changes that accidentally
+      // went into main before I can put localization into the redux store.
       return rejectWithValue('You must login before attempting to retrieve an active account.');
     }
 
     const account = authenticationService.getActiveAccount();
 
     if (!account) {
+      // this will be localized, but I need to localization changes that accidentally
+      // went into main before I can put localization into the redux store.
       return rejectWithValue('No active account found. Have you logged in?');
     }
 
