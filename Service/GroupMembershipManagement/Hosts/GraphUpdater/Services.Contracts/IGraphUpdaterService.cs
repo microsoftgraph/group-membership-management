@@ -15,7 +15,7 @@ namespace Services.Contracts
 		public Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId);
 		public Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, Guid runId);
 		public Task<bool> GroupExistsAsync(Guid groupId, Guid runId);
-		public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, Guid jobId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "");
+		public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, SyncJob syncJob, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "");
 		public Task<SyncJob> GetSyncJobAsync(Guid syncJobId);
 		public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId);
 		public Task<string> GetGroupNameAsync(Guid groupId);

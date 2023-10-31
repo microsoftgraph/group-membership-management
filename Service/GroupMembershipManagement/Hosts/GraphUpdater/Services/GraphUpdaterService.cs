@@ -26,8 +26,8 @@ namespace Services
         private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
-		private readonly IDatabaseEmailTypesRepository _databaseEmailTypesRepository;
-		private readonly IDatabaseJobEmailStatusesRepository _databaseJobEmailStatusesRepository;
+		private readonly INotificationTypesRepository _notificationTypesRepository;
+		private readonly IDisabledJobNotificationRepository _disabledJobNotificationRepository;
 		private Guid _runId;
         public Guid RunId
         {
@@ -46,8 +46,8 @@ namespace Services
                 IMailRepository mailRepository,
                 IEmailSenderRecipient emailSenderAndRecipients,
                 IDatabaseSyncJobsRepository syncJobRepository,
-				IDatabaseEmailTypesRepository databaseEmailTypesRepository,
-			    IDatabaseJobEmailStatusesRepository databaseJobEmailStatusesRepository)
+				INotificationTypesRepository notificationTypesRepository,
+			    IDisabledJobNotificationRepository disabledJobNotificationRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
@@ -55,8 +55,8 @@ namespace Services
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
-			_databaseJobEmailStatusesRepository = databaseJobEmailStatusesRepository ?? throw new ArgumentNullException(nameof(databaseJobEmailStatusesRepository));
-			_databaseEmailTypesRepository = databaseEmailTypesRepository ?? throw new ArgumentNullException(nameof(databaseEmailTypesRepository));
+			_disabledJobNotificationRepository = disabledJobNotificationRepository ?? throw new ArgumentNullException(nameof(disabledJobNotificationRepository));
+			_notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
 		}
 
         public async Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId)
@@ -89,16 +89,16 @@ namespace Services
             return await _graphGroupRepository.GroupExists(groupId);
         }
 
-        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId,Guid syncJobId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
+        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, SyncJob syncJob, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
         {
-			bool isEmailDisabled = await IsEmailDisabled(syncJobId, contentTemplate);
+			bool isNotificationDisabled = await IsNotificationDisabled(syncJob.Id, contentTemplate);
 
-			if (isEmailDisabled)
+			if (isNotificationDisabled)
 			{
 				await _loggingRepository.LogMessageAsync(new LogMessage
 				{
-					RunId = runId,
-					Message = $"Email is disabled for job {syncJobId}."
+					RunId = syncJob.RunId,
+					Message = $"Notification template '{contentTemplate}' is disabled for job {syncJob.Id} with destination group {syncJob.TargetOfficeGroupId}."
 				});
 				return;
 			}
@@ -112,18 +112,35 @@ namespace Services
                 CcEmailAddresses = ccEmail,
                 AdditionalContentParams = additionalContentParams,
                 AdditionalSubjectParams = additionalSubjectParams
-            }, runId, adaptiveCardTemplateDirectory);
+            }, syncJob.RunId, adaptiveCardTemplateDirectory);
         }
-		public async Task<bool> IsEmailDisabled(Guid jobId, string emailTemplateName)
+		public async Task<bool> IsNotificationDisabled(Guid jobId, string notificationTypeName)
 		{
-			var emailTypeId = await _databaseEmailTypesRepository.GetEmailTypeIdByEmailTemplateName(emailTemplateName);
+			var notificationType = await _notificationTypesRepository.GetNotificationTypeByNotificationTypeName(notificationTypeName);
 
-			if (!emailTypeId.HasValue)
+			if (notificationType == null)
 			{
+				await _loggingRepository.LogMessageAsync(new LogMessage
+				{
+					RunId = jobId,
+					Message = $"No notification type ID found for notification type name '{notificationTypeName}'."
+				});
 				return false;
 			}
-			return await _databaseJobEmailStatusesRepository.IsEmailDisabledForJob(jobId, emailTypeId.Value);
+
+			if (notificationType.Disabled)
+			{
+				await _loggingRepository.LogMessageAsync(new LogMessage
+				{
+					RunId = jobId,
+					Message = $"Notifications of type '{notificationTypeName}' have been globally disabled."
+				});
+				return true;
+			}
+
+			return await _disabledJobNotificationRepository.IsNotificationDisabledForJob(jobId, notificationType.Id);
 		}
+
 		public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set job status to {status}.", RunId = runId });

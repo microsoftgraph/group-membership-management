@@ -25,7 +25,7 @@ namespace Hosts.GraphUpdater
         public async Task SendEmailAsync([ActivityTrigger] EmailSenderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            await _graphUpdaterService.SendEmailAsync(request.ToEmail, request.ContentTemplate, request.AdditionalContentParams, request.RunId, request.SyncJobId, request.CcEmail, null, null, request.AdaptiveCardTemplateDirectory);
+            await _graphUpdaterService.SendEmailAsync(request.ToEmail, request.ContentTemplate, request.AdditionalContentParams, request.SyncJob, request.CcEmail, null, null, request.AdaptiveCardTemplateDirectory);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
         }
     }

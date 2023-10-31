@@ -198,7 +198,7 @@ namespace Hosts.GraphUpdater
                                                         ContentTemplate = SyncCompletedEmailBody,
                                                         AdditionalContentParams = additionalContent,
                                                         RunId = groupMembership.RunId,
-                                                        SyncJobId = groupMembership.SyncJobId,
+                                                        SyncJob = syncJob,
                                                         AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory
                                                     });
                 }

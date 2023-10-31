@@ -54,7 +54,7 @@ namespace Repositories.Mocks
             return await Task.FromResult(groupExists);
         }
 
-        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, Guid jobId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
+        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, SyncJob syncJob, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
         {
             var message = new EmailMessage
             {
@@ -65,7 +65,7 @@ namespace Repositories.Mocks
                 AdditionalSubjectParams = additionalSubjectParams
             };
 
-            await _mailRepository.SendMailAsync(message, runId);
+            await _mailRepository.SendMailAsync(message, syncJob.RunId);
         }
 
         public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)
