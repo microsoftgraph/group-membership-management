@@ -11,6 +11,6 @@ namespace Repositories.Contracts
 {
     public interface IDisabledJobNotificationRepository
     {
-        Task<bool> IsEmailDisabledForJob(Guid jobId, int emailTypeId);
+        Task<bool> IsNotificationDisabledForJob(Guid jobId, int notificationTypeId);
     }
 }

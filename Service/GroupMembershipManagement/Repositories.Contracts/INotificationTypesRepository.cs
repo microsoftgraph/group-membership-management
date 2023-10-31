@@ -10,7 +10,7 @@ namespace Repositories.Contracts
 {
     public interface INotificationTypesRepository
     {
-        Task<int?> GetEmailTypeIdByEmailTemplateName(string emailTemplateName);
+        Task<int?> GetNotificationTypeIdByNotificationTypeName(string notificationTypeName);
 
     }
 }       

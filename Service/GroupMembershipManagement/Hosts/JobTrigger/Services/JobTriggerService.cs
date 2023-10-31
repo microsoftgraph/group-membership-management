@@ -98,9 +98,9 @@ namespace Services
 
         public async Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters, string templateDirectory = "")
         {
-            bool isEmailDisabled = await IsEmailDisabled(job.Id, emailContentTemplateName);
+            bool isNotificationDisabled = await IsNotificationDisabled(job.Id, emailContentTemplateName);
 
-            if (isEmailDisabled) 
+            if (isNotificationDisabled) 
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
@@ -136,15 +136,15 @@ namespace Services
             await _mailRepository.SendMailAsync(message, job.RunId, templateDirectory);
         }
 
-        public async Task<bool> IsEmailDisabled(Guid jobId, string emailTemplateName)
+        public async Task<bool> IsNotificationDisabled(Guid jobId, string notificationTypeName)
         {
-            var emailTypeId = await _notificationTypesRepository.GetEmailTypeIdByEmailTemplateName(emailTemplateName);
+            var notificationTypeId = await _notificationTypesRepository.GetNotificationTypeIdByNotificationTypeName(notificationTypeName);
 
-            if (!emailTypeId.HasValue)
+            if (!notificationTypeId.HasValue)
             {
                 return false; 
             }
-            return await _disabledJobNotificationRepository.IsEmailDisabledForJob(jobId, emailTypeId.Value);
+            return await _disabledJobNotificationRepository.IsNotificationDisabledForJob(jobId, notificationTypeId.Value);
         }
 
         public async Task UpdateSyncJobStatusAsync(SyncStatus status, SyncJob job)
