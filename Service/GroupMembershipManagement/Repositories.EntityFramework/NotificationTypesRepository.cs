@@ -19,13 +19,10 @@ namespace Repositories.EntityFramework
             _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
 
-        public async Task<int?> GetNotificationTypeIdByNotificationTypeName(string notificationName)
+        public async Task<NotificationType> GetNotificationTypeByNotificationTypeName(string notificationName)
         {
-            var notificationTypeId = await _readContext.NotificationTypes
-                .FirstOrDefaultAsync(e => e.Name == notificationName);
-                
-            return notificationTypeId?.Id;
+            return await _readContext.NotificationTypes
+                    .FirstOrDefaultAsync(e => e.Name == notificationName);
         }
-
     }
 }

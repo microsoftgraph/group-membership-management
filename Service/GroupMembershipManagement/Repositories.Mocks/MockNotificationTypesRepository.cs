@@ -13,21 +13,20 @@ namespace Repositories.Mocks
 {
     public class MockNotificationTypesRepository : INotificationTypesRepository
     {
+		private readonly Dictionary<string, NotificationType> _notificationNameToTypeMapping;
 
-        private readonly Dictionary<string, int?> _notificationNameToIdMapping;
+		public MockNotificationTypesRepository(Dictionary<string, NotificationType> notificationNameToTypeMapping = null)
+		{
+			_notificationNameToTypeMapping = notificationNameToTypeMapping ?? new Dictionary<string, NotificationType>();
+		}
 
-        public MockNotificationTypesRepository(Dictionary<string, int?> notificationNameToIdMapping = null)
-        {
-			_notificationNameToIdMapping = notificationNameToIdMapping ?? new Dictionary<string, int?>();
-        }
-        public async Task<int?> GetNotificationTypeIdByNotificationTypeName(string notificationName)
-        {
-            if (_notificationNameToIdMapping.TryGetValue(notificationName, out int? emailTypeId))
-            {
-                return await Task.FromResult(emailTypeId);
-            }
-            return null;
-        }
-
-    }
+		public async Task<NotificationType> GetNotificationTypeByNotificationTypeName(string notificationName)
+		{
+			if (_notificationNameToTypeMapping.TryGetValue(notificationName, out NotificationType notificationType))
+			{
+				return await Task.FromResult(notificationType);
+			}
+			return null;
+		}
+	}
 }

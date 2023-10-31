@@ -522,10 +522,10 @@ namespace Services.Tests
 			SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
 			var notificationName = SyncStartedEmailBody;
 			var notificationTypeId = 1;
-			var mockNotificationTypesData = new Dictionary<string, int?>
-	        {
-		        { notificationName, notificationTypeId }
-	        };
+			var mockNotificationTypesData = new Dictionary<string, NotificationType>
+            {
+	            { notificationName, new NotificationType { Id = notificationTypeId, Disabled = false } }
+            };
 			var _notificationTypesRepository = new MockNotificationTypesRepository(mockNotificationTypesData);
 
 			var jobId = job.Id;

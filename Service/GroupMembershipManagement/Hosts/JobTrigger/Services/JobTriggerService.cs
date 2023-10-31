@@ -138,13 +138,29 @@ namespace Services
 
         public async Task<bool> IsNotificationDisabled(Guid jobId, string notificationTypeName)
         {
-            var notificationTypeId = await _notificationTypesRepository.GetNotificationTypeIdByNotificationTypeName(notificationTypeName);
+            var notificationType = await _notificationTypesRepository.GetNotificationTypeByNotificationTypeName(notificationTypeName);
 
-            if (!notificationTypeId.HasValue)
+             if (notificationType == null)
             {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = jobId,
+                    Message = $"No notification type ID found for notification type name '{notificationTypeName}'."
+                });
                 return false; 
             }
-            return await _disabledJobNotificationRepository.IsNotificationDisabledForJob(jobId, notificationTypeId.Value);
+
+            if (notificationType.Disabled)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = jobId,
+                    Message = $"Notifications of type '{notificationTypeName}' have been globally disabled."
+                });
+                return true;
+            }
+
+            return await _disabledJobNotificationRepository.IsNotificationDisabledForJob(jobId, notificationType.Id);
         }
 
         public async Task UpdateSyncJobStatusAsync(SyncStatus status, SyncJob job)
