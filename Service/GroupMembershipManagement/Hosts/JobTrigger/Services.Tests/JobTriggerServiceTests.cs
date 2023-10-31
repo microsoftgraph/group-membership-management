@@ -523,17 +523,17 @@ namespace Services.Tests
 			var notificationName = SyncStartedEmailBody;
 			var notificationTypeId = 1;
 			var mockNotificationTypesData = new Dictionary<string, int?>
-		    {
-			    { notificationTypeId, notificationName, false }
-		    };
-			var _notificationTypesRepository = new MockNotificationTypesRepository(mockEmailTypesData);
+	        {
+		        { notificationName, notificationTypeId }
+	        };
+			var _notificationTypesRepository = new MockNotificationTypesRepository(mockNotificationTypesData);
 
 			var jobId = job.Id;
-			var mockJobEmailStatusesData = new Dictionary<(Guid, int), bool>
-		    {
-			    { (jobId, emailTypeId), true }
-		    };
-			var _disabledJobNotificationRepository = new MockDisabledJobNotificationRepository(mockJobEmailStatusesData);
+			var mockDisabledJobNotificationData = new Dictionary<(Guid, int), bool>
+	        {
+		        { (jobId, notificationTypeId), true }
+	        };
+			var _disabledJobNotificationRepository = new MockDisabledJobNotificationRepository(mockDisabledJobNotificationData);
 
 			_jobTriggerService = new JobTriggerService(
 				_loggingRepository,

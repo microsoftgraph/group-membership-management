@@ -15,9 +15,9 @@ namespace Repositories.Mocks
     {
         private readonly Dictionary<(Guid, int), bool> _disabledJobNotification;
 
-        public MockDisabledJobNotificationRepository(Dictionary<(Guid, int), bool> jobEmailStatuses = null)
+        public MockDisabledJobNotificationRepository(Dictionary<(Guid, int), bool> disabledJobNotification = null)
         {
-			_disabledJobNotification = jobEmailStatuses ?? new Dictionary<(Guid, int), bool>();
+			_disabledJobNotification = disabledJobNotification ?? new Dictionary<(Guid, int), bool>();
         }
 
         public Task<bool> IsNotificationDisabledForJob(Guid jobId, int notificationTypeId)
