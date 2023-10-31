@@ -22,64 +22,50 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
 
-            modelBuilder.Entity("Models.EmailType", b =>
+            modelBuilder.Entity("Models.DisabledJobNotification", b =>
                 {
-                    b.Property<int>("EmailTypeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EmailTypeId"), 1L, 1);
-
-                    b.Property<string>("EmailContentTemplateName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("EmailTypeName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("EmailTypeId");
-
-                    b.ToTable("EmailTypes");
-
-                    b.HasData(
-                        new
-                        {
-                            EmailTypeId = 1,
-                            EmailContentTemplateName = "SyncStartedEmailBody",
-                            EmailTypeName = "OnBoarding"
-                        },
-                        new
-                        {
-                            EmailTypeId = 2,
-                            EmailContentTemplateName = "SyncCompletedEmailBody",
-                            EmailTypeName = "OnBoarding"
-                        });
-                });
-
-            modelBuilder.Entity("Models.JobEmailStatus", b =>
-                {
-                    b.Property<Guid>("JobEmailStatusId")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
                         .HasDefaultValueSql("NEWSEQUENTIALID()");
 
-                    b.Property<bool>("DisableEmail")
+                    b.Property<bool>("Disabled")
                         .HasColumnType("bit");
 
-                    b.Property<int>("EmailTypeId")
+                    b.Property<int>("NotificationTypeID")
                         .HasColumnType("int");
 
                     b.Property<Guid>("SyncJobId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.HasKey("JobEmailStatusId");
+                    b.HasKey("Id");
 
-                    b.HasIndex("EmailTypeId");
+                    b.HasIndex("NotificationTypeID");
 
-                    b.HasIndex("SyncJobId", "EmailTypeId")
+                    b.HasIndex("SyncJobId", "NotificationTypeID")
                         .IsUnique();
 
-                    b.ToTable("JobEmailStatuses");
+                    b.ToTable("DisabledJobNotifications");
+                });
+
+            modelBuilder.Entity("Models.NotificationType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<bool>("Disabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("NotificationTypes");
                 });
 
             modelBuilder.Entity("Models.PurgedSyncJob", b =>
@@ -239,11 +225,11 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.ToTable("SyncJobs", (string)null);
                 });
 
-            modelBuilder.Entity("Models.JobEmailStatus", b =>
+            modelBuilder.Entity("Models.DisabledJobNotification", b =>
                 {
-                    b.HasOne("Models.EmailType", "EmailType")
+                    b.HasOne("Models.NotificationType", "NotificationType")
                         .WithMany()
-                        .HasForeignKey("EmailTypeId")
+                        .HasForeignKey("NotificationTypeID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -253,7 +239,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("EmailType");
+                    b.Navigation("NotificationType");
 
                     b.Navigation("SyncJob");
                 });

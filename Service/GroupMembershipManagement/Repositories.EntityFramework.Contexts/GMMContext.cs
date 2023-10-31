@@ -13,8 +13,8 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<Status> Statuses { get; set; } = null!;
         public DbSet<Setting> Settings { get; set; } = null!;
 
-        public DbSet<EmailType> EmailTypes { get; set; }
-        public DbSet<JobEmailStatus> JobEmailStatuses { get; set; }
+        public DbSet<NotificationType> NotificationTypes { get; set; }
+        public DbSet<DisabledJobNotification> DisabledJobNotifications { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<SyncJob>().Property(t => t.Id)
@@ -43,18 +43,18 @@ namespace Repositories.EntityFramework.Contexts
             modelBuilder.Entity<Status>()
                         .ToTable("Statuses");
 
-            modelBuilder.Entity<JobEmailStatus>().Property(t => t.JobEmailStatusId)
+            modelBuilder.Entity<DisabledJobNotification>().Property(t => t.Id)
                 .ValueGeneratedOnAdd()
                 .HasDefaultValueSql("NEWSEQUENTIALID()");
 
-            modelBuilder.Entity<JobEmailStatus>()
+            modelBuilder.Entity<DisabledJobNotification>()
                 .HasOne(j => j.SyncJob)
                 .WithMany()  
                 .HasForeignKey(j => j.SyncJobId)
                 .OnDelete(DeleteBehavior.Cascade);
             
-            modelBuilder.Entity<JobEmailStatus>()
-                .HasIndex(j => new { j.SyncJobId, j.EmailTypeId })
+            modelBuilder.Entity<DisabledJobNotification>()
+                .HasIndex(j => new { j.SyncJobId, j.NotificationTypeID })
                 .IsUnique();
 
         }

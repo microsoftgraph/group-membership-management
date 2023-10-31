@@ -10,21 +10,21 @@ using Models;
 namespace Models
 {
     [IgnoreLogging]
-    public class JobEmailStatus
+    public class DisabledJobNotification
     {
         [Key]
-        public Guid JobEmailStatusId { get; set; }
+        public Guid Id { get; set; }
 
         [ForeignKey("SyncJob")]
         public Guid SyncJobId { get; set; } 
 
-        [ForeignKey("EmailType")]
-        public int EmailTypeId { get; set; }
+        [ForeignKey("NotificationType")]
+        public int NotificationTypeID { get; set; }
 
-        public bool DisableEmail { get; set; }
+        public bool Disabled { get; set; }
 
         // Navigation properties
         public virtual SyncJob SyncJob { get; set; }
-        public virtual EmailType EmailType { get; set; }
+        public virtual NotificationType NotificationType { get; set; }
     }
 }

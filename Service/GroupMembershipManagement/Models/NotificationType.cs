@@ -9,13 +9,13 @@ using Models.CustomAttributes;
 namespace Models
 {
     [IgnoreLogging]
-    public class EmailType
+    public class NotificationType
     {
         [Key]
-        public int EmailTypeId { get; set; }
+        public int Id { get; set; }
 
         [Required]
-        public string EmailTypeName { get; set; }
-        public string EmailContentTemplateName { get; set; }
+        public string Name { get; set; }
+        public bool Disabled { get; set; }
     }
 }
