@@ -141,30 +141,52 @@ namespace Services.Tests
 			var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
 			var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
 			var mockSyncJobs = new MockDatabaseSyncJobRepository();
-			var runId = Guid.NewGuid();
 			var lastRunTime = DateTime.UtcNow.AddDays(-1);
 			var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.Idle.ToString(), LastRunTime = lastRunTime };
-
 			await mockSyncJobs.AddSyncJobAsync(job);
-
 			var mockGraphGroup = new MockGraphGroupRepository();
 			var mockMail = new MockMailRepository();
 			var toEmail = "user@domain";
 			var notificationName = "SyncCompletedEmailType";
-			var notificationTypeId = 1;
+			var notificationTypeId = 2;
 			var mockNotificationTypesData = new Dictionary<string, NotificationType>
 			{
 				{ notificationName, new NotificationType { Id = notificationTypeId, Disabled = false } }
 			};
 			var mockNotificationType = new MockNotificationTypesRepository(mockNotificationTypesData);
-
 			var mockDisabledJobNotificationData = new Dictionary<(Guid, int), bool>
 			{
 				{ (job.Id, notificationTypeId), true }
 			};
 			var mockDisabledJobNotification = new MockDisabledJobNotificationRepository(mockDisabledJobNotificationData);
 			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockDisabledJobNotification);
+			await graphUpdaterService.SendEmailAsync(toEmail, notificationName, new string[0] { }, job);
+			Assert.AreEqual(0, mockMail.SentEmails.Count);
+		}
 
+		[TestMethod]
+		public async Task VerifyEmailNotSentIfGloballyDisabled()
+		{
+			var mockLogs = new MockLoggingRepository();
+			var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+			var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+			var mockSyncJobs = new MockDatabaseSyncJobRepository();
+			var runId = Guid.NewGuid();
+			var lastRunTime = DateTime.UtcNow.AddDays(-1);
+			var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.Idle.ToString(), LastRunTime = lastRunTime };
+			await mockSyncJobs.AddSyncJobAsync(job);
+			var mockGraphGroup = new MockGraphGroupRepository();
+			var mockMail = new MockMailRepository();
+			var toEmail = "user@domain";
+			var notificationName = "SyncCompletedEmailType";
+			var notificationTypeId = 2;
+			var mockNotificationTypesData = new Dictionary<string, NotificationType>
+			{
+				{ notificationName, new NotificationType { Id = notificationTypeId, Disabled = true } }
+			};
+			var mockNotificationType = new MockNotificationTypesRepository(mockNotificationTypesData);
+			var mockDisabledJobNotification = new MockDisabledJobNotificationRepository();
+			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockDisabledJobNotification);
 			await graphUpdaterService.SendEmailAsync(toEmail, notificationName, new string[0] { }, job);
 			Assert.AreEqual(0, mockMail.SentEmails.Count);
 		}
