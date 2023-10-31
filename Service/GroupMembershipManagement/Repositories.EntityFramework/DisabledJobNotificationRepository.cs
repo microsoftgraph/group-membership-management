@@ -21,8 +21,8 @@ namespace Repositories.EntityFramework
 
         public async Task<bool> IsNotificationDisabledForJob(Guid jobId, int notificationTypeId)
         {
-            return await _readContext.DisabledJobNotification
-                .AnyAsync(j => j.SyncJobId == jobId && j.Id == notificationTypeId && j.Disabled);
+            return await _readContext.DisabledJobNotifications
+                .AnyAsync(j => j.SyncJobId == jobId && j.NotificationTypeID == notificationTypeId && j.Disabled);
         }
 
     }

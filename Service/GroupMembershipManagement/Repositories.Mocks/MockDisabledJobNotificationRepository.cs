@@ -13,16 +13,16 @@ namespace Repositories.Mocks
 {
     public class MockDisabledJobNotificationRepository : IDisabledJobNotificationRepository
     {
-        private readonly Dictionary<(Guid, int), bool> _jobEmailStatuses;
+        private readonly Dictionary<(Guid, int), bool> _disabledJobNotification;
 
         public MockDisabledJobNotificationRepository(Dictionary<(Guid, int), bool> jobEmailStatuses = null)
         {
-            _jobEmailStatuses = jobEmailStatuses ?? new Dictionary<(Guid, int), bool>();
+			_disabledJobNotification = jobEmailStatuses ?? new Dictionary<(Guid, int), bool>();
         }
 
-        public Task<bool> IsEmailDisabledForJob(Guid jobId, int emailTypeId)
+        public Task<bool> IsNotificationDisabledForJob(Guid jobId, int notificationTypeId)
         {
-            if (_jobEmailStatuses.TryGetValue((jobId, emailTypeId), out bool isDisabled))
+            if (_disabledJobNotification.TryGetValue((jobId, notificationTypeId), out bool isDisabled))
             {
                 return Task.FromResult(isDisabled);
             }

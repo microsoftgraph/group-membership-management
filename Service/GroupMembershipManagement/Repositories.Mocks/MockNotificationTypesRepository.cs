@@ -14,15 +14,15 @@ namespace Repositories.Mocks
     public class MockNotificationTypesRepository : INotificationTypesRepository
     {
 
-        private readonly Dictionary<string, int?> _emailTemplateToIdMapping;
+        private readonly Dictionary<string, int?> _notificationNameToIdMapping;
 
-        public MockNotificationTypesRepository(Dictionary<string, int?> emailTemplateToIdMapping = null)
+        public MockNotificationTypesRepository(Dictionary<string, int?> notificationNameToIdMapping = null)
         {
-            _emailTemplateToIdMapping = emailTemplateToIdMapping ?? new Dictionary<string, int?>();
+			_notificationNameToIdMapping = notificationNameToIdMapping ?? new Dictionary<string, int?>();
         }
-        public async Task<int?> GetEmailTypeIdByEmailTemplateName(string emailTemplateName)
+        public async Task<int?> GetNotificationTypeIdByNotificationTypeName(string notificationName)
         {
-            if (_emailTemplateToIdMapping.TryGetValue(emailTemplateName, out int? emailTypeId))
+            if (_notificationNameToIdMapping.TryGetValue(notificationName, out int? emailTypeId))
             {
                 return await Task.FromResult(emailTypeId);
             }
