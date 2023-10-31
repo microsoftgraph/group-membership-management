@@ -105,7 +105,7 @@ namespace Services
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     RunId = job.RunId,
-                    Message = $"Email is disabled for job {job.Id}."
+                    Message = $"Email template '{emailContentTemplateName}' is disabled for job {job.Id} with destination group {job.TargetOfficeGroupId}."
                 });
                 return;
             }
