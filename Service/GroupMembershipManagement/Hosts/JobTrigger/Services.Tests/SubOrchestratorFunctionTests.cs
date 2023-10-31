@@ -393,8 +393,8 @@ namespace Services.Tests
                         var mailRepository = new Mock<IMailRepository>();
                         var jobTriggerConfig = new Mock<IJobTriggerConfig>();
                         var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
-                        var emailTypesRepository = new Mock<INotificationTypesRepository>();
-                        var jobEmailStatusesRepository = new Mock<IDisabledJobNotificationRepository>();
+                        var notificationTypesRepository = new Mock<INotificationTypesRepository>();
+                        var iDisabledJobNotificationRepository = new Mock<IDisabledJobNotificationRepository>();
                         var graphGroupRepository = new Mock<IGraphGroupRepository>();
                         var gmmAppId = new Mock<IKeyVaultSecret<IJobTriggerService>>();
                         var emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
@@ -402,8 +402,8 @@ namespace Services.Tests
                         var jobTriggerService = new JobTriggerService(
                                                         _loggingRespository.Object,
                                                         syncJobRepository.Object,
-                                                        emailTypesRepository.Object,
-                                                        jobEmailStatusesRepository.Object,
+                                                        notificationTypesRepository.Object,
+                                                        iDisabledJobNotificationRepository.Object,
                                                         serviceBusTopicsRepository,
                                                         graphGroupRepository.Object,
                                                         gmmAppId.Object,
@@ -470,7 +470,7 @@ namespace Services.Tests
                         var jobTriggerConfig = new Mock<IJobTriggerConfig>();
                         var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
                         var emailTypeRepository = new Mock<INotificationTypesRepository>();
-                        var jobEmailStatusesRepository = new Mock<IDisabledJobNotificationRepository>();
+                        var iDisabledJobNotificationRepository = new Mock<IDisabledJobNotificationRepository>();
                         var graphGroupRepository = new Mock<IGraphGroupRepository>();
                         var gmmAppId = new Mock<IKeyVaultSecret<IJobTriggerService>>();
                         var emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
@@ -479,7 +479,7 @@ namespace Services.Tests
                                                         _loggingRespository.Object,
                                                         syncJobRepository.Object,
 														emailTypeRepository.Object,
-                                                        jobEmailStatusesRepository.Object,
+                                                        iDisabledJobNotificationRepository.Object,
 														serviceBusTopicsRepository,
                                                         graphGroupRepository.Object,
                                                         gmmAppId.Object,

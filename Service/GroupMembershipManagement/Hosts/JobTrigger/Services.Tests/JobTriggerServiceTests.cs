@@ -28,8 +28,8 @@ namespace Services.Tests
     {
         private JobTriggerService _jobTriggerService = null;
         private MockDatabaseSyncJobRepository _syncJobRepository = null;
-        private MockEmailTypesRepository _notificationTypesRepository = null;
-        private MockJobEmailStatusesRepository _disabledJobNotificationRepository = null;
+        private MockNotificationTypesRepository _notificationTypesRepository = null;
+        private MockDisabledJobNotificationRepository _disabledJobNotificationRepository = null;
         private MockLoggingRepository _loggingRepository = null;
         private MockServiceBusTopicsRepository _serviceBusTopicsRepository = null;
         private MockGraphGroupRepository _graphGroupRepository;
@@ -52,8 +52,8 @@ namespace Services.Tests
             };
 
             _syncJobRepository = new MockDatabaseSyncJobRepository();
-            _notificationTypesRepository = new MockEmailTypesRepository();
-            _disabledJobNotificationRepository = new MockJobEmailStatusesRepository();
+            _notificationTypesRepository = new MockNotificationTypesRepository();
+            _disabledJobNotificationRepository = new MockDisabledJobNotificationRepository();
             _loggingRepository = new MockLoggingRepository();
             _serviceBusTopicsRepository = new MockServiceBusTopicsRepository();
             _graphGroupRepository = new MockGraphGroupRepository();
@@ -520,20 +520,20 @@ namespace Services.Tests
 
 			_mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
 			SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
-			var emailTemplateName = SyncStartedEmailBody;
-			var emailTypeId = 1;
-			var mockEmailTypesData = new Dictionary<string, int?>
+			var notificationName = SyncStartedEmailBody;
+			var notificationTypeId = 1;
+			var mockNotificationTypesData = new Dictionary<string, int?>
 		    {
-			    { emailTemplateName, emailTypeId }
+			    { notificationTypeId, notificationName, false }
 		    };
-			var _notificationTypesRepository = new MockEmailTypesRepository(mockEmailTypesData);
+			var _notificationTypesRepository = new MockNotificationTypesRepository(mockEmailTypesData);
 
 			var jobId = job.Id;
 			var mockJobEmailStatusesData = new Dictionary<(Guid, int), bool>
 		    {
 			    { (jobId, emailTypeId), true }
 		    };
-			var _disabledJobNotificationRepository = new MockJobEmailStatusesRepository(mockJobEmailStatusesData);
+			var _disabledJobNotificationRepository = new MockDisabledJobNotificationRepository(mockJobEmailStatusesData);
 
 			_jobTriggerService = new JobTriggerService(
 				_loggingRepository,

@@ -11,11 +11,11 @@ using System.Threading.Tasks;
 
 namespace Repositories.Mocks
 {
-    public class MockJobEmailStatusesRepository : IDisabledJobNotificationRepository
+    public class MockDisabledJobNotificationRepository : IDisabledJobNotificationRepository
     {
         private readonly Dictionary<(Guid, int), bool> _jobEmailStatuses;
 
-        public MockJobEmailStatusesRepository(Dictionary<(Guid, int), bool> jobEmailStatuses = null)
+        public MockDisabledJobNotificationRepository(Dictionary<(Guid, int), bool> jobEmailStatuses = null)
         {
             _jobEmailStatuses = jobEmailStatuses ?? new Dictionary<(Guid, int), bool>();
         }

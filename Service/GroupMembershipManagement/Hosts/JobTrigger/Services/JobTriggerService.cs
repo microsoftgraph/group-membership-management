@@ -52,8 +52,8 @@ namespace Services
         public JobTriggerService(
             ILoggingRepository loggingRepository,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
-            INotificationTypesRepository databaseEmailTypesRepository,
-            IDisabledJobNotificationRepository databaseJobEmailStatusesRepository,
+            INotificationTypesRepository notificationTypesRepository,
+            IDisabledJobNotificationRepository disabledJobNotificationRepository,
             IServiceBusTopicsRepository serviceBusTopicsRepository,
             IGraphGroupRepository graphGroupRepository,
             IKeyVaultSecret<IJobTriggerService> gmmAppId,
@@ -67,8 +67,8 @@ namespace Services
             _emailSenderAndRecipients = emailSenderAndRecipients;
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
-            _disabledJobNotificationRepository = databaseJobEmailStatusesRepository ?? throw new ArgumentNullException(nameof(databaseJobEmailStatusesRepository));
-			_notificationTypesRepository = databaseEmailTypesRepository ?? throw new ArgumentNullException(nameof(databaseEmailTypesRepository));
+            _disabledJobNotificationRepository = disabledJobNotificationRepository ?? throw new ArgumentNullException(nameof(disabledJobNotificationRepository));
+			_notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
 			_serviceBusTopicsRepository = serviceBusTopicsRepository ?? throw new ArgumentNullException(nameof(serviceBusTopicsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _gmmAppId = gmmAppId.Secret;

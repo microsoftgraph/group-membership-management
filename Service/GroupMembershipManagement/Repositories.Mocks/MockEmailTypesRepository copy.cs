@@ -11,12 +11,12 @@ using System.Threading.Tasks;
 
 namespace Repositories.Mocks
 {
-    public class MockEmailTypesRepository : INotificationTypesRepository
+    public class MockNotificationTypesRepository : INotificationTypesRepository
     {
 
         private readonly Dictionary<string, int?> _emailTemplateToIdMapping;
 
-        public MockEmailTypesRepository(Dictionary<string, int?> emailTemplateToIdMapping = null)
+        public MockNotificationTypesRepository(Dictionary<string, int?> emailTemplateToIdMapping = null)
         {
             _emailTemplateToIdMapping = emailTemplateToIdMapping ?? new Dictionary<string, int?>();
         }
