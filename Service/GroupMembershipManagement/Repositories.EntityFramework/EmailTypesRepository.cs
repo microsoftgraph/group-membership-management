@@ -8,21 +8,23 @@ using Repositories.EntityFramework.Contexts;
 
 namespace Repositories.EntityFramework
 {
-    public class JobEmailStatusesRepository : IJobEmailStatusesRepository
+    public class EmailTypesRepository : INotificationTypesRepository
     {
         private readonly GMMContext _writeContext;
         private readonly GMMReadContext _readContext;
 
-        public JobEmailStatusesRepository(GMMContext writeContext, GMMReadContext readContext)
+        public EmailTypesRepository(GMMContext writeContext, GMMReadContext readContext)
         {
             _writeContext = writeContext ?? throw new ArgumentNullException(nameof(writeContext));
             _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
 
-        public async Task<bool> IsEmailDisabledForJob(Guid jobId, int emailTypeId)
+        public async Task<int?> GetEmailTypeIdByEmailTemplateName(string emailTemplateName)
         {
-            return await _readContext.JobEmailStatuses
-                .AnyAsync(j => j.SyncJobId == jobId && j.EmailTypeId == emailTypeId && j.DisableEmail);
+            var emailType = await _readContext.EmailTypes
+                .FirstOrDefaultAsync(e => e.EmailContentTemplateName == emailTemplateName);
+                
+            return emailType?.EmailTypeId;
         }
 
     }

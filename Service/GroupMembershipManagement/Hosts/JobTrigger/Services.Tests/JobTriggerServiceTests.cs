@@ -28,8 +28,8 @@ namespace Services.Tests
     {
         private JobTriggerService _jobTriggerService = null;
         private MockDatabaseSyncJobRepository _syncJobRepository = null;
-        private MockEmailTypesRepository _emailTypesRepository = null;
-        private MockJobEmailStatusesRepository _jobEmailStatusesRepository = null;
+        private MockEmailTypesRepository _notificationTypesRepository = null;
+        private MockJobEmailStatusesRepository _disabledJobNotificationRepository = null;
         private MockLoggingRepository _loggingRepository = null;
         private MockServiceBusTopicsRepository _serviceBusTopicsRepository = null;
         private MockGraphGroupRepository _graphGroupRepository;
@@ -52,8 +52,8 @@ namespace Services.Tests
             };
 
             _syncJobRepository = new MockDatabaseSyncJobRepository();
-            _emailTypesRepository = new MockEmailTypesRepository();
-            _jobEmailStatusesRepository = new MockJobEmailStatusesRepository();
+            _notificationTypesRepository = new MockEmailTypesRepository();
+            _disabledJobNotificationRepository = new MockJobEmailStatusesRepository();
             _loggingRepository = new MockLoggingRepository();
             _serviceBusTopicsRepository = new MockServiceBusTopicsRepository();
             _graphGroupRepository = new MockGraphGroupRepository();
@@ -62,8 +62,8 @@ namespace Services.Tests
             _jobTriggerService = new JobTriggerService(
                                         _loggingRepository,
                                         _syncJobRepository,
-                                        _emailTypesRepository,
-                                        _jobEmailStatusesRepository,
+                                        _notificationTypesRepository,
+                                        _disabledJobNotificationRepository,
                                         _serviceBusTopicsRepository,
                                         _graphGroupRepository,
                                         new MockKeyVaultSecret<IJobTriggerService>(), _mailRepository,
@@ -354,8 +354,8 @@ namespace Services.Tests
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
-                _emailTypesRepository,
-                _jobEmailStatusesRepository,
+                _notificationTypesRepository,
+                _disabledJobNotificationRepository,
                 _serviceBusTopicsRepository,
                 _graphGroupRepository,
                 new MockKeyVaultSecret<IJobTriggerService>(),
@@ -401,8 +401,8 @@ namespace Services.Tests
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
-                _emailTypesRepository,
-				_jobEmailStatusesRepository,
+                _notificationTypesRepository,
+				_disabledJobNotificationRepository,
 				_serviceBusTopicsRepository,
                 _graphGroupRepository,
                 new MockKeyVaultSecret<IJobTriggerService>(),
@@ -442,8 +442,8 @@ namespace Services.Tests
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
-				_emailTypesRepository,
-				_jobEmailStatusesRepository,
+				_notificationTypesRepository,
+				_disabledJobNotificationRepository,
 				_serviceBusTopicsRepository,
                 _graphGroupRepository,
                 new MockKeyVaultSecret<IJobTriggerService>(),
@@ -482,8 +482,8 @@ namespace Services.Tests
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
-			    _emailTypesRepository,
-				_jobEmailStatusesRepository,
+			    _notificationTypesRepository,
+				_disabledJobNotificationRepository,
 				_serviceBusTopicsRepository,
                 _graphGroupRepository,
                 new MockKeyVaultSecret<IJobTriggerService>(),
@@ -526,20 +526,20 @@ namespace Services.Tests
 		    {
 			    { emailTemplateName, emailTypeId }
 		    };
-			var _emailTypesRepository = new MockEmailTypesRepository(mockEmailTypesData);
+			var _notificationTypesRepository = new MockEmailTypesRepository(mockEmailTypesData);
 
 			var jobId = job.Id;
 			var mockJobEmailStatusesData = new Dictionary<(Guid, int), bool>
 		    {
 			    { (jobId, emailTypeId), true }
 		    };
-			var _jobEmailStatusesRepository = new MockJobEmailStatusesRepository(mockJobEmailStatusesData);
+			var _disabledJobNotificationRepository = new MockJobEmailStatusesRepository(mockJobEmailStatusesData);
 
 			_jobTriggerService = new JobTriggerService(
 				_loggingRepository,
 				_syncJobRepository,
-				_emailTypesRepository,
-				_jobEmailStatusesRepository,
+				_notificationTypesRepository,
+				_disabledJobNotificationRepository,
 				_serviceBusTopicsRepository,
 				_graphGroupRepository,
 				new MockKeyVaultSecret<IJobTriggerService>(),

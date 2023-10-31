@@ -27,8 +27,8 @@ namespace Services
 
         private readonly ILoggingRepository _loggingRepository;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
-        private readonly IEmailTypesRepository _emailTypesRepository;
-        private readonly IJobEmailStatusesRepository _jobEmailStatusesRepository;
+        private readonly INotificationTypesRepository _notificationTypesRepository;
+        private readonly IDisabledJobNotificationRepository _disabledJobNotificationRepository;
         private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly string _gmmAppId;
@@ -52,8 +52,8 @@ namespace Services
         public JobTriggerService(
             ILoggingRepository loggingRepository,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
-            IEmailTypesRepository databaseEmailTypesRepository,
-            IJobEmailStatusesRepository databaseJobEmailStatusesRepository,
+            INotificationTypesRepository databaseEmailTypesRepository,
+            IDisabledJobNotificationRepository databaseJobEmailStatusesRepository,
             IServiceBusTopicsRepository serviceBusTopicsRepository,
             IGraphGroupRepository graphGroupRepository,
             IKeyVaultSecret<IJobTriggerService> gmmAppId,
@@ -67,8 +67,8 @@ namespace Services
             _emailSenderAndRecipients = emailSenderAndRecipients;
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
-            _jobEmailStatusesRepository = databaseJobEmailStatusesRepository ?? throw new ArgumentNullException(nameof(databaseJobEmailStatusesRepository));
-			_emailTypesRepository = databaseEmailTypesRepository ?? throw new ArgumentNullException(nameof(databaseEmailTypesRepository));
+            _disabledJobNotificationRepository = databaseJobEmailStatusesRepository ?? throw new ArgumentNullException(nameof(databaseJobEmailStatusesRepository));
+			_notificationTypesRepository = databaseEmailTypesRepository ?? throw new ArgumentNullException(nameof(databaseEmailTypesRepository));
 			_serviceBusTopicsRepository = serviceBusTopicsRepository ?? throw new ArgumentNullException(nameof(serviceBusTopicsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _gmmAppId = gmmAppId.Secret;
@@ -138,13 +138,13 @@ namespace Services
 
         public async Task<bool> IsEmailDisabled(Guid jobId, string emailTemplateName)
         {
-            var emailTypeId = await _emailTypesRepository.GetEmailTypeIdByEmailTemplateName(emailTemplateName);
+            var emailTypeId = await _notificationTypesRepository.GetEmailTypeIdByEmailTemplateName(emailTemplateName);
 
             if (!emailTypeId.HasValue)
             {
                 return false; 
             }
-            return await _jobEmailStatusesRepository.IsEmailDisabledForJob(jobId, emailTypeId.Value);
+            return await _disabledJobNotificationRepository.IsEmailDisabledForJob(jobId, emailTypeId.Value);
         }
 
         public async Task UpdateSyncJobStatusAsync(SyncStatus status, SyncJob job)

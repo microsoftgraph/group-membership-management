@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Repositories.Mocks
 {
-    public class MockEmailTypesRepository : IEmailTypesRepository
+    public class MockEmailTypesRepository : INotificationTypesRepository
     {
 
         private readonly Dictionary<string, int?> _emailTemplateToIdMapping;
