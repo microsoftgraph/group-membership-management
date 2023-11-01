@@ -20,4 +20,3 @@
 - [ ] Deployed and tested in Int
 - [ ] Contributors have tested their changes in Int
 - [ ] Int dashboard indicates that GMM is stable
-- [ ] Today is not Friday
