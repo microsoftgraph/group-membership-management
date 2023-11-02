@@ -197,7 +197,6 @@ namespace Hosts.GraphUpdater
                                                         CcEmail = _emailSenderAndRecipients.SyncCompletedCCAddresses,
                                                         ContentTemplate = SyncCompletedEmailBody,
                                                         AdditionalContentParams = additionalContent,
-                                                        RunId = groupMembership.RunId,
                                                         SyncJob = syncJob,
                                                         AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory
                                                     });

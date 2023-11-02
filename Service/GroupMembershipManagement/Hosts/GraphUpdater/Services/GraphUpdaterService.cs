@@ -91,7 +91,7 @@ namespace Services
 
         public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, SyncJob syncJob, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
         {
-			bool isNotificationDisabled = await IsNotificationDisabled(syncJob.Id, contentTemplate);
+			bool isNotificationDisabled = await IsNotificationDisabled(syncJob, contentTemplate);
 
 			if (isNotificationDisabled)
 			{
@@ -114,7 +114,7 @@ namespace Services
                 AdditionalSubjectParams = additionalSubjectParams
             }, syncJob.RunId, adaptiveCardTemplateDirectory);
         }
-		public async Task<bool> IsNotificationDisabled(Guid jobId, string notificationTypeName)
+		public async Task<bool> IsNotificationDisabled(SyncJob syncJob, string notificationTypeName)
 		{
 			var notificationType = await _notificationTypesRepository.GetNotificationTypeByNotificationTypeName(notificationTypeName);
 
@@ -122,7 +122,7 @@ namespace Services
 			{
 				await _loggingRepository.LogMessageAsync(new LogMessage
 				{
-					RunId = jobId,
+					RunId = syncJob.RunId,
 					Message = $"No notification type ID found for notification type name '{notificationTypeName}'."
 				});
 				return false;
@@ -132,13 +132,13 @@ namespace Services
 			{
 				await _loggingRepository.LogMessageAsync(new LogMessage
 				{
-					RunId = jobId,
+					RunId = syncJob.RunId,
 					Message = $"Notifications of type '{notificationTypeName}' have been globally disabled."
 				});
 				return true;
 			}
 
-			return await _disabledJobNotificationRepository.IsNotificationDisabledForJob(jobId, notificationType.Id);
+			return await _disabledJobNotificationRepository.IsNotificationDisabledForJob(syncJob.Id, notificationType.Id);
 		}
 
 		public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)
