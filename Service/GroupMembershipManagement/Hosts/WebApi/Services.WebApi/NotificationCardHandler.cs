@@ -18,15 +18,18 @@ namespace Services.WebApi
         private readonly INotificationRepository _notificationRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IThresholdNotificationService _thresholdNotificationService;
+        private readonly IGMMEmailReceivers _gmmEmailReceivers;
 
         public NotificationCardHandler(ILoggingRepository loggingRepository,
             INotificationRepository notificationRepository,
             IGraphGroupRepository graphGroupRepository,
-            IThresholdNotificationService thresholdNotificationService) : base(loggingRepository)
+            IThresholdNotificationService thresholdNotificationService,
+            IGMMEmailReceivers gmmEmailReceivers) : base(loggingRepository)
         {
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _thresholdNotificationService = thresholdNotificationService ?? throw new ArgumentNullException(nameof(thresholdNotificationService));
+            _gmmEmailReceivers = gmmEmailReceivers ?? throw new ArgumentNullException(nameof(gmmEmailReceivers));
         }
 
         protected override async Task<NotificationCardResponse> ExecuteCoreAsync(NotificationCardRequest request)
@@ -45,10 +48,12 @@ namespace Services.WebApi
             if (!isGroupOwner)
             {
                 // Check if user is in the list of GMM Admins
-
-
-                // Unauthorized
-                response.CardJson = await _thresholdNotificationService.CreateUnauthorizedNotificationCardAsync(notification);
+                var isInAuthorizedGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(request.UserUPN, _gmmEmailReceivers.ActionableMessageViewerGroupId);
+                if (!isInAuthorizedGroup)
+                {
+                    // Unauthorized
+                    response.CardJson = await _thresholdNotificationService.CreateUnauthorizedNotificationCardAsync(notification);
+                }
             }
             else
             {

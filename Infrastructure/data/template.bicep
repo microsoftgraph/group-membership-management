@@ -155,7 +155,7 @@ param appConfigurationKeyData array = [
     tag: {
       tag1: 'JobTrigger'
     }
-  }        
+  }
   {
     key: 'JobTrigger:JobCountThreshold'
     value: '100'
@@ -264,6 +264,14 @@ param appConfigurationKeyData array = [
     key: 'Mail:IsAdaptiveCardEnabled'
     value: 'false'
     contentType: 'bool'
+    tag: {
+      tag1: 'Mail'
+    }
+  }
+  {
+    key: 'Mail:ActionableMessageViewerGroupId'
+    value: ''
+    contentType: 'string'
     tag: {
       tag1: 'Mail'
     }

@@ -92,6 +92,14 @@ namespace Repositories.GraphGroups
             return await _graphGroupOwnerReader.IsEmailRecipientOwnerOfGroupAsync(email, groupObjectId, RunId);
         }
 
+        public async Task<bool> IsEmailRecipientMemberOfGroupAsync(string email, Guid groupObjectId)
+        {
+            var groupExists = await _graphGroupInformationReader.GroupExistsAsync(groupObjectId, RunId);
+            if (!groupExists) return false;
+
+            return await _graphGroupMembershipReader.IsEmailRecipientMemberOfGroupAsync(email, groupObjectId, RunId);
+        }
+
         public async Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
         {
             return await _graphGroupOwnerReader.GetGroupOwnersAsync(groupObjectId, RunId, top);

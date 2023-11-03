@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using static Microsoft.Graph.Chats.Item.Members.MembersRequestBuilder;
@@ -358,6 +359,82 @@ namespace Repositories.GraphGroups
             });
 
             return response;
+        }
+
+        public async Task<bool> IsEmailRecipientMemberOfGroupAsync(string email, Guid groupObjectId, Guid? runId)
+        {
+
+            User user = null;
+
+            try
+            {
+                user = await _graphServiceClient.Users[email].GetAsync();
+            }
+            catch (ODataError ex)
+            {
+                if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+                    return false;
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = runId
+                });
+
+                throw;
+            }
+
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                RunId = runId,
+                Message = $"Checking if email owns the group {groupObjectId}."
+            });
+
+            return await IsGroupMemberAsync($"id eq '{user.Id}'", groupObjectId, runId);
+        }
+        private async Task<bool> IsGroupMemberAsync(string query, Guid groupObjectId, Guid? runId)
+        {
+            try
+            {
+                var nativeResponseHandler = new NativeResponseHandler();
+                var groupOwnersResponse = new DirectoryObjectCollectionResponse();
+
+                await _graphServiceClient.Groups[groupObjectId.ToString()]
+                                            .Members.GetAsync(requestConfiguration =>
+                                            {
+                                                requestConfiguration.QueryParameters.Filter = query;
+                                                requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                                            });
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse.IsSuccessStatusCode)
+                {
+                    groupOwnersResponse = await DeserializeResponseAsync(nativeResponse,
+                                                                         DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
+                }
+
+                var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
+                return groupOwnersResponse.Value?.Any() ?? false;
+            }
+            catch (ODataError ex)
+            {
+                if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+                    return false;
+
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = runId
+                });
+
+                throw;
+            }
         }
 
         private IEnumerable<IAzureADObject> ToEntities(IEnumerable<DirectoryObject> fromGraph)

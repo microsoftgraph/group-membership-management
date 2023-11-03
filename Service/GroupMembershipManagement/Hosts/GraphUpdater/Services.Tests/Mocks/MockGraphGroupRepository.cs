@@ -65,6 +65,11 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
+        public Task<bool> IsEmailRecipientMemberOfGroupAsync(string email, Guid groupObjectId)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
         {
             throw new NotImplementedException();

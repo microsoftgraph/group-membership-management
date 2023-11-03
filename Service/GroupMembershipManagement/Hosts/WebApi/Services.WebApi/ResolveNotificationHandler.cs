@@ -20,13 +20,15 @@ namespace Services
         private readonly IThresholdNotificationService _thresholdNotificationService;
         private readonly TelemetryClient _telemetryClient;
         private readonly ILoggingRepository _loggingRepository;
+        private readonly IGMMEmailReceivers _gmmEmailReceivers;
 
         public ResolveNotificationHandler(ILoggingRepository loggingRepository,
                               INotificationRepository notificationRepository,
                               IDatabaseSyncJobsRepository syncJobRepository,
                               IGraphGroupRepository graphGroupRepository,
                               TelemetryClient telemetryClient,
-                              IThresholdNotificationService thresholdNotificationService) : base(loggingRepository)
+                              IThresholdNotificationService thresholdNotificationService,
+                              IGMMEmailReceivers gmmEmailReceivers) : base(loggingRepository)
         {
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
@@ -34,6 +36,7 @@ namespace Services
             _thresholdNotificationService = thresholdNotificationService ?? throw new ArgumentNullException(nameof(thresholdNotificationService));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _gmmEmailReceivers = gmmEmailReceivers ?? throw new ArgumentNullException(nameof(gmmEmailReceivers));
         }
 
         protected override async Task<ResolveNotificationResponse> ExecuteCoreAsync(ResolveNotificationRequest request)
@@ -55,8 +58,14 @@ namespace Services
             var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserUPN, thresholdNotification.TargetOfficeGroupId);
             if (!isGroupOwner)
             {
-                response.CardJson = await _thresholdNotificationService.CreateUnauthorizedNotificationCardAsync(thresholdNotification);
-                return response;
+                // Check if user is in the list of GMM Admins
+                var isInAuthorizedGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(request.UserUPN, _gmmEmailReceivers.ActionableMessageViewerGroupId);
+                if (!isInAuthorizedGroup)
+                {
+                    // Unauthorized
+                    response.CardJson = await _thresholdNotificationService.CreateUnauthorizedNotificationCardAsync(thresholdNotification);
+                    return response;
+                }
             }
 
             if (thresholdNotification.Status != ThresholdNotificationStatus.Resolved)

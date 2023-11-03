@@ -71,11 +71,22 @@ namespace WebApi
                     .ConfigureRefresh(refreshOptions =>
                     {
                         refreshOptions.Register("WebAPI:Settings:Sentinel", refreshAll: true);
-                    });
+                    })
+                    .Select("Mail:*");
             });
 
             // Add services to the container.
             builder.Services.AddAzureAppConfiguration();
+
+            builder.Services.AddOptions<GMMEmailReceivers>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.ActionableMessageViewerGroupId = Guid.Parse(configuration.GetValue<string>("Mail:ActionableMessageViewerGroupId"));
+            });
+
+            builder.Services.AddSingleton<IGMMEmailReceivers>(services =>
+            {
+                return new GMMEmailReceivers(services.GetService<IOptions<GMMEmailReceivers>>().Value.ActionableMessageViewerGroupId);
+            });
 
             builder.Services.AddSingleton(sp =>
             {

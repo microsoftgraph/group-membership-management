@@ -47,6 +47,7 @@ namespace Services.Tests
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private ILocalizationRepository _localizationRepository = null!;
         private IThresholdNotificationService _thresholdNotificationService = null!;
+        private IGMMEmailReceivers _gmmEmailReceivers = null!;
         private IHandleInactiveJobsConfig _handleInactiveJobsConfig = null!;
         private ThresholdNotificationServiceConfig _thresholdNotificationServiceConfig = null!;
         private NotificationCardHandler _notificationCardHandler = null!;
@@ -185,17 +186,20 @@ namespace Services.Tests
             };
 
             _thresholdNotificationService = new ThresholdNotificationService(Options.Create(_thresholdNotificationServiceConfig), _graphGroupRepository.Object, _localizationRepository, _handleInactiveJobsConfig);
+            _gmmEmailReceivers = new GMMEmailReceivers(Guid.NewGuid());
 
             _resolveNotificationsHandler = new ResolveNotificationHandler(_loggingRepository.Object,
                 _notificationRepository.Object,
                 _syncJobRepository.Object,
                 _graphGroupRepository.Object,
                 _telemetryClient,
-                _thresholdNotificationService);
+                _thresholdNotificationService,
+                _gmmEmailReceivers);
             _notificationCardHandler = new NotificationCardHandler(_loggingRepository.Object,
                 _notificationRepository.Object,
                 _graphGroupRepository.Object,
-                _thresholdNotificationService);
+                _thresholdNotificationService,
+                _gmmEmailReceivers);
 
             var claims = new List<Claim>
             {
