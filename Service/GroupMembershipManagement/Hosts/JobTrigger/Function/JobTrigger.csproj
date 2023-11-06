@@ -5,7 +5,7 @@
     <UserSecretsId>41fcfc96-9608-4426-9cd8-181202f026a4</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Azure.Identity" Version="1.9.0" />
+    <PackageReference Include="Azure.Identity" Version="1.10.3" />
     <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" Version="2.11.3" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.2.0" />
