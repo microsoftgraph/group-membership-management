@@ -9,7 +9,7 @@ import { type JobDetails } from '../models/JobDetails';
 import { PatchJobRequest } from '../models/PatchJobRequest';
 import { PatchJobResponse } from '../models/PatchJobResponse';
 import { ThunkConfig } from './store';
-import { TokenType } from '../auth';
+import { TokenType } from '../services/auth';
 
 export const fetchJobDetails = createAsyncThunk<
   JobDetails,

@@ -7,7 +7,7 @@ import { SyncStatus, ActionRequired } from '../models/Status';
 import { config } from '../authConfig';
 import { type Job } from '../models/Job';
 import { ThunkConfig } from './store';
-import { TokenType } from '../auth';
+import { TokenType } from '../services/auth';
 
 export class OdataQueryOptions {
   pageSize?: number;

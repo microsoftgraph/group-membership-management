@@ -5,7 +5,7 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import { config } from '../authConfig';
 import { type Setting } from '../models/Settings';
 import { ThunkConfig } from './store';
-import { TokenType } from '../auth';
+import { TokenType } from '../services/auth';
 
 export const fetchSettingByKey = createAsyncThunk<Setting, string, ThunkConfig>(
   'settings/fetchSettingByKey',

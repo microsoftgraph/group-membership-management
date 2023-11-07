@@ -3,7 +3,7 @@
 
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { ThunkConfig } from './store';
-import { TokenType } from '../auth';
+import { TokenType } from '../services/auth';
 
 export const getProfile = createAsyncThunk<string, void, ThunkConfig>(
   'profile/getProfile',

@@ -3,7 +3,7 @@ import { config } from '../authConfig';
 import { OnboardingStatus } from '../models/GroupOnboardingStatus';
 import { Destination } from '../models/Destination';
 import { ThunkConfig } from './store';
-import { TokenType } from '../auth';
+import { TokenType } from '../services/auth';
 
 export class OdataQueryOptions {
   pageSize?: number;

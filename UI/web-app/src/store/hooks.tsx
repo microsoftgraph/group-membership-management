@@ -4,7 +4,7 @@
 import { type TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
 
 import type { RootState, AppDispatch } from './store';
-import { IStrings } from '../localization';
+import { IStrings } from '../services/localization';
 import { selectStrings } from './localization.slice';
 
 // Use throughout the app instead of plain `useDispatch` and `useSelector`

@@ -5,7 +5,7 @@ import { createSlice } from '@reduxjs/toolkit';
 
 import { setLanguage } from './localization.api';
 import type { RootState } from './store';
-import { defaultStrings, IStrings } from '../localization';
+import { defaultStrings, IStrings } from '../services/localization';
 
 // Define a type for the slice state
 export type LocalizationState = {

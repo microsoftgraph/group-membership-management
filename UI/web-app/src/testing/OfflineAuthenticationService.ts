@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { TokenType } from '../auth';
-import { IAuthenticationService } from '../auth';
+import { IAuthenticationService, TokenType } from '../services/auth';
 import { Account } from '../models/Account';
 
 export class OfflineAuthenticationService implements IAuthenticationService {

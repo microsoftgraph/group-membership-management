@@ -4,7 +4,7 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 
 import { ThunkConfig } from './store';
-import { IStrings, defaultLanguage } from '../localization';
+import { IStrings, defaultLanguage } from '../services/localization';
 
 export const setLanguage = createAsyncThunk<{ language: string; strings: IStrings }, string | undefined, ThunkConfig>(
   'localization/setLanguage',

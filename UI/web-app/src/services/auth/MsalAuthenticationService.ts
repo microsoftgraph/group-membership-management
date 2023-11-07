@@ -1,10 +1,31 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { AuthenticationResult, Configuration, PublicClientApplication, SilentRequest } from '@azure/msal-browser';
+import {
+  AuthenticationResult,
+  Configuration,
+  PublicClientApplication,
+  RedirectRequest,
+  SilentRequest,
+} from '@azure/msal-browser';
 import { IAuthenticationService } from './IAuthenticationService';
 import { TokenType } from './TokenType';
-import { Account } from '../models/Account';
+import { Account } from '../../models/Account';
+
+const gmmTokenRequest: SilentRequest = {
+  scopes: [`api://${process.env.REACT_APP_AAD_API_APP_CLIENT_ID}/user_impersonation`],
+};
+
+// The user will consent to both scopes, but only receive a token for the first.
+// This will prevent the user from having to consent again when a token is retrieve for the api.
+const loginRequest: RedirectRequest = {
+  scopes: ['User.Read'],
+  extraScopesToConsent: [`api://${process.env.REACT_APP_AAD_API_APP_CLIENT_ID}/user_impersonation`],
+};
+
+const graphTokenRequest: SilentRequest = {
+  scopes: ['User.Read'],
+};
 
 export class MsalAuthenticationService implements IAuthenticationService {
   private _initialized = false;
@@ -16,17 +37,6 @@ export class MsalAuthenticationService implements IAuthenticationService {
       redirectUri: '/',
       postLogoutRedirectUri: '/',
     },
-  };
-  private _gmmRequest: SilentRequest = {
-    scopes: [`api://${process.env.REACT_APP_AAD_API_APP_CLIENT_ID}/user_impersonation`],
-  };
-
-  private _loginRequest: SilentRequest = {
-    scopes: ['User.Read'],
-  };
-
-  private _graphRequest: SilentRequest = {
-    scopes: ['User.Read'],
   };
 
   constructor() {
@@ -50,14 +60,14 @@ export class MsalAuthenticationService implements IAuthenticationService {
         this._msalInstance.setActiveAccount(authenticationResult.account);
       } else {
         // if we are not logged in, start the login flow
-        await this._msalInstance.loginRedirect(this._loginRequest);
+        await this._msalInstance.loginRedirect(loginRequest);
       }
     } else {
       const accounts = this._msalInstance.getAllAccounts();
 
       // if we are not logged in, start the login flow
       if (accounts?.length === 0) {
-        await this._msalInstance.loginRedirect(this._loginRequest);
+        await this._msalInstance.loginRedirect(loginRequest);
       } else {
         // choose first account if there are multiple
         this._msalInstance.setActiveAccount(accounts[0]);
@@ -71,7 +81,7 @@ export class MsalAuthenticationService implements IAuthenticationService {
   }
 
   public async getTokenAsync(tokenType: TokenType): Promise<string> {
-    const request = tokenType === TokenType.GMM ? this._gmmRequest : this._graphRequest;
+    const request = tokenType === TokenType.GMM ? gmmTokenRequest : graphTokenRequest;
 
     const account = this.getActiveAccount();
     const tokenResponse = await this._msalInstance.acquireTokenSilent({

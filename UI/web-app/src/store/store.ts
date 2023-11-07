@@ -11,8 +11,9 @@ import ownerReducer from './owner.slice';
 import profileReducer from './profile.slice';
 import settingsReducer from './settings.slice';
 
-import { MsalAuthenticationService, IAuthenticationService } from '../auth';
-import { ILocalizationService, LocalizationService } from '../localization';
+import { Services } from '../services';
+import { MsalAuthenticationService } from '../services/auth';
+import { LocalizationService } from '../services/localization';
 
 // use OfflineAuthenticationService for offline development.
 const services: Services = {
@@ -39,11 +40,6 @@ export const store = configureStore({
       },
     }),
 });
-
-export type Services = {
-  authenticationService: IAuthenticationService;
-  localizationService: ILocalizationService;
-};
 
 export function setupStore(preloadedState?: PreloadedState<RootState>, serviceMocks?: Partial<Services>) {
   return configureStore({
