@@ -10,7 +10,7 @@ import {
 } from '@azure/msal-browser';
 import { IAuthenticationService } from './IAuthenticationService';
 import { TokenType } from './TokenType';
-import { Account } from '../../models/Account';
+import { User } from '../../models/User';
 
 const gmmTokenRequest: SilentRequest = {
   scopes: [`api://${process.env.REACT_APP_AAD_API_APP_CLIENT_ID}/user_impersonation`],
@@ -75,15 +75,17 @@ export class MsalAuthenticationService implements IAuthenticationService {
     }
   }
 
-  public getActiveAccount(): Account | undefined {
+  public getActiveAccount(): User | undefined {
     const activeAccount = this._msalInstance.getActiveAccount();
-    return !activeAccount ? undefined : { ...activeAccount };
+    return !activeAccount ? undefined : { id: activeAccount.localAccountId, name: activeAccount.name ?? '' };
   }
 
   public async getTokenAsync(tokenType: TokenType): Promise<string> {
     const request = tokenType === TokenType.GMM ? gmmTokenRequest : graphTokenRequest;
 
-    const account = this.getActiveAccount();
+    const account = this._msalInstance.getActiveAccount();
+    if (!account) throw new Error('No active account. Please call loginAsync first.');
+
     const tokenResponse = await this._msalInstance.acquireTokenSilent({
       ...request,
       account,

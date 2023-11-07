@@ -2,21 +2,14 @@
 // Licensed under the MIT license.
 
 import { IAuthenticationService, TokenType } from '../services/auth';
-import { Account } from '../models/Account';
+import { User } from '../models/User';
 
 export class OfflineAuthenticationService implements IAuthenticationService {
-
   // overridable properties
   public loginPromise: Promise<void> = Promise.resolve();
-  public activeAccount: Account | undefined = {
-    environment: 'testEnvironment',
-    homeAccountId: 'testHomeAccountId',
-    localAccountId: 'testLocalAccountId',
+  public activeAccount: User | undefined = {
+    id: 'testLocalAccountId',
     name: 'testName',
-    tenantId: 'testTenantId',
-    username: 'testUsername',
-    idToken: 'testIdToken',
-    nativeAccountId: 'testNativeAccountId',
   };
 
   public tokens: { readonly [key in TokenType]: Promise<string> } = {

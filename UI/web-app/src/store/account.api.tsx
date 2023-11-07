@@ -3,11 +3,11 @@
 
 import { createAsyncThunk } from '@reduxjs/toolkit';
 
-import { type Account } from '../models/Account';
+import { type User } from '../models/User';
 import { ThunkConfigWithErrors } from './store';
 import { setLoggingIn, setLoggedIn } from './account.slice';
 
-export const loginAsync = createAsyncThunk<Account, void, ThunkConfigWithErrors<string>>(
+export const loginAsync = createAsyncThunk<User, void, ThunkConfigWithErrors<string>>(
   'account/login',
   async (_, { rejectWithValue, dispatch, getState, extra }) => {
     const { authenticationService } = extra;

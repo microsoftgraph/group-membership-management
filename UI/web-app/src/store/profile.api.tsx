@@ -23,7 +23,7 @@ export const getProfile = createAsyncThunk<string, void, ThunkConfig>(
     const account = authenticationService.getActiveAccount();
 
     try {
-      let url = `https://graph.microsoft.com/v1.0/users/${account?.localAccountId}?$select=preferredLanguage`;
+      let url = `https://graph.microsoft.com/v1.0/users/${account?.id}?$select=preferredLanguage`;
       let response = await fetch(url, options).then((response) => response);
       const json = await response.json();
       const preferredLanguage = json.preferredLanguage;

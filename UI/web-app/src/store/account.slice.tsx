@@ -5,11 +5,11 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 import { loginAsync } from './account.api';
 import type { RootState } from './store';
-import { type Account } from '../models/Account';
+import { type User } from '../models/User';
 
 // Define a type for the slice state
 export interface AccountState {
-  account?: Account;
+  account?: User;
   loggedIn: boolean;
   loggingIn: boolean;
   loginError?: string;

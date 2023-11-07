@@ -2,10 +2,10 @@
 // Licensed under the MIT license.
 
 import { TokenType } from './TokenType';
-import { Account } from '../../models/Account';
+import { User } from '../../models/User';
 
 export interface IAuthenticationService {
   loginAsync: () => Promise<void>;
-  getActiveAccount(): Account | undefined;
+  getActiveAccount(): User | undefined;
   getTokenAsync: (tokenType: TokenType) => Promise<string>;
 }
