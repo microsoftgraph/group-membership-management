@@ -1,47 +1,71 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { AnyAction, ThunkDispatch, configureStore } from '@reduxjs/toolkit';
+import { PreloadedState, combineReducers, configureStore } from '@reduxjs/toolkit';
 
 import accountReducer from './account.slice';
 import jobsReducer from './jobs.slice';
+import localizationReducer from './localization.slice';
+import manageMembershipReducer from './manageMembership.slice';
 import ownerReducer from './owner.slice';
 import profileReducer from './profile.slice';
 import settingsReducer from './settings.slice';
-import manageMembershipReducer from './manageMembership.slice';
-import {
-  MsalAuthenticationService,
-  IAuthenticationService,
-} from '../auth';
+
+import { MsalAuthenticationService, IAuthenticationService } from '../auth';
+import { ILocalizationService, LocalizationService } from '../localization';
 
 // use OfflineAuthenticationService for offline development.
-const authenticationService = new MsalAuthenticationService();
+const services: Services = {
+  authenticationService: new MsalAuthenticationService(),
+  localizationService: new LocalizationService(),
+};
+
+const rootReducer = combineReducers({
+  account: accountReducer,
+  jobs: jobsReducer,
+  localization: localizationReducer,
+  manageMembership: manageMembershipReducer,
+  owner: ownerReducer,
+  profile: profileReducer,
+  settings: settingsReducer,
+});
 
 export const store = configureStore({
-  reducer: {
-    account: accountReducer,
-    jobs: jobsReducer,
-    owner: ownerReducer,
-    profile: profileReducer,
-    settings: settingsReducer,
-    manageMembership: manageMembershipReducer
-  },
+  reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       thunk: {
-        extraArgument: { authenticationService },
+        extraArgument: services,
       },
     }),
 });
 
 export type Services = {
   authenticationService: IAuthenticationService;
+  localizationService: ILocalizationService;
 };
+
+export function setupStore(preloadedState?: PreloadedState<RootState>, serviceMocks?: Partial<Services>) {
+  return configureStore({
+    reducer: rootReducer,
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({
+        thunk: {
+          extraArgument: {
+            ...services,
+            ...serviceMocks,
+          },
+        },
+      }),
+    preloadedState
+  })
+}
 
 // Infer the `RootState` and `AppDispatch` types from the store itself
 export type RootState = ReturnType<typeof store.getState>;
-// Inferred type: { jobs: userState }
+export type AppStore = ReturnType<typeof setupStore>
 export type AppDispatch = typeof store.dispatch;
-export type AppThunkDispatch = ThunkDispatch<RootState, Services, AnyAction>;
 
-export type ThunkConfig = { state: RootState; extra: Services };
+// Used by thunk actions to strongly type the 'extra' argument.
+export type ThunkConfig = { state: RootState; extra: Services; };
+export type ThunkConfigWithErrors<RejectValueType> = ThunkConfig & { rejectValue: RejectValueType; };

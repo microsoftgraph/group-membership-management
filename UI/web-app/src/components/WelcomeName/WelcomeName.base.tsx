@@ -14,7 +14,7 @@ import {
   IWelcomeNameStyleProps,
   IWelcomeNameStyles,
 } from './WelcomeName.types';
-import { useStrings } from '../../localization';
+import { useStrings } from '../../store/hooks';
 
 const getClassNames = classNamesFunction<
   IWelcomeNameStyleProps,

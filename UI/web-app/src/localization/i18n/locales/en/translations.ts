@@ -34,6 +34,9 @@ export const strings: IStrings = {
           invalidUrl: "Invalid URL"
       }
   },
+  Authentication: {
+    loginFailed: 'An unexpected error occurred during login.'
+  },
   JobDetails: {
     labels: {
       pageTitle: 'Membership Details',

@@ -1,2 +1,4 @@
-export { LocalizationProvider } from './LocalizationProvider';
-export { useLocalization, useStrings } from './LocalizationInternalProvider';
+export * from './defaults';
+export * from './ILocalizationService';
+export * from './LocalizationService';
+export * from './IStrings';

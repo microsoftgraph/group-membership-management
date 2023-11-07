@@ -31,6 +31,9 @@ export type IStrings = {
       invalidUrl: string;
     }
   },
+  Authentication: {
+    loginFailed: string;
+  },
   JobDetails: {
     labels: {
       pageTitle: string;

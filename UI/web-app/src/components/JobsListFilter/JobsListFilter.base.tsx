@@ -22,7 +22,7 @@ import {
 } from './JobsListFilter.types';
 import { SyncStatus } from '../../models/Status';
 import { useState } from 'react';
-import { useStrings } from '../../localization';
+import { useStrings } from '../../store/hooks';
 
 const getClassNames = classNamesFunction<
   IJobsListFilterStyleProps,

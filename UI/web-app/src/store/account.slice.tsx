@@ -3,52 +3,53 @@
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-import { fetchAccount } from './account.api';
+import { loginAsync } from './account.api';
 import type { RootState } from './store';
 import { type Account } from '../models/Account';
 
 // Define a type for the slice state
 export interface AccountState {
-  /** @deprecated */
-  loading: boolean;
   account?: Account;
   loggedIn: boolean;
   loggingIn: boolean;
+  loginError?: string;
 }
 
 // Define the initial state using that type
 const initialState: AccountState = {
-  loading: false,
   account: undefined,
   loggedIn: false,
-  loggingIn: false
+  loggingIn: false,
+  loginError: undefined,
 };
 
 export const accountSlice = createSlice({
   name: 'account',
   initialState,
   reducers: {
-    setAccount: (state, action: PayloadAction<Account>) => {
-      state.account = action.payload;
-    },
+    /** This should only be used within loginAsync. */
     setLoggedIn: (state, action: PayloadAction<boolean>) => {
       state.loggedIn = action.payload;
     },
+    /** This should only be used within loginAsync. */
     setLoggingIn: (state, action: PayloadAction<boolean>) => {
       state.loggingIn = action.payload;
-    }
+    },
   },
   extraReducers: (builder) => {
-    builder.addCase(fetchAccount.fulfilled, (state, action) => {
-      state.loading = false;
-      state.account = action.payload;
-    });
+    builder
+      .addCase(loginAsync.fulfilled, (state, action) => {
+        state.account = action.payload;
+      })
+      .addCase(loginAsync.rejected, (state, action) => {
+        state.loginError = action.payload;
+      });
   },
 });
 
-export const { setAccount, setLoggedIn, setLoggingIn } = accountSlice.actions;
+export const { setLoggedIn, setLoggingIn } = accountSlice.actions;
 export const selectAccount = (state: RootState) => state.account.account;
-export const selectAccountName = (state: RootState) =>
-  state.account.account?.name;
+export const selectAccountName = (state: RootState) => state.account.account?.name;
 export const selectLoggedIn = (state: RootState) => state.account.loggedIn;
+export const selectLoginError = (state: RootState) => state.account.loginError;
 export default accountSlice.reducer;

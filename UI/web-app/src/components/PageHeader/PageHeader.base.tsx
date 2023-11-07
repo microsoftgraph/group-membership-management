@@ -17,7 +17,7 @@ import {
   type IPageHeaderStyleProps,
   type IPageHeaderStyles,
 } from './PageHeader.types';
-import { useStrings } from '../../localization';
+import { useStrings } from '../../store/hooks';
 import { Banner } from '../Banner';
 
 const getClassNames = classNamesFunction<

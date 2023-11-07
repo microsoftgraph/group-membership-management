@@ -15,7 +15,7 @@ import {
 } from '@fluentui/react';
 import { IBannerProps, IBannerStyleProps, IBannerStyles } from './Banner.types';
 import { InfoIcon } from '@fluentui/react-icons-mdl2';
-import { useStrings } from '../../localization';
+import { useStrings } from '../../store/hooks';
 
 import { fetchSettingByKey } from '../../store/settings.api';
 import { selectSelectedSetting } from '../../store/settings.slice';

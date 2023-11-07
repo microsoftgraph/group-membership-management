@@ -36,6 +36,9 @@ export const strings: IStrings = {
           invalidUrl: "URL inválida"
       }
   },
+  Authentication: {
+    loginFailed: 'Ocurrió un error inesperado durante el inicio de sesión.'
+  },
   JobDetails: {
     labels: {
       pageTitle: 'Detalle de Membresía',

@@ -14,7 +14,7 @@ import {
   type IPageVersionStyleProps,
   type IPageVersionStyles,
 } from './PageVersion.types';
-import { useStrings } from '../../localization';
+import { useStrings } from '../../store/hooks';
 
 const getClassNames = classNamesFunction<
   IPageVersionStyleProps,

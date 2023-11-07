@@ -16,7 +16,7 @@ import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
 import { IManageMembershipProps, IManageMembershipStyleProps, IManageMembershipStyles } from './ManageMembership.types';
 import { AppDispatch } from '../../store';
-import { useStrings } from '../../localization';
+import { useStrings } from '../../store/hooks';
 import { OnboardingStep } from '../../components/OnboardingStep';
 import { AdvancedQuery } from '../../components/AdvancedQuery';
 import { SelectDestination } from '../../components/SelectDestination';

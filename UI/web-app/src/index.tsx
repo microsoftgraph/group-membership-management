@@ -8,14 +8,12 @@ import { Provider } from 'react-redux';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 import { App } from './App';
-import { LocalizationProvider } from './localization';
 import { AdminConfig, JobsPage, JobDetails, OwnerPage, ManageMembership } from './pages';
 import { store } from './store';
 
 initializeIcons();
 ReactDOM.render(
   <ThemeProvider>
-    <LocalizationProvider>
       <React.StrictMode>
         <Provider store={store}>
           <BrowserRouter>
@@ -31,7 +29,6 @@ ReactDOM.render(
           </BrowserRouter>
         </Provider>
       </React.StrictMode>
-    </LocalizationProvider>
   </ThemeProvider>,
 
   document.getElementById('root')

@@ -20,7 +20,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { selectSelectedSetting } from '../../store/settings.slice';
 import { fetchSettingByKey, updateSetting } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
-import { useStrings } from '../../localization';
+import { useStrings } from '../../store/hooks';
 
 const getClassNames = classNamesFunction<
     IAdminConfigStyleProps,

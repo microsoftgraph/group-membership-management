@@ -45,7 +45,7 @@ import {
 } from './JobDetails.types';
 import { JobDetails } from '../../models/JobDetails';
 import { PageVersion } from '../../components/PageVersion';
-import { useStrings } from '../../localization';
+import { useStrings } from '../../store/hooks';
 import { PatchJobRequest } from '../../models/PatchJobRequest';
 import { PatchJobResponse } from '../../models/PatchJobResponse';
 

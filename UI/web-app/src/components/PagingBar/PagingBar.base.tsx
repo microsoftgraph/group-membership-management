@@ -13,7 +13,7 @@ import {
 import {
     IPagingBarProps, IPagingBarStyleProps, IPagingBarStyles,
 } from './PagingBar.types';
-import { useStrings } from '../../localization';
+import { useStrings } from '../../store/hooks';
 
 
 const getClassNames = classNamesFunction<

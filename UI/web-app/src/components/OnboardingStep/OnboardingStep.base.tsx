@@ -13,7 +13,7 @@ import {
   IOnboardingStepStyleProps,
   IOnboardingStepStyles,
 } from './OnboardingStep.types';
-import { useStrings } from "../../localization";
+import { useStrings } from "../../store/hooks";
 import { PageSection } from "../PageSection";
 
 const getClassNames = classNamesFunction<

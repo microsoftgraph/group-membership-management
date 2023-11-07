@@ -16,11 +16,11 @@ import {
 } from './App.types';
 import { AppHeader } from '../components/AppHeader';
 import { Loader } from '../components/Loader';
-import { useLocalization } from '../localization';
 import { AppDispatch } from '../store';
-import { login } from '../store/account.api';
+import { loginAsync } from '../store/account.api';
 import { selectLoggedIn } from '../store/account.slice';
 import { selectProfile } from '../store/profile.slice';
+import { setLanguage } from '../store/localization.api';
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
@@ -37,19 +37,18 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
   const dispatch = useDispatch<AppDispatch>();
   const profile = useSelector(selectProfile);
   const loggedIn = useSelector(selectLoggedIn);
-  const localization = useLocalization();
-
+  
   // run once after load.
   useEffect(() => {
     if (!loggedIn) {
-      dispatch(login());
+      dispatch(loginAsync());
     }
   });
 
   // run if the localization context change or the user's preferred language changes.
   useEffect(() => {
-    localization.setUserPreferredLanguage(profile?.userPreferredLanguage);
-  }, [localization, profile?.userPreferredLanguage]);
+    dispatch(setLanguage(profile?.userPreferredLanguage));
+  }, [dispatch, profile?.userPreferredLanguage]);
 
   if (loggedIn) {
     return (

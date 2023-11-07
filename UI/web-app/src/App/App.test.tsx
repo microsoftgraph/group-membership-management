@@ -1,12 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 
 import { App } from './App';
+import { renderWithProviders } from '../testing';
+import { OfflineAuthenticationService } from '../testing/OfflineAuthenticationService';
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+test('renders header after login', () => {
+  const authenticationService = new OfflineAuthenticationService();
+  renderWithProviders(<App />, { serviceMocks: { authenticationService } });
+  expect(screen.getByText(/Membership Management/i)).toBeInTheDocument();
 });
