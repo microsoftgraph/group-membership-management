@@ -36,6 +36,13 @@ namespace Hosts.MembershipAggregator
                 else
                     syncJob.LastRunTime = DateTime.UtcNow;
 
+                if (request.DeltaStatus == Services.Entities.MembershipDeltaStatus.NoChanges)
+                {
+                    if (syncJob.IgnoreThresholdOnce) syncJob.IgnoreThresholdOnce = false;
+
+                    syncJob.LastSuccessfulRunTime = DateTime.UtcNow;
+                }
+
                 await _syncJobrespository.UpdateSyncJobsAsync(new[] { syncJob }, request.Status);
             }
 

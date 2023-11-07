@@ -80,7 +80,9 @@ namespace Services
         {
             var deltaResponse = new DeltaResponse
             {
-                MembershipDeltaStatus = MembershipDeltaStatus.Ok
+                MembershipDeltaStatus = MembershipDeltaStatus.Ok,
+                MembersToAdd = new List<AzureADUser>(),
+                MembersToRemove = new List<AzureADUser>()
             };
 
             var job = await _syncJobRepository.GetSyncJobAsync(sourceMembership.SyncJobId);
@@ -154,7 +156,7 @@ namespace Services
 
                     return deltaResponse;
                 }
-                else if(job.ThresholdViolations > 0)
+                else if (job.ThresholdViolations > 0)
                 {
                     await CloseUnresolvedThresholdNotificationAsync(job);
                 }
@@ -164,6 +166,9 @@ namespace Services
                     deltaResponse.MembershipDeltaStatus = MembershipDeltaStatus.DryRun;
                     return deltaResponse;
                 }
+
+                if (deltaResponse.MembersToAdd.Count == 0 && deltaResponse.MembersToRemove.Count == 0)
+                    deltaResponse.MembershipDeltaStatus = MembershipDeltaStatus.NoChanges;
             }
 
             return deltaResponse;
@@ -317,7 +322,7 @@ namespace Services
                 {
                     Id = Guid.NewGuid(),
                     SyncJobPartitionKey = job.Id.ToString(),
-                    SyncJobRowKey = job.Id.ToString(),        
+                    SyncJobRowKey = job.Id.ToString(),
                     SyncJobId = job.Id,
                     ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage,
                     ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage,

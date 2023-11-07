@@ -5,6 +5,7 @@ using Hosts.MembershipAggregator;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Graph.Models.Security;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
@@ -97,16 +98,22 @@ namespace Services.Tests
             _membersPerFile = new Dictionary<string, int>();
             _groupExists = PolicyResult<bool>.Successful(true, new Context());
 
+            var sourceGroupIdOne = Guid.NewGuid();
+            var sourceGroupIdTwo = Guid.NewGuid();
+            var targetGroupId = Guid.NewGuid();
+
             _syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                TargetOfficeGroupId = targetGroupId,
                 ThresholdPercentageForAdditions = 80,
                 ThresholdPercentageForRemovals = 20,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
                 RunId = Guid.NewGuid(),
-                ThresholdViolations = 0
+                ThresholdViolations = 0,
+                Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{targetGroupId}\"}}}}]",
+                Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdOne}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdTwo}\"}}]"
             };
 
             _membershipSubOrchestratorRequest = new MembershipSubOrchestratorRequest
@@ -258,7 +265,7 @@ namespace Services.Tests
         {
             _syncJob.LastRunTime = SqlDateTime.MinValue.Value;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNotNull(response.FilePath);
@@ -282,7 +289,7 @@ namespace Services.Tests
             _syncJob.ThresholdViolations = currentThresholdViolations;
 
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -317,7 +324,7 @@ namespace Services.Tests
             _syncJob.ThresholdViolations = currentThresholdViolations;
             _syncJob.IgnoreThresholdOnce = true;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
@@ -330,7 +337,7 @@ namespace Services.Tests
             _numberOfUsersForDestinationPart = 0;
             _syncJob.AllowEmptyDestination = true;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
@@ -347,7 +354,7 @@ namespace Services.Tests
             _numberOfUsersForSourcePart = 5;
             _syncJob.ThresholdViolations = 1;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -382,7 +389,7 @@ namespace Services.Tests
 
             _syncJob.ThresholdViolations = 4;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -421,7 +428,7 @@ namespace Services.Tests
             _syncJob.ThresholdViolations = 4;
             _numberOfUsersForDestinationPart = 0;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -459,7 +466,7 @@ namespace Services.Tests
             _syncJob.ThresholdViolations = 4;
             _numberOfUsersForSourcePart = 1;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -509,7 +516,7 @@ namespace Services.Tests
                                     _telemetryClient
                                 );
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -544,7 +551,7 @@ namespace Services.Tests
                                     _telemetryClient
                                 );
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -574,7 +581,7 @@ namespace Services.Tests
                                     _telemetryClient
                                 );
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -601,7 +608,7 @@ namespace Services.Tests
             _membersPerFile.Add(GenerateFileName(_syncJob, "SourceMembership", contextMock.Object), 100000);
             _membersPerFile.Add(GenerateFileName(_syncJob, "DestinationMembership", contextMock.Object), 0);
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("SourceMembership")),
@@ -665,7 +672,7 @@ namespace Services.Tests
                                     })
                                     .ReturnsAsync(() => _blobResult);
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
             Assert.AreEqual(0, response.ProjectedMemberCount);
         }
@@ -742,7 +749,7 @@ namespace Services.Tests
                                    })
                                    .ReturnsAsync(() => _blobResult);
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
             Assert.AreEqual(50000, response.ProjectedMemberCount);
         }
@@ -754,7 +761,7 @@ namespace Services.Tests
             _thresholdNotificationConfig.Setup(x => x.IsThresholdNotificationEnabled).Returns(true);
             _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsFollowUps).Returns(3);
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
@@ -770,7 +777,7 @@ namespace Services.Tests
             _syncJob.AllowEmptyDestination = false;
             _numberOfUsersForSourcePart = 0;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.IsNull(response.FilePath);
@@ -794,10 +801,66 @@ namespace Services.Tests
             _numberOfUsersForSourcePart = 0;
             _numberOfUsersForDestinationPart = 0;
 
-            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object);
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
-            Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
+            Assert.AreEqual(MembershipDeltaStatus.NoChanges, response.MembershipDeltaStatus);
+        }
+
+        [TestMethod]
+        public async Task TestNoMembershipChangesAsync()
+        {
+            _numberOfUsersForSourcePart = 5;
+            _numberOfUsersForDestinationPart = 10;
+
+            var usersFromQueryPart1 = Enumerable.Range(0, _numberOfUsersForSourcePart)
+                                                .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                .ToList();
+
+            var usersFromQueryPart2 = Enumerable.Range(0, _numberOfUsersForSourcePart)
+                                                .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
+                                                .ToList();
+
+            var usersFromDestination = usersFromQueryPart1.Concat(usersFromQueryPart2).ToList();
+
+            _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.IsAny<string>()))
+                        .Callback<string>(path =>
+                        {
+                            List<AzureADUser> users = null;
+                            if (path == _jobState.CompletedParts[0])
+                                users = usersFromQueryPart1;
+                            else if (path == _jobState.CompletedParts[1])
+                                users = usersFromQueryPart2;
+                            else if (path == _jobState.DestinationPart)
+                                users = usersFromDestination;
+
+                            var content = new GroupMembership
+                            {
+                                SyncJobId = _syncJob?.Id ?? Guid.Empty,
+                                MembershipObtainerDryRunEnabled = false,
+                                RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                Exclusionary = false,
+                                SourceMembers = users,
+                                Destination = new AzureADGroup
+                                {
+                                    ObjectId = _syncJob != null
+                                                    ? _syncJob.TargetOfficeGroupId
+                                                    : Guid.Empty
+                                }
+                            };
+
+                            _blobResult = new BlobResult
+                            {
+                                BlobStatus = BlobStatus.Found,
+                                Content = JsonConvert.SerializeObject(content)
+                            };
+                        })
+                        .ReturnsAsync(() => _blobResult);
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.NoChanges, response.MembershipDeltaStatus);
         }
 
         private async Task<(string FilePath, string Content)> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)

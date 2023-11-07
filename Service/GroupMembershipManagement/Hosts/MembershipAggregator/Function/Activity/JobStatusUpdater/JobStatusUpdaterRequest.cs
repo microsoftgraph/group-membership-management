@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
+using Services.Entities;
 
 namespace Hosts.MembershipAggregator
 {
@@ -10,5 +11,6 @@ namespace Hosts.MembershipAggregator
         public SyncStatus? Status { get; set; }
         public bool IsDryRun { get; set; }
         public int? ThresholdViolations { get; set; }
+        public MembershipDeltaStatus DeltaStatus { get; set; }
     }
 }
