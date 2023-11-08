@@ -103,8 +103,8 @@ namespace Hosts.GroupMembershipObtainer
                     else
                     {
                         // first check if delta file exists in cache folder
-                        var filePath = $"cache/delta_{request.SourceGroup.ObjectId}";
-                        var compressedDeltaFileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
+                        var deltaFilePath = $"cache/delta_{request.SourceGroup.ObjectId}";
+                        var compressedDeltaFileContent = await GetFileDownloaderFunction(context, deltaFilePath, request.SyncJob);
                         var deltaFileContent = TextCompressor.Decompress(compressedDeltaFileContent);
 
                         if (string.IsNullOrEmpty(deltaFileContent))
@@ -158,7 +158,7 @@ namespace Hosts.GroupMembershipObtainer
 
                                 deltaUsersToAdd.AddRange(deltaResponse.UsersToAdd);
                                 deltaUsersToRemove = deltaResponse.UsersToRemove;
-                                filePath = $"cache/{request.SourceGroup.ObjectId}";
+                                var filePath = $"cache/{request.SourceGroup.ObjectId}";
                                 var compressedCacheFileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
                                 var cacheFileContent = TextCompressor.Decompress(compressedCacheFileContent);
                                 var membership = JsonConvert.DeserializeObject<GroupMembership>(cacheFileContent);
@@ -175,6 +175,14 @@ namespace Hosts.GroupMembershipObtainer
                                 if (countOfUsersFromAADGroup != countOfUsersFromCache)
                                 {
                                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"{request.SourceGroup.ObjectId} has {countOfUsersFromAADGroup} users but cache has {countOfUsersFromCache} users. Running delta query..." });
+
+                                    // clear cache
+                                    await ClearCacheFunction(context, filePath, request.SyncJob);
+                                    await ClearCacheFunction(context, deltaFilePath, request.SyncJob);
+
+                                    var compressedResponse = await GetUsersReaderFunction(context, request);
+                                    var response = JsonConvert.DeserializeObject<UsersReaderResponse>(TextCompressor.Decompress(compressedResponse));
+                                    allUsers = response.Users;
                                 }
                                 else if (countOfUsersFromAADGroup == countOfUsersFromCache)
                                 {
@@ -246,6 +254,16 @@ namespace Hosts.GroupMembershipObtainer
                                                                 FilePath = filePath,
                                                                 SyncJob = syncJob
                                                             });
+        }
+
+        public async Task ClearCacheFunction(IDurableOrchestrationContext context, string filePath, SyncJob syncJob)
+        {
+            await context.CallActivityAsync(nameof(FileDeleterFunction),
+                                            new FileDeleterRequest
+                                            {
+                                                FilePath = filePath,
+                                                SyncJob = syncJob
+                                            });
         }
 
         public async Task<int> GetUsersCountFunction(IDurableOrchestrationContext context, Guid groupId, Guid runId)

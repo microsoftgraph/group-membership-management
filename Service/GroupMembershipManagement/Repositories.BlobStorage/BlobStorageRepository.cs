@@ -46,6 +46,16 @@ namespace Repositories.BlobStorage
             return new BlobResult { BlobStatus = BlobStatus.NotFound };
         }
 
+        public async Task DeleteFolderAsync(string path)
+        {
+            var blobItems = _containerClient.GetBlobsAsync(prefix: path);
+            await foreach (BlobItem blobItem in blobItems)
+            {
+                var blobClient = _containerClient.GetBlobClient(blobItem.Name);
+                await blobClient.DeleteIfExistsAsync();
+            }
+        }
+
         public async Task<BlobResult> DownloadCacheFileAsync(string path)
         {
             var latest = _containerClient.GetBlobs(prefix: path).OrderByDescending(m => m.Properties.LastModified).FirstOrDefault();

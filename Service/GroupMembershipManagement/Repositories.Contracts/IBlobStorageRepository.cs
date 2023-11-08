@@ -13,6 +13,7 @@ namespace Repositories.Contracts
         public Task DeleteFileAsync(string path);
         public Task<BlobResult> DownloadFileAsync(string path);
         public Task<BlobResult> DownloadCacheFileAsync(string path);
+        public Task DeleteFolderAsync(string path);
         public Task<BlobMetadataResult> GetBlobMetadataAsync(string path);
     }
 }
