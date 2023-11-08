@@ -39,6 +39,12 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task DeleteFolderAsync(string path)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<BlobMetadataResult> GetBlobMetadataAsync(string path)
         {
             throw new NotImplementedException();
