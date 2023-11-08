@@ -258,6 +258,8 @@ namespace Services.Tests
                             {
                                 await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
                             });
+
+            _durableContext.Setup(x => x.CallActivityAsync<SyncJob>(nameof(JobReaderFunction), It.IsAny<JobReaderRequest>())).ReturnsAsync(() => _syncJob);
         }
 
         [TestMethod]

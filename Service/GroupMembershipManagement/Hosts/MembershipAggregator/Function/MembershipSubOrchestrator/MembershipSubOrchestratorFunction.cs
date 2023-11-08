@@ -236,7 +236,15 @@ namespace Hosts.MembershipAggregator
                     IsInitialSync = $"{request.SyncJob.LastRunTime == SqlDateTime.MinValue.Value}"
                 };
 
-                TrackSyncCompleteEvent(context, request.SyncJob, syncCompleteEvent, "Success");
+                var dbSyncJob = await context.CallActivityAsync<SyncJob>(nameof(JobReaderFunction),
+                                       new JobReaderRequest
+                                       {
+                                           JobId = request.SyncJob.Id,
+                                           RunId = request.SyncJob.RunId.GetValueOrDefault()
+                                       });
+
+                if (!context.IsReplaying)
+                    TrackSyncCompleteEvent(context, dbSyncJob, syncCompleteEvent, "Success");
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                 new JobStatusUpdaterRequest
