@@ -47,7 +47,9 @@ Add the following variables to your build/release pipeline:
 
 ## Post-Deployment tasks
 
-* Go to the static web app in your compute resource group. You should see a URL in the Overview page. Copy that URL. Go to `<solutionAbbreviation>`-ui-`<environmentAbbreviation>` application in Microsoft Entra ID -> `Authentication` -> Add that URL as a Redirect URI -> Click `Save`
+* Go to the static web app in your compute resource group. You should see a URL in the Overview page. Copy that URL.
+    * Go to `<solutionAbbreviation>`-ui-`<environmentAbbreviation>` application in Microsoft Entra ID -> `Authentication` -> Add that URL as a Redirect URI -> Click `Save`
+    * Go to `<solutionAbbreviation>`-compute-`<environmentAbbreviation>`-webapi in your compute resource group -> CORS under API -> Add that URL as `Allowed Origins` -> Click `Save`
 
 ### Run UI locally
 
