@@ -10,25 +10,25 @@ using System.Threading.Tasks;
 
 namespace Hosts.JobTrigger
 {
-    public class JobStatusUpdaterFunction
+    public class JobUpdaterFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly IJobTriggerService _jobTriggerService = null;
-        public JobStatusUpdaterFunction(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
+        public JobUpdaterFunction(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService)); ;
         }
 
-        [FunctionName(nameof(JobStatusUpdaterFunction))]
-        public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
+        [FunctionName(nameof(JobUpdaterFunction))]
+        public async Task UpdateJobAsync([ActivityTrigger] JobUpdaterRequest request)
         {
             if (request.SyncJob != null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
                 _jobTriggerService.RunId = request.SyncJob.RunId ?? Guid.Empty;
-                await _jobTriggerService.UpdateSyncJobStatusAsync(request.Status, request.SyncJob);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                await _jobTriggerService.UpdateSyncJobAsync(request.Status, request.SyncJob);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
             }
         }

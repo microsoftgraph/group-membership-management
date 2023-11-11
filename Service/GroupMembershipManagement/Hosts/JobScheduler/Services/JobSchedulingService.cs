@@ -58,7 +58,7 @@ namespace Services
             return updatedJobs;
         }
 
-        public async Task<List<SyncJob>> GetSyncJobsSegmentAsync(bool includeFutureJobs)
+        public async Task<List<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs)
         {
             var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(includeFutureJobs, SyncStatus.All);
             return jobs.ToList();
@@ -102,8 +102,7 @@ namespace Services
             int bufferBetweenSyncsSeconds)
         {
             // Get all runtimes for destination groups
-            List<Guid> groupIds = syncJobsToDistribute.Select(job => job.TargetOfficeGroupId).ToList();
-            Dictionary<Guid, double> runtimeMap = await _runtimeRetrievalService.GetRunTimesInSecondsAsync(groupIds);
+            Dictionary<string, double> runtimeMap = await _runtimeRetrievalService.GetRunTimesInSecondsAsync();
 
             // Get a period to syncs mapping
             Dictionary<int, List<DistributionSyncJob>> periodToJobs = new Dictionary<int, List<DistributionSyncJob>>();
@@ -138,17 +137,17 @@ namespace Services
             int periodInHours,
             int startTimeDelayMinutes,
             int bufferBetweenSyncsSeconds,
-            Dictionary<Guid, double> runtimeMap)
+            Dictionary<string, double> runtimeMap)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Calculating distribution for jobs with period {periodInHours}" });
 
-            HashSet<Guid> groupIdsForPeriod = new HashSet<Guid>(jobsToDistribute.ConvertAll(job => job.TargetOfficeGroupId));
-            runtimeMap = new Dictionary<Guid, double>(runtimeMap.Where(entry => groupIdsForPeriod.Contains(entry.Key) || entry.Key == Guid.Empty));
+            HashSet<string> groupDestinationsForPeriod = new HashSet<string>(jobsToDistribute.ConvertAll(job => job.Destination));
+            runtimeMap = new Dictionary<string, double>(runtimeMap.Where(entry => groupDestinationsForPeriod.Contains(entry.Key) || entry.Key == "Default"));
 
             // Sort sync jobs by Status, LastRunTime
             jobsToDistribute.Sort();
 
-            double totalTimeInSeconds = runtimeMap.Values.Sum() + (jobsToDistribute.Count - runtimeMap.Count) * runtimeMap[Guid.Empty];
+            double totalTimeInSeconds = runtimeMap.Values.Sum() + (jobsToDistribute.Count - runtimeMap.Count) * runtimeMap["Default"];
 
             int concurrencyNumber = (int)Math.Ceiling(totalTimeInSeconds / (periodInHours * MINUTES_IN_HOUR * SECONDS_IN_MINUTE));
 
@@ -170,7 +169,7 @@ namespace Services
                 var updatedJob = JsonConvert.DeserializeObject<DistributionSyncJob>(serializedJob);
 
                 updatedJob.StartDate = earliestTime;
-                var groupRuntime = runtimeMap.ContainsKey(job.TargetOfficeGroupId) ? runtimeMap[job.TargetOfficeGroupId] : runtimeMap[Guid.Empty];
+                var groupRuntime = runtimeMap.ContainsKey(job.Destination) ? runtimeMap[job.Destination] : runtimeMap["Default"];
                 DateTime updatedTime = earliestTime.AddSeconds(groupRuntime + bufferBetweenSyncsSeconds);
                 int index = jobThreads.IndexOf(earliestTime);
                 jobThreads[index] = updatedTime;

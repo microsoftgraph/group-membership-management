@@ -37,6 +37,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\M
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework", "..\..\..\Repositories.EntityFramework\Repositories.EntityFramework.csproj", "{A1C3FEC2-A39F-4223-89BF-E7CBA6ECC10F}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework.Contexts", "..\..\..\Repositories.EntityFramework.Contexts\Repositories.EntityFramework.Contexts.csproj", "{A1A5C32D-2587-4480-B1B3-65097B828E36}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -107,6 +109,10 @@ Global
 		{A1C3FEC2-A39F-4223-89BF-E7CBA6ECC10F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1C3FEC2-A39F-4223-89BF-E7CBA6ECC10F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1C3FEC2-A39F-4223-89BF-E7CBA6ECC10F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1A5C32D-2587-4480-B1B3-65097B828E36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1A5C32D-2587-4480-B1B3-65097B828E36}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1A5C32D-2587-4480-B1B3-65097B828E36}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1A5C32D-2587-4480-B1B3-65097B828E36}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

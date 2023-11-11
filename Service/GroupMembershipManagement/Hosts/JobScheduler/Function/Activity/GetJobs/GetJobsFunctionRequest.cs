@@ -5,7 +5,7 @@ using Models;
 
 namespace Hosts.JobScheduler
 {
-    public class GetJobsSegmentedRequest
+    public class GetJobsFunctionRequest
     {
         public bool IncludeFutureJobs;
     }

@@ -38,7 +38,7 @@ namespace Hosts.JobScheduler
 
             var jobs = new List<DistributionSyncJob>();
 
-            var segmentResponse = await context.CallActivityAsync<GetJobsSegmentedResponse>(nameof(GetJobsSegmentedFunction), new GetJobsSegmentedRequest
+            var segmentResponse = await context.CallActivityAsync<GetJobsFunctionResponse>(nameof(GetJobsFunction), new GetJobsFunctionRequest
             {
                 IncludeFutureJobs = _jobSchedulerConfig.IncludeFutureJobs
             });

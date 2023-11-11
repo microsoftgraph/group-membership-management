@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace Hosts.JobScheduler
 {
-    public class GetJobsSegmentedResponse
+    public class GetJobsFunctionResponse
     {
         public List<DistributionSyncJob> JobsSegment { get; set; }
     }

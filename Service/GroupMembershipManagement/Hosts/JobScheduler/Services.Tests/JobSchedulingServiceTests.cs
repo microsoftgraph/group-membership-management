@@ -23,6 +23,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using MockDatabaseSyncJobRepository = Repositories.SyncJobs.Tests.MockDatabaseSyncJobRepository;
+using Newtonsoft.Json;
 
 namespace Services.Tests
 {
@@ -241,12 +242,12 @@ namespace Services.Tests
             var numberOfJobs = 5;
             var periodInHours = 1;
             var jobs = CreateSampleSyncJobs(numberOfJobs, periodInHours);
-            var groupRuntimes = new List<(Guid Id, double Max, double Avg)>();
+            var groupRuntimes = new List<(string Destination, double Max, double Avg)>();
             var max = 100.0;
             var avg = 5.0;
             foreach (var job in jobs)
             {
-                groupRuntimes.Add((job.TargetOfficeGroupId, max++, avg++));
+                groupRuntimes.Add((job.Destination, max++, avg++));
             }
 
             var queryResult = CreateLogsQueryResult(groupRuntimes);
@@ -275,7 +276,7 @@ namespace Services.Tests
             {
                 if (currentJobIndex > 0)
                 {
-                    var previousJobRunTime = groupRuntimes.First(x => x.Id == updatedJobs[currentJobIndex - 1].TargetOfficeGroupId);
+                    var previousJobRunTime = groupRuntimes.First(x => x.Destination == updatedJobs[currentJobIndex - 1].Destination);
                     baseStartDate = baseStartDate.AddSeconds(BUFFER_SECONDS + previousJobRunTime.Max);
                 }
 
@@ -299,7 +300,8 @@ namespace Services.Tests
                     StartDate = StartDateBase.AddDays(-1 * i),
                     Status = SyncStatus.Idle.ToString(),
                     TargetOfficeGroupId = Guid.NewGuid(),
-                    LastRunTime = LastRunTimeBase.AddDays(-1 * i)
+                    LastRunTime = LastRunTimeBase.AddDays(-1 * i),
+                    Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]"
                 };
 
                 jobs.Add(job);
@@ -308,7 +310,7 @@ namespace Services.Tests
             return jobs;
         }
 
-        private Response<LogsQueryResult> CreateLogsQueryResult(List<(Guid Id, double Max, double Avg)> groupRuntimes)
+        private Response<LogsQueryResult> CreateLogsQueryResult(List<(string Destination, double Max, double Avg)> groupRuntimes)
         {
             var columns = new List<LogsTableColumn>();
             var columnNames = new[] { "Destination", "MaxProcessingTime", "AvgProcessingTime" };
@@ -324,7 +326,8 @@ namespace Services.Tests
             var rowsList = new List<string>();
             foreach (var group in groupRuntimes)
             {
-                rowsList.Add($"[\"{group.Id}\",{group.Max},{group.Avg}]");
+                var destinationJson = JsonConvert.ToString(group.Destination);
+                rowsList.Add($"[{destinationJson},{group.Max},{group.Avg}]");
             }
 
             var tableJSON = $"{{\"name\":\"PrimaryResult\"," +

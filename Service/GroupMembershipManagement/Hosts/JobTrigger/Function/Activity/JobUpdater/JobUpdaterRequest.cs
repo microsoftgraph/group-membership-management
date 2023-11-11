@@ -4,9 +4,9 @@ using Models;
 
 namespace Hosts.JobTrigger
 {
-    public class JobStatusUpdaterRequest
+    public class JobUpdaterRequest
     {
-        public SyncStatus Status { get; set; }
+        public SyncStatus? Status { get; set; } = null;
         public SyncJob SyncJob { get; set; }
     }
 }

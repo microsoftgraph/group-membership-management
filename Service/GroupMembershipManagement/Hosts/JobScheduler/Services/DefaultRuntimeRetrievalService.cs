@@ -17,11 +17,11 @@ namespace Services
             DEFAULT_RUNTIME_SECONDS = defaultRuntimeSeconds;
         }
 
-        public Task<Dictionary<Guid, double>> GetRunTimesInSecondsAsync(List<Guid> groupIds)
+        public Task<Dictionary<string, double>> GetRunTimesInSecondsAsync()
         {
-            Dictionary<Guid, double> runtimes = new Dictionary<Guid, double>();
+            Dictionary<string, double> runtimes = new Dictionary<string, double>();
 
-            runtimes.Add(Guid.Empty, DEFAULT_RUNTIME_SECONDS);
+            runtimes.Add("Default", DEFAULT_RUNTIME_SECONDS);
 
             return Task.FromResult(runtimes);
         }

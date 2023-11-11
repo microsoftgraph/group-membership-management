@@ -24,9 +24,9 @@ namespace Services
             _logsQueryClient = logsQueryClient;
         }
 
-        public async Task<Dictionary<Guid, double>> GetRunTimesInSecondsAsync(List<Guid> groupIds)
+        public async Task<Dictionary<string, double>> GetRunTimesInSecondsAsync()
         {
-            var runtimes = new Dictionary<Guid, double>();
+            var runtimes = new Dictionary<string, double>();
 
             if (_jobSchedulerConfig.GetRunTimeFromLogs)
             {
@@ -42,21 +42,21 @@ namespace Services
                 {
                     foreach (var row in queryResults.Value.Table.Rows)
                     {
-                        var destinationGroupId = row.GetGuid("Destination");
+                        var destinationString = row.GetString("Destination");
                         var groupRuntime = row.GetDouble(metricToUse);
                         var runtime = !groupRuntime.HasValue || groupRuntime <= 0
                                         ? _jobSchedulerConfig.DefaultRuntimeSeconds
                                         : groupRuntime.Value;
 
-                        if (!destinationGroupId.HasValue || destinationGroupId == Guid.Empty)
+                        if (destinationString == "N/A" || destinationString == "")
                             continue;
 
-                        runtimes.Add(destinationGroupId.Value, runtime);
+                        runtimes.Add(destinationString, runtime);
                     }
                 }
             }
 
-            runtimes.Add(Guid.Empty, _jobSchedulerConfig.DefaultRuntimeSeconds);
+            runtimes.Add("Default", _jobSchedulerConfig.DefaultRuntimeSeconds);
 
             return runtimes;
         }

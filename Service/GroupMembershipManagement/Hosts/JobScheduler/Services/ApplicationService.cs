@@ -68,7 +68,7 @@ namespace Services
 
         private async Task<List<DistributionSyncJob>> GetSyncJobsAsync(bool includeFutureJobs)
         {
-            var jobs = await _jobSchedulingService.GetSyncJobsSegmentAsync(includeFutureJobs);
+            var jobs = await _jobSchedulingService.GetSyncJobsAsync(includeFutureJobs);
             return jobs.Select(x => new DistributionSyncJob(x)).ToList();
         }
 

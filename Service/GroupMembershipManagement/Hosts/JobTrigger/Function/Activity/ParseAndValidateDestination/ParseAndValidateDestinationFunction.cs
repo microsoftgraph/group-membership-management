@@ -23,7 +23,7 @@ namespace Hosts.JobTrigger
         }
 
         [FunctionName(nameof(ParseAndValidateDestinationFunction))]
-        public async Task<(bool IsValid, DestinationObject DestinationObject)> ParseAndValidateDestinationAsync([ActivityTrigger] SyncJob syncJob)
+        public async Task<(bool IsValid, AzureADGroup DestinationObject)> ParseAndValidateDestinationAsync([ActivityTrigger] SyncJob syncJob)
         {
 
             if (syncJob == null) return (false, null);

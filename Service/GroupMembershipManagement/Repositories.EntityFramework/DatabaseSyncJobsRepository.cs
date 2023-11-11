@@ -81,7 +81,7 @@ namespace Repositories.EntityFramework
             return await query.CountAsync();
         }
 
-		public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status)
+		public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus? status)
         {
             await UpdateSyncJobsAsync(jobs, status: status);
         }

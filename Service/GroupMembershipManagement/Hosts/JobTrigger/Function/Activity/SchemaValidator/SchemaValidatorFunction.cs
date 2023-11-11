@@ -95,7 +95,7 @@ namespace JobTrigger.Activity.SchemaValidator
             if (!isValidJson)
             {
                 _jobTriggerService.RunId = syncJob.RunId ?? Guid.Empty;
-                await _jobTriggerService.UpdateSyncJobStatusAsync(SyncStatus.SchemaError, syncJob);
+                await _jobTriggerService.UpdateSyncJobAsync(SyncStatus.SchemaError, syncJob);
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SchemaValidatorFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);

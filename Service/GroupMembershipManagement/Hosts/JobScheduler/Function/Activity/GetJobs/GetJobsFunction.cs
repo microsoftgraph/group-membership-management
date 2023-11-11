@@ -13,24 +13,24 @@ using Entities;
 
 namespace Hosts.JobScheduler
 {
-    public class GetJobsSegmentedFunction
+    public class GetJobsFunction
     {
         private readonly IJobSchedulingService _jobSchedulingService = null;
         private readonly ILoggingRepository _loggingRepository = null;
-        public GetJobsSegmentedFunction(IJobSchedulingService jobSchedulingService, ILoggingRepository loggingRepository)
+        public GetJobsFunction(IJobSchedulingService jobSchedulingService, ILoggingRepository loggingRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _jobSchedulingService = jobSchedulingService ?? throw new ArgumentNullException(nameof(jobSchedulingService));
         }
 
-        [FunctionName(nameof(GetJobsSegmentedFunction))]
-        public async Task<GetJobsSegmentedResponse> GetJobsToUpdateAsync([ActivityTrigger] GetJobsSegmentedRequest request)
+        [FunctionName(nameof(GetJobsFunction))]
+        public async Task<GetJobsFunctionResponse> GetJobsToUpdateAsync([ActivityTrigger] GetJobsFunctionRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            var tableQuerySegment = await _jobSchedulingService.GetSyncJobsSegmentAsync(request.IncludeFutureJobs);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsSegmentedFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
+            var tableQuerySegment = await _jobSchedulingService.GetSyncJobsAsync(request.IncludeFutureJobs);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
-            return new GetJobsSegmentedResponse
+            return new GetJobsFunctionResponse
             {
                 JobsSegment = tableQuerySegment.Select(x => new DistributionSyncJob(x)).ToList()
             };

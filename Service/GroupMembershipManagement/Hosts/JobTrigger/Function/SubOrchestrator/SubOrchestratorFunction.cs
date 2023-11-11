@@ -5,7 +5,10 @@ using JobTrigger.Activity.SchemaValidator;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Graph.Models.TermStore;
 using Models;
+using Models.Entities;
+using Models.ServiceBus;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
@@ -15,6 +18,7 @@ using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
 using System.Threading.Tasks;
+using static Microsoft.Azure.Amqp.Serialization.SerializableType;
 
 namespace Hosts.JobTrigger
 {
@@ -57,7 +61,7 @@ namespace Hosts.JobTrigger
                                 Message = $"Job is stuck InProgress after retry, setting status to ErroredDueToStuckInProgress"
                             });
 
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.ErroredDueToStuckInProgress, SyncJob = syncJob });
+                    await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.ErroredDueToStuckInProgress, SyncJob = syncJob });
                     return;
                 }
 
@@ -73,11 +77,11 @@ namespace Hosts.JobTrigger
 
                 var frequency = await context.CallActivityAsync<int>(nameof(JobTrackerFunction), syncJob);
 
-                DestinationObject destinationObject = null;
+                AzureADGroup destinationObject = null;
 
                 try
                 {
-                    var parsedAndValidatedDestination = await context.CallActivityAsync<(bool IsValid, DestinationObject DestinationObject)>(nameof(ParseAndValidateDestinationFunction), syncJob);
+                    var parsedAndValidatedDestination = await context.CallActivityAsync<(bool IsValid, AzureADGroup DestinationObject)>(nameof(ParseAndValidateDestinationFunction), syncJob);
                     destinationObject = parsedAndValidatedDestination.DestinationObject;
 
                     if (!parsedAndValidatedDestination.IsValid)
@@ -90,10 +94,22 @@ namespace Hosts.JobTrigger
                                 Message = $"Destination query is empty or missing required fields for job:{syncJob.Id}"
                             });
 
-                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.DestinationQueryNotValid, SyncJob = syncJob });
+                        await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.DestinationQueryNotValid, SyncJob = syncJob });
                         await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationQueryNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
                         return;
                     }
+
+                    if (destinationObject.Type == "GroupMembership")
+                    {
+                        syncJob.Destination = $"[{{\"type\":\"{destinationObject.Type}\",\"value\":{{\"objectId\":\"{destinationObject.ObjectId}\"}}}}]";
+                    }
+                    else if (destinationObject.Type == "TeamsChannelMembership")
+                    {
+                        syncJob.Destination = $"[{{\"type\":\"{destinationObject.Type}\",\"value\":{{\"objectId\":\"{destinationObject.ObjectId}\",\"channelId\":\"{(destinationObject as AzureADTeamsChannel).ChannelId}\"}}}}]";
+                    }
+
+                    await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { SyncJob = syncJob });
+
                 }
                 catch (JsonReaderException)
                 {
@@ -105,7 +121,7 @@ namespace Hosts.JobTrigger
                                 Message = $"Destination query is not valid for job:{syncJob.Id}"
                             });
 
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.DestinationQueryNotValid, SyncJob = syncJob });
+                    await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.DestinationQueryNotValid, SyncJob = syncJob });
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationQueryNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
                     return;
                 }
@@ -115,11 +131,11 @@ namespace Hosts.JobTrigger
                 {
                     if (syncJob.Status == SyncStatus.Idle.ToString())
                     {
-                        TrackIdleJobsEvent(frequency, destinationObject.Value.ObjectId);
+                        TrackIdleJobsEvent(frequency, destinationObject.ObjectId);
                     }
                     else if (syncJob.Status == SyncStatus.InProgress.ToString())
                     {
-                        TrackInProgressJobsEvent(frequency, destinationObject.Value.ObjectId, syncJob.RunId);
+                        TrackInProgressJobsEvent(frequency, destinationObject.ObjectId, syncJob.RunId);
                     }
                 }
 
@@ -153,7 +169,7 @@ namespace Hosts.JobTrigger
                                     Message = $"Source query is not valid for job:{syncJob.Id}"
                                 });
 
-                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
+                        await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
                         await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.QueryNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
                         return;
                     }
@@ -168,14 +184,14 @@ namespace Hosts.JobTrigger
                             Message = $"Source query is empty for job:{syncJob.Id}"
                         });
 
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
+                    await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.QueryNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
                     return;
                 }
 
                 if (!context.IsReplaying)
                 {
-                    TrackExclusionaryEvent(syncJob.Query, destinationObject.Value.ObjectId);
+                    TrackExclusionaryEvent(syncJob.Query, destinationObject.ObjectId);
                 }
 
                 var groupInformation = await context.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), syncJob);
@@ -190,14 +206,14 @@ namespace Hosts.JobTrigger
                                                         EmailContentTemplateName = SyncDisabledNoGroupEmailBody,
                                                         AdditionalContentParams = new[]
                                                         {
-                                                        destinationObject.Value.ObjectId.ToString(),
+                                                        destinationObject.ObjectId.ToString(),
                                                         _emailSenderAndRecipients.SyncDisabledCCAddresses
                                                         },
                                                         FunctionDirectory = executionContext.FunctionAppDirectory
                                                     });
 
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                                    new JobStatusUpdaterRequest { Status = SyncStatus.DestinationGroupNotFound, SyncJob = syncJob });
+                    await context.CallActivityAsync(nameof(JobUpdaterFunction),
+                                                    new JobUpdaterRequest { Status = SyncStatus.DestinationGroupNotFound, SyncJob = syncJob });
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationGroupNotFound, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
                     return;
                 }
@@ -211,7 +227,7 @@ namespace Hosts.JobTrigger
                                                         EmailContentTemplateName = SyncStartedEmailBody,
                                                         AdditionalContentParams = new[]
                                                         {
-                                                            destinationObject.Value.ObjectId.ToString(),
+                                                            destinationObject.ObjectId.ToString(),
                                                             groupInformation.Name,
                                                             _emailSenderAndRecipients.SupportEmailAddresses,
                                                             _gmmResources.LearnMoreAboutGMMUrl,
@@ -237,7 +253,7 @@ namespace Hosts.JobTrigger
                     statusValue = SyncStatus.InProgress;
                 }
 
-                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = statusValue, SyncJob = syncJob });
+                await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = statusValue, SyncJob = syncJob });
 
                 if (canWriteToGroup)
                 {
@@ -257,8 +273,8 @@ namespace Hosts.JobTrigger
                         Message = $"Caught unexpected exception in {nameof(SubOrchestratorFunction)}, marking sync job as errored. Exception:\n{ex.Message}."
                     });
 
-                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                    new JobStatusUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob });
+                await context.CallActivityAsync(nameof(JobUpdaterFunction),
+                    new JobUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob });
 
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
                 return;

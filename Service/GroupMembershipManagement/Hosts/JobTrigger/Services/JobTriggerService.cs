@@ -10,6 +10,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
+using Models.Entities;
+using Azure.Storage.Blobs.Models;
 
 namespace Services
 {
@@ -92,7 +94,7 @@ namespace Services
 
         public async Task<string> GetGroupNameAsync(SyncJob job)
         {
-            var destinationObjectId = (await ParseAndValidateDestinationAsync(job)).DestinationObject.Value.ObjectId;
+            var destinationObjectId = (await ParseDestinationAsync(job)).ObjectId;
             return await _graphGroupRepository.GetGroupNameAsync(destinationObjectId);
         }
 
@@ -114,7 +116,7 @@ namespace Services
 
             if (!SyncDisabledNoGroupEmailBody.Equals(emailContentTemplateName, StringComparison.InvariantCultureIgnoreCase))
             {
-                var destinationObjectId = (await ParseAndValidateDestinationAsync(job)).DestinationObject.Value.ObjectId;
+                var destinationObjectId = (await ParseDestinationAsync(job)).ObjectId;
                 var owners = await _graphGroupRepository.GetGroupOwnersAsync(destinationObjectId);
                 ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
             }
@@ -163,7 +165,7 @@ namespace Services
             return await _jobNotificationRepository.IsNotificationDisabledForJobAsync(jobId, notificationType.Id);
         }
 
-        public async Task UpdateSyncJobStatusAsync(SyncStatus status, SyncJob job)
+        public async Task UpdateSyncJobAsync(SyncStatus? status, SyncJob job)
         {
             if (status == SyncStatus.InProgress)
             {
@@ -198,7 +200,7 @@ namespace Services
 
         public async Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job, string templateDirectory = "")
         {
-            var destinationObjectId = (await ParseAndValidateDestinationAsync(job)).DestinationObject.Value.ObjectId;
+            var destinationObjectId = (await ParseDestinationAsync(job)).ObjectId;
 
             foreach (var strat in new JobVerificationStrategy[] {
                 new JobVerificationStrategy { TestFunction = _graphGroupRepository.GroupExists, StatusMessage = $"Destination group {destinationObjectId} exists.", ErrorMessage = $"destination group {destinationObjectId} doesn't exist.", EmailBody = SyncDisabledNoGroupEmailBody },
@@ -240,13 +242,19 @@ namespace Services
 
         public async Task<List<string>> GetGroupEndpointsAsync(SyncJob job)
         {
-            var destinationObjectId = (await ParseAndValidateDestinationAsync(job)).DestinationObject.Value.ObjectId;
+            var destinationObjectId = (await ParseDestinationAsync(job)).ObjectId;
             return await _graphGroupRepository.GetGroupEndpointsAsync(destinationObjectId);
         }
 
-        public async Task<(bool IsValid, DestinationObject DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob)
+        public async Task<(bool IsValid, AzureADGroup DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob)
         {
-            if (string.IsNullOrWhiteSpace(syncJob.Destination)) return (false, null);
+            var destinationObject = await ParseDestinationAsync(syncJob);
+            return destinationObject == null ? (false, null) : (true, destinationObject);
+        }
+
+        public async Task<AzureADGroup> ParseDestinationAsync(SyncJob syncJob)
+        {
+            if (string.IsNullOrWhiteSpace(syncJob.Destination)) return null;
 
             JObject destinationQuery = JArray.Parse(syncJob.Destination)[0] as JObject;
             Guid objectIdGuid;
@@ -255,36 +263,30 @@ namespace Services
             if (destinationQuery["value"] == null ||
                 destinationQuery["type"] == null ||
                 destinationQuery["value"].SelectToken("objectId") == null ||
-                !Guid.TryParse(destinationQuery["value"]["objectId"].Value<string>(), out objectIdGuid)) return (false, null);
+                !Guid.TryParse(destinationQuery["value"]["objectId"].Value<string>(), out objectIdGuid)) return null;
 
             type = destinationQuery["type"].Value<string>();
 
             if (type == "TeamsChannelMembership")
             {
-                if (destinationQuery["value"].SelectToken("channelId") == null) return (false, null);
+                if (destinationQuery["value"].SelectToken("channelId") == null) return null;
 
-                return (true, new DestinationObject
+                return new AzureADTeamsChannel
                 {
                     Type = type,
-                    Value = new TeamsChannelDestinationValue
-                    {
-                        ObjectId = objectIdGuid,
-                        ChannelId = destinationQuery["value"]["channelId"].Value<string>()
-                    }
-                });
+                    ObjectId = objectIdGuid,
+                    ChannelId = destinationQuery["value"]["channelId"].Value<string>()
+                };
             }
             else if (type == "GroupMembership")
             {
-                return (true, new DestinationObject
+                return new AzureADGroup
                 {
                     Type = type,
-                    Value = new GroupDestinationValue
-                    {
-                        ObjectId = objectIdGuid,
-                    }
-                });
+                    ObjectId = objectIdGuid
+                };
             }
-            else { return (false, null); }
+            else { return null; }
         }
 
         private class JobVerificationStrategy

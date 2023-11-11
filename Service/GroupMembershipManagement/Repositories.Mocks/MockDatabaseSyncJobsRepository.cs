@@ -72,7 +72,7 @@ namespace Repositories.Mocks
             return await Task.FromResult(job);
         }
 
-        public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status)
+        public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus? status)
         {
             foreach (var job in jobs)
             {
