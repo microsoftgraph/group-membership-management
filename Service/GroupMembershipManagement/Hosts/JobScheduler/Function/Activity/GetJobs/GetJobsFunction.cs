@@ -24,13 +24,13 @@ namespace Hosts.JobScheduler
         }
 
         [FunctionName(nameof(GetJobsFunction))]
-        public async Task<GetJobsFunctionResponse> GetJobsToUpdateAsync([ActivityTrigger] GetJobsFunctionRequest request)
+        public async Task<GetJobsResponse> GetJobsToUpdateAsync([ActivityTrigger] GetJobsRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
             var tableQuerySegment = await _jobSchedulingService.GetSyncJobsAsync(request.IncludeFutureJobs);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
-            return new GetJobsFunctionResponse
+            return new GetJobsResponse
             {
                 JobsSegment = tableQuerySegment.Select(x => new DistributionSyncJob(x)).ToList()
             };
