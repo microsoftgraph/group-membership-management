@@ -40,7 +40,7 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
-        public Task DeleteFolderAsync(string path)
+        public Task DeleteFilesAsync(string path)
         {
             throw new NotImplementedException();
         }

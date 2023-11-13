@@ -25,7 +25,7 @@ namespace Hosts.GroupMembershipObtainer
         public async Task DeleteFileAsync([ActivityTrigger] FileDeleterRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleting file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-            await _blobStorageRepository.DeleteFolderAsync(request.FilePath);
+            await _blobStorageRepository.DeleteFilesAsync(request.FilePath);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleted file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
         }
     }

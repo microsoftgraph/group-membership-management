@@ -46,7 +46,7 @@ namespace Repositories.BlobStorage
             return new BlobResult { BlobStatus = BlobStatus.NotFound };
         }
 
-        public async Task DeleteFolderAsync(string path)
+        public async Task DeleteFilesAsync(string path)
         {
             var blobItems = _containerClient.GetBlobsAsync(prefix: path);
             await foreach (BlobItem blobItem in blobItems)
