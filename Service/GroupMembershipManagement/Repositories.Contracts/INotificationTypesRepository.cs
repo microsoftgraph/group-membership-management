@@ -10,7 +10,7 @@ namespace Repositories.Contracts
 {
     public interface INotificationTypesRepository
     {
-        Task<NotificationType> GetNotificationTypeByNotificationTypeName(string notificationTypeName);
+        Task<NotificationType> GetNotificationTypeByNotificationTypeNameAsync(string notificationTypeName);
 
     }
 }       

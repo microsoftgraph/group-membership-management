@@ -20,7 +20,7 @@ namespace Repositories.Mocks
 			_jobNotification = jobNotification ?? new Dictionary<(Guid, int), bool>();
         }
 
-        public Task<bool> IsNotificationDisabledForJob(Guid jobId, int notificationTypeId)
+        public Task<bool> IsNotificationDisabledForJobAsync(Guid jobId, int notificationTypeId)
         {
             if (_jobNotification.TryGetValue((jobId, notificationTypeId), out bool isDisabled))
             {

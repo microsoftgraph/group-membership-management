@@ -20,7 +20,7 @@ namespace Repositories.Mocks
 			_notificationNameToTypeMapping = notificationNameToTypeMapping ?? new Dictionary<string, NotificationType>();
 		}
 
-		public async Task<NotificationType> GetNotificationTypeByNotificationTypeName(string notificationName)
+		public async Task<NotificationType> GetNotificationTypeByNotificationTypeNameAsync(string notificationName)
 		{
 			if (_notificationNameToTypeMapping.TryGetValue(notificationName, out NotificationType notificationType))
 			{

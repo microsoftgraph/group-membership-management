@@ -19,7 +19,7 @@ namespace Repositories.EntityFramework
             _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
 
-        public async Task<bool> IsNotificationDisabledForJob(Guid jobId, int notificationTypeId)
+        public async Task<bool> IsNotificationDisabledForJobAsync(Guid jobId, int notificationTypeId)
         {
             return await _readContext.JobNotifications
                 .AnyAsync(j => j.SyncJobId == jobId && j.NotificationTypeID == notificationTypeId && j.Disabled);
