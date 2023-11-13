@@ -76,6 +76,13 @@ namespace Repositories.EntityFramework.Contexts.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
 
+            migrationBuilder.DropForeignKey(
+                name: "FK_jobNotifications_SyncJobs_SyncJobId",
+                table: "JobNotifications");
+            migrationBuilder.DropForeignKey(
+                name: "FK_jobNotifications_NotificationTypes_NotificationTypeID",
+                table: "JobNotifications");
+
             migrationBuilder.DropTable(
                 name: "JobNotifications");
 
