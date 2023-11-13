@@ -29,7 +29,7 @@ namespace Services.Tests
         private JobTriggerService _jobTriggerService = null;
         private MockDatabaseSyncJobRepository _syncJobRepository = null;
         private MockNotificationTypesRepository _notificationTypesRepository = null;
-        private MockDisabledJobNotificationRepository _disabledJobNotificationRepository = null;
+        private MockJobNotificationRepository _jobNotificationRepository = null;
         private MockLoggingRepository _loggingRepository = null;
         private MockServiceBusTopicsRepository _serviceBusTopicsRepository = null;
         private MockGraphGroupRepository _graphGroupRepository;
@@ -53,7 +53,7 @@ namespace Services.Tests
 
             _syncJobRepository = new MockDatabaseSyncJobRepository();
             _notificationTypesRepository = new MockNotificationTypesRepository();
-            _disabledJobNotificationRepository = new MockDisabledJobNotificationRepository();
+            _jobNotificationRepository = new MockJobNotificationRepository();
             _loggingRepository = new MockLoggingRepository();
             _serviceBusTopicsRepository = new MockServiceBusTopicsRepository();
             _graphGroupRepository = new MockGraphGroupRepository();
@@ -63,7 +63,7 @@ namespace Services.Tests
                                         _loggingRepository,
                                         _syncJobRepository,
                                         _notificationTypesRepository,
-                                        _disabledJobNotificationRepository,
+                                        _jobNotificationRepository,
                                         _serviceBusTopicsRepository,
                                         _graphGroupRepository,
                                         new MockKeyVaultSecret<IJobTriggerService>(), _mailRepository,
@@ -355,7 +355,7 @@ namespace Services.Tests
                 _loggingRepository,
                 _syncJobRepository,
                 _notificationTypesRepository,
-                _disabledJobNotificationRepository,
+                _jobNotificationRepository,
                 _serviceBusTopicsRepository,
                 _graphGroupRepository,
                 new MockKeyVaultSecret<IJobTriggerService>(),
@@ -402,7 +402,7 @@ namespace Services.Tests
                 _loggingRepository,
                 _syncJobRepository,
                 _notificationTypesRepository,
-				_disabledJobNotificationRepository,
+				_jobNotificationRepository,
 				_serviceBusTopicsRepository,
                 _graphGroupRepository,
                 new MockKeyVaultSecret<IJobTriggerService>(),
@@ -443,7 +443,7 @@ namespace Services.Tests
                 _loggingRepository,
                 _syncJobRepository,
 				_notificationTypesRepository,
-				_disabledJobNotificationRepository,
+				_jobNotificationRepository,
 				_serviceBusTopicsRepository,
                 _graphGroupRepository,
                 new MockKeyVaultSecret<IJobTriggerService>(),
@@ -483,7 +483,7 @@ namespace Services.Tests
                 _loggingRepository,
                 _syncJobRepository,
 			    _notificationTypesRepository,
-				_disabledJobNotificationRepository,
+				_jobNotificationRepository,
 				_serviceBusTopicsRepository,
                 _graphGroupRepository,
                 new MockKeyVaultSecret<IJobTriggerService>(),
@@ -529,17 +529,17 @@ namespace Services.Tests
 			var _notificationTypesRepository = new MockNotificationTypesRepository(mockNotificationTypesData);
 
 			var jobId = job.Id;
-			var mockDisabledJobNotificationData = new Dictionary<(Guid, int), bool>
+			var mockJobNotificationData = new Dictionary<(Guid, int), bool>
 	        {
 		        { (jobId, notificationTypeId), true }
 	        };
-			var _disabledJobNotificationRepository = new MockDisabledJobNotificationRepository(mockDisabledJobNotificationData);
+			var _jobNotificationRepository = new MockJobNotificationRepository(mockJobNotificationData);
 
 			_jobTriggerService = new JobTriggerService(
 				_loggingRepository,
 				_syncJobRepository,
 				_notificationTypesRepository,
-				_disabledJobNotificationRepository,
+				_jobNotificationRepository,
 				_serviceBusTopicsRepository,
 				_graphGroupRepository,
 				new MockKeyVaultSecret<IJobTriggerService>(),
@@ -573,13 +573,13 @@ namespace Services.Tests
 
 			var jobId = job.Id;
 
-			var _disabledJobNotificationRepository = new MockDisabledJobNotificationRepository();
+			var _jobNotificationRepository = new MockJobNotificationRepository();
 
 			_jobTriggerService = new JobTriggerService(
 				_loggingRepository,
 				_syncJobRepository,
 				_notificationTypesRepository,
-				_disabledJobNotificationRepository,
+				_jobNotificationRepository,
 				_serviceBusTopicsRepository,
 				_graphGroupRepository,
 				new MockKeyVaultSecret<IJobTriggerService>(),

@@ -27,7 +27,7 @@ namespace Services
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
 		private readonly INotificationTypesRepository _notificationTypesRepository;
-		private readonly IDisabledJobNotificationRepository _disabledJobNotificationRepository;
+		private readonly IJobNotificationsRepository _jobNotificationRepository;
 		private Guid _runId;
         public Guid RunId
         {
@@ -47,7 +47,7 @@ namespace Services
                 IEmailSenderRecipient emailSenderAndRecipients,
                 IDatabaseSyncJobsRepository syncJobRepository,
 				INotificationTypesRepository notificationTypesRepository,
-			    IDisabledJobNotificationRepository disabledJobNotificationRepository)
+			    IJobNotificationsRepository jobNotificationRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
@@ -55,7 +55,7 @@ namespace Services
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
-			_disabledJobNotificationRepository = disabledJobNotificationRepository ?? throw new ArgumentNullException(nameof(disabledJobNotificationRepository));
+			_jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
 			_notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
 		}
 
@@ -138,7 +138,7 @@ namespace Services
 				return true;
 			}
 
-			return await _disabledJobNotificationRepository.IsNotificationDisabledForJob(syncJob.Id, notificationType.Id);
+			return await _jobNotificationRepository.IsNotificationDisabledForJob(syncJob.Id, notificationType.Id);
 		}
 
 		public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)

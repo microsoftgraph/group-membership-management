@@ -28,7 +28,7 @@ namespace Services
         private readonly ILoggingRepository _loggingRepository;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly INotificationTypesRepository _notificationTypesRepository;
-        private readonly IDisabledJobNotificationRepository _disabledJobNotificationRepository;
+        private readonly IJobNotificationsRepository _jobNotificationRepository;
         private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly string _gmmAppId;
@@ -53,7 +53,7 @@ namespace Services
             ILoggingRepository loggingRepository,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             INotificationTypesRepository notificationTypesRepository,
-            IDisabledJobNotificationRepository disabledJobNotificationRepository,
+            IJobNotificationsRepository jobNotificationRepository,
             IServiceBusTopicsRepository serviceBusTopicsRepository,
             IGraphGroupRepository graphGroupRepository,
             IKeyVaultSecret<IJobTriggerService> gmmAppId,
@@ -67,7 +67,7 @@ namespace Services
             _emailSenderAndRecipients = emailSenderAndRecipients;
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
-            _disabledJobNotificationRepository = disabledJobNotificationRepository ?? throw new ArgumentNullException(nameof(disabledJobNotificationRepository));
+            _jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
 			_notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
 			_serviceBusTopicsRepository = serviceBusTopicsRepository ?? throw new ArgumentNullException(nameof(serviceBusTopicsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
@@ -160,7 +160,7 @@ namespace Services
                 return true;
             }
 
-            return await _disabledJobNotificationRepository.IsNotificationDisabledForJob(jobId, notificationType.Id);
+            return await _jobNotificationRepository.IsNotificationDisabledForJob(jobId, notificationType.Id);
         }
 
         public async Task UpdateSyncJobStatusAsync(SyncStatus status, SyncJob job)

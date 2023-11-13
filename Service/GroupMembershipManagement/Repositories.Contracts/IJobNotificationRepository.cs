@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Repositories.Contracts
 {
-    public interface IDisabledJobNotificationRepository
+    public interface IJobNotificationsRepository
     {
         Task<bool> IsNotificationDisabledForJob(Guid jobId, int notificationTypeId);
     }

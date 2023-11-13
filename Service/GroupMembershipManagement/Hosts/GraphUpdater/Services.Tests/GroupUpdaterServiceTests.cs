@@ -28,8 +28,8 @@ namespace Services.Tests
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
-			var mockDisabledJobNotification = new MockDisabledJobNotificationRepository();
-			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockDisabledJobNotification);
+			var mockJobNotification = new MockJobNotificationRepository();
+			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockJobNotification);
 
             var runId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
@@ -60,8 +60,8 @@ namespace Services.Tests
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
-			var mockDisabledJobNotification = new MockDisabledJobNotificationRepository();
-			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockDisabledJobNotification);
+			var mockJobNotification = new MockJobNotificationRepository();
+			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockJobNotification);
 
             var runId = Guid.NewGuid();
             var groupId = Guid.NewGuid();

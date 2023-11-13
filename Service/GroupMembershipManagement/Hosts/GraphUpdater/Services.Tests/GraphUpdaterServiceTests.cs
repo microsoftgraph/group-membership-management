@@ -40,13 +40,13 @@ namespace Services.Tests
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
             var mockNotificationType = new MockNotificationTypesRepository();
-            var mockDisabledJobNotification = new MockDisabledJobNotificationRepository();
+            var mockJobNotification = new MockJobNotificationRepository();
             var samplePageResponse = GetPageSampleResponse(100, true);
             var userCount = 100;
             mockGraphGroup.Setup(x => x.GetFirstTransitiveMembersPageAsync(It.IsAny<Guid>())).ReturnsAsync(samplePageResponse);
             mockGraphGroup.SetupAllProperties();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockDisabledJobNotification);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockJobNotification);
 
             var groupId = Guid.NewGuid();
             var runId = Guid.NewGuid();
@@ -71,12 +71,12 @@ namespace Services.Tests
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
-			var mockDisabledJobNotification = new MockDisabledJobNotificationRepository();
+			var mockJobNotification = new MockJobNotificationRepository();
 			var samplePageResponse = GetPageSampleResponse(100, true);
             var userCount = 100;
             mockGraphGroup.Setup(x => x.GetNextTransitiveMembersPageAsync(It.IsAny<string>())).ReturnsAsync(samplePageResponse);
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockDisabledJobNotification);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockJobNotification);
 
             var groupId = Guid.NewGuid();
             var runId = Guid.NewGuid();
@@ -97,8 +97,8 @@ namespace Services.Tests
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
-			var mockDisabledJobNotification = new MockDisabledJobNotificationRepository();
-			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs,mockNotificationType,mockDisabledJobNotification);
+			var mockJobNotification = new MockJobNotificationRepository();
+			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs,mockNotificationType,mockJobNotification);
 
             var groupId = Guid.NewGuid();
             var runId = Guid.NewGuid();
@@ -120,8 +120,8 @@ namespace Services.Tests
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
-			var mockDisabledJobNotification = new MockDisabledJobNotificationRepository();
-			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockDisabledJobNotification);
+			var mockJobNotification = new MockJobNotificationRepository();
+			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockJobNotification);
 			var lastRunTime = DateTime.UtcNow.AddDays(-1);
 
 			var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.Idle.ToString(), LastRunTime = lastRunTime };
@@ -154,12 +154,12 @@ namespace Services.Tests
 				{ notificationName, new NotificationType { Id = notificationTypeId, Disabled = false } }
 			};
 			var mockNotificationType = new MockNotificationTypesRepository(mockNotificationTypesData);
-			var mockDisabledJobNotificationData = new Dictionary<(Guid, int), bool>
+			var mockJobNotificationData = new Dictionary<(Guid, int), bool>
 			{
 				{ (job.Id, notificationTypeId), true }
 			};
-			var mockDisabledJobNotification = new MockDisabledJobNotificationRepository(mockDisabledJobNotificationData);
-			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockDisabledJobNotification);
+			var mockJobNotification = new MockJobNotificationRepository(mockJobNotificationData);
+			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockJobNotification);
 			await graphUpdaterService.SendEmailAsync(toEmail, notificationName, new string[0] { }, job);
 			Assert.AreEqual(0, mockMail.SentEmails.Count);
 		}
@@ -185,8 +185,8 @@ namespace Services.Tests
 				{ notificationName, new NotificationType { Id = notificationTypeId, Disabled = true } }
 			};
 			var mockNotificationType = new MockNotificationTypesRepository(mockNotificationTypesData);
-			var mockDisabledJobNotification = new MockDisabledJobNotificationRepository();
-			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockDisabledJobNotification);
+			var mockJobNotification = new MockJobNotificationRepository();
+			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockJobNotification);
 			await graphUpdaterService.SendEmailAsync(toEmail, notificationName, new string[0] { }, job);
 			Assert.AreEqual(0, mockMail.SentEmails.Count);
 		}
@@ -200,9 +200,9 @@ namespace Services.Tests
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
-			var mockDisabledJobNotification = new MockDisabledJobNotificationRepository();
+			var mockJobNotification = new MockJobNotificationRepository();
 
-			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType,mockDisabledJobNotification);
+			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType,mockJobNotification);
 
             var runId = Guid.NewGuid();
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
@@ -228,8 +228,8 @@ namespace Services.Tests
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
-			var mockDisabledJobNotification = new MockDisabledJobNotificationRepository();
-			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType,mockDisabledJobNotification);
+			var mockJobNotification = new MockJobNotificationRepository();
+			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType,mockJobNotification);
 
             var runId = Guid.NewGuid();
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
@@ -255,8 +255,8 @@ namespace Services.Tests
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
-			var mockDisabledJobNotification = new MockDisabledJobNotificationRepository();
-			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs,mockNotificationType,mockDisabledJobNotification);
+			var mockJobNotification = new MockJobNotificationRepository();
+			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs,mockNotificationType,mockJobNotification);
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
             var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.InProgress.ToString(), LastRunTime = lastRunTime };
 
@@ -279,8 +279,8 @@ namespace Services.Tests
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
-			var mockDisabledJobNotification = new MockDisabledJobNotificationRepository();
-			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockNotificationType,mockDisabledJobNotification);
+			var mockJobNotification = new MockJobNotificationRepository();
+			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockNotificationType,mockJobNotification);
 
             var groupName = "MyTestGroup";
             mockGraphGroup.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>())).ReturnsAsync(groupName);
@@ -322,8 +322,8 @@ namespace Services.Tests
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
-			var mockDisabledJobNotification = new MockDisabledJobNotificationRepository();
-			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockDisabledJobNotification);
+			var mockJobNotification = new MockJobNotificationRepository();
+			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockJobNotification);
 
             var groupOwner = "owner@test.com";
             mockGraphGroup.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<String>(), It.IsAny<Guid>())).ReturnsAsync(true);
@@ -343,8 +343,8 @@ namespace Services.Tests
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
-			var mockDisabledJobNotification = new MockDisabledJobNotificationRepository();
-			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockDisabledJobNotification);
+			var mockJobNotification = new MockJobNotificationRepository();
+			var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockJobNotification);
 
             var groupOwner = "nonowner@test.com";
             mockGraphGroup.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<String>(), It.IsAny<Guid>())).ReturnsAsync(false);

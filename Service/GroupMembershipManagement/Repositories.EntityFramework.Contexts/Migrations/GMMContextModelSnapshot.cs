@@ -22,7 +22,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
 
-            modelBuilder.Entity("Models.DisabledJobNotification", b =>
+            modelBuilder.Entity("Models.JobNotification", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -45,7 +45,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.HasIndex("SyncJobId", "NotificationTypeID")
                         .IsUnique();
 
-                    b.ToTable("DisabledJobNotifications");
+                    b.ToTable("JobNotifications");
                 });
 
             modelBuilder.Entity("Models.NotificationType", b =>
@@ -225,7 +225,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.ToTable("SyncJobs", (string)null);
                 });
 
-            modelBuilder.Entity("Models.DisabledJobNotification", b =>
+            modelBuilder.Entity("Models.JobNotification", b =>
                 {
                     b.HasOne("Models.NotificationType", "NotificationType")
                         .WithMany()

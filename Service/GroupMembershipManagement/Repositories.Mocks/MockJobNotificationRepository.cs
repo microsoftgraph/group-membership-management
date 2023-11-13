@@ -11,18 +11,18 @@ using System.Threading.Tasks;
 
 namespace Repositories.Mocks
 {
-    public class MockDisabledJobNotificationRepository : IDisabledJobNotificationRepository
+    public class MockJobNotificationRepository : IJobNotificationsRepository
     {
-        private readonly Dictionary<(Guid, int), bool> _disabledJobNotification;
+        private readonly Dictionary<(Guid, int), bool> _jobNotification;
 
-        public MockDisabledJobNotificationRepository(Dictionary<(Guid, int), bool> disabledJobNotification = null)
+        public MockJobNotificationRepository(Dictionary<(Guid, int), bool> jobNotification = null)
         {
-			_disabledJobNotification = disabledJobNotification ?? new Dictionary<(Guid, int), bool>();
+			_jobNotification = jobNotification ?? new Dictionary<(Guid, int), bool>();
         }
 
         public Task<bool> IsNotificationDisabledForJob(Guid jobId, int notificationTypeId)
         {
-            if (_disabledJobNotification.TryGetValue((jobId, notificationTypeId), out bool isDisabled))
+            if (_jobNotification.TryGetValue((jobId, notificationTypeId), out bool isDisabled))
             {
                 return Task.FromResult(isDisabled);
             }

@@ -25,7 +25,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "DisabledJobNotifications",
+                name: "JobNotifications",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false, defaultValueSql: "NEWSEQUENTIALID()"),
@@ -35,15 +35,15 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DisabledJobNotifications", x => x.Id);
+                    table.PrimaryKey("PK_jobNotifications", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_DisabledJobNotifications_NotificationTypes_NotificationTypeID",
+                        name: "FK_jobNotifications_NotificationTypes_NotificationTypeID",
                         column: x => x.NotificationTypeID,
                         principalTable: "NotificationTypes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_DisabledJobNotifications_SyncJobs_SyncJobId",
+                        name: "FK_jobNotifications_SyncJobs_SyncJobId",
                         column: x => x.SyncJobId,
                         principalTable: "SyncJobs",
                         principalColumn: "Id",
@@ -61,13 +61,13 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                 values: new object[] { 2, "SyncCompletedEmailBody", false });
 
             migrationBuilder.CreateIndex(
-                name: "IX_DisabledJobNotifications_NotificationTypeID",
-                table: "DisabledJobNotifications",
+                name: "IX_jobNotifications_NotificationTypeID",
+                table: "JobNotifications",
                 column: "NotificationTypeID");
 
             migrationBuilder.CreateIndex(
-                name: "IX_DisabledJobNotifications_SyncJobId_NotificationTypeID",
-                table: "DisabledJobNotifications",
+                name: "IX_jobNotifications_SyncJobId_NotificationTypeID",
+                table: "JobNotifications",
                 columns: new[] { "SyncJobId", "NotificationTypeID" },
                 unique: true);
 
@@ -77,7 +77,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
         {
 
             migrationBuilder.DropTable(
-                name: "DisabledJobNotifications");
+                name: "JobNotifications");
 
             migrationBuilder.DropTable(
                 name: "NotificationTypes");

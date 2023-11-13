@@ -10,7 +10,7 @@ using Models;
 namespace Models
 {
     [IgnoreLogging]
-    public class DisabledJobNotification
+    public class JobNotification
     {
         [Key]
         public Guid Id { get; set; }
