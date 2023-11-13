@@ -18,7 +18,7 @@ import {
   ISelectDestinationStyleProps,
   ISelectDestinationStyles,
 } from './SelectDestination.types';
-import { useStrings } from "../../localization/";
+import { useStrings } from "../../localization";
 import { PageSection } from "../PageSection";
 import { AppDispatch } from '../../store';
 import { searchDestinations } from '../../store/manageMembership.api';

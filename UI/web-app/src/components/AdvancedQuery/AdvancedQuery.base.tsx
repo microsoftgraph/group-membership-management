@@ -16,7 +16,7 @@ import {
   IAdvancedQueryStyleProps,
   IAdvancedQueryStyles,
 } from './AdvancedQuery.types';
-import { useStrings } from "../../localization/";
+import { useStrings } from "../../localization";
 import schemaDefinition from '../../Query.json';
 import { AppDispatch } from '../../store';
 import { setIsQueryValid, setNewJobQuery } from '../../store/manageMembership.slice';
