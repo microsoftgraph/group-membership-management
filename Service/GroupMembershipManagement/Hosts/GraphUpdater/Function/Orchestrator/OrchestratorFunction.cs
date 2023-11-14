@@ -110,8 +110,7 @@ namespace Hosts.GraphUpdater
                                            {
                                                RunId = groupMembership.RunId,
                                                GroupId = groupMembership.Destination.ObjectId,
-                                               JobId = groupMembership.SyncJobId,
-                                               AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory
+                                               JobId = groupMembership.SyncJobId
                                            });
 
                 if (!isValidGroup)
@@ -197,8 +196,7 @@ namespace Hosts.GraphUpdater
                                                         CcEmail = _emailSenderAndRecipients.SyncCompletedCCAddresses,
                                                         ContentTemplate = SyncCompletedEmailBody,
                                                         AdditionalContentParams = additionalContent,
-                                                        SyncJob = syncJob,
-                                                        AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory
+                                                        SyncJob = syncJob
                                                     });
                 }
 

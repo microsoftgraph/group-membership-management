@@ -54,7 +54,7 @@ namespace Repositories.Mocks
             return await Task.FromResult(groupExists);
         }
 
-        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, SyncJob syncJob, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
+        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, SyncJob syncJob, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)
         {
             var message = new EmailMessage
             {
@@ -106,11 +106,6 @@ namespace Repositories.Mocks
             var allOwners = Groups[groupObjectId].Owners;
             var userOwners = allOwners == null ? new List<User>() : allOwners.OfType<User>().ToList();
             return Task.FromResult(userOwners.Select(x => new AzureADUser { ObjectId = Guid.Parse(x.Id) }).ToList());
-        }
-
-        public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, SyncJob syncJob, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)
-        {
-            throw new NotImplementedException();
         }
     }
 }

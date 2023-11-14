@@ -9,6 +9,5 @@ namespace Hosts.GraphUpdater
         public Guid RunId { get; set; }
         public Guid GroupId { get; set; }
         public Guid JobId { get; set; }
-        public string AdaptiveCardTemplateDirectory { get; set; }
     }
 }

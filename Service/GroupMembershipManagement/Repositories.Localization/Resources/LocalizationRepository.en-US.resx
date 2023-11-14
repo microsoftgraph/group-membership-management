@@ -914,6 +914,93 @@
       "originator": "${$root.providerId}"
   }</value>
   </data>
+  <data name="DefaultCardTemplate" xml:space="preserve">
+    <value> {
+      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+      "type": "AdaptiveCard",
+      "originator": "{0}",
+      "version": "1.0",
+      "body": [
+          {
+              "type": "ColumnSet",
+              "id": "1ede2aba-61b9-faa0-9895-9ed0c26b2e6f",
+              "columns": [
+                  {
+                      "type": "Column",
+                      "id": "e5756242-0963-37a2-7cb4-4397886d60bb",
+                      "padding": "None",
+                      "width": "stretch",
+                      "items": [
+                          {
+                              "type": "TextBlock",
+                              "id": "20f3833e-0435-5c87-fad1-b528e0046fb6",
+                              "text": "Microsoft Group Membership Management",
+                              "wrap": true
+                          }
+                      ],
+                      "verticalContentAlignment": "Center"
+                  }
+              ],
+              "padding": {
+                  "top": "Small",
+                  "bottom": "Small",
+                  "left": "Default",
+                  "right": "Small"
+              },
+              "style": "emphasis"
+          },
+          {
+              "type": "Container",
+              "id": "fbcee869-2754-287d-bb37-145a4ccd750b",
+              "padding": "Default",
+              "spacing": "None",
+              "items": [
+                  {
+                      "type": "TextBlock",
+                      "id": "44906797-222f-9fe2-0b7a-e3ee21c6e380",
+                      "text": "{1}",
+                      "wrap": true,
+                      "weight": "Bolder",
+                      "size": "Large",
+                      "style": "heading"
+                  },
+                  {
+                      "type": "TextBlock",
+                      "id": "f7abdf1a-3cce-2159-28ef-f2f362ec937e",
+                      "text": "{2}",
+                      "wrap": true
+                  }
+              ]
+          },
+          {
+              "type": "Container",
+              "id": "77102c5d-fde2-e573-4ea5-66022d646d64",
+              "padding": {
+                  "top": "Small",
+                  "bottom": "Small",
+                  "left": "Small",
+                  "right": "Default"
+              },
+              "spacing": "None",
+              "separator": true,
+              "items": [
+                  {
+                      "type": "TextBlock",
+                      "id": "42654e7e-cece-b419-867a-3e3ef4076870",
+                      "text": "[View group in portal](https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/{3})",
+                      "wrap": true,
+                      "color": "Accent",
+                      "horizontalAlignment": "Right"
+                  }
+              ],
+              "horizontalAlignment": "Right"
+          }
+      ],
+      "padding": "None",
+      "@type": "AdaptiveCard",
+      "@context": "http://schema.org/extensions"
+    }</value>
+  </data>
   <data name="CustomerPausedJobEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as the owner of {0}.
 Your group {0} with Id {1} is currently offboarded from Group Membership Management (GMM) due to one of the following reasons:

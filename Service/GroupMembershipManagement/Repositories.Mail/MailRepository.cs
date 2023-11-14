@@ -33,6 +33,7 @@ namespace Repositories.Mail
             _actionableEmailProviderId = actionableEmailProviderId ?? throw new ArgumentNullException(nameof(actionableEmailProviderId));
         }
 
+        // TODO: adaptiveCardTemplateDirectory will deleted after the migration all function to the new localization system  
         public async Task SendMailAsync(EmailMessage emailMessage, Guid? runId, string adaptiveCardTemplateDirectory = "")
         {
             if (emailMessage is null)
@@ -48,7 +49,7 @@ namespace Repositories.Mail
             }
             else if (_mailAdaptiveCardConfig.IsAdaptiveCardEnabled)
             {
-                message = GetAdaptiveCardMessage(emailMessage, adaptiveCardTemplateDirectory);
+                message = GetAdaptiveCardMessage(emailMessage);
             }
             else
             {
@@ -109,15 +110,29 @@ namespace Repositories.Mail
             return message;
         }
 
-        public Message GetAdaptiveCardMessage(EmailMessage emailMessage, string templateDirectory)
+        public Message GetAdaptiveCardMessage(EmailMessage emailMessage)
         {
             var subjectContent = _localizationRepository.TranslateSetting(emailMessage?.Subject, emailMessage?.AdditionalSubjectParams);
             var messageContent = _localizationRepository.TranslateSetting(emailMessage?.Content, emailMessage?.AdditionalContentParams);
 
-            string htmlContent = System.IO.File.ReadAllText(Path.Combine(templateDirectory, "Templates/DefaultCard.html"), Encoding.UTF8);
+            string adaptiveCardJson = _localizationRepository.TranslateSetting("DefaultCardTemplate");
 
             string groupId = emailMessage?.AdditionalContentParams[0];
-            htmlContent = htmlContent.Replace("{0}", _actionableEmailProviderId).Replace("{1}", subjectContent).Replace("{2}", messageContent).Replace("{3}", groupId);
+            adaptiveCardJson = adaptiveCardJson.Replace("{0}", _actionableEmailProviderId)
+                                                .Replace("{1}", subjectContent)
+                                                .Replace("{2}", messageContent)
+                                                .Replace("{3}", groupId);
+
+            var htmlTemplate = @"<html>
+                                    <head>
+                                        <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
+                                        <script type=""application/adaptivecard+json"">
+                                    </head>
+                                    <body>
+                                    </body>
+                                </html>";
+
+            var htmlContent = string.Format(htmlTemplate, adaptiveCardJson);
 
             var message = new Message
             {

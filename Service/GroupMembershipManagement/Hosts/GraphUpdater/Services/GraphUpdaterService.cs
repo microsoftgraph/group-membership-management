@@ -89,7 +89,7 @@ namespace Services
             return await _graphGroupRepository.GroupExists(groupId);
         }
 
-        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, SyncJob syncJob, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
+        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, SyncJob syncJob, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)
         {
 			bool isNotificationDisabled = await IsNotificationDisabledAsync(syncJob, contentTemplate);
 
@@ -112,7 +112,7 @@ namespace Services
                 CcEmailAddresses = ccEmail,
                 AdditionalContentParams = additionalContentParams,
                 AdditionalSubjectParams = additionalSubjectParams
-            }, syncJob.RunId, adaptiveCardTemplateDirectory);
+            }, syncJob.RunId);
         }
 		public async Task<bool> IsNotificationDisabledAsync(SyncJob syncJob, string notificationTypeName)
 		{
