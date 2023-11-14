@@ -7,19 +7,19 @@ import { ThunkConfig } from './store';
 export const getProfile = createAsyncThunk<string, void, ThunkConfig>(
   'profile/getProfile',
   async (_, {getState, extra }) => {
-    const { graphApi: userApi } = extra.apis;
+    const { graphApi } = extra.apis;
     const user = getState().account.user;
     if (!user) return '';
-    return await userApi.getPreferredLanguage(user);
+    return await graphApi.getPreferredLanguage(user);
   }
 );
 
 export const getProfilePhoto = createAsyncThunk<string, void, ThunkConfig>(
   'profile/getProfilePhoto',
   async (_, {getState, extra}) => {
-    const { graphApi: userApi } = extra.apis;
+    const { graphApi } = extra.apis;
     const user = getState().account.user;
     if (!user) return '';
-    return await userApi.getProfilePhotoUrl(user);
+    return await graphApi.getProfilePhotoUrl(user);
   }
 );
