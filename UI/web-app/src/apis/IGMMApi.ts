@@ -6,5 +6,5 @@ import { ISettingsApi } from './settings';
 
 export interface IGMMApi {
   settings: ISettingsApi;
-  jobs: IJobsApi
+  jobs: IJobsApi;
 }

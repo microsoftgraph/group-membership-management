@@ -17,7 +17,7 @@ const gmmTokenRequest: SilentRequest = {
 };
 
 // The user will consent to both scopes, but only receive a token for the first.
-// This will prevent the user from having to consent again when a token is retrieve for the api.
+// This will prevent the user from having to consent again when a token is retrieved for the api.
 const loginRequest: RedirectRequest = {
   scopes: ['User.Read'],
   extraScopesToConsent: [`api://${process.env.REACT_APP_AAD_API_APP_CLIENT_ID}/user_impersonation`],

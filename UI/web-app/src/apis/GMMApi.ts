@@ -8,7 +8,7 @@ import { ISettingsApi } from './settings/ISettingsApi';
 import { SettingsApi } from './settings/SettingsApi';
 
 export class GMMApi implements IGMMApi {
-  private _jobsApi: JobsApi;
+  private _jobsApi: IJobsApi;
   private _settingsApi: ISettingsApi;
   
   constructor(options: ApiOptions) {
