@@ -8,7 +8,7 @@ import {
 } from '@fluentui/react/lib/DetailsList';
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { OdataQueryOptions, fetchJobs } from '../../store/jobs.api';
+import { fetchJobs } from '../../store/jobs.api';
 import {
   selectAllJobs,
   selectGetJobsError,
@@ -43,7 +43,7 @@ import { useCookies } from 'react-cookie';
 import { PagingBar } from '../PagingBar';
 import { PageVersion } from '../PageVersion';
 import { JobsListFilter } from '../JobsListFilter/JobsListFilter';
-import { SyncStatus } from '../../models/Status';
+import { PagingOptions, SyncStatus } from '../../models';
 import { useStrings } from '../../store/hooks';
 
 const getClassNames = classNamesFunction<
@@ -254,14 +254,14 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           "')";
     }
 
-    let odataQueryOptions = new OdataQueryOptions();
-    odataQueryOptions.pageSize = parseInt(pageSize) ?? cookies.pageSize;
-    odataQueryOptions.itemsToSkip =
-      (pageNumber - 1) * odataQueryOptions.pageSize;
-    odataQueryOptions.orderBy = orderByString;
-    odataQueryOptions.filter = filterString;
+    const pagingOptions: PagingOptions = {};
+    pagingOptions.pageSize = parseInt(pageSize) ?? cookies.pageSize;
+    pagingOptions.itemsToSkip =
+      (pageNumber - 1) * pagingOptions.pageSize;
+    pagingOptions.orderBy = orderByString;
+    pagingOptions.filter = filterString;
 
-    dispatch(fetchJobs(odataQueryOptions));
+    dispatch(fetchJobs(pagingOptions));
   };
 
   useEffect(() => {

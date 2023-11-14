@@ -4,7 +4,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { fetchSettingByKey, updateSetting } from './settings.api';
 import type { RootState } from './store';
-import { Setting } from '../models/Settings';
+import { Setting } from '../models/Setting';
 
 export interface SettingsState {
   selectedSettingLoading: boolean;

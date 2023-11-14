@@ -4,4 +4,6 @@
 export type User = {
   id: string;
   name: string;
+  preferredLanguage?: string;
+  profilePhotoUrl?: string;
 };

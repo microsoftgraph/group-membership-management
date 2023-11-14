@@ -9,7 +9,7 @@ import { TokenType } from '../services/auth';
 export const addOwner = createAsyncThunk<string | undefined, string, ThunkConfig>(
   'owner/addOwner',
   async (groupId, {extra}) => {
-    const { authenticationService } = extra;
+    const { authenticationService } = extra.services;
     const token = await authenticationService.getTokenAsync(TokenType.Graph);
     const headers = new Headers();
     headers.append('Authorization', `Bearer ${token}`);

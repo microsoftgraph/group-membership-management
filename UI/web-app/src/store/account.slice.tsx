@@ -9,7 +9,7 @@ import { type User } from '../models/User';
 
 // Define a type for the slice state
 export interface AccountState {
-  account?: User;
+  user?: User;
   loggedIn: boolean;
   loggingIn: boolean;
   loginError?: string;
@@ -17,7 +17,7 @@ export interface AccountState {
 
 // Define the initial state using that type
 const initialState: AccountState = {
-  account: undefined,
+  user: undefined,
   loggedIn: false,
   loggingIn: false,
   loginError: undefined,
@@ -39,7 +39,7 @@ export const accountSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(loginAsync.fulfilled, (state, action) => {
-        state.account = action.payload;
+        state.user = action.payload;
       })
       .addCase(loginAsync.rejected, (state, action) => {
         state.loginError = action.payload;
@@ -48,8 +48,8 @@ export const accountSlice = createSlice({
 });
 
 export const { setLoggedIn, setLoggingIn } = accountSlice.actions;
-export const selectAccount = (state: RootState) => state.account.account;
-export const selectAccountName = (state: RootState) => state.account.account?.name;
+export const selectAccount = (state: RootState) => state.account.user;
+export const selectAccountName = (state: RootState) => state.account.user?.name;
 export const selectLoggedIn = (state: RootState) => state.account.loggedIn;
 export const selectLoginError = (state: RootState) => state.account.loginError;
 export default accountSlice.reducer;

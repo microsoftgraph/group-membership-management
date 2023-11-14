@@ -7,7 +7,7 @@ import { User } from '../models/User';
 export class OfflineAuthenticationService implements IAuthenticationService {
   // overridable properties
   public loginPromise: Promise<void> = Promise.resolve();
-  public activeAccount: User | undefined = {
+  public user: User | undefined = {
     id: 'testLocalAccountId',
     name: 'testName',
   };
@@ -19,6 +19,6 @@ export class OfflineAuthenticationService implements IAuthenticationService {
 
   // mocked methods
   public loginAsync = async () => await this.loginPromise;
-  public getActiveAccount = () => this.activeAccount;
+  public getActiveAccount = () => this.user;
   public getTokenAsync = (tokenType: TokenType) => this.tokens[tokenType];
 }

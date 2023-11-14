@@ -54,7 +54,7 @@ export const jobsSlice = createSlice({
     });
     builder.addCase(fetchJobs.fulfilled, (state, action) => {
       state.jobsLoading = false;
-      state.jobs = action.payload.jobs;
+      state.jobs = action.payload.items;
       state.totalNumberOfPages = action.payload.totalNumberOfPages;
     });
     builder.addCase(fetchJobs.rejected, (state, action) => {

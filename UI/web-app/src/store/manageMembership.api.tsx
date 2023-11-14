@@ -15,7 +15,7 @@ export class OdataQueryOptions {
 export const searchDestinations = createAsyncThunk<Destination[], string, ThunkConfig>(
   'destinations/searchDestinations',
   async (query: string, { extra }) => {
-    const { authenticationService } = extra;
+    const { authenticationService } = extra.services;
     const token = await authenticationService.getTokenAsync(TokenType.GMM);
     const headers = new Headers();
     const bearer = `Bearer ${token}`;
@@ -42,7 +42,7 @@ export const searchDestinations = createAsyncThunk<Destination[], string, ThunkC
 export const getGroupOnboardingStatus = createAsyncThunk<OnboardingStatus, string, ThunkConfig>(
   'groups/getGroupOnboardingStatus',
   async (groupId: string, { extra }) => {
-    const { authenticationService } = extra;
+    const { authenticationService } = extra.services;
     const token = await authenticationService.getTokenAsync(TokenType.GMM);
     const headers = new Headers();
     const bearer = `Bearer ${token}`;
@@ -69,7 +69,7 @@ export const getGroupOnboardingStatus = createAsyncThunk<OnboardingStatus, strin
 export const getGroupEndpoints = createAsyncThunk<string[], string, ThunkConfig>(
   'groupEndpoints',
   async (groupId: string, { extra }) => {
-    const { authenticationService } = extra;
+    const { authenticationService } = extra.services;
     const token = await authenticationService.getTokenAsync(TokenType.GMM);
     const headers = new Headers();
     const bearer = `Bearer ${token}`;

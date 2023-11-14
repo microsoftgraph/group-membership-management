@@ -10,7 +10,7 @@ import { setLoggingIn, setLoggedIn } from './account.slice';
 export const loginAsync = createAsyncThunk<User, void, ThunkConfigWithErrors<string>>(
   'account/login',
   async (_, { rejectWithValue, dispatch, getState, extra }) => {
-    const { authenticationService } = extra;
+    const { authenticationService } = extra.services;
     const { loggingIn, loggedIn } = getState().account;
     const { strings } = getState().localization;
 

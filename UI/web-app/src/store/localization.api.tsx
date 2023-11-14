@@ -9,7 +9,7 @@ import { IStrings, defaultLanguage } from '../services/localization';
 export const setLanguage = createAsyncThunk<{ language: string; strings: IStrings }, string | undefined, ThunkConfig>(
   'localization/setLanguage',
   async (language, { extra }) => {
-    const { localizationService } = extra;
+    const { localizationService } = extra.services;
 
     const newLanguage = language ?? defaultLanguage;
     localizationService.changeLanguage(newLanguage);

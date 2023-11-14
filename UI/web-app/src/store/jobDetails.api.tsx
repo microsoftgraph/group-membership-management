@@ -16,7 +16,7 @@ export const fetchJobDetails = createAsyncThunk<
   GetJobDetailsRequest,
   ThunkConfig
 >('jobs/fetchJobDetails', async (jobDetailsRequest, { extra }) => {
-  const { authenticationService } = extra;
+  const { authenticationService } = extra.services;
   const token = await authenticationService.getTokenAsync(TokenType.GMM);
   const headers = new Headers();
   headers.append('Authorization', `Bearer ${token}`);
@@ -45,7 +45,7 @@ export const patchJobDetails = createAsyncThunk<
   PatchJobRequest,
   ThunkConfig
 >('jobs/patchJobDetails', async (patchJobRequest, { extra }) => {
-  const { authenticationService } = extra;
+  const { authenticationService } = extra.services;
   const token = await authenticationService.getTokenAsync(TokenType.GMM);
   const headers = new Headers();
   headers.append('Authorization', `Bearer ${token}`);
