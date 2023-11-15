@@ -26,7 +26,8 @@ export const strings: IStrings = {
       labels: {
           pageTitle: "Configuración de Administrador",
           hyperlinks: "Ligas",
-          description: "Incluye ligas con información específica sobre cómo funciona XMM en tu organización para que los usuarios puedan aprovecharlo al máximo."
+          description: "Incluye ligas con información específica sobre cómo funciona XMM en tu organización para que los usuarios puedan aprovecharlo al máximo.",
+          saveButton: "Guardar",
       },
       hyperlinkContainer: {
           address: "URL",
@@ -34,7 +35,7 @@ export const strings: IStrings = {
           dashboardTitle: "Dashboard",
           dashboardDescription: "Esta es la liga que se muestra en la esquina superior derecha del dashboard. Te lleva a un sitio interno que tiene todos los detalles sobre cómo aprovechar XMM en tu organización. Esto podría incluir preguntas frecuentes, información de contacto, SLAs, etc.",
           invalidUrl: "URL inválida"
-      }
+      },
   },
   Authentication: {
     loginFailed: 'Ocurrió un error inesperado durante el inicio de sesión.'

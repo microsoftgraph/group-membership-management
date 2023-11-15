@@ -4,18 +4,18 @@
 import { styled } from '@fluentui/react';
 import type * as React from 'react';
 
-import { HyperlinkContainerBase } from './HyperlinkContainer.base';
-import { getStyles } from './HyperlinkContainer.styles';
+import { HyperlinkSettingBase } from './HyperlinkSetting.base';
+import { getStyles } from './HyperlinkSetting.styles';
 import {
-  type IHyperlinkContainerProps,
-  type IHyperlinkContainerStyleProps,
-  type IHyperlinkContainerStyles,
-} from './HyperlinkContainer.types';
+  type HyperlinkSettingProps,
+  type HyperlinkSettingStyleProps,
+  type HyperlinkSettingStyles,
+} from './HyperlinkSetting.types';
 
-export const HyperlinkContainer: React.FunctionComponent<IHyperlinkContainerProps> = styled<
-  IHyperlinkContainerProps,
-  IHyperlinkContainerStyleProps,
-  IHyperlinkContainerStyles
->(HyperlinkContainerBase, getStyles, undefined, {
-  scope: 'HyperlinkContainer',
+export const HyperlinkSetting: React.FunctionComponent<HyperlinkSettingProps> = styled<
+  HyperlinkSettingProps,
+  HyperlinkSettingStyleProps,
+  HyperlinkSettingStyles
+>(HyperlinkSettingBase, getStyles, undefined, {
+  scope: 'HyperlinkSetting',
 });

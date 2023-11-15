@@ -1,2 +1,2 @@
-export * from './HyperlinkContainer';
-export * from './HyperlinkContainer.types';
+export * from './HyperlinkSetting';
+export * from './HyperlinkSetting.types';

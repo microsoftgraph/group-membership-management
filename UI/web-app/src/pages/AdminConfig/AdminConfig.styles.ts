@@ -2,11 +2,11 @@
 // Licensed under the MIT license.
 
 import {
-    type IAdminConfigStyleProps,
-    type IAdminConfigStyles,
+    type AdminConfigStyleProps,
+    type AdminConfigStyles,
 } from './AdminConfig.types';
 
-export const getStyles = (props: IAdminConfigStyleProps): IAdminConfigStyles => {
+export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
     const { className, theme } = props;
 
     return {

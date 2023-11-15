@@ -24,7 +24,8 @@ export const strings: IStrings = {
       labels: {
           pageTitle: "Admin Configuration",
           hyperlinks: "Hyperlinks",
-          description: "Provide hyperlinks to the following organization specific information so that your users are empowered to leverage XMM to its fullest."
+          description: "Provide hyperlinks to the following organization specific information so that your users are empowered to leverage XMM to its fullest.",
+          saveButton: "Save",
       },
       hyperlinkContainer: {
           address: "Address",
@@ -32,7 +33,7 @@ export const strings: IStrings = {
           dashboardTitle: "Dashboard",
           dashboardDescription: "This is the link that shows on the top right corner of the dashboard. It takes you to an internal site that has all the details on how to leverage XMM at your organization. This could include FAQs, contact information, SLAs, etc.",
           invalidUrl: "Invalid URL"
-      }
+      },
   },
   Authentication: {
     loginFailed: 'An unexpected error occurred during login.'

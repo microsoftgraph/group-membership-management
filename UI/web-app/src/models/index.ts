@@ -14,5 +14,6 @@ export * from './PatchJobRequest';
 export * from './PatchJobResponse';
 export * from './PostJobResponse';
 export * from './Setting';
+export * from './SettingName';
 export * from './Status';
 export * from './User';

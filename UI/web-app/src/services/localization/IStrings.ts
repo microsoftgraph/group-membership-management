@@ -22,6 +22,7 @@ export type IStrings = {
       pageTitle: string;
       hyperlinks: string;
       description: string;
+      saveButton: string;
     },
     hyperlinkContainer: {
       address: string;

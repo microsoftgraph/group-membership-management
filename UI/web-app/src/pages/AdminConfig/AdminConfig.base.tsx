@@ -1,130 +1,49 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import {
-    classNamesFunction,
-    IProcessedStyleSet,
-    MessageBar, MessageBarType,
-    Pivot, PivotItem, PrimaryButton
-} from '@fluentui/react';
-import { useTheme } from '@fluentui/react/lib/Theme';
-import {
-    IAdminConfigProps, IAdminConfigStyleProps, IAdminConfigStyles,
-} from './AdminConfig.types';
-import { PageSection } from '../../components/PageSection';
-import { HyperlinkContainer } from '../../components/HyperlinkContainer';
-import { Page } from '../../components/Page';
-import { PageHeader } from '../../components/PageHeader';
-import { selectSelectedSetting } from '../../store/settings.slice';
+import { AdminConfigProps } from './AdminConfig.types';
+import { selectIsSaving, selectSelectedSetting } from '../../store/settings.slice';
 import { fetchSettingByKey, updateSetting } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
+import { AdminConfigView } from './AdminConfig.view';
+import { SettingName } from '../../models';
 import { useStrings } from '../../store/hooks';
 
-const getClassNames = classNamesFunction<
-    IAdminConfigStyleProps,
-    IAdminConfigStyles
->();
+export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props: AdminConfigProps) => {
+  // get the store's dispatch function
+  const dispatch = useDispatch<AppDispatch>();
 
-export const AdminConfigBase: React.FunctionComponent<IAdminConfigProps> = (
-    props: IAdminConfigProps
-) => {
-    const { className, styles } = props;
+  // Tell the store to retrieve the most recent settings data once the component mounts.
+  useEffect(() => {
+    // we should probably retrieve all settings here and put them in the state, instead of retrieving them individually.
+    dispatch(fetchSettingByKey(SettingName.DashboardUrl));
+  }, [dispatch]);
 
-    const classNames: IProcessedStyleSet<IAdminConfigStyles> = getClassNames(
-        styles,
-        {
-            className,
-            theme: useTheme(),
-        }
-    );
-    const strings = useStrings();
-    const dispatch = useDispatch<AppDispatch>();
-    const [updatedDashboardUrl, setUpdatedDashboardUrl] = useState('');
-    const [successMessage, setSuccessMessage] = useState<string | undefined>(undefined);
-    const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
-    const [hyperlinkError, setHyperlinkError] = useState(false);
+  // get the settings data from the store
+  const dashboardUrl = useSelector(selectSelectedSetting);
+  const isSaving = useSelector(selectIsSaving);
+  const strings = useStrings().AdminConfig;
 
-    useEffect(() => {
-        dispatch(fetchSettingByKey('dashboardUrl'));
-    }, [dispatch]);
+  // Create an event handler that should be called when the user clicks the save button.
+  const handleSave = (settings: { readonly [key in SettingName]: string }) => {
+    // should be saving all settings here, not one at a time.
+    dispatch(updateSetting({ key: SettingName.DashboardUrl, value: settings[SettingName.DashboardUrl] }));
+    // there is a Toast notification in fluent/react-components (v9) that we should be using for save notifications.
+  };
 
-    useEffect(() => {
-        clearMessageBars();
-    }, [updatedDashboardUrl]);
-
-    const dashboardUrl = useSelector(selectSelectedSetting);
-
-    const clearMessageBars = () => {
-        setSuccessMessage(undefined);
-        setErrorMessage(undefined);
-    };
-
-    const handleLinkUpdate = (newValue: string) => {
-        setUpdatedDashboardUrl(newValue);
-        setSuccessMessage(undefined);
-        setErrorMessage(undefined);
-    };
-
-    const onClick = () => {
-        clearMessageBars();
-        dispatch(updateSetting({ key: 'dashboardUrl', value: updatedDashboardUrl }))
-            .then(() => {
-                setSuccessMessage('Setting saved successfully');
-            })
-            .catch((error) => {
-                setErrorMessage('Failed to save setting');
-            });
-    };
-
-    return (
-        <Page>
-            {successMessage && (
-                <MessageBar messageBarType={MessageBarType.success}>{successMessage}</MessageBar>
-            )}
-            {errorMessage && (
-                <MessageBar messageBarType={MessageBarType.error}>{errorMessage}</MessageBar>
-            )}
-            <PageHeader />
-            <div className={classNames.root}>
-                <div className={classNames.card}>
-                    <PageSection>
-                        <div className={classNames.title}>
-                            {strings.AdminConfig.labels.pageTitle}
-                        </div>
-                    </PageSection>
-                </div>
-                <div className={classNames.card}>
-                    <PageSection>
-                        <Pivot>
-                            <PivotItem
-                                headerText={strings.AdminConfig.labels.hyperlinks}
-                                headerButtonProps={{
-                                    'data-order': 1,
-                                    'data-title': strings.AdminConfig.labels.hyperlinks,
-                                }}
-                            >
-                                <div className={classNames.description}>
-                                    {strings.AdminConfig.labels.description}
-                                </div>
-                                <div className={classNames.tiles}>
-                                    <HyperlinkContainer
-                                        title={strings.AdminConfig.hyperlinkContainer.dashboardTitle}
-                                        description={strings.AdminConfig.hyperlinkContainer.dashboardDescription}
-                                        link={updatedDashboardUrl || (dashboardUrl?.value ?? '')}
-                                        onUpdateLink = {handleLinkUpdate}
-                                        setHyperlinkError= {setHyperlinkError}>
-                                    </HyperlinkContainer>
-                                </div>
-                            </PivotItem>
-                        </Pivot>
-                    </PageSection>
-                </div>
-                <div className={classNames.bottomContainer}>
-                    <PrimaryButton text="Save" onClick={() => onClick() } disabled={hyperlinkError}></PrimaryButton>
-                </div>
-            </div >
-        </Page>
-    )
-}
+  // render the view with the data from the store and the event handler
+  
+  return (
+    <AdminConfigView
+      {...props}
+      isSaving={isSaving}
+      settings={{
+        [SettingName.DashboardUrl]: dashboardUrl?.value ?? '',
+      }}
+      strings={strings}
+      onSave={handleSave}
+    />
+  );
+};
