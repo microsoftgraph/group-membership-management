@@ -98,7 +98,7 @@ namespace Services
             return await _graphGroupRepository.GetGroupNameAsync(destinationObjectId);
         }
 
-        public async Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters, string templateDirectory = "")
+        public async Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters)
         {
             bool isNotificationDisabled = await IsNotificationDisabledAsync(job.Id, emailContentTemplateName);
 
@@ -135,7 +135,7 @@ namespace Services
                 AdditionalContentParams = additionalContentParameters
             };
 
-            await _mailRepository.SendMailAsync(message, job.RunId, templateDirectory);
+            await _mailRepository.SendMailAsync(message, job.RunId);
         }
 
         public async Task<bool> IsNotificationDisabledAsync(Guid jobId, string notificationTypeName)
@@ -198,7 +198,7 @@ namespace Services
             await _serviceBusTopicsRepository.AddMessageAsync(job);
         }
 
-        public async Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job, string templateDirectory = "")
+        public async Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job)
         {
             var destinationObjectId = (await ParseDestinationAsync(job)).ObjectId;
 
@@ -221,7 +221,7 @@ namespace Services
                         ToEmailAddresses = job.Requestor,
                         CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
                         AdditionalContentParams = new[] { destinationObjectId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses }
-                    }, job.RunId, templateDirectory);
+                    }, job.RunId);
                     return false;
                 }
 

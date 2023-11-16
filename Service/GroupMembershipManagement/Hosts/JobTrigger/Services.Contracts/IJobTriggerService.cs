@@ -15,9 +15,9 @@ namespace Services.Contracts
         Task<(bool IsValid, AzureADGroup DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob);
         Task<AzureADGroup> ParseDestinationAsync(SyncJob syncJob);
         Task<string> GetGroupNameAsync(SyncJob job);
-        Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters, string templateDirectory = "");
-        Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job, string templateDirectory = "");
-        Task UpdateSyncJobAsync(SyncStatus? status, SyncJob job);
+        Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters);
+        Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job);
+        Task UpdateSyncJobStatusAsync(SyncStatus status, SyncJob job);
         Task SendMessageAsync(SyncJob job);
         Task<List<string>> GetGroupEndpointsAsync(SyncJob job);
     }

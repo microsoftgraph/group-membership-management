@@ -208,8 +208,7 @@ namespace Hosts.JobTrigger
                                                         {
                                                         destinationObject.ObjectId.ToString(),
                                                         _emailSenderAndRecipients.SyncDisabledCCAddresses
-                                                        },
-                                                        FunctionDirectory = executionContext.FunctionAppDirectory
+                                                        }
                                                     });
 
                     await context.CallActivityAsync(nameof(JobUpdaterFunction),
@@ -232,14 +231,12 @@ namespace Hosts.JobTrigger
                                                             _emailSenderAndRecipients.SupportEmailAddresses,
                                                             _gmmResources.LearnMoreAboutGMMUrl,
                                                             syncJob.Requestor
-                                                        },
-                                                        FunctionDirectory = executionContext.FunctionAppDirectory
+                                                        }
                                                     });
 
                 var canWriteToGroup = await context.CallActivityAsync<bool>(nameof(GroupVerifierFunction), new GroupVerifierRequest()
                 {
                     SyncJob = syncJob,
-                    FunctionDirectory = executionContext.FunctionAppDirectory
                 });
 
                 var statusValue = SyncStatus.StuckInProgress;

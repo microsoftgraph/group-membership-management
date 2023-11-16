@@ -633,7 +633,6 @@ namespace Services.Tests
             var request = new GroupVerifierRequest()
             {
                 SyncJob = _syncJob,
-                FunctionDirectory = ""
             };
             return await groupVerifierFunction.VerifyGroupAsync(request);
         }
