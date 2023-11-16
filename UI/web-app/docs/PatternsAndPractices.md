@@ -130,7 +130,7 @@ Pages are where GMM's business logic should live.  Pages should be composed of a
 
 - Page.base
   - Contains the business logic.
-  - Knows how to with redux to retrieve and store the data used by the view.
+  - Knows how to communicate with redux to retrieve and store the data used by the view.
   - Handles updates in the application state (redux store)
   - Prepares the data for the view by performing any special date formatting, timezone conversions, etc.
   - Renders the Page.view with the data.
