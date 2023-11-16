@@ -9,6 +9,5 @@ namespace Hosts.GroupMembershipObtainer
     {
         public Guid RunId { get; set; }
         public SyncJob SyncJob { get; set; }
-        public string AdaptiveCardTemplateDirectory { get; set; }
     }
 }

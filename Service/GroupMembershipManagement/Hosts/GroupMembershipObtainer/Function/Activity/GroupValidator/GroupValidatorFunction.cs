@@ -59,7 +59,7 @@ namespace Hosts.GroupMembershipObtainer
                                                                 targetGroupName,
                                                                 request.ObjectId.ToString(),
                                                                 _emailSenderAndRecipients.SyncDisabledCCAddresses
-                                                                }, request.AdaptiveCardTemplateDirectory);
+                                                                });
                     }
                     else if (groupExistsResult.FaultType == FaultType.ExceptionHandledByThisPolicy)
                         await _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Exceeded {NumberOfGraphRetries} while trying to determine if a group exists. Stopping sync and marking as error." });

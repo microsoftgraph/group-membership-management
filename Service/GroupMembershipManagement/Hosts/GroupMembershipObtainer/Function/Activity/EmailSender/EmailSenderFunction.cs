@@ -32,7 +32,7 @@ namespace Hosts.GroupMembershipObtainer
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
                 _calculator.RunId = request.RunId;
-                await _calculator.SendEmailAsync(request.SyncJob, request.RunId, EmailSubject, SyncDisabledNoValidGroupIds, new[] { request.SyncJob.TargetOfficeGroupId.ToString(), request.SyncJob.Query, _emailSenderRecipient.SupportEmailAddresses }, request.AdaptiveCardTemplateDirectory);
+                await _calculator.SendEmailAsync(request.SyncJob, request.RunId, EmailSubject, SyncDisabledNoValidGroupIds, new[] { request.SyncJob.TargetOfficeGroupId.ToString(), request.SyncJob.Query, _emailSenderRecipient.SupportEmailAddresses });
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             }
         }

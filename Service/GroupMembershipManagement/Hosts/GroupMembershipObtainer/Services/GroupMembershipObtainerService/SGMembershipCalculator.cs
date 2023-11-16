@@ -186,7 +186,7 @@ namespace Hosts.GroupMembershipObtainer
             await _blobStorageRepository.UploadFileAsync(datafileName, JsonConvert.SerializeObject(groupMembership));
         }
 
-        public async Task SendEmailAsync(SyncJob job, Guid runId, string subject, string content, string[] additionalContentParams, string adaptiveCardTemplateDirectory = "")
+        public async Task SendEmailAsync(SyncJob job, Guid runId, string subject, string content, string[] additionalContentParams)
         {
             await _mail.SendMailAsync(new EmailMessage
             {
@@ -197,7 +197,7 @@ namespace Hosts.GroupMembershipObtainer
                 ToEmailAddresses = job.Requestor,
                 CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
                 AdditionalContentParams = additionalContentParams
-            }, runId, adaptiveCardTemplateDirectory);
+            }, runId);
         }
 
         public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status)
