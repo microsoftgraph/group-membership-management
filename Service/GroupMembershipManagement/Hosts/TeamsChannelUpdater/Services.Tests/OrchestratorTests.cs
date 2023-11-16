@@ -144,7 +144,7 @@ namespace Services.Tests
             _mockLoggingRepository.Verify(x => x.RemoveSyncJobProperties(It.IsAny<Guid>()), Times.Once());
 
             _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Idle, false, It.IsAny<Guid>())); _mockTeamsChannelUpdaterService.Verify(x => x.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>(), It.IsAny<Guid>(),
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>(), It.IsAny<string>()), Times.Never());
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>()), Times.Never());
         }
 
         [TestMethod]
@@ -183,7 +183,7 @@ namespace Services.Tests
 
             _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Idle, false, It.IsAny<Guid>()));
             _mockTeamsChannelUpdaterService.Verify(x => x.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>(), It.IsAny<Guid>(), 
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>(), It.IsAny<string>()), Times.Once());
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>()), Times.Once());
         }
 
         [TestMethod]

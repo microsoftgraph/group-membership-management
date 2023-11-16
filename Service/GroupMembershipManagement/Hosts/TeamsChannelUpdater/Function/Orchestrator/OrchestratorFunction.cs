@@ -148,8 +148,7 @@ namespace Hosts.TeamsChannelUpdater
                                                         CcEmail = _emailSenderAndRecipients.SyncCompletedCCAddresses,
                                                         ContentTemplate = SyncCompletedEmailBody,
                                                         AdditionalContentParams = additionalContent,
-                                                        RunId = groupMembership.RunId,
-                                                        AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory
+                                                        RunId = groupMembership.RunId
                                                     });
                 }
 

@@ -26,7 +26,7 @@ namespace Hosts.TeamsChannelUpdater
         public async Task SendEmailAsync([ActivityTrigger] EmailSenderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            await _teamsChannelUpdaterService.SendEmailAsync(request.ToEmail, request.ContentTemplate, request.AdditionalContentParams, request.RunId, request.CcEmail, null, null, request.AdaptiveCardTemplateDirectory);
+            await _teamsChannelUpdaterService.SendEmailAsync(request.ToEmail, request.ContentTemplate, request.AdditionalContentParams, request.RunId, request.CcEmail, null, null);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
         }
     }

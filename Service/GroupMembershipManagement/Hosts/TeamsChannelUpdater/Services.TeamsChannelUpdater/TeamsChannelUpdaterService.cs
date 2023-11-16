@@ -105,7 +105,7 @@ namespace Services.TeamsChannelUpdater
             return await _teamsChannelRepository.GetGroupOwnersAsync(groupObjectId, runId, top);
         }
 
-        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
+        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)
         {
             await _mailRepository.SendMailAsync(new EmailMessage
             {
@@ -117,7 +117,7 @@ namespace Services.TeamsChannelUpdater
                 CcEmailAddresses = ccEmail,
                 AdditionalContentParams = additionalContentParams,
                 AdditionalSubjectParams = additionalSubjectParams
-            }, runId, adaptiveCardTemplateDirectory);
+            }, runId);
         }
 
     }
