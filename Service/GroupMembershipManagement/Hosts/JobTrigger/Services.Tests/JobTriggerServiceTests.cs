@@ -350,7 +350,7 @@ namespace Services.Tests
         public async Task VerifyInitialSyncEmailNotificationIsSent()
         {
             var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
 
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
@@ -390,14 +390,14 @@ namespace Services.Tests
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
-            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""), Times.Exactly(validStartDateJobs));
+            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Exactly(validStartDateJobs));
         }
 
         [TestMethod]
         public async Task VerifyJobsAreProcessedWithMissingMailSendPermission()
         {
             var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
 
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
@@ -438,7 +438,7 @@ namespace Services.Tests
         public async Task VerifyJobsAreProcessedWithMissingMailLicenses()
         {
             var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
 
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
@@ -478,7 +478,7 @@ namespace Services.Tests
         public async Task VerifyJobsAreProcessedMailingExceptions()
         {
             var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
+            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
 
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
@@ -519,7 +519,7 @@ namespace Services.Tests
 		{
 			var _mailRepository = new Mock<IMailRepository>();
 
-			_mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
+			_mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
 			SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
 			var notificationName = SyncStartedEmailBody;
 			var notificationTypeId = 1;
@@ -552,7 +552,7 @@ namespace Services.Tests
 
 			await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
 			var expectedLogMessage = $"Notification template '{SyncStartedEmailBody}' is disabled for job {job.Id} with destination group {job.TargetOfficeGroupId}.";
-			_mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""), Times.Never());
+			_mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Never());
 			Assert.AreEqual(1, _loggingRepository.MessagesLoggedCount);
 			Assert.AreEqual(expectedLogMessage, _loggingRepository.MessagesLogged[0].Message);
 		}
@@ -562,7 +562,7 @@ namespace Services.Tests
 		{
 			var _mailRepository = new Mock<IMailRepository>();
 
-			_mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""));
+			_mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
 			SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
 			var notificationName = SyncStartedEmailBody;
 			var notificationTypeId = 1;
@@ -592,7 +592,7 @@ namespace Services.Tests
 
 			await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
 			var expectedLogMessage = $"Notifications of type '{SyncStartedEmailBody}' have been globally disabled.";
-			_mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), ""), Times.Never());
+			_mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Never());
 			Assert.AreEqual(2, _loggingRepository.MessagesLoggedCount);
 			Assert.AreEqual(expectedLogMessage, _loggingRepository.MessagesLogged[0].Message);
 		}

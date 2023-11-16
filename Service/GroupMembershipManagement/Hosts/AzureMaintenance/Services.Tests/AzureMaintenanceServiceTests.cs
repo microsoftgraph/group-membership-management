@@ -385,7 +385,7 @@ namespace Services.Tests
                                                 notificationRepository.Object);
 
             await azureMaintenanceService.SendEmailAsync(job, "Test Group");
-            mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid>(), It.IsAny<string>()), Times.Once());
+            mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid>()), Times.Once());
         }
 
         public IEnumerable<SyncJob> GetJobs(List<SyncJob> jobs)

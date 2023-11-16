@@ -224,7 +224,7 @@ namespace Tests.Services
                                                 It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid)
                                             ), Times.Once);
 
-            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), It.IsAny<string>()), Times.Once);
+            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once);
         }
 
         [TestMethod]
@@ -253,7 +253,7 @@ namespace Tests.Services
                                                 It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid)
                                             ), Times.Once);
 
-            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>(), It.IsAny<string>()), Times.Once);
+            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once);
         }
 
         [TestMethod]
