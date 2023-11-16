@@ -97,7 +97,7 @@ namespace Services.Notifier.Tests
         public async Task TestSendEmail()
         {
             await _notifierService.SendEmailAsync(_notification);
-            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null, It.IsAny<string>()), Times.Once());
+            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null), Times.Once());
         }
 
         [TestMethod]
