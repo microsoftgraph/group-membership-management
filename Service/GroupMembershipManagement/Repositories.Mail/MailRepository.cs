@@ -33,8 +33,7 @@ namespace Repositories.Mail
             _actionableEmailProviderId = actionableEmailProviderId ?? throw new ArgumentNullException(nameof(actionableEmailProviderId));
         }
 
-        // TODO: adaptiveCardTemplateDirectory will deleted after the migration all function to the new localization system  
-        public async Task SendMailAsync(EmailMessage emailMessage, Guid? runId, string adaptiveCardTemplateDirectory = "")
+        public async Task SendMailAsync(EmailMessage emailMessage, Guid? runId)
         {
             if (emailMessage is null)
             {

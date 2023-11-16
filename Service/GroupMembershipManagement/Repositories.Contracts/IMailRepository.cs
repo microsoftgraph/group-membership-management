@@ -8,6 +8,6 @@ namespace Repositories.Contracts
 {
     public interface IMailRepository
     {
-        Task SendMailAsync(EmailMessage emailMessage, Guid? runId, string adaptiveCardTemplateDirectory = "");
+        Task SendMailAsync(EmailMessage emailMessage, Guid? runId);
     }
 }
