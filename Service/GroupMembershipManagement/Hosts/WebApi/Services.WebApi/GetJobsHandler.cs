@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.OData.Query;
 using Models;
 using Repositories.Contracts;
@@ -14,12 +15,16 @@ namespace Services
     {
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+
         public GetJobsHandler(ILoggingRepository loggingRepository,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
-                              IGraphGroupRepository graphGroupRepository) : base(loggingRepository)
+                              IGraphGroupRepository graphGroupRepository,
+                              IHttpContextAccessor httpContextAccessor) : base(loggingRepository)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
+            _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
         }
 
         protected override async Task<GetJobsResponse> ExecuteCoreAsync(GetJobsRequest request)
@@ -36,7 +41,7 @@ namespace Services
                 EnsureStableOrdering = true
             };
 
-            var jobsQuery = _databaseSyncJobsRepository.GetSyncJobs(true);
+            var jobsQuery = GetSyncJobsQuery();
 
             if (request.QueryOptions?.OrderBy?.OrderByClause == null)
             {
@@ -52,7 +57,7 @@ namespace Services
                 jobsQuery = (IQueryable<SyncJob>)request.QueryOptions.ApplyTo(jobsQuery, odataSettings);
 
                 var countQuery = (IQueryable<SyncJob>)request.QueryOptions.ApplyTo(
-                       _databaseSyncJobsRepository.GetSyncJobs(true),
+                       GetSyncJobsQuery(),
                        AllowedQueryOptions.Skip | AllowedQueryOptions.Top);
                 numberOfJobs = countQuery.Count();
 
@@ -87,6 +92,28 @@ namespace Services
             }
 
             return response;
+        }
+
+        private IQueryable<SyncJob> GetSyncJobsQuery()
+        {
+            var query = _databaseSyncJobsRepository.GetSyncJobs(true);
+
+            if (_httpContextAccessor.HttpContext.User.IsInRole("Admin"))
+            {
+                return query;
+            }
+            else if (_httpContextAccessor.HttpContext.User.IsInRole("MembershipManagement.Destination.Read.All"))
+            {
+                var userId = _httpContextAccessor.HttpContext.User.Claims.FirstOrDefault(x => x.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+                if (string.IsNullOrWhiteSpace(userId)) return Enumerable.Empty<SyncJob>().AsQueryable();
+                query = query.Where(x => x.DestinationOwners.Any(o => o.ObjectId == Guid.Parse(userId)));
+            }
+            else
+            {
+                return Enumerable.Empty<SyncJob>().AsQueryable();
+            }
+
+            return query;
         }
     }
 }

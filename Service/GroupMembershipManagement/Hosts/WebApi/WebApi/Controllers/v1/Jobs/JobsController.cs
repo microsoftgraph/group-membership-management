@@ -23,13 +23,13 @@ namespace WebApi.Controllers.v1.Jobs
             _getJobsRequestHandler = getJobsRequestHandler ?? throw new ArgumentNullException(nameof(getJobsRequestHandler));
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize()]
         [HttpGet()]
         public async Task<ActionResult<IEnumerable<SyncJob>>> GetJobsAsync(ODataQueryOptions<SyncJobModel> queryOptions)
         {
             var response = await _getJobsRequestHandler.ExecuteAsync(new GetJobsRequest { QueryOptions = queryOptions });
-            Response.Headers.Add("X-Total-Pages", response.TotalNumberOfPages.ToString());
-            Response.Headers.Add("X-Current-Page", response.CurrentPage.ToString());
+            Response.Headers.Add("x-total-pages", response.TotalNumberOfPages.ToString());
+            Response.Headers.Add("x-current-page", response.CurrentPage.ToString());
             return Ok(response.Model);
         }
     }
