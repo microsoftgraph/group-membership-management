@@ -16,7 +16,7 @@ export class JobsApi extends ApiBase implements IJobsApi {
 
     this.ensureSuccessStatusCode(response);
 
-    const xTotalPages = response.headers['X-Total-Pages'];
+    const xTotalPages = response.headers['x-total-pages'];
     const jobsPage: Page<Job> = {
       items: response.data.map((entity) => this.mapJobEntityToJob(entity)),
       totalNumberOfPages: xTotalPages ? parseInt(xTotalPages) : 1,

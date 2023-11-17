@@ -42,6 +42,8 @@ namespace WebApi
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Services.AddHttpContextAccessor();
+
             builder.Services.AddControllers(options =>
             {
                 options.InputFormatters.Insert(0, JsonPatchFormatter.GetJsonPatchInputFormatter());
@@ -309,7 +311,7 @@ namespace WebApi
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .AllowCredentials()
-                .WithExposedHeaders("X-Total-Pages", "X-Current-Page")
+                .WithExposedHeaders("x-total-pages", "x-current-page")
                 .Build()
             );
 
