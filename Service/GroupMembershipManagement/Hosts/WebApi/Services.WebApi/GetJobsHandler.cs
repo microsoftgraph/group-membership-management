@@ -7,6 +7,7 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using WebApi.Models;
 using SyncJobDTO = WebApi.Models.DTOs.SyncJob;
 
 namespace Services
@@ -98,19 +99,15 @@ namespace Services
         {
             var query = _databaseSyncJobsRepository.GetSyncJobs(true);
 
-            if (_httpContextAccessor.HttpContext.User.IsInRole("Admin"))
+            if (_httpContextAccessor.HttpContext.User.IsInRole(Roles.TENANT_READER))
             {
                 return query;
             }
-            else if (_httpContextAccessor.HttpContext.User.IsInRole("MembershipManagement.Destination.Read.All"))
+            else
             {
                 var userId = _httpContextAccessor.HttpContext.User.Claims.FirstOrDefault(x => x.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
                 if (string.IsNullOrWhiteSpace(userId)) return Enumerable.Empty<SyncJob>().AsQueryable();
                 query = query.Where(x => x.DestinationOwners.Any(o => o.ObjectId == Guid.Parse(userId)));
-            }
-            else
-            {
-                return Enumerable.Empty<SyncJob>().AsQueryable();
             }
 
             return query;
