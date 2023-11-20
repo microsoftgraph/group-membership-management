@@ -135,12 +135,12 @@ function Set-WebApiAzureADApplication {
 
 		$permissionScope = New-Object Microsoft.Azure.Powershell.Cmdlets.Resources.MSGraph.Models.ApiV10.MicrosoftGraphPermissionScope
 		$permissionScope.Id = New-Guid
-		$permissionScope.AdminConsentDescription = "admin"
-		$permissionScope.AdminConsentDisplayName = "admin"
+		$permissionScope.AdminConsentDescription = "WebAPI user impersonation"
+		$permissionScope.AdminConsentDisplayName = "WebAPI user impersonation"
 		$permissionScope.IsEnabled = $true
 		$permissionScope.Type = "User"
-		$permissionScope.UserConsentDescription = "user"
-		$permissionScope.UserConsentDisplayName = "user"
+		$permissionScope.UserConsentDescription = "WebAPI user impersonation"
+		$permissionScope.UserConsentDisplayName = "WebAPI user impersonation"
 		$permissionScope.Value = "user_impersonation"
 
 		$api = $webApiApp.Api
@@ -156,18 +156,18 @@ function Set-WebApiAzureADApplication {
 		[String[]]$memberTypes = "User", "Application"
 
 		$readerRole = @{
-			DisplayName        = "Reader"
-			Description        = "Read-only role"
-			Value              = "Reader"
+			DisplayName        = "Tenant Reader"
+			Description        = "Tenant Readers can read all destinations managed by Membership Management."
+			Value              = "MembershipManagement.Destination.Read.All"
 			Id                 = [Guid]::NewGuid().ToString()
 			IsEnabled          = $True
 			AllowedMemberTypes = @($memberTypes)
 		}
 
 		$adminRole = @{
-			DisplayName        = "Admin"
-			Description        = "Admin role"
-			Value              = "Admin"
+			DisplayName        = "Tenant Administrator"
+			Description        = "Tenant Administrators can make changes to service configuration."
+			Value              = "MembershipManagement.ServiceConfiguration.ReadWrite.All"
 			Id                 = [Guid]::NewGuid().ToString()
 			IsEnabled          = $True
 			AllowedMemberTypes = @($memberTypes)

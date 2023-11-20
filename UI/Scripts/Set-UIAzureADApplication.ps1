@@ -147,18 +147,18 @@ function Set-UIAzureADApplication {
 		[String[]]$memberTypes = "User", "Application"
 
 		$readerRole = @{
-			DisplayName        = "Reader"
-			Description        = "Read-only role"
-			Value              = "Reader"
+			DisplayName        = "Tenant Reader"
+			Description        = "Tenant Readers can read all destinations managed by Membership Management."
+			Value              = "MembershipManagement.Destination.Read.All"
 			Id                 = [Guid]::NewGuid().ToString()
 			IsEnabled          = $True
 			AllowedMemberTypes = @($memberTypes)
 		}
 
 		$adminRole = @{
-			DisplayName        = "Admin"
-			Description        = "Admin role"
-			Value              = "Admin"
+			DisplayName        = "Tenant Administrator"
+			Description        = "Tenant Administrators can make changes to service configuration."
+			Value              = "MembershipManagement.ServiceConfiguration.ReadWrite.All"
 			Id                 = [Guid]::NewGuid().ToString()
 			IsEnabled          = $True
 			AllowedMemberTypes = @($memberTypes)
