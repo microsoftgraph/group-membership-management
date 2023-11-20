@@ -2,11 +2,9 @@
 // Licensed under the MIT license.
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OData.Query;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
-using WebApi.Models.DTOs;
 
 namespace WebApi.Controllers.v1.Settings
 {
@@ -26,8 +24,7 @@ namespace WebApi.Controllers.v1.Settings
             _updateSettingRequestHandler = updateSettingRequestHandler ?? throw new ArgumentNullException(nameof(updateSettingRequestHandler));
         }
 
-        [EnableQuery()]
-        [Authorize(Roles = "Admin")]
+        [Authorize()]
         [HttpGet()]
         public async Task<ActionResult<string>> GetSettingByKeyAsync(string key)
         {
@@ -35,7 +32,7 @@ namespace WebApi.Controllers.v1.Settings
             return Ok(response.Model);
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = Models.Roles.TENANT_ADMINISTRATOR)]
         [HttpPost("{key}")]
         public async Task UpdateSettingAsync(string key, [FromBody] string value)
         {

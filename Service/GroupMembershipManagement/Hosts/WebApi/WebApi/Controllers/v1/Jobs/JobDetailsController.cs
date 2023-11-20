@@ -25,12 +25,19 @@ namespace WebApi.Controllers.v1.Jobs
             _patchJobRequestHandler = patchJobRequestHandler;
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize()]
         [HttpGet()]
         public async Task<ActionResult<IEnumerable<SyncJob>>> GetJobDetailsAsync(Guid syncJobId)
         {
             var response = await _getJobDetailsRequestHandler.ExecuteAsync(new GetJobDetailsRequest(syncJobId));
-            return Ok(response.Model);
+
+            return response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.OK => Ok(response.Model),
+                System.Net.HttpStatusCode.NotFound => NotFound(),
+                System.Net.HttpStatusCode.Forbidden => Forbid(),
+                _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
+            };
         }
 
         [Authorize()]
@@ -40,7 +47,7 @@ namespace WebApi.Controllers.v1.Jobs
         {
             var user = User;
             var userName = user.Identity?.Name!;
-            var isAdmin = User.IsInRole("Admin");
+            var isAdmin = User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR);
             var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAdmin, userName, syncJobId, patchDocument));
 
             return response.StatusCode switch

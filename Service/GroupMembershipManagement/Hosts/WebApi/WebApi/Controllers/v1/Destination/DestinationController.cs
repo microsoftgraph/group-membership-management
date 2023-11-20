@@ -32,7 +32,7 @@ namespace WebApi.Controllers.v1.Destination
             _getGroupOnboardingStatusHandler = getGroupOnboardingStatusHandler ?? throw new ArgumentNullException(nameof(getGroupOnboardingStatusHandler));
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize()]
         [HttpGet("search/{query}")]
         public async Task<ActionResult<IEnumerable<AzureADGroup>>> SearchAsync(string query)
         {
@@ -40,7 +40,7 @@ namespace WebApi.Controllers.v1.Destination
             return Ok(response.Model);
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize()]
         [HttpGet("groups/{groupId}/endpoints")]
         public async Task<ActionResult<List<string>>> GetGroupEndpointsAsync(Guid groupId)
         {
@@ -48,7 +48,7 @@ namespace WebApi.Controllers.v1.Destination
             return Ok(response.Endpoints);
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize()]
         [HttpGet("groups/{groupId}/onboarding-status")]
         public async Task<ActionResult<GetGroupOnboardingStatusResponse>> GetGroupOnboardingStatusAsync(Guid groupId)
         {

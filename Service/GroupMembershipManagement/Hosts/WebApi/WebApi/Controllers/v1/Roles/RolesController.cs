@@ -19,7 +19,7 @@ namespace WebApi.Controllers.v1.Roles
         [HttpGet("isAdmin")]
         public ActionResult<bool> GetIsAdmin()
         {
-            return User.IsInRole("Admin");
+            return User.IsInRole(WebApi.Models.Roles.TENANT_ADMINISTRATOR);
         }
     }
 }

@@ -1,34 +1,51 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
+using WebApi.Models;
 using SyncJobDetailsDTO = WebApi.Models.DTOs.SyncJobDetails;
 
-namespace Services{
+namespace Services
+{
     public class GetJobDetailsHandler : RequestHandlerBase<GetJobDetailsRequest, GetJobDetailsResponse>
     {
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ILoggingRepository _loggingRepository;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
         public GetJobDetailsHandler(ILoggingRepository loggingRepository,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
-                              IGraphGroupRepository graphGroupRepository) : base(loggingRepository)
+                              IGraphGroupRepository graphGroupRepository,
+                              IHttpContextAccessor httpContextAccessor) : base(loggingRepository)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
         }
 
         protected override async Task<GetJobDetailsResponse> ExecuteCoreAsync(GetJobDetailsRequest request)
         {
-            var response = new GetJobDetailsResponse();
-            SyncJob job = await _databaseSyncJobsRepository.GetSyncJobAsync(request.SyncJobId);
-            List<string> endpoints = new List<string>();
+            var endpoints = new List<string>();
+            var response = new GetJobDetailsResponse
+            {
+                StatusCode = HttpStatusCode.OK
+            };
+
+            var (job, statusCode) = await GetSyncJobAsync(request.SyncJobId);
+
+            if(statusCode != HttpStatusCode.OK)
+            {
+                response.StatusCode = statusCode;
+                return response;
+            }
 
             try
             {
@@ -62,5 +79,27 @@ namespace Services{
             return response;
         }
 
+        private async Task<(SyncJob? syncJob, HttpStatusCode statusCode)> GetSyncJobAsync(Guid syncJobId)
+        {
+            if (_httpContextAccessor.HttpContext.User.IsInRole(Roles.TENANT_ADMINISTRATOR)
+                || _httpContextAccessor.HttpContext.User.IsInRole(Roles.TENANT_READER))
+            {
+                return (await _databaseSyncJobsRepository.GetSyncJobAsync(syncJobId), HttpStatusCode.OK);
+            }
+
+            var userId = _httpContextAccessor.HttpContext.User.Claims.FirstOrDefault(x => x.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+            if (string.IsNullOrWhiteSpace(userId)) return (null, HttpStatusCode.Forbidden);
+
+            if (!await _databaseSyncJobsRepository.GetSyncJobs(true).AnyAsync())
+            {
+                return (null, HttpStatusCode.NotFound);
+            }
+
+            var job = await _databaseSyncJobsRepository
+                            .GetSyncJobs(true)
+                            .FirstOrDefaultAsync(x => x.DestinationOwners.Any(o => o.ObjectId == Guid.Parse(userId)));
+
+            return job != null ? (job, HttpStatusCode.OK) : (null, HttpStatusCode.Forbidden);
+        }
     }
 }
