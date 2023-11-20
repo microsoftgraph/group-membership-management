@@ -41,7 +41,7 @@ namespace Services
 
             var (job, statusCode) = await GetSyncJobAsync(request.SyncJobId);
 
-            if(statusCode != HttpStatusCode.OK)
+            if (statusCode != HttpStatusCode.OK)
             {
                 response.StatusCode = statusCode;
                 return response;
@@ -90,7 +90,7 @@ namespace Services
             var userId = _httpContextAccessor.HttpContext.User.Claims.FirstOrDefault(x => x.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
             if (string.IsNullOrWhiteSpace(userId)) return (null, HttpStatusCode.Forbidden);
 
-            if (!await _databaseSyncJobsRepository.GetSyncJobs(true).AnyAsync())
+            if (!await _databaseSyncJobsRepository.GetSyncJobs(true).AnyAsync(x => x.Id == syncJobId))
             {
                 return (null, HttpStatusCode.NotFound);
             }

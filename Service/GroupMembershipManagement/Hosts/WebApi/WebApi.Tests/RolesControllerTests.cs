@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using WebApi.Controllers.v1.Roles;
+using WebApi.Models;
 
 namespace Services.Tests
 {
@@ -24,7 +25,7 @@ namespace Services.Tests
         {
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Role, "Admin"),
+                new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR),
             };
 
             _rolesController.ControllerContext = CreateControllerContext(claims);

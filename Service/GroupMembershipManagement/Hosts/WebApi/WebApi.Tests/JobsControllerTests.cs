@@ -13,7 +13,10 @@ using Microsoft.OData.UriParser;
 using Models;
 using Moq;
 using Repositories.Contracts;
+using System.Data;
+using System.Security.Claims;
 using WebApi.Controllers.v1.Jobs;
+using WebApi.Models;
 using WebApi.Models.Responses;
 
 namespace Services.Tests
@@ -36,6 +39,7 @@ namespace Services.Tests
         private Mock<GraphServiceClient> _graphServiceClient = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private ODataQueryOptions<SyncJob> _odataQueryOptions = null!;
+        private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
 
         [TestInitialize]
         public void Initialize()
@@ -45,6 +49,7 @@ namespace Services.Tests
             _requestAdapter = new Mock<IRequestAdapter>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _databaseSyncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _httpContextAccessor = new Mock<IHttpContextAccessor>();
 
             var builder = new ODataConventionModelBuilder();
             builder.EntitySet<SyncJob>("SyncJob");
@@ -111,7 +116,8 @@ namespace Services.Tests
 
             _getJobsHandler = new GetJobsHandler(_loggingRepository.Object,
                                                  _databaseSyncJobsRepository.Object,
-                                                 _graphGroupRepository.Object);
+                                                 _graphGroupRepository.Object,
+                                                 _httpContextAccessor.Object);
 
             _jobsController = new JobsController(_getJobsHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -121,8 +127,32 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task GetJobsTestAsync()
+        [DataRow(Roles.TENANT_READER)]
+        [DataRow(Roles.TENANT_ADMINISTRATOR)]
+        [DataRow("UserRole")]
+        public async Task GetJobsTestByRoleAsync(string role)
         {
+            var userId = Guid.NewGuid().ToString();
+            foreach (var job in _jobEntities)
+            {
+                job.DestinationOwners = new List<DestinationOwner>
+                {
+                    new DestinationOwner
+                    {
+                        ObjectId = Guid.Parse(userId)
+                    }
+                };
+            }
+
+            _context = CreateHttpContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+                });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
             var response = await _jobsController.GetJobsAsync(_odataQueryOptions);
             var result = response.Result as OkObjectResult;
 
@@ -142,8 +172,17 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task GetJobsTestWithGraphAPIFailureAsync()
+        [DataRow(Roles.TENANT_READER)]
+        public async Task GetJobsTestWithGraphAPIFailureAsync(string role)
         {
+            _context = CreateHttpContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role)
+                });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
             _graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>()))
                                     .ReturnsAsync(() => "Example Name");
 
@@ -153,7 +192,8 @@ namespace Services.Tests
             _getJobsHandler = new GetJobsHandler(
                                      _loggingRepository.Object,
                                      _databaseSyncJobsRepository.Object,
-                                     _graphGroupRepository.Object);
+                                     _graphGroupRepository.Object,
+                                     _httpContextAccessor.Object);
 
             _jobsController = new JobsController(_getJobsHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -186,6 +226,16 @@ namespace Services.Tests
             {
                 yield return value;
             }
+        }
+
+        private HttpContext CreateHttpContext(List<Claim> claims)
+        {
+            var identity = new ClaimsIdentity(claims, "TestAuthType");
+            var principal = new ClaimsPrincipal(identity);
+            var httpContext = new DefaultHttpContext();
+            httpContext.User = principal;
+
+            return httpContext;
         }
     }
 }

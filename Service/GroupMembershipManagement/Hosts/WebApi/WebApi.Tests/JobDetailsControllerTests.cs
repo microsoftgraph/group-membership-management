@@ -1,18 +1,21 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.AspNetCore.Mvc;
-using Moq;
-using Models;
-using Repositories.Contracts;
-using WebApi.Controllers.v1.Jobs;
-using SyncJobDetails = WebApi.Models.DTOs.SyncJobDetails;
-using Services.WebApi;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.AspNetCore.Mvc;
+using MockQueryable.Moq;
+using Models;
+using Moq;
+using Repositories.Contracts;
+using Services.WebApi;
+using System.Data;
+using System.Security.Claims;
+using WebApi.Controllers.v1.Jobs;
+using WebApi.Models;
 using WebApi.Models.DTOs;
 using SyncJob = Models.SyncJob;
-using Microsoft.AspNetCore.Http;
-using System.Security.Claims;
+using SyncJobDetails = WebApi.Models.DTOs.SyncJobDetails;
 
 namespace Services.Tests
 {
@@ -27,10 +30,12 @@ namespace Services.Tests
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private bool _isGroupOwner = true;
+        private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
 
         [TestInitialize]
         public void Initialize()
         {
+            _httpContextAccessor = new Mock<IHttpContextAccessor>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
 
@@ -55,13 +60,20 @@ namespace Services.Tests
                 Requestor = "example@microsoft.com",
             };
 
-
             _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
                               .ReturnsAsync(() => _jobEntity);
 
+            _syncJobRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
+                              .Returns(() =>
+                              {
+                                  var jobs = new List<SyncJob> { _jobEntity };
+                                  return jobs.BuildMock();
+                              });
+
             _getJobDetailsHandler = new GetJobDetailsHandler(_loggingRepository.Object,
                                                              _syncJobRepository.Object,
-                                                             _graphGroupRepository.Object);
+                                                             _graphGroupRepository.Object,
+                                                             _httpContextAccessor.Object);
 
             _patchJobHandler = new PatchJobHandler(_loggingRepository.Object,
                                                    _graphGroupRepository.Object,
@@ -70,10 +82,41 @@ namespace Services.Tests
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _patchJobHandler);
         }
 
-        [TestMethod]
-        public async Task GetJobDetailsTestAsync()
+        private async IAsyncEnumerable<T> GetItemsAsync<T>(List<T> list)
         {
-            var response = await _jobDetailsController.GetJobDetailsAsync(Guid.NewGuid());
+            foreach (var item in list)
+            {
+                yield return item;
+            }
+
+            await Task.CompletedTask;
+        }
+
+        [TestMethod]
+        [DataRow(Roles.TENANT_READER)]
+        [DataRow(Roles.TENANT_ADMINISTRATOR)]
+        [DataRow("UserRole")]
+        public async Task GetJobDetailsTestAsync(string role)
+        {
+            var userId = Guid.NewGuid().ToString();
+            _jobEntity.DestinationOwners = new List<DestinationOwner>
+                {
+                    new DestinationOwner
+                    {
+                        ObjectId = Guid.Parse(userId)
+                    }
+                };
+
+            var context = CreateHttpContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+                });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
+            var response = await _jobDetailsController.GetJobDetailsAsync(_jobEntity.Id);
             var result = response.Result as OkObjectResult;
 
             Assert.IsNotNull(response);
@@ -88,8 +131,19 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task GetJobDetailsTestRequestorNotAnOwnerAsync()
+        [DataRow(Roles.TENANT_READER)]
+        [DataRow(Roles.TENANT_ADMINISTRATOR)]
+        public async Task GetJobDetailsTestRequestorNotAnOwnerAsync(string role)
         {
+            var context = CreateHttpContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+                });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
 
             _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
@@ -98,7 +152,8 @@ namespace Services.Tests
             _getJobDetailsHandler = new GetJobDetailsHandler(
                                      _loggingRepository.Object,
                                      _syncJobRepository.Object,
-                                     _graphGroupRepository.Object);
+                                     _graphGroupRepository.Object,
+                                     _httpContextAccessor.Object);
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _patchJobHandler);
 
@@ -225,7 +280,7 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, "Admin")
+                    new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR)
                 })
             };
 
@@ -239,11 +294,29 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PatchJobSuccessfully()
+        public async Task PatchJobWhenIsAnOwner()
         {
+            var userId = Guid.NewGuid().ToString();
+            _jobEntity.DestinationOwners = new List<DestinationOwner>
+                {
+                    new DestinationOwner
+                    {
+                        ObjectId = Guid.Parse(userId)
+                    }
+                };
+
+            var context = CreateHttpContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, "UserRole"),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+                });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _patchJobHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim> { new Claim(ClaimTypes.Name, "user@domain.com") })
+                ControllerContext = CreateControllerContext(context)
             };
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
@@ -255,14 +328,24 @@ namespace Services.Tests
             Assert.IsNotNull(result);
         }
 
+        private ControllerContext CreateControllerContext(HttpContext httpContext)
+        {
+            return new ControllerContext { HttpContext = httpContext };
+        }
+
         private ControllerContext CreateControllerContext(List<Claim> claims)
+        {
+            return new ControllerContext { HttpContext = CreateHttpContext(claims) };
+        }
+
+        private HttpContext CreateHttpContext(List<Claim> claims)
         {
             var identity = new ClaimsIdentity(claims, "TestAuthType");
             var principal = new ClaimsPrincipal(identity);
             var httpContext = new DefaultHttpContext();
             httpContext.User = principal;
 
-            return new ControllerContext { HttpContext = httpContext };
+            return httpContext;
         }
     }
 }
