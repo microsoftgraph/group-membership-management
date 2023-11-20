@@ -97,7 +97,7 @@ namespace Services
 
             var job = await _databaseSyncJobsRepository
                             .GetSyncJobs(true)
-                            .FirstOrDefaultAsync(x => x.DestinationOwners.Any(o => o.ObjectId == Guid.Parse(userId)));
+                            .FirstOrDefaultAsync(x => x.Id == syncJobId && x.DestinationOwners.Any(o => o.ObjectId == Guid.Parse(userId)));
 
             return job != null ? (job, HttpStatusCode.OK) : (null, HttpStatusCode.Forbidden);
         }
