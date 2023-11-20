@@ -12,9 +12,10 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<PurgedSyncJob> PurgedSyncJobs { get; set; } = null!;
         public DbSet<Status> Statuses { get; set; } = null!;
         public DbSet<Setting> Settings { get; set; } = null!;
-
         public DbSet<NotificationType> NotificationTypes { get; set; }
         public DbSet<JobNotification> JobNotifications { get; set; }
+        public DbSet<DestinationName> DestinationNames { get; set; }
+        public DbSet<DestinationOwner> DestinationOwners { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<SyncJob>().Property(t => t.Id)
@@ -56,6 +57,25 @@ namespace Repositories.EntityFramework.Contexts
             modelBuilder.Entity<JobNotification>()
                 .HasIndex(j => new { j.SyncJobId, j.NotificationTypeID })
                 .IsUnique();
+                
+            modelBuilder.Entity<SyncJob>()
+                .HasOne(syncJob => syncJob.DestinationName)
+                .WithOne(name => name.SyncJob)
+                .HasForeignKey<DestinationName>(name => name.Id);
+
+            modelBuilder.Entity<SyncJob>()
+                .HasMany(syncJob => syncJob.DestinationOwners)
+                .WithMany(owner => owner.SyncJobs);
+
+            modelBuilder.Entity<DestinationOwner>().Property(owner => owner.Id)
+                .ValueGeneratedOnAdd()
+                .HasDefaultValueSql("NEWSEQUENTIALID()");
+
+            modelBuilder.Entity<DestinationOwner>()
+                .HasIndex(owner => owner.ObjectId);
+
+            modelBuilder.Entity<DestinationName>()
+                .HasIndex(name => name.Name);
 
         }
 

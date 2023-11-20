@@ -100,6 +100,7 @@ namespace Hosts.FunctionBase
             );
             
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
+            builder.Services.AddScoped<IDatabaseDestinationAttributesRepository, DatabaseDestinationAttributesRespository>();
             builder.Services.AddScoped<INotificationTypesRepository, NotificationTypesRepository>();
             builder.Services.AddScoped<IJobNotificationsRepository, JobNotificationRepository>();
 

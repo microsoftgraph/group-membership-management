@@ -43,6 +43,11 @@ namespace Repositories.EntityFramework
                     : _readContext.SyncJobs;
         }
 
+        public async Task<List<SyncJob>> GetSyncJobsByDestinationAsync(string destinationType)
+        {
+            return await _readContext.SyncJobs.FromSqlRaw<SyncJob>(@"SELECT * FROM [dbo].[SyncJobs] WHERE JSON_VALUE(Destination, '$[0].type') = {0}", destinationType).ToListAsync();
+        }
+
         public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
         {
             IQueryable<SyncJob> query = _readContext.SyncJobs;
@@ -113,8 +118,21 @@ namespace Repositories.EntityFramework
         {
             foreach (var job in jobs)
             {
-                var entry = _writeContext.Set<SyncJob>().Add(job);
-                entry.State = EntityState.Deleted;
+
+                var jobWithOwners = await _writeContext.SyncJobs
+                .Include(p => p.DestinationOwners)
+                    .ThenInclude(owner => owner.SyncJobs)
+                .SingleOrDefaultAsync(j => j.Id == job.Id);
+
+                foreach (var owner in jobWithOwners.DestinationOwners)
+                {
+                    if (owner.SyncJobs.Count() < 2)
+                    {
+                        _writeContext.DestinationOwners.Remove(owner);
+                    }
+                }
+
+                _writeContext.SyncJobs.Remove(jobWithOwners);
             }
 
             await _writeContext.SaveChangesAsync();

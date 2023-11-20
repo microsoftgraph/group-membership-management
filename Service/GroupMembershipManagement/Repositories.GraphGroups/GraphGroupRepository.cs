@@ -3,6 +3,7 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
 using Models;
+using Models.Entities;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
@@ -64,6 +65,16 @@ namespace Repositories.GraphGroups
         public Task<Dictionary<Guid, string>> GetGroupNamesAsync(List<Guid> objectIds)
         {
             return _graphGroupInformationReader.GetGroupNamesAsync(objectIds);
+        }
+
+        public Task<Dictionary<string, string>> GetTeamsChannelsNamesAsync(List<AzureADTeamsChannel> channels)
+        {
+            return _graphGroupInformationReader.GetTeamsChannelsNamesAsync(channels);
+        }
+
+        public Task<Dictionary<Guid, List<Guid>>> GetDestinationOwnersAsync(List<Guid> objectIds)
+        {
+            return _graphGroupInformationReader.GetGroupOwnersAsync(objectIds);
         }
 
         public Task<List<string>> GetGroupEndpointsAsync(Guid groupId)

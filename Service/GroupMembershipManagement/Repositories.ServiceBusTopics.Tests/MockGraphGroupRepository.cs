@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Models;
+using Models.Entities;
 
 namespace Repositories.ServiceBusTopics.Tests
 {
@@ -166,6 +167,16 @@ namespace Repositories.ServiceBusTopics.Tests
         }
 
         public Task<List<AzureADGroup>> SearchDestinationsAsync(string query)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<Dictionary<Guid, List<Guid>>> GetDestinationOwnersAsync(List<Guid> objectIds)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<Dictionary<string, string>> GetTeamsChannelsNamesAsync(List<AzureADTeamsChannel> channels)
         {
             throw new NotImplementedException();
         }

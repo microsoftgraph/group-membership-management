@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Models;
+using Models.Entities;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -20,6 +21,8 @@ namespace Repositories.Contracts
         Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId);
         Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId);
         Task<bool> IsEmailRecipientMemberOfGroupAsync(string email, Guid groupObjectId);
+        Task<Dictionary<Guid, List<Guid>>> GetDestinationOwnersAsync(List<Guid> objectIds);
+        Task<Dictionary<string, string>> GetTeamsChannelsNamesAsync(List<AzureADTeamsChannel> channels);
         Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0);
         Task<bool> GroupExists(Guid objectId);
         Task<bool> GroupExists(string groupName);

@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
+using Models.Entities;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
@@ -177,7 +178,18 @@ namespace Tests.FunctionApps.Mocks
         {
             throw new NotImplementedException();
         }
+        
         public Task<List<AzureADGroup>> SearchDestinationsAsync(string query)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<Dictionary<Guid, List<Guid>>> GetDestinationOwnersAsync(List<Guid> objectIds)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<Dictionary<string, string>> GetTeamsChannelsNamesAsync(List<AzureADTeamsChannel> channels)
         {
             throw new NotImplementedException();
         }

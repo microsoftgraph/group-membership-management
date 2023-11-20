@@ -9,6 +9,7 @@ using Microsoft.Kiota.Abstractions;
 using Microsoft.Kiota.Abstractions.Serialization;
 using Microsoft.Kiota.Serialization.Json;
 using Models;
+using Models.Entities;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
@@ -212,6 +213,96 @@ namespace Repositories.GraphGroups
             return groupNames;
         }
 
+        public async Task<Dictionary<string, string>> GetTeamsChannelsNamesAsync(List<AzureADTeamsChannel> channels)
+        {
+            var channelNames = new Dictionary<string, string>();
+            var batchRequest = new BatchRequestContentCollection(_graphServiceClient);
+
+            // requestId, groupId
+            var requestIdTracker = new Dictionary<string, string>();
+
+            foreach (var channel in channels.Distinct())
+            {
+                var requestInformation = _graphServiceClient
+                                            .Teams[channel.ObjectId.ToString()]
+                                            .Channels[channel.ChannelId.ToString()]
+                                            .ToGetRequestInformation(requestConfiguration =>
+                                            {
+                                                requestConfiguration.QueryParameters.Select = new[] { "displayName" };
+                                            });
+
+
+
+                var requestId = await batchRequest.AddBatchRequestStepAsync(requestInformation);
+                requestIdTracker.Add(requestId, channel.ChannelId);
+            }
+
+            var batchResponse = await _graphServiceClient.Batch.PostAsync(batchRequest);
+
+            foreach (var statusCodeResponse in await batchResponse.GetResponsesStatusCodesAsync())
+            {
+                using var response = await batchResponse.GetResponseByIdAsync(statusCodeResponse.Key);
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseHandler = new ResponseHandler<Channel>();
+                    var channel = await responseHandler.HandleResponseAsync<HttpResponseMessage, Channel>(response, null);
+                    if (channel != null)
+                        channelNames.Add(requestIdTracker[statusCodeResponse.Key], channel.DisplayName);
+                }
+                else
+                {
+                    channelNames.Add(requestIdTracker[statusCodeResponse.Key], null);
+                }
+            }
+
+            return channelNames;
+        }
+        public async Task<Dictionary<Guid, List<Guid>>> GetGroupOwnersAsync(List<Guid> groupIds)
+        {
+            var groupOwners = new Dictionary<Guid, List<Guid>>();
+            var batchRequest = new BatchRequestContentCollection(_graphServiceClient);
+
+            // requestId, groupId
+            var requestIdTracker = new Dictionary<string, Guid>();
+
+            foreach (var groupId in groupIds.Distinct())
+            {
+                var requestInformation = _graphServiceClient
+                                            .Groups[groupId.ToString()]
+                                            .Owners
+                                            .ToGetRequestInformation(requestConfiguration =>
+                                            {
+                                                requestConfiguration.QueryParameters.Select = new[] { "id" };
+                                                requestConfiguration.QueryParameters.Top = 200;
+                                            });
+
+
+
+                var requestId = await batchRequest.AddBatchRequestStepAsync(requestInformation);
+                requestIdTracker.Add(requestId, groupId);
+            }
+
+            var batchResponse = await _graphServiceClient.Batch.PostAsync(batchRequest);
+
+            foreach (var statusCodeResponse in await batchResponse.GetResponsesStatusCodesAsync())
+            {
+                using var response = await batchResponse.GetResponseByIdAsync(statusCodeResponse.Key);
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseHandler = new ResponseHandler<DirectoryObjectCollectionResponse>();
+                    var directoryObjectCollectionResponse = await responseHandler.HandleResponseAsync<HttpResponseMessage, DirectoryObjectCollectionResponse>(response, null);
+                    if (directoryObjectCollectionResponse != null)
+                        groupOwners.Add(requestIdTracker[statusCodeResponse.Key], directoryObjectCollectionResponse.Value.Select(o => Guid.Parse(o.Id)).ToList());
+                }
+                else
+                {
+                    groupOwners.Add(requestIdTracker[statusCodeResponse.Key], null);
+                }
+            }
+
+            return groupOwners;
+        }
+    
         public async Task<List<string>> GetGroupEndpointsAsync(Guid groupId, Guid? runId)
         {
             var endpoints = new List<string>();

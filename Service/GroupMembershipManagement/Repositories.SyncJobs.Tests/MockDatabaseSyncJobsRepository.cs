@@ -107,5 +107,10 @@ namespace Repositories.SyncJobs.Tests
             }
             await Task.CompletedTask;
         }
+
+        public Task<List<SyncJob>> GetSyncJobsByDestinationAsync(string destinationType)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

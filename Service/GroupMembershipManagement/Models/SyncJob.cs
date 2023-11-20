@@ -124,6 +124,8 @@ namespace Models
         /// </summary>
         [IgnoreLogging]
         public int ThresholdViolations { get; set; }
+        public DestinationName DestinationName { get; set; }
+        public List<DestinationOwner> DestinationOwners { get; set; }
         [NotMapped]
         public DateTimeOffset? Timestamp { get; set; }
         [NotMapped]
