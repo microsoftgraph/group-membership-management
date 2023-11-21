@@ -914,12 +914,13 @@
       "originator": "${$root.providerId}"
   }</value>
   </data>
-  <data name="DefaultCardTemplate" xml:space="preserve">
+  <data name="CardTemplate.DefaultCardTemplate" xml:space="preserve">
     <value> {
       "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
       "type": "AdaptiveCard",
-      "originator": "{0}",
       "version": "1.0",
+      "originator": "${$root.providerId}",
+      "createdUtc": "${$root.cardCreatedTime}",
       "body": [
           {
               "type": "ColumnSet",
@@ -958,7 +959,7 @@
                   {
                       "type": "TextBlock",
                       "id": "44906797-222f-9fe2-0b7a-e3ee21c6e380",
-                      "text": "{1}",
+                      "text": "${$root.subjectContent}",
                       "wrap": true,
                       "weight": "Bolder",
                       "size": "Large",
@@ -967,7 +968,7 @@
                   {
                       "type": "TextBlock",
                       "id": "f7abdf1a-3cce-2159-28ef-f2f362ec937e",
-                      "text": "{2}",
+                      "text": "${$root.messageContent}",
                       "wrap": true
                   }
               ]
@@ -987,7 +988,7 @@
                   {
                       "type": "TextBlock",
                       "id": "42654e7e-cece-b419-867a-3e3ef4076870",
-                      "text": "[View group in portal](https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/{3})",
+                      "text": "[View group in portal](https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/${$root.groupId})",
                       "wrap": true,
                       "color": "Accent",
                       "horizontalAlignment": "Right"

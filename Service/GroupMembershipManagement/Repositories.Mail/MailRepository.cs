@@ -115,24 +115,33 @@ namespace Repositories.Mail
             var subjectContent = _localizationRepository.TranslateSetting(emailMessage?.Subject, emailMessage?.AdditionalSubjectParams);
             var messageContent = _localizationRepository.TranslateSetting(emailMessage?.Content, emailMessage?.AdditionalContentParams);
 
-            string adaptiveCardJson = _localizationRepository.TranslateSetting("DefaultCardTemplate");
+            string adaptiveCardJson = _localizationRepository.TranslateSetting(CardTemplate.DefaultCardTemplate);
 
             string groupId = emailMessage?.AdditionalContentParams[0];
-            adaptiveCardJson = adaptiveCardJson.Replace("{0}", _actionableEmailProviderId)
-                                                .Replace("{1}", subjectContent)
-                                                .Replace("{2}", messageContent)
-                                                .Replace("{3}", groupId);
+            var cardData = new DefaultCardTemplate
+            {
+                ProviderId = _actionableEmailProviderId,
+                SubjectContent = subjectContent,
+                MessageContent = messageContent,
+                GroupId = groupId,
+                CardCreatedTime = DateTime.UtcNow
+            };
+
+            var template = new AdaptiveCardTemplate(adaptiveCardJson);
+            var adaptiveCard = template.Expand(cardData);
 
             var htmlTemplate = @"<html>
-                                    <head>
-                                        <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
-                                        <script type=""application/adaptivecard+json"">
-                                    </head>
-                                    <body>
-                                    </body>
-                                </html>";
+                <head
+                  <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
+                  <script type=""application/adaptivecard+json"">
+                 {0}
+                  </script>
+                </head>
+                <body>
+                </body>
+                </html>";
 
-            var htmlContent = string.Format(htmlTemplate, adaptiveCardJson);
+            var htmlContent = string.Format(htmlTemplate, adaptiveCard);
 
             var message = new Message
             {
@@ -143,7 +152,6 @@ namespace Repositories.Mail
                     Content = htmlContent
                 }
             };
-
             return message;
         }
 
