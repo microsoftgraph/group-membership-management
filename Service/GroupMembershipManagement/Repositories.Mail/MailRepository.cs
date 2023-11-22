@@ -4,15 +4,15 @@
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Models;
+using Models.AdaptiveCards;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Security;
-using System.Text;
 using System.Threading.Tasks;
+using AdaptiveCards.Templating;
 
 namespace Repositories.Mail
 {
