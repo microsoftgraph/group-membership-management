@@ -17,7 +17,7 @@ namespace Services.Contracts
         Task<string> GetGroupNameAsync(SyncJob job);
         Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters);
         Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job);
-        Task UpdateSyncJobStatusAsync(SyncStatus status, SyncJob job);
+        Task UpdateSyncJobAsync(SyncStatus? status, SyncJob job);
         Task SendMessageAsync(SyncJob job);
         Task<List<string>> GetGroupEndpointsAsync(SyncJob job);
     }
