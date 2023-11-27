@@ -8,6 +8,7 @@ using Microsoft.Kiota.Abstractions;
 using Models;
 using Repositories.Contracts;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -146,15 +147,25 @@ namespace Repositories.GraphGroups
         {
 
             User user = null;
+            var nativeResponseHandler = new NativeResponseHandler();
+            var userByMailResponse = new UserCollectionResponse();
 
             try
             {
-                user = await _graphServiceClient.Users[email].GetAsync();
-            }
-            catch (ODataError ex)
-            {
-                if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
-                    return false;
+
+                await _graphServiceClient.Users.GetAsync(requestConfiguration =>
+                                            {
+                                                requestConfiguration.QueryParameters.Filter = $"Mail eq '{email}'";
+                                                requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                                            });
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse.IsSuccessStatusCode)
+                {
+                    userByMailResponse = await DeserializeResponseAsync(nativeResponse, UserCollectionResponse.CreateFromDiscriminatorValue);
+                    user = userByMailResponse.Value[0];
+                }
             }
             catch (Exception ex)
             {
@@ -195,8 +206,7 @@ namespace Repositories.GraphGroups
 
                 if (nativeResponse.IsSuccessStatusCode)
                 {
-                    groupOwnersResponse = await DeserializeResponseAsync(nativeResponse,
-                                                                         DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
+                    groupOwnersResponse = await DeserializeResponseAsync(nativeResponse, DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
                 }
 
                 var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
