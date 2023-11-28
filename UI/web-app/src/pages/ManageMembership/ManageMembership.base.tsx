@@ -9,7 +9,8 @@ import {
   useTheme,
   DefaultButton, PrimaryButton,
   Icon,
-  Dialog, DialogType, DialogFooter, IComboBox, IComboBoxOption
+  Dialog, DialogType, DialogFooter, IComboBox, IComboBoxOption,
+  Spinner
 } from '@fluentui/react';
 import { useNavigate } from 'react-router-dom';
 import { Page } from '../../components/Page';
@@ -30,9 +31,19 @@ import {
   manageMembershipSelectedDestination,
   setCurrentStep,
   setHasChanges,
-  setSelectedDestination
+  setSelectedDestination,
+  manageMembershipStartDate,
+  manageMembershipPeriod,
+  manageMembershipThresholdPercentageForAdditions,
+  manageMembershipThresholdPercentageForRemovals,
+  resetManageMembership
 } from '../../store/manageMembership.slice';
 import { getGroupEndpoints, getGroupOnboardingStatus } from '../../store/manageMembership.api';
+import { NewJob } from '../../models/NewJob';
+import { fetchJobs, postJob } from '../../store/jobs.api';
+import { RunConfiguration } from '../../components/RunConfiguration';
+import { Confirmation } from '../../components/Confirmation';
+import { selectAccountName } from '../../store/account.slice';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -56,6 +67,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const dispatch = useDispatch<AppDispatch>();
 
   const [showLeaveManageMembershipDialog, setShowLeaveManageMembershipDialog] = useState(false);
+  const [isPostingJob, setIsPostingJob] = useState(false);
 
   const currentStep = useSelector(manageMembershipCurrentStep);
   const hasChanges = useSelector(manageMembershipHasChanges);
@@ -65,12 +77,17 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   // Onboarding values
   const query = useSelector(manageMembershipQuery);
   const isQueryValid = useSelector(manageMembershipIsQueryValid);
+  const startDate = useSelector(manageMembershipStartDate);
+  const period = useSelector(manageMembershipPeriod);
+  const thresholdPercentageForAdditions = useSelector(manageMembershipThresholdPercentageForAdditions);
+  const thresholdPercentageForRemovals = useSelector(manageMembershipThresholdPercentageForRemovals);
+  const requestor = useSelector(selectAccountName);
 
   const handleSearchDestinationChange = async (event: React.FormEvent<IComboBox>, option?: IComboBoxOption) => {
     if (option) {
       dispatch(setHasChanges(true));
       const selectedGroupId = option.key as string;
-      const selectedDestination: Destination = { id: selectedGroupId, name: option.text, type: 'Group' };
+      const selectedDestination: Destination = { id: selectedGroupId, name: option.text, type: 'GroupMembership' }; // Make type configurable once we support Teams Channels
 
       dispatch(setSelectedDestination(selectedDestination));
       dispatch(getGroupEndpoints(selectedGroupId));
@@ -81,6 +98,10 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const handleBackToDashboardButtonClick = () => {
     if (hasChanges)
       setShowLeaveManageMembershipDialog(true);
+  };
+
+  const onEditButtonClick = (stepToEdit: number) => {
+    dispatch(setCurrentStep(stepToEdit));
   };
 
   const onNextStepClick = () => {
@@ -98,18 +119,48 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const onConfirmExit = () => {
     navigate(-1);
     setShowLeaveManageMembershipDialog(false);
+    dispatch(resetManageMembership());
+  };
+
+  const handleSaveButtonClick = async () => {
+    const destinationJson = JSON.stringify([{
+      value: { objectId: selectedDestination?.id },
+      type: selectedDestination?.type
+    }]);
+
+    const newJob: NewJob = {
+      destination: destinationJson,
+      requestor: requestor ?? '',
+      startDate: startDate,
+      period: period,
+      query: query,
+      thresholdPercentageForAdditions: thresholdPercentageForAdditions,
+      thresholdPercentageForRemovals: thresholdPercentageForRemovals,
+      status: 'Idle',
+    };
+
+    setIsPostingJob(true);
+
+    try {
+      await dispatch(postJob(newJob));
+      setIsPostingJob(false);
+      await dispatch(fetchJobs());
+      navigate(-1);
+    } catch (error) {
+      console.error("Error posting job:", error);
+    }
   };
 
   const isStep1ConditionsMet = selectedDestination && isGroupReadyForOnboarding === true;
-  const isStep2ConditionsMet = isQueryValid;
+  const isStep3ConditionsMet = isQueryValid;
   let isNextDisabled = false;
 
   if (currentStep === 1 && !isStep1ConditionsMet) {
     isNextDisabled = true;
-  } else if (currentStep === 2 && !isStep2ConditionsMet) {
-    isNextDisabled = true;
-  } else if (currentStep === 3) {
+  } else if (currentStep === 2) {
     isNextDisabled = false;
+  } else if (currentStep === 3 && !isStep3ConditionsMet) {
+    isNextDisabled = true;
   } else if (currentStep === 4) {
     isNextDisabled = true;
   }
@@ -130,11 +181,29 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         {currentStep === 2 && <OnboardingStep
           stepTitle={strings.ManageMembership.labels.step2title}
           stepDescription={strings.ManageMembership.labels.step2description}
-          destinationType="Group"
+          destinationType={selectedDestination?.type}
+          destinationName={selectedDestination?.name}
+          children={
+            <RunConfiguration />}
+        />}
+        {currentStep === 3 && <OnboardingStep
+          stepTitle={strings.ManageMembership.labels.step3title}
+          stepDescription={strings.ManageMembership.labels.step3description}
+          destinationType={selectedDestination?.type}
           destinationName={selectedDestination?.name}
           children={
             <AdvancedQuery
               query={query}
+            />}
+        />}
+        {currentStep === 4 && <OnboardingStep
+          stepTitle={strings.ManageMembership.labels.step4title}
+          stepDescription={strings.ManageMembership.labels.step4description}
+          destinationType={selectedDestination?.type}
+          destinationName={selectedDestination?.name}
+          children={
+            <Confirmation
+              onEditButtonClick={onEditButtonClick}
             />}
         />}
         <div className={classNames.bottomContainer}>
@@ -151,7 +220,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             ))}
           </div>
           <div className={classNames.nextButtonContainer}>
-            <PrimaryButton text={strings.next} onClick={onNextStepClick} disabled={isNextDisabled} />
+            {currentStep === 4 ?
+              <PrimaryButton text={strings.submit} onClick={handleSaveButtonClick} />
+              : <PrimaryButton text={strings.next} onClick={onNextStepClick} disabled={isNextDisabled} />}
           </div>
         </div>
       </div >
@@ -173,6 +244,11 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
           <DefaultButton onClick={onDialogClose} text={strings.cancel} />
         </DialogFooter>
       </Dialog>
+      {isPostingJob && (
+        <div className={classNames.overlay}>
+          <Spinner label={strings.ManageMembership.labels.savingSyncJob} ariaLive="assertive" labelPosition="right" />
+        </div>
+      )}
     </Page>
   )
 };

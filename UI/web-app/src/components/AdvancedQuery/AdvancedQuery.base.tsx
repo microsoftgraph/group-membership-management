@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   DefaultButton,
   IProcessedStyleSet,
@@ -19,7 +19,11 @@ import {
 import { useStrings } from "../../store/hooks";
 import schemaDefinition from '../../Query.json';
 import { AppDispatch } from '../../store';
-import { setIsQueryValid, setNewJobQuery } from '../../store/manageMembership.slice';
+import { 
+  manageMembershipQuery,
+  setIsQueryValid,
+  setNewJobQuery
+} from '../../store/manageMembership.slice';
 
 const getClassNames = classNamesFunction<
   IAdvancedQueryStyleProps,
@@ -31,7 +35,7 @@ interface ExtendedErrorObject extends ErrorObject<string, Record<string, any>, u
 }
 
 export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (props) => {
-  const { className, styles, query } = props;
+  const { className, styles } = props;
   const strings = useStrings();
   const classNames: IProcessedStyleSet<IAdvancedQueryStyles> = getClassNames(
     styles,
@@ -43,6 +47,7 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
   const dispatch = useDispatch<AppDispatch>();
   const [validationMessage, setValidationMessage] = React.useState<React.ReactNode | null>(null);
   const ajv = new Ajv();
+  const query: string = useSelector(manageMembershipQuery);
 
   const formatErrors = (errors: (ErrorObject<string, Record<string, any>, unknown> & { dataPath: string })[] | null | undefined) => {
     if (!errors || errors.length === 0) return null;

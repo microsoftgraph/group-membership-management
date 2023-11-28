@@ -15,6 +15,7 @@ export interface IManageMembershipStyles {
     circleIcon: IStyle;
     nextButtonContainer: IStyle;
     backButtonContainer: IStyle;
+    overlay: IStyle;
 }
 
 export interface IManageMembershipStyleProps {

@@ -15,6 +15,8 @@ import {
 } from './OnboardingStep.types';
 import { useStrings } from "../../store/hooks";
 import { PageSection } from "../PageSection";
+import { useSelector } from "react-redux";
+import { manageMembershipSelectedDestinationName, manageMembershipSelectedDestinationType } from "../../store/manageMembership.slice";
 
 const getClassNames = classNamesFunction<
   IOnboardingStepStyleProps,
@@ -22,7 +24,7 @@ const getClassNames = classNamesFunction<
 >();
 
 export const OnboardingStepBase: React.FunctionComponent<IOnboardingStepProps> = (props) => {
-  const { className, styles, children, stepTitle, stepDescription, destinationType, destinationName } = props;
+  const { className, styles, children, stepTitle, stepDescription } = props;
   const strings = useStrings();
   const classNames: IProcessedStyleSet<IOnboardingStepStyles> = getClassNames(
     styles,
@@ -31,6 +33,13 @@ export const OnboardingStepBase: React.FunctionComponent<IOnboardingStepProps> =
       theme: useTheme(),
     }
   );
+  const destinationType = useSelector(manageMembershipSelectedDestinationType);
+  const destinationName = useSelector(manageMembershipSelectedDestinationName);
+
+  const destinationTypeLabel: string =
+    destinationType === "GroupMembership" ?
+      strings.ManageMembership.labels.group
+      : destinationType ? destinationType.toString() : '';
 
   const isAdvancedQueryChild = React.Children.toArray(children).some(child =>
     React.isValidElement(child) && (child.type as React.ComponentType).displayName === 'StyledAdvancedQueryBase'
@@ -41,7 +50,7 @@ export const OnboardingStepBase: React.FunctionComponent<IOnboardingStepProps> =
       <div className={classNames.card}>
         <PageSection>
           <div className={classNames.title}>{strings.ManageMembership.labels.pageTitle}</div>
-          {(destinationType && destinationName) && (<div className={classNames.destination}>{destinationType}: {destinationName}</div>)}
+          {(destinationType && destinationName) && (<div className={classNames.destination}>{destinationTypeLabel}: {destinationName}</div>)}
           <div className={classNames.stepTitle}>{stepTitle}</div>
           <div className={classNames.stepDescription}>{stepDescription}</div>
         </PageSection>

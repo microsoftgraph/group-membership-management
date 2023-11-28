@@ -2,11 +2,12 @@
 // Licensed under the MIT license.
 
 export type NewJob = {
-    targetGroupId: string;
     requestor: string;
-    // startDate: string;
-    // period: number;
+    startDate: string;
+    period: number;
     query: string;
-    // thresholdPercentageForAdditions: number;
-    // thresholdPercentageForRemovals: number;
+    thresholdPercentageForAdditions: number;
+    thresholdPercentageForRemovals: number;
+    status: string;
+    destination: string;
 };

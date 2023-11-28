@@ -28,6 +28,7 @@ namespace WebApi.Configuration
             services.AddTransient<IRequestHandler<ResolveNotificationRequest, ResolveNotificationResponse>, ResolveNotificationHandler>();
 
             services.AddTransient<IRequestHandler<PatchJobRequest, PatchJobResponse>, PatchJobHandler>();
+            services.AddTransient<IRequestHandler<PostJobRequest, PostJobResponse>, PostJobHandler>();
 
             return services;
         }

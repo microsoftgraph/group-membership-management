@@ -30,6 +30,7 @@ export const config = {
   getJobDetails: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails`,
   settings: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/settings`,
   patchJobDetails: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails`,
+  postJob: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobs`,
   destinations: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/destinations`,
   searchDestinations: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/destinations/search`,
   getGroupEndpoints: (groupId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/destinations/groups/${groupId}/endpoints`,

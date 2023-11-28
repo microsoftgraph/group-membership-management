@@ -4,7 +4,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 import { fetchJobDetails, patchJobDetails } from './jobDetails.api';
-import { fetchJobs } from './jobs.api';
+import { fetchJobs, postJob } from './jobs.api';
 import type { RootState } from './store';
 import { type Job } from '../models/Job';
 import { type JobDetails } from '../models/JobDetails';
@@ -20,6 +20,8 @@ export interface JobsState {
   getJobDetailsError: string | undefined;
   patchJobDetailsResponse: any | undefined;
   patchJobDetailsError: string | undefined;
+  postJobLoading: boolean;
+  postJobError: string | undefined;
 }
 
 // Define the initial state using that type
@@ -31,7 +33,9 @@ const initialState: JobsState = {
   getJobsError: undefined,
   getJobDetailsError: undefined,
   patchJobDetailsResponse: undefined,
-  patchJobDetailsError: undefined
+  patchJobDetailsError: undefined,
+  postJobLoading: false,
+  postJobError: undefined,
 };
 
 export const jobsSlice = createSlice({
@@ -84,6 +88,19 @@ export const jobsSlice = createSlice({
     builder.addCase(patchJobDetails.rejected, (state, action) => {
       state.patchJobDetailsError = action.error.message;
     });
+
+    // postJob 
+    builder.addCase(postJob.pending, (state) => {
+      state.postJobLoading = true;
+      state.postJobError = undefined;
+    });
+    builder.addCase(postJob.fulfilled, (state, action) => {
+      state.postJobLoading = false;
+    });
+    builder.addCase(postJob.rejected, (state, action) => {
+      state.postJobLoading = false;
+      state.postJobError = action.error.message;
+    });
   },
 });
 
@@ -107,5 +124,8 @@ export const getTotalNumberOfPages = (state: RootState) => state.jobs.totalNumbe
 
 export const selectPatchJobDetailsResponse = (state: RootState) => state.jobs.patchJobDetailsResponse;
 export const selectPatchJobDetailsError = (state: RootState) => state.jobs.patchJobDetailsError;
+
+export const selectPostJobLoading = (state: RootState) => state.jobs.postJobLoading;
+export const selectPostJobError = (state: RootState) => state.jobs.postJobError;
 
 export default jobsSlice.reducer;

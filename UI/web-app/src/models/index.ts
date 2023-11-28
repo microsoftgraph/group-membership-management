@@ -12,6 +12,7 @@ export * from './Page';
 export * from './PagingOptions';
 export * from './PatchJobRequest';
 export * from './PatchJobResponse';
+export * from './PostJobResponse';
 export * from './Setting';
 export * from './Status';
 export * from './User';

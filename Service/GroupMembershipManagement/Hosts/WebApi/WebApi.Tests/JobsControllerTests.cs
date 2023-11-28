@@ -18,6 +18,7 @@ using System.Security.Claims;
 using WebApi.Controllers.v1.Jobs;
 using WebApi.Models;
 using WebApi.Models.Responses;
+using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
 
 namespace Services.Tests
 {
@@ -25,13 +26,14 @@ namespace Services.Tests
     public class JobsControllerTests
     {
         private int _jobCount = 1000;
-
+        private NewSyncJobDTO _newSyncJob = null!;
         private HttpContext _context = null!;
         private List<string> _groupTypes = null!;
         private List<SyncJob> _jobEntities = null!;
         private List<AzureADGroup> _groups = null!;
         private JobsController _jobsController = null!;
         private GetJobsHandler _getJobsHandler = null!;
+        private PostJobHandler _postJobHandler = null!;
         private TelemetryClient _telemetryClient = null!;
         private Mock<IRequestAdapter> _requestAdapter = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
@@ -108,18 +110,37 @@ namespace Services.Tests
                 });
             });
 
+            _newSyncJob = new NewSyncJobDTO
+            {
+                Id = Guid.NewGuid(),
+                Destination = "[{\"value\":{\"objectId\":\"e2e78850-ed7c-49dc-91f2-4cb57a608504\"},\"type\":\"GroupMembership\"}]",
+                Status = SyncStatus.Idle.ToString(),
+                Period = 24,
+                Query = "[{ \"type\": \"GroupMembership\", \"source\": \"fc8f8e1a-6d91-4965-85ff-f911944f201d\"}]",
+                Requestor = "user@domain.com",
+                StartDate = DateTime.UtcNow.AddDays(-1).ToString(),
+                ThresholdPercentageForAdditions = 100,
+                ThresholdPercentageForRemovals = 20
+            };
+
             _databaseSyncJobsRepository.Setup(x => x.GetSyncJobsAsync())
                               .ReturnsAsync(() => _jobEntities);
 
             _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
                   .Returns(() => _jobEntities.AsQueryable());
+            
+            _databaseSyncJobsRepository.Setup(repo => repo.CreateSyncJobAsync(It.IsAny<SyncJob>()))
+                .ReturnsAsync(_newSyncJob.Id);
 
             _getJobsHandler = new GetJobsHandler(_loggingRepository.Object,
                                                  _databaseSyncJobsRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _httpContextAccessor.Object);
 
-            _jobsController = new JobsController(_getJobsHandler);
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _loggingRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -195,7 +216,7 @@ namespace Services.Tests
                                      _graphGroupRepository.Object,
                                      _httpContextAccessor.Object);
 
-            _jobsController = new JobsController(_getJobsHandler);
+            _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -220,6 +241,69 @@ namespace Services.Tests
 
         }
 
+        [TestMethod]
+        public async Task PostJobSuccessfullyTestAsync()
+        {
+            _context = CreateHttpContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR),
+
+                }); 
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            _getJobsHandler = new GetJobsHandler(
+                                     _loggingRepository.Object,
+                                     _databaseSyncJobsRepository.Object,
+                                     _graphGroupRepository.Object,
+                                     _httpContextAccessor.Object);
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _loggingRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            Assert.IsNotNull(result);
+        }
+
+        [TestMethod]
+        public async Task PostJobWhenNotAllowedTestAsync()
+        {
+            _context = CreateHttpContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.TENANT_READER),
+
+                });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            _getJobsHandler = new GetJobsHandler(
+                                     _loggingRepository.Object,
+                                     _databaseSyncJobsRepository.Object,
+                                     _graphGroupRepository.Object,
+                                     _httpContextAccessor.Object);
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _loggingRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as ForbidResult;
+            Assert.IsNotNull(result);
+        }
         private async IAsyncEnumerable<T> ToAsyncEnumerable<T>(IEnumerable<T> input)
         {
             foreach (var value in await Task.FromResult(input))

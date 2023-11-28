@@ -119,5 +119,10 @@ namespace Repositories.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task InsertSyncJobAsync(SyncJob job)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

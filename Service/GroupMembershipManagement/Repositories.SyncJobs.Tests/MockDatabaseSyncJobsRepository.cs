@@ -112,5 +112,10 @@ namespace Repositories.SyncJobs.Tests
         {
             throw new NotImplementedException();
         }
+
+        public Task InsertSyncJobAsync(SyncJob job)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

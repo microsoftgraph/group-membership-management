@@ -173,8 +173,30 @@ export type IStrings = {
       validQuery: string;
       invalidQuery: string;
       validateQuery: string;
+      step3title: string;
+      step3description: string;
+      selectStartDate: string;
+      ASAP: string;
+      requestedDate: string;
+      selectRequestedStartDate: string;
+      from: string;
+      selectFrequency: string;
+      hrs: string;
+      frequency: string;
+      preventAutomaticSync: string;
+      increase: string;
+      decrease: string;
+      step4title: string;
+      step4description: string;
+      objectId: string;
+      sourceParts: string;
+      noThresholdSet: string;
+      savingSyncJob: string;
+      group: string;
     }
   };
+  edit: string;
+  submit: string;
   needHelp: string;
   next: string;
   close: string;
@@ -185,4 +207,6 @@ export type IStrings = {
   back: string;
   backToDashboard: string;
   version: string;
+  yes: string;
+  no: string;
 };

@@ -6,7 +6,12 @@ import moment from 'moment';
 import { SyncStatus, ActionRequired } from '../models/Status';
 import { type Job } from '../models/Job';
 import { ThunkConfig } from './store';
-import { Page, PagingOptions } from '../models';
+import { 
+  NewJob, 
+  PostJobResponse, 
+  Page, 
+  PagingOptions
+} from '../models';
 
 export interface JobsResponse {
   jobs: Job[];
@@ -84,6 +89,30 @@ export const fetchJobs = createAsyncThunk<Page<Job>, PagingOptions | undefined, 
       return jobsPage;
     } catch (error) {
       throw new Error('Failed to fetch jobs!');
+    }
+  }
+);
+
+export const postJob = createAsyncThunk<PostJobResponse, NewJob, ThunkConfig>(
+  'jobs/postJob',
+  async (newJob: NewJob, { extra }) => {
+    const { gmmApi } = extra.apis;
+    try {
+      const response = await gmmApi.jobs.postNewJob(newJob);
+      let postResponse: PostJobResponse = {
+        ok: response.ok,
+        statusCode: response.status,
+      };
+
+      if (!response.ok) {
+        const jsonResponse = await response.json();
+        postResponse.errorCode = jsonResponse?.detail;
+        postResponse.newSyncJobId = jsonResponse?.responseData;
+      }
+      
+      return postResponse;
+    } catch (error) {
+      throw new Error('Failed to post job!');
     }
   }
 );
