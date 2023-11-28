@@ -1033,9 +1033,9 @@ GMM Team</value>
     <value>Increase membership threshold {0}%. Detected threshold {1}%.</value>
   </data>
   <data name="NoDataEmailContent" xml:space="preserve">
-    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group {0}.
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group {1} with Id: {0}.
 
-The group sync will be PAUSED since there is no data to sync to group {0}.
+The group sync will be PAUSED since there is no data to sync to group {1} with Id: {0}.
 
 Please reach out to your GMM team to get this issue resolved.
 

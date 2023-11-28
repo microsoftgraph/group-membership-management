@@ -29,7 +29,8 @@ namespace Services.Tests
     public class MembershipSubOrchestratorTests
     {
         private SyncJob _syncJob;
-        private JobState _jobState;
+		private DestinationName _destinationName;
+		private JobState _jobState;
         private BlobResult _blobResult;
         private PolicyResult<bool> _groupExists;
         private int _numberOfUsersForSourcePart;
@@ -102,7 +103,14 @@ namespace Services.Tests
             var sourceGroupIdTwo = Guid.NewGuid();
             var targetGroupId = Guid.NewGuid();
 
-            _syncJob = new SyncJob
+			_destinationName = new DestinationName
+			{
+				Id = Guid.NewGuid(),
+				LastUpdatedTime = SqlDateTime.MinValue.Value,
+				Name = "destinationname"
+			};
+
+			_syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
                 TargetOfficeGroupId = targetGroupId,
@@ -113,8 +121,9 @@ namespace Services.Tests
                 RunId = Guid.NewGuid(),
                 ThresholdViolations = 0,
                 Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{targetGroupId}\"}}}}]",
-                Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdOne}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdTwo}\"}}]"
-            };
+                Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdOne}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdTwo}\"}}]",
+				DestinationName = _destinationName
+			};
 
             _membershipSubOrchestratorRequest = new MembershipSubOrchestratorRequest
             {
@@ -640,7 +649,8 @@ namespace Services.Tests
         {
             _syncJob.ThresholdPercentageForAdditions = -1;
             _syncJob.ThresholdPercentageForRemovals = -1;
-            _numberOfUsersForSourcePart = 50000;
+            _syncJob.DestinationName.Name = "test";
+			_numberOfUsersForSourcePart = 50000;
 
             _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path"))))
                                     .Callback<string>(path =>

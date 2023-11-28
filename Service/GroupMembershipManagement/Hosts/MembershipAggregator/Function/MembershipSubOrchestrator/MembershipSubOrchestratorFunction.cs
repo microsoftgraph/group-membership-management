@@ -86,10 +86,10 @@ namespace Hosts.MembershipAggregator
                 await _graphAPIService.SendEmailAsync(
                     toEmail: request.SyncJob.Requestor,
                     contentTemplate: NoDataEmailContent,
-                    additionalContentParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString() },
+                    additionalContentParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString(), request.SyncJob.DestinationName.Name.ToString() },
                     runId,
                     emailSubject: NoDataEmailSubject,
-                    additionalSubjectParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString() });
+                    additionalSubjectParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString(), request.SyncJob.DestinationName.Name.ToString() });
 
                 return new MembershipSubOrchestratorResponse
                 {
