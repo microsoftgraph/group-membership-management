@@ -29,7 +29,6 @@ namespace Services.Tests
     public class MembershipSubOrchestratorTests
     {
         private SyncJob _syncJob;
-		private DestinationName _destinationName;
 		private JobState _jobState;
         private BlobResult _blobResult;
         private PolicyResult<bool> _groupExists;
@@ -103,13 +102,6 @@ namespace Services.Tests
             var sourceGroupIdTwo = Guid.NewGuid();
             var targetGroupId = Guid.NewGuid();
 
-			_destinationName = new DestinationName
-			{
-				Id = Guid.NewGuid(),
-				LastUpdatedTime = SqlDateTime.MinValue.Value,
-				Name = "destinationname"
-			};
-
 			_syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
@@ -121,8 +113,7 @@ namespace Services.Tests
                 RunId = Guid.NewGuid(),
                 ThresholdViolations = 0,
                 Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{targetGroupId}\"}}}}]",
-                Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdOne}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdTwo}\"}}]",
-				DestinationName = _destinationName
+                Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdOne}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdTwo}\"}}]"
 			};
 
             _membershipSubOrchestratorRequest = new MembershipSubOrchestratorRequest
@@ -649,7 +640,6 @@ namespace Services.Tests
         {
             _syncJob.ThresholdPercentageForAdditions = -1;
             _syncJob.ThresholdPercentageForRemovals = -1;
-            _syncJob.DestinationName.Name = "test";
 			_numberOfUsersForSourcePart = 50000;
 
             _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path"))))

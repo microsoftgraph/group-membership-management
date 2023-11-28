@@ -82,14 +82,14 @@ namespace Hosts.MembershipAggregator
                     ResultStatus = ResultStatus.Success,
                     RunId = runId
                 });
-
+                var groupName = await _graphAPIService.GetGroupNameAsync(request.SyncJob.TargetOfficeGroupId);
                 await _graphAPIService.SendEmailAsync(
                     toEmail: request.SyncJob.Requestor,
                     contentTemplate: NoDataEmailContent,
-                    additionalContentParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString(), request.SyncJob.DestinationName.Name.ToString() },
+                    additionalContentParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString(), groupName },
                     runId,
                     emailSubject: NoDataEmailSubject,
-                    additionalSubjectParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString(), request.SyncJob.DestinationName.Name.ToString() });
+                    additionalSubjectParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString(), groupName });
 
                 return new MembershipSubOrchestratorResponse
                 {
