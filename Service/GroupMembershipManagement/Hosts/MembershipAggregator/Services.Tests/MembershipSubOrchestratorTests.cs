@@ -43,6 +43,7 @@ namespace Services.Tests
         private (string FilePath, string Content) _downloaderResponse;
         private MembershipSubOrchestratorRequest _membershipSubOrchestratorRequest;
         private TelemetryClient _telemetryClient;
+        private SyncJobGroup _groupInformation;
 
         private Mock<IDryRunValue> _dryRun;
         private Mock<IGMMResources> _gmmResources;
@@ -115,8 +116,13 @@ namespace Services.Tests
                 Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{targetGroupId}\"}}}}]",
                 Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdOne}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdTwo}\"}}]"
 			};
+            _groupInformation = new SyncJobGroup
+            {
+                SyncJob = _syncJob,
+                Name = "groupName"
 
-            _membershipSubOrchestratorRequest = new MembershipSubOrchestratorRequest
+            };
+			_membershipSubOrchestratorRequest = new MembershipSubOrchestratorRequest
             {
                 EntityId = new EntityId(),
                 SyncJob = _syncJob
@@ -221,7 +227,10 @@ namespace Services.Tests
             _graphAPIService.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>()))
                             .ReturnsAsync(() => "GroupName");
 
-            _durableContext.Setup(x => x.GetInput<MembershipSubOrchestratorRequest>())
+			_durableContext.Setup(x => x.CallActivityAsync<SyncJobGroup>(It.Is<string>(s => s == nameof(GroupNameReaderFunction)), It.IsAny<SyncJob>()))
+			   .ReturnsAsync(_groupInformation);
+
+			_durableContext.Setup(x => x.GetInput<MembershipSubOrchestratorRequest>())
                             .Returns(() => _membershipSubOrchestratorRequest);
 
             _durableContext.Setup(x => x.CreateEntityProxy<IJobTracker>(It.IsAny<EntityId>()))

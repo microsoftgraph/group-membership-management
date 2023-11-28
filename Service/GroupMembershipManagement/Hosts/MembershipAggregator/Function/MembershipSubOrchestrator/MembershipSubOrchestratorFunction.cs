@@ -76,20 +76,23 @@ namespace Hosts.MembershipAggregator
                         }
                     });
 
+
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
                 {
                     JobStatus = SyncStatus.MembershipDataNotFound,
                     ResultStatus = ResultStatus.Success,
                     RunId = runId
                 });
-                var groupName = await _graphAPIService.GetGroupNameAsync(request.SyncJob.TargetOfficeGroupId);
+
+                var groupInformation = await context.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), request.SyncJob);
+
                 await _graphAPIService.SendEmailAsync(
                     toEmail: request.SyncJob.Requestor,
                     contentTemplate: NoDataEmailContent,
-                    additionalContentParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString(), groupName },
+                    additionalContentParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString(), groupInformation.Name },
                     runId,
                     emailSubject: NoDataEmailSubject,
-                    additionalSubjectParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString(), groupName });
+                    additionalSubjectParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString(), groupInformation.Name });
 
                 return new MembershipSubOrchestratorResponse
                 {
