@@ -201,7 +201,7 @@ namespace Services
         public async Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job)
         {
             var destinationObjectId = (await ParseDestinationAsync(job)).ObjectId;
-
+            var groupName = await _graphGroupRepository.GetGroupNameAsync(destinationObjectId);
             foreach (var strat in new JobVerificationStrategy[] {
                 new JobVerificationStrategy { TestFunction = _graphGroupRepository.GroupExists, StatusMessage = $"Destination group {destinationObjectId} exists.", ErrorMessage = $"destination group {destinationObjectId} doesn't exist.", EmailBody = SyncDisabledNoGroupEmailBody },
                 new JobVerificationStrategy { TestFunction = (groupId) => GMMCanWriteToGroupAsync(groupId), StatusMessage = $"GMM is an owner of destination group {destinationObjectId}.", ErrorMessage = $"GMM is not an owner of destination group {destinationObjectId}.", EmailBody = SyncDisabledNoOwnerEmailBody }})
@@ -220,7 +220,7 @@ namespace Services
                         SenderPassword = _emailSenderAndRecipients.SenderPassword,
                         ToEmailAddresses = job.Requestor,
                         CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
-                        AdditionalContentParams = new[] { destinationObjectId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses }
+                        AdditionalContentParams = new[] { destinationObjectId.ToString(), groupName, _emailSenderAndRecipients.SupportEmailAddresses }
                     }, job.RunId);
                     return false;
                 }
