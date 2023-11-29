@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Hosts.MembershipAggregator;
+using MembershipAggregator.Activity.EmailSender;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -267,8 +268,13 @@ namespace Services.Tests
                             {
                                 await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
                             });
+			_durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>()))
+				.Callback<string, object>(async (name, request) =>
+				{
+					await CallEmailSenderFunctionAsync(request as EmailSenderRequest);
+				});
 
-            _durableContext.Setup(x => x.CallActivityAsync<SyncJob>(nameof(JobReaderFunction), It.IsAny<JobReaderRequest>())).ReturnsAsync(() => _syncJob);
+			_durableContext.Setup(x => x.CallActivityAsync<SyncJob>(nameof(JobReaderFunction), It.IsAny<JobReaderRequest>())).ReturnsAsync(() => _syncJob);
         }
 
         [TestMethod]
@@ -898,7 +904,13 @@ namespace Services.Tests
             await function.UpdateJobStatusAsync(request);
         }
 
-        private async Task<DeltaCalculatorResponse> CallDeltaCalculatorFunctionAsync(DeltaCalculatorRequest request)
+		private async Task CallEmailSenderFunctionAsync(EmailSenderRequest request)
+		{
+			var function = new EmailSenderFunction(_loggingRepository.Object, _graphAPIService.Object);
+			await function.SendEmailAsync(request);
+		}
+
+		private async Task<DeltaCalculatorResponse> CallDeltaCalculatorFunctionAsync(DeltaCalculatorRequest request)
         {
             var function = new DeltaCalculatorFunction(_loggingRepository.Object, _blobStorageRepository.Object, _deltaCalculatorService);
             return await function.CalculateDeltaAsync(request);

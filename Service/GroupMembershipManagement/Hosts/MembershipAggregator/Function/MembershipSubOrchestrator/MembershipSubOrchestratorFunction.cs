@@ -1,5 +1,6 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using MembershipAggregator.Activity.EmailSender;
 using MembershipAggregator.Helpers;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
@@ -86,13 +87,15 @@ namespace Hosts.MembershipAggregator
 
                 var groupInformation = await context.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), request.SyncJob);
 
-                await _graphAPIService.SendEmailAsync(
-                    toEmail: request.SyncJob.Requestor,
-                    contentTemplate: NoDataEmailContent,
-                    additionalContentParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString(), groupInformation.Name },
-                    runId,
-                    emailSubject: NoDataEmailSubject,
-                    additionalSubjectParams: new[] { request.SyncJob.TargetOfficeGroupId.ToString(), groupInformation.Name });
+                await context.CallActivityAsync(nameof(EmailSenderFunction),
+                                                new EmailSenderRequest
+                                                {
+                                                    SyncJobGroup = groupInformation,
+                                                    EmailSubjectTemplateName = NoDataEmailSubject,
+                                                    EmailContentTemplateName = NoDataEmailContent,
+                                                    AdditionalContentParams = new[] { request.SyncJob.TargetOfficeGroupId.ToString(), groupInformation.Name },
+                                                    AdditionalSubjectParams = new[] { request.SyncJob.TargetOfficeGroupId.ToString(), groupInformation.Name }
+                                                });
 
                 return new MembershipSubOrchestratorResponse
                 {
