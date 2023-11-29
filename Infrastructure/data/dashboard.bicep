@@ -4443,7 +4443,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   GridColumnsWidth: {
                     Message: '379px'
                   }
-                  Query: 'ApplicationLog_CL\n| where ((location_s == "GraphUpdater" or location_s == "TeamsChannelUpdater") and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress" and Message !has "StuckInProgress")\n| project TimeGenerated, Message, RunId_g\n| order by TimeGenerated desc\n'
+                  Query: 'ApplicationLog_CL\n| where ((location_s != "ProfileSync") and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress" and Message !has "StuckInProgress")\n| distinct TimeGenerated, location_s, Message, RunId_g\n| order by TimeGenerated desc\n'
                   PartTitle: 'Jobs marked as Error'
                 }
               }
