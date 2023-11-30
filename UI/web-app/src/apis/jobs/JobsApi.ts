@@ -1,10 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+import { AxiosResponse } from 'axios';
 import { ApiBase } from '../ApiBase';
 import { IJobsApi } from './IJobsApi';
 import { JobEntity } from '../entities';
-import { Page, Job, PagingOptions } from '../../models';
+import { Page, Job, PagingOptions, NewJob } from '../../models';
 import { ODataQueryOptions } from '../entities';
 
 export class JobsApi extends ApiBase implements IJobsApi {
@@ -24,6 +25,12 @@ export class JobsApi extends ApiBase implements IJobsApi {
 
     return jobsPage;
   }
+
+  public async postNewJob(job: NewJob): Promise<AxiosResponse> {
+    const response = await this.httpClient.post('/', job);
+    this.ensureSuccessStatusCode(response);
+    return response;
+}
 
   private mapPagingOptionsToODataQueryOptions(pagingOptions?: PagingOptions): ODataQueryOptions | undefined {
     return pagingOptions

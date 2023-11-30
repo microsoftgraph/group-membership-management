@@ -100,14 +100,13 @@ export const postJob = createAsyncThunk<PostJobResponse, NewJob, ThunkConfig>(
     try {
       const response = await gmmApi.jobs.postNewJob(newJob);
       let postResponse: PostJobResponse = {
-        ok: response.ok,
+        ok: response.status >= 200 && response.status < 300,
         statusCode: response.status,
       };
 
-      if (!response.ok) {
-        const jsonResponse = await response.json();
-        postResponse.errorCode = jsonResponse?.detail;
-        postResponse.newSyncJobId = jsonResponse?.responseData;
+      if (!postResponse.ok) {
+        postResponse.errorCode = response.data?.detail;
+        postResponse.newSyncJobId = response.data?.responseData;
       }
       
       return postResponse;

@@ -403,6 +403,7 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
 
   const lastRunDetails = splitDateString(job.lastSuccessfulRunTime);
   const nextRunDetails = splitDateString(job.estimatedNextRunTime);
+  const minSQLDate: string = '1753-01-01T00:00:00';
 
   return (
     <Stack
@@ -418,7 +419,7 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
         <div className={classNames.itemData}>
           {jobDetails != null ? (
             <Text variant="medium" block>
-              {new Intl.DateTimeFormat().format(Date.parse(jobDetails.lastSuccessfulStartTime))}
+              {jobDetails.startDate === minSQLDate ? strings.ManageMembership.labels.ASAP : new Intl.DateTimeFormat().format(Date.parse(jobDetails.startDate))}
             </Text>
           ) : (
             <Shimmer width="100%" />
@@ -445,10 +446,10 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
         />
         <div className={classNames.itemData}>
           <Text variant="medium" block>
-            {lastRunDetails[0]}
+            {lastRunDetails[0].substring(6) === '1752' ? '' : lastRunDetails[0]}
           </Text>
           <Text style={hoursMessage} variant="medium" block>
-            {lastRunDetails[1]}
+            {lastRunDetails[0].substring(6) === '1752' ? '-' : lastRunDetails[1]}
           </Text>
         </div>
       </Stack.Item>

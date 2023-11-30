@@ -77,7 +77,11 @@ export class MsalAuthenticationService implements IAuthenticationService {
 
   public getActiveAccount(): User | undefined {
     const activeAccount = this._msalInstance.getActiveAccount();
-    return !activeAccount ? undefined : { id: activeAccount.localAccountId, name: activeAccount.name ?? '' };
+    return !activeAccount ? undefined : { 
+      id: activeAccount.localAccountId, 
+      name: activeAccount.name ?? '',
+      username: activeAccount.username ?? ''
+    };
   }
 
   public async getTokenAsync(tokenType: TokenType): Promise<string> {

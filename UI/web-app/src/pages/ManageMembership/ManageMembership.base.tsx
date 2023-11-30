@@ -43,7 +43,7 @@ import { NewJob } from '../../models/NewJob';
 import { fetchJobs, postJob } from '../../store/jobs.api';
 import { RunConfiguration } from '../../components/RunConfiguration';
 import { Confirmation } from '../../components/Confirmation';
-import { selectAccountName } from '../../store/account.slice';
+import { selectAccountUsername } from '../../store/account.slice';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -81,7 +81,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const period = useSelector(manageMembershipPeriod);
   const thresholdPercentageForAdditions = useSelector(manageMembershipThresholdPercentageForAdditions);
   const thresholdPercentageForRemovals = useSelector(manageMembershipThresholdPercentageForRemovals);
-  const requestor = useSelector(selectAccountName);
+  const requestor = useSelector(selectAccountUsername);
 
   const handleSearchDestinationChange = async (event: React.FormEvent<IComboBox>, option?: IComboBoxOption) => {
     if (option) {
@@ -143,9 +143,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
 
     try {
       await dispatch(postJob(newJob));
-      setIsPostingJob(false);
       await dispatch(fetchJobs());
       navigate(-1);
+      setIsPostingJob(false);
     } catch (error) {
       console.error("Error posting job:", error);
     }

@@ -244,12 +244,16 @@ namespace Services.Tests
         [TestMethod]
         public async Task PostJobSuccessfullyTestAsync()
         {
-            _context = CreateHttpContext(new List<Claim>
-                {
-                    new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR),
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "testuser@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR),
+            };
 
-                }); 
+            _context = CreateHttpContext(claims);
+
+            var identity = new ClaimsIdentity(claims);
+            var user = new ClaimsPrincipal(identity);
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
 
@@ -303,6 +307,68 @@ namespace Services.Tests
             var response = await _jobsController.PostJobAsync(_newSyncJob);
             var result = response as ForbidResult;
             Assert.IsNotNull(result);
+        }
+
+        [TestMethod]
+        public async Task PostJobFailureDueToRepositoryExceptionTestAsync()
+        {
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR),
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _loggingRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            _databaseSyncJobsRepository
+                .Setup(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()))
+                .ThrowsAsync(new Exception("Database error"));
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+
+            Assert.IsInstanceOfType(response, typeof(ObjectResult));
+            var result = response as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(StatusCodes.Status500InternalServerError, result.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task PostJobCreationFailedTestAsync()
+        {
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR),
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object, _loggingRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            _databaseSyncJobsRepository.Setup(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()))
+                                       .ReturnsAsync(Guid.Empty);
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+
+            Assert.IsInstanceOfType(response, typeof(ObjectResult));
+            var result = response as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(StatusCodes.Status400BadRequest, result.StatusCode);
         }
         private async IAsyncEnumerable<T> ToAsyncEnumerable<T>(IEnumerable<T> input)
         {

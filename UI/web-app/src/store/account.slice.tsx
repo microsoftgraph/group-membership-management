@@ -50,6 +50,7 @@ export const accountSlice = createSlice({
 export const { setLoggedIn, setLoggingIn } = accountSlice.actions;
 export const selectAccount = (state: RootState) => state.account.user;
 export const selectAccountName = (state: RootState) => state.account.user?.name;
+export const selectAccountUsername = (state: RootState) => state.account.user?.username;
 export const selectLoggedIn = (state: RootState) => state.account.loggedIn;
 export const selectLoginError = (state: RootState) => state.account.loginError;
 export default accountSlice.reducer;
