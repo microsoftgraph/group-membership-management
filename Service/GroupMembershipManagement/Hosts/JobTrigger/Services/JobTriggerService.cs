@@ -220,7 +220,7 @@ namespace Services
                         SenderPassword = _emailSenderAndRecipients.SenderPassword,
                         ToEmailAddresses = job.Requestor,
                         CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
-                        AdditionalContentParams = new[] { destinationObjectId.ToString(), groupName, _emailSenderAndRecipients.SupportEmailAddresses }
+                        AdditionalContentParams = new[] { destinationObjectId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses, groupName }
                     }, job.RunId, templateDirectory);
                     return false;
                 }

@@ -1062,9 +1062,9 @@ GMM Team</value>
 This is an auto-generated email. Please reach out to {1} if you have further questions about GMM.</value>
   </data>
   <data name="SyncDisabledNoOwnerEmailBody" xml:space="preserve">
-    <value>The sync has been disabled because GMM is not an owner of the group {1} with object Id: {0}.
+    <value>The sync has been disabled because GMM is not an owner of the group {2} with object Id: {0}.
 
-This is an auto-generated email. Please reach out to {2} if you have further questions about GMM.</value>
+This is an auto-generated email. Please reach out to {1} if you have further questions about GMM.</value>
   </data>
   <data name="SyncDisabledNoSourceGroupEmailBody" xml:space="preserve">
     <value>The sync for group with id {0} has been disabled because the source group with object Id: {1} doesn't exist.
