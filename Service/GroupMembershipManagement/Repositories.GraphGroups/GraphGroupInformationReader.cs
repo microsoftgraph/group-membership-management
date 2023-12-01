@@ -1,16 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Azure;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
 using Microsoft.Kiota.Abstractions;
-using Microsoft.Kiota.Abstractions.Serialization;
-using Microsoft.Kiota.Serialization.Json;
+using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
 using Models;
 using Models.Entities;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
@@ -18,10 +15,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using static Microsoft.Graph.CoreConstants;
 
 namespace Repositories.GraphGroups
 {
@@ -41,29 +35,52 @@ namespace Repositories.GraphGroups
             {
                 var nativeResponseHandler = new NativeResponseHandler();
                 var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
-                Group group = null;
+                var retryHandlerOption = new RetryHandlerOption { MaxRetry = 4, Delay = 20 };
+
+                bool? groupExists = null;
 
                 await _graphServiceClient.Groups[groupId.ToString()].GetAsync(requestConfiguration =>
                 {
+                    requestConfiguration.Options.Add(retryHandlerOption);
                     requestConfiguration.Options.Add(responseHandlerOption);
                 });
 
                 var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
                 if (nativeResponse.IsSuccessStatusCode)
                 {
-                    group = await DeserializeResponseAsync(nativeResponse, Group.CreateFromDiscriminatorValue);
+                    var group = await DeserializeResponseAsync(nativeResponse, Group.CreateFromDiscriminatorValue);
+                    groupExists = group?.Id != null;
+                }
+                else if (nativeResponse.StatusCode == HttpStatusCode.NotFound)
+                {
+                    groupExists = false;
                 }
 
                 var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
                 await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
 
-                return group != null;
+                if (!groupExists.HasValue)
+                {
+                    throw new Exception($"Unable to determine if group {groupId} exists. Status code: {nativeResponse.StatusCode}");
+                }
+
+                return groupExists.Value;
             }
             catch (ODataError ex)
             {
                 if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
                     return false;
 
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = runId
+                });
+
+                throw;
+            }
+            catch (Exception ex)
+            {
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = ex.GetBaseException().ToString(),
@@ -302,7 +319,7 @@ namespace Repositories.GraphGroups
 
             return groupOwners;
         }
-    
+
         public async Task<List<string>> GetGroupEndpointsAsync(Guid groupId, Guid? runId)
         {
             var endpoints = new List<string>();

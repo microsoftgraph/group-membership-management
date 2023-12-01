@@ -6,6 +6,8 @@ using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.Kiota.Abstractions.Serialization;
+using Microsoft.Kiota.Http.HttpClientLibrary.Middleware;
+using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -14,7 +16,9 @@ using Repositories.GraphGroups;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -133,6 +137,125 @@ namespace Services.Tests
             {
                 Assert.IsTrue(providers.All(x => endPoints.Contains(x)));
             }
+        }
+
+        [TestMethod]
+        public async Task TestGroupExistsSucceedsAsync()
+        {
+            var groupId = Guid.NewGuid();
+            var chaosHandlerOption = new ChaosHandlerOption
+            {
+                PlannedChaosFactory = (request) =>
+                {
+                    var content = GetGroupRawResponse(groupId.ToString());
+                    var response = new HttpResponseMessage(HttpStatusCode.OK);
+                    response.Content = new StringContent(content, Encoding.UTF8, "application/json");
+                    return response;
+                }
+            };
+            var graphServiceClient = CreateCustomGraphServiceClient(chaosHandlerOption);
+            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, _loggingRepository.Object);
+            var groupExists = await _graphGroupRepository.GroupExists(Guid.NewGuid());
+
+            Assert.IsTrue(groupExists);
+        }
+
+        [TestMethod]
+        public async Task TestGroupExistsSucceedsAfterRetriesAsync()
+        {
+            var groupId = Guid.NewGuid();
+            var currentRetry = 0;
+            var chaosHandlerOption = new ChaosHandlerOption
+            {
+                PlannedChaosFactory = (request) =>
+                {
+                    HttpResponseMessage response = null;
+
+                    if (currentRetry < 2)
+                    {
+                        response = new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+                    }
+                    else if (currentRetry < 3)
+                    {
+                        response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+                        response.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(1));
+                    }
+                    else
+                    {
+                        var content = GetGroupRawResponse(groupId.ToString());
+                        response = new HttpResponseMessage(HttpStatusCode.OK);
+                        response.Content = new StringContent(content, Encoding.UTF8, "application/json");
+                    }
+
+                    currentRetry++;
+
+                    return response;
+                }
+            };
+            var graphServiceClient = CreateCustomGraphServiceClient(chaosHandlerOption);
+            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, _loggingRepository.Object);
+            var groupExists = await _graphGroupRepository.GroupExists(Guid.NewGuid());
+
+            Assert.IsTrue(groupExists);
+        }
+
+        [TestMethod]
+        public async Task TestGroupExistsSucceedsFailsRetriesAsync()
+        {
+            var chaosHandlerOption = new ChaosHandlerOption
+            {
+                PlannedChaosFactory = (request) =>
+                {
+                    var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+                    response.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(1));
+                    return response;
+                }
+            };
+            var graphServiceClient = CreateCustomGraphServiceClient(chaosHandlerOption);
+            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, _loggingRepository.Object);
+            var exception = await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => _graphGroupRepository.GroupExists(Guid.NewGuid()));
+
+            Assert.IsTrue(exception.Message.Contains("Too many retries performed"));
+        }
+
+        [TestMethod]
+        public async Task TestGroupExistsNotFoundAsync()
+        {
+            var chaosHandlerOption = new ChaosHandlerOption
+            {
+                PlannedChaosFactory = (request) => new HttpResponseMessage(HttpStatusCode.NotFound)
+            };
+            var graphServiceClient = CreateCustomGraphServiceClient(chaosHandlerOption);
+            _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, _loggingRepository.Object);
+            var groupExists = await _graphGroupRepository.GroupExists(Guid.NewGuid());
+
+            Assert.IsFalse(groupExists);
+        }
+
+
+        private GraphServiceClient CreateCustomGraphServiceClient(ChaosHandlerOption chaosHandlerOption)
+        {
+            var chaosHandler = new ChaosHandler(chaosHandlerOption);
+            var handlers = GraphClientFactory.CreateDefaultHandlers();
+            handlers.Add(chaosHandler);
+            var httpClient = GraphClientFactory.Create(handlers);
+            httpClient.Timeout = TimeSpan.FromSeconds(300);
+            return new GraphServiceClient(httpClient);
+        }
+
+        private string GetGroupRawResponse(string groupId)
+        {
+            return $"{{\"@odata.context\":\"https://graph.microsoft.com/v1.0/$metadata#groups/$entity\"," +
+                                      $"\"id\":\"{groupId}\",\"deletedDateTime\":null,\"classification\":null,\"createdDateTime\":\"2023-01-01T00:00:00Z\"," +
+                                      $"\"creationOptions\":[],\"description\":\"test group\",\"displayName\":\"test group\",\"expirationDateTime\":null," +
+                                      $"\"groupTypes\":[\"Unified\"],\"isAssignableToRole\":null,\"mail\":\"test@test.com\",\"mailEnabled\":true," +
+                                      $"\"mailNickname\":\"test\",\"membershipRule\":null,\"membershipRuleProcessingState\":null,\"onPremisesDomainName\":null," +
+                                      $"\"onPremisesLastSyncDateTime\":null,\"onPremisesNetBiosName\":null,\"onPremisesSamAccountName\":null," +
+                                      $"\"onPremisesSecurityIdentifier\":null,\"onPremisesSyncEnabled\":null,\"preferredDataLocation\":null," +
+                                      $"\"preferredLanguage\":null,\"proxyAddresses\":[],\"renewedDateTime\":\"2023-01-01T00:00:00Z\"," +
+                                      $"\"resourceBehaviorOptions\":[],\"resourceProvisioningOptions\":[],\"securityEnabled\":true," +
+                                      $"\"securityIdentifier\":\"\",\"theme\":null,\"visibility\":\"Private\",\"onPremisesProvisioningErrors\":[]," +
+                                      $"\"serviceProvisioningErrors\":[]}}";
         }
 
         private HttpResponseMessage GetSampleResponse(bool isMailEnabled,
