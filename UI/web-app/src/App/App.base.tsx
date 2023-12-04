@@ -21,6 +21,7 @@ import { loginAsync } from '../store/account.api';
 import { selectLoggedIn } from '../store/account.slice';
 import { selectProfile } from '../store/profile.slice';
 import { setLanguage } from '../store/localization.api';
+import { getIsAdmin } from '../store/roles.api';
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
@@ -49,6 +50,10 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
   useEffect(() => {
     dispatch(setLanguage(profile?.userPreferredLanguage));
   }, [dispatch, profile?.userPreferredLanguage]);
+
+  useEffect(() => {
+    dispatch(getIsAdmin());
+  }, [dispatch, loggedIn]);
 
   if (loggedIn) {
     return (

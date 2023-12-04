@@ -35,12 +35,13 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       justifyContent: 'space-between',
     },
     title: {
-      paddingLeft: 12
+      paddingLeft: 9
     },
     tabContent: {
       cursor: 'pointer',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      paddingLeft: 6
     },
     columnToEnd: {
       flexGrow: 1

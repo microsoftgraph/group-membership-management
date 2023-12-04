@@ -152,6 +152,26 @@ export const strings: IStrings = {
             securityGroupNotFound: 'Grupo de seguridad no encontrado',
           },
         },
+        destinationType: {
+          label: 'Tipo de destinación',
+          options: {
+            all: 'Todos',
+            channel: 'Canal',
+            group: 'Grupo'
+          }
+        },
+        destinationName: {
+          label: 'Nombre de destinación',
+          placeholder: 'Buscar',
+        },
+        ownerPeoplePicker: {
+          label: 'Dueño',
+          suggestionsHeaderText: 'Personas sugeridas',
+          noResultsFoundText: 'No se encontraron resultados',
+          loadingText: 'Cargando',
+          selectionAriaLabel: 'Contactos seleccionados',
+          removeButtonAriaLabel: 'Eliminar'
+        },
       },
       filterButtonText: 'Filtrar',
       clearButtonTooltip: 'Eliminar filtros',

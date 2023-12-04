@@ -78,13 +78,12 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       dispatch(fetchJobs());
   }, [location, navigate]);
 
-  const [filterStatus, setFilterStatus] = useState<string | undefined>(
-    undefined
-  );
-  const [filterActionRequired, setFilterActionRequired] = useState<
-    string | undefined
-  >(undefined);
-  const [filterID, setFilterID] = useState<string | undefined>(undefined);
+  const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
+  const [filterActionRequired, setFilterActionRequired] = useState<string | undefined>(undefined);
+  const [filterDestinationId, setFilterDestinationId] = useState<string | undefined>(undefined);
+  const [filterDestinationName, setFilterDestinationName] = useState<string | undefined>(undefined);
+  const [filterDestinationType, setFilterDestinationType] = useState<string | undefined>(undefined);
+  const [filterDestinationOwner, setFilterDestinationOwner] = useState<string | undefined>(undefined);
 
   const [sortKey, setSortKey] = useState<string | undefined>(undefined);
   const [isSortedDescending, setIsSortedDescending] = useState(false);
@@ -213,30 +212,35 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const getJobsByPage = (): void => {
     setIsShimmerEnabled(true);
     let orderByString: string | undefined = undefined;
+    let filterString: string | undefined = undefined;
+
     if (sortKey !== undefined) {
       orderByString = sortKey + (isSortedDescending ? ' desc' : '');
     }
-
-    console.log(filterActionRequired);
-    let filterString: string | undefined = undefined;
-    if (filterID !== undefined && filterID !== '')
-      filterString = 'targetOfficeGroupId eq ' + filterID;
-    if (
-      filterActionRequired !== undefined &&
-      filterActionRequired !== '' &&
-      filterActionRequired !== 'All'
-    )
+    if (filterDestinationId && filterDestinationId !== '') {
+      filterString = 'targetOfficeGroupId eq ' + filterDestinationId;
+    }
+    if (filterActionRequired && filterActionRequired !== 'All') {
       filterString =
-        (filterString === undefined ? '' : filterString + ' and ') +
-        "status eq '" +
-        filterActionRequired +
-        "'";
-    if (
-      filterStatus !== undefined &&
-      filterStatus !== '' &&
-      filterStatus !== 'All'
-    ) {
-      if (filterStatus === 'Enabled')
+        (filterString === undefined ? '' : filterString + ' and ') + "status eq '" + filterActionRequired + "'";
+    }
+    if (filterDestinationType && filterDestinationType !== 'All')
+    {
+      filterString =
+      (filterString === undefined ? '' : filterString + ' and ') + "contains(Destination, '" + filterDestinationType + "')";
+    }
+    if (filterDestinationName)
+    {
+      filterString =
+      (filterString === undefined ? '' : filterString + ' and ') + "contains(tolower(DestinationName/Name), tolower('" + filterDestinationName + "'))";
+    }
+    if (filterDestinationOwner)
+    {
+      filterString =
+      (filterString === undefined ? '' : filterString + ' and ') + "DestinationOwners/any(o: o/ObjectId eq " + filterDestinationOwner + ")"
+    }
+    if (filterStatus && filterStatus !== 'All') {
+      if (filterStatus === 'Enabled') {
         filterString =
           (filterString === undefined ? '' : filterString + ' and ') +
           "status eq '" +
@@ -244,7 +248,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           "' or status eq '" +
           SyncStatus.InProgress +
           "'";
-      else if (filterStatus === 'Disabled')
+      }
+      else if (filterStatus === 'Disabled') {
         filterString =
           (filterString === undefined ? '' : filterString + ' and ') +
           "not (status eq '" +
@@ -252,12 +257,12 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           "' or status eq '" +
           SyncStatus.InProgress +
           "')";
+      }
     }
-
+    
     const pagingOptions: PagingOptions = {};
     pagingOptions.pageSize = parseInt(pageSize) ?? cookies.pageSize;
-    pagingOptions.itemsToSkip =
-      (pageNumber - 1) * pagingOptions.pageSize;
+    pagingOptions.itemsToSkip = (pageNumber - 1) * pagingOptions.pageSize;
     pagingOptions.orderBy = orderByString;
     pagingOptions.filter = filterString;
 
@@ -374,11 +379,11 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         <JobsListFilter
           setFilterStatus={setFilterStatus}
           setFilterActionRequired={setFilterActionRequired}
-          setFilterID={setFilterID}
+          setFilterDestinationId={setFilterDestinationId}
+          setFilterDestinationType={setFilterDestinationType}
+          setFilterDestinationOwner={setFilterDestinationOwner}
+          setFilterDestinationName={setFilterDestinationName}
           getJobsByPage={getJobsByPage}
-          filterActionRequired={filterActionRequired}
-          filterID={filterID}
-          filterStatus={filterStatus}
         />
       </div>
       <div className={classNames.jobsList}>

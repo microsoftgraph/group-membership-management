@@ -4,63 +4,48 @@
 import {
   classNamesFunction,
   IProcessedStyleSet,
-  IconButton,
   Stack,
   TextField,
+  Text,
   IDropdownOption,
   Dropdown,
-  IStackTokens,
   DefaultButton,
-  TooltipHost,
   DirectionalHint,
+  NormalPeoplePicker,
+  Label
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
-import {
-  IJobsListFilterProps,
-  IJobsListFilterStyleProps,
-  IJobsListFilterStyles,
-} from './JobsListFilter.types';
+import { IJobsListFilterProps, IJobsListFilterStyleProps, IJobsListFilterStyles } from './JobsListFilter.types';
 import { SyncStatus } from '../../models/Status';
 import { useState } from 'react';
 import { useStrings } from '../../store/hooks';
+import { IPersonaProps } from '@fluentui/react/lib/Persona';
+import { useDispatch, useSelector } from 'react-redux';
+import { selectIsAdmin } from '../../store/roles.slice';
+import { AppDispatch } from '../../store';
+import { getUsersForPeoplePicker } from '../../store/filter.api';
 
-const getClassNames = classNamesFunction<
-  IJobsListFilterStyleProps,
-  IJobsListFilterStyles
->();
+const getClassNames = classNamesFunction<IJobsListFilterStyleProps, IJobsListFilterStyles>();
 
-export const JobsListFilterBase: React.FunctionComponent<
-  IJobsListFilterProps
-> = (props: IJobsListFilterProps) => {
+export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> = (props: IJobsListFilterProps) => {
   const {
     className,
     styles,
     getJobsByPage,
     setFilterStatus,
     setFilterActionRequired,
-    setFilterID,
+    setFilterDestinationId,
+    setFilterDestinationName,
+    setFilterDestinationOwner,
+    setFilterDestinationType,
   } = props;
 
-  const classNames: IProcessedStyleSet<IJobsListFilterStyles> = getClassNames(
-    styles,
-    {
-      className,
-      theme: useTheme(),
-    }
-  );
+  const classNames: IProcessedStyleSet<IJobsListFilterStyles> = getClassNames(styles, {
+    className,
+    theme: useTheme(),
+  });
 
   const strings = useStrings();
-  const [ID, setID] = useState<string>('');
-  const [statusSelectedItem, setStatusSelectedItem] =
-    useState<IDropdownOption>();
-  const [actionRequiredSelectedItem, setActionRequiredSelectedItem] =
-    useState<IDropdownOption>();
-  const [idValidationErrorMessage, setIdValidationErrorMessage] =
-    useState<string>();
-
-  const itemAlignmentsStackTokens: IStackTokens = {
-    childrenGap: 18,
-  };
 
   const statusDropdownOptions = [
     {
@@ -74,6 +59,21 @@ export const JobsListFilterBase: React.FunctionComponent<
     {
       key: 'Disabled',
       text: strings.JobsList.JobsListFilter.filters.status.options.disabled,
+    },
+  ];
+
+  const typeDropdownOptions = [
+    {
+      key: 'All',
+      text: strings.JobsList.JobsListFilter.filters.destinationType.options.all,
+    },
+    {
+      key: 'TeamsChannelMembership',
+      text: strings.JobsList.JobsListFilter.filters.destinationType.options.channel,
+    },
+    {
+      key: 'GroupMembership',
+      text: strings.JobsList.JobsListFilter.filters.destinationType.options.group,
     },
   ];
 
@@ -108,10 +108,17 @@ export const JobsListFilterBase: React.FunctionComponent<
     },
   ];
 
-  const onChangeID = (
-    event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
-    newValue?: string
-  ): void => {
+  const [destinationId, setDestinationId] = useState<string>('');
+  const [statusSelectedItem, setStatusSelectedItem] = useState<IDropdownOption>(statusDropdownOptions[0]);
+  const [actionRequiredSelectedItem, setActionRequiredSelectedItem] = useState<IDropdownOption>(actionRequiredDropdownOptions[0]);
+  const [destinationTypeSelectedItem, setDestinationTypeSelectedItem] = useState<IDropdownOption>(typeDropdownOptions[0]);
+  const [destinationName, setDestinationName] = useState<string>();
+  const [idValidationErrorMessage, setIdValidationErrorMessage] = useState<string>();
+  const [selectedOwners, setSelectedOwners] = useState<IPersonaProps[]>([]);
+  const isAdmin = useSelector(selectIsAdmin);
+  const dispatch = useDispatch<AppDispatch>();
+
+  const onChangeID = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
     const inputGuid = newValue || '';
 
     if (inputGuid !== '' && !isGuidValid(inputGuid)) {
@@ -120,28 +127,45 @@ export const JobsListFilterBase: React.FunctionComponent<
       setIdValidationErrorMessage(undefined);
     }
 
-    setID(inputGuid);
-    setFilterID(inputGuid);
+    setDestinationId(inputGuid);
+    setFilterDestinationId(inputGuid);
   };
-  const onChangeStatus = (
-    event: React.FormEvent<HTMLDivElement>,
-    item?: IDropdownOption
-  ): void => {
-    setStatusSelectedItem(item);
+
+  const onChangeName = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
+    setDestinationName(newValue);
+    setFilterDestinationName(newValue as string);
+  };
+
+  const onChangeStatus = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
+    setStatusSelectedItem(item as IDropdownOption);
     setFilterStatus(item?.key.toString() || '');
   };
-  const onChangeActionRequired = (
-    event: React.FormEvent<HTMLDivElement>,
-    item?: IDropdownOption
-  ): void => {
-    setActionRequiredSelectedItem(item);
+
+  const onChangeType = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
+    setDestinationTypeSelectedItem(item as IDropdownOption);
+    setFilterDestinationType(item?.key.toString() || '');
+  };
+
+  const onChangeActionRequired = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
+    setActionRequiredSelectedItem(item as IDropdownOption);
     setFilterActionRequired(item?.key.toString() || '');
   };
 
+  const onOwnersChanged = (items?: IPersonaProps[] | undefined) => {
+    if (items !== undefined && items.length > 0) {
+      setSelectedOwners(items);
+      setFilterDestinationOwner(items[0].id as string);
+    }
+    else
+    {
+      setSelectedOwners([]);
+      setFilterDestinationOwner('');
+    }    
+  };
+  
+
   const isGuidValid = (guid: string): boolean => {
-    const guidRegex = new RegExp(
-      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
-    );
+    const guidRegex = new RegExp(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/);
     return guidRegex.test(guid);
   };
 
@@ -153,100 +177,199 @@ export const JobsListFilterBase: React.FunctionComponent<
   };
 
   const clearFilters = () => {
-    setFilterID('');
+    setFilterDestinationId('');
+    setFilterDestinationType('');
+    setFilterDestinationName('');
+    setFilterDestinationOwner('');
     setFilterStatus('');
     setFilterActionRequired('');
-    setID('');
+
+    setDestinationId('');
+    setDestinationName('');
+    setSelectedOwners([]);
+    setDestinationTypeSelectedItem(typeDropdownOptions[0]);
     setIdValidationErrorMessage(undefined);
     setActionRequiredSelectedItem(actionRequiredDropdownOptions[0]);
     setStatusSelectedItem(statusDropdownOptions[0]);
   };
 
+  const getPickerSuggestions = async (
+    filterText: string,
+    currentPersonas: IPersonaProps[] | undefined
+  ): Promise<IPersonaProps[]> => {
+    if (filterText) {
+      return await dispatch(getUsersForPeoplePicker({displayName: filterText, alias: filterText})).unwrap();
+    } else {
+      return [];
+    }
+  };
+
   return (
     <div className={classNames.container}>
-      <div>
-        <Stack horizontal tokens={itemAlignmentsStackTokens}>
-          <Stack.Item align="start">
-            <TextField
-              label={strings.JobsList.JobsListFilter.filters.ID.label}
-              value={ID}
-              onChange={onChangeID}
-              placeholder={strings.JobsList.JobsListFilter.filters.ID.placeholder}
-              errorMessage={idValidationErrorMessage}
-              styles={{
-                fieldGroup: classNames.textFieldFieldGroup,
-              }}
-            />
-          </Stack.Item>
 
-          <Stack.Item align="start">
-            <Dropdown
-              label={strings.JobsList.JobsListFilter.filters.status.label}
-              selectedKey={
-                statusSelectedItem ? statusSelectedItem.key : undefined
-              }
-              onChange={onChangeStatus}
-              defaultSelectedKey="All"
-              options={statusDropdownOptions}
-              styles={{
-                title: classNames.dropdownTitle
-              }}
-            />
-          </Stack.Item>
+      <Stack>
 
-          <Stack.Item align="start">
-            <Dropdown
-              label={strings.JobsList.JobsListFilter.filters.actionRequired.label}
-              selectedKey={
-                actionRequiredSelectedItem
-                  ? actionRequiredSelectedItem.key
-                  : undefined
-              }
-              onChange={onChangeActionRequired}
-              defaultSelectedKey="All"
-              options={actionRequiredDropdownOptions}
-              styles={{
-                title: classNames.dropdownTitle
-              }}
-            />
-          </Stack.Item>
+        {/*Filter Header*/}
+        <Stack.Item className={classNames.filterHeaderContainer}>
 
-          <Stack.Item
-            align="start"
-            className={classNames.filterButtonStackItem}
-          >
-            <DefaultButton
-              text={strings.JobsList.JobsListFilter.filterButtonText}
-              onClick={getFilteredJobs}
-              className={classNames.filterButton}
-            />
-          </Stack.Item>
+          <Stack horizontal>
 
-          <Stack.Item
-            align="start"
-            className={classNames.filterButtonStackItem}
-          >
-            <TooltipHost
-              content={strings.JobsList.JobsListFilter.clearButtonTooltip}
-              styles={{
-                root: classNames.clearFilterTooltip,
-              }}
-              directionalHint={DirectionalHint.topRightEdge}
-              calloutProps={{
-                beakWidth: 8,
-              }}
-            >
-              <IconButton
+            <Stack.Item align="start">
+              <Text className={classNames.filterTitleText}>Filters</Text>
+            </Stack.Item>
+
+            <Stack.Item grow>
+              <div></div>
+            </Stack.Item>
+
+            <Stack.Item align="end">
+              <DefaultButton
+                iconProps={{
+                  iconName: 'Filter',
+                  styles: { root: classNames.filterButtonIcon },
+                }}
+                text={strings.JobsList.JobsListFilter.filterButtonText}
+                onClick={getFilteredJobs}
+                className={classNames.filterButton}
+              />
+            </Stack.Item>
+
+            <Stack.Item align="end">
+              <DefaultButton
                 iconProps={{
                   iconName: 'ClearFilter',
-                  styles: { root: classNames.clearFilterIconButton },
+                  styles: { root: classNames.filterButtonIcon },
                 }}
+                text={'Clear'}
                 onClick={clearFilters}
+                className={classNames.clearFilterButton}
               />
-            </TooltipHost>
-          </Stack.Item>
-        </Stack>
-      </div>
+            </Stack.Item>
+
+          </Stack>
+
+        </Stack.Item>
+
+        {/*Filter Inputs*/}
+        <Stack.Item align="start" className={classNames.filterInputsContainer}>
+
+          <Stack
+            horizontal
+            tokens={{
+              childrenGap: 18,
+              maxWidth: 1400,
+            }}
+            horizontalAlign="space-between"
+            className={classNames.filterInputsStack}
+          >
+
+            <Stack.Item align="start">
+              <Dropdown
+                label={strings.JobsList.JobsListFilter.filters.destinationType.label}
+                selectedKey={destinationTypeSelectedItem ? destinationTypeSelectedItem.key : undefined}
+                onChange={onChangeType}
+                options={typeDropdownOptions}
+                styles={{
+                  title: classNames.dropdownTitle,
+                }}
+              />
+            </Stack.Item>
+
+            <Stack.Item align="start">
+              <TextField
+                label={strings.JobsList.JobsListFilter.filters.destinationName.label}
+                value={destinationName}
+                onChange={onChangeName}
+                placeholder={strings.JobsList.JobsListFilter.filters.ID.placeholder}
+                styles={{
+                  fieldGroup: classNames.textFieldFieldGroup,
+                  errorMessage: {
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                  }
+                }}
+              />
+            </Stack.Item>
+
+            <Stack.Item align="start">
+              <Dropdown
+                label={strings.JobsList.JobsListFilter.filters.status.label}
+                selectedKey={statusSelectedItem ? statusSelectedItem.key : undefined}
+                onChange={onChangeStatus}
+                options={statusDropdownOptions}
+                styles={{
+                  title: classNames.dropdownTitle,
+                }}
+              />
+            </Stack.Item>
+
+            <Stack.Item align="start">
+              <Dropdown
+                label={strings.JobsList.JobsListFilter.filters.actionRequired.label}
+                selectedKey={actionRequiredSelectedItem ? actionRequiredSelectedItem.key : undefined}
+                onChange={onChangeActionRequired}
+                dropdownWidth={'auto'}
+                options={actionRequiredDropdownOptions}
+                styles={{
+                  title: classNames.dropdownTitle,
+                }}
+              />
+            </Stack.Item>
+
+            <Stack.Item align="start">
+              <TextField
+                label={strings.JobsList.JobsListFilter.filters.ID.label}
+                value={destinationId}
+                onChange={onChangeID}
+                placeholder={strings.JobsList.JobsListFilter.filters.ID.placeholder}
+                errorMessage={idValidationErrorMessage}
+                styles={{
+                  fieldGroup: classNames.textFieldFieldGroupGuid,
+                }}
+              />
+            </Stack.Item>
+
+            {isAdmin ? (
+              <Stack.Item align="start">
+                <Label>{strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.label}</Label>
+                <NormalPeoplePicker
+                  onResolveSuggestions={getPickerSuggestions}
+                  pickerSuggestionsProps={{
+                    suggestionsHeaderText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.suggestionsHeaderText,
+                    noResultsFoundText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.noResultsFoundText,
+                    loadingText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.loadingText,
+                  }}
+                  key={'normal'}
+                  selectionAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.selectionAriaLabel}
+                  removeButtonAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.removeButtonAriaLabel}
+                  resolveDelay={300}
+                  itemLimit={1}
+                  selectedItems={selectedOwners}
+                  onChange={onOwnersChanged}
+                  styles={
+                    {
+                      text: classNames.peoplePicker,
+                    }
+                  } 
+                  pickerCalloutProps={
+                    {
+                      directionalHint: DirectionalHint.bottomCenter,
+                    }
+                  }
+                />
+              </Stack.Item>
+            ) : (
+              <Stack.Item style={{ width: 150 }} align="start"> <div className={classNames.emptyStackItem}></div> </Stack.Item>
+            )}
+
+          </Stack>
+
+        </Stack.Item>
+
+      </Stack>
+
     </div>
   );
 };
+                                           

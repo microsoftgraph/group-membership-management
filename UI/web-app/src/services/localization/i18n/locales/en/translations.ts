@@ -148,6 +148,26 @@ export const strings: IStrings = {
             securityGroupNotFound: 'Security Group Not Found',
           },
         },
+        destinationType: {
+          label: 'Destination Type',
+          options: {
+            all: 'All',
+            channel: 'Channel',
+            group: 'Group'
+          }
+        },
+        destinationName: {
+          label: 'Destination Name',
+          placeholder: 'Search',
+        },
+        ownerPeoplePicker: {
+          label: 'Owner',
+          suggestionsHeaderText: 'Suggested People',
+          noResultsFoundText: 'No results found',
+          loadingText: 'Loading',
+          selectionAriaLabel: 'Selected contacts',
+          removeButtonAriaLabel: 'Remove'
+        },
       },
       filterButtonText: 'Filter',
       clearButtonTooltip: 'Clear Filters',

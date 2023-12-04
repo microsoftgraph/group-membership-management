@@ -143,6 +143,26 @@ export type IStrings = {
             securityGroupNotFound: string;
           };
         };
+        destinationType: {
+          label: string;
+          options: {
+            all: string;
+            channel: string;
+            group: string;
+          };
+        };
+        destinationName: {
+          label: string;
+          placeholder: string;
+        };
+        ownerPeoplePicker: {
+          label: string;
+          suggestionsHeaderText:string;
+          noResultsFoundText: string;
+          loadingText: string;
+          selectionAriaLabel: string;
+          removeButtonAriaLabel: string;
+        };
       };
       filterButtonText: string;
       clearButtonTooltip: string;

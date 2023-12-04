@@ -75,6 +75,7 @@ namespace Services
 
             foreach (var job in jobs)
             {
+                var type = job.Destination.Contains("GroupMembership") ? "Group" : "Channel";
                 var dto = new SyncJobDTO
                 (
                     job.Id,
@@ -86,7 +87,7 @@ namespace Services
                 )
                 {
                     TargetGroupName = targetGroups.ContainsKey(job.TargetOfficeGroupId) ? targetGroups[job.TargetOfficeGroupId].Name : null,
-                    TargetGroupType = targetGroups.ContainsKey(job.TargetOfficeGroupId) ? targetGroups[job.TargetOfficeGroupId].Type : null
+                    TargetGroupType = type
                 };
 
                 response.Model.Add(dto);
