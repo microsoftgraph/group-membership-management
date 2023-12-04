@@ -388,22 +388,27 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
     fontWeight: 100
   }
 
-  function splitDateString(value: string) {
-    const spaceIndex = value.indexOf(' ');
-    const isEmpty = value === '';
-    const date = isEmpty
-      ? '-'
-      : value.substring(0, spaceIndex);
-    const hoursMessage = isEmpty
-      ? ''
-      : value.substring(spaceIndex + 1);
+  const SQL_MIN_DATE = new Date('1753-01-01T00:00:00');
 
-    return [date, hoursMessage]
+  function splitDateString(value: string) {
+    const isEmpty = value === '';
+    if (isEmpty) {
+      return ['-', ''];
+    }
+  
+    const spaceIndex = value.indexOf(' ');
+    const datePart = value.substring(0, spaceIndex);
+    const hoursPart = value.substring(spaceIndex + 1);
+  
+    const parsedDate = new Date(datePart);
+    
+    const isMinDate = parsedDate <= SQL_MIN_DATE;
+  
+    return [isMinDate ? '' : datePart, isMinDate ? '-' : hoursPart];
   }
 
   const lastRunDetails = splitDateString(job.lastSuccessfulRunTime);
   const nextRunDetails = splitDateString(job.estimatedNextRunTime);
-  const minSQLDate: string = '1753-01-01T00:00:00';
 
   return (
     <Stack
@@ -419,7 +424,9 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
         <div className={classNames.itemData}>
           {jobDetails != null ? (
             <Text variant="medium" block>
-              {jobDetails.startDate === minSQLDate ? strings.ManageMembership.labels.ASAP : new Intl.DateTimeFormat().format(Date.parse(jobDetails.startDate))}
+              {new Date(jobDetails.startDate) <= SQL_MIN_DATE
+                ? strings.ManageMembership.labels.ASAP
+                : new Intl.DateTimeFormat().format(new Date(jobDetails.startDate))}
             </Text>
           ) : (
             <Shimmer width="100%" />
@@ -446,10 +453,10 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
         />
         <div className={classNames.itemData}>
           <Text variant="medium" block>
-            {lastRunDetails[0].substring(6) === '1752' ? '' : lastRunDetails[0]}
+            {lastRunDetails[0]}
           </Text>
           <Text style={hoursMessage} variant="medium" block>
-            {lastRunDetails[0].substring(6) === '1752' ? '-' : lastRunDetails[1]}
+            {lastRunDetails[1]}
           </Text>
         </div>
       </Stack.Item>

@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using System.Text.Json;
-
 namespace WebApi.Models.DTOs
 {
     public class NewSyncJob
@@ -10,7 +8,6 @@ namespace WebApi.Models.DTOs
         public NewSyncJob()
         {
         }
-        public Guid Id { get; set; }
         public string Status { get; set; }
         public int Period { get; set; }
         public string Query { get; set; }
