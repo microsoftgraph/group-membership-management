@@ -112,7 +112,6 @@ namespace Services.Tests
 
             _newSyncJob = new NewSyncJobDTO
             {
-                Id = Guid.NewGuid(),
                 Destination = "[{\"value\":{\"objectId\":\"e2e78850-ed7c-49dc-91f2-4cb57a608504\"},\"type\":\"GroupMembership\"}]",
                 Status = SyncStatus.Idle.ToString(),
                 Period = 24,
@@ -130,7 +129,7 @@ namespace Services.Tests
                   .Returns(() => _jobEntities.AsQueryable());
             
             _databaseSyncJobsRepository.Setup(repo => repo.CreateSyncJobAsync(It.IsAny<SyncJob>()))
-                .ReturnsAsync(_newSyncJob.Id);
+                .ReturnsAsync(Guid.NewGuid());
 
             _getJobsHandler = new GetJobsHandler(_loggingRepository.Object,
                                                  _databaseSyncJobsRepository.Object,
