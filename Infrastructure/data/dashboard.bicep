@@ -4209,7 +4209,121 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           '43': {
             position: {
               x: 1
-              y: 51
+              y: 50
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '125c29c5-1323-47cc-a6e3-76ebfa532381'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'ApplicationLog_CL \n| where Message contains "OrchestratorFunction number of jobs" and location_s == "JobTrigger"\n| extend JobCount = toint(extract("number of jobs in the syncJobs List: (\\\\d+)", 1, Message))\n| project timestamp = TimeGenerated, JobCount\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'FrameControlChart'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  value: 'StackedColumn'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: 'gmm-data-prodv2'
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  value: {
+                    xAxis: {
+                      name: 'timestamp'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'JobCount'
+                        type: 'int'
+                      }
+                    ]
+                    splitBy: []
+                    aggregation: 'Sum'
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  value: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  PartTitle: 'Sync Jobs Triggered Per 5 Minutes'
+                }
+              }
+            }
+          }
+          '44': {
+            position: {
+              x: 1
+              y: 54
               colSpan: 9
               rowSpan: 2
             }
@@ -4229,10 +4343,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '44': {
+          '45': {
             position: {
               x: 1
-              y: 53
+              y: 56
               colSpan: 6
               rowSpan: 4
             }
@@ -4350,10 +4464,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '45': {
+          '46': {
             position: {
               x: 7
-              y: 53
+              y: 56
               colSpan: 9
               rowSpan: 4
             }
@@ -4449,10 +4563,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '46': {
+          '47': {
             position: {
               x: 1
-              y: 57
+              y: 60
               colSpan: 8
               rowSpan: 4
             }
@@ -4546,10 +4660,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '47': {
+          '48': {
             position: {
               x: 9
-              y: 57
+              y: 60
               colSpan: 7
               rowSpan: 4
             }
@@ -4643,10 +4757,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '48': {
+          '49': {
             position: {
               x: 1
-              y: 61
+              y: 64
               colSpan: 8
               rowSpan: 4
             }
@@ -4765,10 +4879,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '49': {
+          '50': {
             position: {
               x: 9
-              y: 61
+              y: 64
               colSpan: 8
               rowSpan: 4
             }
@@ -4869,10 +4983,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '50': {
+          '51': {
             position: {
               x: 1
-              y: 65
+              y: 68
               colSpan: 16
               rowSpan: 5
             }
@@ -4975,10 +5089,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '51': {
+          '52': {
             position: {
               x: 1
-              y: 71
+              y: 73
               colSpan: 10
               rowSpan: 2
             }
@@ -4996,10 +5110,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '52': {
+          '53': {
             position: {
               x: 1
-              y: 73
+              y: 75
               colSpan: 6
               rowSpan: 4
             }
@@ -5112,10 +5226,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '53': {
+          '54': {
             position: {
               x: 7
-              y: 73
+              y: 75
               colSpan: 6
               rowSpan: 4
             }
@@ -5228,10 +5342,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '54': {
+          '55': {
             position: {
               x: 1
-              y: 77
+              y: 79
               colSpan: 6
               rowSpan: 4
             }
