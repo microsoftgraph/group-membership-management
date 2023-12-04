@@ -77,7 +77,6 @@ namespace Hosts.MembershipAggregator
                         }
                     });
 
-
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
                 {
                     JobStatus = SyncStatus.MembershipDataNotFound,
