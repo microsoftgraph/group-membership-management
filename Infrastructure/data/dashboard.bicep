@@ -4227,7 +4227,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   name: 'Scope'
                   value: {
                     resourceIds: [
-                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                      '/subscriptions/${subscriptionId}/resourcegroups/${resourceGroup}/providers/microsoft.operationalinsights/workspaces/${resourceGroup}'
                     ]
                   }
                   isOptional: true
