@@ -13,6 +13,9 @@ import { App } from './App';
 import { AdminConfig, JobsPage, JobDetails, OwnerPage, ManageMembership } from './pages';
 import { store } from './store';
 
+console.log(`Test Setting: ${process.env.REACT_APP_TEST_SETTING}`);
+console.log(`App Insights Connection String ${process.env.REACT_APP_APPINSIGHTS_CONNECTIONSTRING}`);
+
 const reactPlugin = new ReactPlugin();
 const appInsights = new ApplicationInsights({
   config: {
@@ -36,6 +39,7 @@ const appInsights = new ApplicationInsights({
   }
 });
 appInsights.loadAppInsights();
+
 initializeIcons();
 ReactDOM.render(
   <ThemeProvider>
