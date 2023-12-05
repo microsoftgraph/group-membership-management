@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Services.Contracts;
 using Repositories.Contracts;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Hosts.JobTrigger
 {
@@ -26,13 +27,13 @@ namespace Hosts.JobTrigger
         public async Task<List<SyncJob>> GetJobsToUpdateAsync([ActivityTrigger] object obj)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
-            var (tableQuery, jobTriggerThresholdExceeded) = await _jobTriggerService.GetSyncJobsAsync();
+            var (tableQuery, jobTriggerThresholdExceeded, maxJobAllowed) = await _jobTriggerService.GetSyncJobsAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
             if (jobTriggerThresholdExceeded)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} function is not proceeding with {tableQuery.Count} jobs due to JobTrigger threshold limit exceeded." }, VerbosityLevel.DEBUG);
-                return new List<SyncJob>();
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} function is proceeding with {maxJobAllowed} jobs due to JobTrigger threshold limit exceeded." }, VerbosityLevel.DEBUG);
+                return tableQuery.Take(maxJobAllowed).ToList();
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} number of jobs about to be returned: {tableQuery.Count}" }, VerbosityLevel.DEBUG);
