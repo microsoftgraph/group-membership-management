@@ -385,10 +385,10 @@ namespace Services
                 contentTemplate = SyncJobDisabledEmailBody;
                 additionalContent = new[]
                 {
-                    job.TargetOfficeGroupId.ToString(),
                     groupName,
-                    _gmmResources.LearnMoreAboutGMMUrl,
-                    _emailSenderAndRecipients.SupportEmailAddresses
+                    job.TargetOfficeGroupId.ToString(),
+                    _emailSenderAndRecipients.SupportEmailAddresses,
+                    _gmmResources.LearnMoreAboutGMMUrl
                 };
             }
 
