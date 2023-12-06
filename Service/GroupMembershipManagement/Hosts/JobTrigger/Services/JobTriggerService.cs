@@ -84,7 +84,9 @@ namespace Services
         {
             var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress, SyncStatus.TransientError);
             var filteredJobs = ApplyJobTriggerFilters(jobs).ToList();
-            var syncJobsCount = filteredJobs.Count;
+            var jobsExcludingFiltered = jobs.Except(filteredJobs).ToList();
+            var activeInProgressJobs = jobsExcludingFiltered.Where(job => job.Status == SyncStatus.InProgress.ToString()).ToList();
+            var syncJobsCount = filteredJobs.Count + activeInProgressJobs.Count;
             var totalSyncJobsCount = await _databaseSyncJobsRepository.GetSyncJobCountAsync(true, SyncStatus.All);
             _telemetryClient.TrackMetric(nameof(Metric.SyncJobsCount), syncJobsCount);
             _telemetryClient.TrackMetric(nameof(Metric.TotalSyncJobsCount), totalSyncJobsCount);

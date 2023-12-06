@@ -33,7 +33,7 @@ namespace Hosts.JobTrigger
             if (jobTriggerThresholdExceeded)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} function is proceeding with {maxJobAllowed} jobs due to JobTrigger threshold limit exceeded." }, VerbosityLevel.DEBUG);
-                return tableQuery.Take(maxJobAllowed).ToList();
+                return tableQuery.OrderBy(job => job.StartDate).Take(maxJobAllowed).ToList();
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} number of jobs about to be returned: {tableQuery.Count}" }, VerbosityLevel.DEBUG);
