@@ -20,8 +20,8 @@ param repositoryUrl string
 @description('customDomainName')
 param customDomainName string
 
-@description('Enter application insights name.')
-param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
+
+var appInsightsName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 resource appInsightsResource 'Microsoft.Insights/components@2020-02-02' existing = {
   name: appInsightsName
