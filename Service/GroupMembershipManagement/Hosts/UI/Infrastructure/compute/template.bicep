@@ -6,7 +6,7 @@ param solutionAbbreviation string = 'gmm'
 @description('Enter an abbreviation for the environment.')
 @minLength(2)
 @maxLength(6)
-param environmentAbbreviation string = 'dh'
+param environmentAbbreviation string
 
 @description('Resource location.')
 param location string
@@ -25,6 +25,13 @@ param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbrev
 
 resource appInsightsResource 'Microsoft.Insights/components@2020-02-02' existing = {
   name: appInsightsName
+  scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
+}
+
+var hiddenLinkTags = {
+  'hidden-link: /app-insights-resource-id': appInsightsResource.id
+  'hidden-link: /app-insights-instrumentation-key': appInsightsResource.properties.InstrumentationKey
+  'hidden-link: /app-insights-conn-string': appInsightsResource.properties.ConnectionString
 }
 
 var appSettings = {
@@ -32,39 +39,18 @@ var appSettings = {
   REACT_APP_TEST_SETTING: 'test setting'
 }
 
-resource staticWebApp 'Microsoft.Web/staticSites@2022-03-01' = {
+module staticSiteModule 'staticSite.bicep' = {
   name: '${solutionAbbreviation}-ui'
-  location: location
-  sku: {
-    name: 'Free'
-    tier: 'Free'
-  }
-  properties: {
-    allowConfigFileUpdates: true
+  params: {
+    solutionAbbreviation: solutionAbbreviation
+    location: location
     branch: branch
-    buildProperties: {
-      appLocation: 'UI/web-app'
-      skipGithubActionWorkflowGeneration: true
-    }
-    enterpriseGradeCdnStatus: 'Disabled'
-    provider: 'DevOps'
     repositoryUrl: repositoryUrl
-    stagingEnvironmentPolicy: 'Disabled'
+    customDomainName: customDomainName
+    appSettings: appSettings
+    tags: hiddenLinkTags
   }
-}
-
-resource symbolicname 'Microsoft.Web/staticSites/config@2022-09-01' = {
-  name: 'appsettings'
-  kind: 'string'
-  parent: staticWebApp
-  properties: appSettings
-}
-
-resource customDomain 'Microsoft.Web/staticSites/customDomains@2022-03-01' = if (!empty(customDomainName)) {
-  parent: staticWebApp
-  name: !empty(customDomainName) ? customDomainName : 'blank' // https://github.com/Azure/bicep/issues/1754
-  properties: {}
 }
 
 // Check on if this API Key is acceptable for deployment purposes of front end
-output deployment_token string = listSecrets(staticWebApp.id, staticWebApp.apiVersion).properties.apiKey
+output deployment_token string = staticSiteModule.outputs.deployment_token
