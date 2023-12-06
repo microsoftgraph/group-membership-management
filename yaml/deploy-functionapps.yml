@@ -1,12 +1,20 @@
 parameters:
-  solutionAbbreviation: ''
-  environmentAbbreviation: ''
-  serviceConnection: ''
-  name: ''
-  location: ''
-  root: ''
-  tenantId: ''
-  subscriptionId: ''
+  - name: solutionAbbreviation
+    type: string
+  - name: environmentAbbreviation
+    type: string
+  - name: serviceConnection
+    type: string
+  - name: name
+    type: string
+  - name: location
+    type: string
+  - name: root
+    type: string
+  - name: tenantId
+    type: string
+  - name: subscriptionId
+    type: string
 
 steps:
 
