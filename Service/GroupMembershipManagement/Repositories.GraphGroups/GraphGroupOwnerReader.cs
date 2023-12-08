@@ -154,18 +154,35 @@ namespace Repositories.GraphGroups
             {
 
                 await _graphServiceClient.Users.GetAsync(requestConfiguration =>
-                                            {
-                                                requestConfiguration.QueryParameters.Filter = $"Mail eq '{email}'";
-                                                requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
-                                            });
+                {
+                    requestConfiguration.QueryParameters.Filter = $"Mail eq '{email}' or UserPrincipalName eq '{email}'";
+                    requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                });
 
                 var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
 
                 if (nativeResponse.IsSuccessStatusCode)
                 {
                     userByMailResponse = await DeserializeResponseAsync(nativeResponse, UserCollectionResponse.CreateFromDiscriminatorValue);
+
+                    if (userByMailResponse.Value.Count == 0)
+                    {
+                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        {
+                            RunId = runId,
+                            Message = $"No user was found when checking for group ownership for group {groupObjectId}."
+                        });
+
+                        return false;
+                    }
+
                     user = userByMailResponse.Value[0];
                 }
+                else
+                {
+                    throw new Exception($"Unable to verify group ownership at this time.");
+                }
+
             }
             catch (Exception ex)
             {
