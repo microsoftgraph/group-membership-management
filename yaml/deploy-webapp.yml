@@ -48,6 +48,12 @@ steps:
         }
       pwsh: true
 
+  - task: NodeTool@0
+    name: 'InstallNode'
+    displayName: 'Install Node'
+    inputs:
+      versionSpec: '14.19.0'
+
   - task: PowerShell@2
     name: 'InstallPnpm'
     displayName: 'Install pnpm'
