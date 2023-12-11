@@ -54,13 +54,13 @@ steps:
     inputs:
       versionSpec: '14.19.0'
 
-  - task: PowerShell@2
-    name: 'InstallPnpm'
-    displayName: 'Install pnpm'
+  - task: Npm@1
+    displayName: 'npm install pnpm@3.8.1'
     inputs:
-      targetType: inline
-      script: npm install -g pnpm
-      pwsh: true
+      command: custom
+      workingDir: $(System.DefaultWorkingDirectory)/public/UI/web-app
+      verbose: false
+      customCommand: 'install -g pnpm@3.8.1'
 
   - task: AzureStaticWebApp@0
     name: DeployStaticWebApp
