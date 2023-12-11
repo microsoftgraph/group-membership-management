@@ -8,15 +8,15 @@ namespace Services.Messages.Requests
     public class NotificationCardRequest : RequestBase
     {
         public Guid Id { get; set; } = Guid.Empty;
-        public string UserUPN { get; set; } = string.Empty;
+        public string UserEmail { get; set; } = string.Empty;
 
         public NotificationCardRequest()
         { }
 
-        public NotificationCardRequest(Guid id, string userUpn)
+        public NotificationCardRequest(Guid id, string userEmail)
         {
             Id = id;
-            UserUPN = userUpn;
+            UserEmail = userEmail;
         }
     }
 }

@@ -44,11 +44,11 @@ namespace Services.WebApi
                 return response;
             }
 
-            var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserUPN, notification.TargetOfficeGroupId);
+            var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserEmail, notification.TargetOfficeGroupId);
             if (!isGroupOwner)
             {
                 // Check if user is in the list of GMM Admins
-                var isInAuthorizedGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(request.UserUPN, _gmmEmailReceivers.ActionableMessageViewerGroupId);
+                var isInAuthorizedGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(request.UserEmail, _gmmEmailReceivers.ActionableMessageViewerGroupId);
                 if (!isInAuthorizedGroup)
                 {
                     // Unauthorized

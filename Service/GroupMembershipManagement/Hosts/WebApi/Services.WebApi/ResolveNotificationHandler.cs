@@ -47,7 +47,7 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"ResolveNotificationHandler request: " +
-                $"Id: {request.Id}, UserUPN: {request.UserUPN}, TargetOfficeGroupId: {thresholdNotification?.TargetOfficeGroupId}"
+                $"Id: {request.Id}, UserEmail: {request.UserEmail}, TargetOfficeGroupId: {thresholdNotification?.TargetOfficeGroupId}"
             });
             if (thresholdNotification == null)
             {
@@ -55,11 +55,11 @@ namespace Services
                 return response;
             }
 
-            var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserUPN, thresholdNotification.TargetOfficeGroupId);
+            var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserEmail, thresholdNotification.TargetOfficeGroupId);
             if (!isGroupOwner)
             {
                 // Check if user is in the list of GMM Admins
-                var isInAuthorizedGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(request.UserUPN, _gmmEmailReceivers.ActionableMessageViewerGroupId);
+                var isInAuthorizedGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(request.UserEmail, _gmmEmailReceivers.ActionableMessageViewerGroupId);
                 if (!isInAuthorizedGroup)
                 {
                     // Unauthorized
@@ -74,7 +74,7 @@ namespace Services
                 thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
                 thresholdNotification.CardState = ThresholdNotificationCardState.NoCard;
                 thresholdNotification.Resolution = resolution;
-                thresholdNotification.ResolvedByUPN = request.UserUPN;
+                thresholdNotification.ResolvedByUPN = request.UserEmail;
                 thresholdNotification.ResolvedTime = DateTime.UtcNow;
 
                 await handleSyncJobResolution(thresholdNotification);
