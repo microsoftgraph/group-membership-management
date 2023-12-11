@@ -19,7 +19,7 @@ namespace Services
 
         protected override async Task<NullResponse> ExecuteCoreAsync(PatchSettingRequest request)
         {
-            await _databaseSettingsRepository.PatchSettingAsync(request.SettingKey, request.Value);
+            await _databaseSettingsRepository.PatchSettingAsync(request.SettingKey, request.SettingValue);
             return new NullResponse();
         }
     }

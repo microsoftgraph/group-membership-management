@@ -9,10 +9,6 @@ namespace Repositories.EntityFramework.Contexts.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_Settings_Key",
-                table: "Settings");
-
             migrationBuilder.DropColumn(
                 name: "Key",
                 table: "Settings");

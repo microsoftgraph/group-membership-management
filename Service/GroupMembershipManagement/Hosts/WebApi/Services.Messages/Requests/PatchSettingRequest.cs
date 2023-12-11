@@ -8,13 +8,12 @@ namespace Services.Messages.Requests
 {
     public class PatchSettingRequest : RequestBase
     {
-        public PatchSettingRequest(SettingKey settingKey, string value)
-        {
-            this.SettingKey = settingKey;
-            this.Value = value;
-        }
-
+        public string SettingValue { get; }
         public SettingKey SettingKey { get; }
-        public string Value { get; }
+        public PatchSettingRequest(SettingKey settingKey, string settingValue)
+        {
+            SettingKey = settingKey;
+            SettingValue = settingValue;
+        }
     }
 }

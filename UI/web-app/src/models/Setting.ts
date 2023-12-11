@@ -1,9 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+import { SettingKey } from './SettingKey';
 import { SettingName } from './SettingName';
 
 export type Setting = {
-    key: SettingName;
-    value: string;
+    settingKey: SettingKey;
+    settingName: SettingName;
+    settingValue: string;
 }

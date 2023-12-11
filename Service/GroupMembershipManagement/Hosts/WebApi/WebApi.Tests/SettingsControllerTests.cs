@@ -8,6 +8,10 @@ using Repositories.Contracts;
 using WebApi.Controllers.v1.Settings;
 using Microsoft.AspNetCore.Http;
 using SettingDTO = WebApi.Models.DTOs.Setting;
+using System.Security.Claims;
+using WebApi.Models;
+using Services.WebApi;
+using WebApi.Controllers.v1.Jobs;
 
 namespace Services.Tests
 {
@@ -24,6 +28,8 @@ namespace Services.Tests
         private GetSettingHandler _getSettingHandler = null!;
         private PatchSettingHandler _patchSettingHandler = null!;
         private SettingKey _settingKey;
+        private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
+
 
         [TestInitialize]
         public void Initialize()
@@ -36,10 +42,11 @@ namespace Services.Tests
             _patchSettingHandler = new PatchSettingHandler(_loggingRepository.Object, _settingsRepository.Object);
             _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler)
             {
-                ControllerContext = new ControllerContext
+                ControllerContext = CreateControllerContext(new List<Claim>
                 {
-                    HttpContext = _context
-                }
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR)
+                })
             };
             _settingKey = SettingKey.DashboardUrl;
             _settingEntity = new Setting { SettingKey = _settingKey, SettingValue = "testValue " };
@@ -85,7 +92,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PatchSettingTestAsync()
+        public async Task PatchSettingWhenTenantAdminTestAsync()
         {
             _settingsRepository.Setup(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()))
                                .Verifiable();
@@ -95,6 +102,48 @@ namespace Services.Tests
             Assert.IsInstanceOfType(response, typeof(NoContentResult));
 
             _settingsRepository.Verify(x => x.PatchSettingAsync(_settingKey, "updatedValue"), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task PatchSettingWhenNotAdminTestAsync()
+        {
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.TENANT_READER)
+                })
+            };
+
+            _settingsRepository.Setup(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()))
+                   .Verifiable();
+
+            var response = await _settingsController.PatchSettingAsync(_settingKey, "updatedValue");
+
+            Assert.IsInstanceOfType(response, typeof(UnauthorizedResult));
+
+            _settingsRepository.Verify(x => x.PatchSettingAsync(_settingKey, "updatedValue"), Times.Never());
+        }
+
+        private ControllerContext CreateControllerContext(HttpContext httpContext)
+        {
+            return new ControllerContext { HttpContext = httpContext };
+        }
+
+        private ControllerContext CreateControllerContext(List<Claim> claims)
+        {
+            return new ControllerContext { HttpContext = CreateHttpContext(claims) };
+        }
+
+        private HttpContext CreateHttpContext(List<Claim> claims)
+        {
+            var identity = new ClaimsIdentity(claims, "TestAuthType");
+            var principal = new ClaimsPrincipal(identity);
+            var httpContext = new DefaultHttpContext();
+            httpContext.User = principal;
+
+            return httpContext;
         }
     }
 }

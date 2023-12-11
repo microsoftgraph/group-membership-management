@@ -23,6 +23,8 @@ import { selectProfile } from '../store/profile.slice';
 import { setLanguage } from '../store/localization.api';
 import { getIsAdmin } from '../store/roles.api';
 import { fetchSettings } from '../store/settings.api';
+import { Setting } from '../models/Setting';
+import { selectAllSettings } from '../store/settings.slice';
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
@@ -39,24 +41,25 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
   const dispatch = useDispatch<AppDispatch>();
   const profile = useSelector(selectProfile);
   const loggedIn = useSelector(selectLoggedIn);
+  const settings: Setting[] | undefined = useSelector(selectAllSettings);
+  const settingsLoaded: boolean = settings !== undefined;
   
   // run once after load.
   useEffect(() => {
     if (!loggedIn) {
       dispatch(loginAsync());
     }
+    if(!settingsLoaded){
+      dispatch(fetchSettings());
+    }
   });
-
-  useEffect(() => {
-    dispatch(fetchSettings());
-  }, [dispatch]);
 
   // run if the localization context change or the user's preferred language changes.
   useEffect(() => {
     dispatch(setLanguage(profile?.userPreferredLanguage));
   }, [dispatch, profile?.userPreferredLanguage]);
 
-  if (loggedIn) {
+  if (loggedIn && settingsLoaded) {
     return (
       <div className={classNames.root}>
         <AppHeader />

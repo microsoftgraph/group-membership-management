@@ -1,11 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Models;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using WebApi.Models.DTOs;
 
 namespace WebApi.Controllers.v1.Settings
 {
@@ -62,24 +64,27 @@ namespace WebApi.Controllers.v1.Settings
             }
         }
 
-        [Authorize(Roles = Models.Roles.TENANT_ADMINISTRATOR)]
-        [HttpPut("{settingKey}")]
-        public async Task<IActionResult> PatchSettingAsync(SettingKey settingKey, [FromBody] string value)
+        [Authorize()]
+        [HttpPatch("{settingKey}")]
+        public async Task<IActionResult> PatchSettingAsync(SettingKey settingKey, [FromBody] string settingValue)
         {
+            var isAdmin = User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR);
+            if (!isAdmin)
+                return Unauthorized();
+
             try
             {
-                await _patchSettingRequestHandler.ExecuteAsync(new PatchSettingRequest(settingKey, value));
+                await _patchSettingRequestHandler.ExecuteAsync(new PatchSettingRequest(settingKey, settingValue));
                 return NoContent();
             }
             catch (KeyNotFoundException)
             {
                 return NotFound();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500); 
+                return StatusCode(500);
             }
         }
-
     }
 }

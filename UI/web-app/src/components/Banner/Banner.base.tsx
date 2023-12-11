@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import {
   IButtonProps,
   IButtonStyles,
@@ -16,10 +16,7 @@ import {
 import { IBannerProps, IBannerStyleProps, IBannerStyles } from './Banner.types';
 import { InfoIcon } from '@fluentui/react-icons-mdl2';
 import { useStrings } from '../../store/hooks';
-
-import { fetchSettingByKey } from '../../store/settings.api';
-import { selectSelectedSetting } from '../../store/settings.slice';
-import { AppDispatch } from '../../store';
+import { selectDashboardUrl } from '../../store/settings.slice';
 
 const getClassNames = classNamesFunction<IBannerStyleProps, IBannerStyles>();
 
@@ -28,16 +25,11 @@ export const BannerBase: React.FunctionComponent<IBannerProps> = (props) => {
   const strings = useStrings();
   const [collapsed, setCollapsed] = useState(false);
   const theme = useTheme();
-  const dispatch = useDispatch<AppDispatch>();
 
-  useEffect(() => {
-    dispatch(fetchSettingByKey('dashboardUrl'));
-  }, [dispatch]);
-
-  const dashboardUrl = useSelector(selectSelectedSetting);
+  const dashboardUrl = useSelector(selectDashboardUrl);
 
   const openLink = (): void => {
-    window.open(dashboardUrl?.value, '_blank', 'noopener,noreferrer');
+    window.open(dashboardUrl, '_blank', 'noopener,noreferrer');
   };
 
   const classNames: IProcessedStyleSet<IBannerStyles> = getClassNames(styles, {
@@ -71,7 +63,7 @@ export const BannerBase: React.FunctionComponent<IBannerProps> = (props) => {
           <div className={classNames.message}>
             {strings.bannerMessageStart}
             <Link
-              href={dashboardUrl?.value ?? ''}
+              href={dashboardUrl}
               onClick={() => openLink()}
               underline={true}
               className={classNames.link}>

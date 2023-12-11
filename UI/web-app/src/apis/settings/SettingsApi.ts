@@ -26,8 +26,8 @@ export class SettingsApi extends ApiBase implements ISettingsApi {
 
   async patchSetting(setting: Setting): Promise<Setting> {
     const response = await this.httpClient.patch<Setting, AxiosResponse<Setting>, string>(
-      `/${encodeURIComponent(setting.key)}`,
-      setting.value,
+      `/${encodeURIComponent(setting.settingKey)}`,
+      setting.settingValue,
       { headers: { 'Content-Type': 'application/json' } }
     );
     this.ensureSuccessStatusCode(response);

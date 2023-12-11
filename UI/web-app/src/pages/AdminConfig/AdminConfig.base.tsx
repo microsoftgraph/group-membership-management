@@ -1,35 +1,37 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AdminConfigProps } from './AdminConfig.types';
-import { selectIsSaving, selectSelectedSetting } from '../../store/settings.slice';
-import { fetchSettingByKey, updateSetting } from '../../store/settings.api';
+import { selectDashboardUrl, selectIsSaving, } from '../../store/settings.slice';
+import { patchSetting, fetchSettings } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
 import { AdminConfigView } from './AdminConfig.view';
 import { SettingName } from '../../models';
 import { useStrings } from '../../store/hooks';
+import { SettingKey } from '../../models/SettingKey';
 
 export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props: AdminConfigProps) => {
   // get the store's dispatch function
   const dispatch = useDispatch<AppDispatch>();
 
-  // Tell the store to retrieve the most recent settings data once the component mounts.
-  useEffect(() => {
-    // we should probably retrieve all settings here and put them in the state, instead of retrieving them individually.
-    dispatch(fetchSettingByKey(SettingName.DashboardUrl));
-  }, [dispatch]);
-
   // get the settings data from the store
-  const dashboardUrl = useSelector(selectSelectedSetting);
+  const dashboardUrl = useSelector(selectDashboardUrl);
   const isSaving = useSelector(selectIsSaving);
   const strings = useStrings().AdminConfig;
 
   // Create an event handler that should be called when the user clicks the save button.
   const handleSave = (settings: { readonly [key in SettingName]: string }) => {
     // should be saving all settings here, not one at a time.
-    dispatch(updateSetting({ key: SettingName.DashboardUrl, value: settings[SettingName.DashboardUrl] }));
+    dispatch(patchSetting({
+      settingKey: SettingKey.DashboardUrl,
+      settingName: SettingName.DashboardUrl,
+      settingValue: settings[SettingName.DashboardUrl]
+    }))
+    .then(() => {
+      dispatch(fetchSettings());
+    });
     // there is a Toast notification in fluent/react-components (v9) that we should be using for save notifications.
   };
 
@@ -40,7 +42,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
       {...props}
       isSaving={isSaving}
       settings={{
-        [SettingName.DashboardUrl]: dashboardUrl?.value ?? '',
+        [SettingName.DashboardUrl]: dashboardUrl ?? '',
       }}
       strings={strings}
       onSave={handleSave}
