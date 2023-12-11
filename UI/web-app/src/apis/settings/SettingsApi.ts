@@ -6,7 +6,14 @@ import { Setting } from '../../models/Setting';
 import { ApiBase } from '../ApiBase';
 import { ISettingsApi } from './ISettingsApi';
 
+
 export class SettingsApi extends ApiBase implements ISettingsApi {
+  public async fetchSettings(): Promise<Setting[]> {
+    const response = await this.httpClient.get<Setting[]>('/');
+    this.ensureSuccessStatusCode(response);
+    return response.data;
+  }
+
   public async fetchSettingByKey(settingKey: string): Promise<Setting> {
     const response = await this.httpClient.get<Setting>('/', {
       params: {
@@ -17,8 +24,8 @@ export class SettingsApi extends ApiBase implements ISettingsApi {
     return response.data;
   }
 
-  async updateSetting(setting: Setting): Promise<Setting> {
-    const response = await this.httpClient.post<Setting, AxiosResponse<Setting>, string>(
+  async patchSetting(setting: Setting): Promise<Setting> {
+    const response = await this.httpClient.patch<Setting, AxiosResponse<Setting>, string>(
       `/${encodeURIComponent(setting.key)}`,
       setting.value,
       { headers: { 'Content-Type': 'application/json' } }

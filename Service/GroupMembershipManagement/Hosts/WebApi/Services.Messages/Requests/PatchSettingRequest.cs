@@ -6,13 +6,15 @@ using Services.Messages.Contracts.Requests;
 
 namespace Services.Messages.Requests
 {
-    public class GetSettingRequest : RequestBase
+    public class PatchSettingRequest : RequestBase
     {
-        public GetSettingRequest(SettingKey settingKey)
+        public PatchSettingRequest(SettingKey settingKey, string value)
         {
             this.SettingKey = settingKey;
+            this.Value = value;
         }
 
         public SettingKey SettingKey { get; }
+        public string Value { get; }
     }
 }

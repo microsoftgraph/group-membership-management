@@ -11,13 +11,16 @@ namespace Models
         public Setting()
         {
         }
-        public Setting(string key)
-        {
-            Key = key;
-        }
-        public Guid Id { get; set; }
-        public string Key { get; set; }
 
-        public string Value { get; set; }
+        public Setting(Guid id, SettingKey settingKey, string settingValue)
+        {
+            Id = id;
+            SettingKey = settingKey;
+            SettingValue = settingValue;
+        }
+
+        public Guid Id { get; set; }
+        public SettingKey SettingKey { get; set; }
+        public string SettingValue { get; set; }
     }
 }

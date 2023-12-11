@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Models;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
@@ -14,29 +15,70 @@ namespace WebApi.Controllers.v1.Settings
     public class SettingsController : ControllerBase
     {
         private readonly IRequestHandler<GetSettingRequest, GetSettingResponse> _getSettingRequestHandler;
-        private readonly IRequestHandler<UpdateSettingRequest, NullResponse> _updateSettingRequestHandler;
+        private readonly IRequestHandler<GetAllSettingsRequest, GetAllSettingsResponse> _getAllSettingsRequestHandler;
+        private readonly IRequestHandler<PatchSettingRequest, NullResponse> _patchSettingRequestHandler;
 
         public SettingsController(
             IRequestHandler<GetSettingRequest, GetSettingResponse> getSettingRequestHandler,
-            IRequestHandler<UpdateSettingRequest, NullResponse> updateSettingRequestHandler)
+            IRequestHandler<GetAllSettingsRequest, GetAllSettingsResponse> getAllSettingsRequestHandler,
+            IRequestHandler<PatchSettingRequest, NullResponse> patchSettingRequestHandler)
         {
             _getSettingRequestHandler = getSettingRequestHandler ?? throw new ArgumentNullException(nameof(getSettingRequestHandler));
-            _updateSettingRequestHandler = updateSettingRequestHandler ?? throw new ArgumentNullException(nameof(updateSettingRequestHandler));
+            _getAllSettingsRequestHandler = getAllSettingsRequestHandler ?? throw new ArgumentNullException(nameof(getAllSettingsRequestHandler));
+            _patchSettingRequestHandler = patchSettingRequestHandler ?? throw new ArgumentNullException(nameof(patchSettingRequestHandler));
         }
 
         [Authorize()]
-        [HttpGet()]
-        public async Task<ActionResult<string>> GetSettingByKeyAsync(string key)
+        [HttpGet("{settingKey}")]
+        public async Task<IActionResult> GetSettingByKeyAsync(SettingKey settingKey)
         {
-            var response = await _getSettingRequestHandler.ExecuteAsync(new GetSettingRequest(key));
-            return Ok(response.Model);
+            try
+            {
+                var response = await _getSettingRequestHandler.ExecuteAsync(new GetSettingRequest(settingKey));
+                if (response.Model != null)
+                {
+                    return Ok(response.Model);
+                }
+                return NotFound();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500);
+            }
+        }
+
+        [Authorize()]
+        [HttpGet]
+        public async Task<IActionResult> GetAllSettingsAsync()
+        {
+            try
+            {
+                var response = await _getAllSettingsRequestHandler.ExecuteAsync(new GetAllSettingsRequest());
+                return Ok(response.Settings);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500);
+            }
         }
 
         [Authorize(Roles = Models.Roles.TENANT_ADMINISTRATOR)]
-        [HttpPost("{key}")]
-        public async Task UpdateSettingAsync(string key, [FromBody] string value)
+        [HttpPut("{settingKey}")]
+        public async Task<IActionResult> PatchSettingAsync(SettingKey settingKey, [FromBody] string value)
         {
-            await _updateSettingRequestHandler.ExecuteAsync(new UpdateSettingRequest(key, value));
+            try
+            {
+                await _patchSettingRequestHandler.ExecuteAsync(new PatchSettingRequest(settingKey, value));
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500); 
+            }
         }
 
     }

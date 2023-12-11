@@ -18,7 +18,8 @@ namespace WebApi.Configuration
             services.AddTransient<IRequestHandler<GetGroupOnboardingStatusRequest, GetGroupOnboardingStatusResponse>, GetGroupOnboardingStatusHandler>();
             
             services.AddTransient<IRequestHandler<GetSettingRequest, GetSettingResponse>, GetSettingHandler>();
-            services.AddTransient<IRequestHandler<UpdateSettingRequest, NullResponse>, UpdateSettingHandler>();
+            services.AddTransient<IRequestHandler<GetAllSettingsRequest, GetAllSettingsResponse>, GetAllSettingsHandler>();
+            services.AddTransient<IRequestHandler<PatchSettingRequest, NullResponse>, PatchSettingHandler>();
 
             services.AddTransient<IRequestHandler<GetJobsRequest, GetJobsResponse>, GetJobsHandler>();
             services.AddTransient<IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse>, GetJobDetailsHandler>();

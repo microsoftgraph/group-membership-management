@@ -26,6 +26,7 @@ export const strings: IStrings = {
           hyperlinks: "Hyperlinks",
           description: "Provide hyperlinks to the following organization specific information so that your users are empowered to leverage XMM to its fullest.",
           saveButton: "Save",
+          saveSuccess:  "Saved successfully."
       },
       hyperlinkContainer: {
           address: "Address",

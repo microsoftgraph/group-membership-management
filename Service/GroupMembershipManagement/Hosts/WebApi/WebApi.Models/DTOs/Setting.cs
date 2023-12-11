@@ -1,16 +1,18 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Models;
+
 namespace WebApi.Models.DTOs
 {
     public class Setting
     {
-        public Setting(string key, string value)
+        public Setting(SettingKey settingKey, string settingValue)
         {
-            Key = key;
-            Value = value;
+            SettingKey = settingKey;
+            SettingValue = settingValue;
         }
-        public string Key { get; set; }
-        public string Value { get; set; }
+        public SettingKey SettingKey { get; set; }
+        public string SettingValue { get; set; }
     }
 }

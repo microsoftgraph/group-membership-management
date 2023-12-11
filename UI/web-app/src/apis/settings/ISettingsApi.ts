@@ -4,6 +4,7 @@
 import { Setting } from '../../models';
 
 export interface ISettingsApi {
+  fetchSettings(): Promise<Setting[]>;
   fetchSettingByKey(settingKey: string): Promise<Setting>;
-  updateSetting(setting: Setting): Promise<Setting>;
+  patchSetting(setting: Setting): Promise<Setting>;
 }

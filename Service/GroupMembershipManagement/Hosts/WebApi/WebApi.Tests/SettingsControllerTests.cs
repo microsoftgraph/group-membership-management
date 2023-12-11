@@ -17,10 +17,13 @@ namespace Services.Tests
         private HttpContext _context = null!;
         private Setting _settingEntity = null!;
         private SettingsController _settingsController = null!;
+        private List<Setting> _settings = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSettingsRepository> _settingsRepository = null!;
+        private GetAllSettingsHandler _getAllSettingsHandler = null!;
         private GetSettingHandler _getSettingHandler = null!;
-        private UpdateSettingHandler _updateSettingHandler = null!;
+        private PatchSettingHandler _patchSettingHandler = null!;
+        private SettingKey _settingKey;
 
         [TestInitialize]
         public void Initialize()
@@ -28,51 +31,70 @@ namespace Services.Tests
             _context = new DefaultHttpContext();
             _loggingRepository = new Mock<ILoggingRepository>();
             _settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            _getAllSettingsHandler = new GetAllSettingsHandler(_loggingRepository.Object, _settingsRepository.Object);
             _getSettingHandler = new GetSettingHandler(_loggingRepository.Object, _settingsRepository.Object);
-            _updateSettingHandler = new UpdateSettingHandler(_loggingRepository.Object, _settingsRepository.Object);
-            _settingsController = new SettingsController(_getSettingHandler, _updateSettingHandler)
+            _patchSettingHandler = new PatchSettingHandler(_loggingRepository.Object, _settingsRepository.Object);
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler)
             {
                 ControllerContext = new ControllerContext
                 {
                     HttpContext = _context
                 }
             };
-            _settingEntity = new Setting { Key = "testKey", Value = "testValue " };
-
-            _settingsRepository.Setup(x => x.GetSettingByKeyAsync("testKey")).ReturnsAsync(() => _settingEntity);
+            _settingKey = SettingKey.DashboardUrl;
+            _settingEntity = new Setting { SettingKey = _settingKey, SettingValue = "testValue " };
+            _settings = new List<Setting>
+            {
+                new Setting { SettingKey = SettingKey.DashboardUrl, SettingValue = "SettingValue1 " },
+                new Setting { SettingKey = SettingKey.OutlookWarningUrl, SettingValue = "SettingValue1 " }
+            };
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(_settingKey)).ReturnsAsync(() => _settingEntity);
+            _settingsRepository.Setup(x => x.GetAllSettingsAsync()).ReturnsAsync(_settings);
         }
 
         [TestMethod]
         public async Task GetSettingByKeyTestAsync()
         {
-            var response = await _settingsController.GetSettingByKeyAsync("testKey");
-            var result = response.Result as OkObjectResult;
-
+            var response = await _settingsController.GetSettingByKeyAsync(_settingKey);
             Assert.IsNotNull(response);
-            Assert.IsNotNull(result);
-            Assert.IsNotNull(result.Value);
 
-            var setting = result.Value as SettingDTO;
+            var okResult = response as OkObjectResult;
 
-            Assert.IsNotNull(setting.Value);
+            Assert.IsNotNull(okResult);
+            Assert.IsNotNull(okResult.Value);
+
+            var setting = okResult.Value as SettingDTO;
+            Assert.IsNotNull(setting);
+            Assert.IsNotNull(setting.SettingValue);
         }
 
         [TestMethod]
-        public async Task UpdateSettingTestAsync()
+        public async Task GetAllSettingsTestAsync()
         {
-            _settingsRepository.Setup(x => x.UpdateSettingAsync(It.IsAny<Setting>(), It.IsAny<string>()))
-                               .Callback<Setting, string>((s, v) => s.Value = v);
+            var response = await _settingsController.GetAllSettingsAsync();
 
-            await _settingsController.UpdateSettingAsync("testKey", "updatedValue");
-            _settingsRepository.Verify(x => x.UpdateSettingAsync(_settingEntity, "updatedValue"), Times.Once());
+            Assert.IsNotNull(response);
+            Assert.IsInstanceOfType(response, typeof(OkObjectResult));
 
-            var settingResponse = await _settingsController.GetSettingByKeyAsync("testKey");
-            var result = settingResponse.Result as OkObjectResult;
-            var settingDTO = result?.Value as SettingDTO;
+            var okResult = response as OkObjectResult;
+            Assert.IsNotNull(okResult?.Value);
 
-            Assert.IsNotNull(settingDTO);
-            Assert.AreEqual("updatedValue", settingDTO?.Value);
+            var settingsResult = okResult.Value as List<SettingDTO>;
+            Assert.IsNotNull(settingsResult);
+            Assert.AreEqual(settingsResult.Count, _settings.Count);
+        }
+
+        [TestMethod]
+        public async Task PatchSettingTestAsync()
+        {
+            _settingsRepository.Setup(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()))
+                               .Verifiable();
+
+            var response = await _settingsController.PatchSettingAsync(_settingKey, "updatedValue");
+
+            Assert.IsInstanceOfType(response, typeof(NoContentResult));
+
+            _settingsRepository.Verify(x => x.PatchSettingAsync(_settingKey, "updatedValue"), Times.Once());
         }
     }
 }
-

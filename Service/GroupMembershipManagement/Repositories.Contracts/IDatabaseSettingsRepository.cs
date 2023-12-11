@@ -9,8 +9,8 @@ namespace Repositories.Contracts
 {
     public interface IDatabaseSettingsRepository
     {
-        Task<Setting> GetSettingByKeyAsync(string key);
-        Task<List<Setting>> GetSettingsAsync();
-        Task UpdateSettingAsync(Setting setting, string newSettingValue);
+        Task<Setting> GetSettingByKeyAsync(SettingKey settingKey);
+        Task<IEnumerable<Setting>> GetAllSettingsAsync();
+        Task PatchSettingAsync(SettingKey settingKey, string newSettingValue);
     }
 }

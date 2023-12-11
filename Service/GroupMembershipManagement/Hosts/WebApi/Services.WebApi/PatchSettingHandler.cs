@@ -8,19 +8,18 @@ using Services.Messages.Responses;
 
 namespace Services
 {
-    public class UpdateSettingHandler : RequestHandlerBase<UpdateSettingRequest, NullResponse>
+    public class PatchSettingHandler : RequestHandlerBase<PatchSettingRequest, NullResponse>
     {
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
-        public UpdateSettingHandler(ILoggingRepository loggingRepository,
+        public PatchSettingHandler(ILoggingRepository loggingRepository,
                                 IDatabaseSettingsRepository databaseSettingsRepository) : base(loggingRepository)
         {
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
         }
 
-        protected override async Task<NullResponse> ExecuteCoreAsync(UpdateSettingRequest request)
+        protected override async Task<NullResponse> ExecuteCoreAsync(PatchSettingRequest request)
         {
-            var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(request.Key);
-            await _databaseSettingsRepository.UpdateSettingAsync(setting, request.Value);
+            await _databaseSettingsRepository.PatchSettingAsync(request.SettingKey, request.Value);
             return new NullResponse();
         }
     }

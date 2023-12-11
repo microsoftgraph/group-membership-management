@@ -22,6 +22,7 @@ import { selectLoggedIn } from '../store/account.slice';
 import { selectProfile } from '../store/profile.slice';
 import { setLanguage } from '../store/localization.api';
 import { getIsAdmin } from '../store/roles.api';
+import { fetchSettings } from '../store/settings.api';
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
@@ -45,6 +46,10 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
       dispatch(loginAsync());
     }
   });
+
+  useEffect(() => {
+    dispatch(fetchSettings());
+  }, [dispatch]);
 
   // run if the localization context change or the user's preferred language changes.
   useEffect(() => {

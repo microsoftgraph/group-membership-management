@@ -26,12 +26,17 @@ namespace Repositories.EntityFramework.Contexts
                   .ValueGeneratedOnAdd()
                   .HasDefaultValueSql("NEWID()");
 
-            modelBuilder.Entity<Setting>().HasKey(s => s.Id);
-            modelBuilder.Entity<Setting>().Property(s => s.Id)
-                .ValueGeneratedOnAdd()
-                .HasDefaultValueSql("NEWSEQUENTIALID()");
-
-            modelBuilder.Entity<Setting>().HasIndex(s => s.Key).IsUnique();
+            modelBuilder.Entity<Setting>(entity =>
+            {
+                entity.HasKey(s => s.Id); 
+                entity.Property(s => s.SettingKey)
+                    .IsRequired()
+                    .HasConversion(
+                        v => v.ToString(),
+                        v => (SettingKey)Enum.Parse(typeof(SettingKey), v));
+                entity.HasIndex(s => s.SettingKey).IsUnique();
+                entity.Property(s => s.SettingValue);
+            });
 
             modelBuilder.Entity<SyncJob>()
                         .HasOne(s => s.StatusDetails)

@@ -14,15 +14,15 @@ From your `PowerShell 7.x` command prompt navigate to the `UI\Scripts\` folder o
     2.    Set-UIAzureADApplication	-SubscriptionName "<subscription-name>" `
                                         -SolutionAbbreviation "<solution-abbreviation>" `
                                         -EnvironmentAbbreviation "<environment-abbreviation>" `
-                                        -AppTenantId "<app-tenant-id>" `
-                                        -KeyVaultTenantId "<keyvault-tenant-id>" `
+                                        -DevTenantId "<dev-tenant-id>" `
+                                        -TenantId "<keyvault-tenant-id>" `
                                         -Clean $false `
                                         -Verbose
 Follow the instructions on the screen.
 
 Note:
-AppTenantId <app-tenant-id> - If the application is going to be installed in a different tenant, set that tenant id here.
-KeyVaultTenantId <keyvault-tenant-id> - This is the tenant where your GMM resources are located, i.e. keyvaults, storage account.
+DevTenantId <app-tenant-id> - If the application is going to be installed in a different tenant, set that tenant id here.
+TenantId <keyvault-tenant-id> - This is the tenant where your GMM resources are located, i.e. keyvaults, storage account.
 
 If you only have one tenant, these will be set to the same tenant id.
 

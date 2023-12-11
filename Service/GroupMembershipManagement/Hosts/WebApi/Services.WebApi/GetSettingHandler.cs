@@ -20,8 +20,8 @@ namespace Services{
         protected override async Task<GetSettingResponse> ExecuteCoreAsync(GetSettingRequest request)
         {
             var response = new GetSettingResponse();
-            var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(request.Key);
-            var dto = new SettingDTO (setting.Key, setting.Value);
+            var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(request.SettingKey);
+            var dto = new SettingDTO(setting.SettingKey, setting.SettingValue);
             response.Model = dto;
             return response;
         }

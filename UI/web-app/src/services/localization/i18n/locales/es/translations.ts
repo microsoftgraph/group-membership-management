@@ -28,6 +28,7 @@ export const strings: IStrings = {
           hyperlinks: "Ligas",
           description: "Incluye ligas con información específica sobre cómo funciona XMM en tu organización para que los usuarios puedan aprovecharlo al máximo.",
           saveButton: "Guardar",
+          saveSuccess:  "Guardado exitosamente."
       },
       hyperlinkContainer: {
           address: "URL",

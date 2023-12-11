@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { fetchSettingByKey, updateSetting } from './settings.api';
+import { fetchSettingByKey, patchSetting  } from './settings.api';
 import type { RootState } from './store';
 import { Setting } from '../models/Setting';
 
@@ -11,6 +11,8 @@ export interface SettingsState {
   selectedSetting: Setting | undefined;
   settings?: Setting[];
   getSettingsError: string | undefined;
+  patchSettingResponse: any | undefined;
+  patchSettingError: string | undefined;
   isSaving: boolean;
 }
 
@@ -19,6 +21,8 @@ const initialState: SettingsState = {
   selectedSetting: undefined,
   settings: undefined,
   getSettingsError: undefined,
+  patchSettingResponse: undefined,
+  patchSettingError: undefined,
   isSaving: false,
 };
 
@@ -46,17 +50,17 @@ const settingsSlice = createSlice({
       state.selectedSettingLoading = false;
       state.getSettingsError = action.error.message;
     });
-    builder.addCase(updateSetting.pending, (state) => {
+    builder.addCase(patchSetting.pending, (state) => {
       state.isSaving = true;
       state.selectedSettingLoading = true;
       state.selectedSetting = undefined;
     });
-    builder.addCase(updateSetting.fulfilled, (state, action) => {
+    builder.addCase(patchSetting.fulfilled, (state, action) => {
       state.isSaving = false;
       state.selectedSettingLoading = false;
       state.selectedSetting = action.payload;
     });
-    builder.addCase(updateSetting.rejected, (state, action) => {
+    builder.addCase(patchSetting.rejected, (state, action) => {
       state.isSaving = false;
       state.selectedSettingLoading = false;
       state.getSettingsError = action.error.message;
@@ -66,7 +70,11 @@ const settingsSlice = createSlice({
 
 export const { setSettings, setGetSettingsError } = settingsSlice.actions;
 
-export const selectSelectedSetting = (state: RootState) => state.settings.selectedSetting;
+export const selectAllSettings = (state: RootState) => state.settings.settings;
+
+export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
+export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
+
 export const selectIsSaving = (state: RootState) => state.settings.isSaving;
 
 export default settingsSlice.reducer;
