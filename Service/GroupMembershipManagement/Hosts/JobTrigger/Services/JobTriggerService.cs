@@ -221,7 +221,7 @@ namespace Services
                         ToEmailAddresses = job.Requestor,
                         CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
                         AdditionalContentParams = new[] { destinationObjectId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses, groupName }
-                    }, job.RunId, templateDirectory);
+                    }, job.RunId);
                     return false;
                 }
 
