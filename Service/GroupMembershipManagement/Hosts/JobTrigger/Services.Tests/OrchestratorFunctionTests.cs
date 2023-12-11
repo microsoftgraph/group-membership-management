@@ -33,9 +33,9 @@ namespace Services.Tests
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
 
 			bool jobTriggerThresholdExceeded = false;
-            int maxJobAllowed = syncJobs.Count;
+            int maxJobsAllowed = syncJobs.Count;
 			jobTriggerService.Setup(x => x.GetSyncJobsAsync())
-											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded, maxJobAllowed));
+											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded, maxJobsAllowed));
 			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsFunction)), It.IsAny<object>()))
                         .Returns(() => CallGetSyncJobsAsync(loggingRepository.Object, jobTriggerService.Object));
 
@@ -63,9 +63,9 @@ namespace Services.Tests
 
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
 			bool jobTriggerThresholdExceeded = false;
-            int maxJobAllowed = syncJobs.Count;
+            int maxJobsAllowed = syncJobs.Count;
 			jobTriggerService.Setup(x => x.GetSyncJobsAsync())
-											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded, maxJobAllowed));
+											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded, maxJobsAllowed));
 			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsFunction)), It.IsAny<object>()))
                         .Returns(() => CallGetSyncJobsAsync(loggingRepository.Object, jobTriggerService.Object));
 
@@ -89,9 +89,9 @@ namespace Services.Tests
 			var loggerJobProperties = new Dictionary<Guid, LogProperties>();
 			loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
 			bool jobTriggerThresholdExceeded = true;
-            int maxJobAllowed = 1;
+            int maxJobsAllowed = 1;
 			jobTriggerService.Setup(x => x.GetSyncJobsAsync())
-											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded, maxJobAllowed));
+											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded, maxJobsAllowed));
 			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsFunction)), It.IsAny<object>()))
 						.Returns(() => CallGetSyncJobsAsync(loggingRepository.Object, jobTriggerService.Object));
 
@@ -117,9 +117,9 @@ namespace Services.Tests
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
 
 			bool jobTriggerThresholdExceeded = false;
-            int maxJobAllowed = syncJobs.Count;
+            int maxJobsAllowed = syncJobs.Count;
 			jobTriggerService.Setup(x => x.GetSyncJobsAsync())
-											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded, maxJobAllowed));
+											.ReturnsAsync((syncJobs, jobTriggerThresholdExceeded, maxJobsAllowed));
 
 			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsFunction)), It.IsAny<object>()))
                         .Returns(() => CallGetSyncJobsAsync(loggingRepository.Object, jobTriggerService.Object));
@@ -147,9 +147,9 @@ namespace Services.Tests
             loggingRepository.SetupGet(x => x.SyncJobProperties).Returns(loggerJobProperties);
 
 			bool jobTriggerThresholdExceeded = false;
-            int maxJobAllowed = 2;
+            int maxJobsAllowed = 2;
 			jobTriggerService.Setup(x => x.GetSyncJobsAsync())
-				                            .ReturnsAsync(() => (syncJobs1.Concat(syncJobs2).ToList(), jobTriggerThresholdExceeded, maxJobAllowed));
+				                            .ReturnsAsync(() => (syncJobs1.Concat(syncJobs2).ToList(), jobTriggerThresholdExceeded, maxJobsAllowed));
 
 			context.SetupSequence(x => x.CallActivityAsync<List<SyncJob>>(nameof(GetJobsFunction), It.IsAny<object>()))
                         .ReturnsAsync(() =>
