@@ -51,10 +51,6 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
     dispatch(setLanguage(profile?.userPreferredLanguage));
   }, [dispatch, profile?.userPreferredLanguage]);
 
-  useEffect(() => {
-    dispatch(getIsAdmin());
-  }, [dispatch, loggedIn]);
-
   if (loggedIn) {
     return (
       <div className={classNames.root}>

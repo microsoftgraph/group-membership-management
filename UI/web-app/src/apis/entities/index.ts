@@ -4,5 +4,5 @@
 export * from './GraphUserEntity';
 export * from './JobEntity';
 export * from './ODataQueryOptions';
-export * from './PeoplePickerUserEntity';
+export * from './UserEntity';
 export * from './GraphResponseEntity';

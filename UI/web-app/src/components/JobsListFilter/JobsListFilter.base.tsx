@@ -124,7 +124,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     
   }, [dispatch, ownerPickerSuggestions]);
 
-  const onChangeID = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
+  const handleIdChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
     const inputGuid = newValue || '';
 
     if (inputGuid !== '' && !isGuidValid(inputGuid)) {
@@ -137,27 +137,27 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     setFilterDestinationId(inputGuid);
   };
 
-  const onChangeName = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
+  const handleNameChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
     setDestinationName(newValue);
     setFilterDestinationName(newValue as string);
   };
 
-  const onChangeStatus = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
+  const handleStatusChanged = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
     setStatusSelectedItem(item as IDropdownOption);
     setFilterStatus(item?.key.toString() || '');
   };
 
-  const onChangeType = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
+  const handleTypeChanged = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
     setDestinationTypeSelectedItem(item as IDropdownOption);
     setFilterDestinationType(item?.key.toString() || '');
   };
 
-  const onChangeActionRequired = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
+  const handleActionRequiredChanged = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
     setActionRequiredSelectedItem(item as IDropdownOption);
     setFilterActionRequired(item?.key.toString() || '');
   };
 
-  const onOwnersChanged = (items?: IPersonaProps[] | undefined) => {
+  const handleOwnersChanged = (items?: IPersonaProps[] | undefined) => {
     if (items !== undefined && items.length > 0) {
       setSelectedOwners(items);
       setFilterDestinationOwner(items[0].id as string);
@@ -168,8 +168,12 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
       setFilterDestinationOwner('');
     }    
   };
-  
 
+  const handleOwnersInputChanged = (input: string): string => {
+    dispatch(getJobOwnerFilterSuggestions({displayName: input, alias: input}))
+    return input;
+  }
+  
   const isGuidValid = (guid: string): boolean => {
     const guidRegex = new RegExp(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/);
     return guidRegex.test(guid);
@@ -203,18 +207,8 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     filterText: string,
     currentPersonas: IPersonaProps[] | undefined
   ): Promise<IPersonaProps[]> => {
-    if (filterText) {
-      return ownerPickerSuggestions ?? [];
-    } else {
-      return [];
-    }
+    return filterText && ownerPickerSuggestions ? ownerPickerSuggestions : [];
   };
-
-  const onOwnersInputChanged = (input: string): string => {
-    dispatch(getJobOwnerFilterSuggestions({displayName: input, alias: input}))
-    return input;
-  }
-
 
   return (
     <div className={classNames.container}>
@@ -279,7 +273,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
               <Dropdown
                 label={strings.JobsList.JobsListFilter.filters.destinationType.label}
                 selectedKey={destinationTypeSelectedItem ? destinationTypeSelectedItem.key : undefined}
-                onChange={onChangeType}
+                onChange={handleTypeChanged}
                 options={typeDropdownOptions}
                 styles={{
                   title: classNames.dropdownTitle,
@@ -291,7 +285,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
               <TextField
                 label={strings.JobsList.JobsListFilter.filters.destinationName.label}
                 value={destinationName}
-                onChange={onChangeName}
+                onChange={handleNameChanged}
                 placeholder={strings.JobsList.JobsListFilter.filters.ID.placeholder}
                 styles={{
                   fieldGroup: classNames.textFieldFieldGroup,
@@ -303,7 +297,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
               <Dropdown
                 label={strings.JobsList.JobsListFilter.filters.status.label}
                 selectedKey={statusSelectedItem ? statusSelectedItem.key : undefined}
-                onChange={onChangeStatus}
+                onChange={handleStatusChanged}
                 options={statusDropdownOptions}
                 styles={{
                   title: classNames.dropdownTitle,
@@ -315,7 +309,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
               <Dropdown
                 label={strings.JobsList.JobsListFilter.filters.actionRequired.label}
                 selectedKey={actionRequiredSelectedItem ? actionRequiredSelectedItem.key : undefined}
-                onChange={onChangeActionRequired}
+                onChange={handleActionRequiredChanged}
                 dropdownWidth={'auto'}
                 options={actionRequiredDropdownOptions}
                 styles={{
@@ -328,7 +322,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
               <TextField
                 label={strings.JobsList.JobsListFilter.filters.ID.label}
                 value={destinationId}
-                onChange={onChangeID}
+                onChange={handleIdChanged}
                 placeholder={strings.JobsList.JobsListFilter.filters.ID.placeholder}
                 errorMessage={idValidationErrorMessage}
                 styles={{
@@ -353,8 +347,8 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
                   resolveDelay={300}
                   itemLimit={1}
                   selectedItems={selectedOwners}
-                  onInputChange={onOwnersInputChanged}
-                  onChange={onOwnersChanged}
+                  onInputChange={handleOwnersInputChanged}
+                  onChange={handleOwnersChanged}
                   styles={
                     {
                       text: classNames.peoplePicker,
@@ -368,7 +362,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
                 />
               </Stack.Item>
             ) : (
-              <Stack.Item style={{ width: 150 }} align="start"> <div className={classNames.emptyStackItem}></div> </Stack.Item>
+              <Stack.Item align="start"> <div className={classNames.emptyStackItem}></div> </Stack.Item>
             )}
 
           </Stack>
