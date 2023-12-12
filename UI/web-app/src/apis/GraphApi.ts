@@ -23,7 +23,7 @@ export class GraphApi extends ApiBase implements IGraphApi {
   }
 
   
-  public async getUsersForPeoplePicker(displayName: string, mail: string): Promise<PeoplePickerPersona[]> {
+  public async getJobOwnerFilterSuggestions(displayName: string, mail: string): Promise<PeoplePickerPersona[]> {
     const response = await this.httpClient.get<GraphResponseEntity>(`/users`, {
       params: {
         $select: 'displayName,mail,id',

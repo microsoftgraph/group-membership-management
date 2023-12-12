@@ -4,10 +4,11 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 import { fetchJobDetails, patchJobDetails } from './jobDetails.api';
-import { fetchJobs, postJob } from './jobs.api';
+import { fetchJobs, postJob, getJobOwnerFilterSuggestions } from './jobs.api';
 import type { RootState } from './store';
 import { type Job } from '../models/Job';
 import { type JobDetails } from '../models/JobDetails';
+import { PeoplePickerPersona } from '../models/PeoplePickerPersona';
 
 // Define a type for the slice state
 export interface JobsState {
@@ -22,6 +23,7 @@ export interface JobsState {
   patchJobDetailsError: string | undefined;
   postJobLoading: boolean;
   postJobError: string | undefined;
+  jobOwnerFilterSuggestions?: PeoplePickerPersona[];
 }
 
 // Define the initial state using that type
@@ -36,6 +38,7 @@ const initialState: JobsState = {
   patchJobDetailsError: undefined,
   postJobLoading: false,
   postJobError: undefined,
+  jobOwnerFilterSuggestions: []
 };
 
 export const jobsSlice = createSlice({
@@ -101,8 +104,14 @@ export const jobsSlice = createSlice({
       state.postJobLoading = false;
       state.postJobError = action.error.message;
     });
-  },
+
+    // jobOwnerFilterSuggestions
+    builder.addCase(getJobOwnerFilterSuggestions.fulfilled, (state, {payload}: PayloadAction<PeoplePickerPersona[]>) => {
+      state.jobOwnerFilterSuggestions = payload;
+    });
+  }
 });
+
 
 export const { setJobs, setGetJobsError, setGetJobDetailsError } =
   jobsSlice.actions;
@@ -127,5 +136,6 @@ export const selectPatchJobDetailsError = (state: RootState) => state.jobs.patch
 
 export const selectPostJobLoading = (state: RootState) => state.jobs.postJobLoading;
 export const selectPostJobError = (state: RootState) => state.jobs.postJobError;
+export const selectJobOwnerFilterSuggestions = (state: RootState) => state.jobs.jobOwnerFilterSuggestions;
 
 export default jobsSlice.reducer;

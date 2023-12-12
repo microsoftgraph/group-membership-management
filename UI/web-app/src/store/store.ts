@@ -11,7 +11,6 @@ import ownerReducer from './owner.slice';
 import profileReducer from './profile.slice';
 import settingsReducer from './settings.slice';
 import rolesReducer from './roles.slice';
-import filterReducer from './filter.slice';
 
 import { Services } from '../services';
 import { MsalAuthenticationService, TokenType } from '../services/auth';
@@ -49,7 +48,6 @@ const rootReducer = combineReducers({
   profile: profileReducer,
   settings: settingsReducer,
   roles: rolesReducer,
-  filter: filterReducer,
 });
 
 export const store = configureStore({

@@ -17,3 +17,4 @@ export * from './Setting';
 export * from './SettingName';
 export * from './Status';
 export * from './User';
+export * from './PeoplePickerPersona';

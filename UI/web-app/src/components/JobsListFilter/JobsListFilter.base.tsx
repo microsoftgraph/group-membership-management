@@ -17,13 +17,14 @@ import {
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { IJobsListFilterProps, IJobsListFilterStyleProps, IJobsListFilterStyles } from './JobsListFilter.types';
 import { SyncStatus } from '../../models/Status';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStrings } from '../../store/hooks';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectIsAdmin } from '../../store/roles.slice';
 import { AppDispatch } from '../../store';
-import { getUsersForPeoplePicker } from '../../store/filter.api';
+import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
+import { getJobOwnerFilterSuggestions } from '../../store/jobs.api';
 
 const getClassNames = classNamesFunction<IJobsListFilterStyleProps, IJobsListFilterStyles>();
 
@@ -116,7 +117,12 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   const [idValidationErrorMessage, setIdValidationErrorMessage] = useState<string>();
   const [selectedOwners, setSelectedOwners] = useState<IPersonaProps[]>([]);
   const isAdmin = useSelector(selectIsAdmin);
+  const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions);
   const dispatch = useDispatch<AppDispatch>();
+
+  useEffect(() => {
+    
+  }, [dispatch, ownerPickerSuggestions]);
 
   const onChangeID = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
     const inputGuid = newValue || '';
@@ -198,11 +204,17 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     currentPersonas: IPersonaProps[] | undefined
   ): Promise<IPersonaProps[]> => {
     if (filterText) {
-      return await dispatch(getUsersForPeoplePicker({displayName: filterText, alias: filterText})).unwrap();
+      return ownerPickerSuggestions ?? [];
     } else {
       return [];
     }
   };
+
+  const onOwnersInputChanged = (input: string): string => {
+    dispatch(getJobOwnerFilterSuggestions({displayName: input, alias: input}))
+    return input;
+  }
+
 
   return (
     <div className={classNames.container}>
@@ -283,11 +295,6 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
                 placeholder={strings.JobsList.JobsListFilter.filters.ID.placeholder}
                 styles={{
                   fieldGroup: classNames.textFieldFieldGroup,
-                  errorMessage: {
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                  }
                 }}
               />
             </Stack.Item>
@@ -346,6 +353,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
                   resolveDelay={300}
                   itemLimit={1}
                   selectedItems={selectedOwners}
+                  onInputChange={onOwnersInputChanged}
                   onChange={onOwnersChanged}
                   styles={
                     {

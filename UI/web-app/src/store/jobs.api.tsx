@@ -10,7 +10,8 @@ import {
   NewJob, 
   PostJobResponse, 
   Page, 
-  PagingOptions
+  PagingOptions,
+  PeoplePickerPersona
 } from '../models';
 
 export interface JobsResponse {
@@ -112,6 +113,18 @@ export const postJob = createAsyncThunk<PostJobResponse, NewJob, ThunkConfig>(
       return postResponse;
     } catch (error) {
       throw new Error('Failed to post job!');
+    }
+  }
+);
+
+export const getJobOwnerFilterSuggestions = createAsyncThunk<PeoplePickerPersona[], {displayName: string; alias: string}, ThunkConfig>(
+  'filter/getJobOwnerFilterSuggestions',
+  async (input, { extra }) => {
+    const { graphApi } = extra.apis;
+    try {
+      return await graphApi.getJobOwnerFilterSuggestions(input.displayName, input.alias);
+    } catch (error) {
+      throw new Error('Failed to call getJobOwnerFilterSuggestions endpoint');
     }
   }
 );
