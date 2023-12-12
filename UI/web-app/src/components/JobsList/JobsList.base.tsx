@@ -212,55 +212,41 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const getJobsByPage = (): void => {
     setIsShimmerEnabled(true);
     let orderByString: string | undefined = undefined;
-    let filterString: string | undefined = undefined;
+    let filters: string[] = [];
 
     if (sortKey !== undefined) {
       orderByString = sortKey + (isSortedDescending ? ' desc' : '');
     }
-    if (filterDestinationId && filterDestinationId !== '') {
-      filterString = 'targetOfficeGroupId eq ' + filterDestinationId;
+
+    if (filterDestinationId) {
+      filters.push("targetOfficeGroupId eq " + filterDestinationId);
     }
     if (filterActionRequired && filterActionRequired !== 'All') {
-      filterString =
-        (filterString === undefined ? '' : filterString + ' and ') + "status eq '" + filterActionRequired + "'";
+      filters.push("status eq '" + filterActionRequired + "'");
     }
     if (filterDestinationType && filterDestinationType !== 'All')
     {
-      filterString =
-      (filterString === undefined ? '' : filterString + ' and ') + "contains(Destination, '" + filterDestinationType + "')";
+      filters.push("contains(Destination, '" + filterDestinationType + "')");
     }
     if (filterDestinationName)
     {
-      filterString =
-      (filterString === undefined ? '' : filterString + ' and ') + "contains(tolower(DestinationName/Name), tolower('" + filterDestinationName + "'))";
+      filters.push("contains(tolower(DestinationName/Name), tolower('" + filterDestinationName + "'))");
     }
     if (filterDestinationOwner)
     {
-      filterString =
-      (filterString === undefined ? '' : filterString + ' and ') + "DestinationOwners/any(o: o/ObjectId eq " + filterDestinationOwner + ")"
-    }
-    if (filterStatus && filterStatus !== 'All') {
-      if (filterStatus === 'Enabled') {
-        filterString =
-          (filterString === undefined ? '' : filterString + ' and ') +
-          "status eq '" +
-          SyncStatus.Idle +
-          "' or status eq '" +
-          SyncStatus.InProgress +
-          "'";
-      }
-      else if (filterStatus === 'Disabled') {
-        filterString =
-          (filterString === undefined ? '' : filterString + ' and ') +
-          "not (status eq '" +
-          SyncStatus.Idle +
-          "' or status eq '" +
-          SyncStatus.InProgress +
-          "')";
-      }
+      filters.push("DestinationOwners/any(o: o/ObjectId eq " + filterDestinationOwner + ")");
     }
     
+    if (filterStatus === 'Enabled') {
+      filters.push("(status eq '" + SyncStatus.Idle + "' or status eq '" + SyncStatus.InProgress + "')");
+    }
+    else if (filterStatus === 'Disabled') {
+      filters.push("not (status eq '" + SyncStatus.Idle + "' or status eq '" + SyncStatus.InProgress + "')");
+    }
+    
+    let filterString: string | undefined = filters.length === 0 ? undefined : filters.join(' and ');
     const pagingOptions: PagingOptions = {};
+    
     pagingOptions.pageSize = parseInt(pageSize) ?? cookies.pageSize;
     pagingOptions.itemsToSkip = (pageNumber - 1) * pagingOptions.pageSize;
     pagingOptions.orderBy = orderByString;
