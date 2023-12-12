@@ -58,7 +58,6 @@ steps:
     displayName: 'npm install pnpm@3.8.1'
     inputs:
       command: custom
-      workingDir: $(System.DefaultWorkingDirectory)/UI/web-app
       verbose: false
       customCommand: 'install -g pnpm@3.8.1'
 
