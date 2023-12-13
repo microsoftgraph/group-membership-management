@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+import { useEffect } from 'react';
 import {
     classNamesFunction,
     IProcessedStyleSet,
@@ -49,7 +50,6 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
             setPageSize(item.key.toString());
             setPageNumber(1);
             setPageSizeCookie(item.key.toString());
-            getJobsByPage();
         }
     }
 
@@ -59,7 +59,6 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
 
         let newPageNumber = pageNumber + direction;
         setPageNumber(newPageNumber);
-        getJobsByPage();
     }
 
     const onPageNumberChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string | undefined): void => {
@@ -70,8 +69,11 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
             return;
 
         setPageNumber(parseInt(newValue));
-        getJobsByPage();
     }
+
+    useEffect(() => {
+        getJobsByPage();
+    }, [pageNumber, pageSize]);
 
     return (
         <div className={classNames.mainContainer}>
