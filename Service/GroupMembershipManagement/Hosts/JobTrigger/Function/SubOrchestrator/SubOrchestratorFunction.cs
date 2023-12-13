@@ -191,7 +191,7 @@ namespace Hosts.JobTrigger
 
                 if (!context.IsReplaying)
                 {
-                    TrackExclusionaryEvent(syncJob.Query, destinationObject.ObjectId);
+                    TrackExclusionaryEvent(syncJob);
                 }
 
                 var groupInformation = await context.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), syncJob);
@@ -323,9 +323,9 @@ namespace Hosts.JobTrigger
             _telemetryClient.TrackEvent("InProgressJobsTracker", inProgressJobsEvent);
         }
 
-        private void TrackExclusionaryEvent(string query, Guid destinationGroupObjectId)
+        private void TrackExclusionaryEvent(SyncJob syncJob)
         {
-            var parsedQuery = JArray.Parse(query);
+            var parsedQuery = JArray.Parse(syncJob.Query);
             var queryTypes = parsedQuery.Select(x => new
             {
                 exclusionary = x["exclusionary"] != null ? (bool)x["exclusionary"] : false
@@ -333,7 +333,7 @@ namespace Hosts.JobTrigger
 
             var exclusionaryEvent = new Dictionary<string, string>
             {
-                { "DestinationGroupObjectId", destinationGroupObjectId.ToString() },
+                { "Destination", syncJob.Destination },
                 { "TotalNumberOfSourceParts", queryTypes.Count.ToString() },
                 { "NumberOfExclusionarySourceParts", queryTypes.Where(g => g.exclusionary).Count().ToString() }
             };

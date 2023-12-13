@@ -2777,7 +2777,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     SourceGroupObjectId: '259px'
                     NestedGroupCount: '167px'
                   }
-                  Query: 'customEvents\n| where name == "NestedGroupCount"\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    SourceGroupObjectId = tostring(customDimensions["SourceGroupObjectId"]),\n    NestedGroupCount = toint(customDimensions["NestedGroupCount"])   \n| extend DestinationJson = parse_json(Destination)\n| project SourceGroupObjectId,\n          NestedGroupCount,\n          ObjectId = tostring(DestinationJson[0]["value"]["objectId"]),\n          ChannelId = tostring(DestinationJson[0]["value"]["channelId"])\n| distinct ObjectId, ChannelId, SourceGroupObjectId, NestedGroupCount\n| order by NestedGroupCount desc\n\n'
+                  Query: 'customEvents\n| where name == "NestedGroupCount"\n| extend DestinationJson = parse_json(tostring(customDimensions["Destination"]))\n| project timestamp,\n          ObjectId = tostring(DestinationJson[0]["value"]["objectId"]),\n          ChannelId = tostring(DestinationJson[0]["value"]["channelId"]),\n          SourceGroupObjectId = tostring(customDimensions["SourceGroupObjectId"]),\n          NestedGroupCount = toint(customDimensions["NestedGroupCount"])\n| summarize arg_max(timestamp, NestedGroupCount) by ObjectId, ChannelId\n| project ObjectId, ChannelId, NestedGroupCount\n| order by NestedGroupCount desc\n'
                   ControlType: 'AnalyticsGrid'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'NestedGroupCount'
@@ -3038,7 +3038,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     Total: '150px'
                     Exclusionary: '150px'
                   }
-                  Query: 'customEvents\n| where name == "ExclusionarySourcePartsCount"\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Exclusionary = toint(customDimensions["NumberOfExclusionarySourceParts"]),\n    Total = toint(customDimensions["TotalNumberOfSourceParts"]) \n| extend DestinationJson = parse_json(Destination)\n| project Exclusionary,\n          Total,\n          ObjectId = tostring(DestinationJson[0]["value"]["objectId"]),\n          ChannelId = tostring(DestinationJson[0]["value"]["channelId"])\n| distinct ObjectId, ChannelId, Exclusionary, Total\n| order by Exclusionary desc\n\n'
+                  Query: 'customEvents\n| where name == "ExclusionarySourcePartsCount"\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Exclusionary = toint(customDimensions["NumberOfExclusionarySourceParts"]),\n    Total = toint(customDimensions["TotalNumberOfSourceParts"]) \n| extend DestinationJson = parse_json(Destination)\n| project timestamp,\n          Exclusionary,\n          Total,\n          ObjectId = tostring(DestinationJson[0]["value"]["objectId"]),\n          ChannelId = tostring(DestinationJson[0]["value"]["channelId"])\n| summarize arg_max(timestamp, Exclusionary, Total) by ObjectId, ChannelId\n| project ObjectId, ChannelId, Exclusionary, Total\n| order by Exclusionary desc\n'
                   PartTitle: 'ExclusionarySourcePartsCount'
                   Partsubtitle: resourceGroup
                 }
