@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import {
   IButtonProps,
@@ -28,7 +28,8 @@ export const BannerBase: React.FunctionComponent<IBannerProps> = (props) => {
 
   const dashboardUrl = useSelector(selectDashboardUrl);
 
-  const openLink = (): void => {
+  const openLink = (event: React.MouseEvent<HTMLElement | HTMLButtonElement | HTMLAnchorElement, MouseEvent>): void => {
+    event.preventDefault();
     window.open(dashboardUrl, '_blank', 'noopener,noreferrer');
   };
 
@@ -64,7 +65,7 @@ export const BannerBase: React.FunctionComponent<IBannerProps> = (props) => {
             {strings.bannerMessageStart}
             <Link
               href={dashboardUrl}
-              onClick={() => openLink()}
+              onClick={(event) => openLink(event)}
               underline={true}
               className={classNames.link}>
               {strings.clickHere}
