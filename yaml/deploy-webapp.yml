@@ -1,16 +1,10 @@
 parameters:
-  - name: solutionAbbreviation
-    type: string
-  - name: environmentAbbreviation
-    type: string
-  - name: serviceConnection
-    type: string
-  - name: location
-    type: string
-  - name: root
-    type: string
-  - name: tenantId
-    type: string
+  solutionAbbreviation: ''
+  environmentAbbreviation: ''
+  serviceConnection: ''
+  location: ''
+  root: ''
+  tenantId: ''
 
 
 steps:
@@ -25,7 +19,6 @@ steps:
       csmParametersFile: ${{ parameters.root }}/webapp_arm_templates/UI/Infrastructure/compute/parameters/parameters.${{parameters.environmentAbbreviation}}.json
       overrideParameters: -location "${{parameters.location}}"
                           -solutionAbbreviation "${{parameters.solutionAbbreviation}}"
-                          -environmentAbbreviation "${{parameters.environmentAbbreviation}}"
       deploymentMode: 'Incremental'
       deploymentOutputs: deploymentOutputs
 
@@ -48,18 +41,13 @@ steps:
         }
       pwsh: true
 
-  - task: NodeTool@0
-    name: 'InstallNode'
-    displayName: 'Install Node'
+  - task: PowerShell@2
+    name: 'InstallPnpm'
+    displayName: 'Install pnpm'
     inputs:
-      versionSpec: '14.19.0'
-
-  - task: Npm@1
-    displayName: 'npm install pnpm@3.8.1'
-    inputs:
-      command: custom
-      verbose: false
-      customCommand: 'install -g pnpm@3.8.1'
+      targetType: inline
+      script: npm install -g pnpm
+      pwsh: true
 
   - task: AzureStaticWebApp@0
     name: DeployStaticWebApp
