@@ -34,11 +34,6 @@ var hiddenLinkTags = {
   'hidden-link: /app-insights-conn-string': appInsightsResource.properties.ConnectionString
 }
 
-var appSettings = {
-  REACT_APP_APPINSIGHTS_CONNECTIONSTRING: appInsightsResource.properties.ConnectionString
-  REACT_APP_TEST_SETTING: 'test setting'
-}
-
 module staticSiteModule 'staticSite.bicep' = {
   name: '${solutionAbbreviation}-ui'
   params: {
@@ -47,10 +42,10 @@ module staticSiteModule 'staticSite.bicep' = {
     branch: branch
     repositoryUrl: repositoryUrl
     customDomainName: customDomainName
-    appSettings: appSettings
     tags: hiddenLinkTags
   }
 }
 
 // Check on if this API Key is acceptable for deployment purposes of front end
 output deployment_token string = staticSiteModule.outputs.deployment_token
+output app_insights_connection_string string = appInsightsResource.properties.ConnectionString

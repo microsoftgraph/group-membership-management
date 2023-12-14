@@ -15,9 +15,6 @@ param repositoryUrl string
 @description('customDomainName')
 param customDomainName string
 
-@description('The app settings')
-param appSettings object
-
 @description('The tags for the resource.')
 param tags object
 
@@ -41,13 +38,6 @@ resource staticWebApp 'Microsoft.Web/staticSites@2022-03-01' = {
     repositoryUrl: repositoryUrl
     stagingEnvironmentPolicy: 'Disabled'
   }
-}
-
-resource symbolicname 'Microsoft.Web/staticSites/config@2022-09-01' = {
-  name: 'appsettings'
-  kind: 'string'
-  parent: staticWebApp
-  properties: appSettings
 }
 
 resource customDomain 'Microsoft.Web/staticSites/customDomains@2022-03-01' = if (!empty(customDomainName)) {
