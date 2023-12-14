@@ -13,51 +13,53 @@ import { App } from './App';
 import { AdminConfig, JobsPage, JobDetails, OwnerPage, ManageMembership } from './pages';
 import { store } from './store';
 
-console.log(`Test Setting: ${process.env.REACT_APP_TEST_SETTING}`);
-console.log(`App Insights Connection String ${process.env.REACT_APP_APPINSIGHTS_CONNECTIONSTRING}`);
-
-const reactPlugin = new ReactPlugin();
-const appInsights = new ApplicationInsights({
-  config: {
-    connectionString: process.env.REACT_APP_APPINSIGHTS_CONNECTIONSTRING,
-    autoTrackPageVisitTime: true,
-    enableAjaxErrorStatusText: true,
-    enableAjaxPerfTracking: true,
-    enableCorsCorrelation: true,
-    enableAutoRouteTracking: true,
-    enablePerfMgr: true,
-    namePrefix: 'GMM_AI_',
-    extensions: [reactPlugin],
-    extensionConfig: {
-      [reactPlugin.identifier]: {
-        // history is set to null because we are using enableAutoRouteTracking.
-        // history is used to track page views that do not update the browser url.
-        // enabling both will cause app insights to report duplicate page views.
-        history: null
-      }
-    }
-  }
-});
-appInsights.loadAppInsights();
+const connectionString = process.env.REACT_APP_APPINSIGHTS_CONNECTIONSTRING;
+if (!connectionString || connectionString === '') {
+  console.warn('App Insights Connection String is not set in pipeline variables. App Insights will not be enabled.');
+} else {
+  const reactPlugin = new ReactPlugin();
+  const appInsights = new ApplicationInsights({
+    config: {
+      connectionString,
+      autoTrackPageVisitTime: true,
+      enableAjaxErrorStatusText: true,
+      enableAjaxPerfTracking: true,
+      enableCorsCorrelation: true,
+      enableAutoRouteTracking: true,
+      enablePerfMgr: true,
+      namePrefix: 'GMM_AI_',
+      extensions: [reactPlugin],
+      extensionConfig: {
+        [reactPlugin.identifier]: {
+          // history is set to null because we are using enableAutoRouteTracking.
+          // history is used to track page views that do not update the browser url.
+          // enabling both will cause app insights to report duplicate page views.
+          history: null,
+        },
+      },
+    },
+  });
+  appInsights.loadAppInsights();
+}
 
 initializeIcons();
 ReactDOM.render(
   <ThemeProvider>
-      <React.StrictMode>
-        <Provider store={store}>
-          <BrowserRouter>
-            <Routes>
-              <Route path="" element={<App />}>
-                <Route path="/" element={<JobsPage />} />
-                <Route path="/JobDetails" element={<JobDetails />} />
-                <Route path="/OwnerPage" element={<OwnerPage />} />
-                <Route path="/AdminConfig" element={<AdminConfig />} />
-                <Route path="/ManageMembership" element={<ManageMembership />} />
-              </Route>
-            </Routes>
-          </BrowserRouter>
-        </Provider>
-      </React.StrictMode>
+    <React.StrictMode>
+      <Provider store={store}>
+        <BrowserRouter>
+          <Routes>
+            <Route path="" element={<App />}>
+              <Route path="/" element={<JobsPage />} />
+              <Route path="/JobDetails" element={<JobDetails />} />
+              <Route path="/OwnerPage" element={<OwnerPage />} />
+              <Route path="/AdminConfig" element={<AdminConfig />} />
+              <Route path="/ManageMembership" element={<ManageMembership />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </Provider>
+    </React.StrictMode>
   </ThemeProvider>,
 
   document.getElementById('root')
