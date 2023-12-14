@@ -23,6 +23,7 @@ export interface ISelectDestinationStyles {
   outlookWarning: IStyle;
   outlookContainer: IStyle;
   ownershipWarning: IStyle;
+  peoplePicker: IStyle;
 }
 
 export interface ISelectDestinationStyleProps {

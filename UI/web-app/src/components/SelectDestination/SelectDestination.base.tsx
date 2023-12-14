@@ -11,7 +11,7 @@ import {
   ComboBox, IComboBoxOption,
   Spinner,
   ActionButton,
-  MessageBar, MessageBarType, MessageBarButton,
+  MessageBar, MessageBarType, MessageBarButton, NormalPeoplePicker, IPersonaProps, DirectionalHint,
 } from '@fluentui/react';
 import {
   ISelectDestinationProps,
@@ -22,11 +22,14 @@ import { useStrings } from "../../store/hooks";
 import { PageSection } from "../PageSection";
 import { AppDispatch } from '../../store';
 import { searchDestinations } from '../../store/manageMembership.api';
-import { 
-  manageMembershipSelectedDestinationEndpoints, 
-  manageMembershipSearchResults, 
-  manageMembershipIsGroupReadyForOnboarding, 
-  manageMembershipLoadingSearchResults} from '../../store/manageMembership.slice';
+import {
+  manageMembershipSelectedDestinationEndpoints,
+  manageMembershipSearchResults,
+  manageMembershipIsGroupReadyForOnboarding,
+  manageMembershipLoadingSearchResults
+} from '../../store/manageMembership.slice';
+import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
+import { getJobOwnerFilterSuggestions } from '../../store/jobs.api';
 
 const getClassNames = classNamesFunction<
   ISelectDestinationStyleProps,
@@ -55,7 +58,9 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const [searchQuery, setSearchQuery] = useState('');
   const isReadyForOnboarding = useSelector(manageMembershipIsGroupReadyForOnboarding);
   const selectedDestinationEndpoints = useSelector(manageMembershipSelectedDestinationEndpoints);
-
+  const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions); // managemembershipsearchresults
+  const [selectedOwners, setSelectedOwners] = useState<IPersonaProps[]>([]);
+  
   const debounce = (func: (...args: any[]) => void, delay: number) => {
     let timeout: NodeJS.Timeout;
     return (...args: any[]) => {
@@ -111,6 +116,34 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     // window.open(outlookWarningUrl?.value, '_blank', 'noopener,noreferrer');
   };
 
+  useEffect(() => {
+    
+  }, [dispatch, ownerPickerSuggestions]);
+
+  const getPickerSuggestions = async (
+    filterText: string,
+    currentPersonas: IPersonaProps[] | undefined
+  ): Promise<IPersonaProps[]> => {
+    return filterText && ownerPickerSuggestions ? ownerPickerSuggestions : [];
+  };
+
+  const handleOwnersInputChanged = (input: string): string => {
+    dispatch(getJobOwnerFilterSuggestions({displayName: input, alias: input}))
+    return input;
+  }
+
+  const handleOwnersChanged = (items?: IPersonaProps[] | undefined) => {
+    if (items !== undefined && items.length > 0) {
+      setSelectedOwners(items);
+      // setFilterDestinationOwner(items[0].id as string);
+    }
+    else
+    {
+      setSelectedOwners([]);
+      // setFilterDestinationOwner('');
+    }    
+  };
+
   return (
     <div className={classNames.root}>
       <PageSection>
@@ -144,6 +177,33 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                   handleSearch();
                 }
               }}
+            />
+
+            <NormalPeoplePicker
+              onResolveSuggestions={getPickerSuggestions}
+              pickerSuggestionsProps={{
+                suggestionsHeaderText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.suggestionsHeaderText,
+                noResultsFoundText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.noResultsFoundText,
+                loadingText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.loadingText,
+              }}
+              key={'normal'}
+              selectionAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.selectionAriaLabel}
+              removeButtonAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.removeButtonAriaLabel}
+              resolveDelay={300}
+              itemLimit={1}
+              selectedItems={selectedOwners}
+              onInputChange={handleOwnersInputChanged}
+              onChange={handleOwnersChanged}
+              styles={
+                {
+                  text: classNames.peoplePicker,
+                }
+              }
+              pickerCalloutProps={
+                {
+                  directionalHint: DirectionalHint.bottomCenter,
+                }
+              }
             />
             {
               searchQuery.length > 3 && !loadingSearchResults && (!searchResults || searchResults.length === 0) ? (

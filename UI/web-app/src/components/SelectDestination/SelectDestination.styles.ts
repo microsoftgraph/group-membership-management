@@ -68,6 +68,13 @@ import {
         display: 'flex',
         flexDirection: 'row',
         gap: 70
+      },
+      peoplePicker: {
+        borderRadius: 4,
+        border: '1px solid',
+        borderColor: theme.palette.neutralQuaternary,
+        backgroud: theme.palette.white,
+        width: 150
       }
     };
   };
