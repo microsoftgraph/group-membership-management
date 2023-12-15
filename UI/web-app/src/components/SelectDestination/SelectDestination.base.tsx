@@ -1,14 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   IProcessedStyleSet,
   classNamesFunction,
   useTheme,
   Dropdown, IDropdownOption,
-  ComboBox, IComboBoxOption,
   Spinner,
   ActionButton,
   MessageBar, MessageBarType, MessageBarButton, NormalPeoplePicker, IPersonaProps, DirectionalHint,
@@ -28,8 +27,7 @@ import {
   manageMembershipIsGroupReadyForOnboarding,
   manageMembershipLoadingSearchResults
 } from '../../store/manageMembership.slice';
-import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
-import { getJobOwnerFilterSuggestions } from '../../store/jobs.api';
+import { Destination } from '../../models/Destination';
 
 const getClassNames = classNamesFunction<
   ISelectDestinationStyleProps,
@@ -52,28 +50,21 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     { key: 'Channel', text: 'Channel', disabled: true }
   ];
 
-  const dispatch = useDispatch<AppDispatch>();
-  const searchResults = useSelector(manageMembershipSearchResults);
-  const loadingSearchResults = useSelector(manageMembershipLoadingSearchResults);
-  const [searchQuery, setSearchQuery] = useState('');
-  const isReadyForOnboarding = useSelector(manageMembershipIsGroupReadyForOnboarding);
-  const selectedDestinationEndpoints = useSelector(manageMembershipSelectedDestinationEndpoints);
-  const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions); // managemembershipsearchresults
-  const [selectedOwners, setSelectedOwners] = useState<IPersonaProps[]>([]);
+  const mapDestinationToPersonaProps = (destination: Destination | undefined): IPersonaProps[] => {
+    if (!destination) return [];
   
-  const debounce = (func: (...args: any[]) => void, delay: number) => {
-    let timeout: NodeJS.Timeout;
-    return (...args: any[]) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), delay);
-    };
+    return [{
+      key: destination.id,
+      text: destination.name,
+    }];
   };
 
-  const handleSearch = debounce(() => {
-    if (searchQuery.length > 3) {
-      dispatch(searchDestinations(searchQuery));
-    }
-  }, 200);
+  const dispatch = useDispatch<AppDispatch>();
+  const loadingSearchResults = useSelector(manageMembershipLoadingSearchResults);
+  const isReadyForOnboarding = useSelector(manageMembershipIsGroupReadyForOnboarding);
+  const selectedDestinationEndpoints = useSelector(manageMembershipSelectedDestinationEndpoints);
+  const groupPickerSuggestions = useSelector(manageMembershipSearchResults);
+  const selectedDestinationPersona = mapDestinationToPersonaProps(selectedDestination);
 
   const hasRequiredEndpoints = () => {
     if (!selectedDestinationEndpoints) return false;
@@ -118,31 +109,19 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
 
   useEffect(() => {
     
-  }, [dispatch, ownerPickerSuggestions]);
+  }, [dispatch, groupPickerSuggestions]);
 
   const getPickerSuggestions = async (
-    filterText: string,
-    currentPersonas: IPersonaProps[] | undefined
+    text: string,
+    currentGroups: IPersonaProps[] | undefined
   ): Promise<IPersonaProps[]> => {
-    return filterText && ownerPickerSuggestions ? ownerPickerSuggestions : [];
+    return text && groupPickerSuggestions ? groupPickerSuggestions : [];
   };
 
-  const handleOwnersInputChanged = (input: string): string => {
-    dispatch(getJobOwnerFilterSuggestions({displayName: input, alias: input}))
+  const handleDestinationInputChanged = (input: string): string => {
+    dispatch(searchDestinations({displayName: input, alias: input}));
     return input;
   }
-
-  const handleOwnersChanged = (items?: IPersonaProps[] | undefined) => {
-    if (items !== undefined && items.length > 0) {
-      setSelectedOwners(items);
-      // setFilterDestinationOwner(items[0].id as string);
-    }
-    else
-    {
-      setSelectedOwners([]);
-      // setFilterDestinationOwner('');
-    }    
-  };
 
   return (
     <div className={classNames.root}>
@@ -158,27 +137,6 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
           />
           <div>
             {strings.ManageMembership.labels.searchDestination}
-            <ComboBox
-              styles={{
-                root: classNames.searchField,
-                container: classNames.comboBoxContainer,
-                input: classNames.comboBoxInput
-              }}
-              placeholder={strings.ManageMembership.labels.searchDestinationPlaceholder}
-              useComboBoxAsMenuWidth
-              options={searchResults?.map(group => ({ key: group.id, text: group.name })) || []}
-              required
-              allowFreeform
-              onChange={onSearchDestinationChange}
-              selectedKey={selectedDestination?.id}
-              onPendingValueChanged={(option?: IComboBoxOption, index?: number, value?: string) => {
-                if (value !== undefined) {
-                  setSearchQuery(value);
-                  handleSearch();
-                }
-              }}
-            />
-
             <NormalPeoplePicker
               onResolveSuggestions={getPickerSuggestions}
               pickerSuggestionsProps={{
@@ -191,9 +149,9 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
               removeButtonAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.removeButtonAriaLabel}
               resolveDelay={300}
               itemLimit={1}
-              selectedItems={selectedOwners}
-              onInputChange={handleOwnersInputChanged}
-              onChange={handleOwnersChanged}
+              selectedItems={selectedDestinationPersona}
+              onInputChange={handleDestinationInputChanged}
+              onChange={onSearchDestinationChange}
               styles={
                 {
                   text: classNames.peoplePicker,
@@ -205,13 +163,6 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                 }
               }
             />
-            {
-              searchQuery.length > 3 && !loadingSearchResults && (!searchResults || searchResults.length === 0) ? (
-                <div>
-                  {strings.ManageMembership.labels.noResultsFound}
-                </div>
-              ) : null
-            }
           </div>
           {loadingSearchResults ? (
             <Spinner />

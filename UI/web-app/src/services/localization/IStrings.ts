@@ -215,6 +215,7 @@ export type IStrings = {
       noThresholdSet: string;
       savingSyncJob: string;
       group: string;
+      destinationPickerSuggestionsHeaderText: string;
     }
   };
   edit: string;

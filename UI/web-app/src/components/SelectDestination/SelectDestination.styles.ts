@@ -28,7 +28,7 @@ import {
       dropdownField: {
         width: 500
       },
-      searchField: {
+      peoplePicker: {
         width: 500,
         borderRadius: 4,
         borderStyle: 'solid',
@@ -40,12 +40,6 @@ import {
             content: 'none'
           }
         }
-      },
-      comboBoxContainer: {
-        width: 500
-      },
-      comboBoxInput: {
-        width: '100%'
       },
       ownershipWarning: {
         fontWeight: 400,
@@ -68,13 +62,6 @@ import {
         display: 'flex',
         flexDirection: 'row',
         gap: 70
-      },
-      peoplePicker: {
-        borderRadius: 4,
-        border: '1px solid',
-        borderColor: theme.palette.neutralQuaternary,
-        backgroud: theme.palette.white,
-        width: 150
       }
     };
   };

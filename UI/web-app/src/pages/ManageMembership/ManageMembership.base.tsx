@@ -9,8 +9,9 @@ import {
   useTheme,
   DefaultButton, PrimaryButton,
   Icon,
-  Dialog, DialogType, DialogFooter, IComboBox, IComboBoxOption,
-  Spinner
+  IPersonaProps,
+  Dialog, DialogType, DialogFooter,
+  Spinner,
 } from '@fluentui/react';
 import { useNavigate } from 'react-router-dom';
 import { Page } from '../../components/Page';
@@ -83,12 +84,19 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const thresholdPercentageForRemovals = useSelector(manageMembershipThresholdPercentageForRemovals);
   const requestor = useSelector(selectAccountUsername);
 
-  const handleSearchDestinationChange = async (event: React.FormEvent<IComboBox>, option?: IComboBoxOption) => {
-    if (option) {
+  const handleSearchDestinationChange = (selectedDestinations: IPersonaProps[] | undefined) => {
+    if (selectedDestinations && selectedDestinations.length > 0) {
       dispatch(setHasChanges(true));
-      const selectedGroupId = option.key as string;
-      const selectedDestination: Destination = { id: selectedGroupId, name: option.text, type: 'GroupMembership' }; // Make type configurable once we support Teams Channels
-
+      
+      const selectedGroupId = selectedDestinations[0].key as string;
+      const groupName = selectedDestinations[0].text as string;
+  
+      const selectedDestination: Destination = {
+        id: selectedGroupId,
+        name: groupName,
+        type: 'GroupMembership' // Make type configurable once we support Teams Channels
+      };
+  
       dispatch(setSelectedDestination(selectedDestination));
       dispatch(getGroupEndpoints(selectedGroupId));
       dispatch(getGroupOnboardingStatus(selectedGroupId));

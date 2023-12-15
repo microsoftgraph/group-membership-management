@@ -224,6 +224,7 @@ export const strings: IStrings = {
       noThresholdSet: 'No se estableció un límite',
       savingSyncJob: 'Guardando...',
       group: 'Grupo',
+      destinationPickerSuggestionsHeaderText: 'Destinos sugeridos',
     }
   },
   edit: 'Editar',

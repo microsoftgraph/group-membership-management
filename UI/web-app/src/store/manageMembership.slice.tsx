@@ -12,6 +12,7 @@ import {
 } from './manageMembership.api';
 import { OnboardingStatus } from '../models/GroupOnboardingStatus';
 import { Destination } from '../models/Destination';
+import { PeoplePickerPersona } from '../models';
 
 const placeholderQuery: string = `[
     {
@@ -37,7 +38,7 @@ const placeholderQuery: string = `[
 
 export interface ManageMembershipState {
     loadingSearchResults: boolean;
-    searchResults?: Destination[] | undefined;
+    searchResults?: PeoplePickerPersona[];
     selectedDestination: Destination | undefined;
     onboardingStatus: OnboardingStatus | null;
     hasChanges: boolean;
@@ -83,9 +84,6 @@ const manageMembershipSlice = createSlice({
         },
         setCurrentStep: (state, action: PayloadAction<number>) => {
             state.currentStep = action.payload;
-        },
-        setSearchResults: (state, action: PayloadAction<Destination[]>) => {
-            state.searchResults = action.payload;
         },
         setSelectedDestination: (state, action: PayloadAction<Destination | undefined>) => {
             state.selectedDestination = action.payload;

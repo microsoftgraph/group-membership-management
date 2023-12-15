@@ -220,6 +220,7 @@ export const strings: IStrings = {
       noThresholdSet: 'No threshold set',
       savingSyncJob: 'Saving...',
       group: 'Group',
+      destinationPickerSuggestionsHeaderText: 'Suggested destinations',
     }
   },
   edit: 'Edit',

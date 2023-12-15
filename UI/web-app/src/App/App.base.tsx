@@ -21,7 +21,6 @@ import { loginAsync } from '../store/account.api';
 import { selectLoggedIn } from '../store/account.slice';
 import { selectProfile } from '../store/profile.slice';
 import { setLanguage } from '../store/localization.api';
-import { getIsAdmin } from '../store/roles.api';
 import { fetchSettings } from '../store/settings.api';
 import { Setting } from '../models/Setting';
 import { selectAllSettings } from '../store/settings.slice';

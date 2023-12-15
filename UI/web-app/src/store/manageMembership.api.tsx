@@ -1,9 +1,9 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { config } from '../authConfig';
 import { OnboardingStatus } from '../models/GroupOnboardingStatus';
-import { Destination } from '../models/Destination';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
+import { PeoplePickerPersona } from '../models';
 
 export class OdataQueryOptions {
   pageSize?: number;
@@ -12,29 +12,15 @@ export class OdataQueryOptions {
   orderBy?: String;
 }
 
-export const searchDestinations = createAsyncThunk<Destination[], string, ThunkConfig>(
+export const searchDestinations = createAsyncThunk<PeoplePickerPersona[], {displayName: string; alias: string}, ThunkConfig>(
   'destinations/searchDestinations',
-  async (query: string, { extra }) => {
-    const { authenticationService } = extra.services;
-    const token = await authenticationService.getTokenAsync(TokenType.GMM);
-    const headers = new Headers();
-    const bearer = `Bearer ${token}`;
-    headers.append('Authorization', bearer);
-
-    const options = {
-      method: 'GET',
-      headers,
-    };
-
+  async (input, { extra }) => {
+    const { graphApi } = extra.apis;
     try {
-      const response = await fetch(`${config.searchDestinations}/${encodeURIComponent(query)}`, options).then(
-        async (response) => await response.json()
-      );
-
-      const payload: Destination[] = response;
-      return payload;
+      const response = await graphApi.getDestinationSuggestions(input.displayName, input.alias);
+      return response;
     } catch (error) {
-      throw new Error('Failed to fetch destination data!');
+      throw new Error('Failed to search for destinations');
     }
   }
 );

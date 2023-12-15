@@ -2,8 +2,7 @@
 // Licensed under the MIT license.
 
 import {
-  IComboBox,
-  IComboBoxOption,
+  IPersonaProps,
   type IStyle,
   type IStyleFunctionOrObject,
   type ITheme,
@@ -16,14 +15,11 @@ export interface ISelectDestinationStyles {
   selectDestinationContainer: IStyle;
   dropdownTitle: IStyle;
   dropdownField: IStyle;
-  searchField: IStyle;
-  comboBoxContainer: IStyle;
-  comboBoxInput: IStyle;
+  peoplePicker: IStyle;
   endpointsContainer: IStyle;
   outlookWarning: IStyle;
   outlookContainer: IStyle;
   ownershipWarning: IStyle;
-  peoplePicker: IStyle;
 }
 
 export interface ISelectDestinationStyleProps {
@@ -43,6 +39,6 @@ export interface ISelectDestinationProps
    * Call to provide customized styling that will layer on top of the variant rules.
    */
   styles?: IStyleFunctionOrObject<ISelectDestinationStyleProps, ISelectDestinationStyles>;
-  onSearchDestinationChange?: (event: React.FormEvent<IComboBox>, option?: IComboBoxOption) => void;
+  onSearchDestinationChange?: (selectedDestinations: IPersonaProps[] | undefined) => void;
   selectedDestination?: Destination;
 }
