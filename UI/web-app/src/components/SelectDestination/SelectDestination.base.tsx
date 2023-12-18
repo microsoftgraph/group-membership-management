@@ -10,7 +10,7 @@ import {
   Dropdown, IDropdownOption,
   Spinner,
   ActionButton,
-  MessageBar, MessageBarType, MessageBarButton, NormalPeoplePicker, IPersonaProps, DirectionalHint,
+  MessageBar, MessageBarType, MessageBarButton, NormalPeoplePicker, IPersonaProps
 } from '@fluentui/react';
 import {
   ISelectDestinationProps,
@@ -52,7 +52,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
 
   const mapDestinationToPersonaProps = (destination: Destination | undefined): IPersonaProps[] => {
     if (!destination) return [];
-  
+
     return [{
       key: destination.id,
       text: destination.name,
@@ -108,7 +108,6 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   };
 
   useEffect(() => {
-    
   }, [dispatch, groupPickerSuggestions]);
 
   const getPickerSuggestions = async (
@@ -119,7 +118,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   };
 
   const handleDestinationInputChanged = (input: string): string => {
-    dispatch(searchDestinations({displayName: input, alias: input}));
+    dispatch(searchDestinations(input));
     return input;
   }
 
@@ -152,16 +151,8 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
               selectedItems={selectedDestinationPersona}
               onInputChange={handleDestinationInputChanged}
               onChange={onSearchDestinationChange}
-              styles={
-                {
-                  text: classNames.peoplePicker,
-                }
-              }
-              pickerCalloutProps={
-                {
-                  directionalHint: DirectionalHint.bottomCenter,
-                }
-              }
+              styles={{ text: classNames.peoplePicker }}
+              pickerCalloutProps={{ calloutMinWidth: 500 }}
             />
           </div>
           {loadingSearchResults ? (

@@ -12,7 +12,7 @@ import {
 } from './manageMembership.api';
 import { OnboardingStatus } from '../models/GroupOnboardingStatus';
 import { Destination } from '../models/Destination';
-import { PeoplePickerPersona } from '../models';
+import { DestinationPickerPersona } from '../models';
 
 const placeholderQuery: string = `[
     {
@@ -38,7 +38,7 @@ const placeholderQuery: string = `[
 
 export interface ManageMembershipState {
     loadingSearchResults: boolean;
-    searchResults?: PeoplePickerPersona[];
+    searchResults?: DestinationPickerPersona[];
     selectedDestination: Destination | undefined;
     onboardingStatus: OnboardingStatus | null;
     hasChanges: boolean;

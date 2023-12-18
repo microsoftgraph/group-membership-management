@@ -87,8 +87,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const handleSearchDestinationChange = (selectedDestinations: IPersonaProps[] | undefined) => {
     if (selectedDestinations && selectedDestinations.length > 0) {
       dispatch(setHasChanges(true));
-      
-      const selectedGroupId = selectedDestinations[0].key as string;
+      const selectedGroupId = selectedDestinations[0].id as string;
       const groupName = selectedDestinations[0].text as string;
   
       const selectedDestination: Destination = {

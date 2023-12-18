@@ -44,7 +44,7 @@ namespace Services
 
             foreach (var group in groups)
             {
-                var dto = new DestinationDTO(group.ObjectId, group.Name);
+                var dto = new DestinationDTO(group.ObjectId, group.Name, group.Email);
 
                 response.Model.Add(dto);
             }

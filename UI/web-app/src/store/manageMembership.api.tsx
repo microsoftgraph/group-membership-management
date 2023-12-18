@@ -3,7 +3,7 @@ import { config } from '../authConfig';
 import { OnboardingStatus } from '../models/GroupOnboardingStatus';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
-import { PeoplePickerPersona } from '../models';
+import { Destination, DestinationPickerPersona } from '../models';
 
 export class OdataQueryOptions {
   pageSize?: number;
@@ -12,15 +12,36 @@ export class OdataQueryOptions {
   orderBy?: String;
 }
 
-export const searchDestinations = createAsyncThunk<PeoplePickerPersona[], {displayName: string; alias: string}, ThunkConfig>(
+export const searchDestinations = createAsyncThunk<DestinationPickerPersona[], string, ThunkConfig>(
   'destinations/searchDestinations',
-  async (input, { extra }) => {
-    const { graphApi } = extra.apis;
+  async (query: string, { extra }) => {
+    const { authenticationService } = extra.services;
+    const token = await authenticationService.getTokenAsync(TokenType.GMM);
+    const headers = new Headers();
+    const bearer = `Bearer ${token}`;
+    headers.append('Authorization', bearer);
+
+    const options = {
+      method: 'GET',
+      headers,
+    };
+
     try {
-      const response = await graphApi.getDestinationSuggestions(input.displayName, input.alias);
-      return response;
+      const response = await fetch(`${config.searchDestinations}/${encodeURIComponent(query)}`, options).then(
+        async (response) => await response.json()
+      );
+
+      const payload: DestinationPickerPersona[] = response.map((destination: Destination, index: number) => ({
+        key: index, 
+        text: destination.name,
+        secondaryText: destination.email, 
+        id: destination.id,
+        endpoints: destination.endpoints,
+      }));
+      
+      return payload;
     } catch (error) {
-      throw new Error('Failed to search for destinations');
+      throw new Error('Failed to fetch destination data!');
     }
   }
 );

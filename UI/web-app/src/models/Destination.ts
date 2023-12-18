@@ -6,5 +6,6 @@ export interface Destination {
     name: string;
     type: string;
     endpoints?: string[] | undefined;
+    email?: string;
   }
   

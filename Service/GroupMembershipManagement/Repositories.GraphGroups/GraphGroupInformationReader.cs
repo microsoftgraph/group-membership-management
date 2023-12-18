@@ -545,6 +545,7 @@ namespace Repositories.GraphGroups
                         {
                             ObjectId = new Guid(group.Id),
                             Name = group.DisplayName,
+                            Email = group.Mail
                         };
 
                         results.Add(azureAdGroup);

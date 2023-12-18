@@ -11,6 +11,7 @@ namespace Models
 		public Guid ObjectId { get; set; }
         public string Type { get; set; }
         public string Name { get; set; }
+		public string Email { get; set; }
 
         public override bool Equals(object obj)
 		{

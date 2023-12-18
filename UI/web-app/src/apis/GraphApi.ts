@@ -40,24 +40,6 @@ export class GraphApi extends ApiBase implements IGraphApi {
       secondaryText: user.mail,
       id: user.id,
     }));
-  }
 
-  public async getDestinationSuggestions(displayName: string, mail: string): Promise<PeoplePickerPersona[]> {
-    const response = await this.httpClient.get<GraphResponseEntity<UserEntity[]>>(`/groups`, {
-      params: {
-        $select: 'displayName,mail,id',
-        $search: `"mail:${mail}" OR "mailNickname:${mail}" OR "displayName:${displayName}"`,
-      },
-      headers: {
-        'ConsistencyLevel': 'eventual',
-      },
-    });
-    var groups = response.data.value;
-    return groups.map((group, index) => ({
-      key: index,
-      text: group.displayName,
-      secondaryText: group.mail,
-      id: group.id,
-    }));
   }
 }

@@ -18,3 +18,4 @@ export * from './SettingName';
 export * from './Status';
 export * from './User';
 export * from './PeoplePickerPersona';
+export * from './DestinationPickerPersona';
