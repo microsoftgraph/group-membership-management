@@ -20,6 +20,25 @@ param repositoryUrl string
 @description('customDomainName')
 param customDomainName string
 
+@description('The client id of the api app registration.')
+param apiAppClientId string
+
+@description('The URI of the api app service.')
+param apiServiceBaseUri string
+
+@description('The tenant id of the ui app registration.')
+param uiAppTenantId string
+
+@description('The client id of the ui app registration.')
+param uiAppClientId string
+
+@description('The domain name of SharePoint.')
+param sharepointDomain string
+
+@description('The domain name of the tenant.')
+param tenantDomain string
+
+
 
 var appInsightsName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
@@ -49,3 +68,9 @@ module staticSiteModule 'staticSite.bicep' = {
 // Check on if this API Key is acceptable for deployment purposes of front end
 output deployment_token string = staticSiteModule.outputs.deployment_token
 output app_insights_connection_string string = appInsightsResource.properties.ConnectionString
+output api_app_client_id string = apiAppClientId
+output api_service_base_uri string = apiServiceBaseUri
+output ui_app_client_id string = uiAppClientId
+output ui_app_tenant_id string = uiAppTenantId
+output sharepoint_domain string = sharepointDomain
+output tenant_domain string = tenantDomain

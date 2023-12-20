@@ -10,6 +10,24 @@
     },
     "customDomainName": {
       "value": "<custom-domain-name>"
+    },
+    "apiAppClientId": {
+      "value": "<api-app-client-id>"
+    },
+    "apiServiceBaseUri": {
+      "value": "<api-service-base-uri>"
+    },
+    "uiAppClientId": {
+      "value": "<ui-app-client-id>"
+    },
+    "uiAppTenantId": {
+      "value": "<ui-app-tenant-id>"
+    },
+    "sharepointDomain": {
+      "value": "<domain-name.sharepoint.com>"
+    },
+    "tenantDomain": {
+      "value": "<domain-name.onmicrosoft.com>"
     }
   }
 }
