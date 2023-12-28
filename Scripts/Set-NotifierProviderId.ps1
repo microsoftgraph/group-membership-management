@@ -16,10 +16,12 @@ Environment Abbreviation
 Provider Id
 
 .EXAMPLE
+$secureProviderId = ConvertTo-SecureString -AsPlainText -Force "<provider id>"
+
 Set-NotifierProviderId	-SubscriptionName "<subscription name>" `
 						-SolutionAbbreviation "gmm" `
 						-EnvironmentAbbreviation "<env>" `
-						-ProviderId "<provider id>" `
+						-SecureProviderId $secureProviderId `
 						-Verbose
 #>
 function Set-NotifierProviderId {
@@ -32,7 +34,7 @@ function Set-NotifierProviderId {
 		[Parameter(Mandatory=$True)]
 		[string] $EnvironmentAbbreviation,
         [Parameter(Mandatory=$True)]
-		[string] $ProviderId,
+		[SecureString] $SecureProviderId,
 		[Parameter(Mandatory=$False)]
 		[string] $ErrorActionPreference = $Stop
 	)
@@ -58,13 +60,10 @@ function Set-NotifierProviderId {
 	}
 
 	#region Store Provider Id in KeyVault
-    Write-Verbose "Provider Id is $ProviderId"
-
     $notifierProviderIdKeyVaultSecretName = "notifierProviderId"
-	$notifierProviderIdSecret = ConvertTo-SecureString -AsPlainText -Force  $ProviderId
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $notifierProviderIdKeyVaultSecretName `
-						 -SecretValue $notifierProviderIdSecret
+						 -SecretValue $SecureProviderId
 	Write-Verbose "$notifierProviderIdKeyVaultSecretName added to vault..."
 
 	#endregion

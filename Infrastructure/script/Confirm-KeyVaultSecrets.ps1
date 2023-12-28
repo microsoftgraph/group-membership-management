@@ -24,7 +24,9 @@ function Confirm-KeyVaultSecrets {
     $prereqsKeyVault = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
 	$graphAppCertificateName = Get-AzKeyVaultSecret -VaultName $prereqsKeyVault -Name "graphAppCertificateName"
     if(!$graphAppCertificateName){
-		$secret = ConvertTo-SecureString -String 'not-set' -AsPlainText -Force
+		Write-Verbose "The graph app certificate name is not set"
+		$secret = Read-Host -AsSecureString -Prompt "Please type 'not-set' here to represent the certificate name to use"
+
 		Set-AzKeyVaultSecret -VaultName $prereqsKeyVault -Name "graphAppCertificateName" -SecretValue $secret
 	}
 }

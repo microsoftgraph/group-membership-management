@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-<# 
+<#
 .SYNOPSIS
 This script adds secrets to a key vault
 
@@ -10,14 +10,18 @@ Name for the new service principal
 Array with secrets to store in the  key vault ie ("name1=value1", "name2=value2")
 
 .EXAMPLE
+
+$secureTenantName = ConvertTo-SecureString -AsPlainText -Force "<tenantName>"
+$secureTenantAdminUsername = ConvertTo-SecureString -AsPlainText -Force "<tenantAdminPassword>"
+$secureTenantAdminPassword = ConvertTo-SecureString -AsPlainText -Force "<tenantAdminUsername>"
+
 Set-GmmDemoEnvironmentKeyVaultSecrets   -solutionAbbreviation "<solution>" `
                                         -environmentAbbreviation "<env>" `
-                                        -tenantName "<tenantName>" `
-                                        -tenantAdminPassword "<tenantAdminPassword>" `
-                                        -tenantAdminUsername  "<tenantAdminUsername>"  
+                                        -secureTenantName $secureTenantName `
+                                        -secureTenantAdminUsername  $secureTenantAdminUsername `
+                                        -secureTenantAdminPassword "$secureTenantAdminPassword
 
 solutionAbbreviation is an optional parameter
-tenantAdminUsername is an optional parameter
 #>
 
 function Set-GmmDemoEnvironmentKeyVaultSecrets {
@@ -28,29 +32,30 @@ function Set-GmmDemoEnvironmentKeyVaultSecrets {
         [Parameter(Mandatory=$True)]
         [string] $environmentAbbreviation,
         [Parameter(Mandatory=$True)]
-        [string] $tenantName,
+        [SecureString] $secureTenantName,
         [Parameter(Mandatory=$True)]
-        [string] $tenantAdminPassword,
-        [Parameter(Mandatory=$False)]
-        [string] $tenantAdminUsername        
+        [SecureString] $secureTenantAdminUsername,
+        [Parameter(Mandatory=$True)]
+        [SecureString] $secureTenantAdminPassword
     )
-    
+
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
-    
+
     . ($scriptsDirectory + '\Scripts\Set-KeyVaultSecrets.ps1')
-    
+
     if (!($solutionAbbreviation))
     {
         $solutionAbbreviation = "gmm"
     }
 
-    if(!($tenantAdminUsername))
-    {
-        $tenantAdminUsername = "admin@$tenantName.onmicrosoft.com"
-    }
-
     $keyVaultName = "$solutionAbbreviation-prereqs-$environmentAbbreviation"
-    
+
+    $keyValuePairs = New-Object 'System.Collections.Generic.List[System.Object]'
+
+    $keyValuePairs.Add([PSCustomObject]@{Key="tenantName";SecretValue=$secureTenantName})
+    $keyValuePairs.Add([PSCustomObject]@{Key="tenantAdminUsername";SecretValue=$secureTenantAdminUsername})
+    $keyValuePairs.Add([PSCustomObject]@{Key="tenantAdminPassword";SecretValue=$secureTenantAdminPassword})
+
     Set-KeyVaultSecrets -keyVaultName $keyVaultName `
-                        -secrets ("tenantName=$tenantName", "tenantAdminUsername=$tenantAdminUsername", "tenantAdminPassword=$tenantAdminPassword")
+                        -keyValuePairs $keyValuePairs
 }

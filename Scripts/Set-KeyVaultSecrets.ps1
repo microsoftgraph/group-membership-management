@@ -10,7 +10,7 @@ Name for the new service principal
 Array with secrets to store in the  key vault ie ("name1=value1", "name2=value2")
 
 .EXAMPLE
-Set-KeyVaultSecrets  -keyVaultName "<key valut name>" `
+Set-KeyVaultSecrets  -keyVaultName "<key value name>" `
                     -secrets ("name1=value1", "name2=value2")
 #>
 
@@ -20,7 +20,7 @@ function Set-KeyVaultSecrets {
         [Parameter(Mandatory=$True)]
         [string] $keyVaultName,
         [Parameter(Mandatory=$True)]
-        [string[]] $secrets
+        [System.Collections.Generic.List[System.Object]] $keyValuePairs
     )
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -50,11 +50,10 @@ function Set-KeyVaultSecrets {
     Write-Host "`nSaving secrets..."
 
     $keyVault = Get-AzKeyVault -VaultName $keyVaultName
-    foreach($secret in $secrets)
+    foreach($kvPair in $keyValuePairs)
     {
-        $index = $secret.IndexOf("=")
-        $secretName = $secret.Substring(0, $index)
-        $secretValue = ConvertTo-SecureString -AsPlainText -Force $secret.Substring($index + 1)
+        $secretName = $kvPair.Key
+        $secretValue = $kvPair.SecretValue
 
         Write-Host "`nSaving secret: $secretName"
 

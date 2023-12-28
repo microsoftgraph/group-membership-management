@@ -242,10 +242,11 @@ function Set-WebApiAzureADApplication {
 	}
 
 	# Store Application (client) ID in KeyVault
-	Write-Verbose "Application (client) ID is $webApiAppClientId"
-
 	$webApiClientIdKeyVaultSecretName = "webApiClientId"
-	$webApiClientIdSecret = ConvertTo-SecureString -AsPlainText -Force $webApiAppClientId
+
+	Write-Verbose "WebApi application (client) ID is $webApiAppClientId"
+	$webApiClientIdSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi application ID from above and paste it here"
+
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $webApiClientIdKeyVaultSecretName `
 						 -SecretValue $webApiClientIdSecret
@@ -253,7 +254,10 @@ function Set-WebApiAzureADApplication {
 
 	# Store Application secret in KeyVault
 	$webApiAppClientSecretName = "webApiClientSecret"
-	$webApiClientSecret = ConvertTo-SecureString -AsPlainText -Force $($webApiAppClientSecret.SecretText)
+
+	Write-Verbose "WebApi application client secret is $($webApiAppClientSecret.SecretText)"
+	$webApiClientSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi application client secret from above and paste it here"
+
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $webApiAppClientSecretName `
 						 -SecretValue $webApiClientSecret
@@ -261,7 +265,10 @@ function Set-WebApiAzureADApplication {
 
 	# Store tenantID in KeyVault
 	$webApiTenantSecretName = "webApiTenantId"
-	$webApiTenantSecret = ConvertTo-SecureString -AsPlainText -Force $webApiAppTenantId
+
+	Write-Verbose "WebApi tenant ID is $webApiAppTenantId"
+	$webApiTenantSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi tenant ID from above and paste it here"
+
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $webApiTenantSecretName `
 						 -SecretValue $webApiTenantSecret
@@ -281,7 +288,10 @@ function Set-WebApiAzureADApplication {
 	}
 
 	if ($setWebApiCertificate) {
-		$webApiAppCertificateSecret = ConvertTo-SecureString -AsPlainText -Force $CertificateName
+
+		Write-Verbose "Certificate name is $CertificateName"
+		$webApiAppCertificateSecret = Read-Host -AsSecureString -Prompt "Please take the certificate name from above and paste it here"
+
 		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 							 -Name $webApiAppCertificateName `
 							 -SecretValue $webApiAppCertificateSecret

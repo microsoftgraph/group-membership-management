@@ -181,10 +181,11 @@ function Set-GraphCredentialsAzureADApplication {
     }
 
 	# Store Application (client) ID in KeyVault
-    Write-Verbose "Application (client) ID is $graphAppClientId"
-
     $graphClientIdKeyVaultSecretName = "graphAppClientId"
-	$graphClientIdSecret = ConvertTo-SecureString -AsPlainText -Force $graphAppClientId
+
+    Write-Verbose "Graph application (client) ID is $graphAppClientId"
+	$graphClientIdSecret = Read-Host -AsSecureString -Prompt "Please take the graph application ID from above and paste it here"
+
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $graphClientIdKeyVaultSecretName `
 						 -SecretValue $graphClientIdSecret
@@ -192,7 +193,10 @@ function Set-GraphCredentialsAzureADApplication {
 
 	# Store Application secret in KeyVault
 	$graphAppClientSecretName = "graphAppClientSecret"
-    $graphClientSecret = ConvertTo-SecureString -AsPlainText -Force $($graphAppClientSecret.SecretText)
+
+    Write-Verbose "Graph application client secret is $($graphAppClientSecret.SecretText)"
+	$graphClientSecret = Read-Host -AsSecureString -Prompt "Please take the graph application client secret from above and paste it here"
+
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 							-Name $graphAppClientSecretName `
 							-SecretValue $graphClientSecret
@@ -200,7 +204,10 @@ function Set-GraphCredentialsAzureADApplication {
 
 	# Store tenantID in KeyVault
 	$graphTenantSecretName = "graphAppTenantId"
-	$graphTenantSecret = ConvertTo-SecureString -AsPlainText -Force  $graphAppTenantId
+
+    Write-Verbose "Graph application tenant id is $graphAppTenantId"
+	$graphTenantSecret = Read-Host -AsSecureString -Prompt "Please take the graph application tenant id from above and paste it here"
+
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $graphTenantSecretName `
 						 -SecretValue $graphTenantSecret
@@ -219,7 +226,9 @@ function Set-GraphCredentialsAzureADApplication {
 	}
 
 	if($setGraphAppCertificate){
-		$graphAppCertificateSecret = ConvertTo-SecureString -AsPlainText -Force $CertificateName
+		Write-Verbose "Certificate name is $CertificateName"
+		$graphAppCertificateSecret = Read-Host -AsSecureString -Prompt "Please take the certificate name from above and paste it here"
+
 		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 								-Name $graphAppCertificateName `
 								-SecretValue $graphAppCertificateSecret

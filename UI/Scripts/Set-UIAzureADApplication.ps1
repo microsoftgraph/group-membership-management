@@ -213,10 +213,11 @@ function Set-UIAzureADApplication {
 	}
 
 	# Store Application (client) ID in KeyVault
-	Write-Verbose "Application (client) ID is $uiAppClientId"
-
 	$uiAppIdKeyVaultSecretName = "uiAppId"
-	$uiAppIdSecret = ConvertTo-SecureString -AsPlainText -Force $uiAppClientId
+
+    Write-Verbose "UI application (client) ID is $uiAppClientId"
+	$uiAppIdSecret = Read-Host -AsSecureString -Prompt "Please take the UI application ID from above and paste it here"
+
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $uiAppIdKeyVaultSecretName `
 						 -SecretValue $uiAppIdSecret
@@ -224,7 +225,10 @@ function Set-UIAzureADApplication {
 
 	# Store Application secret in KeyVault
 	$uiAppClientSecretName = "uiPasswordCredentialValue"
-	$uiPasswordCredentialValue = ConvertTo-SecureString -AsPlainText -Force $($uiAppClientSecret.SecretText)
+
+    Write-Verbose "UI application client secret is $($uiAppClientSecret.SecretText)"
+	$uiPasswordCredentialValue = Read-Host -AsSecureString -Prompt "Please take the UI application client secret from above and paste it here"
+
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $uiAppClientSecretName `
 						 -SecretValue $uiPasswordCredentialValue
@@ -232,7 +236,10 @@ function Set-UIAzureADApplication {
 
 	# Store tenantID in KeyVault
 	$uiTenantSecretName = "uiTenantId"
-	$uiTenantSecret = ConvertTo-SecureString -AsPlainText -Force $uiAppTenantId
+
+    Write-Verbose "UI tenant ID is $uiAppTenantId"
+	$uiTenantSecret = Read-Host -AsSecureString -Prompt "Please take the UI tenant ID from above and paste it here"
+
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $uiTenantSecretName `
 						 -SecretValue $uiTenantSecret
