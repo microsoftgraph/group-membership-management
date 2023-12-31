@@ -3,7 +3,7 @@
 
 import { classNamesFunction, type IProcessedStyleSet } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { useSelector, useDispatch } from 'react-redux';
 import { Outlet } from 'react-router-dom';
@@ -42,24 +42,30 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
   const profile = useSelector(selectProfile);
   const loggedIn = useSelector(selectLoggedIn);
   const settings: Setting[] | undefined = useSelector(selectAllSettings);
+  const [settingsFetchAttempted, setSettingsFetchAttempted] = useState(false);
   const settingsLoaded: boolean = settings !== undefined;
-  
+
   // run once after load.
   useEffect(() => {
     if (!loggedIn) {
       dispatch(loginAsync());
     }
-    if(!settingsLoaded){
-      dispatch(fetchSettings());
+    if (!settingsLoaded) {
+      dispatch(fetchSettings())
+        .then(() => {
+          setSettingsFetchAttempted(true);
+        });
+    } else {
+      setSettingsFetchAttempted(true);
     }
-  });
+  }, [dispatch, loggedIn, settingsLoaded]);
 
   // run if the localization context change or the user's preferred language changes.
   useEffect(() => {
     dispatch(setLanguage(profile?.userPreferredLanguage));
   }, [dispatch, profile?.userPreferredLanguage]);
 
-  if (loggedIn && settingsLoaded) {
+  if (loggedIn && (settingsLoaded || settingsFetchAttempted)) {
     return (
       <div className={classNames.root}>
         <AppHeader />

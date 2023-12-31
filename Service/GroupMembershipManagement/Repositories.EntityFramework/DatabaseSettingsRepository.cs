@@ -35,6 +35,7 @@ namespace Repositories.EntityFramework
             if (setting != null)
             {
                 setting.SettingValue = newSettingValue;
+                _writeContext.Entry(setting).State = EntityState.Modified;
             }
             else
             {
