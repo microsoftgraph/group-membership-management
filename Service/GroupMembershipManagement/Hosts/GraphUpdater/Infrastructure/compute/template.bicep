@@ -20,7 +20,7 @@ param environmentAbbreviation string
 param tenantId string
 
 @description('Service plan name.')
-param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
+param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'GraphUpdater'),0,8)}'
 
 @description('Service plan sku')
 param servicePlanSku string = 'Y1'
