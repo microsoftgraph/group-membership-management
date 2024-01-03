@@ -187,7 +187,7 @@ export const strings: IStrings = {
       selectDestinationType: 'Select Destination Type',
       selectDestinationTypePlaceholder: 'Select an option',
       searchDestination: 'Search destination',
-      searchDestinationPlaceholder: 'Search for a group',
+      searchGroupSuggestedText: 'Suggested Groups',
       noResultsFound: 'No results found',
       appsUsed: 'This group uses the following apps:',
       outlookWarning: 'There are important settings that should be considered before sending email to this Outlook group. Follow the instructions on your organization.',

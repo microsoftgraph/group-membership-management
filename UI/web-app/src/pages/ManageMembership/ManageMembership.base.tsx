@@ -85,11 +85,11 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const requestor = useSelector(selectAccountUsername);
 
   const handleSearchDestinationChange = (selectedDestinations: IPersonaProps[] | undefined) => {
+    dispatch(setHasChanges(true));
+
     if (selectedDestinations && selectedDestinations.length > 0) {
-      dispatch(setHasChanges(true));
       const selectedGroupId = selectedDestinations[0].id as string;
       const groupName = selectedDestinations[0].text as string;
-  
       const selectedDestination: Destination = {
         id: selectedGroupId,
         name: groupName,
@@ -99,6 +99,8 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       dispatch(setSelectedDestination(selectedDestination));
       dispatch(getGroupEndpoints(selectedGroupId));
       dispatch(getGroupOnboardingStatus(selectedGroupId));
+    } else {
+      dispatch(setSelectedDestination(undefined));
     }
   };
 

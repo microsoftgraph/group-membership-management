@@ -139,7 +139,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
             <NormalPeoplePicker
               onResolveSuggestions={getPickerSuggestions}
               pickerSuggestionsProps={{
-                suggestionsHeaderText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.suggestionsHeaderText,
+                suggestionsHeaderText: strings.ManageMembership.labels.searchGroupSuggestedText,
                 noResultsFoundText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.noResultsFoundText,
                 loadingText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.loadingText,
               }}

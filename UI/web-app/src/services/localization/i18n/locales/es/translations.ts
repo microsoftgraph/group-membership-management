@@ -189,7 +189,7 @@ export const strings: IStrings = {
       step1title: 'Paso 1: Selecciona el destino',
       step1description: 'Por favor selecciona el tipo de destino y el destino cuya membresía quieres administrar.',
       selectDestinationType: 'Seleccionar tipo de destino',
-      searchDestinationPlaceholder: 'Selecciona una opción',
+      searchGroupSuggestedText: 'Grupos sugeridos',
       searchDestination: 'Buscar destino',
       selectDestinationTypePlaceholder: 'Buscar un grupo',
       noResultsFound: 'No se encontraron resultados',

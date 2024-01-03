@@ -182,7 +182,7 @@ export type IStrings = {
       selectDestinationType: string;
       selectDestinationTypePlaceholder: string;
       searchDestination: string;
-      searchDestinationPlaceholder: string;
+      searchGroupSuggestedText: string;
       noResultsFound: string;
       appsUsed: string;
       outlookWarning: string;
