@@ -20,6 +20,13 @@ export const strings: IStrings = {
   addOwnerButton: 'Add GMM as an owner',
   membershipManagement: 'Membership Management',
   learnMembershipManagement:'Learn how Membership Management works in your organization',
+  Components: {
+    HyperlinkSetting: {
+      address: "Address",
+      addHyperlink: "Add hyperlink",
+      invalidUrl: "Invalid URL",
+    },
+  },
   AdminConfig: {
       labels: {
           pageTitle: "Admin Configuration",
@@ -28,14 +35,17 @@ export const strings: IStrings = {
           saveButton: "Save",
           saveSuccess:  "Saved successfully."
       },
-      hyperlinkContainer: {
-          address: "Address",
-          addHyperlink: "Add hyperlink",
-          dashboardTitle: "Dashboard",
-          dashboardDescription: "This is the link that shows on the top right corner of the dashboard. It takes you to an internal site that has all the details on how to leverage XMM at your organization. This could include FAQs, contact information, SLAs, etc.",
-          outlookWarningTitle: "Destination Instructions",
-          outlookWarningDescription: "This link appears when Outlook is involved in the group selected. It takes you to an internal site to make the proper settings when sending emails to the Outlook group.",
-          invalidUrl: "Invalid URL"
+      dashboardLink: {
+          title: "Dashboard",
+          description: "This is the link that shows on the top right corner of the dashboard. It takes you to an internal site that has all the details on how to leverage XMM at your organization. This could include FAQs, contact information, SLAs, etc.",
+      },
+      outlookWarningLink: {
+        title: "Destination Instructions",
+        description: "This link appears when Outlook is involved in the group selected. It takes you to an internal site to make the proper settings when sending emails to the Outlook group.",
+      },
+      privacyPolicyLink: {
+          title: "Privacy Policy",
+          description: "This is the link that shows on the bottom left corner of the dashboard. It takes you to an internal site that has all the details on how XMM handles and stores user data.",
       },
   },
   Authentication: {
@@ -239,4 +249,5 @@ export const strings: IStrings = {
   version: 'Version',
   yes: 'Yes',
   no: 'No',
+  privacyPolicy: 'Privacy Policy',
 };

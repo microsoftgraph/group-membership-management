@@ -11,29 +11,26 @@ const GlobalClassNames = {
 
 export const getStyles = (props: IAppStyleProps): IAppStyles => {
   const { className, theme } = props;
-  const footerHeight = '100px';
   const classNames = getGlobalClassNames(GlobalClassNames, theme);
 
   return {
-    root: [{
-      fontFamily: 'Segoe UI',
-      backgroundColor: theme.palette.neutralLighter,
-      height: '100vh',
-      overflow: 'hidden'
-    }, classNames.root, className],
-    body: {
-      display: 'flex',
-      flexDirection: 'row',
-      flexGrow: 1,
-      justifyContent: 'center',
-      boxSizing: 'border-box',
-      margin: '0 auto',
-      height: `calc(100vh - ${footerHeight})`,
-      overflow: 'auto',
-    },
+    root: [
+      {
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        boxSizing: 'border-box',
+        margin: '0 auto',
+        fontFamily: 'Segoe UI',
+        backgroundColor: theme.palette.neutralLighter,
+        minHeight: '100vh',
+      },
+      classNames.root,
+      className,
+    ],
     content: {
       width: '100%',
-      overflow: 'auto',
-    }
+      flexGrow: 1,
+    },
   };
 };

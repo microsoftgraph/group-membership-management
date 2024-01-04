@@ -34,15 +34,15 @@ export const HyperlinkSettingBase: React.FunctionComponent<HyperlinkSettingProps
     
     let isValid = false;
     try {
-        // because Url.canParse doesn't exist
-      const _ = new URL(value);
+      // because Url.canParse doesn't exist
+      new URL(value);
       isValid = true;
     } catch (e) {
       isValid = false;
     }
 
     onValidation(isValid);
-    return isValid ? '' : strings.AdminConfig.hyperlinkContainer.invalidUrl;
+    return isValid ? '' : strings.Components.HyperlinkSetting.invalidUrl;
   };
 
   return (
@@ -51,8 +51,8 @@ export const HyperlinkSettingBase: React.FunctionComponent<HyperlinkSettingProps
       <div className={classNames.description}>{description}</div>
       <div>
         <TextField
-          label={strings.AdminConfig.hyperlinkContainer.address}
-          placeholder={strings.AdminConfig.hyperlinkContainer.addHyperlink}
+          label={strings.Components.HyperlinkSetting.address}
+          placeholder={strings.Components.HyperlinkSetting.addHyperlink}
           value={link}
           onChange={handleChange}
           styles={{

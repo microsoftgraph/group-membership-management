@@ -10,6 +10,7 @@ import type React from 'react';
 
 export interface IPageStyles {
   root: IStyle;
+  privacyPolicy: IStyle;
 }
 
 export interface IPageStyleProps {

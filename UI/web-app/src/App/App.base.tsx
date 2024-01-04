@@ -8,12 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Outlet } from 'react-router-dom';
 
-
-import {
-  type IAppProps,
-  type IAppStyleProps,
-  type IAppStyles,
-} from './App.types';
+import { type IAppProps, type IAppStyleProps, type IAppStyles } from './App.types';
 import { AppHeader } from '../components/AppHeader';
 import { Loader } from '../components/Loader';
 import { AppDispatch } from '../store';
@@ -28,9 +23,7 @@ import { AppFooter } from '../components/AppFooter';
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
-export const AppBase: React.FunctionComponent<IAppProps> = (
-  props: IAppProps
-) => {
+export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) => {
   const { className, styles } = props;
   const theme = useTheme();
   const classNames: IProcessedStyleSet<IAppStyles> = getClassNames(styles, {
@@ -51,10 +44,9 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
       dispatch(loginAsync());
     }
     if (!settingsLoaded) {
-      dispatch(fetchSettings())
-        .then(() => {
-          setSettingsFetchAttempted(true);
-        });
+      dispatch(fetchSettings()).then(() => {
+        setSettingsFetchAttempted(true);
+      });
     } else {
       setSettingsFetchAttempted(true);
     }
@@ -69,10 +61,8 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
     return (
       <div className={classNames.root}>
         <AppHeader />
-        <div className={classNames.body}>
-          <div className={classNames.content}>
-            <Outlet />
-          </div>
+        <div className={classNames.content}>
+          <Outlet />
         </div>
         <AppFooter/>
       </div>

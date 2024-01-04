@@ -4,7 +4,12 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AdminConfigProps } from './AdminConfig.types';
-import { selectDashboardUrl, selectIsSaving, selectOutlookWarningUrl, } from '../../store/settings.slice';
+import {
+  selectDashboardUrl,
+  selectIsSaving,
+  selectOutlookWarningUrl,
+  selectPrivacyPolicyUrl,
+} from '../../store/settings.slice';
 import { patchSetting, fetchSettings } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
 import { AdminConfigView } from './AdminConfig.view';
@@ -24,23 +29,34 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   // get the settings data from the store
   const dashboardUrl = useSelector(selectDashboardUrl);
   const outlookWarningUrl = useSelector(selectOutlookWarningUrl);
-
+  const privacyPolicyUrl = useSelector(selectPrivacyPolicyUrl);
   const isSaving = useSelector(selectIsSaving);
   const strings = useStrings().AdminConfig;
 
   // Create an event handler that should be called when the user clicks the save button.
   const handleSave = (settings: { readonly [key in SettingName]: string }) => {
     // should be saving all settings here, not one at a time.
-    dispatch(patchSetting({
-      settingKey: SettingKey.DashboardUrl,
-      settingName: SettingName.DashboardUrl,
-      settingValue: settings[SettingName.DashboardUrl]
-    }))
-    dispatch(patchSetting({
-      settingKey: SettingKey.OutlookWarningUrl,
-      settingName: SettingName.OutlookWarningUrl,
-      settingValue: settings[SettingName.OutlookWarningUrl]
-    }))
+    new Promise(() => {
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.DashboardUrl,
+          settingName: SettingName.DashboardUrl,
+          settingValue: settings[SettingName.DashboardUrl],
+        })
+      );
+      dispatch(patchSetting({
+        settingKey: SettingKey.OutlookWarningUrl,
+        settingName: SettingName.OutlookWarningUrl,
+        settingValue: settings[SettingName.OutlookWarningUrl]
+      }));
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.PrivacyPolicyUrl,
+          settingName: SettingName.PrivacyPolicyUrl,
+          settingValue: settings[SettingName.PrivacyPolicyUrl],
+        })
+      );
+    })
     .then(() => {
       dispatch(fetchSettings());
     });
@@ -48,7 +64,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   };
 
   // render the view with the data from the store and the event handler
-  
+
   return (
     <AdminConfigView
       {...props}
@@ -56,6 +72,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
       settings={{
         [SettingName.DashboardUrl]: dashboardUrl ?? '',
         [SettingName.OutlookWarningUrl]: outlookWarningUrl ?? '',
+        [SettingName.PrivacyPolicyUrl]: privacyPolicyUrl ?? '',
       }}
       strings={strings}
       onSave={handleSave}

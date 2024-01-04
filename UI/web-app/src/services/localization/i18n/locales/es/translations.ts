@@ -22,6 +22,13 @@ export const strings: IStrings = {
   membershipManagement: 'Membership Management',
   learnMembershipManagement:
     'Aprenda cómo funciona Membership Management en su organización',
+  Components: {
+    HyperlinkSetting: {
+      address: "URL",
+      addHyperlink: "Agregar URL",
+      invalidUrl: "URL inválida"
+    },
+  },
   AdminConfig: {
       labels: {
           pageTitle: "Configuración de Administrador",
@@ -30,14 +37,17 @@ export const strings: IStrings = {
           saveButton: "Guardar",
           saveSuccess:  "Guardado exitosamente."
       },
-      hyperlinkContainer: {
-          address: "URL",
-          addHyperlink: "URL de la liga",
-          dashboardTitle: "Dashboard",
-          dashboardDescription: "Esta es la liga que se muestra en la esquina superior derecha del dashboard. Te lleva a un sitio interno que tiene todos los detalles sobre cómo aprovechar XMM en tu organización. Esto podría incluir preguntas frecuentes, información de contacto, SLAs, etc.",
-          outlookWarningTitle: "Instrucciones de destino",
-          outlookWarningDescription: "Esta es la liga que aparece cuando Outlook está involucrado en el grupo seleccionado. Te lleva a un sitio interno para hacer la configuración adecuada al enviar correos electrónicos al grupo de Outlook.",
-          invalidUrl: "URL inválida"
+      dashboardLink: {
+          title: "Dashboard",
+          description: "Esta es la liga que se muestra en la esquina superior derecha del dashboard. Te lleva a un sitio interno que tiene todos los detalles sobre cómo aprovechar XMM en tu organización. Esto podría incluir preguntas frecuentes, información de contacto, SLAs, etc.",
+      },
+      outlookWarningLink: {
+        title: "Instrucciones de destino",
+        description: "Esta es la liga que aparece cuando Outlook está involucrado en el grupo seleccionado. Te lleva a un sitio interno para hacer la configuración adecuada al enviar correos electrónicos al grupo de Outlook.",
+      },
+      privacyPolicyLink: {
+          title: "Política de Privacidad",
+          description: "Esta es la liga que se muestra en la esquina inferior izquierda del dashboard. Te lleva a un sitio interno que tiene todos los detalles sobre cómo XMM maneja y almacena los datos de los usuarios.",
       },
   },
   Authentication: {
@@ -243,4 +253,5 @@ export const strings: IStrings = {
   version: 'Versión',
   yes: 'Sí',
   no: 'No',
+  privacyPolicy: 'Política de Privacidad',
 };

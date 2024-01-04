@@ -17,6 +17,13 @@ export type IStrings = {
   addOwnerButton: string;
   membershipManagement: string;
   learnMembershipManagement: string;
+  Components: {
+    HyperlinkSetting: {
+      address: string;
+      addHyperlink: string;
+      invalidUrl: string;
+    },
+  },
   AdminConfig: {
     labels: {
       pageTitle: string;
@@ -25,15 +32,18 @@ export type IStrings = {
       saveButton: string;
       saveSuccess: string;
     },
-    hyperlinkContainer: {
-      address: string;
-      addHyperlink: string;
-      dashboardTitle: string;
-      dashboardDescription: string;
-      outlookWarningTitle: string;
-      outlookWarningDescription: string;
-      invalidUrl: string;
+    dashboardLink: {
+      title: string;
+      description: string;
+    },
+    outlookWarningLink: {
+      title: string;
+      description: string;
     }
+    privacyPolicyLink: {
+      title: string;
+      description: string;
+    },
   },
   Authentication: {
     loginFailed: string;
@@ -234,4 +244,5 @@ export type IStrings = {
   version: string;
   yes: string;
   no: string;
+  privacyPolicy: string;
 };

@@ -10,6 +10,7 @@ import {
   type IPageStyleProps,
   type IPageStyles,
 } from './Page.types';
+import { PrivacyPolicyLink } from '../PrivacyPolicyLink';
 
 const getClassNames = classNamesFunction<IPageStyleProps, IPageStyles>();
 
@@ -25,5 +26,6 @@ export const PageBase: React.FunctionComponent<IPageProps> = (
   return (
     <div className={classNames.root}>
       {children}
+      <PrivacyPolicyLink className={classNames.privacyPolicy} />
     </div>);
 };

@@ -4,4 +4,5 @@
 export const enum SettingName {
   DashboardUrl = 'dashboardUrl',
   OutlookWarningUrl = 'outlookWarningUrl',
+  PrivacyPolicyUrl = 'privacyPolicyUrl',
 }

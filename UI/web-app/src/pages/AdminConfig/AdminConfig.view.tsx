@@ -28,6 +28,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
   const [validations, setValidations] = useState<{ readonly [key in SettingName]: boolean }>({
     [SettingName.DashboardUrl]: true,
     [SettingName.OutlookWarningUrl]: true,
+    [SettingName.PrivacyPolicyUrl]: true,
   });
 
   // setup ui event handler
@@ -69,20 +70,25 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                 <div className={classNames.description}>{strings.labels.description}</div>
                 <div className={classNames.tiles}>
                   <HyperlinkSetting
-                    title={strings.hyperlinkContainer.dashboardTitle}
-                    description={strings.hyperlinkContainer.dashboardDescription}
+                    title={strings.dashboardLink.title}
+                    description={strings.dashboardLink.description}
                     link={newSettings[SettingName.DashboardUrl]}
-                    required={false}
                     onLinkChange={handleSettingChange(SettingName.DashboardUrl)}
                     onValidation={handleSettingValidation(SettingName.DashboardUrl)}
                   ></HyperlinkSetting>
                   <HyperlinkSetting
-                    title={strings.hyperlinkContainer.outlookWarningTitle}
-                    description={strings.hyperlinkContainer.outlookWarningDescription}
+                    title={strings.outlookWarningLink.title}
+                    description={strings.outlookWarningLink.description}
                     link={newSettings[SettingName.OutlookWarningUrl]}
-                    required={false}
                     onLinkChange={handleSettingChange(SettingName.OutlookWarningUrl)}
                     onValidation={handleSettingValidation(SettingName.OutlookWarningUrl)}
+                     ></HyperlinkSetting>
+                    <HyperlinkSetting
+                    title={strings.privacyPolicyLink.title}
+                    description={strings.privacyPolicyLink.description}
+                    link={newSettings[SettingName.PrivacyPolicyUrl]}
+                    onLinkChange={handleSettingChange(SettingName.PrivacyPolicyUrl)}
+                    onValidation={handleSettingValidation(SettingName.PrivacyPolicyUrl)}
                   ></HyperlinkSetting>
                 </div>
               </PivotItem>

@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { fetchSettingByKey, fetchSettings, patchSetting  } from './settings.api';
+import { fetchSettingByKey, fetchSettings, patchSetting } from './settings.api';
 import type { RootState } from './store';
 import { Setting } from '../models/Setting';
 import { SettingKey } from '../models/SettingKey';
@@ -35,7 +35,7 @@ const settingsSlice = createSlice({
   reducers: {
     setSettings: (state, action: PayloadAction<Setting[]>) => {
       state.settings = action.payload;
-    }
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(fetchSettings.pending, (state) => {
@@ -93,7 +93,7 @@ export const selectDashboardUrl = (state: RootState) => {
   if (!settingsArray) {
     return undefined;
   }
-  const dashboardSetting = settingsArray.find(setting => setting.settingKey === SettingKey.DashboardUrl);
+  const dashboardSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.DashboardUrl);
   return dashboardSetting ? dashboardSetting.settingValue : undefined;
 };
 
@@ -102,9 +102,18 @@ export const selectOutlookWarningUrl = (state: RootState) => {
   if (!settingsArray) {
     return undefined;
   }
-  const outlookWarningSetting = settingsArray.find(setting => setting.settingKey === SettingKey.OutlookWarningUrl);
+  const outlookWarningSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.OutlookWarningUrl);
   return outlookWarningSetting ? outlookWarningSetting.settingValue : undefined;
-}
+};
+
+export const selectPrivacyPolicyUrl = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const privacyPolicySetting = settingsArray.find((setting) => setting.settingKey === SettingKey.PrivacyPolicyUrl);
+  return privacyPolicySetting ? privacyPolicySetting.settingValue : undefined;
+};
 
 export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
 export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
@@ -112,4 +121,3 @@ export const selectPatchSettingError = (state: RootState) => state.settings.patc
 export const selectIsSaving = (state: RootState) => state.settings.isSaving;
 
 export default settingsSlice.reducer;
-

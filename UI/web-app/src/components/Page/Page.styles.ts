@@ -8,5 +8,11 @@ export const getStyles = (props: IPageStyleProps): IPageStyles => {
 
   return {
     root: [{}, className],
+    privacyPolicy: {
+      position: 'absolute',
+      bottom: 16,
+      left: '50%',
+      transform: 'translateX(-50%)',
+    }
   };
 };
