@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   IProcessedStyleSet,
@@ -45,6 +45,8 @@ import { fetchJobs, postJob } from '../../store/jobs.api';
 import { RunConfiguration } from '../../components/RunConfiguration';
 import { Confirmation } from '../../components/Confirmation';
 import { selectAccountUsername } from '../../store/account.slice';
+import { setPagingBarVisible } from '../../store/pagingBar.slice';
+
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -66,6 +68,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const strings = useStrings();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
+  useEffect(() => {
+    dispatch(setPagingBarVisible(false));
+  }, [dispatch]);
 
   const [showLeaveManageMembershipDialog, setShowLeaveManageMembershipDialog] = useState(false);
   const [isPostingJob, setIsPostingJob] = useState(false);
@@ -105,8 +110,13 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   };
 
   const handleBackToDashboardButtonClick = () => {
-    if (hasChanges)
+    if (hasChanges){
       setShowLeaveManageMembershipDialog(true);
+    }
+    else {
+      navigate('/');
+      dispatch(resetManageMembership());
+    }
   };
 
   const onEditButtonClick = (stepToEdit: number) => {
@@ -126,7 +136,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   };
 
   const onConfirmExit = () => {
-    navigate(-1);
+    navigate('/');
     setShowLeaveManageMembershipDialog(false);
     dispatch(resetManageMembership());
   };
@@ -153,7 +163,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     try {
       await dispatch(postJob(newJob));
       await dispatch(fetchJobs());
-      navigate(-1);
+      navigate('/');
       setIsPostingJob(false);
     } catch (error) {
       console.error("Error posting job:", error);

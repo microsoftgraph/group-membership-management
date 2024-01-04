@@ -28,11 +28,4 @@ export interface IPagingBarProps extends React.AllHTMLAttributes<HTMLElement> {
      * Call to provide customized styling that will layer on top of the variant rules.
      */
     styles?: IStyleFunctionOrObject<IPagingBarStyleProps, IPagingBarStyles>;
-    pageSize: string;
-    pageNumber: number;
-    totalNumberOfPages: number;
-    setPageSize: (pageSize: string) => void;
-    setPageNumber: (pageNumber: number) => void;
-    setPageSizeCookie: (pageSize: string) => void;
-    getJobsByPage: (currentPageSize?: number, currentPageNumber?: number) => void;
 }

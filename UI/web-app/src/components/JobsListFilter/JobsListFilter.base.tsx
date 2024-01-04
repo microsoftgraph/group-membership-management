@@ -25,6 +25,14 @@ import { selectIsAdmin } from '../../store/roles.slice';
 import { AppDispatch } from '../../store';
 import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
 import { getJobOwnerFilterSuggestions } from '../../store/jobs.api';
+import { 
+  setFilterActionRequired, 
+  setFilterStatus,
+  setFilterDestinationId,
+  setFilterDestinationType,
+  setFilterDestinationName,
+  setFilterDestinationOwner
+} from '../../store/pagingBar.slice';
 
 const getClassNames = classNamesFunction<IJobsListFilterStyleProps, IJobsListFilterStyles>();
 
@@ -32,13 +40,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   const {
     className,
     styles,
-    getJobsByPage,
-    setFilterStatus,
-    setFilterActionRequired,
-    setFilterDestinationId,
-    setFilterDestinationName,
-    setFilterDestinationOwner,
-    setFilterDestinationType,
+    getJobsByPage
   } = props;
 
   const classNames: IProcessedStyleSet<IJobsListFilterStyles> = getClassNames(styles, {
@@ -134,38 +136,38 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     }
 
     setDestinationId(inputGuid);
-    setFilterDestinationId(inputGuid);
+    dispatch(setFilterDestinationId(inputGuid));
   };
 
   const handleNameChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
     setDestinationName(newValue);
-    setFilterDestinationName(newValue as string);
+    dispatch(setFilterDestinationName(newValue as string));
   };
 
   const handleStatusChanged = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
     setStatusSelectedItem(item as IDropdownOption);
-    setFilterStatus(item?.key.toString() || '');
+    dispatch(setFilterStatus(item?.key.toString() || ''));
   };
 
   const handleTypeChanged = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
     setDestinationTypeSelectedItem(item as IDropdownOption);
-    setFilterDestinationType(item?.key.toString() || '');
+    dispatch(setFilterDestinationType(item?.key.toString() || ''));
   };
 
   const handleActionRequiredChanged = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
     setActionRequiredSelectedItem(item as IDropdownOption);
-    setFilterActionRequired(item?.key.toString() || '');
+    dispatch(setFilterActionRequired(item?.key.toString() || ''));
   };
 
   const handleOwnersChanged = (items?: IPersonaProps[] | undefined) => {
     if (items !== undefined && items.length > 0) {
       setSelectedOwners(items);
-      setFilterDestinationOwner(items[0].id as string);
+      dispatch(setFilterDestinationOwner(items[0].id as string));
     }
     else
     {
       setSelectedOwners([]);
-      setFilterDestinationOwner('');
+      dispatch(setFilterDestinationOwner(''));
     }    
   };
 
@@ -187,12 +189,12 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   };
 
   const clearFilters = () => {
-    setFilterDestinationId('');
-    setFilterDestinationType('');
-    setFilterDestinationName('');
-    setFilterDestinationOwner('');
-    setFilterStatus('');
-    setFilterActionRequired('');
+    dispatch(setFilterDestinationId(''));
+    dispatch(setFilterDestinationType(''));
+    dispatch(setFilterDestinationName(''));
+    dispatch(setFilterDestinationOwner(''));
+    dispatch(setFilterStatus(''));
+    dispatch(setFilterActionRequired(''));
 
     setDestinationId('');
     setDestinationName('');
@@ -226,18 +228,6 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
 
             <Stack.Item grow>
               <div></div>
-            </Stack.Item>
-
-            <Stack.Item align="end">
-              <DefaultButton
-                iconProps={{
-                  iconName: 'Filter',
-                  styles: { root: classNames.filterButtonIcon },
-                }}
-                text={strings.JobsList.JobsListFilter.filterButtonText}
-                onClick={getFilteredJobs}
-                className={classNames.filterButton}
-              />
             </Stack.Item>
 
             <Stack.Item align="end">

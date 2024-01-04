@@ -26,7 +26,7 @@ export const getStyles = (props: IPagingBarStyleProps): IPagingBarStyles => {
         mainContainer: {
             display: "flex",
             justifyContent: "flex-end",
-            marginTop: 10
+            marginRight: 36
         }
     };
 };

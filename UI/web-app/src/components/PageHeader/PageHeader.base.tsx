@@ -43,7 +43,7 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
   const navigate = useNavigate();
 
   const backButtonOnClick = (): void => {
-    navigate(-1);
+    navigate('/');
   };
 
   return (

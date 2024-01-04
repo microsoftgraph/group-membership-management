@@ -8,6 +8,7 @@ import jobsReducer from './jobs.slice';
 import localizationReducer from './localization.slice';
 import manageMembershipReducer from './manageMembership.slice';
 import ownerReducer from './owner.slice';
+import pagingBarReducer from './pagingBar.slice';
 import profileReducer from './profile.slice';
 import settingsReducer from './settings.slice';
 import rolesReducer from './roles.slice';
@@ -45,6 +46,7 @@ const rootReducer = combineReducers({
   localization: localizationReducer,
   manageMembership: manageMembershipReducer,
   owner: ownerReducer,
+  pagingBar: pagingBarReducer,
   profile: profileReducer,
   settings: settingsReducer,
   roles: rolesReducer,

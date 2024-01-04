@@ -71,12 +71,6 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
         },
         membershipStatusMessage: {
             paddingLeft: 50
-        },
-        footer: {
-            display: 'flex',
-            justifyContent: 'space-between'
         }
     };
 };
-
-

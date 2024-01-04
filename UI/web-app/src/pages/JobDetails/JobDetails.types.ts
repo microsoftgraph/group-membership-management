@@ -20,7 +20,6 @@ export interface IJobDetailsStyles {
     jobDisabled: IStyle;
     membershipStatus: IStyle;
     membershipStatusMessage: IStyle;
-    footer: IStyle;
 }
 
 export interface IJobDetailsStyleProps {

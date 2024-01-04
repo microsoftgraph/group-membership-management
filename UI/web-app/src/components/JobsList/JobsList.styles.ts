@@ -58,8 +58,7 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       marginBottom: 12,
     },
     footer: {
-      display: 'flex',
-      justifyContent: 'space-between'
+      display: 'flex-end'
     },
     noMembershipsFoundText: {
       textAlign: 'center',
@@ -69,6 +68,5 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       borderRadius: 5,
       marginBottom: 22,
     }
-
   };
 };

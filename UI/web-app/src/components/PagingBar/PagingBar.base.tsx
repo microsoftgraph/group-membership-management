@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { useEffect } from 'react';
 import {
     classNamesFunction,
     IProcessedStyleSet,
@@ -15,7 +14,9 @@ import {
     IPagingBarProps, IPagingBarStyleProps, IPagingBarStyles,
 } from './PagingBar.types';
 import { useStrings } from '../../store/hooks';
-
+import { useDispatch, useSelector } from 'react-redux';
+import { selectPagingBarPageNumber, selectPagingBarPageSize, selectPagingBarTotalNumberOfPages, setPageNumber, setPageSize } from '../../store/pagingBar.slice';
+import { AppDispatch } from '../../store';
 
 const getClassNames = classNamesFunction<
   IPagingBarStyleProps,
@@ -34,8 +35,11 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
         }
     );
 
+    const dispatch = useDispatch<AppDispatch>();
     const strings = useStrings();
-    const { pageSize, pageNumber, totalNumberOfPages, setPageSize, setPageNumber, setPageSizeCookie, getJobsByPage } = props;
+    const pageSize: string = useSelector(selectPagingBarPageSize);
+    const pageNumber: number = useSelector(selectPagingBarPageNumber);
+    const totalNumberOfPages: number = useSelector(selectPagingBarTotalNumberOfPages);
 
     const pageSizeOptions: IDropdownOption[] = [
         { key: '10', text: '10' },
@@ -47,9 +51,8 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
 
     const onPageSizeChanged = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption | undefined): void => {
         if (item) {
-            setPageSize(item.key.toString());
-            setPageNumber(1);
-            setPageSizeCookie(item.key.toString());
+            dispatch(setPageSize(item.key.toString()));
+            dispatch(setPageNumber(pageNumber));
         }
     }
 
@@ -58,7 +61,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
             return;
 
         let newPageNumber = pageNumber + direction;
-        setPageNumber(newPageNumber);
+        dispatch(setPageNumber(newPageNumber));
     }
 
     const onPageNumberChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string | undefined): void => {
@@ -67,13 +70,9 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
             || parseInt(newValue) <= 0
             || (totalNumberOfPages !== undefined && !isNaN(totalNumberOfPages) && parseInt(newValue) > totalNumberOfPages))
             return;
-
-        setPageNumber(parseInt(newValue));
+        
+        dispatch(setPageNumber(parseInt(newValue)));
     }
-
-    useEffect(() => {
-        getJobsByPage();
-    }, [pageNumber, pageSize]);
 
     return (
         <div className={classNames.mainContainer}>
@@ -82,6 +81,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
                     iconProps={{ iconName: 'ChevronLeft' }}
                     title={strings.JobsList.PagingBar.previousPage as string}
                     onClick={() => navigateToPage(-1)}
+                    disabled={totalNumberOfPages === undefined || pageNumber <= 1}
                 />
                 <label>{strings.JobsList.PagingBar.previousPage}</label>
                 <div className={classNames.divContainer}>
@@ -98,6 +98,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
                     iconProps={{ iconName: 'ChevronRight' }}
                     title={strings.JobsList.PagingBar.nextPage as string}
                     onClick={() => navigateToPage(1)}
+                    disabled={totalNumberOfPages === undefined || pageNumber >= totalNumberOfPages}
                 />
             </div>
             <div className={classNames.divContainer}>

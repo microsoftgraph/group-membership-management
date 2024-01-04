@@ -12,8 +12,7 @@ import { fetchJobs } from '../../store/jobs.api';
 import {
   selectAllJobs,
   selectGetJobsError,
-  setGetJobsError,
-  getTotalNumberOfPages,
+  setGetJobsError
 } from '../../store/jobs.slice';
 import { AppDispatch } from '../../store';
 
@@ -39,12 +38,25 @@ import {
   ReportHackedIcon,
   ChevronRightMedIcon,
 } from '@fluentui/react-icons-mdl2';
-import { useCookies } from 'react-cookie';
-import { PagingBar } from '../PagingBar';
-import { PageVersion } from '../PageVersion';
 import { JobsListFilter } from '../JobsListFilter/JobsListFilter';
-import { PagingOptions, SyncStatus } from '../../models';
+import { PagingOptions } from '../../models';
 import { useStrings } from '../../store/hooks';
+import { 
+  selectPagingBarPageNumber, 
+  selectPagingBarPageSize, 
+  selectPagingOptions,
+  selectPagingBarSortKey,
+  selectPagingBarIsSortedDescending,
+  setSortKey,
+  setIsSortedDescending,
+  selectPagingBarFilterStatus,
+  selectPagingBarFilterActionRequired,
+  selectPagingBarfilterDestinationId,
+  selectPagingBarfilterDestinationName,
+  selectPagingBarfilterDestinationType,
+  selectPagingBarfilterDestinationOwner,
+  setPagingBarVisible,
+} from '../../store/pagingBar.slice';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -67,26 +79,45 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const strings = useStrings();
   const dispatch = useDispatch<AppDispatch>();
   const jobs = useSelector(selectAllJobs);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [pageSize, setPageSize] = useState('10');
-  const totalNumberOfPages = useSelector(getTotalNumberOfPages);
+
+  const pageNumber: number = useSelector(selectPagingBarPageNumber);
+  const pageSize: string = useSelector(selectPagingBarPageSize);
+  const pagingOptions: PagingOptions = useSelector(selectPagingOptions);
+  const sortKey: string | undefined = useSelector(selectPagingBarSortKey);
+  const isSortedDescending: boolean | undefined = useSelector(selectPagingBarIsSortedDescending);
+  const filterStatus: string | undefined = useSelector(selectPagingBarFilterStatus);
+  const filterActionRequired: string | undefined = useSelector(selectPagingBarFilterActionRequired);
+  const filterDestinationId: string | undefined = useSelector(selectPagingBarfilterDestinationId);
+  const filterDestinationName: string | undefined = useSelector(selectPagingBarfilterDestinationName);
+  const filterDestinationType: string | undefined = useSelector(selectPagingBarfilterDestinationType);
+  const filterDestinationOwner: string | undefined = useSelector(selectPagingBarfilterDestinationOwner);
+
+  const getJobsByPage = (): void => {
+    setIsShimmerEnabled(true);
+    dispatch(fetchJobs(pagingOptions));
+  };
+
+  useEffect(() => {
+    dispatch(setPagingBarVisible(true));
+  }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(fetchJobs(pagingOptions));
+  }, [pageNumber,
+    pageSize,
+    sortKey,
+    isSortedDescending,
+    filterStatus,
+    filterActionRequired,
+    filterDestinationId,
+    filterDestinationName,
+    filterDestinationType,
+    filterDestinationOwner
+  ]);
+
   const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
-    if(jobs)
-      dispatch(fetchJobs());
-  }, [location, navigate]);
-
-  const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
-  const [filterActionRequired, setFilterActionRequired] = useState<string | undefined>(undefined);
-  const [filterDestinationId, setFilterDestinationId] = useState<string | undefined>(undefined);
-  const [filterDestinationName, setFilterDestinationName] = useState<string | undefined>(undefined);
-  const [filterDestinationType, setFilterDestinationType] = useState<string | undefined>(undefined);
-  const [filterDestinationOwner, setFilterDestinationOwner] = useState<string | undefined>(undefined);
-
-  const [sortKey, setSortKey] = useState<string | undefined>(undefined);
-  const [isSortedDescending, setIsSortedDescending] = useState(false);
   const [isShimmerEnabled, setIsShimmerEnabled] = useState(false);
   const items = jobs;
   const env = process.env.REACT_APP_ENVIRONMENT_ABBREVIATION?.toLowerCase();
@@ -185,17 +216,11 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     return 0;
   });
 
-  const [cookies, setCookie] = useCookies(['pageSize']);
-  const setPageSizeCookie = (pageSize: string): void => {
-    setCookie('pageSize', pageSize, { path: '/' });
-  };
-
   function onColumnHeaderClick(event?: any, column?: IColumn) {
     if (column) {
-      let isSortedDescending = !!column.isSorted && !column.isSortedDescending;
-      setIsSortedDescending(isSortedDescending);
-      setSortKey(column.key);
-      getJobsByPage();
+      const isSortedDescending: boolean = !!column.isSorted && !column.isSortedDescending;
+      dispatch(setSortKey(column.key));
+      dispatch(setIsSortedDescending(isSortedDescending));
     }
   }
 
@@ -208,70 +233,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const onDismiss = (): void => {
     dispatch(setGetJobsError());
   };
-
-  const getJobsByPage = (): void => {
-    setIsShimmerEnabled(true);
-    let orderByString: string | undefined = undefined;
-    let filters: string[] = [];
-
-    if (sortKey !== undefined) {
-      orderByString = sortKey + (isSortedDescending ? ' desc' : '');
-    }
-
-    if (filterDestinationId) {
-      filters.push("targetOfficeGroupId eq " + filterDestinationId);
-    }
-    if (filterActionRequired && filterActionRequired !== 'All') {
-      filters.push("status eq '" + filterActionRequired + "'");
-    }
-    if (filterDestinationType && filterDestinationType !== 'All')
-    {
-      filters.push("contains(Destination, '" + filterDestinationType + "')");
-    }
-    if (filterDestinationName)
-    {
-      filters.push("contains(tolower(DestinationName/Name), tolower('" + filterDestinationName + "'))");
-    }
-    if (filterDestinationOwner)
-    {
-      filters.push("DestinationOwners/any(o: o/ObjectId eq " + filterDestinationOwner + ")");
-    }
-    
-    if (filterStatus === 'Enabled') {
-      filters.push("(status eq '" + SyncStatus.Idle + "' or status eq '" + SyncStatus.InProgress + "')");
-    }
-    else if (filterStatus === 'Disabled') {
-      filters.push("not (status eq '" + SyncStatus.Idle + "' or status eq '" + SyncStatus.InProgress + "')");
-    }
-    
-    let filterString: string | undefined = filters.length === 0 ? undefined : filters.join(' and ');
-    const pagingOptions: PagingOptions = {};
-    
-    pagingOptions.pageSize = parseInt(pageSize) ?? cookies.pageSize;
-    pagingOptions.itemsToSkip = (pageNumber - 1) * pagingOptions.pageSize;
-    pagingOptions.orderBy = orderByString;
-    pagingOptions.filter = filterString;
-
-    dispatch(fetchJobs(pagingOptions));
-  };
-
-  useEffect(() => {
-    if (
-      cookies.pageSize === undefined ||
-      cookies.pageSize === 'undefined' ||
-      cookies.pageSize === ''
-    ) {
-      setPageSizeCookie('10');
-    } else {
-      setPageSize(cookies.pageSize);
-    }
-
-    if (!jobs) {
-      getJobsByPage();
-    } else {
-      setIsShimmerEnabled(false);
-    }
-  }, [dispatch, jobs]);
 
   const onItemClicked = (
     item?: any,
@@ -363,12 +324,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     <div className={classNames.root}>
       <div className={classNames.jobsListFilter}>
         <JobsListFilter
-          setFilterStatus={setFilterStatus}
-          setFilterActionRequired={setFilterActionRequired}
-          setFilterDestinationId={setFilterDestinationId}
-          setFilterDestinationType={setFilterDestinationType}
-          setFilterDestinationOwner={setFilterDestinationOwner}
-          setFilterDestinationName={setFilterDestinationName}
           getJobsByPage={getJobsByPage}
         />
       </div>
@@ -421,18 +376,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
             <div className={classNames.columnToEnd}></div>
           </div>
         </div>
-      </div>
-      <div className={classNames.footer}>
-        <PageVersion />
-        <PagingBar
-          pageSize={pageSize}
-          pageNumber={pageNumber}
-          totalNumberOfPages={totalNumberOfPages ?? 1}
-          getJobsByPage={getJobsByPage}
-          setPageSize={setPageSize}
-          setPageNumber={setPageNumber}
-          setPageSizeCookie={setPageSizeCookie}
-        />
       </div>
     </div>
   );

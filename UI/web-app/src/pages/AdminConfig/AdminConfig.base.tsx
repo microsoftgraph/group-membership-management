@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AdminConfigProps } from './AdminConfig.types';
 import { selectDashboardUrl, selectIsSaving, } from '../../store/settings.slice';
@@ -11,10 +11,15 @@ import { AdminConfigView } from './AdminConfig.view';
 import { SettingName } from '../../models';
 import { useStrings } from '../../store/hooks';
 import { SettingKey } from '../../models/SettingKey';
+import { setPagingBarVisible } from '../../store/pagingBar.slice';
+
 
 export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props: AdminConfigProps) => {
   // get the store's dispatch function
   const dispatch = useDispatch<AppDispatch>();
+  useEffect(() => {
+    dispatch(setPagingBarVisible(false));
+  }, [dispatch]);
 
   // get the settings data from the store
   const dashboardUrl = useSelector(selectDashboardUrl);

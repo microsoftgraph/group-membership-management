@@ -43,10 +43,4 @@ export interface IJobsListFilterProps
    */
   styles?: IStyleFunctionOrObject<IJobsListFilterStyleProps, IJobsListFilterStyles>;
   getJobsByPage: () => void;
-  setFilterStatus: (status: string) => void;
-  setFilterActionRequired: (actionRequired: string) => void;
-  setFilterDestinationId: (ID: string) => void;
-  setFilterDestinationName: (ID: string) => void;
-  setFilterDestinationOwner: (ID: string) => void;
-  setFilterDestinationType: (ID: string) => void;
 }

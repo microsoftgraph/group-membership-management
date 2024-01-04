@@ -48,6 +48,7 @@ import { PageVersion } from '../../components/PageVersion';
 import { useStrings } from '../../store/hooks';
 import { PatchJobRequest } from '../../models/PatchJobRequest';
 import { PatchJobResponse } from '../../models/PatchJobResponse';
+import { setPagingBarVisible } from '../../store/pagingBar.slice';
 
 
 export interface IContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
@@ -92,6 +93,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   };
 
   useEffect(() => {
+    dispatch(setPagingBarVisible(false));
     dispatch(
       fetchJobDetails({
         syncJobId: job.syncJobId
@@ -149,9 +151,6 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
         // useLinkButton={true}
         // linkButtonIconName='edit'
         />
-        <div className={classNames.footer}>
-          <PageVersion />
-        </div>
       </div>
     </Page >
   );
