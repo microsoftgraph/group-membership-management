@@ -97,6 +97,15 @@ export const selectDashboardUrl = (state: RootState) => {
   return dashboardSetting ? dashboardSetting.settingValue : undefined;
 };
 
+export const selectOutlookWarningUrl = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const outlookWarningSetting = settingsArray.find(setting => setting.settingKey === SettingKey.OutlookWarningUrl);
+  return outlookWarningSetting ? outlookWarningSetting.settingValue : undefined;
+}
+
 export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
 export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
 

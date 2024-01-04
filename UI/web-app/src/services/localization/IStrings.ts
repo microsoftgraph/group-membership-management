@@ -30,6 +30,8 @@ export type IStrings = {
       addHyperlink: string;
       dashboardTitle: string;
       dashboardDescription: string;
+      outlookWarningTitle: string;
+      outlookWarningDescription: string;
       invalidUrl: string;
     }
   },

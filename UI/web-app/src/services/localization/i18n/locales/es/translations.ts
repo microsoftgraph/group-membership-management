@@ -35,6 +35,8 @@ export const strings: IStrings = {
           addHyperlink: "URL de la liga",
           dashboardTitle: "Dashboard",
           dashboardDescription: "Esta es la liga que se muestra en la esquina superior derecha del dashboard. Te lleva a un sitio interno que tiene todos los detalles sobre cómo aprovechar XMM en tu organización. Esto podría incluir preguntas frecuentes, información de contacto, SLAs, etc.",
+          outlookWarningTitle: "Instrucciones de destino",
+          outlookWarningDescription: "Esta es la liga que aparece cuando Outlook está involucrado en el grupo seleccionado. Te lleva a un sitio interno para hacer la configuración adecuada al enviar correos electrónicos al grupo de Outlook.",
           invalidUrl: "URL inválida"
       },
   },

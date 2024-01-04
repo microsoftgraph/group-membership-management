@@ -3,4 +3,5 @@
 
 export const enum SettingKey {
     DashboardUrl = 0,
+    OutlookWarningUrl = 1,
 }

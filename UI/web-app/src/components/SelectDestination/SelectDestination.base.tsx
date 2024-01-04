@@ -28,6 +28,7 @@ import {
   manageMembershipLoadingSearchResults
 } from '../../store/manageMembership.slice';
 import { Destination } from '../../models/Destination';
+import { selectOutlookWarningUrl } from '../../store/settings.slice';
 
 const getClassNames = classNamesFunction<
   ISelectDestinationStyleProps,
@@ -65,16 +66,12 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const selectedDestinationEndpoints = useSelector(manageMembershipSelectedDestinationEndpoints);
   const groupPickerSuggestions = useSelector(manageMembershipSearchResults);
   const selectedDestinationPersona = mapDestinationToPersonaProps(selectedDestination);
+  const outlookWarningUrl = useSelector(selectOutlookWarningUrl);
 
   const hasRequiredEndpoints = () => {
     if (!selectedDestinationEndpoints) return false;
     return ["Outlook", "Yammer", "SharePoint"].some(endpoint => selectedDestinationEndpoints.includes(endpoint));
   };
-
-  // const outlookWarningUrl = useSelector((state: RootState) => selectSelectedSetting(state, 'outlookWarningUrl'));
-  // useEffect(() => {
-  //   dispatch(fetchSettingByKey('outlookWarningUrl'));
-  // }, [dispatch]);
 
   const addGroupOwnerLink: string = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/${selectedDestination?.id}/menuId/`
   const ownershipWarning = isReadyForOnboarding === false ? (
@@ -104,7 +101,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   };
 
   const onClickOutlookWarning = (): void => {
-    // window.open(outlookWarningUrl?.value, '_blank', 'noopener,noreferrer');
+    window.open(outlookWarningUrl, '_blank', 'noopener,noreferrer');
   };
 
   useEffect(() => {
@@ -170,15 +167,16 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                       >
                         Outlook
                       </ActionButton>
-                      <MessageBar
-                        messageBarType={MessageBarType.warning}
-                        className={classNames.outlookWarning}
-                        isMultiline={false}
-                        actions={
-                          <MessageBarButton onClick={() => onClickOutlookWarning()}>{strings.learnMore}</MessageBarButton>
-                        }>
-                        {strings.ManageMembership.labels.outlookWarning}
-                      </MessageBar>
+                      {outlookWarningUrl &&
+                        <MessageBar
+                          messageBarType={MessageBarType.warning}
+                          className={classNames.outlookWarning}
+                          isMultiline={false}
+                          actions={
+                            <MessageBarButton onClick={() => onClickOutlookWarning()}>{strings.learnMore}</MessageBarButton>
+                          }>
+                          {strings.ManageMembership.labels.outlookWarning}
+                        </MessageBar>}
                     </div>)}
                   {selectedDestinationEndpoints?.includes("SharePoint") && (
                     <ActionButton

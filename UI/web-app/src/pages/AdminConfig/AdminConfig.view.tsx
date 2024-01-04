@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useState } from 'react';
-import { classNamesFunction, IProcessedStyleSet, Spinner, Pivot, PivotItem, PrimaryButton } from '@fluentui/react';
+import { classNamesFunction, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { AdminConfigStyleProps, AdminConfigStyles, AdminConfigViewProps } from './AdminConfig.types';
 import { PageSection } from '../../components/PageSection';
@@ -27,6 +27,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
   const [newSettings, setNewSettings] = useState(settings);
   const [validations, setValidations] = useState<{ readonly [key in SettingName]: boolean }>({
     [SettingName.DashboardUrl]: true,
+    [SettingName.OutlookWarningUrl]: true,
   });
 
   // setup ui event handler
@@ -73,6 +74,13 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     link={newSettings[SettingName.DashboardUrl]}
                     onLinkChange={handleSettingChange(SettingName.DashboardUrl)}
                     onValidation={handleSettingValidation(SettingName.DashboardUrl)}
+                  ></HyperlinkSetting>
+                  <HyperlinkSetting
+                    title={strings.hyperlinkContainer.outlookWarningTitle}
+                    description={strings.hyperlinkContainer.outlookWarningDescription}
+                    link={newSettings[SettingName.OutlookWarningUrl]}
+                    onLinkChange={handleSettingChange(SettingName.OutlookWarningUrl)}
+                    onValidation={handleSettingValidation(SettingName.OutlookWarningUrl)}
                   ></HyperlinkSetting>
                 </div>
               </PivotItem>
