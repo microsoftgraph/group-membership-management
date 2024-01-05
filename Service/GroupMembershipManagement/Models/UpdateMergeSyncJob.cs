@@ -4,7 +4,7 @@
 using System;
 using System.Data.SqlTypes;
 
-namespace Entities
+namespace Models
 {
     public class UpdateMergeSyncJob
     {
