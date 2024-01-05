@@ -56,8 +56,8 @@ namespace Hosts.GroupMembershipObtainer
                                                                 SyncDisabledNoGroupEmailBody,
                                                                 new[]
                                                                 {
-                                                                request.SyncJob.TargetOfficeGroupId,
-                                                                targetGroupName,
+                                                                request.SyncJob.TargetOfficeGroupId.ToString(),
+																targetGroupName,
                                                                 request.ObjectId.ToString(),
                                                                 _emailSenderAndRecipients.SyncDisabledCCAddresses
                                                                 });
