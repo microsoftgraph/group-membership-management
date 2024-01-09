@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Models;
 using Models.ServiceBus;
 using Newtonsoft.Json;
