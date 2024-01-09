@@ -2,11 +2,11 @@
 // Licensed under the MIT license.
 
 import {
-    type IPageFooterStyleProps,
-    type IPageFooterStyles,
-  } from './PageFooter.types';
+    type IAppFooterStyleProps,
+    type IAppFooterStyles,
+  } from './AppFooter.types';
   
-  export const getStyles = (props: IPageFooterStyleProps): IPageFooterStyles => {
+  export const getStyles = (props: IAppFooterStyleProps): IAppFooterStyles => {
     const { className, theme } = props;
   
     return {

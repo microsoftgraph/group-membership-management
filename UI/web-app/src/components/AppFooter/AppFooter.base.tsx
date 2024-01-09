@@ -8,25 +8,25 @@ import {
 import { useTheme } from '@fluentui/react/lib/Theme';
 import React from 'react';
 import {
-    type IPageFooterProps,
-    type IPageFooterStyleProps,
-    type IPageFooterStyles,
-} from './PageFooter.types';
+    type IAppFooterProps,
+    type IAppFooterStyleProps,
+    type IAppFooterStyles,
+} from './AppFooter.types';
 import { PageVersion } from '../PageVersion';
 import { selectPagingBarVisible } from '../../store/pagingBar.slice';
 import { useSelector } from 'react-redux';
 import { PagingBar } from '../PagingBar/PagingBar';
 
 const getClassNames = classNamesFunction<
-    IPageFooterStyleProps,
-    IPageFooterStyles
+    IAppFooterStyleProps,
+    IAppFooterStyles
 >();
 
-export const PageFooterBase: React.FunctionComponent<IPageFooterProps> = (
-    props: IPageFooterProps
+export const AppFooterBase: React.FunctionComponent<IAppFooterProps> = (
+    props: IAppFooterProps
 ) => {
     const { className, styles } = props;
-    const classNames: IProcessedStyleSet<IPageFooterStyles> = getClassNames(
+    const classNames: IProcessedStyleSet<IAppFooterStyles> = getClassNames(
         styles,
         {
             className,

@@ -8,17 +8,17 @@ import {
   } from '@fluentui/react';
   import type React from 'react';
   
-  export interface IPageFooterStyles {
+  export interface IAppFooterStyles {
     root: IStyle;
     footer: IStyle;
   }
   
-  export interface IPageFooterStyleProps {
+  export interface IAppFooterStyleProps {
     className?: string;
     theme: ITheme;
   }
   
-  export interface IPageFooterProps
+  export interface IAppFooterProps
     extends React.AllHTMLAttributes<HTMLDivElement> {    
     /**
      * Optional className to apply to the root of the component.
@@ -28,7 +28,7 @@ import {
     /**
      * Call to provide customized styling that will layer on top of the variant rules.
      */
-    styles?: IStyleFunctionOrObject<IPageFooterStyleProps, IPageFooterStyles>;
+    styles?: IStyleFunctionOrObject<IAppFooterStyleProps, IAppFooterStyles>;
     showPagingBar?: boolean;
   }
   

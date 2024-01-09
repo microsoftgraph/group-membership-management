@@ -24,7 +24,7 @@ import { setLanguage } from '../store/localization.api';
 import { fetchSettings } from '../store/settings.api';
 import { Setting } from '../models/Setting';
 import { selectAllSettings } from '../store/settings.slice';
-import { PageFooter } from '../components/PageFooter';
+import { AppFooter } from '../components/AppFooter';
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
@@ -74,7 +74,7 @@ export const AppBase: React.FunctionComponent<IAppProps> = (
             <Outlet />
           </div>
         </div>
-        <PageFooter/>
+        <AppFooter/>
       </div>
     );
   } else {
