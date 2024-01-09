@@ -19,6 +19,8 @@ import {
 } from './PageHeader.types';
 import { useStrings } from '../../store/hooks';
 import { Banner } from '../Banner';
+import { useSelector } from 'react-redux';
+import { selectDashboardUrl } from '../../store/settings.slice';
 
 const getClassNames = classNamesFunction<
   IPageHeaderStyleProps,
@@ -46,6 +48,8 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
     navigate('/');
   };
 
+  const dashboardUrl = useSelector(selectDashboardUrl);
+
   return (
     <Stack className={classNames.root}>
       {
@@ -58,7 +62,7 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
             text={strings.backToDashboard}
             onClick={onBackToDashboardButtonClick ?? backButtonOnClick}
           />
-          <Banner/>
+          {dashboardUrl ? <Banner /> : null}
         </Stack>
         <div className={classNames.separator}></div>
       </Stack>

@@ -27,6 +27,11 @@ export const HyperlinkSettingBase: React.FunctionComponent<HyperlinkSettingProps
   };
 
   const handleGetErrorMessage = (value: string): string => {
+    if (value.trim() === '') {
+      onValidation(true);
+      return '';
+    }
+    
     let isValid = false;
     try {
         // because Url.canParse doesn't exist
