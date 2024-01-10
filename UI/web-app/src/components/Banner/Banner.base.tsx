@@ -57,6 +57,7 @@ export const BannerBase: React.FunctionComponent<IBannerProps> = (props) => {
   }
 
   return (
+    dashboardUrl ?
     <div className={classNames.root}>
       {!collapsed && (
         <div className={classNames.messageContainer}>
@@ -81,5 +82,6 @@ export const BannerBase: React.FunctionComponent<IBannerProps> = (props) => {
         onClick={handleToggle}
       />
     </div>
+    : null
   );
 };

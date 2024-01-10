@@ -15,7 +15,7 @@ import { useStrings } from '../../store/hooks';
 export const getClassNames = classNamesFunction<HyperlinkSettingStyleProps, HyperlinkSettingStyles>();
 
 export const HyperlinkSettingBase: React.FunctionComponent<HyperlinkSettingProps> = (props: HyperlinkSettingProps) => {
-  const { title, description, link, onLinkChange, onValidation, className, styles } = props;
+  const { title, description, link, required, onLinkChange, onValidation, className, styles } = props;
   const classNames: IProcessedStyleSet<HyperlinkSettingStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -27,7 +27,7 @@ export const HyperlinkSettingBase: React.FunctionComponent<HyperlinkSettingProps
   };
 
   const handleGetErrorMessage = (value: string): string => {
-    if (value.trim() === '') {
+    if (value.trim() === '' && !required) {
       onValidation(true);
       return '';
     }

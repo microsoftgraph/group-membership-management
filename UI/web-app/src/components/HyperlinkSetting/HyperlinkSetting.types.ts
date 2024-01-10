@@ -30,6 +30,7 @@ export type HyperlinkSettingProps = React.AllHTMLAttributes<HTMLDivElement> & {
   title: string;
   description: string;
   link: string;
+  required: boolean;
   onLinkChange: (link: string) => void;
   onValidation: (isValid: boolean) => void;
 };

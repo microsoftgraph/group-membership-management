@@ -36,13 +36,11 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
       settingName: SettingName.DashboardUrl,
       settingValue: settings[SettingName.DashboardUrl]
     }))
-    .then(() =>{
-      dispatch(patchSetting({
-        settingKey: SettingKey.OutlookWarningUrl,
-        settingName: SettingName.OutlookWarningUrl,
-        settingValue: settings[SettingName.OutlookWarningUrl]
-      }))
-    })
+    dispatch(patchSetting({
+      settingKey: SettingKey.OutlookWarningUrl,
+      settingName: SettingName.OutlookWarningUrl,
+      settingValue: settings[SettingName.OutlookWarningUrl]
+    }))
     .then(() => {
       dispatch(fetchSettings());
     });

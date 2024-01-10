@@ -72,6 +72,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     title={strings.hyperlinkContainer.dashboardTitle}
                     description={strings.hyperlinkContainer.dashboardDescription}
                     link={newSettings[SettingName.DashboardUrl]}
+                    required={false}
                     onLinkChange={handleSettingChange(SettingName.DashboardUrl)}
                     onValidation={handleSettingValidation(SettingName.DashboardUrl)}
                   ></HyperlinkSetting>
@@ -79,6 +80,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     title={strings.hyperlinkContainer.outlookWarningTitle}
                     description={strings.hyperlinkContainer.outlookWarningDescription}
                     link={newSettings[SettingName.OutlookWarningUrl]}
+                    required={false}
                     onLinkChange={handleSettingChange(SettingName.OutlookWarningUrl)}
                     onValidation={handleSettingValidation(SettingName.OutlookWarningUrl)}
                   ></HyperlinkSetting>
