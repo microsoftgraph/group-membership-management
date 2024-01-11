@@ -40,7 +40,7 @@ namespace Services.WebApi
             }
 
             var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, syncJob.TargetOfficeGroupId);
-            if (!(isGroupOwner || request.IsAdmin))
+            if (!(isGroupOwner || request.IsAllowed))
             {
                 response.StatusCode = HttpStatusCode.Forbidden;
                 return response;

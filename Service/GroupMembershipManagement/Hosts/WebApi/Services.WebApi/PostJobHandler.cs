@@ -28,11 +28,6 @@ namespace Services
         protected override async Task<PostJobResponse> ExecuteCoreAsync(PostJobRequest request)
         {
             var response = new PostJobResponse();
-            if (!request.IsAdmin)
-            {
-                response.StatusCode = HttpStatusCode.Forbidden;
-                return response;
-            }
 
             try
             {
@@ -89,7 +84,7 @@ namespace Services
                 Query = convertedQuery,
                 ThresholdPercentageForAdditions = syncJob.ThresholdPercentageForAdditions,
                 ThresholdPercentageForRemovals = syncJob.ThresholdPercentageForRemovals,
-                Status = SyncStatus.Idle.ToString() // Change this once we have a workflow for approvals
+                Status = SyncStatus.PendingReview.ToString()
             };
         }
     }

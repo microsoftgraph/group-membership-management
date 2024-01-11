@@ -82,7 +82,8 @@ namespace Services
         private async Task<(SyncJob? syncJob, HttpStatusCode statusCode)> GetSyncJobAsync(Guid syncJobId)
         {
             if (_httpContextAccessor.HttpContext.User.IsInRole(Roles.TENANT_ADMINISTRATOR)
-                || _httpContextAccessor.HttpContext.User.IsInRole(Roles.TENANT_READER))
+                || _httpContextAccessor.HttpContext.User.IsInRole(Roles.TENANT_READER)
+                || _httpContextAccessor.HttpContext.User.IsInRole(Roles.TENANT_SUBMISSION_REVIEWER))
             {
                 return (await _databaseSyncJobsRepository.GetSyncJobAsync(syncJobId), HttpStatusCode.OK);
             }

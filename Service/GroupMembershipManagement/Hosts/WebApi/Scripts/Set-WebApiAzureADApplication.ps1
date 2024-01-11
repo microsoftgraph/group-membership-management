@@ -154,7 +154,7 @@ function Set-WebApiAzureADApplication {
 
 		# Create new app roles
 		[String[]]$memberTypes = "User", "Application"
-
+	
 		$readerRole = @{
 			DisplayName        = "Tenant Reader"
 			Description        = "Tenant Readers can read all destinations managed by Membership Management."
@@ -172,10 +172,20 @@ function Set-WebApiAzureADApplication {
 			IsEnabled          = $True
 			AllowedMemberTypes = @($memberTypes)
 		}
+		
+		$submissionReviewerRole = @{
+			DisplayName        = "Submission Reviewer"
+			Description        = "Submission Reviewers can can review onboarding submissions."
+			Value              = "MembershipManagement.Destination.ReadWrite.All"
+			Id                 = [Guid]::NewGuid().ToString()
+			IsEnabled          = $True
+			AllowedMemberTypes = @($memberTypes)
+		}
 
 		$appRoles = $webApiApp.AppRole
 		$appRoles += $readerRole
 		$appRoles += $adminRole
+		$appRoles += $submissionReviewerRole
 
 		Update-AzADApplication  -ObjectId $webApiApp.Id `
 								-IdentifierUris "api://$($webApiApp.AppId)" `

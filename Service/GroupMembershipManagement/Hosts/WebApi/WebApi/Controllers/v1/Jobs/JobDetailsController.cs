@@ -47,8 +47,8 @@ namespace WebApi.Controllers.v1.Jobs
         {
             var user = User;
             var userName = user.Identity?.Name!;
-            var isAdmin = User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR);
-            var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAdmin, userName, syncJobId, patchDocument));
+            var isAllowed = User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR) || User.IsInRole(Models.Roles.TENANT_SUBMISSION_REVIEWER);
+            var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userName, syncJobId, patchDocument));
 
             return response.StatusCode switch
             {

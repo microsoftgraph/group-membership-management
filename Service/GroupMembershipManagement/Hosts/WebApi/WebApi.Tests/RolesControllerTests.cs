@@ -52,6 +52,38 @@ namespace Services.Tests
             Assert.IsFalse(result.Value);
         }
 
+        [TestMethod]
+        public void Get_IsSubmissionReviewer_ForSubmissionReviewerUser()
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Role, Roles.TENANT_SUBMISSION_REVIEWER),
+            };
+
+            _rolesController.ControllerContext = CreateControllerContext(claims);
+
+            var result = _rolesController.GetIsSubmissionReviewer();
+
+            Assert.IsNotNull(result);
+            Assert.IsTrue(result.Value);
+        }
+
+        [TestMethod]
+        public void Get_SubmissionReviewer_ForRegularUser()
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Role, "Reader"),
+            };
+
+            _rolesController.ControllerContext = CreateControllerContext(claims);
+
+            var result = _rolesController.GetIsSubmissionReviewer();
+
+            Assert.IsNotNull(result);
+            Assert.IsFalse(result.Value);
+        }
+
         private ControllerContext CreateControllerContext(List<Claim> claims)
         {
             var identity = new ClaimsIdentity(claims, "TestAuthType");

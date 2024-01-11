@@ -28,6 +28,8 @@ namespace Models
         SchemaError = 20,
         TransientError = 21,
         New = 22,
-        DeveloperPaused = 23
+        DeveloperPaused = 23,
+        PendingReview = 24,
+        SubmissionRejected = 25
     }
 }

@@ -7,5 +7,6 @@ namespace WebApi.Models
     {
         public const string TENANT_ADMINISTRATOR = "MembershipManagement.ServiceConfiguration.ReadWrite.All";
         public const string TENANT_READER = "MembershipManagement.Destination.Read.All";
+        public const string TENANT_SUBMISSION_REVIEWER = "MembershipManagement.Submission.ReadWrite.All";
     }
 }

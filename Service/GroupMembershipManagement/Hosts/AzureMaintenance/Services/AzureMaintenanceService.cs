@@ -53,7 +53,8 @@ namespace Services
                 SyncStatus.MembershipDataNotFound,
                 SyncStatus.NotOwnerOfDestinationGroup,
                 SyncStatus.SecurityGroupNotFound,
-                SyncStatus.ThresholdExceeded);
+                SyncStatus.ThresholdExceeded,
+                SyncStatus.SubmissionRejected);
 
             return ApplyJobTriggerFilters(jobs).ToList();
         }

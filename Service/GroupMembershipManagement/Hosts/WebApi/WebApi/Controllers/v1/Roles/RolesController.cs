@@ -21,5 +21,12 @@ namespace WebApi.Controllers.v1.Roles
         {
             return User.IsInRole(WebApi.Models.Roles.TENANT_ADMINISTRATOR);
         }
+
+        [Authorize]
+        [HttpGet("isSubmissionReviewer")]
+        public ActionResult<bool> GetIsSubmissionReviewer()
+        {
+            return User.IsInRole(WebApi.Models.Roles.TENANT_SUBMISSION_REVIEWER);
+        }
     }
 }

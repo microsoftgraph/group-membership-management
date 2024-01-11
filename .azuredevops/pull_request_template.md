@@ -16,7 +16,7 @@
 - [ ] Linked related work item
 - [ ] Added corresponding owners/experts as reviewers
 - [ ] Tested with protection activated (feature flags off)
-- [ ] Accessibility <!-- UI: did you run a Fast Pass with Accesibility Insights? -->
+- [ ] Accessibility <!-- UI: did you run a Fast Pass with Accessibility Insights? -->
 - [ ] Localization <!-- UI: Did you ensure strings are localized -->
 - [ ] Telemetry / Logging <!-- Are you logging / tracking any new GMM / UX events? -->
 - [ ] Documentation <!-- Have you created / updated required documentation for your changes? -->

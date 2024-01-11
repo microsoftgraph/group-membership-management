@@ -45,8 +45,7 @@ namespace WebApi.Controllers.v1.Jobs
         {
             var user = User;
             var userName = user.Identity?.Name!;
-            var isAdmin = User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR);
-            var response = await _postJobRequestHandler.ExecuteAsync(new PostJobRequest(isAdmin, userName, newSyncJob));
+            var response = await _postJobRequestHandler.ExecuteAsync(new PostJobRequest(userName, newSyncJob));
 
             switch (response.StatusCode)
             {

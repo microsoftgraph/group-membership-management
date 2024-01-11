@@ -278,38 +278,6 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PostJobWhenNotAllowedTestAsync()
-        {
-            _context = CreateHttpContext(new List<Claim>
-                {
-                    new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, Roles.TENANT_READER),
-
-                });
-
-            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
-
-            _getJobsHandler = new GetJobsHandler(
-                                     _loggingRepository.Object,
-                                     _databaseSyncJobsRepository.Object,
-                                     _graphGroupRepository.Object,
-                                     _httpContextAccessor.Object);
-
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
-                                                 _loggingRepository.Object);
-
-            _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
-            _jobsController.ControllerContext = new ControllerContext
-            {
-                HttpContext = _context
-            };
-
-            var response = await _jobsController.PostJobAsync(_newSyncJob);
-            var result = response as ForbidResult;
-            Assert.IsNotNull(result);
-        }
-
-        [TestMethod]
         public async Task PostJobFailureDueToRepositoryExceptionTestAsync()
         {
             _context = CreateHttpContext(new List<Claim>

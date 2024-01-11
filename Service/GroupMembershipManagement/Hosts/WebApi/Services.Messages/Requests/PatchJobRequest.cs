@@ -8,14 +8,14 @@ namespace Services.Messages.Requests
 {
     public class PatchJobRequest : RequestBase
     {
-        public bool IsAdmin { get; set; }
+        public bool IsAllowed { get; set; }
         public Guid SyncJobId { get; }
         public string UserIdentity { get; }
         public JsonPatchDocument<SyncJobPatch> PatchDocument { get; }
 
-        public PatchJobRequest(bool isAdmin, string userIdentity, Guid syncJobId, JsonPatchDocument<SyncJobPatch> patchDocument)
+        public PatchJobRequest(bool isAllowed, string userIdentity, Guid syncJobId, JsonPatchDocument<SyncJobPatch> patchDocument)
         {
-            IsAdmin = isAdmin;
+            IsAllowed = isAllowed;
             UserIdentity = userIdentity;
             SyncJobId = syncJobId;
             PatchDocument = patchDocument;
