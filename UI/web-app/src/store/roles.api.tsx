@@ -15,3 +15,15 @@ export const getIsAdmin = createAsyncThunk<boolean, void, ThunkConfig>(
     }
   }
 );
+
+export const getIsSubmissionReviewer = createAsyncThunk<boolean, void, ThunkConfig>(
+  'roles/getIsSubmissionReviewer',
+  async (_, { extra }) => {
+    const { gmmApi } = extra.apis;
+    try {
+      return await gmmApi.roles.getIsSubmissionReviewer();
+    } catch (error) {
+      throw new Error('Failed to call getIsSubmissionReviewer endpoint');
+    }
+  }
+);

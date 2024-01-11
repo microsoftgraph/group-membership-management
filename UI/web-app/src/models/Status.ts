@@ -10,6 +10,8 @@ export enum SyncStatus {
   SecurityGroupNotFound = 'SecurityGroupNotFound',
   Idle = 'Idle',
   InProgress = 'InProgress',
+  PendingReview = 'PendingReview',
+  SubmissionRejected = 'SubmissionRejected',
 }
 
 export enum ActionRequired {
@@ -19,4 +21,6 @@ export enum ActionRequired {
   DestinationGroupNotFound = 'Destination Group Not Found',
   NotOwnerOfDestinationGroup = 'Not Owner Of Destination Group',
   SecurityGroupNotFound = 'Security Group Not Found',
+  PendingReview = 'Pending Review',
+  SubmissionRejected = 'Submission Rejected',
 }

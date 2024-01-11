@@ -55,7 +55,7 @@ export const fetchJobs = createAsyncThunk<Page<Job>, PagingOptions | undefined, 
               ' hrs left';
 
         index['enabledOrNot'] =
-          index['status'] === SyncStatus.Idle || index['status'] === SyncStatus.InProgress ? 'Enabled' : 'Disabled';
+          index['status'] === SyncStatus.Idle || index['status'] === SyncStatus.InProgress ? true : false;
 
         index['arrow'] = '';
 
@@ -81,6 +81,12 @@ export const fetchJobs = createAsyncThunk<Page<Job>, PagingOptions | undefined, 
             break;
           case SyncStatus.SecurityGroupNotFound:
             index['actionRequired'] = ActionRequired.SecurityGroupNotFound;
+            break;
+          case SyncStatus.PendingReview:
+            index['actionRequired'] = ActionRequired.PendingReview;
+            break;
+          case SyncStatus.SubmissionRejected:
+            index['actionRequired'] = ActionRequired.SubmissionRejected;
             break;
         }
         return index;

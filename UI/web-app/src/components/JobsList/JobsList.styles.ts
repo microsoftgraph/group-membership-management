@@ -27,8 +27,14 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       textAlign: 'center',
       height: 20,
     },
-    actionRequired: {
+    actionRequiredIcon: {
       color: theme.semanticColors.errorIcon,
+    },
+    pendingReviewIcon: {
+      color: theme.palette.yellowDark,
+    },
+    rejectedIcon: {
+      color: theme.semanticColors.disabledText,
     },
     titleContainer: {
       display: 'flex',

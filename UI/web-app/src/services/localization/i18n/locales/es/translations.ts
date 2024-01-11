@@ -95,6 +95,12 @@ export const strings: IStrings = {
       sync: 'Sync',
       enabled: 'Activo',
       disabled: 'Inactivo',
+      pendingReview: 'Revisión pendiente',
+      pendingReviewDescription: 'La configuración de la membresía está esperando ser verificada.',
+      pendingReviewInstructions: 'Por favor revisa esta solicitud y luego aprueba o rechaza después de revisar la configuración de la membresía.',
+      approve: 'Aprobar',
+      reject: 'Rechazar',
+      submissionRejected: 'Solicitud rechazada',
     },
     descriptions: {
       lastModifiedby: 'Usuario quien hizo el último cambio a este grupo.',
@@ -179,6 +185,7 @@ export const strings: IStrings = {
             notOwnerOfDestinationGroup:
               'No es propietario del grupo de destino',
             securityGroupNotFound: 'Grupo de seguridad no encontrado',
+            pendingReview: 'Revisión pendiente',
           },
         },
         destinationType: {

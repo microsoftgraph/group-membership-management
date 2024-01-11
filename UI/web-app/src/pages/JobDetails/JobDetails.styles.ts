@@ -65,12 +65,32 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             paddingRight: 5,
             marginLeft: 15
         },
-        membershipStatus: {
+        membershipStatusContainer: {
+            display: "flex",
+            alignItems: "flex-start"
+        },
+        membershipStatusControls: {
             display: "flex",
             alignItems: "flex-start"
         },
         membershipStatusMessage: {
+            display: "flex",
+            flexDirection: "column",
             paddingLeft: 50
+        },
+        clockIcon: {
+            color: theme.palette.yellowDark,
+        },
+        membershipStatusActionButtons:{
+            display: "flex",
+            flexDirection: "row",
+            gap: 10,
+            marginTop: 8
+        },
+        membershipStatusPendingLabel: {
+            display: "flex",
+            gap: 10,
+            marginBottom: 24
         }
     };
 };

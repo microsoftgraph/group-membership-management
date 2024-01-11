@@ -10,7 +10,7 @@ export type Job = {
   lastSuccessfulStartTime: string;
   lastSuccessfulRunTime: string;
   actionRequired: string;
-  enabledOrNot: string;
+  enabledOrNot: boolean;
   status: string;
   period: number;
   arrow: string;

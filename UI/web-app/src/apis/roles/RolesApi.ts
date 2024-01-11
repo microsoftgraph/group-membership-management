@@ -10,4 +10,10 @@ export class RolesApi extends ApiBase implements IRolesApi {
     this.ensureSuccessStatusCode(response);
     return response.data;
   }
+
+  public async getIsSubmissionReviewer(): Promise<boolean> {
+    const response = await this.httpClient.get<boolean>(`/isSubmissionReviewer`);
+    this.ensureSuccessStatusCode(response);
+    return response.data;
+  }
 }

@@ -18,8 +18,12 @@ export interface IJobDetailsStyles {
     toggleLabel: IStyle;
     jobEnabled: IStyle;
     jobDisabled: IStyle;
-    membershipStatus: IStyle;
+    membershipStatusContainer: IStyle;
+    membershipStatusControls: IStyle;
     membershipStatusMessage: IStyle;
+    clockIcon: IStyle;
+    membershipStatusActionButtons: IStyle;
+    membershipStatusPendingLabel: IStyle;
 }
 
 export interface IJobDetailsStyleProps {

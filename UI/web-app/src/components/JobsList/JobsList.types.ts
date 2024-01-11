@@ -14,7 +14,9 @@ export interface IJobsListStyles {
   disabled: IStyle;
   titleContainer: IStyle;
   title: IStyle;
-  actionRequired: IStyle;
+  actionRequiredIcon: IStyle;
+  pendingReviewIcon: IStyle;
+  rejectedIcon: IStyle;
   tabContent: IStyle;
   columnToEnd: IStyle;
   refresh: IStyle;

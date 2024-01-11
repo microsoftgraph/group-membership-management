@@ -109,6 +109,10 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
       key: SyncStatus.SecurityGroupNotFound,
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.securityGroupNotFound,
     },
+    {
+      key: SyncStatus.PendingReview,
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.pendingReview,
+    }
   ];
 
   const [destinationId, setDestinationId] = useState<string>('');

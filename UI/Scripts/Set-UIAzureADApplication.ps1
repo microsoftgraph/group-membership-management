@@ -167,10 +167,20 @@ function Set-UIAzureADApplication {
 			IsEnabled          = $True
 			AllowedMemberTypes = @($memberTypes)
 		}
+		
+		$submissionReviewerRole = @{
+			DisplayName        = "Submission Reviewer"
+			Description        = "Submission Reviewers can can review onboarding submissions."
+			Value              = "MembershipManagement.Destination.ReadWrite.All"
+			Id                 = [Guid]::NewGuid().ToString()
+			IsEnabled          = $True
+			AllowedMemberTypes = @($memberTypes)
+		}
 
 		$appRoles = $uiApp.AppRole
 		$appRoles += $readerRole
 		$appRoles += $adminRole
+		$appRoles += $submissionReviewerRole
 
 		Update-AzADApplication  -ObjectId $uiApp.Id `
 								-IdentifierUris "api://$($uiApp.AppId)" `

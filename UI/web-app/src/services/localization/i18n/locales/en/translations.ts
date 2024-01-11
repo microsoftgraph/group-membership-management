@@ -93,6 +93,12 @@ export const strings: IStrings = {
       sync: 'Sync',
       enabled: 'Enabled',
       disabled: 'Disabled',
+      pendingReview: 'Pending Review',
+      pendingReviewDescription: 'Your submission is awaiting to be reviewed.',
+      pendingReviewInstructions: 'Please review this request and then approve or decline after reviewing the membership configuration.',
+      approve: 'Approve',
+      reject: 'Reject',
+      submissionRejected: 'Submission Rejected',
     },
     descriptions: {
       lastModifiedby: 'User who made the last change to this job.',
@@ -175,6 +181,7 @@ export const strings: IStrings = {
             destinationGroupNotFound: 'Destination Group Not Found',
             notOwnerOfDestinationGroup: 'Not Owner Of Destination Group',
             securityGroupNotFound: 'Security Group Not Found',
+            pendingReview: 'Pending Review',
           },
         },
         destinationType: {

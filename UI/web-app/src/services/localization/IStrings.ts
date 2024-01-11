@@ -90,6 +90,12 @@ export type IStrings = {
       sync: string;
       enabled: string;
       disabled: string;
+      pendingReview: string;
+      pendingReviewDescription: string;
+      pendingReviewInstructions: string;
+      approve: string;
+      reject: string;
+      submissionRejected: string;
     };
     descriptions: {
       lastModifiedby: string;
@@ -170,6 +176,7 @@ export type IStrings = {
             destinationGroupNotFound: string;
             notOwnerOfDestinationGroup: string;
             securityGroupNotFound: string;
+            pendingReview: string;
           };
         };
         destinationType: {

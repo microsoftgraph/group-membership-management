@@ -37,13 +37,15 @@ import {
 import {
   ReportHackedIcon,
   ChevronRightMedIcon,
+  AlarmClockIcon,
+  ErrorBadgeIcon,
 } from '@fluentui/react-icons-mdl2';
 import { JobsListFilter } from '../JobsListFilter/JobsListFilter';
-import { PagingOptions } from '../../models';
+import { ActionRequired, PagingOptions } from '../../models';
 import { useStrings } from '../../store/hooks';
-import { 
-  selectPagingBarPageNumber, 
-  selectPagingBarPageSize, 
+import {
+  selectPagingBarPageNumber,
+  selectPagingBarPageSize,
   selectPagingOptions,
   selectPagingBarSortKey,
   selectPagingBarIsSortedDescending,
@@ -116,7 +118,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   ]);
 
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [isShimmerEnabled, setIsShimmerEnabled] = useState(false);
   const items = jobs;
@@ -210,8 +211,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       sortKey === 'actionRequired'
     ) {
       return isSortedDescending
-        ? (b[sortKey] || '').localeCompare(a[sortKey] || '')
-        : (a[sortKey] || '').localeCompare(b[sortKey] || '');
+        ? (b[sortKey] || '').toString().localeCompare((a[sortKey] || '').toString())
+        : (a[sortKey] || '').toString().localeCompare((b[sortKey] || '').toString());
     }
     return 0;
   });
@@ -280,27 +281,27 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
 
       case 'enabledOrNot':
         return (
-          <div>
-            {fieldContent === 'Disabled' ? (
-              <div className={classNames.disabled}> {fieldContent}</div>
-            ) : (
-              <div className={classNames.enabled}> {fieldContent}</div>
-            )}
+          <div className={fieldContent ? classNames.enabled : classNames.disabled }>
+            {fieldContent ? strings.JobDetails.labels.enabled : strings.JobDetails.labels.disabled}
           </div>
         );
 
       case 'actionRequired':
         return (
-          <div>
-            {fieldContent ? (
-              <div className={classNames.actionRequired}>
-                {' '}
-                <ReportHackedIcon /> {fieldContent}
+          fieldContent ?
+            (fieldContent.includes(ActionRequired.PendingReview) ?
+              <div>
+                <AlarmClockIcon className={classNames.pendingReviewIcon}/> {fieldContent}
               </div>
-            ) : (
-              <div className={classNames.actionRequired}> {fieldContent}</div>
-            )}
-          </div>
+              : fieldContent.includes(ActionRequired.SubmissionRejected) ?
+                <div>
+                  <ErrorBadgeIcon className={classNames.rejectedIcon}/> {fieldContent}
+                </div>
+                : <div>
+                  <ReportHackedIcon className={classNames.actionRequiredIcon}/> {fieldContent}
+                </div>
+            )
+            : <></>
         );
 
       case 'arrow':

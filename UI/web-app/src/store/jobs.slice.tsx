@@ -9,6 +9,7 @@ import type { RootState } from './store';
 import { type Job } from '../models/Job';
 import { type JobDetails } from '../models/JobDetails';
 import { PeoplePickerPersona } from '../models/PeoplePickerPersona';
+import { PatchJobResponse } from '../models';
 
 // Define a type for the slice state
 export interface JobsState {
@@ -19,7 +20,7 @@ export interface JobsState {
   selectedJobLoading: boolean;
   getJobsError: string | undefined;
   getJobDetailsError: string | undefined;
-  patchJobDetailsResponse: any | undefined;
+  patchJobDetailsResponse: PatchJobResponse | undefined;
   patchJobDetailsError: string | undefined;
   postJobLoading: boolean;
   postJobError: string | undefined;

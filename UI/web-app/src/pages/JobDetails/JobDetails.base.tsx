@@ -11,7 +11,10 @@ import {
   IProcessedStyleSet,
   classNamesFunction,
   ActionButton,
-  IToggleProps
+  IToggleProps,
+  DefaultButton,
+  PrimaryButton,
+  Icon
 } from '@fluentui/react';
 
 import {
@@ -44,11 +47,12 @@ import {
   type IJobDetailsStyles,
 } from './JobDetails.types';
 import { JobDetails } from '../../models/JobDetails';
-import { PageVersion } from '../../components/PageVersion';
 import { useStrings } from '../../store/hooks';
 import { PatchJobRequest } from '../../models/PatchJobRequest';
 import { PatchJobResponse } from '../../models/PatchJobResponse';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
+import { selectIsSubmissionReviewer } from '../../store/roles.slice';
+import { SyncStatus } from '../../models';
 
 
 export interface IContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
@@ -185,37 +189,55 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
   props: IContentProps
 ) => {
   const dispatch = useDispatch<AppDispatch>();
-  const patchResponse: PatchJobResponse = useSelector(selectPatchJobDetailsResponse);
+  const patchResponse: PatchJobResponse | undefined = useSelector(selectPatchJobDetailsResponse);
   const patchError = useSelector(selectPatchJobDetailsError);
-
   const strings = useStrings();
   const { job, classNames } = props;
+  const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
+  const [jobStatus, setJobStatus] = useState(job.status);
+  const [isJobEnabled, setIsJobEnabled] = useState(job.enabledOrNot);
 
-  const [jobStatus, setJobStatus] = useState(job.enabledOrNot);
+  const createPatchJobRequest = (value: string): PatchJobRequest => ({
+    syncJobId: job.syncJobId,
+    operations: [
+      {
+        op: "replace",
+        path: "/Status",
+        value
+      }
+    ]
+  });
 
-  const statusToggleProps: IToggleProps = {
-    inlineLabel: true,
-    checked: jobStatus === 'Enabled',
-    onChange: () => {
-      var patchJobRequest: PatchJobRequest = {
-        syncJobId: job.syncJobId,
-        operations: [
-          {
-            op: "replace",
-            path: "/Status",
-            value: jobStatus === 'Enabled' ? 'CustomerPaused' : 'Idle'
-          }
-        ]
-      };
+  const handleStatusChange = async () => {
+    const newStatus = isJobEnabled ? SyncStatus.CustomerPaused : SyncStatus.Idle;
+    const patchJobRequest = createPatchJobRequest(newStatus);
 
-      dispatch(patchJobDetails(patchJobRequest))
-        .then((response: any) => {
-          if (response.payload?.ok) {
-            setJobStatus(jobStatus === 'Enabled' ? 'Disabled' : 'Enabled');
-          }
-        });
+    try {
+      const actionResult = await dispatch(patchJobDetails(patchJobRequest));
+      const response = actionResult.payload as PatchJobResponse;
+      if (response.ok) {
+        setIsJobEnabled(isJobEnabled ? false : true);
+      }
+    } catch (error) {
+      console.error('Error when toggling job status in job details:', error);
     }
-  }
+  };
+
+  const handleApproveSubmission = async (approved: boolean) => {
+    const statusBasedOnReview = approved ? SyncStatus.Idle : SyncStatus.SubmissionRejected;
+    const patchJobRequest = createPatchJobRequest(statusBasedOnReview);
+
+    try {
+      const actionResult = await dispatch(patchJobDetails(patchJobRequest));
+      const response = actionResult.payload as PatchJobResponse;
+      if (response.ok) {
+        setJobStatus(statusBasedOnReview);
+        setIsJobEnabled(statusBasedOnReview === SyncStatus.Idle ? true : false);
+      }
+    } catch (error) {
+      console.error('Error when reviewing and patching job details:', error);
+    }
+  };
 
   const displayMessage = (errorCode: string | undefined): string | undefined => {
     switch (errorCode) {
@@ -228,25 +250,50 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
       default:
         return undefined;
     }
-  }
+  };
 
   return (
-    <div className={classNames.membershipStatus}>
-      <div className={classNames.membershipStatus}>
+    <div className={classNames.membershipStatusContainer}>
+      <div className={classNames.membershipStatusControls}>
         <label className={classNames.toggleLabel}>{strings.JobDetails.labels.sync}</label>
         <Toggle
-          {...statusToggleProps}
+          inlineLabel={true}
+          checked={isJobEnabled}
+          onChange={handleStatusChange}
+          disabled={jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.SubmissionRejected}
         />
         <div>
-          {jobStatus === 'Disabled' ? (
-            <div className={classNames.jobDisabled}> {jobStatus}</div>
-          ) : (
-            <div className={classNames.jobEnabled}> {jobStatus}</div>
-          )}
+          <div className={isJobEnabled ? classNames.jobEnabled : classNames.jobDisabled}>
+            {isJobEnabled ? strings.JobDetails.labels.enabled : strings.JobDetails.labels.disabled}
+          </div>
         </div>
       </div>
       <div className={classNames.membershipStatusMessage}>
-        {!patchResponse?.ok && (displayMessage(patchResponse?.errorCode ?? patchError))}
+        <div>
+          {!patchResponse?.ok && (displayMessage(patchResponse?.errorCode ?? patchError))}
+        </div>
+        {(jobStatus === SyncStatus.PendingReview) && (
+          <Stack>
+            <div className={classNames.membershipStatusPendingLabel}>
+              <Icon iconName='AlarmClock' className={classNames.clockIcon}/>
+              <Text>{strings.JobDetails.labels.pendingReview}</Text>
+            </div>
+            <Text>{isSubmissionReviewer ?
+              strings.JobDetails.labels.pendingReviewInstructions
+              : strings.JobDetails.labels.pendingReviewDescription}</Text>
+            {isSubmissionReviewer && (
+              <div className={classNames.membershipStatusActionButtons}>
+                <DefaultButton onClick={() => handleApproveSubmission(true)} text={strings.JobDetails.labels.approve} />
+                <PrimaryButton onClick={() => handleApproveSubmission(false)} text={strings.JobDetails.labels.reject} />
+              </div>
+            )}
+          </Stack>
+        )}
+        {(jobStatus === SyncStatus.SubmissionRejected) && (
+          <div>
+            <Text>{strings.JobDetails.labels.submissionRejected}</Text>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -394,15 +441,15 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
     if (isEmpty) {
       return ['-', ''];
     }
-  
+
     const spaceIndex = value.indexOf(' ');
     const datePart = value.substring(0, spaceIndex);
     const hoursPart = value.substring(spaceIndex + 1);
-  
+
     const parsedDate = new Date(datePart);
-    
+
     const isMinDate = parsedDate <= SQL_MIN_DATE;
-  
+
     return [isMinDate ? '' : datePart, isMinDate ? '-' : hoursPart];
   }
 
