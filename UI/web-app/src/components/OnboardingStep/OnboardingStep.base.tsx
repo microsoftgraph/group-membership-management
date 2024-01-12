@@ -41,13 +41,9 @@ export const OnboardingStepBase: React.FunctionComponent<IOnboardingStepProps> =
       strings.ManageMembership.labels.group
       : destinationType ? destinationType.toString() : '';
 
-  const isAdvancedQueryChild = React.Children.toArray(children).some(child =>
-    React.isValidElement(child) && (child.type as React.ComponentType).displayName === 'StyledAdvancedQueryBase'
-  );
-
   return (
     <div className={classNames.root}>
-      <div className={classNames.card}>
+      <div className={classNames.titleCard}>
         <PageSection>
           <div className={classNames.title}>{strings.ManageMembership.labels.pageTitle}</div>
           {(destinationType && destinationName) && (<div className={classNames.destination}>{destinationTypeLabel}: {destinationName}</div>)}
@@ -55,16 +51,7 @@ export const OnboardingStepBase: React.FunctionComponent<IOnboardingStepProps> =
           <div className={classNames.stepDescription}>{stepDescription}</div>
         </PageSection>
       </div>
-      {isAdvancedQueryChild &&
-        <div className={classNames.toggleContainer}>
-          <Toggle
-            inlineLabel
-            defaultChecked disabled
-            onText={strings.ManageMembership.labels.advancedView}
-            offText={strings.ManageMembership.labels.advancedView} />
-        </div>
-      }
-      <div className={classNames.card}>
+      <div>
         <PageSection>
           <div>
             {children}

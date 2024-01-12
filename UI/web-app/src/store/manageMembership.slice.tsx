@@ -5,7 +5,7 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 import type { RootState } from './store';
 import { NewJob } from '../models/NewJob';
-import { 
+import {
     getGroupOnboardingStatus,
     getGroupEndpoints,
     searchDestinations
@@ -13,6 +13,21 @@ import {
 import { OnboardingStatus } from '../models/GroupOnboardingStatus';
 import { Destination } from '../models/Destination';
 import { DestinationPickerPersona } from '../models';
+
+export interface SourcePart {
+    id: number;
+    query: string;
+    isValid: boolean;
+    isExclusionary: boolean;
+}
+
+export interface Query {
+    sourceParts: SourcePart[];
+}
+
+export interface CompositeQuery {
+    sourceParts: Array<{ id: number, query: string }>;
+}
 
 const placeholderQuery: string = `[
     {
@@ -36,6 +51,15 @@ const placeholderQuery: string = `[
     }
   ]`;
 
+const placeholderQueryHRPart: string = `{
+    "type": "SqlMembership",
+    "source": {
+      "ids": [],
+      "filter": "",
+      "depth": 1
+    }
+  }`;
+
 export interface ManageMembershipState {
     loadingSearchResults: boolean;
     searchResults?: DestinationPickerPersona[];
@@ -49,6 +73,10 @@ export interface ManageMembershipState {
     showIncreaseDropdown: boolean;
     showDecreaseDropdown: boolean;
     newJob: NewJob;
+    isAdvancedView: boolean;
+    originalQuery: string;
+    compositeQuery?: string;
+    sourceParts: SourcePart[];
 }
 
 const initialState: ManageMembershipState = {
@@ -66,13 +94,17 @@ const initialState: ManageMembershipState = {
     newJob: {
         destination: '',
         requestor: '',
-        startDate: new Date().toISOString(), 
+        startDate: new Date().toISOString(),
         period: 24,
-        query: placeholderQuery,
+        query: placeholderQueryHRPart,
         thresholdPercentageForAdditions: 100,
         thresholdPercentageForRemovals: 20,
         status: 'Idle'
-    }
+    },
+    originalQuery: '',
+    isAdvancedView: false,
+    compositeQuery: '',
+    sourceParts: []
 };
 
 const manageMembershipSlice = createSlice({
@@ -128,6 +160,46 @@ const manageMembershipSlice = createSlice({
         },
         resetManageMembership: (state) => {
             Object.assign(state, initialState);
+        },
+        setIsAdvancedView: (state, action: PayloadAction<boolean>) => {
+            if (action.payload) {
+                state.newJob.query = placeholderQuery;
+            } else {
+                state.sourceParts = [];
+                state.isQueryValid = false;
+                const compositeQuery = buildCompositeQuery(state.sourceParts);
+                state.newJob.query = compositeQuery;
+            }
+            state.isAdvancedView = action.payload;
+        },
+        setCompositeQuery: (state, action: PayloadAction<string>) => {
+            state.compositeQuery = action.payload;
+        },
+        addSourcePart: (state, action: PayloadAction<SourcePart>) => {
+            state.sourceParts.push(action.payload);
+        },
+        updateSourcePart: (state, action: PayloadAction<SourcePart>) => {
+            const index = state.sourceParts.findIndex(part => part.id === action.payload.id);
+            if (index !== -1) {
+                state.sourceParts[index] = {
+                    ...state.sourceParts[index],
+                    query: action.payload.query,
+                    isValid: action.payload.isValid,
+                    isExclusionary: action.payload.isExclusionary
+                };
+            }
+        },        
+        updateSourcePartValidity: (state, action: PayloadAction<{ partId: number; isValid: boolean}>) => {
+            const { partId, isValid } = action.payload;
+            const partIndex = state.sourceParts.findIndex(part => part.id === partId);
+            if (partIndex !== -1) {
+                state.sourceParts[partIndex].isValid = isValid;
+            }
+        },
+        deleteSourcePart: (state, action: PayloadAction<number>) => {
+            state.sourceParts = state.sourceParts.filter(part => part.id !== action.payload);
+            const compositeQuery = buildCompositeQuery(state.sourceParts);
+            state.compositeQuery = compositeQuery;
         }
     },
     extraReducers: (builder) => {
@@ -145,15 +217,15 @@ const manageMembershipSlice = createSlice({
             state.loadingSearchResults = false;
         });
         builder.addCase(getGroupEndpoints.fulfilled, (state, action) => {
-            if(state.selectedDestination?.id === action.meta.arg) {
+            if (state.selectedDestination?.id === action.meta.arg) {
                 state.selectedDestination.endpoints = action.payload;
             }
         });
     },
 });
 
-export const { 
-    setHasChanges, 
+export const {
+    setHasChanges,
     setCurrentStep,
     setNewJobQuery,
     setIsQueryValid,
@@ -166,7 +238,13 @@ export const {
     setUseThresholdLimits,
     setShowIncreaseDropdown,
     setShowDecreaseDropdown,
-    resetManageMembership
+    resetManageMembership,
+    setIsAdvancedView,
+    setCompositeQuery,
+    addSourcePart,
+    updateSourcePart,
+    updateSourcePartValidity,
+    deleteSourcePart,
 } = manageMembershipSlice.actions;
 
 // General
@@ -192,8 +270,12 @@ export const manageMembershipIsGroupReadyForOnboarding = (state: RootState): boo
     return state.manageMembership.onboardingStatus === OnboardingStatus.ReadyForOnboarding;
 };
 
-// 2- Advanced Query
+// 2- Membership Configuration
+export const manageMembershipIsAdvancedView = (state: RootState) => state.manageMembership.isAdvancedView;
 export const manageMembershipIsQueryValid = (state: RootState) => state.manageMembership.isQueryValid;
+export const getSourcePartsFromState = (state: RootState) => state.manageMembership.sourceParts;
+export const manageMembershipCompositeQuery = (state: RootState) => state.manageMembership.compositeQuery;
+
 
 // 3- Run Configuration
 export const manageMembershipStartDateOption = (state: RootState) => state.manageMembership.startDateOption;
@@ -202,3 +284,20 @@ export const manageMembershipShowIncreaseDropdown = (state: RootState) => state.
 export const manageMembershipShowDecreaseDropdown = (state: RootState) => state.manageMembership.showDecreaseDropdown;
 
 export default manageMembershipSlice.reducer;
+
+export function buildCompositeQuery(sourceParts: SourcePart[]): string {
+    const queries = sourceParts.map(part => {
+        try {
+            const parsedQuery = JSON.parse(part.query);
+            return { ...parsedQuery, exclusionary: part.isExclusionary };
+        } catch (error) {
+            console.error(`Error parsing query for part ${part.id}:`, error);
+            return null;
+        }
+    }).filter(query => query !== null);
+
+    return JSON.stringify(queries, null, 2);
+}
+
+  
+

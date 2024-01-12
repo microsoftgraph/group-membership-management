@@ -24,7 +24,6 @@ import {
   
   export interface IAdvancedQueryProps
     extends React.AllHTMLAttributes<HTMLDivElement> {
-
     /**
      * Optional className to apply to the root of the component.
      */
@@ -35,5 +34,8 @@ import {
      */
     styles?: IStyleFunctionOrObject<IAdvancedQueryStyleProps, IAdvancedQueryStyles>;
     query: string;
+    onQueryChange: (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => void;
+    partId: number;
+    onValidate: (isValid: boolean, partId: number) => void;
   }
   

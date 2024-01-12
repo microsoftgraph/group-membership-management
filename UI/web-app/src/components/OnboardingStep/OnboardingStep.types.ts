@@ -10,9 +10,8 @@ import {
   
   export interface IOnboardingStepStyles {
     root: IStyle;
-    card: IStyle;
+    titleCard: IStyle;
     title: IStyle;
-    toggleContainer: IStyle;
     stepTitle: IStyle;
     stepDescription: IStyle;
     destination: IStyle;

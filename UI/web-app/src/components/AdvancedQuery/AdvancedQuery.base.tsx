@@ -18,11 +18,15 @@ import {
 } from './AdvancedQuery.types';
 import { useStrings } from "../../store/hooks";
 import schemaDefinition from '../../Query.json';
+import HRPartQuery from '../../HRPartQuery.json';
 import { AppDispatch } from '../../store';
 import { 
-  manageMembershipQuery,
+  buildCompositeQuery,
+  getSourcePartsFromState,
+  manageMembershipIsAdvancedView,
+  setCompositeQuery,
   setIsQueryValid,
-  setNewJobQuery
+  updateSourcePartValidity
 } from '../../store/manageMembership.slice';
 
 const getClassNames = classNamesFunction<
@@ -35,7 +39,7 @@ interface ExtendedErrorObject extends ErrorObject<string, Record<string, any>, u
 }
 
 export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (props) => {
-  const { className, styles } = props;
+  const { className, styles, query, onQueryChange, partId, onValidate } = props;
   const strings = useStrings();
   const classNames: IProcessedStyleSet<IAdvancedQueryStyles> = getClassNames(
     styles,
@@ -46,8 +50,10 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
   );
   const dispatch = useDispatch<AppDispatch>();
   const [validationMessage, setValidationMessage] = React.useState<React.ReactNode | null>(null);
+  const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
+  const sourceParts = useSelector(getSourcePartsFromState);
+  const schema = isAdvancedView ? schemaDefinition : HRPartQuery;
   const ajv = new Ajv();
-  const query: string = useSelector(manageMembershipQuery);
 
   const formatErrors = (errors: (ErrorObject<string, Record<string, any>, unknown> & { dataPath: string })[] | null | undefined) => {
     if (!errors || errors.length === 0) return null;
@@ -69,28 +75,42 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
     );
   };
 
-  const onQueryChange = (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => {
-    dispatch(setNewJobQuery(newValue || ""));
-    dispatch(setIsQueryValid(false))
+  const handleQueryChange = (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => {
+    onQueryChange(event, newValue);
     setValidationMessage(null);
+
+    if (isAdvancedView) {
+        dispatch(setIsQueryValid(false));
+    } else {
+        dispatch(updateSourcePartValidity({ partId, isValid: false }));
+    }
   };
 
   const onValidateQuery = () => {
     try {
-      const validate = ajv.compile(schemaDefinition);
+      const validate = ajv.compile(schema);
       const parsedQuery = JSON.parse(query);
       const isValid = validate(parsedQuery);
+      if (!isAdvancedView) {
+        const compositeQuery = buildCompositeQuery(sourceParts);
+        dispatch(setCompositeQuery(compositeQuery));
+        dispatch(updateSourcePartValidity({ partId, isValid }));
+      }
+      else{
+        dispatch(setIsQueryValid(isValid));
+      }
+
       if (!isValid) {
         const errorsFromAjv = validate.errors;
         const formattedErrors = formatErrors(errorsFromAjv as ExtendedErrorObject[] | null | undefined);
         setValidationMessage(formattedErrors);
-        dispatch(setIsQueryValid(false));
       } else {
         setValidationMessage(strings.ManageMembership.labels.validQuery);
-        dispatch(setIsQueryValid(true));
       }
+      onValidate(isValid, partId)
     }
     catch (error) {
+      console.error('Error building composite query:', error);
       setValidationMessage(strings.ManageMembership.labels.invalidQuery);
       dispatch(setIsQueryValid(false));
     }
@@ -105,7 +125,7 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
         rows={25}
         resizable
         value={query}
-        onChange={onQueryChange}
+        onChange={handleQueryChange}
       />
       <DefaultButton className={classNames.button} onClick={onValidateQuery}>{strings.ManageMembership.labels.validateQuery}</DefaultButton>
       {validationMessage && (
@@ -113,7 +133,6 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
           {validationMessage}
         </div>
       )}
-
     </div>
   );
 };

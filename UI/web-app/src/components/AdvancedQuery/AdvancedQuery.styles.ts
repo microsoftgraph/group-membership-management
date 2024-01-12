@@ -18,6 +18,7 @@ import {
         gap: 16,
         display: 'flex',
         flexDirection: 'column',
+        width: '100%',
       }, className],
       textField: {
         fontWeight: 400,

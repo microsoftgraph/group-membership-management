@@ -20,7 +20,6 @@ import { IManageMembershipProps, IManageMembershipStyleProps, IManageMembershipS
 import { AppDispatch } from '../../store';
 import { useStrings } from '../../store/hooks';
 import { OnboardingStep } from '../../components/OnboardingStep';
-import { AdvancedQuery } from '../../components/AdvancedQuery';
 import { SelectDestination } from '../../components/SelectDestination';
 import { Destination } from '../../models/Destination';
 import {
@@ -37,7 +36,8 @@ import {
   manageMembershipPeriod,
   manageMembershipThresholdPercentageForAdditions,
   manageMembershipThresholdPercentageForRemovals,
-  resetManageMembership
+  resetManageMembership,
+  getSourcePartsFromState
 } from '../../store/manageMembership.slice';
 import { getGroupEndpoints, getGroupOnboardingStatus } from '../../store/manageMembership.api';
 import { NewJob } from '../../models/NewJob';
@@ -46,6 +46,7 @@ import { RunConfiguration } from '../../components/RunConfiguration';
 import { Confirmation } from '../../components/Confirmation';
 import { selectAccountUsername } from '../../store/account.slice';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
+import { MembershipConfiguration } from '../../components/MembershipConfiguration';
 
 
 const getClassNames = classNamesFunction<
@@ -83,6 +84,8 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   // Onboarding values
   const query = useSelector(manageMembershipQuery);
   const isQueryValid = useSelector(manageMembershipIsQueryValid);
+  const sourceParts = useSelector(getSourcePartsFromState);
+  const allSourcePartsValid = sourceParts.length > 0 && sourceParts.every(part => part.isValid);
   const startDate = useSelector(manageMembershipStartDate);
   const period = useSelector(manageMembershipPeriod);
   const thresholdPercentageForAdditions = useSelector(manageMembershipThresholdPercentageForAdditions);
@@ -171,11 +174,11 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   };
 
   const isStep1ConditionsMet = selectedDestination && isGroupReadyForOnboarding === true;
-  const isStep3ConditionsMet = isQueryValid;
+  const isStep3ConditionsMet = isQueryValid || allSourcePartsValid;
   let isNextDisabled = false;
 
   if (currentStep === 1 && !isStep1ConditionsMet) {
-    isNextDisabled = true;
+    isNextDisabled = false; //TODO: CHANGE
   } else if (currentStep === 2) {
     isNextDisabled = false;
   } else if (currentStep === 3 && !isStep3ConditionsMet) {
@@ -211,9 +214,8 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
           destinationType={selectedDestination?.type}
           destinationName={selectedDestination?.name}
           children={
-            <AdvancedQuery
-              query={query}
-            />}
+            <MembershipConfiguration/>
+          }
         />}
         {currentStep === 4 && <OnboardingStep
           stepTitle={strings.ManageMembership.labels.step4title}

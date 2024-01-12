@@ -12,7 +12,7 @@ import {
     return {
       root: [{
       }, className],
-      card: {
+      titleCard: {
         paddingTop: 18,
         paddingBottom: 18,
         paddingLeft: 22,
@@ -20,11 +20,6 @@ import {
         borderRadius: 10,
         marginBottom: 12,
         backgroundColor: theme.palette.white
-      },
-      toggleContainer:{
-        display: 'flex',
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
       },
       title: {
         fontWeight: 600,

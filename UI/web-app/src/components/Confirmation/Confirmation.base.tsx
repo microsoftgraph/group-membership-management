@@ -20,7 +20,7 @@ import {
 import { useStrings } from "../../store/hooks";
 import { PageSection } from "../PageSection";
 import { useSelector } from 'react-redux';
-import { manageMembershipPeriod, manageMembershipQuery, manageMembershipSelectedDestination, manageMembershipSelectedDestinationEndpoints, manageMembershipStartDate, manageMembershipThresholdPercentageForAdditions, manageMembershipThresholdPercentageForRemovals } from '../../store/manageMembership.slice';
+import { manageMembershipCompositeQuery, manageMembershipIsAdvancedView, manageMembershipPeriod, manageMembershipQuery, manageMembershipSelectedDestination, manageMembershipSelectedDestinationEndpoints, manageMembershipStartDate, manageMembershipThresholdPercentageForAdditions, manageMembershipThresholdPercentageForRemovals } from '../../store/manageMembership.slice';
 
 const getClassNames = classNamesFunction<
   IConfirmationStyleProps,
@@ -49,6 +49,11 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const startDate: string = useSelector(manageMembershipStartDate);
   const thresholdPercentageForAdditions: number = useSelector(manageMembershipThresholdPercentageForAdditions);
   const thresholdPercentageForRemovals: number = useSelector(manageMembershipThresholdPercentageForRemovals);
+  const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
+  const compositeQuery = useSelector(manageMembershipCompositeQuery);
+  const globalQuery = useSelector(manageMembershipQuery);
+  const displayQuery = isAdvancedView ? globalQuery : compositeQuery;
+  console.log("displayQuery: ", displayQuery );
 
   const SharePointDomain: string = `${process.env.REACT_APP_SHAREPOINTDOMAIN}`;
   const domainName: string = `${process.env.REACT_APP_DOMAINNAME}`;
@@ -222,7 +227,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
             <Separator />
             <Stack enableScopedSelectors tokens={{ childrenGap: 30 }}>
                 <Stack.Item align="start">
-                <div>{query}</div>
+                <div>{displayQuery}</div>
                 </Stack.Item>
             </Stack>
           </div>

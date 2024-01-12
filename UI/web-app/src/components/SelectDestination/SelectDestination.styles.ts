@@ -11,6 +11,13 @@ import {
   
     return {
       root: [{
+        paddingTop: 18,
+        paddingBottom: 18,
+        paddingLeft: 22,
+        paddingRight: 22,
+        borderRadius: 10,
+        marginBottom: 12,
+        backgroundColor: theme.palette.white
       }, className],
       dropdownTitle: {
         borderRadius: 4,
