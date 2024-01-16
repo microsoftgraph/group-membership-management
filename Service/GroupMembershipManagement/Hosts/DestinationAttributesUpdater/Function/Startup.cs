@@ -3,13 +3,16 @@
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
+using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
+using Repositories.TeamsChannel;
 using Services;
 using Services.Contracts;
 
@@ -32,6 +35,20 @@ namespace Hosts.DestinationAttributesUpdater
                 return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
             })
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
+
+            builder.Services.AddTransient<ITeamsChannelRepository, TeamsChannelRepository>((services) =>
+            {
+                var loggingRepository = services.GetRequiredService<ILoggingRepository>();
+                var telemetryClient = services.GetRequiredService<TelemetryClient>();
+
+                var configuration = services.GetService<IConfiguration>();
+                var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
+                graphCredentials.ServiceAccountUserName = configuration["teamsChannelServiceAccountUsername"];
+                graphCredentials.ServiceAccountPassword = configuration["teamsChannelServiceAccountPassword"];
+                var graphServiceClient = new GraphServiceClient(FunctionAppDI.CreateServiceAccountAuthProvider(graphCredentials));
+
+                return new TeamsChannelRepository(loggingRepository, graphServiceClient, telemetryClient);
+            });
 
             builder.Services.AddScoped<IDestinationAttributesUpdaterService, DestinationAttributesUpdaterService>();
         }

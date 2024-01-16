@@ -40,7 +40,7 @@ namespace Models.Entities
 
 		public override int GetHashCode() => HashCode.Combine(ObjectId.GetHashCode(), ChannelId.GetHashCode());
 
-		public override string ToString() => $"g: {ObjectId} t: {ChannelId}";
+		public override string ToString() => $"ObjectId: {ObjectId} ChannelId: {ChannelId}";
     }
 }
 

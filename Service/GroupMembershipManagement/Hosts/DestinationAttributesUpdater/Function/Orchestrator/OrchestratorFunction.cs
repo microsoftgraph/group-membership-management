@@ -37,7 +37,7 @@ namespace Hosts.DestinationAttributesUpdater
             foreach(var destinationType in destinationTypes)
             {
 
-                var destinationsList = await context.CallActivityAsync<List<(AzureADGroup Destination, Guid TableId)>>(nameof(DestinationReaderFunction), destinationType);
+                var destinationsList = await context.CallActivityAsync<List<(string Destination, Guid TableId)>>(nameof(DestinationReaderFunction), destinationType);
 
                 int index = 0;
                 while (index < destinationsList.Count)

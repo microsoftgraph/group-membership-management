@@ -6,6 +6,7 @@ using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
 using Microsoft.Kiota.Abstractions;
 using Models;
+using Models.Entities;
 using Repositories.Contracts;
 using System;
 using System.Collections;
@@ -73,6 +74,11 @@ namespace Repositories.GraphGroups
             }
 
             return false;
+        }
+
+        public async Task<bool> IsServiceAccountOwnerOfGroupAsync(Guid serviceAccountObjectId, Guid groupObjectId, Guid? runId)
+        {
+            return await IsGroupOwnerAsync($"id eq '{serviceAccountObjectId}'", groupObjectId, runId);
         }
 
         public async Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, Guid? runId, int top = 0)
@@ -245,5 +251,6 @@ namespace Repositories.GraphGroups
                 throw;
             }
         }
+
     }
 }

@@ -67,11 +67,6 @@ namespace Repositories.GraphGroups
             return _graphGroupInformationReader.GetGroupNamesAsync(objectIds);
         }
 
-        public Task<Dictionary<string, string>> GetTeamsChannelsNamesAsync(List<AzureADTeamsChannel> channels)
-        {
-            return _graphGroupInformationReader.GetTeamsChannelsNamesAsync(channels);
-        }
-
         public Task<Dictionary<Guid, List<Guid>>> GetDestinationOwnersAsync(List<Guid> objectIds)
         {
             return _graphGroupInformationReader.GetGroupOwnersAsync(objectIds);
@@ -93,6 +88,11 @@ namespace Repositories.GraphGroups
             if (!groupExists) return false;
 
             return await _graphGroupOwnerReader.IsAppIDOwnerOfGroupAsync(appId, groupObjectId, RunId);
+        }
+
+        public async Task<bool> IsServiceAccountOwnerOfGroupAsync(Guid serviceAccountObjectId, Guid groupObjectId)
+        {
+            return await _graphGroupOwnerReader.IsServiceAccountOwnerOfGroupAsync(serviceAccountObjectId, groupObjectId, RunId);
         }
 
         public async Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)

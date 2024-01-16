@@ -12,11 +12,11 @@ namespace Services.Contracts
     {
         public Guid RunId { get; set; }
         Task<(List<SyncJob> jobs, bool jobTriggerThresholdExceeded, int maxJobsAllowed)> GetSyncJobsAsync();
-        Task<(bool IsValid, AzureADGroup DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob);
-        Task<AzureADGroup> ParseDestinationAsync(SyncJob syncJob);
-        Task<string> GetGroupNameAsync(SyncJob job);
+        Task<(bool IsValid, string DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob);
+        Task<DestinationObject> ParseDestinationAsync(SyncJob syncJob);
+        Task<string> GetDestinationNameAsync(SyncJob job);
         Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters);
-        Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job);
+        Task<DestinationVerifierResult> DestinationExistsAndGMMCanWriteToItAsync(SyncJob job);
         Task UpdateSyncJobAsync(SyncStatus? status, SyncJob job);
         Task SendMessageAsync(SyncJob job);
         Task<List<string>> GetGroupEndpointsAsync(SyncJob job);

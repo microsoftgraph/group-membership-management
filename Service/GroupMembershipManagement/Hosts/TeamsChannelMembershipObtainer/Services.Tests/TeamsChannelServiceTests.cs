@@ -45,8 +45,8 @@ namespace Services.Tests
         public void SetUp()
         {
             _mockTeamsChannelRepository = new Mock<ITeamsChannelRepository>();
-            _mockTeamsChannelRepository.Setup<Task<List<AzureADTeamsUser>>>(repo => repo.ReadUsersFromChannelAsync(It.IsIn<AzureADTeamsChannel>(_mockChannels.Keys), It.IsAny<Guid>()))
-                .ReturnsAsync((AzureADTeamsChannel c, Guid g) => _mockChannels[c]);
+            _mockTeamsChannelRepository.Setup<Task<List<AzureADTeamsUser>>>(repo => repo.ReadUsersFromChannelAsync(It.IsIn<AzureADTeamsChannel>(_mockChannels.Keys), It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<bool>()))
+                .ReturnsAsync((AzureADTeamsChannel c, Guid g, string? q, bool e) => _mockChannels[c]);
             _mockTeamsChannelRepository.Setup<Task<string>>(repo => repo.GetChannelTypeAsync(It.IsIn<AzureADTeamsChannel>(_mockChannels.Keys), It.IsAny<Guid>()))
                 .ReturnsAsync("private");
 
@@ -161,7 +161,7 @@ namespace Services.Tests
 
             Assert.IsTrue(userList.SequenceEqual(_mockChannels[sourceChannel]));
             Assert.AreEqual(2, userList.Count);
-            _mockTeamsChannelRepository.Verify(m => m.ReadUsersFromChannelAsync(sourceChannel, _syncInfo.SyncJob.RunId.Value));
+            _mockTeamsChannelRepository.Verify(m => m.ReadUsersFromChannelAsync(sourceChannel, _syncInfo.SyncJob.RunId.Value, null, true));
         }
 
         [TestMethod]

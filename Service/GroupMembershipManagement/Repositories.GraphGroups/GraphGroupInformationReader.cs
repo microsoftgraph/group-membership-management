@@ -230,50 +230,6 @@ namespace Repositories.GraphGroups
             return groupNames;
         }
 
-        public async Task<Dictionary<string, string>> GetTeamsChannelsNamesAsync(List<AzureADTeamsChannel> channels)
-        {
-            var channelNames = new Dictionary<string, string>();
-            var batchRequest = new BatchRequestContentCollection(_graphServiceClient);
-
-            // requestId, groupId
-            var requestIdTracker = new Dictionary<string, string>();
-
-            foreach (var channel in channels.Distinct())
-            {
-                var requestInformation = _graphServiceClient
-                                            .Teams[channel.ObjectId.ToString()]
-                                            .Channels[channel.ChannelId.ToString()]
-                                            .ToGetRequestInformation(requestConfiguration =>
-                                            {
-                                                requestConfiguration.QueryParameters.Select = new[] { "displayName" };
-                                            });
-
-
-
-                var requestId = await batchRequest.AddBatchRequestStepAsync(requestInformation);
-                requestIdTracker.Add(requestId, channel.ChannelId);
-            }
-
-            var batchResponse = await _graphServiceClient.Batch.PostAsync(batchRequest);
-
-            foreach (var statusCodeResponse in await batchResponse.GetResponsesStatusCodesAsync())
-            {
-                using var response = await batchResponse.GetResponseByIdAsync(statusCodeResponse.Key);
-                if (response.IsSuccessStatusCode)
-                {
-                    var responseHandler = new ResponseHandler<Channel>();
-                    var channel = await responseHandler.HandleResponseAsync<HttpResponseMessage, Channel>(response, null);
-                    if (channel != null)
-                        channelNames.Add(requestIdTracker[statusCodeResponse.Key], channel.DisplayName);
-                }
-                else
-                {
-                    channelNames.Add(requestIdTracker[statusCodeResponse.Key], null);
-                }
-            }
-
-            return channelNames;
-        }
         public async Task<Dictionary<Guid, List<Guid>>> GetGroupOwnersAsync(List<Guid> groupIds)
         {
             var groupOwners = new Dictionary<Guid, List<Guid>>();

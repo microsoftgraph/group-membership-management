@@ -158,11 +158,11 @@ namespace Hosts.FunctionBase
             {
                 var mailCredentials = services.GetService<IOptions<EmailSenderRecipient>>();
                 var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
-                graphCredentials.EmailSenderUserName = mailCredentials.Value.SenderAddress;
-                graphCredentials.EmailSenderPassword = mailCredentials.Value.SenderPassword;
+                graphCredentials.ServiceAccountUserName = mailCredentials.Value.SenderAddress;
+                graphCredentials.ServiceAccountPassword = mailCredentials.Value.SenderPassword;
 
                 return new MailRepository(
-                    new GraphServiceClient(FunctionAppDI.CreateMailAuthProvider(graphCredentials)),
+                    new GraphServiceClient(FunctionAppDI.CreateServiceAccountAuthProvider(graphCredentials)),
                         services.GetService<IMailAdaptiveCardConfig>(),
                         services.GetService<ILocalizationRepository>(),
                         services.GetService<ILoggingRepository>(),

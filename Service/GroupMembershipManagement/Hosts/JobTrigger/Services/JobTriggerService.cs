@@ -1,6 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.ApplicationInsights;
 using Models;
+using Models.Entities;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -9,18 +12,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.ApplicationInsights;
-using Models.Entities;
-using Azure.Storage.Blobs.Models;
 
 namespace Services
 {
-	public class JobTriggerService : IJobTriggerService
+    public class JobTriggerService : IJobTriggerService
     {
         private const string EmailSubject = "EmailSubject";
         private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
-        private const string SyncDisabledNoOwnerEmailBody = "SyncDisabledNoOwnerEmailBody";
-        private const int JobsBatchSize = 20;
+
         enum Metric
         {
             SyncJobsCount,
@@ -33,7 +32,9 @@ namespace Services
         private readonly IJobNotificationsRepository _jobNotificationRepository;
         private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
+        private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly string _gmmAppId;
+        private readonly Guid _gmmTeamsChannelServiceAccountId;
         private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IGMMResources _gmmResources;
@@ -58,7 +59,9 @@ namespace Services
             IJobNotificationsRepository jobNotificationRepository,
             IServiceBusTopicsRepository serviceBusTopicsRepository,
             IGraphGroupRepository graphGroupRepository,
+            ITeamsChannelRepository teamsChannelRepository,
             IKeyVaultSecret<IJobTriggerService> gmmAppId,
+            IKeyVaultSecret<IJobTriggerService, Guid> gmmTeamsChannelServiceAccountId,
             IMailRepository mailRepository,
             IEmailSenderRecipient emailSenderAndRecipients,
             IGMMResources gmmResources,
@@ -70,10 +73,12 @@ namespace Services
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
-			_notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
-			_serviceBusTopicsRepository = serviceBusTopicsRepository ?? throw new ArgumentNullException(nameof(serviceBusTopicsRepository));
+            _notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
+            _serviceBusTopicsRepository = serviceBusTopicsRepository ?? throw new ArgumentNullException(nameof(serviceBusTopicsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
+            _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException( nameof(teamsChannelRepository));
             _gmmAppId = gmmAppId.Secret;
+            _gmmTeamsChannelServiceAccountId = gmmTeamsChannelServiceAccountId.Secret;
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
             _jobTriggerConfig = jobTriggerConfig ?? throw new ArgumentNullException(nameof(jobTriggerConfig));
@@ -93,18 +98,33 @@ namespace Services
             var jobTriggerThresholdExceeded = HasJobTriggerThresholdExceeded(syncJobsCount, totalSyncJobsCount);
             return (filteredJobs, jobTriggerThresholdExceeded, _jobTriggerConfig.JobCountThreshold);
         }
-
-        public async Task<string> GetGroupNameAsync(SyncJob job)
+        public async Task<string> GetDestinationNameAsync(SyncJob job)
         {
-            var destinationObjectId = (await ParseDestinationAsync(job)).ObjectId;
-            return await _graphGroupRepository.GetGroupNameAsync(destinationObjectId);
-        }
+            var destination = (await ParseDestinationAsync(job));
 
+            if (destination.Type == "TeamsChannelMembership")
+            {
+                var channel = new AzureADTeamsChannel
+                {
+                    ObjectId = destination.Value.ObjectId,
+                    ChannelId = (destination.Value as TeamsChannelDestinationValue).ChannelId
+                };
+
+                return await _teamsChannelRepository.GetTeamsChannelNameAsync(channel);
+            }
+            else if (destination.Type == "GroupMembership")
+            {
+                var objectId = destination.Value.ObjectId;
+                return await _graphGroupRepository.GetGroupNameAsync(objectId);
+            }
+
+            return null;
+        }
         public async Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters)
         {
             bool isNotificationDisabled = await IsNotificationDisabledAsync(job.Id, emailContentTemplateName);
 
-            if (isNotificationDisabled) 
+            if (isNotificationDisabled)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
@@ -118,7 +138,7 @@ namespace Services
 
             if (!SyncDisabledNoGroupEmailBody.Equals(emailContentTemplateName, StringComparison.InvariantCultureIgnoreCase))
             {
-                var destinationObjectId = (await ParseDestinationAsync(job)).ObjectId;
+                var destinationObjectId = (await ParseDestinationAsync(job)).Value.ObjectId;
                 var owners = await _graphGroupRepository.GetGroupOwnersAsync(destinationObjectId);
                 ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
             }
@@ -139,19 +159,18 @@ namespace Services
 
             await _mailRepository.SendMailAsync(message, job.RunId);
         }
-
         public async Task<bool> IsNotificationDisabledAsync(Guid jobId, string notificationTypeName)
         {
             var notificationType = await _notificationTypesRepository.GetNotificationTypeByNotificationTypeNameAsync(notificationTypeName);
 
-             if (notificationType == null)
+            if (notificationType == null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     RunId = jobId,
                     Message = $"No notification type ID found for notification type name '{notificationTypeName}'."
                 });
-                return false; 
+                return false;
             }
 
             if (notificationType.Disabled)
@@ -166,7 +185,6 @@ namespace Services
 
             return await _jobNotificationRepository.IsNotificationDisabledForJobAsync(jobId, notificationType.Id);
         }
-
         public async Task UpdateSyncJobAsync(SyncStatus? status, SyncJob job)
         {
             if (status == SyncStatus.InProgress)
@@ -194,67 +212,45 @@ namespace Services
 
             await _databaseSyncJobsRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
         }
-
         public async Task SendMessageAsync(SyncJob job)
         {
             await _serviceBusTopicsRepository.AddMessageAsync(job);
         }
-
-        public async Task<bool> GroupExistsAndGMMCanWriteToGroupAsync(SyncJob job)
+        public async Task<DestinationVerifierResult> DestinationExistsAndGMMCanWriteToItAsync(SyncJob job)
         {
-            var destinationObjectId = (await ParseDestinationAsync(job)).ObjectId;
-            foreach (var strat in new JobVerificationStrategy[] {
-                new JobVerificationStrategy { TestFunction = _graphGroupRepository.GroupExists, StatusMessage = $"Destination group {destinationObjectId} exists.", ErrorMessage = $"destination group {destinationObjectId} doesn't exist.", EmailBody = SyncDisabledNoGroupEmailBody },
-                new JobVerificationStrategy { TestFunction = (groupId) => GMMCanWriteToGroupAsync(groupId), StatusMessage = $"GMM is an owner of destination group {destinationObjectId}.", ErrorMessage = $"GMM is not an owner of destination group {destinationObjectId}.", EmailBody = SyncDisabledNoOwnerEmailBody }})
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Checking: " + strat.StatusMessage });
-                // right now, we stop after the first failed strategy, because it doesn't make sense to find that the destination group doesn't exist and then check if we own it.
-                // this can change in the future, when/if we have more than two things to check here.
-                if (await strat.TestFunction(destinationObjectId) == false)
-                {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Marking sync job as failed because " + strat.ErrorMessage });
-                    var groupName = await _graphGroupRepository.GetGroupNameAsync(destinationObjectId);
-                    await _mailRepository.SendMailAsync(new EmailMessage
-                    {
-                        Subject = EmailSubject,
-                        Content = strat.EmailBody,
-                        SenderAddress = _emailSenderAndRecipients.SenderAddress,
-                        SenderPassword = _emailSenderAndRecipients.SenderPassword,
-                        ToEmailAddresses = job.Requestor,
-                        CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
-                        AdditionalContentParams = new[] { destinationObjectId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses, groupName }
-                    }, job.RunId);
-                    return false;
-                }
+            var destinationType = (await ParseDestinationAsync(job)).Type;
 
-                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = "Check passed: " + strat.StatusMessage });
-            }
-
-            return true;
+            if (destinationType == "TeamsChannelMembership")
+                return await TeamsChannelExistsAndGMMCanWriteToItAsync(job);
+            else if (destinationType == "GroupMembership")
+                return await GroupExistsAndGMMCanWriteToItAsync(job);
+            else
+                return DestinationVerifierResult.NotFound;
         }
-
-        private async Task<bool> GMMCanWriteToGroupAsync(Guid groupId)
-        {
-            if (_jobTriggerConfig.GMMHasGroupReadWriteAllPermissions)
-                return true;
-
-            var isAppIdOwner = await _graphGroupRepository.IsAppIDOwnerOfGroup(_gmmAppId, groupId);
-            return isAppIdOwner;
-        }
-
         public async Task<List<string>> GetGroupEndpointsAsync(SyncJob job)
         {
-            var destinationObjectId = (await ParseDestinationAsync(job)).ObjectId;
+            var destinationObjectId = (await ParseDestinationAsync(job)).Value.ObjectId;
             return await _graphGroupRepository.GetGroupEndpointsAsync(destinationObjectId);
         }
-
-        public async Task<(bool IsValid, AzureADGroup DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob)
+        public async Task<(bool IsValid, string DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob)
         {
             var destinationObject = await ParseDestinationAsync(syncJob);
-            return destinationObject == null ? (false, null) : (true, destinationObject);
-        }
 
-        public async Task<AzureADGroup> ParseDestinationAsync(SyncJob syncJob)
+            if (destinationObject == null)
+            {
+                return (false, null);
+            }
+            else
+            {
+                var serializedDestinationObject = JsonConvert.SerializeObject(destinationObject, Formatting.Indented, new JsonSerializerSettings
+                {
+                    TypeNameHandling = TypeNameHandling.All
+                });
+
+                return (true, serializedDestinationObject);
+            }
+        }
+        public async Task<DestinationObject> ParseDestinationAsync(SyncJob syncJob)
         {
             if (string.IsNullOrWhiteSpace(syncJob.Destination)) return null;
 
@@ -273,34 +269,29 @@ namespace Services
             {
                 if (destinationQuery["value"].SelectToken("channelId") == null) return null;
 
-                return new AzureADTeamsChannel
+                return new DestinationObject
                 {
                     Type = type,
-                    ObjectId = objectIdGuid,
-                    ChannelId = destinationQuery["value"]["channelId"].Value<string>()
+                    Value = new TeamsChannelDestinationValue
+                    {
+                        ObjectId = objectIdGuid,
+                        ChannelId = destinationQuery["value"]["channelId"].Value<string>()
+                    }
                 };
             }
             else if (type == "GroupMembership")
             {
-                return new AzureADGroup
+                return new DestinationObject
                 {
                     Type = type,
-                    ObjectId = objectIdGuid
+                    Value = new GroupDestinationValue
+                    {
+                        ObjectId = objectIdGuid,
+                    }
                 };
             }
             else { return null; }
         }
-
-        private class JobVerificationStrategy
-        {
-            public delegate Task<bool> CanWriteToGroup(Guid groupId);
-
-            public CanWriteToGroup TestFunction { get; set; }
-            public string StatusMessage { get; set; }
-            public string ErrorMessage { get; set; }
-            public string EmailBody { get; set; }
-        }
-
         private IEnumerable<SyncJob> ApplyJobTriggerFilters(IEnumerable<SyncJob> jobs)
         {
             var allNonDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == false && x.Status != SyncStatus.InProgress.ToString());
@@ -308,23 +299,91 @@ namespace Services
             var inProgressSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.LastSuccessfulStartTime) > TimeSpan.FromHours(x.Period)) && x.Status == SyncStatus.InProgress.ToString());
             return allNonDryRunSyncJobs.Concat(allDryRunSyncJobs).Concat(inProgressSyncJobs);
         }
-
         private bool HasJobTriggerThresholdExceeded(int syncJobsCount, int totalSyncJobsCount)
+        {
+            if (syncJobsCount < _jobTriggerConfig.JobCountThreshold)
             {
-                if (syncJobsCount < _jobTriggerConfig.JobCountThreshold)
-                {
-                    return false;
-                }
-                else if (syncJobsCount >= _jobTriggerConfig.JobCountThreshold)
-                {
-                    double percentage = ((double)syncJobsCount / totalSyncJobsCount) * 100;
-
-                    if (percentage >= _jobTriggerConfig.JobPercentThreshold)
-                    {
-                        return true;
-                    }
-                }
                 return false;
             }
+            else if (syncJobsCount >= _jobTriggerConfig.JobCountThreshold)
+            {
+                double percentage = ((double)syncJobsCount / totalSyncJobsCount) * 100;
+
+                if (percentage >= _jobTriggerConfig.JobPercentThreshold)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        private async Task<DestinationVerifierResult> GroupExistsAndGMMCanWriteToItAsync(SyncJob job)
+        {
+            var groupId = (await ParseDestinationAsync(job)).Value.ObjectId;
+
+            if (!(await CheckGroupExists(job, groupId)))
+                return DestinationVerifierResult.NotFound;
+            if (!_jobTriggerConfig.GMMHasGroupReadWriteAllPermissions && !(await CheckGMMIsGroupOwner(job, groupId)))
+                return DestinationVerifierResult.NotOwnedByGMM;
+            return DestinationVerifierResult.Success;
+        }
+        private async Task<DestinationVerifierResult> TeamsChannelExistsAndGMMCanWriteToItAsync(SyncJob job)
+        {
+            var destinationObject = await ParseDestinationAsync(job);
+            var channel = new AzureADTeamsChannel
+            {
+                ObjectId = destinationObject.Value.ObjectId,
+                ChannelId = (destinationObject.Value as TeamsChannelDestinationValue).ChannelId
+            };
+
+            if (!await CheckTeamExists(job, channel))
+                return DestinationVerifierResult.NotFound;
+            if (!await CheckGMMIsTeamOwner(job, channel))
+                return DestinationVerifierResult.NotOwnedByGMM;
+            if (!await CheckChannelExists(job, channel))
+                return DestinationVerifierResult.NotFound;
+            if (!await CheckGMMIsChannelOwner(job, channel))
+                return DestinationVerifierResult.NotOwnedByGMM;
+
+            return DestinationVerifierResult.Success;
+        }
+        private async Task<bool> CheckGroupExists(SyncJob job, Guid groupId)
+        {
+            return await CheckAndLogAsync(job, $"group {groupId}",
+                () => _graphGroupRepository.GroupExists(groupId));
+        }
+        private async Task<bool> CheckGMMIsGroupOwner(SyncJob job, Guid groupId)
+        {
+            return await CheckAndLogAsync(job, $"GMM ownership of group {groupId}",
+                () => _graphGroupRepository.IsAppIDOwnerOfGroup(_gmmAppId, groupId));
+        }
+        private async Task<bool> CheckChannelExists(SyncJob job, AzureADTeamsChannel channel)
+        {
+            return await CheckAndLogAsync(job, $"channel {channel.ChannelId} in team {channel.ObjectId}",
+                () => _teamsChannelRepository.TeamsChannelExistsAsync(channel, job.RunId));
+        }
+        private async Task<bool> CheckTeamExists(SyncJob job, AzureADTeamsChannel channel)
+        {
+            return await CheckAndLogAsync(job, $"team {channel.ObjectId}",
+                () => _graphGroupRepository.GroupExists(channel.ObjectId));
+        }
+        private async Task<bool> CheckGMMIsTeamOwner(SyncJob job, AzureADTeamsChannel channel)
+        {
+            return await CheckAndLogAsync(job, $"GMM ownership of team {channel.ObjectId}",
+                () => _graphGroupRepository.IsServiceAccountOwnerOfGroupAsync(_gmmTeamsChannelServiceAccountId, channel.ObjectId));
+        }
+        private async Task<bool> CheckGMMIsChannelOwner(SyncJob job, AzureADTeamsChannel channel)
+        {
+            return await CheckAndLogAsync(job, $"GMM ownership of channel {channel.ChannelId} in team {channel.ObjectId}",
+                () => _teamsChannelRepository.IsServiceAccountOwnerOfChannelAsync(_gmmTeamsChannelServiceAccountId, channel, job.RunId));
+        }
+        private async Task<bool> CheckAndLogAsync(SyncJob job, string checkDescription, Func<Task<bool>> checkFunc)
+        {
+            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = $"Checking: {checkDescription} exists." });
+            bool result = await checkFunc();
+            string resultMessage = result ? "passed" : "failed";
+            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = $"Check {resultMessage}: {checkDescription} {(result ? "exists" : "does not exist")}." });
+            return result;
+        }
+
     }
 }

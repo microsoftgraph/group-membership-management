@@ -176,9 +176,9 @@ namespace Repositories.ServiceBusTopics.Tests
             throw new NotImplementedException();
         }
 
-        public Task<Dictionary<string, string>> GetTeamsChannelsNamesAsync(List<AzureADTeamsChannel> channels)
+        public Task<bool> IsServiceAccountOwnerOfGroupAsync(Guid serviceAccountObjectId, Guid groupObjectId)
         {
-            throw new NotImplementedException();
+            return Task.FromResult(GroupsGMMOwns.Contains(groupObjectId));
         }
     }
 }

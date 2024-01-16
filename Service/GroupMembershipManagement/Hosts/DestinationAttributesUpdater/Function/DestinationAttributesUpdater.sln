@@ -39,6 +39,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mocks", "..\..
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Tests", "..\Services.Tests\Services.Tests.csproj", "{240BD6A9-53D1-4706-A473-DED4A7F0C48A}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.TeamsChannel", "..\..\..\Repositories.TeamsChannel\Repositories.TeamsChannel.csproj", "{3FA6C235-0A1E-41BC-A203-CC7607B29875}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -101,6 +103,10 @@ Global
 		{240BD6A9-53D1-4706-A473-DED4A7F0C48A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{240BD6A9-53D1-4706-A473-DED4A7F0C48A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{240BD6A9-53D1-4706-A473-DED4A7F0C48A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3FA6C235-0A1E-41BC-A203-CC7607B29875}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3FA6C235-0A1E-41BC-A203-CC7607B29875}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3FA6C235-0A1E-41BC-A203-CC7607B29875}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3FA6C235-0A1E-41BC-A203-CC7607B29875}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

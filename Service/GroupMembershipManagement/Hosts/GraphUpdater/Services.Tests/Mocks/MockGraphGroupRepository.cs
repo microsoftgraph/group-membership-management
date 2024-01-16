@@ -168,5 +168,10 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task<bool> IsServiceAccountOwnerOfGroupAsync(Guid serviceAccountObjectId, Guid groupObjectId)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

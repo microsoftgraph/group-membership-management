@@ -31,9 +31,9 @@ namespace Common.DependencyInjection
             return new ClientCertificateCredential(creds.TenantId, creds.ClientId, GetCertificate(creds.ClientCertificateName, creds.KeyVaultName));
         }
 
-        public static TokenCredential CreateMailAuthProvider(GraphCredentials creds)
+        public static TokenCredential CreateServiceAccountAuthProvider(GraphCredentials creds)
         {
-            return new UsernamePasswordCredential(creds.EmailSenderUserName, creds.EmailSenderPassword, creds.TenantId, creds.ClientId);
+            return new UsernamePasswordCredential(creds.ServiceAccountUserName, creds.ServiceAccountPassword, creds.TenantId, creds.ClientId);
         }
 
         private static X509Certificate2 GetCertificate(string certificateName, string keyVaultName)

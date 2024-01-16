@@ -19,10 +19,10 @@ namespace Repositories.Contracts
         Task<Dictionary<Guid, string>> GetGroupNamesAsync(List<Guid> objectIds);
         Task<List<string>> GetGroupEndpointsAsync(Guid groupId);
         Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId);
+        Task<bool> IsServiceAccountOwnerOfGroupAsync(Guid serviceAccountObjectId, Guid groupObjectId);
         Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId);
         Task<bool> IsEmailRecipientMemberOfGroupAsync(string email, Guid groupObjectId);
         Task<Dictionary<Guid, List<Guid>>> GetDestinationOwnersAsync(List<Guid> objectIds);
-        Task<Dictionary<string, string>> GetTeamsChannelsNamesAsync(List<AzureADTeamsChannel> channels);
         Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0);
         Task<bool> GroupExists(Guid objectId);
         Task<bool> GroupExists(string groupName);

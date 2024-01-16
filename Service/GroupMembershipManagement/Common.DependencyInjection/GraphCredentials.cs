@@ -11,7 +11,7 @@ namespace Common.DependencyInjection
         public string RedirectURI { get; set; }
         public string KeyVaultName { get; set; }
         public string KeyVaultTenantId { get; set; }
-        public string EmailSenderUserName { get; set; }
-        public string EmailSenderPassword { get; set; }
+        public string ServiceAccountUserName { get; set; }
+        public string ServiceAccountPassword { get; set; }
     }
 }

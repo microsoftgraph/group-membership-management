@@ -13,6 +13,7 @@ using Repositories.Contracts;
 using Services.TeamsChannelUpdater;
 using Services.TeamsChannelUpdater.Contracts;
 using Repositories.TeamsChannel;
+using DIConcreteTypes;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
 [assembly: FunctionsStartup(typeof(Hosts.TeamsChannelUpdater.Startup))]
@@ -29,7 +30,11 @@ namespace Hosts.TeamsChannelUpdater
 
             builder.Services.AddSingleton((services) =>
             {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
+                var configuration = services.GetService<IConfiguration>();
+                var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
+                graphCredentials.ServiceAccountUserName = configuration["teamsChannelServiceAccountUsername"];
+                graphCredentials.ServiceAccountPassword = configuration["teamsChannelServiceAccountPassword"];
+                return new GraphServiceClient(FunctionAppDI.CreateServiceAccountAuthProvider(graphCredentials));
             })
             .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
             {

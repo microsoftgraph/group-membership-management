@@ -5,10 +5,7 @@ using JobTrigger.Activity.SchemaValidator;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Graph.Models.TermStore;
 using Models;
-using Models.Entities;
-using Models.ServiceBus;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
@@ -18,7 +15,6 @@ using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
 using System.Threading.Tasks;
-using static Microsoft.Azure.Amqp.Serialization.SerializableType;
 
 namespace Hosts.JobTrigger
 {
@@ -27,6 +23,7 @@ namespace Hosts.JobTrigger
         private const string EmailSubject = "EmailSubject";
         private const string SyncStartedEmailBody = "SyncStartedEmailBody";
         private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
+        private const string SyncDisabledNoOwnerEmailBody = "SyncDisabledNoOwnerEmailBody";
         private const string DisabledJobEmailSubject = "DisabledJobEmailSubject";
 
         private readonly ILoggingRepository _loggingRepository = null;
@@ -77,12 +74,11 @@ namespace Hosts.JobTrigger
 
                 var frequency = await context.CallActivityAsync<int>(nameof(JobTrackerFunction), syncJob);
 
-                AzureADGroup destinationObject = null;
+                DestinationObject destinationObject = null;
 
                 try
                 {
-                    var parsedAndValidatedDestination = await context.CallActivityAsync<(bool IsValid, AzureADGroup DestinationObject)>(nameof(ParseAndValidateDestinationFunction), syncJob);
-                    destinationObject = parsedAndValidatedDestination.DestinationObject;
+                    var parsedAndValidatedDestination = await context.CallActivityAsync<(bool IsValid, string DestinationObject)>(nameof(ParseAndValidateDestinationFunction), syncJob);
 
                     if (!parsedAndValidatedDestination.IsValid)
                     {
@@ -99,15 +95,21 @@ namespace Hosts.JobTrigger
                         return;
                     }
 
+                    destinationObject = JsonConvert.DeserializeObject<DestinationObject>(parsedAndValidatedDestination.DestinationObject, new JsonSerializerSettings
+                    {
+                        TypeNameHandling = TypeNameHandling.Auto
+                    });
+
                     if (destinationObject.Type == "GroupMembership")
                     {
-                        syncJob.Destination = $"[{{\"type\":\"{destinationObject.Type}\",\"value\":{{\"objectId\":\"{destinationObject.ObjectId}\"}}}}]";
+                        syncJob.Destination = $"[{{\"type\":\"{destinationObject.Type}\",\"value\":{{\"objectId\":\"{destinationObject.Value.ObjectId}\"}}}}]";
                     }
                     else if (destinationObject.Type == "TeamsChannelMembership")
                     {
-                        syncJob.Destination = $"[{{\"type\":\"{destinationObject.Type}\",\"value\":{{\"objectId\":\"{destinationObject.ObjectId}\",\"channelId\":\"{(destinationObject as AzureADTeamsChannel).ChannelId}\"}}}}]";
+                        syncJob.Destination = $"[{{\"type\":\"{destinationObject.Type}\",\"value\":{{\"objectId\":\"{destinationObject.Value.ObjectId}\",\"channelId\":\"{(destinationObject.Value as TeamsChannelDestinationValue).ChannelId}\"}}}}]";
                     }
 
+                    // Updates the job with the standardized destination.
                     await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { SyncJob = syncJob });
 
                 }
@@ -131,11 +133,11 @@ namespace Hosts.JobTrigger
                 {
                     if (syncJob.Status == SyncStatus.Idle.ToString())
                     {
-                        TrackIdleJobsEvent(frequency, destinationObject.ObjectId);
+                        TrackIdleJobsEvent(frequency, destinationObject.Value.ObjectId);
                     }
                     else if (syncJob.Status == SyncStatus.InProgress.ToString())
                     {
-                        TrackInProgressJobsEvent(frequency, destinationObject.ObjectId, syncJob.RunId);
+                        TrackInProgressJobsEvent(frequency, destinationObject.Value.ObjectId, syncJob.RunId);
                     }
                 }
 
@@ -149,6 +151,7 @@ namespace Hosts.JobTrigger
                         var hasValidJson = await context.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), syncJob);
                         if (!hasValidJson)
                         {
+                            await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.SchemaError, SyncJob = syncJob });
                             await context.CallActivityAsync(nameof(TelemetryTrackerFunction),
                                                             new TelemetryTrackerRequest
                                                             {
@@ -194,26 +197,52 @@ namespace Hosts.JobTrigger
                     TrackExclusionaryEvent(syncJob);
                 }
 
-                var groupInformation = await context.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), syncJob);
+                var verifierResult = await context.CallActivityAsync<DestinationVerifierResult>(nameof(DestinationVerifierFunction), syncJob);
 
-                if (string.IsNullOrEmpty(groupInformation.Name))
+                if (verifierResult == DestinationVerifierResult.NotFound)
                 {
                     await context.CallActivityAsync(nameof(EmailSenderFunction),
                                                     new EmailSenderRequest
                                                     {
-                                                        SyncJobGroup = groupInformation,
+                                                        SyncJob = syncJob,
                                                         EmailSubjectTemplateName = DisabledJobEmailSubject,
                                                         EmailContentTemplateName = SyncDisabledNoGroupEmailBody,
                                                         AdditionalContentParams = new[]
                                                         {
-                                                        destinationObject.ObjectId.ToString(),
+                                                        destinationObject.Value.ObjectId.ToString(),
                                                         _emailSenderAndRecipients.SyncDisabledCCAddresses
                                                         }
                                                     });
 
                     await context.CallActivityAsync(nameof(JobUpdaterFunction),
                                                     new JobUpdaterRequest { Status = SyncStatus.DestinationGroupNotFound, SyncJob = syncJob });
-                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationGroupNotFound, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction),
+                                                    new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationGroupNotFound, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
+                    return;
+                }
+
+                var destinationName = await context.CallActivityAsync<string>(nameof(DestinationNameReaderFunction), syncJob);
+
+                if (verifierResult == DestinationVerifierResult.NotOwnedByGMM)
+                {
+                    await context.CallActivityAsync(nameof(EmailSenderFunction),
+                                                    new EmailSenderRequest
+                                                    {
+                                                        SyncJob = syncJob,
+                                                        EmailSubjectTemplateName = DisabledJobEmailSubject,
+                                                        EmailContentTemplateName = SyncDisabledNoOwnerEmailBody,
+                                                        AdditionalContentParams = new[]
+                                                        {
+                                                        destinationObject.Value.ObjectId.ToString(),
+                                                        _emailSenderAndRecipients.SyncDisabledCCAddresses,
+                                                        destinationName
+                                                        }
+                                                    });
+
+                    await context.CallActivityAsync(nameof(JobUpdaterFunction),
+                                                    new JobUpdaterRequest { Status = SyncStatus.NotOwnerOfDestinationGroup, SyncJob = syncJob });
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction),
+                                                    new TelemetryTrackerRequest { JobStatus = SyncStatus.NotOwnerOfDestinationGroup, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
                     return;
                 }
 
@@ -221,45 +250,24 @@ namespace Hosts.JobTrigger
                     await context.CallActivityAsync(nameof(EmailSenderFunction),
                                                     new EmailSenderRequest
                                                     {
-                                                        SyncJobGroup = groupInformation,
+                                                        SyncJob = syncJob,
                                                         EmailSubjectTemplateName = EmailSubject,
                                                         EmailContentTemplateName = SyncStartedEmailBody,
                                                         AdditionalContentParams = new[]
                                                         {
-                                                            destinationObject.ObjectId.ToString(),
-                                                            groupInformation.Name,
+                                                            destinationObject.Value.ObjectId.ToString(),
+                                                            destinationName,
                                                             _emailSenderAndRecipients.SupportEmailAddresses,
                                                             _gmmResources.LearnMoreAboutGMMUrl,
                                                             syncJob.Requestor
                                                         }
+                   
                                                     });
 
-                var canWriteToGroup = await context.CallActivityAsync<bool>(nameof(GroupVerifierFunction), new GroupVerifierRequest()
-                {
-                    SyncJob = syncJob,
-                });
-
-                var statusValue = SyncStatus.StuckInProgress;
-
-                if (!canWriteToGroup)
-                {
-                    statusValue = SyncStatus.NotOwnerOfDestinationGroup;
-                }
-                else if (syncJob.Status == SyncStatus.Idle.ToString())
-                {
-                    statusValue = SyncStatus.InProgress;
-                }
-
+                var statusValue = syncJob.Status == SyncStatus.Idle.ToString() ? SyncStatus.InProgress : SyncStatus.StuckInProgress;
                 await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = statusValue, SyncJob = syncJob });
+                await context.CallActivityAsync(nameof(TopicMessageSenderFunction), syncJob);    
 
-                if (canWriteToGroup)
-                {
-                    await context.CallActivityAsync(nameof(TopicMessageSenderFunction), syncJob);
-                }
-                else
-                {
-                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.NotOwnerOfDestinationGroup, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
-                }
             }
             catch (Exception ex)
             {

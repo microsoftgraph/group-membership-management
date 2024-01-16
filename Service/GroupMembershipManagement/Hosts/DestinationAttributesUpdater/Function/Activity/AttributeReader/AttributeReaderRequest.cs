@@ -9,7 +9,7 @@ namespace Hosts.DestinationAttributesUpdater
 {
     public class AttributeReaderRequest
     {
-        public List<(AzureADGroup Destination, Guid JobId)> Destinations { get; set; }
+        public List<(string Destination, Guid JobId)> Destinations { get; set; }
         public string DestinationType { get; set; }
     }
 }

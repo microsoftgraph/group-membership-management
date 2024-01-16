@@ -24,12 +24,11 @@ namespace Hosts.JobTrigger
         [FunctionName(nameof(EmailSenderFunction))]
         public async Task SendEmailAsync([ActivityTrigger] EmailSenderRequest request)
         {
-            var job = request.SyncJobGroup.SyncJob;
+            var job = request.SyncJob;
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = job.RunId }, VerbosityLevel.DEBUG);
             _jobTriggerService.RunId = job.RunId ?? Guid.Empty;
             await _jobTriggerService.SendEmailAsync(job, request.EmailSubjectTemplateName, request.EmailContentTemplateName, request.AdditionalContentParams);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = job.RunId }, VerbosityLevel.DEBUG);
-
         }
     }
 }

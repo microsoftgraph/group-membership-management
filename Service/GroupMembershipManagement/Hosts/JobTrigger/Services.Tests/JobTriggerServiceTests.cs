@@ -21,6 +21,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 using System.Collections.Generic;
 using Repositories.Logging;
 using Models.Entities;
+using Newtonsoft.Json;
 
 namespace Services.Tests
 {
@@ -34,6 +35,7 @@ namespace Services.Tests
         private MockLoggingRepository _loggingRepository = null;
         private MockServiceBusTopicsRepository _serviceBusTopicsRepository = null;
         private MockGraphGroupRepository _graphGroupRepository;
+        private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository = null;
         private MockMailRepository _mailRepository = null;
         private GMMResources _gMMResources = null;
         private MockJobTriggerConfig _jobTriggerConfig = null;
@@ -58,6 +60,7 @@ namespace Services.Tests
             _loggingRepository = new MockLoggingRepository();
             _serviceBusTopicsRepository = new MockServiceBusTopicsRepository();
             _graphGroupRepository = new MockGraphGroupRepository();
+            _mockTeamsChannelRepository = new Mock<ITeamsChannelRepository>();
             _mailRepository = new MockMailRepository();
             _jobTriggerConfig = new MockJobTriggerConfig();
             _jobTriggerService = new JobTriggerService(
@@ -67,7 +70,9 @@ namespace Services.Tests
                                         _jobNotificationRepository,
                                         _serviceBusTopicsRepository,
                                         _graphGroupRepository,
-                                        new MockKeyVaultSecret<IJobTriggerService>(), _mailRepository,
+                                        _mockTeamsChannelRepository.Object,
+                                        new MockKeyVaultSecret<IJobTriggerService>(),
+                                        new MockKeyVaultSecret<IJobTriggerService, Guid>(), _mailRepository,
                                         new MockEmail<IEmailSenderRecipient>(),
                                         _gMMResources,
                                         _jobTriggerConfig,
@@ -89,7 +94,13 @@ namespace Services.Tests
             var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestinationAsync(job);
 
             Assert.AreEqual(true, parsedAndValidated.IsValid);
-            Assert.AreEqual(objectId, parsedAndValidated.DestinationObject.ObjectId);
+
+            var destinationObject = JsonConvert.DeserializeObject<DestinationObject>(parsedAndValidated.DestinationObject, new JsonSerializerSettings
+            {
+                TypeNameHandling = TypeNameHandling.Auto
+            });
+
+            Assert.AreEqual(objectId, destinationObject.Value.ObjectId);
         }
 
         [TestMethod]
@@ -103,8 +114,14 @@ namespace Services.Tests
             var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestinationAsync(job);
 
             Assert.AreEqual(true, parsedAndValidated.IsValid);
-            Assert.AreEqual(objectId, parsedAndValidated.DestinationObject.ObjectId);
-            Assert.AreEqual(channelId, (parsedAndValidated.DestinationObject as AzureADTeamsChannel).ChannelId);
+
+            var destinationObject = JsonConvert.DeserializeObject<DestinationObject>(parsedAndValidated.DestinationObject, new JsonSerializerSettings
+            {
+                TypeNameHandling = TypeNameHandling.Auto
+            });
+
+            Assert.AreEqual(objectId, destinationObject.Value.ObjectId);
+            Assert.AreEqual(channelId, (destinationObject.Value as TeamsChannelDestinationValue).ChannelId);
         }
 
         [TestMethod]
@@ -176,13 +193,69 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs.Take(enabledJobs))
             {
-                var response = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
-                Assert.AreEqual(false, response);
+                var response = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(job);
+                Assert.AreEqual(DestinationVerifierResult.NotFound, response);
             }
         }
 
         [TestMethod]
-        public async Task VerifyJobsGMMDoesntOwnAreErrored()
+        public async Task VerifyJobsWithNonexistentTargetTeamAreErrored()
+        {
+            var enabledJobs = 5;
+            var disabledJobs = 3;
+
+            _mockTeamsChannelRepository.Setup<Task<bool>>(repo => repo.IsServiceAccountOwnerOfChannelAsync(It.IsAny<Guid>(), It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid>()))
+                .ReturnsAsync(false);
+
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(enabledJobs, Organization));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(disabledJobs, Organization));
+
+            var objectId = Guid.NewGuid();
+            var channelId = "Channel_ID";
+            var channelDestination = $"[{{\"type\":\"TeamsChannelMembership\",\"value\":{{\"objectId\":\"{objectId}\",\"channelId\":\"{channelId}\"}}}}]";
+
+            _syncJobRepository.Jobs.ForEach(x => x.Destination = channelDestination);
+
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
+
+            foreach (var job in _syncJobRepository.Jobs.Take(enabledJobs))
+            {
+                var response = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(job);
+                Assert.AreEqual(DestinationVerifierResult.NotFound, response);
+            }
+        }
+
+        [TestMethod]
+        public async Task VerifyJobsWithNonexistentTargetChannelsAreErrored()
+        {
+            var enabledJobs = 5;
+            var disabledJobs = 3;
+
+            _mockTeamsChannelRepository.Setup<Task<bool>>(repo => repo.TeamsChannelExistsAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid>()))
+                .ReturnsAsync(false);
+
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(enabledJobs, Organization));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(disabledJobs, Organization));
+
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
+
+            var objectId = Guid.NewGuid();
+            var channelId = "Channel_ID";
+            var channelDestination = $"[{{\"type\":\"TeamsChannelMembership\",\"value\":{{\"objectId\":\"{objectId}\",\"channelId\":\"{channelId}\"}}}}]";
+
+            _syncJobRepository.Jobs.ForEach(x => x.Destination = channelDestination);
+
+            foreach (var job in _syncJobRepository.Jobs.Take(enabledJobs))
+            {
+                var response = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(job);
+                Assert.AreEqual(DestinationVerifierResult.NotFound, response);
+            }
+        }
+
+        [TestMethod]
+        public async Task VerifyJobsWithGroupDestinationsGMMDoesntOwnAreErrored()
         {
             var enabledJobs = 5;
             var disabledJobs = 3;
@@ -194,8 +267,44 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs.Take(enabledJobs))
             {
-                var response = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
-                Assert.AreEqual(false, response);
+                var response = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(job);
+                Assert.AreEqual(DestinationVerifierResult.NotOwnedByGMM, response);
+            }
+        }
+
+        [TestMethod]
+        public async Task VerifyJobsWithChannelDestinationsGMMDoesntOwnAreErrored()
+        {
+            var enabledJobs = 5;
+            var disabledJobs = 3;
+
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(enabledJobs, Organization));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(disabledJobs, Organization));
+
+            var objectId = Guid.NewGuid();
+            var channelId = "Channel_ID";
+            var channelDestination = $"[{{\"type\":\"TeamsChannelMembership\",\"value\":{{\"objectId\":\"{objectId}\",\"channelId\":\"{channelId}\"}}}}]";
+
+            _syncJobRepository.Jobs.ForEach(x => x.Destination = channelDestination);
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
+
+            foreach (var job in _syncJobRepository.Jobs.Take(enabledJobs))
+            {
+                var response = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(job);
+                Assert.AreEqual(DestinationVerifierResult.NotOwnedByGMM, response);
+            }
+
+            _mockTeamsChannelRepository.Setup<Task<bool>>(repo => repo.IsServiceAccountOwnerOfChannelAsync(It.IsAny<Guid>(), It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid>()))
+                .ReturnsAsync(false);
+            _mockTeamsChannelRepository.Setup<Task<bool>>(repo => repo.TeamsChannelExistsAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid>()))
+                .ReturnsAsync(true);
+
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
+
+            foreach (var job in _syncJobRepository.Jobs.Take(enabledJobs))
+            {
+                var response = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(job);
+                Assert.AreEqual(DestinationVerifierResult.NotOwnedByGMM, response);
             }
         }
 
@@ -251,8 +360,8 @@ namespace Services.Tests
       
             foreach (var job in _syncJobRepository.Jobs)
             {                
-                var canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
-                await _jobTriggerService.UpdateSyncJobAsync(canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
+                var canWriteToGroup = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(job);
+                await _jobTriggerService.UpdateSyncJobAsync(canWriteToGroup == DestinationVerifierResult.Success ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
                 Assert.AreEqual(job.Status, SyncStatus.InProgress.ToString());
             }
         }
@@ -270,8 +379,8 @@ namespace Services.Tests
             foreach (var job in _syncJobRepository.Jobs)
             {
                 job.Status = SyncStatus.InProgress.ToString();
-                var canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
-                await _jobTriggerService.UpdateSyncJobAsync(canWriteToGroup ? SyncStatus.StuckInProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
+                var canWriteToGroup = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(job);
+                await _jobTriggerService.UpdateSyncJobAsync(canWriteToGroup == DestinationVerifierResult.Success ? SyncStatus.StuckInProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
                 Assert.AreEqual(job.Status, SyncStatus.StuckInProgress.ToString());
             }
         }
@@ -286,8 +395,8 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs)
             {
-                var canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
-                await _jobTriggerService.UpdateSyncJobAsync(canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
+                var canWriteToGroup = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(job);
+                await _jobTriggerService.UpdateSyncJobAsync(canWriteToGroup == DestinationVerifierResult.Success ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
                 Assert.AreEqual(job.Status, SyncStatus.NotOwnerOfDestinationGroup.ToString());
             }
         }
@@ -305,8 +414,8 @@ namespace Services.Tests
 
             foreach (var job in _syncJobRepository.Jobs)
             {
-                var canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(job);
-                await _jobTriggerService.UpdateSyncJobAsync(canWriteToGroup ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
+                var canWriteToGroup = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(job);
+                await _jobTriggerService.UpdateSyncJobAsync(canWriteToGroup == DestinationVerifierResult.Success ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
                 Assert.AreEqual(job.Status, SyncStatus.InProgress.ToString());
             }
         }
@@ -359,7 +468,9 @@ namespace Services.Tests
                 _jobNotificationRepository,
                 _serviceBusTopicsRepository,
                 _graphGroupRepository,
+                _mockTeamsChannelRepository.Object,
                 new MockKeyVaultSecret<IJobTriggerService>(),
+                new MockKeyVaultSecret<IJobTriggerService, Guid>(),
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
                 _gMMResources,
@@ -406,7 +517,9 @@ namespace Services.Tests
 				_jobNotificationRepository,
 				_serviceBusTopicsRepository,
                 _graphGroupRepository,
+                _mockTeamsChannelRepository.Object,
                 new MockKeyVaultSecret<IJobTriggerService>(),
+                new MockKeyVaultSecret<IJobTriggerService, Guid>(),
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
                 _gMMResources,
@@ -447,7 +560,9 @@ namespace Services.Tests
 				_jobNotificationRepository,
 				_serviceBusTopicsRepository,
                 _graphGroupRepository,
+                _mockTeamsChannelRepository.Object,
                 new MockKeyVaultSecret<IJobTriggerService>(),
+                new MockKeyVaultSecret<IJobTriggerService, Guid>(),
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
                 _gMMResources,
@@ -487,7 +602,9 @@ namespace Services.Tests
 				_jobNotificationRepository,
 				_serviceBusTopicsRepository,
                 _graphGroupRepository,
+                _mockTeamsChannelRepository.Object,
                 new MockKeyVaultSecret<IJobTriggerService>(),
+                new MockKeyVaultSecret<IJobTriggerService, Guid>(),
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
                 _gMMResources,
@@ -543,8 +660,10 @@ namespace Services.Tests
 				_jobNotificationRepository,
 				_serviceBusTopicsRepository,
 				_graphGroupRepository,
-				new MockKeyVaultSecret<IJobTriggerService>(),
-				_mailRepository.Object,
+                _mockTeamsChannelRepository.Object,
+                new MockKeyVaultSecret<IJobTriggerService>(),
+                new MockKeyVaultSecret<IJobTriggerService, Guid>(),
+                _mailRepository.Object,
 				new MockEmail<IEmailSenderRecipient>(),
 				_gMMResources,
 				_jobTriggerConfig,
@@ -583,8 +702,10 @@ namespace Services.Tests
 				_jobNotificationRepository,
 				_serviceBusTopicsRepository,
 				_graphGroupRepository,
-				new MockKeyVaultSecret<IJobTriggerService>(),
-				_mailRepository.Object,
+                _mockTeamsChannelRepository.Object,
+                new MockKeyVaultSecret<IJobTriggerService>(),
+                new MockKeyVaultSecret<IJobTriggerService, Guid>(),
+                _mailRepository.Object,
 				new MockEmail<IEmailSenderRecipient>(),
 				_gMMResources,
 				_jobTriggerConfig,
@@ -664,6 +785,11 @@ namespace Services.Tests
         private class MockKeyVaultSecret<T> : IKeyVaultSecret<T>
         {
             public string Secret => "";
+        }
+
+        private class MockKeyVaultSecret<TType, TSecret> : IKeyVaultSecret<TType, TSecret>
+        {
+            public TSecret Secret => default;
         }
     }
 }

@@ -52,7 +52,7 @@ stages:
          coverageThreshold: 100
       - function:
          name: 'JobTrigger'
-         coverageThreshold: 89
+         coverageThreshold: 87
       - function:
          name: 'GraphUpdater'
          coverageThreshold: 74

@@ -37,7 +37,11 @@ namespace Hosts.TeamsChannelMembershipObtainer
 
             builder.Services.AddSingleton((services) =>
             {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
+                var configuration = services.GetService<IConfiguration>();
+                var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
+                graphCredentials.ServiceAccountUserName = configuration["teamsChannelServiceAccountUsername"];
+                graphCredentials.ServiceAccountPassword = configuration["teamsChannelServiceAccountPassword"];
+                return new GraphServiceClient(FunctionAppDI.CreateServiceAccountAuthProvider(graphCredentials));
             })
             .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
             {

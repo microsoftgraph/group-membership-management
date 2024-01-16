@@ -3,6 +3,7 @@
 
 using Models;
 using Models.Entities;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -14,53 +15,80 @@ namespace Services
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IDatabaseDestinationAttributesRepository _databaseDestinationAttributesRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
+        private readonly ITeamsChannelRepository _teamsChannelRepository;
 
-        public DestinationAttributesUpdaterService(IDatabaseSyncJobsRepository databaseSyncJobsRepository, IDatabaseDestinationAttributesRepository databaseDestinationAttributesRepository, IGraphGroupRepository graphGroupRepository)
+        public DestinationAttributesUpdaterService(
+            IDatabaseSyncJobsRepository databaseSyncJobsRepository, 
+            IDatabaseDestinationAttributesRepository databaseDestinationAttributesRepository, 
+            IGraphGroupRepository graphGroupRepository,
+            ITeamsChannelRepository teamsChannelRepository)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _databaseDestinationAttributesRepository = databaseDestinationAttributesRepository;
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
+            _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
         }
 
-        public async Task<List<(AzureADGroup Destination, Guid JobId)>> GetDestinationsAsync(string destinationType)
+        public async Task<List<(string Destination, Guid JobId)>> GetDestinationsAsync(string destinationType)
         {
             var jobs = await _databaseSyncJobsRepository.GetSyncJobsByDestinationAsync(destinationType);
-            var destinations = new List<(AzureADGroup Destination, Guid JobId)>();
+            var destinations = new List<(string Destination, Guid JobId)>();
 
             foreach (var job in jobs)
             {
                 var destinationToken = JArray.Parse(job.Destination).First();
-                AzureADGroup destination;
+                DestinationObject destination;
                  
                 if (destinationType == "GroupMembership")
                 {
-                    destination = new AzureADGroup
+                    destination = new DestinationObject
                     {
                         Type = destinationToken["type"].ToString(),
-                        ObjectId = Guid.Parse(destinationToken["value"]["objectId"].ToString())
+                        Value = new GroupDestinationValue() { ObjectId = Guid.Parse(destinationToken["value"]["objectId"].ToString()) }
+                        
                     };
-                    destinations.Add((destination, job.Id));
                 }
                 else if (destinationType == "TeamsChannelMembership")
                 {
-                    destination = new AzureADTeamsChannel
+                    destination = new DestinationObject
                     {
                         Type = destinationToken["type"].ToString(),
-                        ObjectId = Guid.Parse(destinationToken["value"]["objectId"].ToString()),
-                        ChannelId = destinationToken["value"]["channelId"].ToString()
+                        Value = new TeamsChannelDestinationValue()
+                        {
+                            ObjectId = Guid.Parse(destinationToken["value"]["objectId"].ToString()),
+                            ChannelId = destinationToken["value"]["channelId"].ToString()
+                        }
                     };
-                    destinations.Add((destination, job.Id));
+                    
                 }
+                else
+                {
+                    continue;
+                }
+
+                var serializedDestination = JsonConvert.SerializeObject(destination, Formatting.Indented, new JsonSerializerSettings
+                {
+                    TypeNameHandling = TypeNameHandling.All
+                });
+
+                destinations.Add((serializedDestination, job.Id));
             }
 
             return destinations;
         }
 
-        public async Task<List<DestinationAttributes>> GetBulkDestinationAttributesAsync(List<(AzureADGroup Destination, Guid JobId)> destinations, string destinationType)
+        public async Task<List<DestinationAttributes>> GetBulkDestinationAttributesAsync(List<(string Destination, Guid JobId)> destinations, string destinationType)
         {
             
             var destinationAttributesList = new List<DestinationAttributes>();
-            var destinationObjects = destinations.Select(d => d.Destination).ToList();
+            List<(DestinationObject? Destination, Guid JobId)> destinationObjectsMap = destinations
+                .Select(d => (JsonConvert.DeserializeObject<DestinationObject>(d.Destination, new JsonSerializerSettings
+                {
+                    TypeNameHandling = TypeNameHandling.Auto
+                }), d.JobId))
+                .ToList();
+            
+            var destinationObjects = destinationObjectsMap.Select(d => d.Destination).ToList();
 
             if (destinationType == "GroupMembership") 
             {
@@ -68,13 +96,13 @@ namespace Services
                 var owners = new Dictionary<Guid, List<Guid>>();
                 var destinationIdMap = new Dictionary<Guid, Guid>();
 
-                foreach (var destination in destinations)
+                foreach (var destination in destinationObjectsMap)
                 {
-                    if (!destinationIdMap.ContainsKey(destination.Destination.ObjectId))
-                        destinationIdMap.Add(destination.Destination.ObjectId, destination.JobId);
+                    if (!destinationIdMap.ContainsKey(destination.Destination.Value.ObjectId))
+                        destinationIdMap.Add(destination.Destination.Value.ObjectId, destination.JobId);
                 }
 
-                var destinationGuids = destinationObjects.Select(d => d.ObjectId).ToList();
+                var destinationGuids = destinationObjects.Select(d => d.Value.ObjectId).ToList();
                 names = await _graphGroupRepository.GetGroupNamesAsync(destinationGuids);
                 owners = await _graphGroupRepository.GetDestinationOwnersAsync(destinationGuids);
 
@@ -82,9 +110,9 @@ namespace Services
                 {
                     destinationAttributesList.Add(new DestinationAttributes
                     {
-                        Name = names[destination.ObjectId],
-                        Owners = owners[destination.ObjectId],
-                        Id = destinationIdMap[destination.ObjectId]
+                        Name = names[destination.Value.ObjectId],
+                        Owners = owners[destination.Value.ObjectId],
+                        Id = destinationIdMap[destination.Value.ObjectId]
                     });
                 }
             }
@@ -92,25 +120,25 @@ namespace Services
             {
                 var names = new Dictionary<string, string>();
                 var owners = new Dictionary<Guid, List<Guid>>();
-                var teamsDestinations = destinationObjects.Select(d => d as AzureADTeamsChannel).ToList();
+                var channelDestinations = destinationObjects.Select((d) => { return new AzureADTeamsChannel() { ObjectId = d.Value.ObjectId, ChannelId = (d.Value as TeamsChannelDestinationValue).ChannelId }; }).ToList();
                 var destinationIdMap = new Dictionary<string, Guid>();
 
-                foreach (var destination in destinations)
+                foreach (var destination in destinationObjectsMap)
                 {
-                    destinationIdMap.Add((destination.Destination as AzureADTeamsChannel).ChannelId, destination.JobId);
+                    destinationIdMap.Add((destination.Destination.Value as TeamsChannelDestinationValue).ChannelId, destination.JobId);
                 }
 
-                var destinationGuids = destinationObjects.Select(d => d.ObjectId).ToList();
-                names = await _graphGroupRepository.GetTeamsChannelsNamesAsync(teamsDestinations);
+                var destinationGuids = destinationObjects.Select(d => d.Value.ObjectId).ToList();
+                names = await _teamsChannelRepository.GetTeamsChannelNamesAsync(channelDestinations);
                 owners = await _graphGroupRepository.GetDestinationOwnersAsync(destinationGuids);
 
                 foreach (var destination in destinationObjects)
                 {
                     destinationAttributesList.Add(new DestinationAttributes
                     {
-                        Name = names[(destination as AzureADTeamsChannel).ChannelId],
-                        Owners = owners[destination.ObjectId],
-                        Id = destinationIdMap[(destination as AzureADTeamsChannel).ChannelId]
+                        Name = names[(destination.Value as TeamsChannelDestinationValue).ChannelId],
+                        Owners = owners[destination.Value.ObjectId],
+                        Id = destinationIdMap[(destination.Value as TeamsChannelDestinationValue).ChannelId]
                     });
                 }
             }

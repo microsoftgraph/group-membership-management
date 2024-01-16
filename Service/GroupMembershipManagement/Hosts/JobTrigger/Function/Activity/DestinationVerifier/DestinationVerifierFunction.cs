@@ -11,32 +11,32 @@ using System.Threading.Tasks;
 
 namespace Hosts.JobTrigger
 {
-    public class GroupVerifierFunction
+    public class DestinationVerifierFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly IJobTriggerService _jobTriggerService = null;
         private readonly TelemetryClient _telemetryClient = null;
 
-        public GroupVerifierFunction(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService, TelemetryClient telemetryClient)
+        public DestinationVerifierFunction(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService, TelemetryClient telemetryClient)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
-        [FunctionName(nameof(GroupVerifierFunction))]
-        public async Task<bool> VerifyGroupAsync([ActivityTrigger] GroupVerifierRequest request)
+        [FunctionName(nameof(DestinationVerifierFunction))]
+        public async Task<DestinationVerifierResult> VerifyDestinationAsync([ActivityTrigger] SyncJob syncJob)
         {
-            var syncJob = request.SyncJob;
-            var canWriteToGroup = false;
+            var verifierResult = DestinationVerifierResult.NotFound;
 
             if (syncJob != null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupVerifierFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationVerifierFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
                 _jobTriggerService.RunId = syncJob.RunId ?? Guid.Empty;
-                canWriteToGroup = await _jobTriggerService.GroupExistsAndGMMCanWriteToGroupAsync(syncJob);
 
-                if (canWriteToGroup)
+                verifierResult = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(syncJob);
+
+                if (verifierResult == DestinationVerifierResult.Success)
                 {
                     var endpoints = await _jobTriggerService.GetGroupEndpointsAsync(syncJob);
                     await _loggingRepository.LogMessageAsync(new LogMessage
@@ -46,9 +46,9 @@ namespace Hosts.JobTrigger
                     });
                 }
 
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupVerifierFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationVerifierFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
             }
-            return canWriteToGroup;
+            return verifierResult;
         }
     }
 }
