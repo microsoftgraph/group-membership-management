@@ -52,10 +52,6 @@
                   "minimum": 1
                 }
               },
-              "oneOf": [{ "required": ["ids"] }, { "required": ["filter"] }],
-              "dependencies": {
-                "depth": ["ids"]
-              },
               "additionalProperties": false
             },
             "exclusionary": {

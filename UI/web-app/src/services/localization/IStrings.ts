@@ -207,7 +207,6 @@ export type IStrings = {
       query: string;
       validQuery: string;
       invalidQuery: string;
-      validateQuery: string;
       step3title: string;
       step3description: string;
       selectStartDate: string;
@@ -229,8 +228,13 @@ export type IStrings = {
       savingSyncJob: string;
       group: string;
       destinationPickerSuggestionsHeaderText: string;
+      expandCollapse: string;
+      sourceType: string;
+      addSourcePart: string;
+      excludeSourcePart: string;
     }
   };
+  delete: string;
   edit: string;
   submit: string;
   needHelp: string;

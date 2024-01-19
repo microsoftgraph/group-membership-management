@@ -44,7 +44,6 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   
   const selectedDestinationEndpoints = useSelector(manageMembershipSelectedDestinationEndpoints);
   const selectedDestination = useSelector(manageMembershipSelectedDestination);
-  const query: string = useSelector(manageMembershipQuery);
   const period: number = useSelector(manageMembershipPeriod);
   const startDate: string = useSelector(manageMembershipStartDate);
   const thresholdPercentageForAdditions: number = useSelector(manageMembershipThresholdPercentageForAdditions);
@@ -53,7 +52,6 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const compositeQuery = useSelector(manageMembershipCompositeQuery);
   const globalQuery = useSelector(manageMembershipQuery);
   const displayQuery = isAdvancedView ? globalQuery : compositeQuery;
-  console.log("displayQuery: ", displayQuery );
 
   const SharePointDomain: string = `${process.env.REACT_APP_SHAREPOINTDOMAIN}`;
   const domainName: string = `${process.env.REACT_APP_DOMAINNAME}`;
@@ -171,7 +169,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               <ActionButton 
                 iconProps={{ iconName: 'Edit' }} 
                 styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
-                onClick={() => onEditButtonClick(3)}>
+                onClick={() => onEditButtonClick(2)}>
                 {strings.edit}
               </ActionButton>
             </div>
@@ -220,14 +218,14 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               <ActionButton 
                 iconProps={{ iconName: 'Edit' }} 
                 styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
-                onClick={() => onEditButtonClick(2)}>
+                onClick={() => onEditButtonClick(3)}>
                 {strings.edit}
               </ActionButton>
             </div>
             <Separator />
             <Stack enableScopedSelectors tokens={{ childrenGap: 30 }}>
                 <Stack.Item align="start">
-                <div>{displayQuery}</div>
+                <pre>{displayQuery}</pre>
                 </Stack.Item>
             </Stack>
           </div>

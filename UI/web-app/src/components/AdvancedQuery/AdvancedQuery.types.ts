@@ -7,6 +7,8 @@ import {
     type ITheme,
   } from '@fluentui/react';
   import type React from 'react';
+import { HRSourcePart } from '../../models/HRSourcePart';
+import { SyncJobQuery } from '../../models/SyncJobQuery';
   
   export interface IAdvancedQueryStyles {
     root: IStyle;
@@ -33,8 +35,8 @@ import {
      * Call to provide customized styling that will layer on top of the variant rules.
      */
     styles?: IStyleFunctionOrObject<IAdvancedQueryStyleProps, IAdvancedQueryStyles>;
-    query: string;
-    onQueryChange: (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => void;
+    query: SyncJobQuery | (HRSourcePart);
+    onQueryChange: (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: SyncJobQuery | (HRSourcePart)) => void;
     partId: number;
     onValidate: (isValid: boolean, partId: number) => void;
   }

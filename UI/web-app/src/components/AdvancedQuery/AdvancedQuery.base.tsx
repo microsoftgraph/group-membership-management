@@ -1,10 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  DefaultButton,
   IProcessedStyleSet,
   TextField,
   classNamesFunction,
@@ -18,9 +17,9 @@ import {
 } from './AdvancedQuery.types';
 import { useStrings } from "../../store/hooks";
 import schemaDefinition from '../../Query.json';
-import HRPartQuery from '../../HRPartQuery.json';
+import SqlMembershipSchema from '../../SqlMembershipSchema.json';
 import { AppDispatch } from '../../store';
-import { 
+import {
   buildCompositeQuery,
   getSourcePartsFromState,
   manageMembershipIsAdvancedView,
@@ -50,9 +49,10 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
   );
   const dispatch = useDispatch<AppDispatch>();
   const [validationMessage, setValidationMessage] = React.useState<React.ReactNode | null>(null);
+  const [localQuery, setLocalQuery] = useState(JSON.stringify(query, null, 2));
   const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
   const sourceParts = useSelector(getSourcePartsFromState);
-  const schema = isAdvancedView ? schemaDefinition : HRPartQuery;
+  const schema = isAdvancedView ? schemaDefinition : SqlMembershipSchema;
   const ajv = new Ajv();
 
   const formatErrors = (errors: (ErrorObject<string, Record<string, any>, unknown> & { dataPath: string })[] | null | undefined) => {
@@ -76,27 +76,35 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
   };
 
   const handleQueryChange = (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => {
-    onQueryChange(event, newValue);
-    setValidationMessage(null);
+    try {
+      const newQuery = newValue ? JSON.parse(newValue) : {};
+      const formattedQuery = JSON.stringify(newQuery, null, 2);
+      setLocalQuery(formattedQuery);
 
-    if (isAdvancedView) {
+      onQueryChange(event, formattedQuery);
+      setValidationMessage(null);
+  
+      if (isAdvancedView) {
         dispatch(setIsQueryValid(false));
-    } else {
+      } else {
         dispatch(updateSourcePartValidity({ partId, isValid: false }));
+      }
+    } catch (error) {
+      console.error('Error parsing query:', error);
     }
   };
 
   const onValidateQuery = () => {
     try {
       const validate = ajv.compile(schema);
-      const parsedQuery = JSON.parse(query);
+      const parsedQuery = JSON.parse(localQuery);
       const isValid = validate(parsedQuery);
       if (!isAdvancedView) {
         const compositeQuery = buildCompositeQuery(sourceParts);
         dispatch(setCompositeQuery(compositeQuery));
         dispatch(updateSourcePartValidity({ partId, isValid }));
       }
-      else{
+      else {
         dispatch(setIsQueryValid(isValid));
       }
 
@@ -116,6 +124,10 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
     }
   }
 
+  const handleBlur = () => {
+    onValidateQuery();
+  };
+
   return (
     <div className={classNames.root}>
       {strings.ManageMembership.labels.query}
@@ -124,10 +136,10 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
         multiline
         rows={25}
         resizable
-        value={query}
+        value={localQuery}
         onChange={handleQueryChange}
+        onBlur={handleBlur}
       />
-      <DefaultButton className={classNames.button} onClick={onValidateQuery}>{strings.ManageMembership.labels.validateQuery}</DefaultButton>
       {validationMessage && (
         <div className={validationMessage === strings.ManageMembership.labels.validQuery ? classNames.successMessage : classNames.errorMessage}>
           {validationMessage}

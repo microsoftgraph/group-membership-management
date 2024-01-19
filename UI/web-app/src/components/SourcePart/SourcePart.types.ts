@@ -3,7 +3,8 @@
 
 import { type IStyle, type IStyleFunctionOrObject, type ITheme } from '@fluentui/react';
 import type React from 'react';
-import { SourcePart } from '../../store/manageMembership.slice';
+import { ISourcePart } from '../../store/manageMembership.slice';
+import { HRSourcePart } from '../../models/HRSourcePart';
 
 export type SourcePartStyles = {
   root: IStyle;
@@ -32,15 +33,12 @@ export type SourcePartProps = React.AllHTMLAttributes<HTMLDivElement> & {
   index: number;
   onDelete: (item?: any, index?: number, ev?: React.FocusEvent<HTMLElement>) => void;
   totalSourceParts: number;
-  query: string;
-  part: SourcePart;
-  onQueryChange: (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => void;
+  query: HRSourcePart;
+  part: ISourcePart;
+  onQueryChange: (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: HRSourcePart) => void;
 
   /**
    * Call to provide customized styling that will layer on top of the variant rules.
    */
   styles?: IStyleFunctionOrObject<SourcePartStyleProps, SourcePartStyles>;
-};
-
-export type SourcePartViewProps = SourcePartProps & {
 };

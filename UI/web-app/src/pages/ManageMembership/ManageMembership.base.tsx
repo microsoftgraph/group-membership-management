@@ -178,7 +178,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   let isNextDisabled = false;
 
   if (currentStep === 1 && !isStep1ConditionsMet) {
-    isNextDisabled = false; //TODO: CHANGE
+    isNextDisabled = true;
   } else if (currentStep === 2) {
     isNextDisabled = false;
   } else if (currentStep === 3 && !isStep3ConditionsMet) {

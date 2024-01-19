@@ -13,52 +13,34 @@ import {
 import { OnboardingStatus } from '../models/GroupOnboardingStatus';
 import { Destination } from '../models/Destination';
 import { DestinationPickerPersona } from '../models';
+import { HRSourcePart } from '../models/HRSourcePart';
+import { SyncJobQuery } from '../models/SyncJobQuery';
 
-export interface SourcePart {
+export interface ISourcePart {
     id: number;
-    query: string;
+    query: HRSourcePart;
     isValid: boolean;
-    isExclusionary: boolean;
+    isExclusionary?: boolean;
 }
 
 export interface Query {
-    sourceParts: SourcePart[];
+    sourceParts: ISourcePart[];
 }
 
-export interface CompositeQuery {
-    sourceParts: Array<{ id: number, query: string }>;
-}
+export const placeholderQueryHRPart: HRSourcePart = {
+  type: "SqlMembership",
+  source: {
+    ids: [],
+    filter: "",
+    depth: 1
+  },
+  exclusionary: false
+};
 
-const placeholderQuery: string = `[
-    {
-      "type": "GroupMembership",
-      "source": "",
-      "exclusionary": false
-    },
-    {
-      "type": "SqlMembership",
-      "source": {
-        "ids": [],
-        "filter": "",
-        "depth": 1
-      },
-      "exclusionary": false
-    },
-    {
-      "type": "GroupOwnership",
-      "source": [ "" ],
-      "exclusionary": false
-    }
-  ]`;
 
-const placeholderQueryHRPart: string = `{
-    "type": "SqlMembership",
-    "source": {
-      "ids": [],
-      "filter": "",
-      "depth": 1
-    }
-  }`;
+export const placeholderAdvancedViewQuery: SyncJobQuery = [
+    placeholderQueryHRPart,
+]; 
 
 export interface ManageMembershipState {
     loadingSearchResults: boolean;
@@ -74,9 +56,9 @@ export interface ManageMembershipState {
     showDecreaseDropdown: boolean;
     newJob: NewJob;
     isAdvancedView: boolean;
-    originalQuery: string;
-    compositeQuery?: string;
-    sourceParts: SourcePart[];
+    compositeQuery?: SyncJobQuery; // Made up of source parts' queries
+    advancedViewQuery?: SyncJobQuery;
+    sourceParts: ISourcePart[];
 }
 
 const initialState: ManageMembershipState = {
@@ -96,14 +78,14 @@ const initialState: ManageMembershipState = {
         requestor: '',
         startDate: new Date().toISOString(),
         period: 24,
-        query: placeholderQueryHRPart,
+        query: placeholderAdvancedViewQuery,
         thresholdPercentageForAdditions: 100,
         thresholdPercentageForRemovals: 20,
         status: 'Idle'
     },
-    originalQuery: '',
     isAdvancedView: false,
-    compositeQuery: '',
+    compositeQuery: placeholderAdvancedViewQuery,
+    advancedViewQuery: placeholderAdvancedViewQuery,
     sourceParts: []
 };
 
@@ -128,7 +110,7 @@ const manageMembershipSlice = createSlice({
                 };
             }
         },
-        setNewJobQuery: (state, action: PayloadAction<string>) => {
+        setNewJobQuery: (state, action: PayloadAction<SyncJobQuery>) => {
             state.newJob.query = action.payload;
         },
         setIsQueryValid: (state, action: PayloadAction<boolean>) => {
@@ -163,32 +145,64 @@ const manageMembershipSlice = createSlice({
         },
         setIsAdvancedView: (state, action: PayloadAction<boolean>) => {
             if (action.payload) {
-                state.newJob.query = placeholderQuery;
+                // Switching to advanced view
+                if (state.compositeQuery) {
+                    state.newJob.query = state.compositeQuery;
+                }
             } else {
-                state.sourceParts = [];
-                state.isQueryValid = false;
-                const compositeQuery = buildCompositeQuery(state.sourceParts);
-                state.newJob.query = compositeQuery;
+                // Switching from advanced view
+                try {
+                    const parsedQuery = JSON.parse(state.newJob.query);
+                    const updatedSourceParts = parsedQuery.map((part: any, index: number) => {
+                        const isExclusionary = part.exclusionary === true; // Default to false if not present
+                        if (part.hasOwnProperty('exclusionary')) {
+                          delete part.exclusionary;
+                        }
+                        const queryStr = JSON.stringify(part, null, 2);
+                        return {
+                          id: index + 1,
+                          query: queryStr,
+                          isValid: true,
+                          isExclusionary: isExclusionary
+                        };
+                      });
+                    
+                    state.sourceParts = updatedSourceParts;
+                    state.isQueryValid = true;
+                } catch (error) {
+                    console.error(`Error parsing advanced view query:`, error);
+                    state.sourceParts = [];
+                    state.isQueryValid = false;
+                    state.newJob.query = [placeholderQueryHRPart];
+                }
             }
             state.isAdvancedView = action.payload;
         },
-        setCompositeQuery: (state, action: PayloadAction<string>) => {
+        setAdvancedViewQuery: (state, action: PayloadAction<SyncJobQuery | undefined>) => {
+            if(!action.payload) return;
+            state.advancedViewQuery = action.payload;
+            state.newJob.query = action.payload;
+        },
+        setCompositeQuery: (state, action: PayloadAction<SyncJobQuery>) => {
             state.compositeQuery = action.payload;
         },
-        addSourcePart: (state, action: PayloadAction<SourcePart>) => {
+        setSourceParts: (state, action: PayloadAction<ISourcePart[]>) => {
+            state.sourceParts = action.payload;
+        },
+        addSourcePart: (state, action: PayloadAction<ISourcePart>) => {
             state.sourceParts.push(action.payload);
         },
-        updateSourcePart: (state, action: PayloadAction<SourcePart>) => {
+        updateSourcePart: (state, action: PayloadAction<ISourcePart>) => {
             const index = state.sourceParts.findIndex(part => part.id === action.payload.id);
             if (index !== -1) {
-                state.sourceParts[index] = {
-                    ...state.sourceParts[index],
-                    query: action.payload.query,
-                    isValid: action.payload.isValid,
-                    isExclusionary: action.payload.isExclusionary
-                };
+              state.sourceParts[index] = {
+                ...state.sourceParts[index],
+                query: action.payload.query,
+                isValid: action.payload.isValid,
+                isExclusionary: action.payload.isExclusionary
+              };
             }
-        },        
+          },                 
         updateSourcePartValidity: (state, action: PayloadAction<{ partId: number; isValid: boolean}>) => {
             const { partId, isValid } = action.payload;
             const partIndex = state.sourceParts.findIndex(part => part.id === partId);
@@ -200,7 +214,10 @@ const manageMembershipSlice = createSlice({
             state.sourceParts = state.sourceParts.filter(part => part.id !== action.payload);
             const compositeQuery = buildCompositeQuery(state.sourceParts);
             state.compositeQuery = compositeQuery;
-        }
+        },
+        clearSourceParts: (state) => {
+            state.sourceParts = [];
+        },
     },
     extraReducers: (builder) => {
         builder.addCase(getGroupOnboardingStatus.fulfilled, (state, action) => {
@@ -234,6 +251,7 @@ export const {
     setNewJobPeriod,
     setNewJobThresholdPercentageForAdditions,
     setNewJobThresholdPercentageForRemovals,
+    setAdvancedViewQuery,
     setStartDateOption,
     setUseThresholdLimits,
     setShowIncreaseDropdown,
@@ -241,10 +259,12 @@ export const {
     resetManageMembership,
     setIsAdvancedView,
     setCompositeQuery,
+    setSourceParts,
     addSourcePart,
     updateSourcePart,
     updateSourcePartValidity,
     deleteSourcePart,
+    clearSourceParts,
 } = manageMembershipSlice.actions;
 
 // General
@@ -273,8 +293,17 @@ export const manageMembershipIsGroupReadyForOnboarding = (state: RootState): boo
 // 2- Membership Configuration
 export const manageMembershipIsAdvancedView = (state: RootState) => state.manageMembership.isAdvancedView;
 export const manageMembershipIsQueryValid = (state: RootState) => state.manageMembership.isQueryValid;
-export const getSourcePartsFromState = (state: RootState) => state.manageMembership.sourceParts;
 export const manageMembershipCompositeQuery = (state: RootState) => state.manageMembership.compositeQuery;
+export const manageMembershipAdvancedViewQuery = (state: RootState) => state.manageMembership.advancedViewQuery;
+export const getSourcePartsFromState = (state: RootState) => state.manageMembership.sourceParts;
+export const manageMembershipIsToggleEnabled = (state: RootState) => {
+    const isAdvancedView = state.manageMembership.isAdvancedView;
+    const isAdvancedViewQueryValid = state.manageMembership.isQueryValid;
+    const advancedViewQuery = state.manageMembership.advancedViewQuery;
+    const areAllSourcePartsValid = state.manageMembership.sourceParts.every(part => part.isValid);
+    const isPlaceholderQuery = advancedViewQuery === placeholderAdvancedViewQuery;
+    return isAdvancedView ? (isAdvancedViewQueryValid || isPlaceholderQuery) : areAllSourcePartsValid;
+};
 
 
 // 3- Run Configuration
@@ -285,19 +314,18 @@ export const manageMembershipShowDecreaseDropdown = (state: RootState) => state.
 
 export default manageMembershipSlice.reducer;
 
-export function buildCompositeQuery(sourceParts: SourcePart[]): string {
+export function buildCompositeQuery(sourceParts: ISourcePart[]): SyncJobQuery {
     const queries = sourceParts.map(part => {
         try {
-            const parsedQuery = JSON.parse(part.query);
-            return { ...parsedQuery, exclusionary: part.isExclusionary };
+            const hrSourcePart = part.query;
+            return {
+                ...hrSourcePart,
+                exclusionary: part.isExclusionary
+            };
         } catch (error) {
-            console.error(`Error parsing query for part ${part.id}:`, error);
+            console.error(`Error processing HRSourcePart for part ${part.id}:`, error);
             return null;
         }
     }).filter(query => query !== null);
-
-    return JSON.stringify(queries, null, 2);
+    return queries as SyncJobQuery;
 }
-
-  
-

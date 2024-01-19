@@ -27,6 +27,3 @@ export type MembershipConfigurationProps = React.AllHTMLAttributes<HTMLDivElemen
    */
   styles?: IStyleFunctionOrObject<MembershipConfigurationStyleProps, MembershipConfigurationStyles>;
 };
-
-export type MembershipConfigurationViewProps = MembershipConfigurationProps & {
-};
