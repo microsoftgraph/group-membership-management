@@ -14,6 +14,7 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
 using Repositories.ServiceBusTopics;
+using Repositories.ServiceBusQueue;
 using Services;
 using Services.Contracts;
 
@@ -70,6 +71,14 @@ namespace Hosts.MembershipAggregator
                 var client = services.GetRequiredService<ServiceBusClient>();
                 var sender = client.CreateSender(membershipAggregatorQueue);
                 return new ServiceBusTopicsRepository(sender);
+            })
+            .AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
+            {
+                var configuration = services.GetRequiredService<IConfiguration>();
+                var notificationsQueue = configuration["serviceBusNotificationsQueue"];
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(notificationsQueue);
+                return new ServiceBusQueueRepository(sender);
             });
         }
 

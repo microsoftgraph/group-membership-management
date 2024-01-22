@@ -19,6 +19,7 @@
     "senderPassword": "",
     "supportEmailAddresses": "",
     "actionableEmailProviderId": "",
-    "apiHostname": ""
+    "apiHostname": "",
+    "serviceBusNotificationsQueue": ""
   }
 }

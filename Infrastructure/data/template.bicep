@@ -98,6 +98,9 @@ param serviceBusMembershipUpdatersTopicSubscriptions object
 @description('Enter membership aggregator service bus queue name')
 param serviceBusMembershipAggregatorQueue string = 'membershipAggregator'
 
+@description('Enter notifications service bus queue name')
+param serviceBusNotificationsQueue string = 'notifications'
+
 @description('Enter storage account name.')
 @minLength(1)
 @maxLength(24)
@@ -428,6 +431,19 @@ module membershipAggregatorQueue 'serviceBusQueue.bicep' = {
   ]
 }
 
+module notificationsQueue 'serviceBusQueue.bicep' = {
+  name: 'notificationsQueue'
+  params: {
+    queueName: serviceBusNotificationsQueue
+    serviceBusName: serviceBusName
+    requiresSession: false
+    maxDeliveryCount: 5
+  }
+  dependsOn:[
+    serviceBusTemplate
+  ]
+}
+
 module storageAccountTemplate 'storageAccount.bicep' = {
   name: 'storageAccountTemplate'
   params: {
@@ -560,6 +576,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'serviceBusMembershipAggregatorQueue'
         value: serviceBusMembershipAggregatorQueue
+      }
+      {
+        name: 'serviceBusNotificationsQueue'
+        value: serviceBusNotificationsQueue
       }
     ]
   }

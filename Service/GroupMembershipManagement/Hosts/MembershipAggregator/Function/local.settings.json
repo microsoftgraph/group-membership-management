@@ -26,6 +26,7 @@
     "supportEmailAddresses": "",
     "actionableEmailProviderId": "",
     "serviceBusMembershipAggregatorQueue": "",
+    "serviceBusNotificationsQueue": "",
     "serviceBusConnectionString": ""
   },
   "ConnectionStrings": {}
