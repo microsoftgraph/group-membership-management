@@ -3,6 +3,7 @@
 using Models.ServiceBus;
 using Models;
 using Models.ThresholdNotifications;
+using Models.Notifications;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -14,6 +15,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using System.Data.SqlTypes;
+using Newtonsoft.Json;
 
 namespace Services
 {
@@ -37,6 +39,7 @@ namespace Services
         private readonly bool _isDryRunEnabled;
         private readonly IThresholdNotificationConfig _thresholdNotificationConfig;
         private readonly TelemetryClient _telemetryClient;
+        private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
 
         private Guid _runId;
         public Guid RunId
@@ -60,6 +63,7 @@ namespace Services
             IGMMResources gmmResources,
             ILocalizationRepository localizationRepository,
             INotificationRepository notificationRepository,
+             IServiceBusQueueRepository serviceBusQueueRepository,
             TelemetryClient telemetryClient
             )
         {
@@ -73,6 +77,7 @@ namespace Services
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _isDryRunEnabled = dryRun != null && dryRun.DryRunEnabled;
+            _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
@@ -151,7 +156,7 @@ namespace Services
                     }
                     else
                     {
-                        await SendThresholdNotificationAsync(threshold, job, sourceMembership.RunId, delta.Delta);
+                        await SendThresholdNotificationAsync(threshold, job, sourceMembership.RunId);
                     }
 
                     return deltaResponse;
@@ -261,6 +266,8 @@ namespace Services
             {
                 IncreaseThresholdPercentage = percentageIncrease,
                 DecreaseThresholdPercentage = percentageDecrease,
+                DeltaToAddCount = delta.ToAdd.Count,
+                DeltaToRemoveCount = delta.ToRemove.Count,
                 IsAdditionsThresholdExceeded = isAdditionsThresholdExceeded,
                 IsRemovalsThresholdExceeded = isRemovalsThresholdExceeded
             };
@@ -284,7 +291,7 @@ namespace Services
             });
         }
 
-        private async Task SendThresholdNotificationAsync(ThresholdResult threshold, SyncJob job, Guid runId, MembershipDelta<AzureADUser> delta)
+        private async Task SendThresholdNotificationAsync(ThresholdResult threshold, SyncJob job, Guid runId)
         {
             var currentThresholdViolations = job.ThresholdViolations + 1;
             var sendNotification = currentThresholdViolations >= _thresholdConfig.NumberOfThresholdViolationsToNotify;
@@ -304,58 +311,35 @@ namespace Services
 
             if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
             {
-                await SendActionableEmailNotification(threshold, job, delta, sendDisableJobNotification);
+                await SendActionableEmailNotification(threshold, job, sendDisableJobNotification);
             }
             else
             {
                 await SendNormalThresholdEmail(threshold, job, runId, groupName, sendDisableJobNotification);
             }
         }
-
-        private async Task SendActionableEmailNotification(ThresholdResult threshold, SyncJob job, MembershipDelta<AzureADUser> delta, bool sendDisableJobNotification)
+           
+        private async Task SendActionableEmailNotification(ThresholdResult threshold, SyncJob job, bool sendDisableJobNotification)
         {
-            var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobIdAsync(job.Id);
-
-            if (thresholdNotification == null)
+            var messageContent = new Dictionary<string, Object>
             {
-                thresholdNotification = new ThresholdNotification
-                {
-                    Id = Guid.NewGuid(),
-                    SyncJobPartitionKey = job.Id.ToString(),
-                    SyncJobRowKey = job.Id.ToString(),
-                    SyncJobId = job.Id,
-                    ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage,
-                    ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage,
-                    ChangeQuantityForAdditions = delta.ToAdd.Count,
-                    ChangeQuantityForRemovals = delta.ToRemove.Count,
-                    CreatedTime = DateTime.UtcNow,
-                    Resolution = ThresholdNotificationResolution.Unresolved,
-                    ResolvedByUPN = string.Empty,
-                    ResolvedTime = DateTime.FromFileTimeUtc(0),
-                    Status = ThresholdNotificationStatus.Queued,
-                    CardState = ThresholdNotificationCardState.DefaultCard,
-                    TargetOfficeGroupId = job.TargetOfficeGroupId,
-                    ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
-                    ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals
-                };
-            }
-            else
+                { "ThresholdResult", threshold },
+                { "SyncJob", job },
+                { "SendDisableJobNotification", sendDisableJobNotification }
+            };
+            var body = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(messageContent));
+            var message = new ServiceBusMessage
             {
-                thresholdNotification.ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage;
-                thresholdNotification.ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage;
-                thresholdNotification.ChangeQuantityForAdditions = delta.ToAdd.Count;
-                thresholdNotification.ChangeQuantityForRemovals = delta.ToRemove.Count;
-                thresholdNotification.ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions;
-                thresholdNotification.ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals;
-                thresholdNotification.Status = ThresholdNotificationStatus.Queued;
-
-                if (sendDisableJobNotification)
-                {
-                    thresholdNotification.CardState = ThresholdNotificationCardState.DisabledCard;
-                }
-            }
-
-            await _notificationRepository.SaveNotificationAsync(thresholdNotification);
+                MessageId = $"{job.Id}_{job.RunId}_{NotificationMessageType.ThresholdNotification}",
+                Body = body
+            };
+            message.ApplicationProperties.Add("MessageType", NotificationMessageType.ThresholdNotification);
+            await _serviceBusQueueRepository.SendMessageAsync(message);
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Sent message {message.MessageId} to service bus notifications queue ",
+                RunId = job.RunId
+            });
         }
 
         private async Task SendNormalThresholdEmail(ThresholdResult threshold, SyncJob job, Guid runId, string groupName, bool sendDisableJobNotification)

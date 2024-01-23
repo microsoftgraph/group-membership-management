@@ -16,6 +16,7 @@ using Newtonsoft.Json;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.ServiceBusQueue;
 using Services.Contracts;
 using Services.Entities;
 using System;
@@ -58,6 +59,7 @@ namespace Services.Tests
         private Mock<IBlobStorageRepository> _blobStorageRepository;
         private Mock<ILocalizationRepository> _localizationRepository;
         private Mock<INotificationRepository> _notificationRepository;
+        private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
 
         [TestInitialize]
         public void SetupTest()
@@ -73,6 +75,8 @@ namespace Services.Tests
             _gmmResources = new Mock<IGMMResources>();
             _localizationRepository = new Mock<ILocalizationRepository>();
             _notificationRepository = new Mock<INotificationRepository>();
+            _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+
             _dryRun = new Mock<IDryRunValue>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
@@ -88,6 +92,7 @@ namespace Services.Tests
                                                 _gmmResources.Object,
                                                 _localizationRepository.Object,
                                                 _notificationRepository.Object,
+                                                _serviceBusQueueRepository.Object,
                                                 _telemetryClient
                                             );
 
@@ -530,6 +535,7 @@ namespace Services.Tests
                                     _gmmResources.Object,
                                     _localizationRepository.Object,
                                     _notificationRepository.Object,
+                                    _serviceBusQueueRepository.Object,
                                     _telemetryClient
                                 );
 
@@ -565,6 +571,7 @@ namespace Services.Tests
                                     _gmmResources.Object,
                                     _localizationRepository.Object,
                                     _notificationRepository.Object,
+                                    _serviceBusQueueRepository.Object,
                                     _telemetryClient
                                 );
 
@@ -595,6 +602,7 @@ namespace Services.Tests
                                     _gmmResources.Object,
                                     _localizationRepository.Object,
                                     _notificationRepository.Object,
+                                    _serviceBusQueueRepository.Object,
                                     _telemetryClient
                                 );
 
@@ -777,15 +785,16 @@ namespace Services.Tests
             _syncJob.ThresholdViolations = 2;
             _thresholdNotificationConfig.Setup(x => x.IsThresholdNotificationEnabled).Returns(true);
             _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsFollowUps).Returns(3);
+            _serviceBusQueueRepository.Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()))
+            .Returns(Task.CompletedTask);
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
 
             Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
 
-            _notificationRepository.Verify(x => x.SaveNotificationAsync(It.IsAny<Models.ThresholdNotifications.ThresholdNotification>()), Times.Once());
-            _notificationRepository.Verify(x => x.SaveNotificationAsync(
-                It.Is<Models.ThresholdNotifications.ThresholdNotification>(n => n.Status.Equals(ThresholdNotificationStatus.Queued))));
+            _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once());
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.Contains("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
         }
 
         [TestMethod]
