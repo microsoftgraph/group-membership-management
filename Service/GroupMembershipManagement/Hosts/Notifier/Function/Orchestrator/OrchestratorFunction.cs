@@ -31,24 +31,24 @@ namespace Hosts.Notifier
                 });
 
             var (messageBody, messageType) = context.GetInput<(string, string)>();
-
             var messageContent = JsonConvert.DeserializeObject<Dictionary<string, object>>(messageBody);
-            #TODO Have an activity to deserialize the message body into the correct type, it needs a case switch for each message type
-
 
             switch (messageType)
             {
                 case nameof(NotificationMessageType.ThresholdNotification):
-                    await context.CallActivityAsync(nameof(CreateNotificationStatusFunction), new CreateNotificationStatusFunction { Notification = notification, Status = ThresholdNotificationStatus.Triggered });
+                    var notification = await context.CallActivityAsync<ThresholdNotification>(nameof(CreateNotificationFromContentFunction), messageContent);
                     await context.CallActivityAsync(nameof(SendNotificationFunction), notification);
                     await context.CallActivityAsync(nameof(UpdateNotificationStatusFunction), new UpdateNotificationStatusRequest { Notification = notification, Status = ThresholdNotificationStatus.AwaitingResponse });
                     break;
-                case nameof(NotificationMessageType.InitalSync):
-                    await context.CallActivityAsync(nameof(SendNotificationFunction), notification);
-                    break;
                 // Todo: Add other cases for different message types
                 default:
-                    // Handle unknown message type
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        RunId = runId,
+                        Message = $"{messageType} is not a valid message type",
+                        Verbosity = VerbosityLevel.DEBUG
+                    });
                     break;
             }
 

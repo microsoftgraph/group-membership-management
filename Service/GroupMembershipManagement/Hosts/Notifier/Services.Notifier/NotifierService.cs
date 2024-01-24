@@ -108,5 +108,59 @@ namespace Services.Notifier
             _telemetryClient.TrackEvent("NotificationSent", sentNotificationEvent);
         }
 
+        public async Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync(Dictionary<string, object> messageContent)
+        {
+            ThresholdResult threshold = JsonConvert.DeserializeObject<ThresholdResult>(messageContent["ThresholdResult"].ToString());
+            SyncJob job = JsonConvert.DeserializeObject<SyncJob>(messageContent["SyncJob"].ToString());
+            bool sendDisableJobNotification = Convert.ToBoolean(messageContent["SendDisableJobNotification"]);
+            var notification = await CreateActionableNotification(threshold, job, sendDisableJobNotification);
+            return notification;
+        }
+        private async Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotification(ThresholdResult threshold, SyncJob job, bool sendDisableJobNotification)
+        {
+            var thresholdNotification = await _notificationRepository.GetThresholdNotificationBySyncJobIdAsync(job.Id);
+
+            if (thresholdNotification == null)
+            {
+                thresholdNotification = new ThresholdNotification
+                {
+                    Id = Guid.NewGuid(),
+                    SyncJobPartitionKey = job.Id.ToString(),
+                    SyncJobRowKey = job.Id.ToString(),
+                    SyncJobId = job.Id,
+                    ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage,
+                    ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage,
+                    ChangeQuantityForAdditions = threshold.DeltaToAddCount,
+                    ChangeQuantityForRemovals = threshold.DeltaToRemoveCount,
+                    CreatedTime = DateTime.UtcNow,
+                    Resolution = ThresholdNotificationResolution.Unresolved,
+                    ResolvedByUPN = string.Empty,
+                    ResolvedTime = DateTime.FromFileTimeUtc(0),
+                    Status = ThresholdNotificationStatus.Triggered,
+                    CardState = ThresholdNotificationCardState.DefaultCard,
+                    TargetOfficeGroupId = job.TargetOfficeGroupId,
+                    ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
+                    ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals
+                };
+            }
+            else
+            {
+                thresholdNotification.ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage;
+                thresholdNotification.ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage;
+                thresholdNotification.ChangeQuantityForAdditions = threshold.DeltaToAddCount;
+                thresholdNotification.ChangeQuantityForRemovals = threshold.DeltaToRemoveCount;
+                thresholdNotification.ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions;
+                thresholdNotification.ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals;
+                thresholdNotification.Status = ThresholdNotificationStatus.Triggered;
+
+                if (sendDisableJobNotification)
+                {
+                    thresholdNotification.CardState = ThresholdNotificationCardState.DisabledCard;
+                }
+            }
+
+            await _notificationRepository.SaveNotificationAsync(thresholdNotification);
+            return thresholdNotification;
+        }
     }
 }
