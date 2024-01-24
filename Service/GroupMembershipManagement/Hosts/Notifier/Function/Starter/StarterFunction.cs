@@ -23,16 +23,14 @@ namespace Hosts.Notifier
         }
 
         [FunctionName(nameof(StarterFunction))]
-        public async Task Run(
-            [TimerTrigger("%notifierTriggerSchedule%")] TimerInfo myTimer,
+        public async Task ProcessServiceBusMessageAsync(
+            [ServiceBusTrigger("%serviceBusNotificationsQueue%", Connection = "serviceBusConnectionString")] ServiceBusReceivedMessage message,
             [DurableClient] IDurableOrchestrationClient starter)
         {
-            if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
-                var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction));
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
-            }
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
+            string messageType = message.ApplicationProperties["MessageType"].ToString();
+            var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), (Encoding.UTF8.GetString(message.Body), messageType));
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
         }
     }
 }

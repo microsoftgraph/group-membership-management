@@ -30,16 +30,26 @@ namespace Hosts.Notifier
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
-            var notifications = await context.CallActivityAsync<List<Models.ThresholdNotifications.ThresholdNotification>>(nameof(RetrieveNotificationsFunction), null);
+            var (messageBody, messageType) = context.GetInput<(string, string)>();
 
-            if (notifications != null && notifications.Count > 0)
+            var messageContent = JsonConvert.DeserializeObject<Dictionary<string, object>>(messageBody);
+            #TODO Have an activity to deserialize the message body into the correct type, it needs a case switch for each message type
+
+
+            switch (messageType)
             {
-                foreach(var notification in notifications)
-                {
-                    await context.CallActivityAsync(nameof(UpdateNotificationStatusFunction), new UpdateNotificationStatusRequest { Notification = notification, Status = ThresholdNotificationStatus.Triggered });
+                case nameof(NotificationMessageType.ThresholdNotification):
+                    await context.CallActivityAsync(nameof(CreateNotificationStatusFunction), new CreateNotificationStatusFunction { Notification = notification, Status = ThresholdNotificationStatus.Triggered });
                     await context.CallActivityAsync(nameof(SendNotificationFunction), notification);
                     await context.CallActivityAsync(nameof(UpdateNotificationStatusFunction), new UpdateNotificationStatusRequest { Notification = notification, Status = ThresholdNotificationStatus.AwaitingResponse });
-                }
+                    break;
+                case nameof(NotificationMessageType.InitalSync):
+                    await context.CallActivityAsync(nameof(SendNotificationFunction), notification);
+                    break;
+                // Todo: Add other cases for different message types
+                default:
+                    // Handle unknown message type
+                    break;
             }
 
             await context.CallActivityAsync(nameof(LoggerFunction),
