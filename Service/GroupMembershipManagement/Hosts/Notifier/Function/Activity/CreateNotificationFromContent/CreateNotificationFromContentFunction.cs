@@ -24,7 +24,7 @@ namespace Hosts.Notifier
         }
 
         [FunctionName(nameof(CreateActionableNotificationFromContentFunction))]
-        public async Task<List<Models.ThresholdNotifications.ThresholdNotification>> CreateActionableNotificationFromContentAsync([ActivityTrigger] Dictionary<string, object> messageContent)
+        public async Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync([ActivityTrigger] Dictionary<string, object> messageContent)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CreateActionableNotificationFromContentFunction)} function started at: {DateTime.UtcNow}" });
             var notification = await _notifierService.CreateActionableNotificationFromContentAsync(messageContent);

@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Models;
+using Models.Notifications;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Repositories.Contracts;
@@ -12,6 +13,7 @@ using Repositories.Contracts.InjectConfig;
 using Models.ThresholdNotifications;
 using Services.Contracts.Notifications;
 using Microsoft.ApplicationInsights;
+using Newtonsoft.Json;
 
 namespace Services.Notifier
 {

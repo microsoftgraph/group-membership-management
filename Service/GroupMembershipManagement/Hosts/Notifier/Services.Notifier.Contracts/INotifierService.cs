@@ -13,5 +13,7 @@ namespace Services.Notifier.Contracts
         public Task SendEmailAsync(ThresholdNotification notification);
         public Task<List<ThresholdNotification>> RetrieveQueuedNotificationsAsync();
         public Task UpdateNotificationStatusAsync(ThresholdNotification notification, ThresholdNotificationStatus status);
+        public Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync(Dictionary<string, object>  messageContent);
+
     }
 }

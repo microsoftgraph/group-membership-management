@@ -7,6 +7,8 @@ using Repositories.Contracts;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Models.ThresholdNotifications;
+using Newtonsoft.Json;
+using Models.Notifications;
 
 namespace Hosts.Notifier
 {
@@ -36,7 +38,7 @@ namespace Hosts.Notifier
             switch (messageType)
             {
                 case nameof(NotificationMessageType.ThresholdNotification):
-                    var notification = await context.CallActivityAsync<ThresholdNotification>(nameof(CreateNotificationFromContentFunction), messageContent);
+                    var notification = await context.CallActivityAsync<ThresholdNotification>(nameof(CreateActionableNotificationFromContentFunction), messageContent);
                     await context.CallActivityAsync(nameof(SendNotificationFunction), notification);
                     await context.CallActivityAsync(nameof(UpdateNotificationStatusFunction), new UpdateNotificationStatusRequest { Notification = notification, Status = ThresholdNotificationStatus.AwaitingResponse });
                     break;

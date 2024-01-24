@@ -8,7 +8,8 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-
+using Azure.Messaging.ServiceBus;
+using System.Text;
 namespace Hosts.Notifier
 {
     public class StarterFunction
@@ -28,8 +29,7 @@ namespace Hosts.Notifier
             [DurableClient] IDurableOrchestrationClient starter)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
-            string messageType = message.ApplicationProperties["MessageType"].ToString();
-            var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), (Encoding.UTF8.GetString(message.Body), messageType));
+            var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), (message));
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
         }
     }
