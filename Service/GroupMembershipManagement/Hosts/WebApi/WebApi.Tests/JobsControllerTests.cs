@@ -38,6 +38,7 @@ namespace Services.Tests
         private Mock<IRequestAdapter> _requestAdapter = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _databaseSyncJobsRepository = null!;
+        private Mock<IDatabaseDestinationAttributesRepository> _destinationAttributesRepository = null!;
         private Mock<GraphServiceClient> _graphServiceClient = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private ODataQueryOptions<SyncJob> _odataQueryOptions = null!;
@@ -51,6 +52,7 @@ namespace Services.Tests
             _requestAdapter = new Mock<IRequestAdapter>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _databaseSyncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _destinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
             _httpContextAccessor = new Mock<IHttpContextAccessor>();
 
             var builder = new ODataConventionModelBuilder();
@@ -70,6 +72,30 @@ namespace Services.Tests
 
             _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
                                     .ReturnsAsync(() => _groups);
+
+            _graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>()))
+                                    .ReturnsAsync(() => "GroupNameTest");
+
+            var destinationGuid = Guid.NewGuid();
+            var ownerGuid = Guid.NewGuid();
+
+            var destination = new DestinationObject()
+            {
+                Type = "GroupMembership",
+                Value = new GroupDestinationValue() { ObjectId = destinationGuid }
+            };
+
+            var destinationAttributes = new DestinationAttributes()
+            {
+                Id = destinationGuid,
+                Name = "GroupNameTest",
+                Owners = new List<Guid> { ownerGuid }
+            };
+
+            _graphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>()))
+                                    .ReturnsAsync(new Dictionary<Guid, List<Guid>>() { { destinationGuid, new List<Guid> { ownerGuid } } });
+
+            _destinationAttributesRepository.Setup(x => x.UpdateAttributes(It.IsAny<DestinationAttributes>())).Returns(Task.CompletedTask);
 
             var telemetryConfiguration = new TelemetryConfiguration();
             _telemetryClient = new TelemetryClient(telemetryConfiguration);
@@ -113,7 +139,7 @@ namespace Services.Tests
 
             _newSyncJob = new NewSyncJobDTO
             {
-                Destination = "[{\"value\":{\"objectId\":\"e2e78850-ed7c-49dc-91f2-4cb57a608504\"},\"type\":\"GroupMembership\"}]",
+                Destination = $"[{{\"value\":{{\"objectId\":\"{destinationGuid}\"}},\"type\":\"GroupMembership\"}}]",
                 Status = SyncStatus.Idle.ToString(),
                 Period = 24,
                 Query = "[{ \"type\": \"GroupMembership\", \"source\": \"fc8f8e1a-6d91-4965-85ff-f911944f201d\"}]",
@@ -138,6 +164,8 @@ namespace Services.Tests
                                                  _httpContextAccessor.Object);
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
                                                  _loggingRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
@@ -247,6 +275,7 @@ namespace Services.Tests
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Name, "testuser@domain.com"),
+                new Claim(ClaimTypes.Upn, "testuser@domain.com"),
                 new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR),
             };
 
@@ -264,6 +293,8 @@ namespace Services.Tests
                                      _httpContextAccessor.Object);
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
                                                  _loggingRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
@@ -289,6 +320,8 @@ namespace Services.Tests
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
                                                  _loggingRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
@@ -320,7 +353,10 @@ namespace Services.Tests
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object, _loggingRepository.Object);
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
             _jobsController.ControllerContext = new ControllerContext

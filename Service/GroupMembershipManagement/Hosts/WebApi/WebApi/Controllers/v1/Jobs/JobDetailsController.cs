@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using System.Security.Claims;
 using WebApi.Models.DTOs;
 
 namespace WebApi.Controllers.v1.Jobs
@@ -46,7 +47,9 @@ namespace WebApi.Controllers.v1.Jobs
         public async Task<ActionResult> UpdateSyncJobAsync(Guid syncJobId, [FromBody] JsonPatchDocument<SyncJobPatch> patchDocument)
         {
             var user = User;
-            var userName = user.Identity?.Name!;
+            var claimsIdentity = User.Identity as ClaimsIdentity;
+            var userName = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Upn)?.Value;
+
             var isAllowed = User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR) || User.IsInRole(Models.Roles.TENANT_SUBMISSION_REVIEWER);
             var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userName, syncJobId, patchDocument));
 

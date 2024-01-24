@@ -10,6 +10,7 @@ using WebApi.Models.DTOs;
 using SyncJobModel = Models.SyncJob;
 using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
 using System.Net;
+using System.Security.Claims;
 
 namespace WebApi.Controllers.v1.Jobs
 {
@@ -44,7 +45,8 @@ namespace WebApi.Controllers.v1.Jobs
         public async Task<ActionResult> PostJobAsync([FromBody] NewSyncJobDTO newSyncJob)
         {
             var user = User;
-            var userName = user.Identity?.Name!;
+            var claimsIdentity = User.Identity as ClaimsIdentity;
+            var userName = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Upn)?.Value;
             var response = await _postJobRequestHandler.ExecuteAsync(new PostJobRequest(userName, newSyncJob));
 
             switch (response.StatusCode)

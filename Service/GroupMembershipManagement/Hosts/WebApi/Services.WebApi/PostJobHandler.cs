@@ -3,6 +3,7 @@
 
 using Models;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -15,13 +16,19 @@ namespace Services
     public class PostJobHandler : RequestHandlerBase<PostJobRequest, PostJobResponse>
     {
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
+        private readonly IDatabaseDestinationAttributesRepository _destinationAttributesRepository;
+        private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ILoggingRepository _loggingRepository;
 
         public PostJobHandler(
             IDatabaseSyncJobsRepository syncJobRepository,
+            IDatabaseDestinationAttributesRepository destinationAttributesRepository,
+            IGraphGroupRepository graphGroupRepository,
             ILoggingRepository loggingRepository) : base(loggingRepository)
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _destinationAttributesRepository = destinationAttributesRepository ?? throw new ArgumentNullException(nameof(destinationAttributesRepository));
+            _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
@@ -38,6 +45,22 @@ namespace Services
                 {
                     response.StatusCode = HttpStatusCode.Created;
                     response.NewSyncJobId = newSyncJobId;
+
+                    var destinationId = new Guid((JArray.Parse(newSyncJobEntity.Destination)[0] as JObject)["value"]["objectId"].Value<string>());
+                    var destinationIds = new List<Guid> { destinationId };
+
+                    var name = await _graphGroupRepository.GetGroupNameAsync(destinationId);
+                    var owners = await _graphGroupRepository.GetDestinationOwnersAsync(destinationIds);
+
+                    var destinationAttributes = new DestinationAttributes
+                    {
+                        Id = destinationId,
+                        Name = name,
+                        Owners = owners[destinationId],
+                    };
+
+                    await _destinationAttributesRepository.UpdateAttributes(destinationAttributes);
+
                     await _loggingRepository.LogMessageAsync(new LogMessage
                     {
                         Message = $"PostJobHandler created job: {request}."

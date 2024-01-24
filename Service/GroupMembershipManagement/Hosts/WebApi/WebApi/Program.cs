@@ -259,6 +259,7 @@ namespace WebApi
             builder.Services.AddScoped<IDatabaseMigrationsRepository, DatabaseMigrationsRepository>();
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
             builder.Services.AddScoped<IDatabaseSettingsRepository, DatabaseSettingsRepository>();
+            builder.Services.AddScoped<IDatabaseDestinationAttributesRepository, DatabaseDestinationAttributesRespository>();
             builder.Services.AddScoped<INotificationTypesRepository, NotificationTypesRepository>();
             builder.Services.AddScoped<IJobNotificationsRepository, JobNotificationRepository>();
 

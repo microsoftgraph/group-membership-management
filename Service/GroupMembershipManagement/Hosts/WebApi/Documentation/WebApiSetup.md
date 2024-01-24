@@ -30,9 +30,9 @@ DevTenantId <dev-tenant-id> - If the application is going to be installed in a d
 
 ## Create an AAD Group for GMM Admins
 
-Login and follow these steps in the tenant that was set in "AppTenantId" to run the Set-WebApiAzureADApplication.ps1 script in the previous step.
+Login and follow these steps in the tenant that was set in "AppTenantId" to run the `Set-WebApiAzureADApplication.ps1` script in the previous step.
 
-In order to control access to the WebAPI, several roles are created when the WebAPI application is created by the script below, 'Reader', 'Admin'.
+In order to control access to the WebAPI, several roles are created when the WebAPI application is created by the script below, 'Reader', 'Admin', 'SubmissionReviewer'.
 
 1. Create a new Microsoft Entra ID Group or use an existing one.
 2. Add members to the group, members of this group will act as GMM administrators. Administrators will have access to all jobs present in GMM and will be able to perform any CRUD action on them.

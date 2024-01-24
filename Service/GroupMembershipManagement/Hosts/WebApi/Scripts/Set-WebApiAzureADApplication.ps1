@@ -176,7 +176,7 @@ function Set-WebApiAzureADApplication {
 		$submissionReviewerRole = @{
 			DisplayName        = "Submission Reviewer"
 			Description        = "Submission Reviewers can can review onboarding submissions."
-			Value              = "MembershipManagement.Destination.ReadWrite.All"
+			Value              = "MembershipManagement.Submission.ReadWrite.All"
 			Id                 = [Guid]::NewGuid().ToString()
 			IsEnabled          = $True
 			AllowedMemberTypes = @($memberTypes)
