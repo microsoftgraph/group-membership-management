@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using Models.ThresholdNotifications;
 using Newtonsoft.Json;
 using Models.Notifications;
+using Azure.Messaging.ServiceBus;
+using System.Text;
 
 namespace Hosts.Notifier
 {
@@ -31,11 +33,12 @@ namespace Hosts.Notifier
                     Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
                     Verbosity = VerbosityLevel.DEBUG
                 });
+            var message = context.GetInput<OrchestratorRequest>();
 
-            var (messageBody, messageType) = context.GetInput<(string, string)>();
-            var messageContent = JsonConvert.DeserializeObject<Dictionary<string, object>>(messageBody);
 
-            switch (messageType)
+            var messageContent = JsonConvert.DeserializeObject<Dictionary<string, object>>(message.MessageBody);
+           
+            switch (message.MessageType)
             {
                 case nameof(NotificationMessageType.ThresholdNotification):
                     var notification = await context.CallActivityAsync<ThresholdNotification>(nameof(CreateActionableNotificationFromContentFunction), messageContent);
@@ -48,7 +51,7 @@ namespace Hosts.Notifier
                     new LoggerRequest
                     {
                         RunId = runId,
-                        Message = $"{messageType} is not a valid message type",
+                        Message = $"{message.MessageType} is not a valid message type",
                         Verbosity = VerbosityLevel.DEBUG
                     });
                     break;

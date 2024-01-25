@@ -11,7 +11,9 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" Version="2.13.0" />
     <PackageReference Include="Microsoft.Extensions.Localization" Version="6.0.7" />
+    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.2.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.2.0" />
     <PackageReference Include="Moq" Version="4.18.1" />
     <PackageReference Include="MSTest.TestAdapter" Version="2.2.10" />
@@ -25,6 +27,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Repositories.Localization\Repositories.Localization.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Mail\Repositories.Mail.csproj" />
+    <ProjectReference Include="..\Function\Notifier.csproj" />
     <ProjectReference Include="..\Services.Notifier\Services.Notifier.csproj" />
   </ItemGroup>
 

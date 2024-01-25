@@ -5,6 +5,7 @@ namespace Hosts.Notifier
 {
     public class OrchestratorRequest
     {
-        public int StartTimeDelayMinutes { get; set; }
+        public string MessageBody { get; set; }
+        public string MessageType { get; set; }
     }
 }

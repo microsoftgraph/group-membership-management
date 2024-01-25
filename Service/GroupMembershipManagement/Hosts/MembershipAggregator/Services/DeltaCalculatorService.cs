@@ -333,7 +333,7 @@ namespace Services
                 MessageId = $"{job.Id}_{job.RunId}_{NotificationMessageType.ThresholdNotification}",
                 Body = body
             };
-            message.ApplicationProperties.Add("MessageType", NotificationMessageType.ThresholdNotification);
+            message.ApplicationProperties.Add("MessageType", NotificationMessageType.ThresholdNotification.ToString());
             await _serviceBusQueueRepository.SendMessageAsync(message);
             await _loggingRepository.LogMessageAsync(new LogMessage
             {

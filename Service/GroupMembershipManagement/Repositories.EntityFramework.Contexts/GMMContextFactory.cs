@@ -11,7 +11,7 @@ namespace Repositories.EntityFramework.Contexts
         public GMMContext CreateDbContext(string[] args)
         {
             var optionsBuilder = new DbContextOptionsBuilder<GMMContext>();
-            optionsBuilder.UseSqlServer(@"<write connection string>");
+            optionsBuilder.UseSqlServer("Server=tcp:gmm-data-yy.database.windows.net,1433;Initial Catalog=gmm-data-yy-jobs;Authentication=Active Directory Default;Connection Timeout=110;");
             return new GMMContext(optionsBuilder.Options);
         }
     }
@@ -21,7 +21,7 @@ namespace Repositories.EntityFramework.Contexts
         public GMMReadContext CreateDbContext(string[] args)
         {
             var optionsBuilder = new DbContextOptionsBuilder<GMMContext>();
-            optionsBuilder.UseSqlServer(@"<read connection string>");
+            optionsBuilder.UseSqlServer("Server=tcp:gmm-data-yy-r.database.windows.net,1433;Initial Catalog=gmm-data-yy-jobs-R;Authentication=Active Directory Default;Connection Timeout=110;");
             return new GMMReadContext(optionsBuilder.Options);
         }
     }

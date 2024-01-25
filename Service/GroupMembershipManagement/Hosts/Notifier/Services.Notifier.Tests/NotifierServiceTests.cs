@@ -18,12 +18,19 @@ using Microsoft.Extensions.Options;
 using Services.Contracts.Notifications;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Models.Notifications;
+using Newtonsoft.Json;
+using Models.ServiceBus;
+using System.Linq;
+using Services.Tests;
 
 namespace Services.Notifier.Tests
 {
     [TestClass]
     public class NotifierServiceTests
     {
+        private const string GroupMembership = "GroupMembership";
+
         private Mock<ILoggingRepository> _loggerMock;
         private Mock<IEmailSenderRecipient> _mailAddresses;
         private Mock<IMailRepository> _mailRepository;
@@ -113,6 +120,37 @@ namespace Services.Notifier.Tests
             await _notifierService.UpdateNotificationStatusAsync(_notification, ThresholdNotificationStatus.Queued);
             _notificationRepository.Verify(x => x.UpdateNotificationStatusAsync(It.IsAny<ThresholdNotification>(), It.IsAny<ThresholdNotificationStatus>()), Times.Once());
         }
+        [TestMethod]
+        public async Task CreateActionableNotificationFromContentAsync_ShouldCreateOrUpdateNotification()
+        {
+            SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
 
+            var thresholdResult = new ThresholdResult
+            {
+                IncreaseThresholdPercentage = 10.0,  
+                DecreaseThresholdPercentage = 5.0,
+                DeltaToAddCount = 5, 
+                DeltaToRemoveCount = 5,
+                IsAdditionsThresholdExceeded = true, 
+                IsRemovalsThresholdExceeded = false  
+            };
+
+            bool sendDisableJobNotification = true;
+
+            var messageContent = new Dictionary<string, object>
+            {
+                { "ThresholdResult", JsonConvert.SerializeObject(thresholdResult) },
+                { "SyncJob", JsonConvert.SerializeObject(job) },
+                { "SendDisableJobNotification", sendDisableJobNotification.ToString() }
+            };
+
+            _notificationRepository.Setup(x => x.GetThresholdNotificationBySyncJobIdAsync(It.IsAny<Guid>()))
+                .ReturnsAsync((ThresholdNotification)null);
+   
+            var result = await _notifierService.CreateActionableNotificationFromContentAsync(messageContent);
+
+            Assert.IsNotNull(result);
+            _notificationRepository.Verify(x => x.SaveNotificationAsync(It.IsAny<ThresholdNotification>()), Times.Once);
+        }
     }
 }

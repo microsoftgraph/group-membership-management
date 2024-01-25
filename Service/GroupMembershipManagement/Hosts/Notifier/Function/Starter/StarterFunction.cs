@@ -29,7 +29,18 @@ namespace Hosts.Notifier
             [DurableClient] IDurableOrchestrationClient starter)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
-            var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), (message));
+            string messageBody = Encoding.UTF8.GetString(message.Body.ToArray());
+            string messageType = message.ApplicationProperties.ContainsKey("MessageType")
+                                    ? message.ApplicationProperties["MessageType"].ToString()
+                                    : "Unknown";
+
+            var orchestratorRequest = new OrchestratorRequest
+            {
+                MessageBody = messageBody,
+                MessageType = messageType
+            };
+
+            var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), (orchestratorRequest));
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
         }
     }
