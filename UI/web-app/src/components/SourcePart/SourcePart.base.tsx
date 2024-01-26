@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { 
+import {
   classNamesFunction,
   ChoiceGroup,
   IChoiceGroupOption,
@@ -18,7 +18,8 @@ import { AppDispatch } from '../../store';
 import { updateSourcePart, updateSourcePartValidity } from '../../store/manageMembership.slice';
 import { useStrings } from '../../store/hooks';
 import { ISourcePart, SourcePartQuery } from '../../models/ISourcePart';
-import { AdvancedViewSourcePart } from '../AdvancedViewSourcePart';
+import { HRQuerySource } from '../HRQuerySource';
+import { HRSourcePart, HRSourcePartSource } from '../../models/HRSourcePart';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
@@ -33,6 +34,9 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const toggleExpand = () => {
     setExpanded(!expanded);
   };
+
+  let hrSourcePartSource: HRSourcePartSource = query.source as HRSourcePartSource;
+
   const options: IChoiceGroupOption[] = [
     { key: 'Yes', text: 'Yes' },
     { key: 'No', text: 'No' },
@@ -70,6 +74,20 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   useEffect(() => {
     setIsExclusionary(query.exclusionary);
   }, [query.exclusionary]);
+
+  const handleSourceChange = (source: HRSourcePartSource, partId: number) => {
+    const newQuery: HRSourcePart = {
+      type: 'SqlMembership',
+      source: source,
+      exclusionary: isExclusionary
+    }
+    const newPart: ISourcePart = {
+      id: partId,
+      query: newQuery,
+      isValid: false
+    };
+    dispatch(updateSourcePart(newPart));
+  };
 
   const handleQueryValidation = (isValid: boolean, partId: number) => {
     dispatch(updateSourcePartValidity({ partId, isValid }));
@@ -135,11 +153,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
           </div>
           {sourceType.key === 'HR' && (
             <div className={classNames.advancedQuery}>
-              <AdvancedViewSourcePart
-                query={query}
-                partId={index}
-                onValidate={handleQueryValidation}
-              />
+              <HRQuerySource source={hrSourcePartSource} partId={index} onSourceChange={handleSourceChange}/>
             </div>
           )}
           <div className={classNames.error}>

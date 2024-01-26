@@ -126,7 +126,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
           offText={strings.ManageMembership.labels.advancedView}
           onChange={handleToggleChange}
           checked={isAdvancedView}
-          disabled={!isToggleEnabled}
+          // disabled={!isToggleEnabled}
         />
       </div>
       {!isAdvancedView ? (<>

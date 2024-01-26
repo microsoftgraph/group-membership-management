@@ -20,6 +20,12 @@ export const strings: IStrings = {
   addOwnerButton: 'Add GMM as an owner',
   membershipManagement: 'Membership Management',
   learnMembershipManagement:'Learn how Membership Management works in your organization',
+  HROnboarding: {
+    orgLeaderId: "Org. leader Id",
+    orgLeaderIdPlaceHolder: "Please enter Org. leader Id",
+    depth: "Depth",
+    depthPlaceHolder: "Please enter Depth"
+  },
   Components: {
     HyperlinkSetting: {
       address: "Address",

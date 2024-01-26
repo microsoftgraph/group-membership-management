@@ -22,6 +22,12 @@ export const strings: IStrings = {
   membershipManagement: 'Membership Management',
   learnMembershipManagement:
     'Aprenda cómo funciona Membership Management en su organización',
+  HROnboarding: {
+    orgLeaderId: "Org. identificación del líder",
+    orgLeaderIdPlaceHolder: "Por favor ingrese Org. identificación del líder",
+    depth: "Profundidad",
+    depthPlaceHolder: "Por favor ingrese la profundidad"
+  },
   Components: {
     HyperlinkSetting: {
       address: "URL",

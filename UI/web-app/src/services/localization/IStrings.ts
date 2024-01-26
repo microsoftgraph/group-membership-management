@@ -17,6 +17,12 @@ export type IStrings = {
   addOwnerButton: string;
   membershipManagement: string;
   learnMembershipManagement: string;
+  HROnboarding: {
+    orgLeaderId: string;
+    orgLeaderIdPlaceHolder: string;
+    depth: string;
+    depthPlaceHolder: string;
+  },
   Components: {
     HyperlinkSetting: {
       address: string;
