@@ -14,12 +14,12 @@ namespace Services
     public class GetGroupOnboardingStatusHandler : RequestHandlerBase<GetGroupOnboardingStatusRequest, GetGroupOnboardingStatusResponse>
     {
         private readonly IGraphGroupRepository _graphGroupRepository;
-        private readonly ISyncJobRepository _syncJobRepository;
+        private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly string _gmmAppId;
 
         public GetGroupOnboardingStatusHandler(ILoggingRepository loggingRepository,
                               IGraphGroupRepository graphGroupRepository,
-                              ISyncJobRepository syncJobRepository,
+                              IDatabaseSyncJobsRepository syncJobRepository,
                               IOptions<GraphCredentials> graphCredentials) : base(loggingRepository)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
@@ -39,7 +39,7 @@ namespace Services
             {
                 response.Status = OnboardingStatus.Onboarded;
             }
-            else if (isAppIdOwner && !isOnboarded)
+            else if (isAppIdOwner)
             {
                 response.Status = OnboardingStatus.ReadyForOnboarding;
             }

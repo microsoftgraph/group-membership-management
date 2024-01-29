@@ -50,7 +50,7 @@ namespace Repositories.EntityFramework
 
         public async Task<SyncJob> GetSyncJobByObjectIdAsync(Guid objectId)
         {
-            return await _readContext.SyncJobs.FromSqlRaw<SyncJob>(@"SELECT * FROM [dbo].[SyncJobs] WHERE JSON_VALUE(Destination, '$[0].value.objectId') = {0}", objectId.toString()).FirstOrDefaultAsync();
+            return await _readContext.SyncJobs.FromSqlRaw<SyncJob>(@"SELECT * FROM [dbo].[SyncJobs] WHERE JSON_VALUE(Destination, '$[0].value.objectId') = {0}", objectId.ToString()).FirstOrDefaultAsync();
         }
         public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
         {

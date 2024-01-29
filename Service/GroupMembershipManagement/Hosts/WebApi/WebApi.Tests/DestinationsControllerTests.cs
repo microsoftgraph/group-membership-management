@@ -10,9 +10,6 @@ using WebApi.Models.Responses;
 using Models;
 using Microsoft.Extensions.Options;
 using Common.DependencyInjection;
-using Microsoft.Graph.Models;
-using Services.Messages.Responses;
-using Tavis.UriTemplates;
 
 namespace Services.Tests
 {
@@ -28,6 +25,7 @@ namespace Services.Tests
         private DestinationController _destinationController = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
+        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private SearchDestinationsHandler _searchDestinationsHandler = null!;
         private GetGroupEndpointsHandler _getGroupEndpointsHandler = null!;
         private GetGroupOnboardingStatusHandler _getGroupOnboardingStatusHandler = null!;
@@ -39,6 +37,7 @@ namespace Services.Tests
             _context = new DefaultHttpContext();
             _destinations = new List<AzureADGroup>();
             _loggingRepository = new Mock<ILoggingRepository>();
+            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _searchDestinationsHandler = new SearchDestinationsHandler(_loggingRepository.Object, _graphGroupRepository.Object);
             _getGroupEndpointsHandler = new GetGroupEndpointsHandler(_loggingRepository.Object, _graphGroupRepository.Object);
@@ -50,7 +49,8 @@ namespace Services.Tests
 
             _graphCredentials.Setup(gc => gc.Value).Returns(testGraphCredentials);
             _getGroupOnboardingStatusHandler = new GetGroupOnboardingStatusHandler(_loggingRepository.Object, 
-                                                                                   _graphGroupRepository.Object, 
+                                                                                   _graphGroupRepository.Object,
+                                                                                   _syncJobRepository.Object,
                                                                                    _graphCredentials.Object);
 
             _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler)
@@ -86,6 +86,16 @@ namespace Services.Tests
             _graphGroupRepository.Setup(x => x.SearchDestinationsAsync(It.IsAny<string>())).ReturnsAsync(() => _destinations);
             _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == _validDestinationId))).ReturnsAsync(true);
             _graphGroupRepository.Setup(x => x.GetGroupEndpointsAsync(It.IsAny<Guid>())).ReturnsAsync(_expectedEndpoints);
+
+            var syncJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                TargetOfficeGroupId = Guid.NewGuid(),
+                Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
+                Status = "Idle",
+                Period = 12
+            };
+            _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync(syncJob);
         }
 
         [TestMethod]
@@ -119,9 +129,28 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task GetGroupOnboardingStatusAsync()
+        public async Task GetGroupAlreadyOnboardedStatusAsync()
         {
             var response = await _destinationController.GetGroupOnboardingStatusAsync(_validDestinationId);
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result?.Value);
+
+            var onboardingStatus = result.Value;
+            Assert.IsNotNull(onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.Onboarded, onboardingStatus);
+        }
+
+        [TestMethod]
+        public async Task GetGroupReadyForOnboardingStatusAsync()
+        {
+            Guid groupNotOnboarded = Guid.NewGuid();
+            _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync((SyncJob)null);
+            _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(true);
+
+            var response = await _destinationController.GetGroupOnboardingStatusAsync(groupNotOnboarded);
             var result = response.Result as OkObjectResult;
 
             Assert.IsNotNull(response);

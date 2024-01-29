@@ -15,7 +15,6 @@ namespace Repositories.Contracts
         Task<Page<SyncJob>> GetSyncJobsSegmentAsync(string query, string continuationToken, int batchSize);
         Task<SyncJob> GetSyncJobAsync(string partitionKey, string rowKey);
         IAsyncEnumerable<SyncJob> GetSpecificSyncJobsAsync();
-        Task<SyncJob> GetSyncJobByObjectIdAsync(Guid objectId);
         Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus status);
         Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null);
         Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> jobs);
