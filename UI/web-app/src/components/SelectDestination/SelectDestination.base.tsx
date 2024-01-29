@@ -136,7 +136,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
             options={optionsDestinationType}
             styles={{ title: classNames.dropdownTitle, dropdown: classNames.dropdownField }}
             required
-            selectedKey={selectedDestination?.type}
+            selectedKey={'Group'}
           />
           <div>
             {strings.ManageMembership.labels.searchDestination}
