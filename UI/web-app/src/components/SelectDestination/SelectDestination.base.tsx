@@ -24,11 +24,12 @@ import { searchDestinations } from '../../store/manageMembership.api';
 import {
   manageMembershipSelectedDestinationEndpoints,
   manageMembershipSearchResults,
-  manageMembershipIsGroupReadyForOnboarding,
-  manageMembershipLoadingSearchResults
+  manageMembershipLoadingSearchResults,
+  manageMembershipGroupOnboardingStatus
 } from '../../store/manageMembership.slice';
 import { Destination } from '../../models/Destination';
 import { selectOutlookWarningUrl } from '../../store/settings.slice';
+import { OnboardingStatus } from '../../models';
 
 const getClassNames = classNamesFunction<
   ISelectDestinationStyleProps,
@@ -62,7 +63,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
 
   const dispatch = useDispatch<AppDispatch>();
   const loadingSearchResults = useSelector(manageMembershipLoadingSearchResults);
-  const isReadyForOnboarding = useSelector(manageMembershipIsGroupReadyForOnboarding);
+  const onboardingStatus = useSelector(manageMembershipGroupOnboardingStatus);
   const selectedDestinationEndpoints = useSelector(manageMembershipSelectedDestinationEndpoints);
   const groupPickerSuggestions = useSelector(manageMembershipSearchResults);
   const selectedDestinationPersona = mapDestinationToPersonaProps(selectedDestination);
@@ -74,9 +75,15 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   };
 
   const addGroupOwnerLink: string = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/${selectedDestination?.id}/menuId/`
-  const ownershipWarning = isReadyForOnboarding === false ? (
+  const ownershipWarning = onboardingStatus === OnboardingStatus.NotReadyForOnboarding ? (
     <div className={classNames.ownershipWarning}>
       {strings.ManageMembership.labels.ownershipWarning} <a href={addGroupOwnerLink}>{strings.clickHere}</a>.
+    </div>
+  ) : null;
+
+  const alreadyOnboardedWarning = onboardingStatus === OnboardingStatus.Onboarded ? (
+    <div className={classNames.ownershipWarning}>
+      {strings.ManageMembership.labels.alreadyOnboardedWarning}
     </div>
   ) : null;
 
@@ -195,6 +202,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                     </ActionButton>
                   )}
                   {ownershipWarning}
+                  {alreadyOnboardedWarning}
                 </div>
               ) : null}
             </div>

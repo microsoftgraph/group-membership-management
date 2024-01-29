@@ -187,6 +187,7 @@ export const manageMembershipThresholdPercentageForRemovals = (state: RootState)
 export const manageMembershipSearchResults = (state: RootState) => state.manageMembership.searchResults;
 export const manageMembershipLoadingSearchResults = (state: RootState) => state.manageMembership.loadingSearchResults;
 export const manageMembershipSelectedDestinationEndpoints = (state: RootState) => state.manageMembership.selectedDestination?.endpoints;
+export const manageMembershipGroupOnboardingStatus = (state: RootState) => state.manageMembership.onboardingStatus;
 export const manageMembershipIsGroupReadyForOnboarding = (state: RootState): boolean => {
     return state.manageMembership.onboardingStatus?.toString() === OnboardingStatus.ReadyForOnboarding.toString();
 };

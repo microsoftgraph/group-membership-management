@@ -192,6 +192,7 @@ export const strings: IStrings = {
     labels: {
       abandonOnboarding: 'Abandon Onboarding?',
       abandonOnboardingDescription: 'Are you sure you want to abandon the in-progress onboarding and go back?',
+      alreadyOnboardedWarning: 'This group is already onboarded.',
       confirmAbandon: 'Yes, go back',
       pageTitle: 'Manage Membership',
       step1title: 'Step 1: Select Destination',

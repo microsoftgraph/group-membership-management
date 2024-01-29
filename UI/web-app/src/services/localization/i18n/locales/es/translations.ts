@@ -196,6 +196,7 @@ export const strings: IStrings = {
     labels: {
       abandonOnboarding: '¿Abandonar Onboarding?',
       abandonOnboardingDescription: '¿Estás seguro de que quieres abandonar el onboarding en progreso y regresar?',
+      alreadyOnboardedWarning: 'Este grupo ya está siendo sincronizado por GMM.',
       confirmAbandon: 'Sí, regresar',
       pageTitle: 'Manejo de Membresía',
       step1title: 'Paso 1: Selecciona el destino',

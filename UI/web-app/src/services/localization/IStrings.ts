@@ -187,6 +187,7 @@ export type IStrings = {
     labels: {
       abandonOnboarding: string;
       abandonOnboardingDescription: string;
+      alreadyOnboardedWarning: string;
       confirmAbandon: string;
       pageTitle: string;
       step1title: string;
