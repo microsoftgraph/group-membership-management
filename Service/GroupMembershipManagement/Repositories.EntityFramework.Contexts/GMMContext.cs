@@ -16,6 +16,7 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<JobNotification> JobNotifications { get; set; }
         public DbSet<DestinationName> DestinationNames { get; set; }
         public DbSet<DestinationOwner> DestinationOwners { get; set; }
+        public DbSet<Entities.SyncJobChange> SyncJobChanges { get; set; } = null!;
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<SyncJob>().Property(t => t.Id)
@@ -28,7 +29,7 @@ namespace Repositories.EntityFramework.Contexts
 
             modelBuilder.Entity<Setting>(entity =>
             {
-                entity.HasKey(s => s.Id); 
+                entity.HasKey(s => s.Id);
                 entity.Property(s => s.SettingKey)
                     .IsRequired()
                     .HasConversion(
@@ -55,14 +56,14 @@ namespace Repositories.EntityFramework.Contexts
 
             modelBuilder.Entity<JobNotification>()
                 .HasOne(j => j.SyncJob)
-                .WithMany()  
+                .WithMany()
                 .HasForeignKey(j => j.SyncJobId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             modelBuilder.Entity<JobNotification>()
                 .HasIndex(j => new { j.SyncJobId, j.NotificationTypeID })
                 .IsUnique();
-                
+
             modelBuilder.Entity<SyncJob>()
                 .HasOne(syncJob => syncJob.DestinationName)
                 .WithOne(name => name.SyncJob)
@@ -81,6 +82,24 @@ namespace Repositories.EntityFramework.Contexts
 
             modelBuilder.Entity<DestinationName>()
                 .HasIndex(name => name.Name);
+
+            modelBuilder.Entity<Entities.SyncJobChange>(entity =>
+            {
+                // Keys
+                entity.HasKey(s => s.SyncJobId);
+                entity.HasKey(s => s.ChangeTime);
+
+                // Indexes
+                entity.HasIndex(s => s.ChangedBy);
+                entity.HasIndex(s => s.ChangeSource);
+
+                // Properties
+                entity.Property(s => s.ChangeTime).HasDefaultValue(DateTime.UtcNow);
+                entity.Property(s => s.ChangedBy).IsRequired();
+                entity.Property(s => s.ChangeSource).IsRequired();
+                entity.Property(s => s.ChangeReason).IsRequired();
+                entity.Property(s => s.ChangeDetails).IsRequired();
+            });
 
         }
 
