@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 using System;
 
-namespace Models
+namespace Models.SyncJobChange
 {
     public class SyncJobChange
     {
@@ -26,7 +26,7 @@ namespace Models
         /// <summary>
         /// Gets or sets the reason for the change.
         /// </summary>
-        public string ChangeReason {get;set;}
+        public string ChangeReason { get; set; }
         /// <summary>
         /// Gets or sets the details of the change.
         /// </summary>

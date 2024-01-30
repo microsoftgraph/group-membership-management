@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-namespace Models
+namespace Models.SyncJobChange
 {
     public enum SyncJobChangeSource
     {
