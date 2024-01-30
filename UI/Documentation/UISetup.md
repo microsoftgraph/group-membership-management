@@ -20,11 +20,11 @@ From your `PowerShell 7.x` command prompt navigate to the `UI\Scripts\` folder o
                                         -Verbose
 Follow the instructions on the screen.
 
-Note:
-DevTenantId <app-tenant-id> - If the application is going to be installed in a different tenant, set that tenant id here.
-TenantId <keyvault-tenant-id> - This is the tenant where your GMM resources are located, i.e. keyvaults, storage account.
+Notes:
+- DevTenantId <app-tenant-id> - If the application is going to be installed in a different tenant, set that tenant id here.
+- TenantId <keyvault-tenant-id> - This is the tenant where your GMM resources are located, i.e. keyvaults, storage account. If you only have one tenant, these will be set to the same tenant id.
 
-If you only have one tenant, these will be set to the same tenant id.
+> After running the script, ensure that the following api permissions are granted to the `<solutionAbbreviation>`-webapi-`<environmentAbbreviation>` application: User.Read, User.ReadBasic.All
 
 ## Update UI/Web API application settings
 
