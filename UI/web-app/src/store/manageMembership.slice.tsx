@@ -189,7 +189,7 @@ export const manageMembershipLoadingSearchResults = (state: RootState) => state.
 export const manageMembershipSelectedDestinationEndpoints = (state: RootState) => state.manageMembership.selectedDestination?.endpoints;
 export const manageMembershipGroupOnboardingStatus = (state: RootState) => state.manageMembership.onboardingStatus;
 export const manageMembershipIsGroupReadyForOnboarding = (state: RootState): boolean => {
-    return state.manageMembership.onboardingStatus?.toString() === OnboardingStatus.ReadyForOnboarding.toString();
+    return state.manageMembership.onboardingStatus === OnboardingStatus.ReadyForOnboarding;
 };
 
 // 2- Advanced Query
