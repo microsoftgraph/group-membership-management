@@ -9,13 +9,14 @@ using Repositories.EntityFramework.Contexts;
 
 namespace Repositories.EntityFramework
 {
-    public class SyncJobChangeRepository : DatabaseRepositoryBase<SyncJobChange, Entities.SyncJobChange>, ISyncJobChangeRepository
+    // TODO: Implement RepositoryBase once it is added to the project.
+    public class SyncJobChangeRepository : ISyncJobChangeRepository
     {
+        // TODO: Remove these private members once the RepositoryBase is added.
         private readonly GMMContext _writeContext;
         private readonly GMMReadContext _readContext;
 
-        
-
+        // TODO: Remove this constructor once the RepositoryBase is added.
         public SyncJobChangeRepository(GMMContext writeContext, GMMReadContext readContext)
         {
             _writeContext = writeContext ?? throw new ArgumentNullException(nameof(writeContext));
@@ -29,14 +30,11 @@ namespace Repositories.EntityFramework
             SyncJobChangeSortingField sortBy = SyncJobChangeSortingField.ChangeTime,
             bool sortAscending = false)
         {
-
-            IQueryable listOppLineData = Enumerable.Empty<string>().AsQueryable();
-
             // filtering
             var query = _readContext.SyncJobChanges
                 .Where(s => s.SyncJobId == syncJobId);
 
-            // count
+            // counting
             var pagingQueryable = query.AsQueryable();
             var totalCount = await pagingQueryable.CountAsync();
 
@@ -65,12 +63,10 @@ namespace Repositories.EntityFramework
             var skip = (startPage - 1) * pageSize;
             var take = Math.Min(pageSize, totalCount - skip); // take a page size or the remaining items, whichever is smaller
             query = query.Skip(skip).Take(take);
-
             var totalPages = totalCount % pageSize == 0 ? totalCount / pageSize : (totalCount / pageSize) + 1;
 
-
             // transformation and execution
-            var items = await query.Select(s => EntityToModel(s)).ToListAsync();
+            var items = await query.Select(s => MapEntityToModel(s)).ToListAsync();
             return new RepositoryPage<SyncJobChange>
             {
                 Items = items,
@@ -83,11 +79,12 @@ namespace Repositories.EntityFramework
 
         public async Task SaveSyncJobChange(SyncJobChange syncJobChange)
         {
-            _writeContext.Set<Entities.SyncJobChange>().Add(ModelToEntity(syncJobChange));
+            _writeContext.Set<Entities.SyncJobChange>().Add(MapModelToEntity(syncJobChange));
             await _writeContext.SaveChangesAsync();
         }
 
-        protected override SyncJobChange EntityToModel(Entities.SyncJobChange entity)
+        // TODO: Add 'override' keyword to the following methods once the RepositoryBase is added.
+        protected SyncJobChange MapEntityToModel(Entities.SyncJobChange entity)
         {
             return new SyncJobChange
             {
@@ -100,7 +97,7 @@ namespace Repositories.EntityFramework
             };
         }
 
-        protected override Entities.SyncJobChange ModelToEntity(SyncJobChange model)
+        protected Entities.SyncJobChange MapModelToEntity(SyncJobChange model)
         {
             return new Entities.SyncJobChange
             {

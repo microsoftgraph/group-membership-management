@@ -107,5 +107,10 @@ namespace Repositories.Mocks
             var userOwners = allOwners == null ? new List<User>() : allOwners.OfType<User>().ToList();
             return Task.FromResult(userOwners.Select(x => new AzureADUser { ObjectId = Guid.Parse(x.Id) }).ToList());
         }
+
+        public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
+        {
+            throw new NotImplementedException();
+        }
     }
 }
