@@ -1,6 +1,6 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-namespace SqlMembershipObtainer.Common.DependencyInjection
+namespace Repositories.Contracts.InjectConfig
 {
     public interface IDataFactorySecret<TType>
     {

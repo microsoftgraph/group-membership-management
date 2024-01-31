@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 using System.Threading.Tasks;
 
-namespace SqlMembershipObtainer.Common.DependencyInjection
+namespace Repositories.Contracts
 {
     public interface IDataFactoryRepository
     {

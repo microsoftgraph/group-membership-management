@@ -36,7 +36,7 @@
     <ProjectReference Include="..\..\..\Models\Models.csproj" />
     <ProjectReference Include="..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj" />
     <ProjectReference Include="..\..\..\Repositories.ServiceBusQueue\Repositories.ServiceBusQueue.csproj" />
-    <ProjectReference Include="..\..\SqlMembershipObtainer.Common\DependencyInjection\SqlMembershipObtainer.Common.DependencyInjection.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.SqlMembershipRepository\Repositories.SqlMembershipRepository.csproj" />
     <ProjectReference Include="..\..\SqlMembershipObtainer.Common\Repositories.DataFactory\Repositories.DataFactory.csproj" />
     <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
     <ProjectReference Include="..\Services\Services\Services.csproj" />

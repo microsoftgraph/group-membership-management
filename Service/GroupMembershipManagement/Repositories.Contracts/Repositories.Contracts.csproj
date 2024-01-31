@@ -9,6 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Hosts\SqlMembershipObtainer.Common\SqlMembershipObtainer.Entities\SqlMembershipObtainer.Entities.csproj" />
     <ProjectReference Include="..\Models\Models.csproj" />
   </ItemGroup>
 

@@ -9,14 +9,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
-using SqlMembershipObtainer.Common.DependencyInjection;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.DataFactory;
 using Repositories.ServiceBusQueue;
-using Services.Contracts;
+using Repositories.SqlMembershipRepository;
 using Services;
+using Services.Contracts;
 
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
@@ -42,12 +42,8 @@ namespace SqlMembershipObtainer
                 return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
             });
 
-            builder.Services.AddSingleton<ISqlMembershipObtainerSecret<ISqlMembershipObtainerService>>(new SqlMembershipObtainerSecret<ISqlMembershipObtainerService>(GetValueOrThrow("sqlMembershipStorageAccountName"), GetValueOrThrow("sqlMembershipStorageAccountConnectionString")));
-
-            builder.Services.AddSingleton<ISqlMembershipObtainerServiceSecret>(services =>
-            {
-                return new SqlMembershipObtainerServiceSecret(bool.Parse(GetValueOrThrow("shouldStopSyncIfSourceNotPresentInGraph")), GetValueOrThrow("sqlServerBasicConnectionString"));
-            });
+            builder.Services.AddSingleton<IKeyVaultSecret<ISqlMembershipRepository>>(services => new KeyVaultSecret<ISqlMembershipRepository>(GetValueOrThrow("sqlServerBasicConnectionString")));
+            builder.Services.AddSingleton<ISqlMembershipRepository, SqlMembershipRepository>();
 
             builder.Services.AddSingleton<IDataFactorySecret<IDataFactoryRepository>>(new DataFactorySecrets<IDataFactoryRepository>(GetValueOrThrow("pipeline"), GetValueOrThrow("tenantId"), GetValueOrThrow("dataFactoryName"), GetValueOrThrow("sqlMembershipAppId"), GetValueOrThrow("sqlMembershipAppPasswordCredentialValue"), GetValueOrThrow("subscriptionId"), GetValueOrThrow("dataResourceGroup")));
             builder.Services.AddSingleton<IGraphServiceAttemptsValue>(services =>

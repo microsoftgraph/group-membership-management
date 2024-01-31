@@ -1,15 +1,12 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using DIConcreteTypes;
-using Entities;
-using Models.ServiceBus;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
+using Models.ServiceBus;
+using Moq;
 using Newtonsoft.Json;
-using SqlMembershipObtainer.Common.DependencyInjection;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Tests.Helpers;
@@ -31,11 +28,11 @@ namespace Services.Tests
         [TestMethod]
         public async Task SendGroupMembershipTest()
         {
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
             var blobStorageRepository = new Mock<IBlobStorageRepository>();
             var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             var loggingRepository = new Mock<ILoggingRepository>();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
-            var sqlMembershipObtainerServiceSecret = new Mock<ISqlMembershipObtainerServiceSecret>();
             var dryRunValue = new Mock<IDryRunValue>();
             var groupMembership = default(GroupMembership);
             var messages = new List<string>();
@@ -61,12 +58,11 @@ namespace Services.Tests
                                         .ToList();
 
             var sqlMembershipObtainerService = new SqlMembershipObtainerService(
+                                            sqlMembershipRepository.Object,
                                             blobStorageRepository.Object,
                                             syncJobRepository.Object,
                                             loggingRepository.Object,
                                             telemetryClient,
-                                            sqlMembershipObtainerServiceSecret.Object,
-                                            sqlMembershipObtainerServiceSecret.Object,
                                             dryRunValue.Object,
                                             dfService.Object);
 
