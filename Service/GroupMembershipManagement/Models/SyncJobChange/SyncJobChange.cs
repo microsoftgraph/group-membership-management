@@ -7,6 +7,10 @@ namespace Models.SyncJobChange
     public class SyncJobChange
     {
         /// <summary>
+        /// Gets or sets an id representing the SyncJobChange.
+        /// </summary>
+        public Guid Id { get; set; }
+        /// <summary>
         /// Gets or sets the id of the syncjob in the SyncJobs table.
         /// </summary>
         public Guid SyncJobId { get; set; }
@@ -16,9 +20,13 @@ namespace Models.SyncJobChange
         /// </summary>
         public DateTime ChangeTime { get; set; }
         /// <summary>
-        /// Gets or sets the name of service principal responsible for the change.
+        /// Gets or sets the display name of service principal responsible for the change.
         /// </summary>
-        public string ChangedBy { get; set; }
+        public string ChangedByDisplayName { get; set; }
+        /// <summary>
+        /// Gets or sets the object id of service principal responsible for the change.
+        /// </summary>
+        public Guid ChangedByObjectId { get; set; }
         /// <summary>
         /// Gets or sets the location where the change originated.
         /// </summary>

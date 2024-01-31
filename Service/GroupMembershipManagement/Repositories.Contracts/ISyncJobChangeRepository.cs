@@ -13,7 +13,7 @@ namespace Repositories.Contracts
         /// <summary>
         /// Retrieves a page of sync job changes for a given sync job id with paging metadata.
         /// </summary>
-        Task<RepositoryPage<SyncJobChange>> GetPageOfSyncJobChangesBySyncJobId(
+        Task<RepositoryPage<SyncJobChange>> GetPageBySyncJobId(
             Guid syncJobId,
             int startPage = 1,
             int pageSize = 10,
@@ -21,8 +21,11 @@ namespace Repositories.Contracts
             bool sortAscending = false);
 
         /// <summary>
-        /// Saves a new sync job change to the database.
+        /// Adds a new sync job change to the database.
         /// </summary>
-        Task SaveSyncJobChange(SyncJobChange syncJobChange);
+        /// <remarks>
+        /// SyncJobChanges should be immutable once created, so this will not update existing records.
+        /// </remarks>
+        Task Save(SyncJobChange syncJobChange);
     }
 }

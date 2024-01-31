@@ -86,16 +86,20 @@ namespace Repositories.EntityFramework.Contexts
             modelBuilder.Entity<Entities.SyncJobChange>(entity =>
             {
                 // Keys
-                entity.HasKey(s => s.SyncJobId);
-                entity.HasKey(s => s.ChangeTime);
+                entity.HasKey(s => s.Id);
 
                 // Indexes
-                entity.HasIndex(s => s.ChangedBy);
+                entity.HasIndex(s => s.SyncJobId);
+                entity.HasIndex(s => s.ChangeTime);
+                entity.HasIndex(s => s.ChangedByObjectId);
                 entity.HasIndex(s => s.ChangeSource);
 
                 // Properties
-                entity.Property(s => s.ChangeTime).HasDefaultValue(DateTime.UtcNow);
-                entity.Property(s => s.ChangedBy).IsRequired();
+                entity.Property(s => s.Id).ValueGeneratedOnAdd().HasDefaultValueSql("NEWSEQUENTIALID()");
+                entity.Property(s => s.SyncJobId).IsRequired();
+                entity.Property(s => s.ChangeTime).IsRequired().HasDefaultValue(DateTime.UtcNow);
+                entity.Property(s => s.ChangedByDisplayName).IsRequired();
+                entity.Property(s => s.ChangedByObjectId).IsRequired();
                 entity.Property(s => s.ChangeSource).IsRequired();
                 entity.Property(s => s.ChangeReason).IsRequired();
                 entity.Property(s => s.ChangeDetails).IsRequired();

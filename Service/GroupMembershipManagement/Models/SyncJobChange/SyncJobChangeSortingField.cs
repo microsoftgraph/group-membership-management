@@ -6,7 +6,7 @@ namespace Models.SyncJobChange
     public enum SyncJobChangeSortingField
     {
         ChangeTime,
-        ChangedBy,
+        ChangedByObjectId,
         ChangeSource,
         ChangeReason,
         ChangeDetails

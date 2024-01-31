@@ -23,7 +23,7 @@ namespace Repositories.EntityFramework
             _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
 
-        public async Task<RepositoryPage<SyncJobChange>> GetPageOfSyncJobChangesBySyncJobId(
+        public async Task<RepositoryPage<SyncJobChange>> GetPageBySyncJobId(
             Guid syncJobId,
             int startPage = 1,
             int pageSize = 10,
@@ -44,9 +44,9 @@ namespace Repositories.EntityFramework
                 SyncJobChangeSortingField.ChangeTime => query = sortAscending
                     ? query.OrderBy(s => s.ChangeTime)
                     : query.OrderByDescending(s => s.ChangeTime),
-                SyncJobChangeSortingField.ChangedBy => query = sortAscending
-                    ? query.OrderBy(s => s.ChangedBy)
-                    : query.OrderByDescending(s => s.ChangedBy),
+                SyncJobChangeSortingField.ChangedByObjectId => query = sortAscending
+                    ? query.OrderBy(s => s.ChangedByObjectId)
+                    : query.OrderByDescending(s => s.ChangedByObjectId),
                 SyncJobChangeSortingField.ChangeSource => query = sortAscending
                     ? query.OrderBy(s => s.ChangeSource)
                     : query.OrderByDescending(s => s.ChangeSource),
@@ -77,7 +77,7 @@ namespace Repositories.EntityFramework
             };
         }
 
-        public async Task SaveSyncJobChange(SyncJobChange syncJobChange)
+        public async Task Save(SyncJobChange syncJobChange)
         {
             _writeContext.Set<Entities.SyncJobChange>().Add(MapModelToEntity(syncJobChange));
             await _writeContext.SaveChangesAsync();
@@ -88,9 +88,11 @@ namespace Repositories.EntityFramework
         {
             return new SyncJobChange
             {
+                Id = entity.Id,
                 SyncJobId = entity.SyncJobId,
                 ChangeTime = entity.ChangeTime,
-                ChangedBy = entity.ChangedBy,
+                ChangedByDisplayName = entity.ChangedByDisplayName,
+                ChangedByObjectId = entity.ChangedByObjectId,
                 ChangeSource = (SyncJobChangeSource)entity.ChangeSource,
                 ChangeReason = entity.ChangeReason,
                 ChangeDetails = entity.ChangeDetails
@@ -101,9 +103,11 @@ namespace Repositories.EntityFramework
         {
             return new Entities.SyncJobChange
             {
+                Id = model.Id,
                 SyncJobId = model.SyncJobId,
                 ChangeTime = model.ChangeTime,
-                ChangedBy = model.ChangedBy,
+                ChangedByDisplayName = model.ChangedByDisplayName,
+                ChangedByObjectId = model.ChangedByObjectId,
                 ChangeSource = (Entities.SyncJobChangeSource)model.ChangeSource,
                 ChangeReason = model.ChangeReason,
                 ChangeDetails = model.ChangeDetails
