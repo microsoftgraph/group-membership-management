@@ -21,7 +21,7 @@ namespace Repositories.EntityFramework.Contexts
         public GMMReadContext CreateDbContext(string[] args)
         {
             var optionsBuilder = new DbContextOptionsBuilder<GMMContext>();
-            optionsBuilder.UseSqlServer(@"<write connection string>");
+            optionsBuilder.UseSqlServer(@"<read connection string>");
             return new GMMReadContext(optionsBuilder.Options);
         }
     }
