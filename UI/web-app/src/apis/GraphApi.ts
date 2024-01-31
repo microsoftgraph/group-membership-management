@@ -28,6 +28,7 @@ export class GraphApi extends ApiBase implements IGraphApi {
       params: {
         $select: 'displayName,mail,id',
         $search: `"mail:${mail}" OR "displayName:${displayName}"`,
+        $orderby: "displayName"
       },
       headers: {
         'ConsistencyLevel': 'eventual',

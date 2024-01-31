@@ -172,7 +172,9 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   };
 
   const handleOwnersInputChanged = (input: string): string => {
-    dispatch(getJobOwnerFilterSuggestions({displayName: input, alias: input}))
+    if (input.trim()) {
+      dispatch(getJobOwnerFilterSuggestions({displayName: input, alias: input}))
+    }
     return input;
   }
   
