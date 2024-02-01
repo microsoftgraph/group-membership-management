@@ -14,8 +14,8 @@ import {
   clearSourceParts,
   deleteSourcePart,
   getSourcePartsFromState,
-  ISourcePart,
   manageMembershipAdvancedViewQuery,
+  manageMembershipCompositeQuery,
   manageMembershipIsAdvancedView,
   manageMembershipIsToggleEnabled,
   manageMembershipQuery,
@@ -23,14 +23,12 @@ import {
   setAdvancedViewQuery,
   setCompositeQuery,
   setIsAdvancedView,
-  setIsQueryValid,
-  updateSourcePart,
-  updateSourcePartValidity
+  setIsAdvancedQueryValid
 } from '../../store/manageMembership.slice';
 import { SourcePart } from '../SourcePart';
 import { useStrings } from '../../store/hooks';
-import { HRSourcePart } from '../../models/HRSourcePart';
-import { SyncJobQuery } from '../../models/SyncJobQuery';
+import { HRSourcePartSource } from '../../models/HRSourcePart';
+import { ISourcePart } from '../../models/ISourcePart';
 
 const getClassNames = classNamesFunction<MembershipConfigurationStyleProps, MembershipConfigurationStyles>();
 
@@ -47,26 +45,25 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const sourceParts = useSelector(getSourcePartsFromState);
 
   const globalQuery = useSelector(manageMembershipQuery);
-  const advancedViewQuery = useSelector(manageMembershipAdvancedViewQuery) ?? globalQuery;
+  const advancedViewQuery = useSelector(manageMembershipAdvancedViewQuery) ?? '';
+  const compositeQuery = useSelector(manageMembershipCompositeQuery) ?? globalQuery;
   const isToggleEnabled = useSelector(manageMembershipIsToggleEnabled);
 
-  const placeholderQueryHRPart: HRSourcePart = {
-    type: "SqlMembership",
-    source: {
-      ids: [],
-      filter: "",
-      depth: 1
-    },
-    exclusionary: false
+  const sourcePartQuery: HRSourcePartSource = {
+    ids: [],
+    filter: "",
+    depth: 1
   };
 
   const newSourcePart = () => {
-    const newPartId = sourceParts.length > 0 ? Math.max(...sourceParts.map(part => part.id)) + 1 : 1;
     const newPart: ISourcePart = {
-      id: newPartId,
-      query: placeholderQueryHRPart,
-      isValid: false,
-      isExclusionary: false
+      id: sourceParts.length + 1,
+      query: {
+        type: "SqlMembership",
+        source: sourcePartQuery,
+        exclusionary: false
+      },
+      isValid: true
     };
     dispatch(addSourcePart(newPart));
   };
@@ -81,18 +78,24 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     if (newIsAdvancedView) {
       if (!(sourceParts.length === 0)) {
         const currentCompositeQuery = buildCompositeQuery(sourceParts);
-        dispatch(setAdvancedViewQuery(currentCompositeQuery));
+        dispatch(setAdvancedViewQuery(JSON.stringify(currentCompositeQuery)));
       }
     } else {
       // When switching back to non-advanced view
-      if (advancedViewQuery !== placeholderAdvancedViewQuery) {
+      if (compositeQuery && compositeQuery !== placeholderAdvancedViewQuery) {
         try {
-          const updatedSourceParts: ISourcePart[] = advancedViewQuery.map((part: ISourcePart, index: number) => ({
-            id: index + 1,
-            query: JSON.stringify(part, null, 2),
-            isValid: true,
-            isExclusionary: part.isExclusionary
-          }));
+          const updatedSourceParts: ISourcePart[] = compositeQuery.map((query, index) => {
+            const newPart: ISourcePart = {
+              id: index + 1,
+              query: {
+                type: "SqlMembership",
+                source: sourcePartQuery,
+                exclusionary: false
+              },
+              isValid: true
+            };
+            return newPart;
+          });
           dispatch(clearSourceParts());
           updatedSourceParts.forEach(part => dispatch(addSourcePart(part)));
         } catch (error) {
@@ -104,42 +107,8 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     dispatch(setIsAdvancedView(newIsAdvancedView));
   };
 
-  const handleSourcePartQueryChange = (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, part: ISourcePart, newValue?: string) => {
-    let newQuery;
-    try {
-      newQuery = typeof newValue === 'string' ? JSON.parse(newValue) : newValue;
-
-      dispatch(updateSourcePart({
-        id: part.id,
-        query: newQuery,
-        isValid: false,
-        isExclusionary: part.isExclusionary
-      }));
-    } catch (error) {
-      console.error('Error parsing new HRSourcePart:', error);
-    }
-  };
-
-  const handleAdvancedViewQueryChange = (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: SyncJobQuery) => {
-    dispatch(setAdvancedViewQuery(newValue));
-    dispatch(setIsQueryValid(false));
-  };
-
-  const createHandleQueryChange = (part: ISourcePart) =>
-    (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: HRSourcePart) => {
-      let newQueryValue: string;
-      if (typeof newValue === 'string') {
-        newQueryValue = newValue;
-      } else if (newValue && typeof newValue === 'object') {
-        newQueryValue = JSON.stringify(newValue, null, 2);
-      } else {
-        newQueryValue = '';
-      }
-      handleSourcePartQueryChange(event, part, newQueryValue);
-    };
-
-  const handleValidationResult = (isValid: boolean, partId: number) => {
-    dispatch(updateSourcePartValidity({ partId: partId, isValid }));
+  const handleAdvancedViewQueryChange = (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => {
+    dispatch(setIsAdvancedQueryValid(false));
   };
 
   useEffect(() => {
@@ -169,8 +138,6 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
               onDelete={removeSourcePart}
               totalSourceParts={sourceParts.length}
               query={part.query}
-              part={part}
-              onQueryChange={createHandleQueryChange(part)}
             />
           ))}
         </div>
@@ -184,7 +151,6 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
           query={advancedViewQuery}
           onQueryChange={handleAdvancedViewQueryChange}
           partId={1}
-          onValidate={handleValidationResult}
         />
       </div>
       )}

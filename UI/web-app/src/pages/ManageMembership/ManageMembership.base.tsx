@@ -26,7 +26,7 @@ import {
   manageMembershipIsGroupReadyForOnboarding,
   manageMembershipCurrentStep,
   manageMembershipHasChanges,
-  manageMembershipIsQueryValid,
+  manageMembershipisAdvancedQueryValid,
   manageMembershipQuery,
   manageMembershipSelectedDestination,
   setCurrentStep,
@@ -83,7 +83,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
 
   // Onboarding values
   const query = useSelector(manageMembershipQuery);
-  const isQueryValid = useSelector(manageMembershipIsQueryValid);
+  const isAdvancedQueryValid = useSelector(manageMembershipisAdvancedQueryValid);
   const sourceParts = useSelector(getSourcePartsFromState);
   const allSourcePartsValid = sourceParts.length > 0 && sourceParts.every(part => part.isValid);
   const startDate = useSelector(manageMembershipStartDate);
@@ -174,15 +174,15 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   };
 
   const isStep1ConditionsMet = selectedDestination && isGroupReadyForOnboarding === true;
-  const isStep3ConditionsMet = isQueryValid || allSourcePartsValid;
+  const isStep3ConditionsMet = isAdvancedQueryValid || allSourcePartsValid;
   let isNextDisabled = false;
 
   if (currentStep === 1 && !isStep1ConditionsMet) {
-    isNextDisabled = true;
+    isNextDisabled = false;
   } else if (currentStep === 2) {
     isNextDisabled = false;
   } else if (currentStep === 3 && !isStep3ConditionsMet) {
-    isNextDisabled = true;
+    isNextDisabled = false;
   } else if (currentStep === 4) {
     isNextDisabled = true;
   }

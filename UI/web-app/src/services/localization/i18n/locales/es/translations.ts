@@ -233,6 +233,7 @@ export const strings: IStrings = {
       step4description: '',
       objectId: 'ID del objeto',
       sourceParts: 'Partes de origen',
+      sourcePart: 'Parte de origen',
       noThresholdSet: 'No se estableció un límite',
       savingSyncJob: 'Guardando...',
       group: 'Grupo',
@@ -241,6 +242,7 @@ export const strings: IStrings = {
       sourceType: 'Tipo de origen',
       addSourcePart: 'Agregar parte de origen',
       excludeSourcePart: 'Excluir parte de origen',
+      deleteLastSourcePartWarning: 'No se puede eliminar la última parte de origen.',
     }
   },
   delete: 'Eliminar',

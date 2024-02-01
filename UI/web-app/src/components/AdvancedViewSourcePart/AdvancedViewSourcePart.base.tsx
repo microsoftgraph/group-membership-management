@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import {
   IProcessedStyleSet,
   TextField,
@@ -11,31 +11,32 @@ import {
 } from '@fluentui/react';
 import Ajv, { ErrorObject } from 'ajv';
 import {
-  IAdvancedQueryProps,
-  IAdvancedQueryStyleProps,
-  IAdvancedQueryStyles,
-} from './AdvancedQuery.types';
+  IAdvancedViewSourcePartProps,
+  IAdvancedViewSourcePartStyleProps,
+  IAdvancedViewSourcePartStyles,
+} from './AdvancedViewSourcePart.types';
 import { useStrings } from "../../store/hooks";
-import schemaDefinition from '../../Query.json';
+import SqlMembershipSchema from '../../SqlMembershipSchema.json';
 import { AppDispatch } from '../../store';
 import {
-  setAdvancedViewQuery,
-  setIsAdvancedQueryValid,
+  updateSourcePart,
+  updateSourcePartValidity
 } from '../../store/manageMembership.slice';
+import { ISourcePart, SourcePartQuery } from '../../models/ISourcePart';
 
 const getClassNames = classNamesFunction<
-  IAdvancedQueryStyleProps,
-  IAdvancedQueryStyles
+  IAdvancedViewSourcePartStyleProps,
+  IAdvancedViewSourcePartStyles
 >();
 
 interface ExtendedErrorObject extends ErrorObject<string, Record<string, any>, unknown> {
   dataPath: string;
 }
 
-export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (props) => {
-  const { className, styles, query, onQueryChange } = props;
+export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSourcePartProps> = (props) => {
+  const { className, styles, query, partId, onValidate } = props;
   const strings = useStrings();
-  const classNames: IProcessedStyleSet<IAdvancedQueryStyles> = getClassNames(
+  const classNames: IProcessedStyleSet<IAdvancedViewSourcePartStyles> = getClassNames(
     styles,
     {
       className,
@@ -44,8 +45,8 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
   );
   const dispatch = useDispatch<AppDispatch>();
   const [validationMessage, setValidationMessage] = useState<React.ReactNode | null>(null);
-  const [localQuery, setLocalQuery] = useState<string | undefined>(query);
-  const schema = schemaDefinition;
+  const [localQuery, setLocalQuery] = useState<SourcePartQuery | undefined>(query);
+  const schema = SqlMembershipSchema;
   const ajv = new Ajv();
 
   useEffect(() => {
@@ -73,31 +74,36 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
   };
 
   const handleQueryChange = (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => {
-    setLocalQuery(newValue || '');
-    onQueryChange(event, newValue);
+    setLocalQuery(JSON.parse(newValue ?? ''));
   };
 
   const onValidateQuery = () => {
     try {
-      const parsedQuery = JSON.parse(localQuery || '[]');
       const validate = ajv.compile(schema);
-      const isValid = validate(parsedQuery);
-      
-      if (isValid) {
-        dispatch(setAdvancedViewQuery(localQuery || '[]'));
+      const isValid = validate(localQuery);
+
+      if(isValid) {
+        const updatedSourcePart: ISourcePart = {
+          id: partId,
+          query: localQuery,
+          isValid: true
+        };
+        dispatch(updateSourcePart(updatedSourcePart));
         setValidationMessage(strings.ManageMembership.labels.validQuery);
-      } else {
+      }
+      else{
         const errorsFromAjv = validate.errors;
         const formattedErrors = formatErrors(errorsFromAjv as ExtendedErrorObject[] | null | undefined);
         setValidationMessage(formattedErrors);
-      }
-      dispatch(setIsAdvancedQueryValid(isValid));
-    } catch (error) {
+      } 
+      dispatch(updateSourcePartValidity({ partId, isValid }));
+      onValidate(isValid, partId)
+    }
+    catch (error) {
       console.error('Error validating query:', error);
       setValidationMessage(strings.ManageMembership.labels.invalidQuery);
-      dispatch(setIsAdvancedQueryValid(false));
     }
-  };  
+  }
 
   const handleBlur = () => {
     onValidateQuery();
@@ -111,7 +117,7 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
         multiline
         rows={25}
         resizable
-        value={localQuery}
+        value={JSON.stringify(localQuery, null, 2)}
         onChange={handleQueryChange}
         onBlur={handleBlur}
       />

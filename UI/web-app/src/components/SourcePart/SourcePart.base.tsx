@@ -3,20 +3,27 @@
 
 import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { ChoiceGroup, classNamesFunction, Dropdown, IChoiceGroupOption, IDropdownOption, IProcessedStyleSet } from '@fluentui/react';
+import { 
+  classNamesFunction,
+  ChoiceGroup,
+  IChoiceGroupOption,
+  Dropdown,
+  IDropdownOption,
+  IProcessedStyleSet
+} from '@fluentui/react';
 import { DefaultButton, IconButton } from '@fluentui/react/lib/Button';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { SourcePartStyleProps, SourcePartStyles, SourcePartProps } from './SourcePart.types';
-import { AdvancedQuery } from '../AdvancedQuery';
 import { AppDispatch } from '../../store';
 import { updateSourcePart, updateSourcePartValidity } from '../../store/manageMembership.slice';
 import { useStrings } from '../../store/hooks';
-import { HRSourcePart } from '../../models/HRSourcePart';
+import { ISourcePart, SourcePartQuery } from '../../models/ISourcePart';
+import { AdvancedViewSourcePart } from '../AdvancedViewSourcePart';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
 export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: SourcePartProps) => {
-  const { className, styles, index, totalSourceParts, onDelete, query, onQueryChange, part } = props;
+  const { className, styles, index, totalSourceParts, onDelete, query } = props;
   const classNames: IProcessedStyleSet<SourcePartStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -39,11 +46,9 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const dispatch = useDispatch<AppDispatch>();
   const [expanded, setExpanded] = useState(false);
   const [sourceType, setSourceType] = useState<IDropdownOption>({ key: 'HR', text: 'HR' });
-  const [isExclusionary, setIsExclusionary] = useState(part.isExclusionary);
+  const [isExclusionary, setIsExclusionary] = useState(query.exclusionary);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  console.log("SourcePart query:", JSON.stringify(query, null, 2));
-  console.log("double",  JSON.stringify( JSON.stringify(query, null, 2), null, 2))
   const handleSourceTypeChanged = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption | undefined): void => {
     if (item) {
       setSourceType(item);
@@ -52,22 +57,22 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
   const handleDelete = () => {
     if (totalSourceParts > 1) {
-      onDelete(part.id);
+      onDelete(index);
     } else {
-      setErrorMessage("Cannot delete the last source part.");
+      setErrorMessage(strings.ManageMembership.labels.deleteLastSourcePartWarning);
     }
   }
 
   useEffect(() => {
     setErrorMessage('');
-  }, [sourceType, expanded]);
+  }, [query, expanded]);
 
   useEffect(() => {
-    setIsExclusionary(part.isExclusionary);
-  }, [part.isExclusionary]);
+    setIsExclusionary(query.exclusionary);
+  }, [query.exclusionary]);
 
   const handleQueryValidation = (isValid: boolean, partId: number) => {
-    dispatch(updateSourcePartValidity({ partId: partId, isValid: isValid }));
+    dispatch(updateSourcePartValidity({ partId, isValid }));
   };
 
   const handleExclusionaryChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption): void => {
@@ -76,17 +81,18 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
     setIsExclusionary(isExclusionarySelected);
     try {
-      const updatedQuery: HRSourcePart = {
-        ...part.query,
+      const updatedQuery: SourcePartQuery = {
+        ...query,
         exclusionary: isExclusionarySelected
       };
 
-      dispatch(updateSourcePart({
-        id: part.id,
+      const updatedSourcePart: ISourcePart = {
+        id: index,
         query: updatedQuery,
-        isValid: part.isValid,
-        isExclusionary: isExclusionarySelected
-      }));
+        isValid: true
+      };
+
+      dispatch(updateSourcePart(updatedSourcePart));
     } catch (error) {
       console.error(`Error updating source part query:`, error);
     }
@@ -96,7 +102,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     <div className={classNames.card}>
       <div className={classNames.header}>
         <div className={classNames.title}>
-          Source Part {index}
+          {strings.ManageMembership.labels.sourcePart} {index}
         </div>
         <IconButton
           className={classNames.expandButton}
@@ -121,7 +127,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
               label="Exclude source part"
               required={true}
               onChange={handleExclusionaryChange}
-              selectedKey={isExclusionary ? strings.yes : strings.no}
+              selectedKey={isExclusionary ? 'Yes' : 'No'}
             />
             <DefaultButton iconProps={{ iconName: 'Delete' }} className={classNames.deleteButton} onClick={handleDelete} >
               {strings.delete}
@@ -129,10 +135,9 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
           </div>
           {sourceType.key === 'HR' && (
             <div className={classNames.advancedQuery}>
-              <AdvancedQuery
+              <AdvancedViewSourcePart
                 query={query}
-                onQueryChange={onQueryChange}
-                partId={part.id}
+                partId={index}
                 onValidate={handleQueryValidation}
               />
             </div>

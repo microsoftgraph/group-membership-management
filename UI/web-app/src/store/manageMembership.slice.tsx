@@ -13,33 +13,18 @@ import {
 import { OnboardingStatus } from '../models/GroupOnboardingStatus';
 import { Destination } from '../models/Destination';
 import { DestinationPickerPersona } from '../models';
-import { HRSourcePart } from '../models/HRSourcePart';
 import { SyncJobQuery } from '../models/SyncJobQuery';
-
-export interface ISourcePart {
-    id: number;
-    query: HRSourcePart;
-    isValid: boolean;
-    isExclusionary?: boolean;
-}
-
-export interface Query {
-    sourceParts: ISourcePart[];
-}
-
-export const placeholderQueryHRPart: HRSourcePart = {
-  type: "SqlMembership",
-  source: {
-    ids: [],
-    filter: "",
-    depth: 1
-  },
-  exclusionary: false
-};
-
+import { 
+    ISourcePart,
+    placeholderQueryGroupOwnershipPart,
+    placeholderQueryGroupPart,
+    placeholderQueryHRPart
+} from '../models/ISourcePart';
 
 export const placeholderAdvancedViewQuery: SyncJobQuery = [
-    placeholderQueryHRPart,
+    placeholderQueryHRPart.query,
+    placeholderQueryGroupPart.query,
+    placeholderQueryGroupOwnershipPart.query
 ]; 
 
 export interface ManageMembershipState {
@@ -49,7 +34,7 @@ export interface ManageMembershipState {
     onboardingStatus: OnboardingStatus | null;
     hasChanges: boolean;
     currentStep: number;
-    isQueryValid: boolean;
+    isAdvancedQueryValid: boolean;
     startDateOption: string;
     useThresholdLimits: string;
     showIncreaseDropdown: boolean;
@@ -57,7 +42,7 @@ export interface ManageMembershipState {
     newJob: NewJob;
     isAdvancedView: boolean;
     compositeQuery?: SyncJobQuery; // Made up of source parts' queries
-    advancedViewQuery?: SyncJobQuery;
+    advancedViewQuery?: string;
     sourceParts: ISourcePart[];
 }
 
@@ -68,7 +53,7 @@ const initialState: ManageMembershipState = {
     onboardingStatus: null,
     hasChanges: false,
     currentStep: 1,
-    isQueryValid: false,
+    isAdvancedQueryValid: false,
     startDateOption: 'ASAP',
     useThresholdLimits: 'Yes',
     showIncreaseDropdown: true,
@@ -85,7 +70,7 @@ const initialState: ManageMembershipState = {
     },
     isAdvancedView: false,
     compositeQuery: placeholderAdvancedViewQuery,
-    advancedViewQuery: placeholderAdvancedViewQuery,
+    advancedViewQuery: JSON.stringify(placeholderAdvancedViewQuery),
     sourceParts: []
 };
 
@@ -113,8 +98,8 @@ const manageMembershipSlice = createSlice({
         setNewJobQuery: (state, action: PayloadAction<SyncJobQuery>) => {
             state.newJob.query = action.payload;
         },
-        setIsQueryValid: (state, action: PayloadAction<boolean>) => {
-            state.isQueryValid = action.payload;
+        setIsAdvancedQueryValid: (state, action: PayloadAction<boolean>) => {
+            state.isAdvancedQueryValid = action.payload;
         },
         setNewJobStartDate: (state, action: PayloadAction<string>) => {
             state.newJob.startDate = action.payload;
@@ -146,44 +131,51 @@ const manageMembershipSlice = createSlice({
         setIsAdvancedView: (state, action: PayloadAction<boolean>) => {
             if (action.payload) {
                 // Switching to advanced view
-                if (state.compositeQuery) {
-                    state.newJob.query = state.compositeQuery;
+                if(state.sourceParts.length === 0) {
+                    state.advancedViewQuery = JSON.stringify(placeholderAdvancedViewQuery);
+                }
+                else{
+                    const compositeQuery = buildCompositeQuery(state.sourceParts);
+                    const updatedSourceParts = state.sourceParts.map((part, index) => ({ 
+                        ...part, 
+                        query: compositeQuery[index], 
+                        isValid: true
+                    }));
+                    state.sourceParts = updatedSourceParts;
+                    state.advancedViewQuery = JSON.stringify(compositeQuery);
+                    state.isAdvancedQueryValid = true;
+                    state.newJob.query = compositeQuery;
+                    console.log("setIsAdvancedView: ", state.sourceParts)
                 }
             } else {
                 // Switching from advanced view
-                try {
-                    const parsedQuery = JSON.parse(state.newJob.query);
-                    const updatedSourceParts = parsedQuery.map((part: any, index: number) => {
-                        const isExclusionary = part.exclusionary === true; // Default to false if not present
-                        if (part.hasOwnProperty('exclusionary')) {
-                          delete part.exclusionary;
+                const advancedViewQuery = state.advancedViewQuery;
+                const isAdvancedQueryValid = state.isAdvancedQueryValid;
+                if (advancedViewQuery && advancedViewQuery !== JSON.stringify(placeholderAdvancedViewQuery)) {
+                    try {
+                        if(isAdvancedQueryValid){
+                            const parsedQuery: SyncJobQuery = JSON.parse(advancedViewQuery);
+                            state.compositeQuery = parsedQuery;
+                            state.sourceParts = parsedQuery.map((query, index) => ({
+                                id: index + 1,
+                                query: query,
+                                isValid: true
+                            }));
+                            state.newJob.query = parsedQuery;
                         }
-                        const queryStr = JSON.stringify(part, null, 2);
-                        return {
-                          id: index + 1,
-                          query: queryStr,
-                          isValid: true,
-                          isExclusionary: isExclusionary
-                        };
-                      });
-                    
-                    state.sourceParts = updatedSourceParts;
-                    state.isQueryValid = true;
-                } catch (error) {
-                    console.error(`Error parsing advanced view query:`, error);
-                    state.sourceParts = [];
-                    state.isQueryValid = false;
-                    state.newJob.query = [placeholderQueryHRPart];
+                    } catch (error) {
+                        console.error(`Error parsing advanced view query:`, error);
+                    }
                 }
             }
             state.isAdvancedView = action.payload;
         },
-        setAdvancedViewQuery: (state, action: PayloadAction<SyncJobQuery | undefined>) => {
+        setAdvancedViewQuery: (state, action: PayloadAction<string>) => {
             if(!action.payload) return;
             state.advancedViewQuery = action.payload;
-            state.newJob.query = action.payload;
+            state.newJob.query = JSON.parse(action.payload);
         },
-        setCompositeQuery: (state, action: PayloadAction<SyncJobQuery>) => {
+        setCompositeQuery: (state, action: PayloadAction<SyncJobQuery | undefined>) => {
             state.compositeQuery = action.payload;
         },
         setSourceParts: (state, action: PayloadAction<ISourcePart[]>) => {
@@ -195,19 +187,18 @@ const manageMembershipSlice = createSlice({
         updateSourcePart: (state, action: PayloadAction<ISourcePart>) => {
             const index = state.sourceParts.findIndex(part => part.id === action.payload.id);
             if (index !== -1) {
-              state.sourceParts[index] = {
-                ...state.sourceParts[index],
-                query: action.payload.query,
-                isValid: action.payload.isValid,
-                isExclusionary: action.payload.isExclusionary
-              };
+                state.sourceParts[index] = {
+                    ...state.sourceParts[index],
+                    query: action.payload.query,
+                    isValid: action.payload.isValid
+                };
             }
-          },                 
+            console.log("updateSourcePart: ", state.sourceParts)
+        },            
         updateSourcePartValidity: (state, action: PayloadAction<{ partId: number; isValid: boolean}>) => {
             const { partId, isValid } = action.payload;
-            const partIndex = state.sourceParts.findIndex(part => part.id === partId);
-            if (partIndex !== -1) {
-                state.sourceParts[partIndex].isValid = isValid;
+            if (state.sourceParts[partId]) {
+                state.sourceParts[partId].isValid = isValid;
             }
         },
         deleteSourcePart: (state, action: PayloadAction<number>) => {
@@ -245,7 +236,7 @@ export const {
     setHasChanges,
     setCurrentStep,
     setNewJobQuery,
-    setIsQueryValid,
+    setIsAdvancedQueryValid,
     setSelectedDestination,
     setNewJobStartDate,
     setNewJobPeriod,
@@ -292,19 +283,30 @@ export const manageMembershipIsGroupReadyForOnboarding = (state: RootState): boo
 
 // 2- Membership Configuration
 export const manageMembershipIsAdvancedView = (state: RootState) => state.manageMembership.isAdvancedView;
-export const manageMembershipIsQueryValid = (state: RootState) => state.manageMembership.isQueryValid;
+export const manageMembershipisAdvancedQueryValid = (state: RootState) => state.manageMembership.isAdvancedQueryValid;
 export const manageMembershipCompositeQuery = (state: RootState) => state.manageMembership.compositeQuery;
 export const manageMembershipAdvancedViewQuery = (state: RootState) => state.manageMembership.advancedViewQuery;
 export const getSourcePartsFromState = (state: RootState) => state.manageMembership.sourceParts;
 export const manageMembershipIsToggleEnabled = (state: RootState) => {
     const isAdvancedView = state.manageMembership.isAdvancedView;
-    const isAdvancedViewQueryValid = state.manageMembership.isQueryValid;
     const advancedViewQuery = state.manageMembership.advancedViewQuery;
+    const isAdvancedViewQueryValid = state.manageMembership.isAdvancedQueryValid;
     const areAllSourcePartsValid = state.manageMembership.sourceParts.every(part => part.isValid);
-    const isPlaceholderQuery = advancedViewQuery === placeholderAdvancedViewQuery;
-    return isAdvancedView ? (isAdvancedViewQueryValid || isPlaceholderQuery) : areAllSourcePartsValid;
-};
+    const isPlaceholderAdvancedViewQuery = advancedViewQuery === JSON.stringify(placeholderAdvancedViewQuery);
 
+    if (isPlaceholderAdvancedViewQuery) {
+        return true;
+    }
+    else if (isAdvancedView && isAdvancedViewQueryValid) {
+        return true;
+    }
+    else if (!isAdvancedView && areAllSourcePartsValid) {
+        return true;
+    }
+    else {
+        return false;
+    }
+};
 
 // 3- Run Configuration
 export const manageMembershipStartDateOption = (state: RootState) => state.manageMembership.startDateOption;
@@ -315,17 +317,6 @@ export const manageMembershipShowDecreaseDropdown = (state: RootState) => state.
 export default manageMembershipSlice.reducer;
 
 export function buildCompositeQuery(sourceParts: ISourcePart[]): SyncJobQuery {
-    const queries = sourceParts.map(part => {
-        try {
-            const hrSourcePart = part.query;
-            return {
-                ...hrSourcePart,
-                exclusionary: part.isExclusionary
-            };
-        } catch (error) {
-            console.error(`Error processing HRSourcePart for part ${part.id}:`, error);
-            return null;
-        }
-    }).filter(query => query !== null);
-    return queries as SyncJobQuery;
+    const compositeQuery: SyncJobQuery = sourceParts.map(part => part.query);
+    return compositeQuery;
 }

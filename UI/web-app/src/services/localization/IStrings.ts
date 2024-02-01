@@ -224,6 +224,7 @@ export type IStrings = {
       step4description: string;
       objectId: string;
       sourceParts: string;
+      sourcePart: string;
       noThresholdSet: string;
       savingSyncJob: string;
       group: string;
@@ -232,6 +233,7 @@ export type IStrings = {
       sourceType: string;
       addSourcePart: string;
       excludeSourcePart: string;
+      deleteLastSourcePartWarning: string;
     }
   };
   delete: string;
