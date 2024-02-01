@@ -21,7 +21,7 @@ resource websiteTemplate 'Microsoft.Web/sites@2022-03-01' = {
     serverFarmId: resourceId('Microsoft.Web/serverfarms', servicePlanName)
     siteConfig: {
       netFrameworkVersion: 'v6.0'
-      ftpsState: 'FtpsOnly'
+      ftpsState: 'Disabled'
       minTlsVersion: '1.2'
       appSettings: appSettings
     }

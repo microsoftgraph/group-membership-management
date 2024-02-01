@@ -31,7 +31,7 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
     siteConfig: {
       use32BitWorkerProcess : false
       appSettings: appSettings
-      ftpsState: 'FtpsOnly'
+      ftpsState: 'Disabled'
     }
   }
   identity: {

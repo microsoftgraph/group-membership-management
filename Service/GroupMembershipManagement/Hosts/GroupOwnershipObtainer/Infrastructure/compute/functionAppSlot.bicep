@@ -32,7 +32,7 @@ resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
     siteConfig: {
       use32BitWorkerProcess : false
       appSettings: appSettings
-      ftpsState: 'FtpsOnly'
+      ftpsState: 'Disabled'
     }
   }
   identity: {
