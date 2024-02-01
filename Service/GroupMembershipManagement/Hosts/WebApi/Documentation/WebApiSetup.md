@@ -102,7 +102,7 @@ WebAPI will access the database using its system identity to authenticate with t
 Once the WebAPI is deployed (`<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-webapi`)and has been created we need to grant it access to the SQL Server DB.
 
 Server name follows this naming convention `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>` and `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-r` for the replica server.
-Database name follows this naming convention `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-jobs` and `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-jobs-r` for the replica database.
+Database name follows this naming convention `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>` and `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-r` for the replica database.
 
 1. Connect to your SQL Server Database using Sql Server Management Studio (SSMS) or Azure Data Studio.
 - Server name : `<server-name>.database.windows.net`
@@ -134,7 +134,7 @@ Repeat the steps for both databases.
 
 ## Setting up a custom domain
 If you have a custom domain ('contoso.com', for example) and want to use it, you will need to upgrade your App Service Plan. You can set the API custom domain in the `apiHostname` parameter as `api.contoso.com`.
-This way, your parameter file will look like this 
+This way, your parameter file will look like this
 ```
     {
         "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
@@ -149,8 +149,8 @@ This way, your parameter file will look like this
 Then, once the deployment finishes, follow these steps:
 
 1. Go to your App Service resource and select `Custom domains`.
-1. There, click on `+ Add custom domain` and enter your custom domain details. You can choose to include your own TLS/SSL certificate, or use an App Service Managed Certificate. 
-1. Once you have completed and validated the custom domain. Click `Add`. 
+1. There, click on `+ Add custom domain` and enter your custom domain details. You can choose to include your own TLS/SSL certificate, or use an App Service Managed Certificate.
+1. Once you have completed and validated the custom domain. Click `Add`.
 
 Finally, you will need to update your App registration to include this custom domain. To do so, make sure you:
 1. Login and follow these steps in the tenant where the application was created.
