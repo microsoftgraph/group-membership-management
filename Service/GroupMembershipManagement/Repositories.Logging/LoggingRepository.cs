@@ -90,7 +90,7 @@ namespace Repositories.Logging
         {
             //if (verbosityLevel <= _appConfigVerbosity.Verbosity)
             //{
-                await CommonLogMessageAsync(logMessage, _httpClient, caller, file);
+            await CommonLogMessageAsync(logMessage, _httpClient, caller, file);
             //}
         }
 
@@ -190,28 +190,46 @@ namespace Repositories.Logging
         {
             var logMessageProperties = logMessage.ToDictionary();
 
-            if (logMessage.RunId.HasValue
-                && SyncJobProperties.ContainsKey(logMessage.RunId.Value)
-                && SyncJobProperties[logMessage.RunId.Value] != null
-                && SyncJobProperties[logMessage.RunId.Value].Properties != null
-                )
+            try
             {
-                var jobProperties = SyncJobProperties[logMessage.RunId.Value].Properties;
-                if (jobProperties.Any())
+                _logPropertiesSemaphore.Wait();
+
+                if (logMessage.RunId.HasValue
+                    && SyncJobProperties.ContainsKey(logMessage.RunId.Value)
+                    && SyncJobProperties[logMessage.RunId.Value] != null
+                    && SyncJobProperties[logMessage.RunId.Value].Properties != null
+                    )
                 {
-                    foreach (var key in jobProperties.Keys)
+                    var jobProperties = SyncJobProperties[logMessage.RunId.Value].Properties;
+                    if (jobProperties.Any())
                     {
-                        if (!logMessageProperties.ContainsKey(key))
+                        foreach (var key in jobProperties.Keys)
                         {
-                            logMessageProperties.Add(key, jobProperties[key]);
-                        }
-                        else if (string.IsNullOrWhiteSpace(logMessageProperties[key]) && !string.IsNullOrWhiteSpace(jobProperties[key]))
-                        {
-                            logMessageProperties[key] = jobProperties[key];
+                            if (!logMessageProperties.ContainsKey(key))
+                            {
+                                logMessageProperties.Add(key, jobProperties[key]);
+                            }
+                            else if (string.IsNullOrWhiteSpace(logMessageProperties[key]) && !string.IsNullOrWhiteSpace(jobProperties[key]))
+                            {
+                                logMessageProperties[key] = jobProperties[key];
+                            }
                         }
                     }
                 }
             }
+            catch (Exception)
+            {
+                _ = LogMessageAsync(new LogMessage
+                {
+                    Message = $"Error adding additional job logging properties.",
+                    RunId = logMessage.RunId
+                }, VerbosityLevel.INFO);
+            }
+            finally
+            {
+                _logPropertiesSemaphore.Release();
+            }
+
             return logMessageProperties;
         }
     }
