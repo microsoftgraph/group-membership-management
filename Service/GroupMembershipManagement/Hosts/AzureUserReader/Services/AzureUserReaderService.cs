@@ -48,20 +48,11 @@ namespace Services
         public async Task UploadUsersMemberIdAsync(UploadRequest request)
         {
             var blobPath = $"{request.BlobTargetDirectory}/{MemberIdsFileName}";
-            var file = await DownloadFileIfExistsAsync(_storageAccountSecret.ConnectionString, request.ContainerName, blobPath);
-            var users = ExtractUsers(file);
-            var existingUserIds = new HashSet<string>(users.Select(x => x.PersonnelNumber));
-            var newUsers = request.Users.Where(x => !string.IsNullOrWhiteSpace(x.Id)).ToList();
+            var usersRetrieved = request.Users.Where(x => !string.IsNullOrWhiteSpace(x.Id)).ToList();
 
-            foreach (var user in newUsers)
-            {
-                if (!existingUserIds.Contains(user.PersonnelNumber))
-                    users.Add(user);
-            }
+            await UploadFileAsync(_storageAccountSecret.ConnectionString, request.ContainerName, blobPath, usersRetrieved);
 
-            await UploadFileAsync(_storageAccountSecret.ConnectionString, request.ContainerName, blobPath, users);
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded {newUsers.Count} new user ids." });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded {usersRetrieved.Count} user ids." });
         }
 
         private async Task<Stream> DownloadFileAsync(string connectionString, string containerName, string filePath)
