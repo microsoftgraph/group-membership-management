@@ -52,7 +52,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const sourcePartQuery: HRSourcePartSource = {
     ids: [],
     filter: "",
-    depth: 1
+    depth: undefined
   };
 
   const newSourcePart = () => {

@@ -20,7 +20,7 @@ export const placeholderQueryHRPart: ISourcePart = {
         source: {
             ids: [],
             filter: "",
-            depth: 1
+            depth: undefined
         },
         exclusionary: false
     },
