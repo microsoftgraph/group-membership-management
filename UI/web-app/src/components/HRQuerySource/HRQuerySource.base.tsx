@@ -30,7 +30,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [source, setSource] = useState<HRSourcePartSource>(props.source);
 
   const handleOrgLeaderIdChange = (_: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '') => {
-    const ids = newValue.split(',').map(str => Number(str.trim()));
+    const ids = newValue.trim() !== '' ? newValue.split(',').map(str => Number(str.trim())) : [];
     setSource(prevSource => {
         const newSource = { ...prevSource, ids };
         onSourceChange(newSource, partId);
@@ -39,7 +39,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   };
 
   const handleDepthChange = (_: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '') => {
-    const depth = parseInt(newValue);
+    const depth = newValue !== '' ? parseInt(newValue, 10) : undefined;
     setSource(prevSource => {
         const newSource = { ...prevSource, depth };
         onSourceChange(newSource, partId);
