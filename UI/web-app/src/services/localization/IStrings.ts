@@ -22,6 +22,8 @@ export type IStrings = {
     orgLeaderIdPlaceHolder: string;
     depth: string;
     depthPlaceHolder: string;
+    filter: string;
+    filterPlaceHolder: string;
   },
   Components: {
     HyperlinkSetting: {

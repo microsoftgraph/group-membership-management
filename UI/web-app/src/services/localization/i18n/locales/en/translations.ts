@@ -24,7 +24,9 @@ export const strings: IStrings = {
     orgLeaderId: "Org. leader Id",
     orgLeaderIdPlaceHolder: "Please enter Org. leader Id",
     depth: "Depth",
-    depthPlaceHolder: "Please enter Depth"
+    depthPlaceHolder: "Please enter Depth",
+    filter: "Filter",
+    filterPlaceHolder: "Please enter Filter"
   },
   Components: {
     HyperlinkSetting: {

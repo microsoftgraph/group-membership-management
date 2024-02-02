@@ -47,6 +47,15 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     });
   };
 
+  const handleFilterChange = (_: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '') => {
+    const filter = newValue;
+    setSource(prevSource => {
+        const newSource = { ...prevSource, filter };
+        onSourceChange(newSource, partId);
+        return newSource;
+    });
+  };
+
   return (
     <div>
       <Stack horizontal horizontalAlign="space-between" verticalAlign='center' tokens={stackTokens}>
@@ -66,6 +75,16 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
           placeholder={strings.HROnboarding.depthPlaceHolder}
           value={source.depth?.toString()}
           onChange={handleDepthChange}
+          styles={{fieldGroup: classNames.textFieldFieldGroup}}
+          validateOnLoad={false}
+          validateOnFocusOut={false}
+        ></TextField>
+
+        <TextField
+          label={strings.HROnboarding.filter}
+          placeholder={strings.HROnboarding.filterPlaceHolder}
+          value={source.filter?.toString()}
+          onChange={handleFilterChange}
           styles={{fieldGroup: classNames.textFieldFieldGroup}}
           validateOnLoad={false}
           validateOnFocusOut={false}
