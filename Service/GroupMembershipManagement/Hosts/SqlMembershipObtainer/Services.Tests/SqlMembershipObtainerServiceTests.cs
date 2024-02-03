@@ -17,6 +17,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Services.Contracts;
 
 namespace Services.Tests
 {
@@ -39,6 +40,7 @@ namespace Services.Tests
             var groupMembership = default(GroupMembership);
             var messages = new List<string>();
             var dfRepository = new Mock<IDataFactoryRepository>();
+            var dfService = new Mock<IDataFactoryService>();
 
             blobStorageRepository.Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
                                     .Callback<string, string, Dictionary<string, string>>((path, content, metadata) =>
@@ -66,7 +68,7 @@ namespace Services.Tests
                                             sqlMembershipObtainerServiceSecret.Object,
                                             sqlMembershipObtainerServiceSecret.Object,
                                             dryRunValue.Object,
-                                            dfRepository.Object);
+                                            dfService.Object);
 
             await sqlMembershipObtainerService.SendGroupMembershipAsync(profiles, syncJob, currentPart, false);
 

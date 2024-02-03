@@ -66,6 +66,7 @@ namespace SqlMembershipObtainer
 
             builder.Services.AddSingleton(services => new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value)));
 
+            builder.Services.AddSingleton<IDataFactoryService, DataFactoryService>();
             builder.Services.AddScoped<ISqlMembershipObtainerService, SqlMembershipObtainerService>();
 
             builder.Services.AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>

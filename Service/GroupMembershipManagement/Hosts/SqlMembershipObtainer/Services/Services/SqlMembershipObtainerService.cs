@@ -31,12 +31,8 @@ namespace Services
         private readonly ISqlMembershipObtainerServiceSecret _shouldStopSyncIfSourceNotPresentInGraph = null;
         private readonly ISqlMembershipObtainerServiceSecret _sqlServerConnectionString = null;
         private readonly bool _isSqlMembershipObtainerDryRunEnabled;
-        private readonly IMailRepository _mailRepository = null;
-        private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
-        private readonly IDataFactoryRepository _dataFactoryRepository = null;
+        private readonly IDataFactoryService _dataFactoryService = null;
 
-        private SemaphoreSlim _adfRunIdSemaphore = new SemaphoreSlim(1, 1);
-        private SqlMembershipADFCache _sqlMembershipADFCache = new SqlMembershipADFCache();
         private enum Metric
         {
             MissingParentEntities
@@ -49,7 +45,7 @@ namespace Services
                                     ISqlMembershipObtainerServiceSecret shouldStopSyncIfSourceNotPresentInGraph,
                                     ISqlMembershipObtainerServiceSecret sqlServerConnectionString,
                                     IDryRunValue dryRun,
-                                    IDataFactoryRepository dataFactoryRepository)
+                                    IDataFactoryService dataFactoryService)
         {
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
@@ -58,7 +54,7 @@ namespace Services
             _shouldStopSyncIfSourceNotPresentInGraph = shouldStopSyncIfSourceNotPresentInGraph ?? throw new ArgumentNullException(nameof(shouldStopSyncIfSourceNotPresentInGraph));
             _sqlServerConnectionString = sqlServerConnectionString ?? throw new ArgumentNullException(nameof(sqlServerConnectionString));
             _isSqlMembershipObtainerDryRunEnabled = dryRun == null ? throw new ArgumentNullException(nameof(dryRun)) : dryRun.DryRunEnabled;
-            _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
+            _dataFactoryService = dataFactoryService ?? throw new ArgumentNullException(nameof(dataFactoryService));
         }
 
         public async Task<List<PersonEntity>> GetChildEntitiesAsync(string filter, int personnelNumber, string tableName, int depth, Guid? runId, Guid? targetOfficeGroupId)
@@ -317,29 +313,7 @@ namespace Services
 
         private async Task<string> GetADFRunIdAsync(Guid? runId)
         {
-            await _adfRunIdSemaphore.WaitAsync();
-
-            if (string.IsNullOrWhiteSpace(_sqlMembershipADFCache.LastSqlMembershipRunId) || (DateTime.UtcNow - _sqlMembershipADFCache.RunDateTime).TotalHours >= 6)
-            {
-                _sqlMembershipADFCache.LastSqlMembershipRunId = await _dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
-            }
-
-            _adfRunIdSemaphore.Release();
-
-            if (string.IsNullOrWhiteSpace(_sqlMembershipADFCache.LastSqlMembershipRunId))
-            {
-                var message = $"No SqlMembershipObtainer pipeline run has been found";
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = message, RunId = runId });
-                throw new ArgumentException(message);
-            }
-
-            return _sqlMembershipADFCache.LastSqlMembershipRunId;
+            return await _dataFactoryService.GetMostRecentSucceededRunIdAsync(runId);
         }
-    }
-
-    internal class SqlMembershipADFCache
-    {
-        public string LastSqlMembershipRunId { get; set; }
-        public DateTime RunDateTime { get; set; }
     }
 }
