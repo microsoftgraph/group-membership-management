@@ -117,13 +117,16 @@ namespace Repositories.Mail
             string adaptiveCardJson = _localizationRepository.TranslateSetting(CardTemplate.DefaultCardTemplate);
 
             string groupId = emailMessage?.AdditionalContentParams[0];
+            string groupName = emailMessage?.AdditionalContentParams[1];
+
             var cardData = new DefaultCardTemplate
             {
                 ProviderId = _actionableEmailProviderId,
                 SubjectContent = subjectContent,
                 MessageContent = messageContent,
                 GroupId = groupId,
-                CardCreatedTime = DateTime.UtcNow
+                CardCreatedTime = DateTime.UtcNow,
+                DestinationGroupName = groupName
             };
 
             var template = new AdaptiveCardTemplate(adaptiveCardJson);

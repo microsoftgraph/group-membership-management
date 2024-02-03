@@ -916,91 +916,155 @@
   </data>
   <data name="CardTemplate.DefaultCardTemplate" xml:space="preserve">
     <value> {
-      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-      "type": "AdaptiveCard",
-      "version": "1.0",
-      "originator": "${$root.providerId}",
-      "createdUtc": "${$root.cardCreatedTime}",
-      "body": [
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.0",
+    "createdUtc": "${$root.cardCreatedTime}",
+    "body": [
+      {
+        "type": "Container",
+        "padding": "Small",
+        "items": [
           {
-              "type": "ColumnSet",
-              "id": "1ede2aba-61b9-faa0-9895-9ed0c26b2e6f",
-              "columns": [
+            "type": "ColumnSet",
+            "columns": [
+              {
+                "type": "Column",
+                "padding": "None",
+                "width": "auto",
+                "items": [
                   {
-                      "type": "Column",
-                      "id": "e5756242-0963-37a2-7cb4-4397886d60bb",
-                      "padding": "None",
-                      "width": "stretch",
-                      "items": [
-                          {
-                              "type": "TextBlock",
-                              "id": "20f3833e-0435-5c87-fad1-b528e0046fb6",
-                              "text": "Microsoft Group Membership Management",
-                              "wrap": true
-                          }
-                      ],
-                      "verticalContentAlignment": "Center"
+                    "type": "Image",
+                    "url": "data:image/png;base64,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",
+                    "altText": "Synchronization Icon",
+                    "size": "Small"
                   }
-              ],
-              "padding": {
-                  "top": "Small",
-                  "bottom": "Small",
-                  "left": "Default",
-                  "right": "Small"
+                ]
               },
-              "style": "emphasis"
-          },
-          {
-              "type": "Container",
-              "id": "fbcee869-2754-287d-bb37-145a4ccd750b",
-              "padding": "Default",
-              "spacing": "None",
-              "items": [
+              {
+                "type": "Column",
+                "padding": "None",
+                "width": "auto",
+                "items": [
                   {
-                      "type": "TextBlock",
-                      "id": "44906797-222f-9fe2-0b7a-e3ee21c6e380",
-                      "text": "${$root.subjectContent}",
-                      "wrap": true,
-                      "weight": "Bolder",
-                      "size": "Large",
-                      "style": "heading"
+                    "type": "TextBlock",
+                    "text": "${$root.subjectContent}",
+                    "wrap": true,
+                    "weight": "Bolder"
                   },
                   {
-                      "type": "TextBlock",
-                      "id": "f7abdf1a-3cce-2159-28ef-f2f362ec937e",
-                      "text": "${$root.messageContent}",
-                      "wrap": true
+                    "type": "TextBlock",
+                    "text": "Group Membership Management",
+                    "wrap": true,
+                    "spacing": "None",
+                    "color": "Light",
+                    "size": "Small"
                   }
-              ]
-          },
-          {
-              "type": "Container",
-              "id": "77102c5d-fde2-e573-4ea5-66022d646d64",
-              "padding": {
-                  "top": "Small",
-                  "bottom": "Small",
-                  "left": "Small",
-                  "right": "Default"
-              },
-              "spacing": "None",
-              "separator": true,
-              "items": [
-                  {
-                      "type": "TextBlock",
-                      "id": "42654e7e-cece-b419-867a-3e3ef4076870",
-                      "text": "[View group in portal](https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/${$root.groupId})",
-                      "wrap": true,
-                      "color": "Accent",
-                      "horizontalAlignment": "Right"
-                  }
-              ],
-              "horizontalAlignment": "Right"
+                ],
+                "verticalContentAlignment": "Center"
+              }
+            ],
+            "padding": "None"
           }
-      ],
-      "padding": "None",
-      "@type": "AdaptiveCard",
-      "@context": "http://schema.org/extensions"
-    }</value>
+        ],
+        "style": "emphasis"
+      },
+      {
+        "type": "Container",
+        "padding": "Default",
+        "items": [
+          {
+            "type": "TextBlock",
+            "text": "${$root.destinationGroupName}",
+            "wrap": true,
+            "size": "Large",
+            "weight": "Bolder"
+          }
+        ]
+      },
+      {
+        "type": "Container",
+        "padding": "Default",
+        "items": [
+          {
+            "type": "TextBlock",
+            "text": "${$root.messageContent}",          
+            "wrap": true
+          }
+        ],
+        "separator": true
+      },
+      {
+          "type": "Container",
+          "items": [
+              {
+                  "type": "ColumnSet",
+                  "columns": [
+                      {
+                          "type": "Column",
+                          "width": "auto",
+                          "items": [
+                              {
+                                  "type": "ActionSet",
+                                  "actions": [
+                                      {
+                                          "type": "Action.OpenUrl",
+                                          "title": "View in GMM UI",
+                                          "url": "https://gmm.microsoft.com"
+                                      }
+                                  ],
+                                  "horizontalAlignment": "Center"
+                              }
+                          ]
+                      },
+                      {
+                          "type": "Column",
+                          "width": "stretch",
+                          "items": [
+                              {
+                                  "type": "ActionSet",
+                                  "actions": [
+                                      {
+                                          "type": "Action.OpenUrl",
+                                          "title": "Learn more about GMM",
+                                          "url": "https://microsoft.sharepoint.com/sites/Office365/SitePages/Group-Membership-Management.aspx"
+                                      }
+                                  ],
+                                  "horizontalAlignment": "Center"
+                              }
+                          ],
+                          "spacing": "ExtraLarge"
+                      },
+                      {
+                          "type": "Column",
+                          "width": "auto",
+                          "items": [
+                              {
+                                  "type": "ActionSet",
+                                  "actions": [
+                                      {
+                                          "type": "Action.OpenUrl",
+                                          "title": "Email GMMSupport Team",
+                                          "url": "mailto:GMMSupport@service.microsoft.com"
+                                      }
+                                  ],
+                                  "horizontalAlignment": "Center"
+                              }
+                          ],
+                          "spacing": "ExtraLarge"
+                      }
+                  ]
+              }
+          ],
+          "separator": true,
+          "spacing": "ExtraLarge"
+      }
+    ],
+    "padding": "None",
+    "@type": "AdaptiveCard",
+    "@context": "http://schema.org/extensions",
+    "originator": "${$root.providerId}"
+  }</value>
   </data>
   <data name="CustomerPausedJobEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as the owner of {0}.
@@ -1027,7 +1091,7 @@ GMM Team</value>
     <value>Group Membership Management (GMM) sync disabled.</value>
   </data>
   <data name="EmailSubject" xml:space="preserve">
-    <value>Group Membership Management (GMM) onboarding update</value>
+    <value>Onboarding</value>
   </data>
   <data name="IncreaseThresholdMessage" xml:space="preserve">
     <value>Increase membership threshold {0}%. Detected threshold {1}%.</value>
@@ -1046,9 +1110,9 @@ GMM Team</value>
     <value>Group Membership Management - No data found for group {1}</value>
   </data>
   <data name="SyncCompletedEmailBody" xml:space="preserve">
-    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group, {1}.
+    <value>You received this notification because you are listed as an owner of {1}.
 
-GMM onboarding is requested by {4} to systematically manage the group membership based on the pre-set rules. Please visit {5} to learn more about GMM.
+GMM onboarding is requested by {4} to systematically manage the group membership based on the pre-defined rules. Please visit {5} to learn more about GMM.
 
 The group {1} with Id: {0} has completed its initial sync. Added {2} users and removed {3} users.
 
@@ -1088,16 +1152,13 @@ Regards,
 GMM Team</value>
   </data>
   <data name="SyncStartedEmailBody" xml:space="preserve">
-    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group, {1}.
+    <value>You received this notification because you are listed as an owner of {1}.
 
-GMM onboarding is requested by {4} to systematically manage the group membership based on the pre-set rules. Please visit {3} to learn more about GMM.
+GMM onboarding is requested by {4} to systematically manage the group membership based on the pre-defined rules. Check more specifics in GMM UI.
 
-The group {1} with Id: {0} has started its initial sync.
+The group **{1}** with Object Id: {0} **has started its initial sync**.
 
-This is an auto-generated email. Please reach out to the onboarding requestor {4} for any specific questions about this group and reach out to {2} for GMM inquires.
-
-Regards,
-GMM Team</value>
+</value>
   </data>
   <data name="SyncThresholdBothEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group. Please visit {3} to learn more about GMM.

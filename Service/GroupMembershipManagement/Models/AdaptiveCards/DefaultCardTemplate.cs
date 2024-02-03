@@ -12,6 +12,7 @@ namespace Models.AdaptiveCards
         public string SubjectContent { get; set; }
         public string MessageContent { get; set; }
         public DateTime CardCreatedTime { get; set; }
+        public string DestinationGroupName { get; set; }
     }
 }
                
