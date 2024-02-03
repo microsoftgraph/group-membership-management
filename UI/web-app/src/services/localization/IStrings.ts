@@ -20,10 +20,13 @@ export type IStrings = {
   HROnboarding: {
     orgLeaderId: string;
     orgLeaderIdPlaceHolder: string;
+    orgLeaderInfo: string;
     depth: string;
     depthPlaceHolder: string;
+    depthInfo: string;
     filter: string;
     filterPlaceHolder: string;
+    filterInfo: string;
   },
   Components: {
     HyperlinkSetting: {

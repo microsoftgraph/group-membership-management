@@ -14,5 +14,9 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       background: theme.palette.white,
       width: 300
     },
+    labelContainer: {
+      display: 'flex',
+      alignItems: 'center',
+    }
   };
 };

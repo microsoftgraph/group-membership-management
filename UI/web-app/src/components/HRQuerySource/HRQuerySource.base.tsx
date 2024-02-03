@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens } from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import type {
@@ -24,7 +24,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const strings = useStrings();
 
   const stackTokens: IStackTokens = {
-    childrenGap: 20
+    childrenGap: 30
   };
 
   const [source, setSource] = useState<HRSourcePartSource>(props.source);
@@ -57,38 +57,65 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   };
 
   return (
+
     <div>
-      <Stack horizontal horizontalAlign="space-between" verticalAlign='center' tokens={stackTokens}>
-        <TextField
-          label={strings.HROnboarding.orgLeaderId}
-          placeholder={strings.HROnboarding.orgLeaderIdPlaceHolder}
-          value={source.ids && source.ids.length > 0 ? source.ids.join(',') : ''}
-          onChange={handleOrgLeaderIdChange}
-          styles={{fieldGroup: classNames.textFieldFieldGroup}}
-          validateOnLoad={false}
-          validateOnFocusOut={false}
-          required
-        ></TextField>
+      <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={stackTokens}>
+        <Stack.Item align="start">
+          <div>
+             <div className={classNames.labelContainer}>
+              <Label>{strings.HROnboarding.orgLeaderId}</Label>
+              <TooltipHost content={strings.HROnboarding.orgLeaderInfo} id="toolTipId" calloutProps={{ gapSpace: 0 }}>
+                <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipId" />
+              </TooltipHost>
+            </div>
+            <TextField
+              placeholder={strings.HROnboarding.orgLeaderIdPlaceHolder}
+              value={source.ids && source.ids.length > 0 ? source.ids.join(',') : ''}
+              onChange={handleOrgLeaderIdChange}
+              styles={{fieldGroup: classNames.textFieldFieldGroup}}
+              validateOnLoad={false}
+              validateOnFocusOut={false}
+            ></TextField>
+          </div>
+        </Stack.Item>
 
-        <TextField
-          label={strings.HROnboarding.depth}
-          placeholder={strings.HROnboarding.depthPlaceHolder}
-          value={source.depth?.toString()}
-          onChange={handleDepthChange}
-          styles={{fieldGroup: classNames.textFieldFieldGroup}}
-          validateOnLoad={false}
-          validateOnFocusOut={false}
-        ></TextField>
+        <Stack.Item align="start">
+          <div>
+             <div className={classNames.labelContainer}>
+              <Label>{strings.HROnboarding.depth}</Label>
+              <TooltipHost content={strings.HROnboarding.depthInfo} id="toolTipId" calloutProps={{ gapSpace: 0 }}>
+                <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipId" />
+              </TooltipHost>
+            </div>
+            <TextField
+              placeholder={strings.HROnboarding.depthPlaceHolder}
+              value={source.depth?.toString()}
+              onChange={handleDepthChange}
+              styles={{fieldGroup: classNames.textFieldFieldGroup}}
+              validateOnLoad={false}
+              validateOnFocusOut={false}
+            ></TextField>
+          </div>
+        </Stack.Item>
 
-        <TextField
-          label={strings.HROnboarding.filter}
-          placeholder={strings.HROnboarding.filterPlaceHolder}
-          value={source.filter?.toString()}
-          onChange={handleFilterChange}
-          styles={{fieldGroup: classNames.textFieldFieldGroup}}
-          validateOnLoad={false}
-          validateOnFocusOut={false}
-        ></TextField>
+        <Stack.Item align="start">
+          <div>
+             <div className={classNames.labelContainer}>
+              <Label>{strings.HROnboarding.filter}</Label>
+              <TooltipHost content={strings.HROnboarding.filterInfo} id="toolTipId" calloutProps={{ gapSpace: 0 }}>
+                <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipId" />
+              </TooltipHost>
+            </div>
+            <TextField
+              placeholder={strings.HROnboarding.filterPlaceHolder}
+              value={source.filter?.toString()}
+              onChange={handleFilterChange}
+              styles={{fieldGroup: classNames.textFieldFieldGroup}}
+              validateOnLoad={false}
+              validateOnFocusOut={false}
+            ></TextField>
+          </div>
+        </Stack.Item>
       </Stack>
     </div>
   );
