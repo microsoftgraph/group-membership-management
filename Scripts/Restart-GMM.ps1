@@ -26,7 +26,7 @@ function Restart-GMM {
 
     Set-AzContext -Subscription $SubscriptionName
     $resourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation";
-    $functionNames = "JobTrigger", "GraphUpdater", "GroupMembershipObtainer", "SqlMembershipObtainer", "GroupOwnershipObtainer"
+    $functionNames = "JobTrigger", "GraphUpdater", "GroupMembershipObtainer", "SqlMembershipObtainer", "GroupOwnershipObtainer", "PlaceMembershipObtainer", "TeamsChannelMembershipObtainer"
 
     foreach ($functionName in $functionNames)
     {
@@ -89,7 +89,7 @@ function Restart-GMM {
         return
     }
 
-    $functionNames = "GraphUpdater", "GroupMembershipObtainer", "SqlMembershipObtainer", "GroupOwnershipObtainer"
+    $functionNames = "GraphUpdater", "GroupMembershipObtainer", "SqlMembershipObtainer", "GroupOwnershipObtainer", "PlaceMembershipObtainer", "TeamsChannelMembershipObtainer"
     foreach ($functionName in $functionNames)
     {
         $functionApp = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionName";
