@@ -115,11 +115,15 @@ function Set-GraphCredentialsAzureADApplication {
 		ResourceAccess = @()
 	}
 
-	$permissions = (Get-AzADServicePrincipal -Filter "AppId eq '00000003-0000-0000-c000-000000000000'").AppRole `
-		| Where-Object { ($_.Value -eq "User.Read.All") -or ($_.Value -eq "GroupMember.Read.All") -or ($_.Value -eq "ChannelMember.ReadWrite.All") -or ($_.Value -eq "Group.Create") -or ($_.Value -eq "User.ReadWrite.All") -or ($_.Value -eq "Directory.ReadWrite.All")} `
+	$appPermissions = (Get-AzADServicePrincipal -Filter "AppId eq '00000003-0000-0000-c000-000000000000'").AppRole `
+		| Where-Object { ($_.Value -eq "User.Read.All") -or ($_.Value -eq "GroupMember.Read.All") -or ($_.Value -eq "Member.Read.Hidden") } `
         | ForEach-Object { @{Id = $_.Id; Type = "Role" } }
+	
+	$delegatedPermissions = (Get-AzADServicePrincipal -Filter "AppId eq '00000003-0000-0000-c000-000000000000'").Oauth2PermissionScope `
+		| Where-Object { ($_.Value -eq "ChannelMember.ReadWrite.All") -or ($_.Value -eq "Channel.ReadBasic.All") -or ($_.Value -eq "Mail.Send") } `
+		| ForEach-Object { @{Id = $_.Id; Type = "Scope" } }
 
-	$requiredResourceAccess.ResourceAccess = $permissions
+	$requiredResourceAccess.ResourceAccess = $appPermissions + $delegatedPermissions
 
 	#region Create Appplication
 	if($null -eq $graphApp)
