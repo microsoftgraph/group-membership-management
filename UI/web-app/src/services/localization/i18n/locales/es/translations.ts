@@ -31,7 +31,8 @@ export const strings: IStrings = {
     depthInfo: "Define el nivel de profundidad máximo en la jerarquía organizativa utilizada para recuperar datos. El valor predeterminado es 0, lo que significa que no hay límite de profundidad. Si se especifica profundidad 1, significa que solo se recuperará el líder de la organización. Si se especifica profundidad 2, se recuperará el líder de la organización y todos los que reportan directamente al líder de la organización.",
     filter: "Filtrar",
     filterPlaceHolder: "Por favor ingrese Filtro",
-    filterInfo: "Proporcionar filtro"
+    filterInfo: "Proporcionar filtro",
+    includeLeader: "incluir líder"
   },
   Components: {
     HyperlinkSetting: {

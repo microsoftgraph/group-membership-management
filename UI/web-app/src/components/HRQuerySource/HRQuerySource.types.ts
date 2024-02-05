@@ -8,6 +8,8 @@ import { HRSourcePartSource } from '../../models/HRSourcePart';
 export type HRQuerySourceStyles = {
   textFieldFieldGroup: IStyle;
   labelContainer: IStyle;
+  horizontalChoiceGroup: IStyle;
+  horizontalChoiceGroupContainer: IStyle;
 };
 
 export type HRQuerySourceStyleProps = {

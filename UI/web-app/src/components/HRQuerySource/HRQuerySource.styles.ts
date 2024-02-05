@@ -16,7 +16,16 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
     },
     labelContainer: {
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'center'
+    },
+    horizontalChoiceGroup: {
+      display: 'flex',
+      flexDirection: 'row',
+    },
+    horizontalChoiceGroupContainer: {
+      display: 'flex',
+      flexDirection: 'row',
+      '> *': { marginRight: '20px' }
     }
   };
 };

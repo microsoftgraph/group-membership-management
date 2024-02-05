@@ -29,7 +29,8 @@ export const strings: IStrings = {
     depthInfo: "Defines the maximum depth level in the organization hierarchy used to retrieve data. The default value is 0 which means there is no depth limit. If depth 1 is specified, it means only the org leader will be retrieved. If depth 2 is specified, the org leader and everyone directly reporting to the org leader will be retrieved.",
     filter: "Filter",
     filterPlaceHolder: "Please enter Filter",
-    filterInfo: "Provide filter"
+    filterInfo: "Provide filter",
+    includeLeader: "Include leader"
   },
   Components: {
     HyperlinkSetting: {

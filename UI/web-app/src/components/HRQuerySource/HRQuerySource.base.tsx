@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost } from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import type {
@@ -28,6 +28,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   };
 
   const [source, setSource] = useState<HRSourcePartSource>(props.source);
+  const excludeLeaderQuery = `EmployeeId != ${source.ids?.[0]}`
 
   const handleOrgLeaderIdChange = (_: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '') => {
     const ids = newValue.trim() !== '' ? newValue.split(',').map(str => Number(str.trim())) : [];
@@ -55,6 +56,33 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         return newSource;
     });
   };
+
+  const includeLeaderOptions: IChoiceGroupOption[] = [
+    { key: 'Yes', text: strings.yes },
+    { key: 'No', text: strings.no }
+  ];
+
+  const handleIncludeLeaderChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
+    let filter: string;
+    if (option?.key == "No") {
+      if (source.filter !== "") {
+        filter = `${source.filter} and ` + excludeLeaderQuery;
+      } else {
+        filter = excludeLeaderQuery;
+      }
+    }
+    else if (option?.key == "Yes") {
+      if (source.filter?.includes(excludeLeaderQuery)) {
+        const regex = new RegExp(`and ${excludeLeaderQuery}|${excludeLeaderQuery} and|${excludeLeaderQuery}`, 'g');
+        filter = source.filter.replace(regex, '').trim();
+      }
+    }
+    setSource(prevSource => {
+      const newSource = { ...prevSource, filter };
+      onSourceChange(newSource, partId);
+      return newSource;
+    });
+  }
 
   return (
 
@@ -114,6 +142,21 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
               validateOnLoad={false}
               validateOnFocusOut={false}
             ></TextField>
+          </div>
+        </Stack.Item>
+
+        <Stack.Item align="start">
+          <div>
+            <ChoiceGroup
+              selectedKey={(source.filter?.includes(excludeLeaderQuery))? strings.no : strings.yes}
+              options={includeLeaderOptions}
+              label={strings.HROnboarding.includeLeader}
+              onChange={handleIncludeLeaderChange}
+              styles={{
+                root: classNames.horizontalChoiceGroup,
+                flexContainer: classNames.horizontalChoiceGroupContainer
+              }}
+            />
           </div>
         </Stack.Item>
       </Stack>
