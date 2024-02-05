@@ -98,8 +98,13 @@ param loadTestingSyncJobChangePercent int = 10
 @description('The probability that a sync job membership will change represented as a percentage.')
 param loadTestingSyncJobProbabilityOfChangePercent int = 50
 
+@description('The name of the app configuration resource.')
+@minLength(5)
+@maxLength(24)
+param appConfigurationName string = '${solutionAbbreviation}-appConfig-${environmentAbbreviation}'
+
 @description('Provides the endpoint for the app configuration resource.')
-param appConfigurationEndpoint string = 'https://${solutionAbbreviation}-appconfig-${environmentAbbreviation}.azconfig.io'
+param appConfigurationEndpoint string = 'https://${appConfigurationName}.azconfig.io'
 
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
@@ -112,6 +117,51 @@ var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyV
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var nonProdServiceStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'nonProdServiceStorageAccountProd')
 var nonProdServiceStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'nonProdServiceStorageAccountStaging')
+
+param appConfigurationKeyData array = [
+  {
+    key: 'NonProdService:LoadTesting:RequestorEmail'
+    value: loadTestingRequestorEmail
+    contentType: 'string'
+    tag: {
+      tag1: 'NonProdService'
+    }
+  }
+  {
+    key: 'NonProdService:LoadTesting:JobCount'
+    value: loadTestingJobCount
+    contentType: 'string'
+    tag: {
+      tag1: 'NonProdService'
+    }
+  }
+  {
+    key: 'NonProdService:LoadTesting:SyncJobChangePercent'
+    value: loadTestingSyncJobChangePercent
+    contentType: 'string'
+    tag: {
+      tag1: 'NonProdService'
+    }
+  }
+  {
+    key: 'NonProdService:LoadTesting:SyncJobProbabilityOfChangePercent'
+    value: loadTestingSyncJobProbabilityOfChangePercent
+    contentType: 'string'
+    tag: {
+      tag1: 'NonProdService'
+    }
+  }
+]
+
+module appConfigurationTemplate 'appConfigurationKeyValues.bicep' = {
+  name: 'appConfigurationTemplate-NonProdService'
+  scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
+  params: {
+    solutionAbbreviation: solutionAbbreviation
+    environmentAbbreviation: environmentAbbreviation
+    appConfigurationKeyData: appConfigurationKeyData
+  }
+}
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-NonProdService'
@@ -145,10 +195,6 @@ var appSettings =  {
   'graphCredentials:KeyVaultTenantId': tenantId
   'ConnectionStrings:JobsContext': '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   'ConnectionStrings:JobsContextReadOnly': '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
-  'LoadTesting:RequestorEmail': loadTestingRequestorEmail
-  'LoadTesting:JobCount': loadTestingJobCount
-  'LoadTesting:SyncJobChangePercent': loadTestingSyncJobChangePercent
-  'LoadTesting:SyncJobProbabilityOfChangePercent': loadTestingSyncJobProbabilityOfChangePercent
   appConfigurationEndpoint: appConfigurationEndpoint
 }
 
