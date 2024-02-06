@@ -46,17 +46,17 @@ namespace Repositories.SqlMembershipRepository
                         FROM emp e {depthQuery} {filterQuery}";
 
                 var credential = new DefaultAzureCredential();
-                var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
+                var token = await credential.GetTokenAsync(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
 
-                retryPolicy.Execute(() =>
+                await retryPolicy.Execute(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
                         conn.AccessToken = token.Token;
-                        conn.Open();
+                        await conn.OpenAsync();
                         using (var cmd = new SqlCommand(selectQuery, conn))
                         {
-                            using (var reader = cmd.ExecuteReader(CommandBehavior.CloseConnection))
+                            using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
                             {
                                 int id = reader.GetOrdinal("EmployeeId");
                                 int azureObjectId = reader.GetOrdinal("AzureObjectId");
@@ -70,7 +70,7 @@ namespace Repositories.SqlMembershipRepository
                                     };
                                     children.Add(response);
                                 }
-                                reader.Close();
+                                await reader.CloseAsync();
                             }
                         }
                         conn.Close();
@@ -94,15 +94,15 @@ namespace Repositories.SqlMembershipRepository
                 var selectQuery = $"SELECT EmployeeId, AzureObjectId FROM {tableName} WHERE {query}";
                 var credential = new DefaultAzureCredential();
                 var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
-                retryPolicy.Execute(() =>
+                await retryPolicy.Execute(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
                         conn.AccessToken = token.Token;
-                        conn.Open();
+                        await conn.OpenAsync();
                         using (var cmd = new SqlCommand(selectQuery, conn))
                         {
-                            using (var reader = cmd.ExecuteReader(CommandBehavior.CloseConnection))
+                            using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
                             {
                                 int personnelNumber = reader.GetOrdinal("EmployeeId");
                                 int azureObjectId = reader.GetOrdinal("AzureObjectId");
@@ -115,7 +115,7 @@ namespace Repositories.SqlMembershipRepository
                                     };
                                     filteredChildren.Add(response);
                                 }
-                                reader.Close();
+                                await reader.CloseAsync();
                             }
                         }
                         conn.Close();
@@ -139,19 +139,19 @@ namespace Repositories.SqlMembershipRepository
                 var credential = new DefaultAzureCredential();
                 var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
 
-                retryPolicy.Execute(() =>
+                await retryPolicy.Execute(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
                         conn.AccessToken = token.Token;
-                        conn.Open();
+                        await conn.OpenAsync();
                         var selectQuery = $"SELECT count(TABLE_NAME) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}'";
                         using (var cmd = new SqlCommand(selectQuery, conn))
                         {
                             var result = (int)cmd.ExecuteScalar();
                             tableExists = result > 0;
                         }
-                        conn.Close();
+                        await conn.CloseAsync();
                     }
                 });
             }
@@ -172,15 +172,15 @@ namespace Repositories.SqlMembershipRepository
                 var selectQuery = $"SELECT name FROM sys.columns WHERE object_id = OBJECT_ID('{tableName}') ORDER BY name";
                 var credential = new DefaultAzureCredential();
                 var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
-                retryPolicy.Execute(() =>
+                await retryPolicy.Execute(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
                         conn.AccessToken = token.Token;
-                        conn.Open();
+                        await conn.OpenAsync();
                         using (var cmd = new SqlCommand(selectQuery, conn))
                         {
-                            using (var reader = cmd.ExecuteReader(CommandBehavior.CloseConnection))
+                            using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
                             {
                                 int name = reader.GetOrdinal("name");
 
@@ -192,7 +192,7 @@ namespace Repositories.SqlMembershipRepository
                                 reader.Close();
                             }
                         }
-                        conn.Close();
+                        await conn.CloseAsync();
                     }
                 });
             }
