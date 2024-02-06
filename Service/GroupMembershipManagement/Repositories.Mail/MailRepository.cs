@@ -13,6 +13,7 @@ using System.Linq;
 using System.Security;
 using System.Threading.Tasks;
 using AdaptiveCards.Templating;
+using System.Text.RegularExpressions;
 
 namespace Repositories.Mail
 {
@@ -122,6 +123,7 @@ namespace Repositories.Mail
             string adaptiveCardJson = _localizationRepository.TranslateSetting(CardTemplate.DefaultCardTemplate);
 
             string groupId = emailMessage?.AdditionalContentParams[0];
+            string destinationGroupName = string.IsNullOrEmpty(emailMessage?.DestinationGroupName) ? "" : emailMessage.DestinationGroupName;
 
             var cardData = new DefaultCardTemplate
             {
@@ -130,7 +132,7 @@ namespace Repositories.Mail
                 MessageContent = messageContent,
                 GroupId = groupId,
                 CardCreatedTime = DateTime.UtcNow,
-                DestinationGroupName = emailMessage?.DestinationGroupName,
+                DestinationGroupName = destinationGroupName,
             };
 
             var template = new AdaptiveCardTemplate(adaptiveCardJson);
@@ -164,6 +166,9 @@ namespace Repositories.Mail
         public Message GetSimpleMessage(EmailMessage emailMessage)
         {
             var messageContent = _localizationRepository.TranslateSetting(emailMessage?.Content, emailMessage?.AdditionalContentParams);
+            messageContent = messageContent.Replace("**", "");
+            var simpleLinkPattern = @"\[.*?\]\((.*?)\)";
+            messageContent = Regex.Replace(messageContent, simpleLinkPattern, "$1");
 
             var message = new Message
             {
