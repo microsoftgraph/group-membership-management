@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
@@ -27,8 +27,13 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     childrenGap: 30
   };
 
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const [source, setSource] = useState<HRSourcePartSource>(props.source);
   const excludeLeaderQuery = `EmployeeId != ${source.ids?.[0]}`
+
+  useEffect(() => {
+    setErrorMessage('');
+  }, [source]);
 
   const handleOrgLeaderIdChange = (_: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '') => {
     const ids = newValue.trim() !== '' ? newValue.split(',').map(str => Number(str.trim())) : [];
@@ -63,8 +68,14 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   ];
 
   const handleIncludeLeaderChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
+    setErrorMessage('');
     let filter: string;
     if (option?.key == "No") {
+      if (!source.ids || source.ids.length === 0)
+      {
+        setErrorMessage(strings.HROnboarding.errorMessage);
+        return;
+      }
       if (source.filter !== "") {
         filter = `${source.filter} and ` + excludeLeaderQuery;
       } else {
@@ -160,6 +171,11 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
           </div>
         </Stack.Item>
       </Stack>
+
+      <div className={classNames.error}>
+        {errorMessage}
+      </div>
+
     </div>
   );
 };

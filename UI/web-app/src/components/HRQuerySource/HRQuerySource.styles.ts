@@ -26,6 +26,14 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       display: 'flex',
       flexDirection: 'row',
       '> *': { marginRight: '20px' }
-    }
+    },
+    error:{
+      color: theme.semanticColors.errorText,
+      fontSize: 12,
+      fontFamily: 'Segoe UI',
+      fontWeight: 400,
+      marginTop: 4,
+      marginBottom: 4
+  }
   };
 };

@@ -28,6 +28,7 @@ export type IStrings = {
     filterPlaceHolder: string;
     filterInfo: string;
     includeLeader: string;
+    errorMessage: string;
   },
   Components: {
     HyperlinkSetting: {

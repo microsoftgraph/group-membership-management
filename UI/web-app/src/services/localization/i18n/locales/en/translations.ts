@@ -30,7 +30,8 @@ export const strings: IStrings = {
     filter: "Filter",
     filterPlaceHolder: "Please enter Filter",
     filterInfo: "Provide filter",
-    includeLeader: "Include leader"
+    includeLeader: "Include leader",
+    errorMessage: "Provide org leader id"
   },
   Components: {
     HyperlinkSetting: {

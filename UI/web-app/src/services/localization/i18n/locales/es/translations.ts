@@ -32,7 +32,8 @@ export const strings: IStrings = {
     filter: "Filtrar",
     filterPlaceHolder: "Por favor ingrese Filtro",
     filterInfo: "Proporcionar filtro",
-    includeLeader: "incluir líder"
+    includeLeader: "incluir líder",
+    errorMessage: "Proporcionar ID del líder de la organización"
   },
   Components: {
     HyperlinkSetting: {
@@ -232,13 +233,13 @@ export const strings: IStrings = {
       step3description: 'Defina la fuente de la membresía para el destino.',
       selectStartDate: 'Selecciona una opción para comenzar a administrar la membresía',
       ASAP: 'Lo antes posible',
-      requestedDate: 'Solicitar fecha', 
+      requestedDate: 'Solicitar fecha',
       selectRequestedStartDate: 'Selecciona una fecha de inicio solicitada',
       from: 'Desde',
       selectFrequency: 'Selecciona la frecuencia con la que XMM debe administrar la membresía',
       frequency: 'frecuencia',
       hrs: 'hrs',
-      preventAutomaticSync: '¿Prevenir sincronización automática si los cambios en la membresía exceden los límites de incremento y/o decremento?', 
+      preventAutomaticSync: '¿Prevenir sincronización automática si los cambios en la membresía exceden los límites de incremento y/o decremento?',
       increase: 'Incremento',
       decrease: 'Decremento',
       step4title: 'Paso 4: Confirmación',

@@ -10,6 +10,7 @@ export type HRQuerySourceStyles = {
   labelContainer: IStyle;
   horizontalChoiceGroup: IStyle;
   horizontalChoiceGroupContainer: IStyle;
+  error: IStyle;
 };
 
 export type HRQuerySourceStyleProps = {
