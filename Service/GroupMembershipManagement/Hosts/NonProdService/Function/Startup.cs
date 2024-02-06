@@ -41,12 +41,12 @@ namespace Hosts.NonProdService
             builder.Services.AddOptions<LoadTestingPrepSubOrchestratorOptions>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.DestinationGroupOwnerId = configuration.GetValue<Guid>("graphCredentials:ClientId");
-                settings.GroupCount = configuration.GetValue<int>("loadTesting:jobCount");
+                settings.GroupCount = configuration.GetValue<int>("NonProdService:LoadTesting:JobCount");
             });
 
             builder.Services.AddOptions<LoadTestingSyncJobCreatorOptions>().Configure<IConfiguration>((settings, configuration) =>
             {
-                configuration.GetSection("LoadTesting").Bind(settings);
+                configuration.GetSection("NonProdService:LoadTesting").Bind(settings);
             });
 
             builder.Services.AddSingleton<INonProdService, Services.NonProdService>();
