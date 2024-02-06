@@ -16,6 +16,7 @@ import { PageVersion } from '../PageVersion';
 import { selectPagingBarVisible } from '../../store/pagingBar.slice';
 import { useSelector } from 'react-redux';
 import { PagingBar } from '../PagingBar/PagingBar';
+import { PrivacyPolicyLink } from '../PrivacyPolicyLink';
 
 const getClassNames = classNamesFunction<
     IAppFooterStyleProps,
@@ -26,18 +27,20 @@ export const AppFooterBase: React.FunctionComponent<IAppFooterProps> = (
     props: IAppFooterProps
 ) => {
     const { className, styles } = props;
+    const showPagingBar: boolean = useSelector(selectPagingBarVisible);
     const classNames: IProcessedStyleSet<IAppFooterStyles> = getClassNames(
         styles,
         {
             className,
             theme: useTheme(),
+            showPagingBar
         }
     );
-    const showPagingBar: boolean = useSelector(selectPagingBarVisible);
 
     return (
         <div className={classNames.footer}>
             <PageVersion />
+            <PrivacyPolicyLink className={classNames.privacyPolicy} />
             {showPagingBar && (
                 <PagingBar />
             )}

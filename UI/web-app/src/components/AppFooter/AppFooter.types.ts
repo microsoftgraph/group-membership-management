@@ -11,11 +11,14 @@ import {
   export interface IAppFooterStyles {
     root: IStyle;
     footer: IStyle;
+    privacyPolicy: IStyle;
+    pagingBar: IStyle;
   }
   
   export interface IAppFooterStyleProps {
     className?: string;
     theme: ITheme;
+    showPagingBar: boolean;
   }
   
   export interface IAppFooterProps
