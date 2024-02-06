@@ -136,7 +136,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task UploadUsersMemberIdTest()
+        public async Task UploadUsersMemberIdOverwriteTest()
         {
             var storageAccountSecret = new StorageAccountSecret("myconnectionstring");
             var loggerMock = new Mock<ILoggingRepository>();
@@ -219,10 +219,10 @@ namespace Services.Tests
             var service = new AzureUserReaderService(storageAccountSecret, loggerMock.Object, blobClientFactoryMock.Object);
             await service.UploadUsersMemberIdAsync(new Entities.UploadRequest { ContainerName = "mycontainer", BlobTargetDirectory = "/target/folder", Users = users });
 
-            Assert.AreEqual(4, usersToUpload.Count);
-            foreach (var personnelNumber in personnelNumbers)
+            Assert.AreEqual(2, usersToUpload.Count);
+            foreach (var personnelNumber in new string[] { personnelNumbers[2], personnelNumbers[3] })
             {
-                Assert.IsTrue(usersToUpload.Any(x => x.PersonnelNumber == personnelNumber));
+                Assert.IsTrue(users.Any(x => x.PersonnelNumber == personnelNumber));
             }
         }
 
