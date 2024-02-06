@@ -23,14 +23,17 @@ namespace Repositories.Mail
         private readonly GraphServiceClient _graphClient;
         private readonly ILoggingRepository _loggingRepository;
         private readonly string _actionableEmailProviderId;
+        private readonly IGraphGroupRepository _graphGroupRepository;
+        private Guid groupId;
 
-        public MailRepository(GraphServiceClient graphClient, IMailAdaptiveCardConfig mailAdaptiveCardConfig, ILocalizationRepository localizationRepository, ILoggingRepository loggingRepository, string actionableEmailProviderId)
+        public MailRepository(GraphServiceClient graphClient, IMailAdaptiveCardConfig mailAdaptiveCardConfig, ILocalizationRepository localizationRepository, ILoggingRepository loggingRepository, string actionableEmailProviderId, IGraphGroupRepository graphGroupRepository)
         {
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
             _mailAdaptiveCardConfig = mailAdaptiveCardConfig ?? throw new ArgumentNullException(nameof(mailAdaptiveCardConfig));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _actionableEmailProviderId = actionableEmailProviderId ?? throw new ArgumentNullException(nameof(actionableEmailProviderId));
+            _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
         public async Task SendMailAsync(EmailMessage emailMessage, Guid? runId)
@@ -39,6 +42,8 @@ namespace Repositories.Mail
             {
                 throw new ArgumentNullException(nameof(emailMessage));
             }
+
+            await TryAssignGroupNameAsync(emailMessage, runId);
 
             Message message;
 
@@ -117,7 +122,6 @@ namespace Repositories.Mail
             string adaptiveCardJson = _localizationRepository.TranslateSetting(CardTemplate.DefaultCardTemplate);
 
             string groupId = emailMessage?.AdditionalContentParams[0];
-            string groupName = emailMessage?.AdditionalContentParams[1];
 
             var cardData = new DefaultCardTemplate
             {
@@ -126,7 +130,7 @@ namespace Repositories.Mail
                 MessageContent = messageContent,
                 GroupId = groupId,
                 CardCreatedTime = DateTime.UtcNow,
-                DestinationGroupName = groupName
+                DestinationGroupName = emailMessage?.DestinationGroupName,
             };
 
             var template = new AdaptiveCardTemplate(adaptiveCardJson);
@@ -185,6 +189,37 @@ namespace Repositories.Mail
             return emailAddresses.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(address => address.Trim()).ToList()
                                      .Select(address => new Recipient() { EmailAddress = new EmailAddress { Address = address } })
                                      .ToList();
+        }
+
+        private async Task TryAssignGroupNameAsync(EmailMessage emailMessage, Guid? runId)
+        {
+            if (emailMessage?.AdditionalContentParams == null || !emailMessage.AdditionalContentParams.Any())
+            {
+                return;
+            }
+
+            if (Guid.TryParse(emailMessage.AdditionalContentParams[0], out Guid groupId))
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = $"Successfully parsed group ID: {groupId}"
+                });
+
+                string groupName = await _graphGroupRepository.GetGroupNameAsync(groupId);
+                if (!string.IsNullOrEmpty(groupName))
+                {
+                    emailMessage.DestinationGroupName = groupName;
+                }
+            }
+            else
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = $"The provided value '{emailMessage.AdditionalContentParams[0]}' is not a valid GUID."
+                });
+            }
         }
     }
 }

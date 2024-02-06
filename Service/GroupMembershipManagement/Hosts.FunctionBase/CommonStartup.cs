@@ -166,7 +166,8 @@ namespace Hosts.FunctionBase
                         services.GetService<IMailAdaptiveCardConfig>(),
                         services.GetService<ILocalizationRepository>(),
                         services.GetService<ILoggingRepository>(),
-                        GetValueOrDefault("actionableEmailProviderId"));
+                        GetValueOrDefault("actionableEmailProviderId"),
+                        services.GetService<IGraphGroupRepository>());
             });
 
             builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>

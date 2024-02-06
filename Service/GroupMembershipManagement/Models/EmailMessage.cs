@@ -16,5 +16,6 @@ namespace Models
         public string[] AdditionalContentParams { get; set; }
         public string[] AdditionalSubjectParams { get; set; }
         public bool IsHTML { get; set; }
+        public string DestinationGroupName { get; set; }
     }
 }
