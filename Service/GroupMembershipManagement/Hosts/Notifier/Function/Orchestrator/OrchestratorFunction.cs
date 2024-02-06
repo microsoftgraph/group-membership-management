@@ -33,8 +33,8 @@ namespace Hosts.Notifier
                     Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
                     Verbosity = VerbosityLevel.DEBUG
                 });
-            var message = context.GetInput<OrchestratorRequest>();
 
+            var message = context.GetInput<OrchestratorRequest>();
 
             var messageContent = JsonConvert.DeserializeObject<Dictionary<string, object>>(message.MessageBody);
            
@@ -45,7 +45,6 @@ namespace Hosts.Notifier
                     await context.CallActivityAsync(nameof(SendNotificationFunction), notification);
                     await context.CallActivityAsync(nameof(UpdateNotificationStatusFunction), new UpdateNotificationStatusRequest { Notification = notification, Status = ThresholdNotificationStatus.AwaitingResponse });
                     break;
-                // Todo: Add other cases for different message types
                 default:
                     await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
