@@ -11,7 +11,6 @@ import {
   IProcessedStyleSet,
   classNamesFunction,
   ActionButton,
-  IToggleProps,
   DefaultButton,
   PrimaryButton,
   Icon
@@ -48,8 +47,6 @@ import {
 } from './JobDetails.types';
 import { JobDetails } from '../../models/JobDetails';
 import { useStrings } from '../../store/hooks';
-import { PatchJobRequest } from '../../models/PatchJobRequest';
-import { PatchJobResponse } from '../../models/PatchJobResponse';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
 import { selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { SyncStatus } from '../../models';
@@ -189,54 +186,35 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
   props: IContentProps
 ) => {
   const dispatch = useDispatch<AppDispatch>();
-  const patchResponse: PatchJobResponse | undefined = useSelector(selectPatchJobDetailsResponse);
-  const patchError = useSelector(selectPatchJobDetailsError);
   const strings = useStrings();
   const { job, classNames } = props;
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
+  const patchError = useSelector(selectPatchJobDetailsError);
+  const patchResponse = useSelector(selectPatchJobDetailsResponse);
   const [jobStatus, setJobStatus] = useState(job.status);
   const [isJobEnabled, setIsJobEnabled] = useState(job.enabledOrNot);
 
-  const createPatchJobRequest = (value: string): PatchJobRequest => ({
-    syncJobId: job.syncJobId,
-    operations: [
-      {
-        op: "replace",
-        path: "/Status",
-        value
-      }
-    ]
-  });
+  useEffect(() => {
+    setJobStatus(job.status);
+    setIsJobEnabled(job.enabledOrNot);
+  }, [job]);
 
-  const handleStatusChange = async () => {
+  const handleStatusChange = (ev: React.MouseEvent<HTMLElement>, checked?: boolean) => {
     const newStatus = isJobEnabled ? SyncStatus.CustomerPaused : SyncStatus.Idle;
-    const patchJobRequest = createPatchJobRequest(newStatus);
-
-    try {
-      const actionResult = await dispatch(patchJobDetails(patchJobRequest));
-      const response = actionResult.payload as PatchJobResponse;
-      if (response.ok) {
-        setIsJobEnabled(isJobEnabled ? false : true);
-      }
-    } catch (error) {
-      console.error('Error when toggling job status in job details:', error);
-    }
+    const updatedJob = {
+      ...job,
+      status: newStatus,
+    };
+    dispatch(patchJobDetails(updatedJob));
   };
 
   const handleApproveSubmission = async (approved: boolean) => {
     const statusBasedOnReview = approved ? SyncStatus.Idle : SyncStatus.SubmissionRejected;
-    const patchJobRequest = createPatchJobRequest(statusBasedOnReview);
-
-    try {
-      const actionResult = await dispatch(patchJobDetails(patchJobRequest));
-      const response = actionResult.payload as PatchJobResponse;
-      if (response.ok) {
-        setJobStatus(statusBasedOnReview);
-        setIsJobEnabled(statusBasedOnReview === SyncStatus.Idle ? true : false);
-      }
-    } catch (error) {
-      console.error('Error when reviewing and patching job details:', error);
-    }
+    const updatedJob = {
+      ...job,
+      status: statusBasedOnReview,
+    };
+    dispatch(patchJobDetails(updatedJob));
   };
 
   const displayMessage = (errorCode: string | undefined): string | undefined => {

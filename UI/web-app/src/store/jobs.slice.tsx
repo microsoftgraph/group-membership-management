@@ -85,6 +85,8 @@ export const jobsSlice = createSlice({
 
     // patchJobDetails
     builder.addCase(patchJobDetails.pending, (state) => {
+      state.patchJobDetailsResponse = undefined;
+      state.patchJobDetailsError = undefined;
     });
     builder.addCase(patchJobDetails.fulfilled, (state, action) => {
       state.patchJobDetailsResponse = action.payload;

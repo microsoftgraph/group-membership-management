@@ -10,7 +10,6 @@ export * from './NewJob';
 export * from './ODataQueryOptions';
 export * from './Page';
 export * from './PagingOptions';
-export * from './PatchJobRequest';
 export * from './PatchJobResponse';
 export * from './PostJobResponse';
 export * from './Setting';

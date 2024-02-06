@@ -6,10 +6,10 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import { config } from '../authConfig';
 import { type GetJobDetailsRequest } from '../models/GetJobDetailsRequest';
 import { type JobDetails } from '../models/JobDetails';
-import { PatchJobRequest } from '../models/PatchJobRequest';
 import { PatchJobResponse } from '../models/PatchJobResponse';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
+import { Job } from '../models/Job';
 
 export const fetchJobDetails = createAsyncThunk<
   JobDetails,
@@ -42,25 +42,31 @@ export const fetchJobDetails = createAsyncThunk<
 
 export const patchJobDetails = createAsyncThunk<
   PatchJobResponse,
-  PatchJobRequest,
+  Job,
   ThunkConfig
->('jobs/patchJobDetails', async (patchJobRequest, { extra }) => {
+>('jobs/patchJobDetails', async (job, { extra }) => {
   const { authenticationService } = extra.services;
   const token = await authenticationService.getTokenAsync(TokenType.GMM);
   const headers = new Headers();
   headers.append('Authorization', `Bearer ${token}`);
   headers.append('Content-Type', 'application/json-patch+json');
 
+  const patchOperations = {
+    op: "replace",
+    path: "/Status",
+    value: job.status
+  };
+
   const options = {
     method: 'PATCH',
     headers,
-    body: JSON.stringify(patchJobRequest.operations),
+    body: JSON.stringify(patchOperations),
   };
 
   try {
     const response = await fetch(
       `${config.patchJobDetails}/${encodeURIComponent(
-        patchJobRequest.syncJobId
+        job.syncJobId
       )}`,
       options
     ).then(async (response) => {
