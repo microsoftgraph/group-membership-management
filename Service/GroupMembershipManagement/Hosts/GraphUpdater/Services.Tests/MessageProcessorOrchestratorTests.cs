@@ -33,6 +33,7 @@ namespace Services.Tests
         [TestInitialize]
         public void Setup()
         {
+            var iDisposable = new Mock<IDisposable>();
             _messageEntity = new Mock<IMessageEntity>();
             _messageTracker = new Mock<IMessageTracker>();
 
@@ -46,6 +47,7 @@ namespace Services.Tests
                                         .Returns(() => _messageTracker.Object);
             _durableOrchestrationContext.Setup(x => x.CreateEntityProxy<IMessageEntity>(It.IsAny<EntityId>()))
                                         .Returns(() => _messageEntity.Object);
+            _durableOrchestrationContext.Setup(x => x.LockAsync(It.IsAny<EntityId>())).ReturnsAsync(iDisposable.Object);
         }
 
         [TestMethod]
