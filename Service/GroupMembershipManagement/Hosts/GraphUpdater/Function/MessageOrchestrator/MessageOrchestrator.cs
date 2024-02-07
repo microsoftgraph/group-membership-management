@@ -15,6 +15,7 @@ namespace Hosts.GraphUpdater
         {
             var request = context.GetInput<MembershipHttpRequest>();
             var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+            IDisposable lockedTracker = null;
 
             try
             {
@@ -25,43 +26,34 @@ namespace Hosts.GraphUpdater
                 var messageEntityId = new EntityId(nameof(MessageEntity), $"{request.SyncJob.TargetOfficeGroupId}_{runId}");
                 var messageEntityProxy = context.CreateEntityProxy<IMessageEntity>(messageEntityId);
 
-                using (await context.LockAsync(messageTrackerId, messageEntityId))
+                lockedTracker = await context.LockAsync(messageTrackerId, messageEntityId);
+                await messageTrackerProxy.AddAsync(messageEntityId.EntityKey);
+                await messageEntityProxy.SaveAsync(request);
+
+                var processorStatus = await context.CallActivityAsync<DurableOrchestrationStatus>(nameof(StatusReaderFunction), nameof(MessageProcessorOrchestrator));
+                if (processorStatus != null
+                    && processorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Completed
+                    && processorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Terminated
+                    && processorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Failed)
                 {
-                    await messageTrackerProxy.AddAsync(messageEntityId.EntityKey);
-                    await messageEntityProxy.SaveAsync(request);
-
-                    var processorStatus = await context.CallActivityAsync<DurableOrchestrationStatus>(nameof(StatusReaderFunction), nameof(MessageProcessorOrchestrator));
-                    if (processorStatus != null
-                        && processorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Completed
-                        && processorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Terminated
-                        && processorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Failed)
-                    {
-                        await context.CallActivityAsync(nameof(LoggerFunction),
-                                                        new LoggerRequest
-                                                        {
-                                                            Message = $"{nameof(MessageProcessorOrchestrator)} is {processorStatus.RuntimeStatus}, queued message {messageEntityId.EntityKey}",
-                                                            SyncJob = request.SyncJob
-                                                        });
-                    }
-                    else
-                    {
-                        await context.CallActivityAsync(nameof(LoggerFunction),
-                                new LoggerRequest
-                                {
-                                    Message = $"Calling {nameof(MessageProcessorOrchestrator)} for jobId {request.SyncJob.Id}",
-                                    SyncJob = request.SyncJob
-                                });
-
-                        context.StartNewOrchestration(nameof(MessageProcessorOrchestrator), null, nameof(MessageProcessorOrchestrator));
-                    }
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                                                    new LoggerRequest
+                                                    {
+                                                        Message = $"{nameof(MessageProcessorOrchestrator)} is {processorStatus.RuntimeStatus}, queued message {messageEntityId.EntityKey}",
+                                                        SyncJob = request.SyncJob
+                                                    });
                 }
+                else
+                {
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                            new LoggerRequest
+                            {
+                                Message = $"Calling {nameof(MessageProcessorOrchestrator)} for jobId {request.SyncJob.Id}",
+                                SyncJob = request.SyncJob
+                            });
 
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                                                new LoggerRequest
-                                                {
-                                                    Message = $"{nameof(MessageOrchestrator)} function completed",
-                                                    SyncJob = request.SyncJob
-                                                });
+                    context.StartNewOrchestration(nameof(MessageProcessorOrchestrator), null, nameof(MessageProcessorOrchestrator));
+                }
             }
             catch (Exception ex)
             {
@@ -72,6 +64,18 @@ namespace Hosts.GraphUpdater
                                                     SyncJob = request.SyncJob
                                                 });
             }
+            finally
+            {
+                if (lockedTracker != null)
+                    lockedTracker.Dispose();
+            }
+
+            await context.CallActivityAsync(nameof(LoggerFunction),
+                                new LoggerRequest
+                                {
+                                    Message = $"{nameof(MessageOrchestrator)} function completed",
+                                    SyncJob = request.SyncJob
+                                });
         }
     }
 }

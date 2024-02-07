@@ -23,11 +23,11 @@ namespace Hosts.GraphUpdater
                 string messageId = null;
                 int messageCount = 0;
 
-                using (await context.LockAsync(messageTrackerId))
-                {
-                    messageId = await messageTrackerProxy.GetNextMessageIdAsync();
-                    messageCount = await messageTrackerProxy.GetMessageCountAsync();
-                }
+                var lockedTracker = await context.LockAsync(messageTrackerId);
+                messageId = await messageTrackerProxy.GetNextMessageIdAsync();
+                messageCount = await messageTrackerProxy.GetMessageCountAsync();
+                lockedTracker.Dispose();
+
 
                 if (string.IsNullOrWhiteSpace(messageId))
                 {
@@ -39,11 +39,10 @@ namespace Hosts.GraphUpdater
                 var messageEntityProxy = context.CreateEntityProxy<IMessageEntity>(messageEntityId);
 
                 MembershipHttpRequest request = null;
-                using (await context.LockAsync(messageEntityId))
-                {
-                    request = await messageEntityProxy.GetAsync();
-                    await messageEntityProxy.DeleteAsync();
-                }
+                var lockedMessage = await context.LockAsync(messageEntityId);
+                request = await messageEntityProxy.GetAsync();
+                await messageEntityProxy.DeleteAsync();
+                lockedMessage.Dispose();
 
                 if (request != null)
                 {
