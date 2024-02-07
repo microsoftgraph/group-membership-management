@@ -27,7 +27,9 @@ function Set-PostDeploymentRoles {
         [Parameter(Mandatory=$True)]
         [string] $SolutionAbbreviation,
 		[Parameter(Mandatory=$True)]
-		[string] $EnvironmentAbbreviation
+		[string] $EnvironmentAbbreviation,
+        [Parameter(Mandatory = $False)]
+		[System.Collections.ArrayList] $UserPrincipalNames
     )
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -46,4 +48,10 @@ function Set-PostDeploymentRoles {
     Set-LogAnalyticsReaderRole	-SolutionAbbreviation $SolutionAbbreviation `
                                 -EnvironmentAbbreviation $EnvironmentAbbreviation `
                                 -Verbose
+
+    . ($scriptsDirectory + '\PostDeployment\Set-ADFManagedIdentityRoles.ps1')
+    Set-ADFManagedIdentityRoles	-SolutionAbbreviation $SolutionAbbreviation `
+                                -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                -UserPrincipalNames $UserPrincipalNames
+
 }
