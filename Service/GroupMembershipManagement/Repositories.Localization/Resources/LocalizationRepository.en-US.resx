@@ -1084,9 +1084,9 @@ GMM onboarding is requested by {4} to systematically manage the group membership
 
 The group **{1}** with Id: {0} **has completed its initial sync**. 
 
-**•{2} users were added.** 
+**{2} users were added.** 
 
-**•{3} users were removed.**
+**{3} users were removed.**
     </value>
   </data>
   <data name="DisabledJobEmailSubject" xml:space="preserve">
