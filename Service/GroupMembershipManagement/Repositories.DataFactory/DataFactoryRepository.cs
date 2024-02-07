@@ -1,5 +1,6 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Identity;
 using Microsoft.Azure.Management.DataFactory;
 using Microsoft.Azure.Management.DataFactory.Models;
 using Microsoft.Identity.Client;
@@ -15,10 +16,7 @@ namespace Repositories.DataFactory
     public class DataFactoryRepository : IDataFactoryRepository
     {
         private readonly string _pipeline = null;
-        private readonly string _tenantId = null;
         private readonly string _dataFactory = null;
-        private readonly string _sqlMembershipAppId = null;
-        private readonly string _sqlMembershipAppAuthenticationKey = null;
         private readonly string _subscriptionId = null;
         private readonly string _resourceGroup = null;
 
@@ -26,9 +24,6 @@ namespace Repositories.DataFactory
         {
             _pipeline = dataFactorySecrets.Pipeline;
             _dataFactory = dataFactorySecrets.DataFactoryName;
-            _tenantId = dataFactorySecrets.TenantId;
-            _sqlMembershipAppId = dataFactorySecrets.SqlMembershipAppId;
-            _sqlMembershipAppAuthenticationKey = dataFactorySecrets.SqlMembershipAppAuthenticationKey;
             _subscriptionId = dataFactorySecrets.SubscriptionId;
             _resourceGroup = dataFactorySecrets.ResourceGroup;
         }
@@ -62,21 +57,16 @@ namespace Repositories.DataFactory
             var pipelineResponse = await client.PipelineRuns.QueryByFactoryAsync(
                                                             _resourceGroup,
                                                             _dataFactory, param);
-
             return pipelineResponse;
         }
 
         private async Task<TokenCredentials> GetCredentialsAsync()
         {
-            var app = ConfidentialClientApplicationBuilder
-                        .Create(_sqlMembershipAppId)
-                        .WithTenantId(_tenantId)
-                        .WithClientSecret(_sqlMembershipAppAuthenticationKey)
-                        .Build();
-
-            var requestBuilder = app.AcquireTokenForClient(new string[] { "https://management.azure.com/.default" });
-            var token = await requestBuilder.ExecuteAsync();
-            return new TokenCredentials(token.AccessToken);
+            var defaultAzureCredential = new DefaultAzureCredential(); 
+            var tokenRequestContext = new Azure.Core.TokenRequestContext(new[] { "https://management.azure.com/.default" });
+            var accessToken = await defaultAzureCredential.GetTokenAsync(tokenRequestContext);
+            var tokenCredentials = new TokenCredentials(accessToken.Token);
+            return tokenCredentials;
         }
     }
 }

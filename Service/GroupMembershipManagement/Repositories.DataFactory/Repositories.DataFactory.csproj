@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.10.3" />
     <PackageReference Include="Microsoft.Azure.Management.DataFactory" Version="4.28.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.25" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="3.1.25" />
