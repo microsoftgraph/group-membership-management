@@ -45,7 +45,7 @@ namespace SqlMembershipObtainer
             builder.Services.AddSingleton<IKeyVaultSecret<ISqlMembershipRepository>>(services => new KeyVaultSecret<ISqlMembershipRepository>(GetValueOrThrow("sqlServerBasicConnectionString")));
             builder.Services.AddSingleton<ISqlMembershipRepository, SqlMembershipRepository>();
 
-            builder.Services.AddSingleton<IDataFactorySecret<IDataFactoryRepository>>(new DataFactorySecrets<IDataFactoryRepository>(GetValueOrThrow("pipeline"), GetValueOrThrow("tenantId"), GetValueOrThrow("dataFactoryName"), GetValueOrThrow("sqlMembershipAppId"), GetValueOrThrow("sqlMembershipAppPasswordCredentialValue"), GetValueOrThrow("subscriptionId"), GetValueOrThrow("dataResourceGroup")));
+            builder.Services.AddSingleton<IDataFactorySecret<IDataFactoryRepository>>(new DataFactorySecrets<IDataFactoryRepository>(GetValueOrThrow("pipeline"), GetValueOrThrow("dataFactoryName"), GetValueOrThrow("subscriptionId"), GetValueOrThrow("dataResourceGroup")));
             builder.Services.AddSingleton<IGraphServiceAttemptsValue>(services =>
             {
                 var parseMaxRetryAfterAttempts = int.TryParse(GetValueOrThrow("maxRetryAfterAttempts"), out int maxRetryAfterAttempts);

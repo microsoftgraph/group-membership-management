@@ -109,8 +109,6 @@ var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVault
 var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientSecret')
 var graphAppCertificateName = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppCertificateName')
 var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppTenantId')
-var sqlMembershipAppId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'sqlMembershipAppId')
-var sqlMembershipAppPasswordCredentialValue = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'sqlMembershipAppPasswordCredentialValue')
 var senderUsername = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'senderUsername')
 var senderPassword = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'senderPassword')
 var supportEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'supportEmailAddresses')
@@ -166,8 +164,6 @@ var appSettings = {
   serviceBusConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusConnectionString, '2019-09-01').secretUriWithVersion})'
   serviceBusMembershipAggregatorQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipAggregatorQueue, '2019-09-01').secretUriWithVersion})'
   sqlServerBasicConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(sqlServerBasicConnectionString, '2019-09-01').secretUriWithVersion})'
-  sqlMembershipAppId: '@Microsoft.KeyVault(SecretUri=${reference(sqlMembershipAppId, '2019-09-01').secretUriWithVersion})'
-  sqlMembershipAppPasswordCredentialValue: '@Microsoft.KeyVault(SecretUri=${reference(sqlMembershipAppPasswordCredentialValue, '2019-09-01').secretUriWithVersion})'
   serviceBusTopicName: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusTopicName, '2019-09-01').secretUriWithVersion})'
   maxRetryAfterAttempts: maxRetryAfterAttempts
   maxExceptionHandlingAttempts: maxExceptionHandlingAttempts
