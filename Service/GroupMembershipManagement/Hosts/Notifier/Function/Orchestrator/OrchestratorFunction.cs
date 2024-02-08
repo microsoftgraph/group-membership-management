@@ -7,10 +7,8 @@ using Repositories.Contracts;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Models.ThresholdNotifications;
-using Newtonsoft.Json;
 using Models.Notifications;
-using Azure.Messaging.ServiceBus;
-using System.Text;
+using System.Text.Json;
 
 namespace Hosts.Notifier
 {
@@ -36,7 +34,7 @@ namespace Hosts.Notifier
 
             var message = context.GetInput<OrchestratorRequest>();
 
-            var messageContent = JsonConvert.DeserializeObject<Dictionary<string, object>>(message.MessageBody);
+            var messageContent = JsonSerializer.Deserialize<Dictionary<string, object>>(message.MessageBody);
            
             switch (message.MessageType)
             {

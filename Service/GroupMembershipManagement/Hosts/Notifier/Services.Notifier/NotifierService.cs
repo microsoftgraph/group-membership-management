@@ -8,12 +8,12 @@ using System.Threading.Tasks;
 using Repositories.Contracts;
 using Services.Notifier.Contracts;
 using System;
+using System.Text.Json;
 using System.Linq;
 using Repositories.Contracts.InjectConfig;
 using Models.ThresholdNotifications;
 using Services.Contracts.Notifications;
 using Microsoft.ApplicationInsights;
-using Newtonsoft.Json;
 
 namespace Services.Notifier
 {
@@ -112,8 +112,8 @@ namespace Services.Notifier
 
         public async Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync(Dictionary<string, object> messageContent)
         {
-            ThresholdResult threshold = JsonConvert.DeserializeObject<ThresholdResult>(messageContent["ThresholdResult"].ToString());
-            SyncJob job = JsonConvert.DeserializeObject<SyncJob>(messageContent["SyncJob"].ToString());
+            ThresholdResult threshold = JsonSerializer.Deserialize<ThresholdResult>(messageContent["ThresholdResult"].ToString());
+            SyncJob job = JsonSerializer.Deserialize<SyncJob>(messageContent["SyncJob"].ToString());
             bool sendDisableJobNotification = Convert.ToBoolean(messageContent["SendDisableJobNotification"]);
             var notification = await CreateActionableNotification(threshold, job, sendDisableJobNotification);
             return notification;

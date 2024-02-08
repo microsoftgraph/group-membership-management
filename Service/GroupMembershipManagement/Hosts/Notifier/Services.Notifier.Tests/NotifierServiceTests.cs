@@ -7,6 +7,7 @@ using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
+using System.Text.Json;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Graph;
@@ -19,7 +20,6 @@ using Services.Contracts.Notifications;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Models.Notifications;
-using Newtonsoft.Json;
 using Models.ServiceBus;
 using System.Linq;
 using Services.Tests;
@@ -139,8 +139,8 @@ namespace Services.Notifier.Tests
 
             var messageContent = new Dictionary<string, object>
             {
-                { "ThresholdResult", JsonConvert.SerializeObject(thresholdResult) },
-                { "SyncJob", JsonConvert.SerializeObject(job) },
+                { "ThresholdResult", JsonSerializer.Serialize(thresholdResult) },
+                { "SyncJob", JsonSerializer.Serialize(job) },
                 { "SendDisableJobNotification", sendDisableJobNotification.ToString() }
             };
 
