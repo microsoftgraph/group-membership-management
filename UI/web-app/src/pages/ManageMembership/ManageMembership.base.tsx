@@ -47,7 +47,7 @@ import { Confirmation } from '../../components/Confirmation';
 import { selectAccountUsername } from '../../store/account.slice';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
 import { MembershipConfiguration } from '../../components/MembershipConfiguration';
-
+import { OnboardingSteps } from '../../models/OnboardingSteps';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -177,13 +177,13 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const isStep3ConditionsMet = isAdvancedQueryValid || allSourcePartsValid;
   let isNextDisabled = false;
 
-  if (currentStep === 1 && !isStep1ConditionsMet) {
+  if (currentStep === OnboardingSteps.SelectDestination && !isStep1ConditionsMet) {
     isNextDisabled = false;
-  } else if (currentStep === 2) {
+  } else if (currentStep === OnboardingSteps.RunConfiguration) {
     isNextDisabled = false;
-  } else if (currentStep === 3 && !isStep3ConditionsMet) {
+  } else if (currentStep === OnboardingSteps.MembershipConfiguration && !isStep3ConditionsMet) {
     isNextDisabled = false;
-  } else if (currentStep === 4) {
+  } else if (currentStep === OnboardingSteps.Confirmation) {
     isNextDisabled = true;
   }
 
@@ -191,7 +191,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     <Page>
       <PageHeader onBackToDashboardButtonClick={handleBackToDashboardButtonClick} />
       <div className={classNames.root}>
-        {currentStep === 1 && <OnboardingStep
+        {currentStep === OnboardingSteps.SelectDestination && <OnboardingStep
           stepTitle={strings.ManageMembership.labels.step1title}
           stepDescription={strings.ManageMembership.labels.step1description}
           children={
@@ -200,7 +200,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
               onSearchDestinationChange={handleSearchDestinationChange}
             />}
         />}
-        {currentStep === 2 && <OnboardingStep
+        {currentStep === OnboardingSteps.RunConfiguration && <OnboardingStep
           stepTitle={strings.ManageMembership.labels.step2title}
           stepDescription={strings.ManageMembership.labels.step2description}
           destinationType={selectedDestination?.type}
@@ -208,7 +208,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
           children={
             <RunConfiguration />}
         />}
-        {currentStep === 3 && <OnboardingStep
+        {currentStep === OnboardingSteps.MembershipConfiguration && <OnboardingStep
           stepTitle={strings.ManageMembership.labels.step3title}
           stepDescription={strings.ManageMembership.labels.step3description}
           destinationType={selectedDestination?.type}
@@ -217,7 +217,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             <MembershipConfiguration/>
           }
         />}
-        {currentStep === 4 && <OnboardingStep
+        {currentStep === OnboardingSteps.Confirmation && <OnboardingStep
           stepTitle={strings.ManageMembership.labels.step4title}
           stepDescription={strings.ManageMembership.labels.step4description}
           destinationType={selectedDestination?.type}
@@ -228,20 +228,20 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             />}
         />}
         <div className={classNames.bottomContainer}>
-          {currentStep !== 1 && <div className={classNames.backButtonContainer}>
+          {currentStep !== OnboardingSteps.SelectDestination && <div className={classNames.backButtonContainer}>
             <DefaultButton text={strings.back} onClick={onBackStepClick} />
           </div>}
           <div className={classNames.circlesContainer}>
             {Array.from({ length: 4 }, (_, index) => (
               <Icon
                 key={index}
-                iconName={index === currentStep - 1 ? 'CircleFill' : 'CircleRing'}
+                iconName={index === currentStep ? 'CircleFill' : 'CircleRing'}
                 className={classNames.circleIcon}
               />
             ))}
           </div>
           <div className={classNames.nextButtonContainer}>
-            {currentStep === 4 ?
+            {currentStep === OnboardingSteps.Confirmation ?
               <PrimaryButton text={strings.submit} onClick={handleSaveButtonClick} />
               : <PrimaryButton text={strings.next} onClick={onNextStepClick} disabled={isNextDisabled} />}
           </div>

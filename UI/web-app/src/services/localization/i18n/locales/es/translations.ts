@@ -243,6 +243,7 @@ export const strings: IStrings = {
       addSourcePart: 'Agregar parte de origen',
       excludeSourcePart: 'Excluir parte de origen',
       deleteLastSourcePartWarning: 'No se puede eliminar la última parte de origen.',
+      errorOnSchema: 'Esperaba {0} pero recibió tipo {1} en {2}.',
     }
   },
   delete: 'Eliminar',

@@ -31,6 +31,7 @@ import {
   manageMembershipThresholdPercentageForAdditions,
   manageMembershipThresholdPercentageForRemovals
 } from '../../store/manageMembership.slice';
+import { OnboardingSteps } from '../../models/OnboardingSteps';
 
 const getClassNames = classNamesFunction<
   IConfirmationStyleProps,
@@ -101,7 +102,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               <ActionButton 
                 iconProps={{ iconName: 'Edit' }} 
                 styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
-                onClick={() => onEditButtonClick(1)}>
+                onClick={() => onEditButtonClick(OnboardingSteps.SelectDestination)}>
                 {strings.edit}
               </ActionButton>
             </div>
@@ -179,7 +180,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               <ActionButton 
                 iconProps={{ iconName: 'Edit' }} 
                 styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
-                onClick={() => onEditButtonClick(2)}>
+                onClick={() => onEditButtonClick(OnboardingSteps.RunConfiguration)}>
                 {strings.edit}
               </ActionButton>
             </div>
@@ -228,7 +229,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               <ActionButton 
                 iconProps={{ iconName: 'Edit' }} 
                 styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
-                onClick={() => onEditButtonClick(3)}>
+                onClick={() => onEditButtonClick(OnboardingSteps.MembershipConfiguration)}>
                 {strings.edit}
               </ActionButton>
             </div>

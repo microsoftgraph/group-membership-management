@@ -234,6 +234,7 @@ export type IStrings = {
       addSourcePart: string;
       excludeSourcePart: string;
       deleteLastSourcePartWarning: string;
+      errorOnSchema: string;
     }
   };
   delete: string;

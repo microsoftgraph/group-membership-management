@@ -193,7 +193,6 @@ const manageMembershipSlice = createSlice({
                     isValid: action.payload.isValid
                 };
             }
-            console.log("updateSourcePart: ", state.sourceParts)
         },            
         updateSourcePartValidity: (state, action: PayloadAction<{ partId: number; isValid: boolean}>) => {
             const { partId, isValid } = action.payload;

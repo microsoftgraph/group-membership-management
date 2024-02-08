@@ -239,6 +239,7 @@ export const strings: IStrings = {
       addSourcePart: 'Add Source Part',
       excludeSourcePart: 'Exclude Source Part',
       deleteLastSourcePartWarning: 'Cannot delete the last source part.',
+      errorOnSchema: 'Expected {0} but got type {1} at {2}.',
     }
   },
   delete: 'Delete',

@@ -7,6 +7,7 @@ import {
   IProcessedStyleSet,
   TextField,
   classNamesFunction,
+  format,
   useTheme,
 } from '@fluentui/react';
 import Ajv, { ErrorObject } from 'ajv';
@@ -61,7 +62,7 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
         {errors.map((error, index) => {
           let message = error.message;
           if (error.keyword === 'type') {
-            message = `Expected ${error.schema} but got type ${typeof error.data} at ${error.dataPath}..`;
+            format(strings.ManageMembership.labels.errorOnSchema, error.schema, error.data, error.dataPath)
           }
           return (
             <div key={index}>
