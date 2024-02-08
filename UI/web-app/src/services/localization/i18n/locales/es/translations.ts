@@ -29,11 +29,14 @@ export const strings: IStrings = {
     depth: "Profundidad",
     depthPlaceHolder: "Por favor ingrese la profundidad",
     depthInfo: "Define el nivel de profundidad máximo en la jerarquía organizativa utilizada para recuperar datos. El valor predeterminado es 0, lo que significa que no hay límite de profundidad. Si se especifica profundidad 1, significa que solo se recuperará el líder de la organización. Si se especifica profundidad 2, se recuperará el líder de la organización y todos los que reportan directamente al líder de la organización.",
+    incrementButtonAriaLabel: "Aumentar el valor en 1",
+    decrementButtonAriaLabel: "Disminuir valor en 1",
     filter: "Filtrar",
     filterPlaceHolder: "Por favor ingrese Filtro",
     filterInfo: "Proporcionar filtro",
     includeLeader: "incluir líder",
-    errorMessage: "Proporcionar ID del líder de la organización"
+    orgLeaderMissingErrorMessage: "Proporcionar ID del líder de la organización",
+    invalidInputErrorMessage: "Entrada inválida. Por favor ingrese solo números."
   },
   Components: {
     HyperlinkSetting: {

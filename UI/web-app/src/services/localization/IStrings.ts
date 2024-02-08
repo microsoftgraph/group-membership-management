@@ -24,11 +24,14 @@ export type IStrings = {
     depth: string;
     depthPlaceHolder: string;
     depthInfo: string;
+    incrementButtonAriaLabel: string;
+    decrementButtonAriaLabel: string;
     filter: string;
     filterPlaceHolder: string;
     filterInfo: string;
     includeLeader: string;
-    errorMessage: string;
+    orgLeaderMissingErrorMessage: string;
+    invalidInputErrorMessage: string;
   },
   Components: {
     HyperlinkSetting: {

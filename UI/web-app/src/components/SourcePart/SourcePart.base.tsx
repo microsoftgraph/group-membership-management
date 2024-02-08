@@ -35,7 +35,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     setExpanded(!expanded);
   };
 
-  let hrSourcePartSource: HRSourcePartSource = query.source as HRSourcePartSource;
+  const [hrSourcePartSource, setHRSourcePartSource] = useState<HRSourcePartSource>(query.source as HRSourcePartSource);
 
   const options: IChoiceGroupOption[] = [
     { key: 'Yes', text: 'Yes' },
@@ -75,6 +75,10 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     setIsExclusionary(query.exclusionary);
   }, [query.exclusionary]);
 
+  useEffect(() => {
+    setHRSourcePartSource(query.source as HRSourcePartSource);
+  }, [query]);
+
   const handleSourceChange = (source: HRSourcePartSource, partId: number) => {
     const newQuery: HRSourcePart = {
       type: 'SqlMembership',
@@ -84,13 +88,9 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     const newPart: ISourcePart = {
       id: partId,
       query: newQuery,
-      isValid: false
+      isValid: true
     };
     dispatch(updateSourcePart(newPart));
-  };
-
-  const handleQueryValidation = (isValid: boolean, partId: number) => {
-    dispatch(updateSourcePartValidity({ partId, isValid }));
   };
 
   const handleExclusionaryChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption): void => {

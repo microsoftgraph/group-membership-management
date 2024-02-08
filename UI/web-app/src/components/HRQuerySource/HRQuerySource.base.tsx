@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption } from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption, SpinButton } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import type {
@@ -36,7 +36,12 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   }, [source]);
 
   const handleOrgLeaderIdChange = (_: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '') => {
-    const ids = newValue.trim() !== '' ? newValue.split(',').map(str => Number(str.trim())) : [];
+    const nonNumericRegex = /[^0-9]/g;
+    if (nonNumericRegex.test(newValue)) {
+      setErrorMessage(strings.HROnboarding.invalidInputErrorMessage);
+      return;
+    }
+    const ids = newValue.trim() !== '' ? [Number(newValue)] : [];
     setSource(prevSource => {
         const newSource = { ...prevSource, ids };
         onSourceChange(newSource, partId);
@@ -44,14 +49,19 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     });
   };
 
-  const handleDepthChange = (_: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '') => {
-    const depth = newValue !== '' ? parseInt(newValue, 10) : undefined;
+  const handleDepthChange = React.useCallback((event: React.SyntheticEvent<HTMLElement>, newValue?: string) => {
+    const nonNumericRegex = /[^0-9]/g;
+    if (newValue && nonNumericRegex.test(newValue)) {
+      setErrorMessage(strings.HROnboarding.invalidInputErrorMessage);
+      return;
+    }
+    const depth = newValue?.trim() !== '' ? Number(newValue) : undefined;
     setSource(prevSource => {
         const newSource = { ...prevSource, depth };
         onSourceChange(newSource, partId);
         return newSource;
     });
-  };
+}, []);
 
   const handleFilterChange = (_: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '') => {
     const filter = newValue;
@@ -73,7 +83,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     if (option?.key == "No") {
       if (!source.ids || source.ids.length === 0)
       {
-        setErrorMessage(strings.HROnboarding.errorMessage);
+        setErrorMessage(strings.HROnboarding.orgLeaderMissingErrorMessage);
         return;
       }
       if (source.filter !== "") {
@@ -103,13 +113,13 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
           <div>
              <div className={classNames.labelContainer}>
               <Label>{strings.HROnboarding.orgLeaderId}</Label>
-              <TooltipHost content={strings.HROnboarding.orgLeaderInfo} id="toolTipId" calloutProps={{ gapSpace: 0 }}>
-                <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipId" />
+              <TooltipHost content={strings.HROnboarding.orgLeaderInfo} id="toolTipOrgLeaderId" calloutProps={{ gapSpace: 0 }}>
+                <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipOrgLeaderId" />
               </TooltipHost>
             </div>
             <TextField
               placeholder={strings.HROnboarding.orgLeaderIdPlaceHolder}
-              value={source.ids && source.ids.length > 0 ? source.ids.join(',') : ''}
+              value={source.ids && source.ids.length > 0 ? source.ids.toString() : ''}
               onChange={handleOrgLeaderIdChange}
               styles={{fieldGroup: classNames.textFieldFieldGroup}}
               validateOnLoad={false}
@@ -122,18 +132,20 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
           <div>
              <div className={classNames.labelContainer}>
               <Label>{strings.HROnboarding.depth}</Label>
-              <TooltipHost content={strings.HROnboarding.depthInfo} id="toolTipId" calloutProps={{ gapSpace: 0 }}>
-                <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipId" />
+              <TooltipHost content={strings.HROnboarding.depthInfo} id="toolTipDepthId" calloutProps={{ gapSpace: 0 }}>
+                <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipDepthId" />
               </TooltipHost>
             </div>
-            <TextField
-              placeholder={strings.HROnboarding.depthPlaceHolder}
+            <SpinButton
               value={source.depth?.toString()}
+              min={0}
+              max={100}
+              step={1}
               onChange={handleDepthChange}
-              styles={{fieldGroup: classNames.textFieldFieldGroup}}
-              validateOnLoad={false}
-              validateOnFocusOut={false}
-            ></TextField>
+              incrementButtonAriaLabel={strings.HROnboarding.incrementButtonAriaLabel}
+              decrementButtonAriaLabel={strings.HROnboarding.decrementButtonAriaLabel}
+              styles={{root: classNames.spinButton}}
+            />
           </div>
         </Stack.Item>
 
@@ -141,8 +153,8 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
           <div>
              <div className={classNames.labelContainer}>
               <Label>{strings.HROnboarding.filter}</Label>
-              <TooltipHost content={strings.HROnboarding.filterInfo} id="toolTipId" calloutProps={{ gapSpace: 0 }}>
-                <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipId" />
+              <TooltipHost content={strings.HROnboarding.filterInfo} id="toolTipFilterId" calloutProps={{ gapSpace: 0 }}>
+                <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipFilterId" />
               </TooltipHost>
             </div>
             <TextField
