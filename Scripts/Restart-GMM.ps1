@@ -62,7 +62,16 @@ function Restart-GMM {
         $connection.AccessToken = $sqlToken
         $connection.Open()
 
-        $updateQuery = "UPDATE SyncJobs SET LastRunTime = GetDate() - 2, Status = 'Idle' WHERE Status IN ('InProgress', 'StuckInProgress', 'ErroredDueToStuckInProgress')"
+        $updateQuery += "
+            UPDATE SyncJobs
+            SET Status = 'Idle'
+            WHERE Status IN ('InProgress', 'StuckInProgress', 'ErroredDueToStuckInProgress') AND LastRunTime != '1753-01-01T00:00:00.000000Z';
+
+            UPDATE SyncJobs
+            SET LastRunTime = GetDate() - 2, IgnoreThresholdOnce = 'true', Status = 'Idle'
+            WHERE Status IN ('InProgress', 'StuckInProgress', 'ErroredDueToStuckInProgress') AND LastRunTime = '1753-01-01T00:00:00.000000Z';
+        ";
+
         $updateCommand = $connection.CreateCommand()
         $updateCommand.CommandText = $updateQuery
         $updateCommand.ExecuteNonQuery()
