@@ -85,6 +85,80 @@ namespace Repositories.SqlMembershipRepository
             return children;
         }
 
+        public async Task<(int maxDepth, int id)> GetOrgLeaderDetailsAsync(string azureObjectId, string tableName)
+        {
+            var retryPolicy = GetRetryPolicy();
+            int maxDepth = 0;
+            int employeeId = 0;
+
+            try
+            {
+                var selectDepthQuery = @$"
+                    WITH emp AS (
+                            SELECT *, 1 AS Depth
+                            FROM {tableName}
+                            WHERE AzureObjectId = '{azureObjectId}'
+
+                            UNION ALL
+
+                            SELECT e.*, emp.Depth + 1
+                            FROM {tableName} e INNER JOIN emp
+                            ON e.ManagerId = emp.EmployeeId
+                    )
+                    SELECT MAX(Depth) AS MaxDepth
+                    FROM emp e
+                ";
+
+                var selectIdQuery = $"SELECT EmployeeId FROM {tableName} WHERE AzureObjectId = '{azureObjectId}'";
+                var credential = new DefaultAzureCredential();
+                var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
+               
+                retryPolicy.Execute(() =>
+                {
+                    using (var conn = new SqlConnection(_sqlServerConnectionString))
+                    {
+                        conn.AccessToken = token.Token;
+                        conn.Open();
+                        using (var cmd = new SqlCommand(selectDepthQuery, conn))
+                        {
+                            using (var reader = cmd.ExecuteReader())
+                            {
+                                int maxDepthOrdinal = reader.GetOrdinal("MaxDepth");
+
+                                while (reader.Read())
+                                {
+                                    maxDepth = reader.IsDBNull(maxDepthOrdinal) ? 0 : reader.GetInt32(maxDepthOrdinal);
+                                }
+                                reader.Close();
+                            }
+                        }
+
+                        using (var cmd = new SqlCommand(selectIdQuery, conn))
+                        {
+                            using (var reader = cmd.ExecuteReader())
+                            {
+                                int idOrdinal = reader.GetOrdinal("EmployeeId");
+
+                                while (reader.Read())
+                                {
+                                    employeeId = reader.IsDBNull(idOrdinal) ? 0 : reader.GetInt32(idOrdinal);
+                                }
+                                reader.Close();
+                            }
+                        }
+
+                        conn.Close();
+                    }
+                });
+            }
+            catch (SqlException ex)
+            {
+                throw ex;
+            }
+
+            return (maxDepth, employeeId);
+        }
+
         public async Task<List<PersonEntity>> FilterChildEntitiesAsync(string query, string tableName)
         {
             var filteredChildren = new List<PersonEntity>();

@@ -4,10 +4,13 @@ namespace Repositories.Contracts.InjectConfig
 {
     public interface IDataFactorySecret<TType>
     {
-        string Pipeline { get; }
-        string DataFactoryName { get; }
-        string SubscriptionId { get; }
-        string ResourceGroup { get; }
+        string Pipeline { get; set; }
+        string TenantId { get; set; }
+        string DataFactoryName { get; set; }
+        string SqlMembershipAppId { get; set; }
+        string SqlMembershipAppAuthenticationKey { get; set; }
+        string SubscriptionId { get; set; }
+        string ResourceGroup { get; set; }
 
     }
 }

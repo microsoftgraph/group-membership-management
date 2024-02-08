@@ -23,12 +23,14 @@ using Microsoft.O365.ActionableMessages.Utilities;
 using Microsoft.OpenApi.Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.DataFactory;
 using Repositories.EntityFramework;
 using Repositories.EntityFramework.Contexts;
 using Repositories.GraphGroups;
 using Repositories.Localization;
 using Repositories.Logging;
 using Repositories.NotificationsRepository;
+using Repositories.SqlMembershipRepository;
 using Services.Contracts.Notifications;
 using Services.Notifications;
 using WebApi.Configuration;
@@ -215,6 +217,34 @@ namespace WebApi
                 return new LoggingRepository(settings.Value);
             });
 
+            builder.Services.AddOptions<DataFactorySecrets<IDataFactoryRepository>>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.Pipeline = configuration.GetValue<string>("ADF:Pipeline");
+                settings.TenantId = configuration.GetValue<string>("ADF:TenantId");
+                settings.DataFactoryName = configuration.GetValue<string>("ADF:DataFactoryName");
+                settings.SqlMembershipAppId = configuration.GetValue<string>("ADF:SqlMembershipAppId");
+                settings.SqlMembershipAppAuthenticationKey = configuration.GetValue<string>("ADF:SqlMembershipAppPasswordCredentialValue");
+                settings.SubscriptionId = configuration.GetValue<string>("ADF:SubscriptionId");
+                settings.ResourceGroup = configuration.GetValue<string>("ADF:ResourceGroup");
+            });
+
+            builder.Services.AddSingleton<IDataFactorySecret<IDataFactoryRepository>>(services =>
+            {
+                var settings = services.GetRequiredService<IOptions<DataFactorySecrets<IDataFactoryRepository>>>();
+                return new DataFactorySecrets<IDataFactoryRepository>(
+                    settings.Value.Pipeline,
+                    settings.Value.TenantId,
+                    settings.Value.DataFactoryName,
+                    settings.Value.SqlMembershipAppId,
+                    settings.Value.SqlMembershipAppAuthenticationKey,
+                    settings.Value.SubscriptionId,
+                    settings.Value.ResourceGroup
+                );
+            });
+
+            builder.Services.AddSingleton<IKeyVaultSecret<ISqlMembershipRepository>>(services => new KeyVaultSecret<ISqlMembershipRepository>(services.GetService<IConfiguration>().GetValue<string>("Settings:SqlServerConnectionString")));
+            builder.Services.AddSingleton<ISqlMembershipRepository, SqlMembershipRepository>();
+
             builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.ConnectionString = configuration.GetValue<string>("Settings:jobsStorageAccountConnectionString");
@@ -256,6 +286,7 @@ namespace WebApi
 
             builder.Services.AddScoped<IActionableMessageTokenValidator, ActionableMessageTokenValidator>();
             builder.Services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
+            builder.Services.AddScoped<IDataFactoryRepository, DataFactoryRepository>();
             builder.Services.AddScoped<IDatabaseMigrationsRepository, DatabaseMigrationsRepository>();
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
             builder.Services.AddScoped<IDatabaseSettingsRepository, DatabaseSettingsRepository>();

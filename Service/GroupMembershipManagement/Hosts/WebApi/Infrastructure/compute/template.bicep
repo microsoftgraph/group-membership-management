@@ -19,6 +19,9 @@ param resourceGroupClassification string = 'compute'
 @description('Tenant id.')
 param tenantId string
 
+@description('Name of Azure Data Factory Pipeline.')
+param pipeline string
+
 @description('Service plan name.')
 param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-webapi-serviceplan'
 
@@ -55,9 +58,15 @@ param dataResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbr
 @description('Enter application insights name.')
 param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
+@description('Name of the data factory.')
+param dataFactoryName string = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
+
+var subscriptionId = subscription().subscriptionId
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var webapiClientId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'webapiClientId')
 var webApiTenantId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'webApiTenantId')
+var sqlMembershipAppId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'sqlMembershipAppId')
+var sqlMembershipAppPasswordCredentialValue = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'sqlMembershipAppPasswordCredentialValue')
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountConnectionString')
@@ -68,6 +77,7 @@ var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsResource
 var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
+var sqlServerBasicConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'sqlServerBasicConnectionString')
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   scope: resourceGroup(dataResourceGroup)
@@ -154,6 +164,38 @@ var appSettings = [
   {
     name: 'Settings:GraphCredentials:KeyVaultTenantId'
     value: tenantId
+  }
+  {
+    name: 'Settings:SqlServerConnectionString'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(sqlServerBasicConnectionString, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'ADF:Pipeline'
+    value: pipeline
+  }
+  {
+    name: 'ADF:TenantId'
+    value: tenantId
+  }
+  {
+    name: 'ADF:DataFactoryName'
+    value: dataFactoryName
+  }
+  {
+    name: 'ADF:SqlMembershipAppId'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(sqlMembershipAppId, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'ADF:SqlMembershipAppPasswordCredentialValue'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(sqlMembershipAppPasswordCredentialValue, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'ADF:SubscriptionId'
+    value: subscriptionId
+  }
+  {
+    name: 'ADF:ResourceGroup'
+    value: dataResourceGroup
   }
 ]
 

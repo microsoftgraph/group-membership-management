@@ -28,12 +28,14 @@
     <ProjectReference Include="..\..\..\DIConcreteTypes\DIConcreteTypes.csproj" />
     <ProjectReference Include="..\..\..\Models\Models.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.DataFactory\Repositories.DataFactory.csproj" />
     <ProjectReference Include="..\..\..\Repositories.EntityFramework.Contexts\Repositories.EntityFramework.Contexts.csproj" />
     <ProjectReference Include="..\..\..\Repositories.EntityFramework\Repositories.EntityFramework.csproj" />
     <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Localization\Repositories.Localization.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Logging\Repositories.Logging.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.SqlMembershipRepository\Repositories.SqlMembershipRepository.csproj" />
     <ProjectReference Include="..\..\..\Services.Notifications\Services.Notifications.csproj" />
     <ProjectReference Include="..\Services.Messages\Services.Messages.csproj" />
 	<ProjectReference Include="..\Services.WebApi.Contracts\Services.WebApi.Contracts.csproj" />

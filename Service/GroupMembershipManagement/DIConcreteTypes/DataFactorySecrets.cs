@@ -6,10 +6,13 @@ namespace DIConcreteTypes
 {
     public class DataFactorySecrets<T> : IDataFactorySecret<T>
     {
-        public string Pipeline { get; }
-        public string DataFactoryName { get; }
-        public string SubscriptionId { get; }
-        public string ResourceGroup { get; }
+        public string Pipeline { get; set; }
+        public string TenantId { get; set; }
+        public string DataFactoryName { get; set; }
+        public string SqlMembershipAppId { get; set; }
+        public string SqlMembershipAppAuthenticationKey { get; set; }
+        public string SubscriptionId { get; set; }
+        public string ResourceGroup { get; set; }
 
         public DataFactorySecrets(string pipeline, string dataFactoryName, string subscriptionId, string resourceGroup)
         {
@@ -17,6 +20,10 @@ namespace DIConcreteTypes
             DataFactoryName = dataFactoryName;
             SubscriptionId = subscriptionId;
             ResourceGroup = resourceGroup;
+        }
+
+        public DataFactorySecrets()
+        {
         }
     }
 }

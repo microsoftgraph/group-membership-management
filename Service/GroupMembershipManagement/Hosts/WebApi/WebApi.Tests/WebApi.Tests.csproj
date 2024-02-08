@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Models\Models.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.DataFactory\Repositories.DataFactory.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Localization\Repositories.Localization.csproj" />
     <ProjectReference Include="..\Services.Messages\Services.Messages.csproj" />
     <ProjectReference Include="..\WebApi.Models\WebApi.Models.csproj" />
