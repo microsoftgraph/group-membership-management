@@ -5,7 +5,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Models;
 using System;
-using System.Text.Json;
+using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -39,11 +39,11 @@ namespace Services.Notifier.Tests
 
             var messageContent = new Dictionary<string, object>
             {
-                { "ThresholdResult", JsonSerializer.Serialize(new ThresholdResult()) },
-                { "SyncJob", JsonSerializer.Serialize(new SyncJob()) },
+                { "ThresholdResult", JsonConvert.SerializeObject(new ThresholdResult()) },
+                { "SyncJob", JsonConvert.SerializeObject(new SyncJob()) },
                 { "SendDisableJobNotification", true.ToString() }
             };
-            var serializedMessageContent = JsonSerializer.Serialize(messageContent);
+            var serializedMessageContent = JsonConvert.SerializeObject(messageContent);
             var orchestratorRequest = new OrchestratorRequest
             {
                 MessageType = nameof(NotificationMessageType.ThresholdNotification),

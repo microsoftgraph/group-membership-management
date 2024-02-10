@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Models.ThresholdNotifications;
 using Models.Notifications;
 using System.Text.Json;
+using Newtonsoft.Json;
 
 namespace Hosts.Notifier
 {
@@ -34,7 +35,7 @@ namespace Hosts.Notifier
 
             var message = context.GetInput<OrchestratorRequest>();
 
-            var messageContent = JsonSerializer.Deserialize<Dictionary<string, object>>(message.MessageBody);
+            var messageContent = JsonConvert.DeserializeObject<Dictionary<string, object>>(message.MessageBody);
            
             switch (message.MessageType)
             {
