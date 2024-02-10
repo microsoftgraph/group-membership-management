@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Models.ThresholdNotifications;
 using Models.Notifications;
-using System.Text.Json;
 using Newtonsoft.Json;
 
 namespace Hosts.Notifier

@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Repositories.Contracts;
 using Services.Notifier.Contracts;
 using System;
-using System.Text.Json;
 using System.Linq;
 using Repositories.Contracts.InjectConfig;
 using Models.ThresholdNotifications;
