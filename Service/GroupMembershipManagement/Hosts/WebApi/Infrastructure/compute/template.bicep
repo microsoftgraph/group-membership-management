@@ -19,9 +19,6 @@ param resourceGroupClassification string = 'compute'
 @description('Tenant id.')
 param tenantId string
 
-@description('Name of Azure Data Factory Pipeline.')
-param pipeline string
-
 @description('Service plan name.')
 param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-webapi-serviceplan'
 
@@ -58,8 +55,11 @@ param dataResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbr
 @description('Enter application insights name.')
 param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
-@description('Name of the data factory.')
+@description('Name of the Azure Data Factory resource.')
 param dataFactoryName string = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
+
+@description('Name of the Azure Data Factory pipeline.')
+param adfPipeline string
 
 var subscriptionId = subscription().subscriptionId
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
@@ -169,7 +169,7 @@ var appSettings = [
   }
   {
     name: 'ADF:Pipeline'
-    value: pipeline
+    value: adfPipeline
   }
   {
     name: 'ADF:DataFactoryName'

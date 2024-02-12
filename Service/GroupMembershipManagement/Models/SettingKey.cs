@@ -7,6 +7,6 @@ namespace Models
     {
         DashboardUrl = 0,
         OutlookWarningUrl = 1,
-        PrivacyPolicyUrl = 2,
+        PrivacyPolicyUrl = 2
     }
 }

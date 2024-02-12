@@ -11,11 +11,11 @@ namespace Repositories.Contracts
     {
         Task<List<SqlMembershipSource>> GetSourcesAsync();
         Task<SqlMembershipSource> GetDefaultSourceAsync();
-        Task<List<SqlFilterAttribute>> GetSourceAttributesAsync(string sourceName);
-        Task<List<SqlFilterAttribute>> GetDefaultSourceAttributesAsync();
+        Task<List<SqlMembershipAttribute>> GetSourceAttributesAsync(string sourceName);
+        Task<List<SqlMembershipAttribute>> GetDefaultSourceAttributesAsync();
         Task UpdateSourceCustomLabelAsync(string sourceName, string newCustomLabel);
         Task UpdateDefaultSourceCustomLabelAsync(string newCustomLabel);
-        Task UpdateSourceAttributesAsync(string sourceName, List<SqlFilterAttribute> attributes);
-        Task UpdateDefaultSourceAttributesAsync(List<SqlFilterAttribute> attributes);
+        Task UpdateSourceAttributesAsync(string sourceName, List<SqlMembershipAttribute> attributes);
+        Task UpdateDefaultSourceAttributesAsync(List<SqlMembershipAttribute> attributes);
     }
 }

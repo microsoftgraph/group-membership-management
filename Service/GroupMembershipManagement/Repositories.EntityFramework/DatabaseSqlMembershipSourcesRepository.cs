@@ -31,13 +31,13 @@ namespace Repositories.EntityFramework
             return sources;
         }
 
-        public async Task<List<SqlFilterAttribute>> GetSourceAttributesAsync(string sourceName)
+        public async Task<List<SqlMembershipAttribute>> GetSourceAttributesAsync(string sourceName)
         {
             var source = await _readContext.SqlMembershipSources.FirstOrDefaultAsync(s => s.Name == sourceName);
             return source?.Attributes;
         }
 
-        public async Task UpdateSourceAttributesAsync(string sourceName, List<SqlFilterAttribute> attributes)
+        public async Task UpdateSourceAttributesAsync(string sourceName, List<SqlMembershipAttribute> attributes)
         {
             var source = await _writeContext.SqlMembershipSources.FirstOrDefaultAsync(s => s.Name == sourceName);
             source.Attributes = attributes;
@@ -60,7 +60,7 @@ namespace Repositories.EntityFramework
             };
         }
 
-        public async Task<List<SqlFilterAttribute>> GetDefaultSourceAttributesAsync()
+        public async Task<List<SqlMembershipAttribute>> GetDefaultSourceAttributesAsync()
         {
             var source = await _writeContext.SqlMembershipSources.FirstOrDefaultAsync(s => s.Name == "SqlMembership");
             return source.Attributes;
@@ -73,7 +73,7 @@ namespace Repositories.EntityFramework
             await _writeContext.SaveChangesAsync();
         }
 
-        public async Task UpdateDefaultSourceAttributesAsync(List<SqlFilterAttribute> attributes)
+        public async Task UpdateDefaultSourceAttributesAsync(List<SqlMembershipAttribute> attributes)
         {
             var source = await _writeContext.SqlMembershipSources.FirstOrDefaultAsync(s => s.Name == "SqlMembership");
             source.Attributes = attributes;

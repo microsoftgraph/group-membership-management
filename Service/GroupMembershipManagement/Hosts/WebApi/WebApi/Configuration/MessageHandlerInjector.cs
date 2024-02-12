@@ -21,6 +21,11 @@ namespace WebApi.Configuration
             services.AddTransient<IRequestHandler<GetAllSettingsRequest, GetAllSettingsResponse>, GetAllSettingsHandler>();
             services.AddTransient<IRequestHandler<PatchSettingRequest, NullResponse>, PatchSettingHandler>();
 
+            services.AddTransient<IRequestHandler<GetDefaultSqlMembershipSourceRequest, GetDefaultSqlMembershipSourceResponse>, GetDefaultSqlMembershipSourceHandler>();
+            services.AddTransient<IRequestHandler<GetDefaultSqlMembershipSourceAttributesRequest, GetDefaultSqlMembershipSourceAttributesResponse>, GetDefaultSqlMembershipSourceAttributesHandler>();
+            services.AddTransient<IRequestHandler<PatchDefaultSqlMembershipSourceCustomLabelRequest, NullResponse>, PatchDefaultSqlMembershipSourceCustomLabelHandler>();
+            services.AddTransient<IRequestHandler<PatchDefaultSqlMembershipSourceAttributesRequest, NullResponse>, PatchDefaultSqlMembershipSourceAttributesHandler>();
+
             services.AddTransient<IRequestHandler<GetJobsRequest, GetJobsResponse>, GetJobsHandler>();
             services.AddTransient<IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse>, GetJobDetailsHandler>();
 

@@ -11,6 +11,6 @@ namespace Entities
         public Guid Id { get; set; }
         public string Name { get; set; }
         public string CustomLabel { get; set; }
-        public List<SqlFilterAttribute> Attributes { get; set; }
+        public List<SqlMembershipAttribute> Attributes { get; set; }
     }
 }

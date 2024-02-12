@@ -57,11 +57,11 @@ namespace Repositories.EntityFramework.Contexts
                 source.Property(e => e.Attributes)
                     .HasConversion(
                         v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                        v => JsonSerializer.Deserialize<List<SqlFilterAttribute>>(v, (JsonSerializerOptions?)null),
-                        new ValueComparer<List<SqlFilterAttribute>>(
+                        v => JsonSerializer.Deserialize<List<SqlMembershipAttribute>>(v, (JsonSerializerOptions?)null),
+                        new ValueComparer<List<SqlMembershipAttribute>>(
                             (c1, c2) => JsonSerializer.Serialize(c1, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(c2, (JsonSerializerOptions?)null),
                             c => c == null ? 0 : JsonSerializer.Serialize(c, (JsonSerializerOptions?)null).GetHashCode(),
-                            c => JsonSerializer.Deserialize<List<SqlFilterAttribute>>(JsonSerializer.Serialize(c, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null)));
+                            c => JsonSerializer.Deserialize<List<SqlMembershipAttribute>>(JsonSerializer.Serialize(c, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null)));
 
                 source.HasData(new Entities.SqlMembershipSource
                 {
