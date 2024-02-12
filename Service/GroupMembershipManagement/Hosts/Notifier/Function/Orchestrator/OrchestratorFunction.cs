@@ -4,11 +4,9 @@
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Models.ThresholdNotifications;
 using Models.Notifications;
-using Newtonsoft.Json;
 
 namespace Hosts.Notifier
 {
@@ -34,12 +32,10 @@ namespace Hosts.Notifier
 
             var message = context.GetInput<OrchestratorRequest>();
 
-            var messageContent = JsonConvert.DeserializeObject<Dictionary<string, object>>(message.MessageBody);
-           
             switch (message.MessageType)
             {
                 case nameof(NotificationMessageType.ThresholdNotification):
-                    var notification = await context.CallActivityAsync<ThresholdNotification>(nameof(CreateActionableNotificationFromContentFunction), messageContent);
+                    var notification = await context.CallActivityAsync<ThresholdNotification>(nameof(CreateActionableNotificationFromContentFunction), message);
                     await context.CallActivityAsync(nameof(SendNotificationFunction), notification);
                     await context.CallActivityAsync(nameof(UpdateNotificationStatusFunction), new UpdateNotificationStatusRequest { Notification = notification, Status = ThresholdNotificationStatus.AwaitingResponse });
                     break;

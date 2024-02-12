@@ -20,7 +20,8 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Models.Notifications;
 using System.Linq;
 using Services.Tests;
-using Newtonsoft.Json;
+using Hosts.Notifier;
+using System.Text.Json;
 
 namespace Services.Notifier.Tests
 {
@@ -125,27 +126,34 @@ namespace Services.Notifier.Tests
 
             var thresholdResult = new ThresholdResult
             {
-                IncreaseThresholdPercentage = 10.0,  
+                IncreaseThresholdPercentage = 10.0,
                 DecreaseThresholdPercentage = 5.0,
-                DeltaToAddCount = 5, 
+                DeltaToAddCount = 5,
                 DeltaToRemoveCount = 5,
-                IsAdditionsThresholdExceeded = true, 
-                IsRemovalsThresholdExceeded = false  
+                IsAdditionsThresholdExceeded = true,
+                IsRemovalsThresholdExceeded = false
             };
 
             bool sendDisableJobNotification = true;
 
-            var messageContent = new Dictionary<string, object>
+            var messageContent = new
             {
-                { "ThresholdResult", JsonConvert.SerializeObject(thresholdResult) },
-                { "SyncJob", JsonConvert.SerializeObject(job) },
-                { "SendDisableJobNotification", sendDisableJobNotification.ToString() }
+                ThresholdResult = thresholdResult,
+                SyncJob = job,
+                SendDisableJobNotification = sendDisableJobNotification
+            };
+            string serializedMessageContent = JsonSerializer.Serialize(messageContent);
+
+            OrchestratorRequest request = new OrchestratorRequest
+            {
+                MessageType = nameof(NotificationMessageType.ThresholdNotification),
+                MessageBody = serializedMessageContent
             };
 
             _notificationRepository.Setup(x => x.GetThresholdNotificationBySyncJobIdAsync(It.IsAny<Guid>()))
                 .ReturnsAsync((ThresholdNotification)null);
-   
-            var result = await _notifierService.CreateActionableNotificationFromContentAsync(messageContent);
+
+            var result = await _notifierService.CreateActionableNotificationFromContentAsync(request.MessageBody);
 
             Assert.IsNotNull(result);
             _notificationRepository.Verify(x => x.SaveNotificationAsync(It.IsAny<ThresholdNotification>()), Times.Once);

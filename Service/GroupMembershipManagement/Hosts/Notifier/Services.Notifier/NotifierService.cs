@@ -13,7 +13,7 @@ using Repositories.Contracts.InjectConfig;
 using Models.ThresholdNotifications;
 using Services.Contracts.Notifications;
 using Microsoft.ApplicationInsights;
-using Newtonsoft.Json;
+using System.Text.Json;
 
 namespace Services.Notifier
 {
@@ -110,11 +110,12 @@ namespace Services.Notifier
             _telemetryClient.TrackEvent("NotificationSent", sentNotificationEvent);
         }
 
-        public async Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync(Dictionary<string, object> messageContent)
+        public async Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync(string messageBody)
         {
-            ThresholdResult threshold = JsonConvert.DeserializeObject<ThresholdResult>(messageContent["ThresholdResult"].ToString());
-            SyncJob job = JsonConvert.DeserializeObject<SyncJob>(messageContent["SyncJob"].ToString());
-            bool sendDisableJobNotification = Convert.ToBoolean(messageContent["SendDisableJobNotification"]);
+            var messageContent = JsonSerializer.Deserialize<Dictionary<string, Object>>(messageBody);
+            SyncJob job = ((JsonElement)messageContent["SyncJob"]).Deserialize<SyncJob>();
+            ThresholdResult threshold = ((JsonElement)messageContent["ThresholdResult"]).Deserialize<ThresholdResult>();
+            bool sendDisableJobNotification = ((JsonElement)messageContent["SendDisableJobNotification"]).Deserialize<bool>();
             var notification = await CreateActionableNotification(threshold, job, sendDisableJobNotification);
             return notification;
         }

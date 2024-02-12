@@ -5,7 +5,6 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs;
 using Repositories.Contracts;
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Services.Notifier.Contracts;
 using Models;
@@ -24,10 +23,10 @@ namespace Hosts.Notifier
         }
 
         [FunctionName(nameof(CreateActionableNotificationFromContentFunction))]
-        public async Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync([ActivityTrigger] Dictionary<string, object> messageContent)
+        public async Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync([ActivityTrigger] OrchestratorRequest message)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CreateActionableNotificationFromContentFunction)} function started at: {DateTime.UtcNow}" });
-            var notification = await _notifierService.CreateActionableNotificationFromContentAsync(messageContent);
+            var notification = await _notifierService.CreateActionableNotificationFromContentAsync(message.MessageBody);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CreateActionableNotificationFromContentFunction)} function completed at: {DateTime.UtcNow}" });
             return notification;
         }

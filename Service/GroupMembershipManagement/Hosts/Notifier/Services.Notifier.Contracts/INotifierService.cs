@@ -4,7 +4,9 @@
 using Models.ThresholdNotifications;
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
+
 
 namespace Services.Notifier.Contracts
 {
@@ -13,7 +15,7 @@ namespace Services.Notifier.Contracts
         public Task SendEmailAsync(ThresholdNotification notification);
         public Task<List<ThresholdNotification>> RetrieveQueuedNotificationsAsync();
         public Task UpdateNotificationStatusAsync(ThresholdNotification notification, ThresholdNotificationStatus status);
-        public Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync(Dictionary<string, object>  messageContent);
+        public Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync(string messageBody);
 
     }
 }
