@@ -29,7 +29,7 @@ namespace Repositories.SqlMembershipRepository
             try
             {
                 var depthQuery = depth <= 0 ? "WHERE Depth > 0" : $" WHERE Depth <= {depth}";
-                var filterQuery = string.IsNullOrWhiteSpace(filter) ? "" : $" AND {filter}";
+                var filterQuery = string.IsNullOrWhiteSpace(filter) ? "" : $" AND ({filter})";
                 var selectQuery = @$"
                         WITH emp AS (
                               SELECT *, 1 AS Depth
