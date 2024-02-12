@@ -37,7 +37,7 @@ function Restart-GMM {
     }
 
     $jobSchedulerFunctionBaseUrl = "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-jobscheduler.azurewebsites.net"
-    $sqlDatabaseConnectionString = "Server=tcp:$SolutionAbbreviation-data-$EnvironmentAbbreviation.database.windows.net,1433;Initial Catalog=$SolutionAbbreviation-data-$EnvironmentAbbreviation-jobs;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=90;"
+    $sqlDatabaseConnectionString = "Server=tcp:$SolutionAbbreviation-data-$EnvironmentAbbreviation.database.windows.net,1433;Initial Catalog=$SolutionAbbreviation-data-$EnvironmentAbbreviation;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=90;"
 
     Write-Host "Deleting instances, history tables from $GraphUpdaterStorageAccountName"
     $storageAccount = Get-AzStorageAccount -ResourceGroupName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" -Name "$GraphUpdaterStorageAccountName"
