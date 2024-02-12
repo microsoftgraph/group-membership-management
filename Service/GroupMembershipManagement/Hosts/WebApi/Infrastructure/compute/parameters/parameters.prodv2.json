@@ -5,7 +5,7 @@
     "apiHostname": {
       "value": "<custom-domain-name> OR delete this parameter to leverage default one"
     },
-    "pipeline": {
+    "adfPipeline": {
       "value": ""
     }
   }
