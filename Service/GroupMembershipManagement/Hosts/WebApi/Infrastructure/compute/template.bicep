@@ -65,8 +65,6 @@ var subscriptionId = subscription().subscriptionId
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var webapiClientId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'webapiClientId')
 var webApiTenantId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'webApiTenantId')
-var sqlMembershipAppId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'sqlMembershipAppId')
-var sqlMembershipAppPasswordCredentialValue = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'sqlMembershipAppPasswordCredentialValue')
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountConnectionString')
@@ -174,20 +172,8 @@ var appSettings = [
     value: pipeline
   }
   {
-    name: 'ADF:TenantId'
-    value: tenantId
-  }
-  {
     name: 'ADF:DataFactoryName'
     value: dataFactoryName
-  }
-  {
-    name: 'ADF:SqlMembershipAppId'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(sqlMembershipAppId, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'ADF:SqlMembershipAppPasswordCredentialValue'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(sqlMembershipAppPasswordCredentialValue, '2019-09-01').secretUriWithVersion})'
   }
   {
     name: 'ADF:SubscriptionId'

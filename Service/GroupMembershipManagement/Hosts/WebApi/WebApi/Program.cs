@@ -220,10 +220,7 @@ namespace WebApi
             builder.Services.AddOptions<DataFactorySecrets<IDataFactoryRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.Pipeline = configuration.GetValue<string>("ADF:Pipeline");
-                settings.TenantId = configuration.GetValue<string>("ADF:TenantId");
                 settings.DataFactoryName = configuration.GetValue<string>("ADF:DataFactoryName");
-                settings.SqlMembershipAppId = configuration.GetValue<string>("ADF:SqlMembershipAppId");
-                settings.SqlMembershipAppAuthenticationKey = configuration.GetValue<string>("ADF:SqlMembershipAppPasswordCredentialValue");
                 settings.SubscriptionId = configuration.GetValue<string>("ADF:SubscriptionId");
                 settings.ResourceGroup = configuration.GetValue<string>("ADF:ResourceGroup");
             });
@@ -233,10 +230,7 @@ namespace WebApi
                 var settings = services.GetRequiredService<IOptions<DataFactorySecrets<IDataFactoryRepository>>>();
                 return new DataFactorySecrets<IDataFactoryRepository>(
                     settings.Value.Pipeline,
-                    settings.Value.TenantId,
                     settings.Value.DataFactoryName,
-                    settings.Value.SqlMembershipAppId,
-                    settings.Value.SqlMembershipAppAuthenticationKey,
                     settings.Value.SubscriptionId,
                     settings.Value.ResourceGroup
                 );
