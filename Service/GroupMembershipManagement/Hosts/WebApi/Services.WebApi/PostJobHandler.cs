@@ -39,27 +39,36 @@ namespace Services
             try
             {
                 var newSyncJobEntity = MapSyncJobDTOtoEntity(request.NewSyncJob);
+
+                var destinationId = newSyncJobEntity.TargetOfficeGroupId;
+                var destinationName = await _graphGroupRepository.GetGroupNameAsync(destinationId);
+                newSyncJobEntity.DestinationName = new DestinationName { Name = destinationName };
+
+                var destinationIds = new List<Guid> { destinationId };
+                var ownersDictionary = await _graphGroupRepository.GetDestinationOwnersAsync(destinationIds);
+
+                var destinationOwners = new List<DestinationOwner>();
+
+                if (ownersDictionary.TryGetValue(destinationId, out List<Guid> ownerGuids))
+                {
+                    foreach (var ownerGuid in ownerGuids)
+                    {
+                        var destinationOwner = new DestinationOwner
+                        {
+                            ObjectId = ownerGuid
+                        };
+                        destinationOwners.Add(destinationOwner);
+                    }
+                }
+
+                newSyncJobEntity.DestinationOwners = destinationOwners;
+
                 var newSyncJobId = await _syncJobRepository.CreateSyncJobAsync(newSyncJobEntity);
 
                 if (newSyncJobId != Guid.Empty)
                 {
                     response.StatusCode = HttpStatusCode.Created;
                     response.NewSyncJobId = newSyncJobId;
-
-                    var destinationId = new Guid((JArray.Parse(newSyncJobEntity.Destination)[0] as JObject)["value"]["objectId"].Value<string>());
-                    var destinationIds = new List<Guid> { destinationId };
-
-                    var name = await _graphGroupRepository.GetGroupNameAsync(destinationId);
-                    var owners = await _graphGroupRepository.GetDestinationOwnersAsync(destinationIds);
-
-                    var destinationAttributes = new DestinationAttributes
-                    {
-                        Id = destinationId,
-                        Name = name,
-                        Owners = owners[destinationId],
-                    };
-
-                    await _destinationAttributesRepository.UpdateAttributes(destinationAttributes);
 
                     await _loggingRepository.LogMessageAsync(new LogMessage
                     {
@@ -87,6 +96,7 @@ namespace Services
 
             return response;
         }
+
 
         private static SyncJob MapSyncJobDTOtoEntity(NewSyncJobDTO syncJob)
         {
