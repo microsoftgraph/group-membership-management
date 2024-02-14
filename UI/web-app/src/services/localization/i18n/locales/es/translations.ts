@@ -269,6 +269,10 @@ export const strings: IStrings = {
       excludeSourcePart: 'Excluir parte de origen',
       deleteLastSourcePartWarning: 'No se puede eliminar la última parte de origen.',
       errorOnSchema: 'Esperaba {0} pero recibió tipo {1} en {2}.',
+      searchGroupName: 'Buscar grupo',
+      HR: 'RH',
+      groupMembership: 'Membresía de grupo',
+      groupOwnership: 'Propietario de grupo',
     }
   },
   delete: 'Eliminar',

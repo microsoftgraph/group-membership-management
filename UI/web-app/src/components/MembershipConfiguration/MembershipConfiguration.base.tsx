@@ -28,7 +28,7 @@ import {
 import { SourcePart } from '../SourcePart';
 import { useStrings } from '../../store/hooks';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
-import { ISourcePart } from '../../models/ISourcePart';
+import { ISourcePart, SourcePartType } from '../../models/ISourcePart';
 
 const getClassNames = classNamesFunction<MembershipConfigurationStyleProps, MembershipConfigurationStyles>();
 
@@ -59,11 +59,11 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     const newPart: ISourcePart = {
       id: sourceParts.length + 1,
       query: {
-        type: "SqlMembership",
+        type: SourcePartType.HR,
         source: sourcePartQuery,
         exclusionary: false
       },
-      isValid: true
+      isValid: false
     };
     dispatch(addSourcePart(newPart));
   };
@@ -88,7 +88,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
             const newPart: ISourcePart = {
               id: index + 1,
               query: {
-                type: "SqlMembership",
+                type: SourcePartType.HR,
                 source: sourcePartQuery,
                 exclusionary: false
               },
@@ -138,6 +138,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
               onDelete={removeSourcePart}
               totalSourceParts={sourceParts.length}
               query={part.query}
+              part={part}
             />
           ))}
         </div>

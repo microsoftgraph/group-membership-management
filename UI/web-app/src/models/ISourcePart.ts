@@ -3,20 +3,38 @@
 
 import { HRSourcePart } from "./HRSourcePart";
 import { GroupOwnershipSourcePart } from "./GroupOwnershipSourcePart";
-import { GroupSourcePart } from "./GroupSourcePart";
+import { GroupMembershipSourcePart } from "./GroupMembershipSourcePart";
 
-export type SourcePartQuery = HRSourcePart | GroupSourcePart | GroupOwnershipSourcePart;
+export enum SourcePartType {
+    HR = "SqlMembership",
+    GroupMembership = "GroupMembership",
+    GroupOwnership = "GroupOwnership"
+}
+
+export type SourcePartQuery = HRSourcePart | GroupMembershipSourcePart | GroupOwnershipSourcePart;
 
 export type ISourcePart = {
     id: number;
-    query: HRSourcePart | GroupSourcePart | GroupOwnershipSourcePart;
+    query: SourcePartQuery;
     isValid: boolean;
 };
+
+export const IsHRSourcePartQuery = (query: SourcePartQuery): query is HRSourcePart => {
+    return query.type === SourcePartType.HR;
+}
+
+export const IsGroupMembershipSourcePartQuery = (query: SourcePartQuery): query is GroupMembershipSourcePart => {
+    return query.type === SourcePartType.GroupMembership;
+}
+
+export const IsGroupOwnershipSourcePartQuery = (query: SourcePartQuery): query is GroupOwnershipSourcePart => {
+    return query.type === SourcePartType.GroupOwnership;
+}
 
 export const placeholderQueryHRPart: ISourcePart = {
     id: 1,
     query: {
-        type: "SqlMembership",
+        type: SourcePartType.HR,
         source: {
             ids: [],
             filter: "",
@@ -27,10 +45,10 @@ export const placeholderQueryHRPart: ISourcePart = {
     isValid: true
 };
 
-export const placeholderQueryGroupPart: ISourcePart = {
+export const placeholderQueryGroupMembershipPart: ISourcePart = {
     id: 2,
     query: {
-        type: "GroupMembership",
+        type: SourcePartType.GroupMembership,
         source: "guid",
         exclusionary: false
     },
@@ -40,7 +58,7 @@ export const placeholderQueryGroupPart: ISourcePart = {
 export const placeholderQueryGroupOwnershipPart: ISourcePart = {
     id: 3,
     query: {
-        type: "GroupOwnership",
+        type: SourcePartType.GroupOwnership,
         source: ["guid"],
         exclusionary: false
     },

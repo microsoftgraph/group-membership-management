@@ -9,22 +9,23 @@ import {
   IChoiceGroupOption,
   Dropdown,
   IDropdownOption,
-  IProcessedStyleSet
+  IProcessedStyleSet,
 } from '@fluentui/react';
 import { DefaultButton, IconButton } from '@fluentui/react/lib/Button';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { SourcePartStyleProps, SourcePartStyles, SourcePartProps } from './SourcePart.types';
 import { AppDispatch } from '../../store';
-import { updateSourcePart, updateSourcePartValidity } from '../../store/manageMembership.slice';
+import { updateSourcePart, updateSourcePartType } from '../../store/manageMembership.slice';
 import { useStrings } from '../../store/hooks';
-import { ISourcePart, SourcePartQuery } from '../../models/ISourcePart';
+import { ISourcePart, SourcePartQuery, SourcePartType } from '../../models/ISourcePart';
 import { HRQuerySource } from '../HRQuerySource';
 import { HRSourcePart, HRSourcePartSource } from '../../models/HRSourcePart';
+import { GroupQuerySource } from '../GroupQuerySource';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
 export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: SourcePartProps) => {
-  const { className, styles, index, totalSourceParts, onDelete, query } = props;
+  const { className, styles, index, totalSourceParts, onDelete, query, part } = props;
   const classNames: IProcessedStyleSet<SourcePartStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -38,24 +39,24 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const [hrSourcePartSource, setHRSourcePartSource] = useState<HRSourcePartSource>(query.source as HRSourcePartSource);
 
   const options: IChoiceGroupOption[] = [
-    { key: 'Yes', text: 'Yes' },
-    { key: 'No', text: 'No' },
+    { key: 'Yes', text: strings.yes },
+    { key: 'No', text: strings.no },
   ];
 
   const sourceTypeOptions: IDropdownOption[] = [
-    { key: 'HR', text: 'HR' },
-    { key: 'Groups', text: 'Groups', disabled: true }
+    { key: SourcePartType.HR, text: strings.ManageMembership.labels.HR },
+    { key: SourcePartType.GroupMembership, text: strings.ManageMembership.labels.groupMembership},
+    { key: SourcePartType.GroupOwnership, text: strings.ManageMembership.labels.groupOwnership, disabled: true}
   ];
 
   const dispatch = useDispatch<AppDispatch>();
   const [expanded, setExpanded] = useState(false);
-  const [sourceType, setSourceType] = useState<IDropdownOption>({ key: 'HR', text: 'HR' });
   const [isExclusionary, setIsExclusionary] = useState(query.exclusionary);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   const handleSourceTypeChanged = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption | undefined): void => {
     if (item) {
-      setSourceType(item);
+      dispatch(updateSourcePartType({ partId: index, type: item.key as SourcePartType }));
     }
   }
 
@@ -81,7 +82,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
   const handleSourceChange = (source: HRSourcePartSource, partId: number) => {
     const newQuery: HRSourcePart = {
-      type: 'SqlMembership',
+      type: SourcePartType.HR,
       source: source,
       exclusionary: isExclusionary
     }
@@ -133,10 +134,11 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
         <div className={classNames.content}>
           <div className={classNames.controls}>
             <Dropdown
+              styles={{ title: classNames.dropdownTitle }}
               options={sourceTypeOptions}
               label="Source Type"
               required={true}
-              selectedKey={sourceType.key}
+              selectedKey={part.query.type}
               onChange={handleSourceTypeChanged}
             />
             <ChoiceGroup
@@ -151,10 +153,14 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
               {strings.delete}
             </DefaultButton>
           </div>
-          {sourceType.key === 'HR' && (
+
+          {part.query.type === SourcePartType.HR && (
             <div className={classNames.advancedQuery}>
-              <HRQuerySource source={hrSourcePartSource} partId={index} onSourceChange={handleSourceChange}/>
-            </div>
+            <HRQuerySource source={hrSourcePartSource} partId={index} onSourceChange={handleSourceChange}/>
+          </div>
+          )}
+          {part.query.type === SourcePartType.GroupMembership && (
+              <GroupQuerySource part={part}/>
           )}
           <div className={classNames.error}>
             {errorMessage}

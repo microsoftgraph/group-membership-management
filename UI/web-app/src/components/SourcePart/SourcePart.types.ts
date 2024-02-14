@@ -3,7 +3,7 @@
 
 import { type IStyle, type IStyleFunctionOrObject, type ITheme } from '@fluentui/react';
 import type React from 'react';
-import { SourcePartQuery } from '../../models/ISourcePart';
+import { ISourcePart, SourcePartQuery } from '../../models/ISourcePart';
 
 export type SourcePartStyles = {
   root: IStyle;
@@ -17,6 +17,7 @@ export type SourcePartStyles = {
   exclusionaryPart: IStyle;
   deleteButton: IStyle;
   error: IStyle;
+  dropdownTitle: IStyle;
 };
 
 export type SourcePartStyleProps = {
@@ -33,6 +34,7 @@ export type SourcePartProps = React.AllHTMLAttributes<HTMLDivElement> & {
   onDelete: (item?: any, index?: number, ev?: React.FocusEvent<HTMLElement>) => void;
   totalSourceParts: number;
   query: SourcePartQuery;
+  part: ISourcePart;
 
   /**
    * Call to provide customized styling that will layer on top of the variant rules.

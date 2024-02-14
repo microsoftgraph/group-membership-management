@@ -265,6 +265,10 @@ export const strings: IStrings = {
       excludeSourcePart: 'Exclude Source Part',
       deleteLastSourcePartWarning: 'Cannot delete the last source part.',
       errorOnSchema: 'Expected {0} but got type {1} at {2}.',
+      searchGroupName: 'Search group name',
+      HR: 'HR',
+      groupMembership: 'Group Membership',
+      groupOwnership: 'Group Ownership',
     }
   },
   delete: 'Delete',

@@ -3,6 +3,6 @@
 
 import { HRSourcePart } from "./HRSourcePart";
 import { GroupOwnershipSourcePart } from "./GroupOwnershipSourcePart";
-import { GroupSourcePart } from "./GroupSourcePart";
+import { GroupMembershipSourcePart } from "./GroupMembershipSourcePart";
 
-export type SyncJobQuery = (HRSourcePart | GroupSourcePart | GroupOwnershipSourcePart)[];
+export type SyncJobQuery = (HRSourcePart | GroupMembershipSourcePart | GroupOwnershipSourcePart)[];

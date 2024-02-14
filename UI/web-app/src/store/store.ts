@@ -4,6 +4,7 @@
 import { PreloadedState, combineReducers, configureStore } from '@reduxjs/toolkit';
 
 import accountReducer from './account.slice';
+import groupPartReducer from './groupPart.slice';
 import jobsReducer from './jobs.slice';
 import localizationReducer from './localization.slice';
 import manageMembershipReducer from './manageMembership.slice';
@@ -42,6 +43,7 @@ const apis: Apis = {
 
 const rootReducer = combineReducers({
   account: accountReducer,
+  groupPart: groupPartReducer,
   jobs: jobsReducer,
   localization: localizationReducer,
   manageMembership: manageMembershipReducer,

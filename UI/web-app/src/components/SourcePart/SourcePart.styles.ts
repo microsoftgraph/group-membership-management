@@ -71,13 +71,21 @@ export const getStyles = (props: SourcePartStyleProps): SourcePartStyles => {
             borderColor: theme.semanticColors.primaryButtonBackground,
             borderRadius: 4
         },
-        error:{
+        error: {
             color: theme.semanticColors.errorText,
             fontSize: 12,
             fontFamily: 'Segoe UI',
             fontWeight: 400,
             marginTop: 4,
             marginBottom: 4
+        },
+        dropdownTitle: {
+            borderRadius: 4,
+            borderStyle: 'solid',
+            borderWidth: 1,
+            borderColor: theme.palette.neutralQuaternary,
+            background: theme.palette.white,
+            minWidth: 200
         }
     };
 };

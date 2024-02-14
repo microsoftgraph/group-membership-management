@@ -17,13 +17,15 @@ import { SyncJobQuery } from '../models/SyncJobQuery';
 import { 
     ISourcePart,
     placeholderQueryGroupOwnershipPart,
-    placeholderQueryGroupPart,
-    placeholderQueryHRPart
+    placeholderQueryGroupMembershipPart,
+    placeholderQueryHRPart,
+    SourcePartType,
+    SourcePartQuery
 } from '../models/ISourcePart';
 
 export const placeholderAdvancedViewQuery: SyncJobQuery = [
     placeholderQueryHRPart.query,
-    placeholderQueryGroupPart.query,
+    placeholderQueryGroupMembershipPart.query,
     placeholderQueryGroupOwnershipPart.query
 ]; 
 
@@ -184,6 +186,43 @@ const manageMembershipSlice = createSlice({
         addSourcePart: (state, action: PayloadAction<ISourcePart>) => {
             state.sourceParts.push(action.payload);
         },
+        updateSourcePartType: (state, action: PayloadAction<{ partId: number; type: SourcePartType}>) => {
+            const { partId, type } = action.payload;
+            const partIndex = state.sourceParts.findIndex(part => part.id === partId);
+            const currentQuery = state.sourceParts[partIndex].query;
+
+            let updatedQuery: SourcePartQuery;
+            switch (type) {
+                case SourcePartType.HR:
+                    updatedQuery = {
+                        type: type,
+                        source: { ids: [], filter: "", depth: 1 },
+                        exclusionary: false,
+                    };
+                    break;
+                case SourcePartType.GroupMembership:
+                    updatedQuery = {
+                        type: type,
+                        source: "",
+                        exclusionary: false,
+                    };
+                    break;
+                case SourcePartType.GroupOwnership:
+                    updatedQuery = {
+                        type: type,
+                        source: [],
+                        exclusionary: false,
+                    };
+                    break;
+                default:
+                    updatedQuery = currentQuery;
+            }
+            state.sourceParts[partIndex] = {
+                ...state.sourceParts[partIndex],
+                query: updatedQuery,
+                isValid: false 
+            };
+        },
         updateSourcePart: (state, action: PayloadAction<ISourcePart>) => {
             const index = state.sourceParts.findIndex(part => part.id === action.payload.id);
             if (index !== -1) {
@@ -251,6 +290,7 @@ export const {
     setCompositeQuery,
     setSourceParts,
     addSourcePart,
+    updateSourcePartType,
     updateSourcePart,
     updateSourcePartValidity,
     deleteSourcePart,

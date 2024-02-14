@@ -3,8 +3,8 @@
 
 import { SourcePartType } from "./ISourcePart";
 
-export type GroupOwnershipSourcePart = {
-    type: SourcePartType.GroupOwnership;
-    source: string[];
+export type GroupMembershipSourcePart = {
+    type: SourcePartType.GroupMembership;
+    source: string;
     exclusionary?: boolean;
 };

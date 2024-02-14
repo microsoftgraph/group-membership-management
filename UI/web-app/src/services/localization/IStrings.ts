@@ -260,6 +260,10 @@ export type IStrings = {
       excludeSourcePart: string;
       deleteLastSourcePartWarning: string;
       errorOnSchema: string;
+      searchGroupName: string;
+      HR: string;
+      groupMembership: string;
+      groupOwnership: string;
     }
   };
   delete: string;
