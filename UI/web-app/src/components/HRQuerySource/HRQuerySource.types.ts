@@ -7,6 +7,7 @@ import { HRSourcePartSource } from '../../models/HRSourcePart';
 
 export type HRQuerySourceStyles = {
   textFieldFieldGroup: IStyle;
+  filter: IStyle;
   spinButton: IStyle;
   labelContainer: IStyle;
   horizontalChoiceGroup: IStyle;

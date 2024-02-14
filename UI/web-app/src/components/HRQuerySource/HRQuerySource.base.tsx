@@ -61,7 +61,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         onSourceChange(newSource, partId);
         return newSource;
     });
-}, []);
+  }, []);
 
   const handleFilterChange = (_: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '') => {
     const filter = newValue;
@@ -72,15 +72,54 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     });
   };
 
-  const includeLeaderOptions: IChoiceGroupOption[] = [
+  const yesNoOptions: IChoiceGroupOption[] = [
     { key: 'Yes', text: strings.yes },
     { key: 'No', text: strings.no }
   ];
 
+  const handleIncludeOrgChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
+    const includeOrg = option?.key === "Yes";
+    if (option?.key === "No") {
+      const ids: number[] = [];
+      const depth = undefined;
+      setSource(prevSource => {
+        const newSource = { ...prevSource, includeOrg, ids, depth };
+        onSourceChange(newSource, partId);
+        return newSource;
+      });
+    }
+    else if (option?.key === "Yes") {
+      setSource(prevSource => {
+        const newSource = { ...prevSource, includeOrg };
+        onSourceChange(newSource, partId);
+        return newSource;
+      });
+    }  
+  }
+
+  const handleIncludeFilterChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
+    const includeFilter = option?.key === "Yes";
+    if (option?.key === "No") {
+      const filter = "";
+      setSource(prevSource => {
+        const newSource = { ...prevSource, filter, includeFilter };
+        onSourceChange(newSource, partId);
+        return newSource;
+      });
+    }
+    else if (option?.key === "Yes") {
+      setSource(prevSource => {
+        const newSource = { ...prevSource, includeFilter };
+        onSourceChange(newSource, partId);
+        return newSource;
+      });
+    }    
+  }
+
   const handleIncludeLeaderChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
     setErrorMessage('');
     let filter: string;
-    if (option?.key == "No") {
+    if (option?.key === "No") {
       if (!source.ids || source.ids.length === 0)
       {
         setErrorMessage(strings.HROnboarding.orgLeaderMissingErrorMessage);
@@ -92,7 +131,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         filter = excludeLeaderQuery;
       }
     }
-    else if (option?.key == "Yes") {
+    else if (option?.key === "Yes") {
       if (source.filter?.includes(excludeLeaderQuery)) {
         const regex = new RegExp(`and ${excludeLeaderQuery}|${excludeLeaderQuery} and|${excludeLeaderQuery}`, 'g');
         filter = source.filter.replace(regex, '').trim();
@@ -106,8 +145,19 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   }
 
   return (
-
     <div>
+      <ChoiceGroup
+        selectedKey={source.includeOrg ? strings.yes : strings.no}    
+        options={yesNoOptions}
+        label={strings.HROnboarding.includeOrg}
+        onChange={handleIncludeOrgChange}
+        styles={{
+          root: classNames.horizontalChoiceGroup,
+          flexContainer: classNames.horizontalChoiceGroupContainer
+        }}
+      />
+
+      {(source.includeOrg === true) && (
       <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={stackTokens}>
         <Stack.Item align="start">
           <div>
@@ -151,28 +201,9 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
 
         <Stack.Item align="start">
           <div>
-             <div className={classNames.labelContainer}>
-              <Label>{strings.HROnboarding.filter}</Label>
-              <TooltipHost content={strings.HROnboarding.filterInfo} id="toolTipFilterId" calloutProps={{ gapSpace: 0 }}>
-                <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipFilterId" />
-              </TooltipHost>
-            </div>
-            <TextField
-              placeholder={strings.HROnboarding.filterPlaceHolder}
-              value={source.filter?.toString()}
-              onChange={handleFilterChange}
-              styles={{fieldGroup: classNames.textFieldFieldGroup}}
-              validateOnLoad={false}
-              validateOnFocusOut={false}
-            ></TextField>
-          </div>
-        </Stack.Item>
-
-        <Stack.Item align="start">
-          <div>
             <ChoiceGroup
               selectedKey={(source.filter?.includes(excludeLeaderQuery))? strings.no : strings.yes}
-              options={includeLeaderOptions}
+              options={yesNoOptions}
               label={strings.HROnboarding.includeLeader}
               onChange={handleIncludeLeaderChange}
               styles={{
@@ -183,6 +214,37 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
           </div>
         </Stack.Item>
       </Stack>
+      )}
+
+      <ChoiceGroup
+        selectedKey={source.includeFilter ? strings.yes : strings.no}  
+        options={yesNoOptions}
+        label={strings.HROnboarding.includeFilter}
+        onChange={handleIncludeFilterChange}
+        styles={{
+          root: classNames.horizontalChoiceGroup,
+          flexContainer: classNames.horizontalChoiceGroupContainer
+        }}
+      />
+
+      {(source.includeFilter === true) && (
+      <><div className={classNames.labelContainer}>
+      <Label>{strings.HROnboarding.filter}</Label>
+      <TooltipHost content={strings.HROnboarding.filterInfo} id="toolTipFilterId" calloutProps={{ gapSpace: 0 }}>
+        <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipFilterId" />
+      </TooltipHost>
+      </div>
+      <TextField
+        placeholder={strings.HROnboarding.filterPlaceHolder}
+        multiline rows={3}
+        resizable={true}
+        value={source.filter?.toString()}
+        onChange={handleFilterChange}
+        styles={{ fieldGroup: classNames.filter }}
+        validateOnLoad={false}
+        validateOnFocusOut={false}
+      ></TextField></>
+      )}
 
       <div className={classNames.error}>
         {errorMessage}

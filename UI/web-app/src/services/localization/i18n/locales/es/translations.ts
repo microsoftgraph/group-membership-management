@@ -34,6 +34,8 @@ export const strings: IStrings = {
     filter: "Filtrar",
     filterPlaceHolder: "Por favor ingrese Filtro",
     filterInfo: "Proporcionar filtro",
+    includeOrg: "¿Quiere que esta fuente se base en la estructura de la organización?",
+    includeFilter: "¿Quieres filtrar por propiedades?",
     includeLeader: "incluir líder",
     orgLeaderMissingErrorMessage: "Proporcionar ID del líder de la organización",
     invalidInputErrorMessage: "Entrada inválida. Por favor ingrese solo números."

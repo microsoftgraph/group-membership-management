@@ -11,4 +11,6 @@ export type HRSourcePartSource = {
     ids?: number[];
     filter?: string;
     depth?: number;
+    includeOrg?: boolean;
+    includeFilter?: boolean;
 };

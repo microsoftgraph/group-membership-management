@@ -14,6 +14,13 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       background: theme.palette.white,
       width: 300
     },
+    filter: {
+      borderRadius: 4,
+      border: '1px solid',
+      borderColor: theme.palette.neutralQuaternary,
+      background: theme.palette.white,
+      width: 600
+    },
     spinButton: {
       borderRadius: 4,
       border: '1px solid',

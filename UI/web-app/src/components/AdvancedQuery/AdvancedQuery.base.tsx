@@ -22,6 +22,9 @@ import {
   setAdvancedViewQuery,
   setIsAdvancedQueryValid,
 } from '../../store/manageMembership.slice';
+import { HRSourcePart } from '../../models/HRSourcePart';
+import { GroupSourcePart } from '../../models/GroupSourcePart';
+import { GroupOwnershipSourcePart } from '../../models/GroupOwnershipSourcePart';
 
 const getClassNames = classNamesFunction<
   IAdvancedQueryStyleProps,
@@ -49,7 +52,26 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
   const ajv = new Ajv();
 
   useEffect(() => {
-    setLocalQuery(query);
+    let jsonArray = JSON.parse(query);
+    let modifiedArray = jsonArray.map((obj: HRSourcePart | GroupSourcePart | GroupOwnershipSourcePart ) => {
+      if (obj.type == "SqlMembership") {
+        let { source, ...rest } = obj;
+        let modifiedObj = {
+          ...rest,
+          source: {
+              depth: source?.depth,
+              ...(source?.ids !== undefined && source?.ids?.length > 0 && { ids: source?.ids }),
+              ...(source?.filter !== "" && { filter: source?.filter })
+          },
+          exclusionary: obj.exclusionary
+        };
+        return modifiedObj;
+      } else {
+        return obj;
+      }
+    });
+    let modifiedQuery = JSON.stringify(modifiedArray);
+    setLocalQuery(modifiedQuery);
   }, [query]);
 
   const formatErrors = (errors: (ErrorObject<string, Record<string, any>, unknown> & { dataPath: string })[] | null | undefined) => {
@@ -82,7 +104,7 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
       const parsedQuery = JSON.parse(localQuery || '[]');
       const validate = ajv.compile(schema);
       const isValid = validate(parsedQuery);
-      
+
       if (isValid) {
         dispatch(setAdvancedViewQuery(localQuery || '[]'));
         setValidationMessage(strings.ManageMembership.labels.validQuery);
@@ -97,7 +119,7 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
       setValidationMessage(strings.ManageMembership.labels.invalidQuery);
       dispatch(setIsAdvancedQueryValid(false));
     }
-  };  
+  };
 
   const handleBlur = () => {
     onValidateQuery();

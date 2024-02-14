@@ -29,6 +29,8 @@ export type IStrings = {
     filter: string;
     filterPlaceHolder: string;
     filterInfo: string;
+    includeOrg: string;
+    includeFilter: string;
     includeLeader: string;
     orgLeaderMissingErrorMessage: string;
     invalidInputErrorMessage: string;
