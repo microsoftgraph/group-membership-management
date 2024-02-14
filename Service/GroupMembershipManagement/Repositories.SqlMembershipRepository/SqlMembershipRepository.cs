@@ -13,7 +13,7 @@ namespace Repositories.SqlMembershipRepository
 {
     public class SqlMembershipRepository : ISqlMembershipRepository
     {
-        
+
         private readonly string _sqlServerConnectionString = null;
 
         public SqlMembershipRepository(IKeyVaultSecret<ISqlMembershipRepository> sqlServerConnectionString)
@@ -112,16 +112,16 @@ namespace Repositories.SqlMembershipRepository
                 var selectIdQuery = $"SELECT EmployeeId FROM {tableName} WHERE AzureObjectId = '{azureObjectId}'";
                 var credential = new DefaultAzureCredential();
                 var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
-               
-                retryPolicy.Execute(() =>
+
+                await retryPolicy.Execute(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
                         conn.AccessToken = token.Token;
-                        conn.Open();
+                        await conn.OpenAsync();
                         using (var cmd = new SqlCommand(selectDepthQuery, conn))
                         {
-                            using (var reader = cmd.ExecuteReader())
+                            using (var reader = await cmd.ExecuteReaderAsync())
                             {
                                 int maxDepthOrdinal = reader.GetOrdinal("MaxDepth");
 
@@ -143,7 +143,7 @@ namespace Repositories.SqlMembershipRepository
                                 {
                                     employeeId = reader.IsDBNull(idOrdinal) ? 0 : reader.GetInt32(idOrdinal);
                                 }
-                                reader.Close();
+                                await reader.CloseAsync();
                             }
                         }
 
@@ -286,5 +286,5 @@ namespace Repositories.SqlMembershipRepository
                              _ => TimeSpan.FromMinutes(1)
                          );
         }
-    }  
+    }
 }
