@@ -1,0 +1,43 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+    "type": {
+        "type": "string",
+        "enum": ["GroupOwnership"]
+    },
+    "source": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": {
+        "type": "string",
+        "enum": ["All", "Hybrid", "GroupMembership"]
+        },
+        "oneOf": [
+        {
+            "contains": { "const": "All" },
+            "not": { "contains": { "const": "Hybrid" } }
+        },
+        {
+            "contains": { "const": "Hybrid" },
+            "not": { "contains": { "const": "All" } }
+        },
+        {
+            "not": {
+            "anyOf": [
+                { "contains": { "const": "All" } },
+                { "contains": { "const": "Hybrid" } }
+            ]
+            }
+        }
+        ]
+    },
+    "exclusionary": {
+        "type": "boolean"
+    }
+    },
+    "required": ["type", "source"],
+    "additionalProperties": false
+}
+    

@@ -19,6 +19,9 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       borderRadius: 50,
       textAlign: 'center',
       height: 20,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
     },
     disabled: {
       color: theme.palette.black,
@@ -26,6 +29,9 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       borderRadius: 50,
       textAlign: 'center',
       height: 20,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
     },
     actionRequiredIcon: {
       color: theme.semanticColors.errorIcon,

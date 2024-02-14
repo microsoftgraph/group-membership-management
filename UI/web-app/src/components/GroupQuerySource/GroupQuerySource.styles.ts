@@ -12,7 +12,7 @@ export const getStyles = (props: GroupQuerySourceStyleProps): GroupQuerySourceSt
       border: '1px solid',
       borderColor: theme.palette.neutralQuaternary,
       backgroud: theme.palette.white,
-      width: 500
+      width: '50vw'
     }
   };
 };

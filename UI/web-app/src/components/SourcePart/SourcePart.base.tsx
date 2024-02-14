@@ -23,6 +23,7 @@ import { HRSourcePart, HRSourcePartSource } from '../../models/HRSourcePart';
 import { GroupQuerySource } from '../GroupQuerySource';
 import { SourcePartType } from '../../models/SourcePartType';
 import { SourcePartQuery } from '../../models/SourcePartQuery';
+import { AdvancedViewSourcePart } from '../AdvancedViewSourcePart';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
@@ -47,8 +48,8 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
   const sourceTypeOptions: IDropdownOption[] = [
     { key: SourcePartType.HR, text: strings.ManageMembership.labels.HR },
-    { key: SourcePartType.GroupMembership, text: strings.ManageMembership.labels.groupMembership},
-    { key: SourcePartType.GroupOwnership, text: strings.ManageMembership.labels.groupOwnership, disabled: true}
+    { key: SourcePartType.GroupMembership, text: strings.ManageMembership.labels.groupMembership },
+    { key: SourcePartType.GroupOwnership, text: strings.ManageMembership.labels.groupOwnership }
   ];
 
   const dispatch = useDispatch<AppDispatch>();
@@ -57,8 +58,20 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   const handleSourceTypeChanged = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption | undefined): void => {
-    if (item) {
-      dispatch(updateSourcePartType({ partId: index, type: item.key as SourcePartType }));
+    if (!item) return;
+
+    dispatch(updateSourcePartType({ partId: index, type: item.key as SourcePartType }));
+
+    switch (item.key) {
+      case SourcePartType.HR:
+        setHRSourcePartSource({ ids: [], filter: "", depth: 1 });
+        break;
+      case SourcePartType.GroupMembership:
+        break;
+      case SourcePartType.GroupOwnership:
+        break;
+      default:
+        break;
     }
   }
 
@@ -88,12 +101,20 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   }, [query, expanded]);
 
   useEffect(() => {
-    setIsExclusionary(query.exclusionary);
-  }, [query.exclusionary]);
+    setIsExclusionary(part.query.exclusionary ?? false);
+    switch (part.query.type) {
+      case SourcePartType.HR:
+        const hrInitialState = part.query.source as HRSourcePartSource;
+        setHRSourcePartSource(hrInitialState);
+        break;
+      case SourcePartType.GroupMembership:
+      case SourcePartType.GroupOwnership:
+        break;
+      default:
+        break;
+    }
+  }, [part.query.type, part.query.exclusionary, part.query.source]);
 
-  useEffect(() => {
-    setHRSourcePartSource(query.source as HRSourcePartSource);
-  }, [query]);
 
   const handleSourceChange = (source: HRSourcePartSource, partId: number) => {
     const newQuery: HRSourcePart = {
@@ -170,12 +191,15 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
           </div>
 
           {part.query.type === SourcePartType.HR && (
-            <div className={classNames.advancedQuery}>
-            <HRQuerySource source={hrSourcePartSource} partId={index} onSourceChange={handleSourceChange}/>
-          </div>
+            <div key={SourcePartType.HR} className={classNames.advancedQuery}>
+              <HRQuerySource source={hrSourcePartSource} partId={index} onSourceChange={handleSourceChange} />
+            </div>
           )}
           {part.query.type === SourcePartType.GroupMembership && (
-              <GroupQuerySource part={part} onSourceChange={handleGroupMembershipSourceChange}/>
+            <GroupQuerySource part={part} onSourceChange={handleGroupMembershipSourceChange} />
+          )}
+          {part.query.type === SourcePartType.GroupOwnership && (
+            <AdvancedViewSourcePart key={SourcePartType.GroupOwnership} part={part} />
           )}
           <div className={classNames.error}>
             {errorMessage}

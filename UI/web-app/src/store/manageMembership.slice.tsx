@@ -314,6 +314,7 @@ export const manageMembershipisAdvancedQueryValid = (state: RootState) => state.
 export const manageMembershipCompositeQuery = (state: RootState) => state.manageMembership.compositeQuery;
 export const manageMembershipAdvancedViewQuery = (state: RootState) => state.manageMembership.advancedViewQuery;
 export const getSourcePartsFromState = (state: RootState) => state.manageMembership.sourceParts;
+export const areAllSourcePartsValid = (state: RootState) => state.manageMembership.sourceParts.every(part => part.isValid);
 export const manageMembershipIsToggleEnabled = (state: RootState) => {
     const isAdvancedView = state.manageMembership.isAdvancedView;
     const isAdvancedViewQueryValid = state.manageMembership.isAdvancedQueryValid;

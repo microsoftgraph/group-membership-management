@@ -17,14 +17,15 @@ import {
   IAdvancedViewSourcePartStyles,
 } from './AdvancedViewSourcePart.types';
 import { useStrings } from "../../store/hooks";
-import SqlMembershipSchema from '../../SqlMembershipSchema.json';
+import GroupOwnershipSchema from '../../models/schemas/GroupOwnershipSchema.json';
 import { AppDispatch } from '../../store';
 import {
+  setIsAdvancedQueryValid,
   updateSourcePart,
   updateSourcePartValidity
 } from '../../store/manageMembership.slice';
 import { ISourcePart } from '../../models/ISourcePart';
-import { SourcePartQuery } from '../../models/SourcePartQuery';
+import { GroupOwnershipSourcePart } from '../../models/GroupOwnershipSourcePart';
 
 const getClassNames = classNamesFunction<
   IAdvancedViewSourcePartStyleProps,
@@ -36,7 +37,7 @@ interface ExtendedErrorObject extends ErrorObject<string, Record<string, any>, u
 }
 
 export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSourcePartProps> = (props) => {
-  const { className, styles, query, partId, onValidate } = props;
+  const { className, styles, part } = props;
   const strings = useStrings();
   const classNames: IProcessedStyleSet<IAdvancedViewSourcePartStyles> = getClassNames(
     styles,
@@ -47,13 +48,13 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
   );
   const dispatch = useDispatch<AppDispatch>();
   const [validationMessage, setValidationMessage] = useState<React.ReactNode | null>(null);
-  const [localQuery, setLocalQuery] = useState<SourcePartQuery | undefined>(query);
-  const schema = SqlMembershipSchema;
+  const [localQuery, setLocalQuery] = useState<string | undefined>(JSON.stringify(part.query));
+  const schema = GroupOwnershipSchema;
   const ajv = new Ajv();
 
   useEffect(() => {
-    setLocalQuery(query);
-  }, [query]);
+    setLocalQuery(JSON.stringify(part.query));
+  }, [part.query]);
 
   const formatErrors = (errors: (ErrorObject<string, Record<string, any>, unknown> & { dataPath: string })[] | null | undefined) => {
     if (!errors || errors.length === 0) return null;
@@ -76,18 +77,20 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
   };
 
   const handleQueryChange = (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => {
-    setLocalQuery(JSON.parse(newValue ?? ''));
+    setLocalQuery(newValue || '');
   };
 
   const onValidateQuery = () => {
     try {
+      const parsedQuery = JSON.parse(localQuery || '{}');
       const validate = ajv.compile(schema);
-      const isValid = validate(localQuery);
+      const isValid = validate(parsedQuery);
+      const partId: number = part.id;
 
       if(isValid) {
         const updatedSourcePart: ISourcePart = {
-          id: partId,
-          query: localQuery,
+          id: part.id,
+          query: JSON.parse(localQuery?? '{}') as GroupOwnershipSourcePart,
           isValid: true
         };
         dispatch(updateSourcePart(updatedSourcePart));
@@ -97,9 +100,9 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
         const errorsFromAjv = validate.errors;
         const formattedErrors = formatErrors(errorsFromAjv as ExtendedErrorObject[] | null | undefined);
         setValidationMessage(formattedErrors);
-      } 
+      }
+      dispatch(setIsAdvancedQueryValid(isValid)); 
       dispatch(updateSourcePartValidity({ partId, isValid }));
-      onValidate(isValid, partId)
     }
     catch (error) {
       console.error('Error validating query:', error);
@@ -120,7 +123,7 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
         multiline
         rows={25}
         resizable
-        value={JSON.stringify(localQuery, null, 2)}
+        value={localQuery}
         onChange={handleQueryChange}
         onBlur={handleBlur}
       />

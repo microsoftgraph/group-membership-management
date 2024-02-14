@@ -37,7 +37,7 @@ import {
   manageMembershipThresholdPercentageForAdditions,
   manageMembershipThresholdPercentageForRemovals,
   resetManageMembership,
-  getSourcePartsFromState
+  areAllSourcePartsValid
 } from '../../store/manageMembership.slice';
 import { getGroupEndpoints, getGroupOnboardingStatus } from '../../store/manageMembership.api';
 import { NewJob } from '../../models/NewJob';
@@ -84,8 +84,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   // Onboarding values
   const query = useSelector(manageMembershipQuery);
   const isAdvancedQueryValid = useSelector(manageMembershipisAdvancedQueryValid);
-  const sourceParts = useSelector(getSourcePartsFromState);
-  const allSourcePartsValid = sourceParts.length > 0 && sourceParts.every(part => part.isValid);
+  const allSourcePartsValid = useSelector(areAllSourcePartsValid);
   const startDate = useSelector(manageMembershipStartDate);
   const period = useSelector(manageMembershipPeriod);
   const thresholdPercentageForAdditions = useSelector(manageMembershipThresholdPercentageForAdditions);

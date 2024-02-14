@@ -16,7 +16,7 @@ import {
   IAdvancedQueryStyles,
 } from './AdvancedQuery.types';
 import { useStrings } from "../../store/hooks";
-import schemaDefinition from '../../Query.json';
+import schemaDefinition from '../../models/schemas/Query.json';
 import { AppDispatch } from '../../store';
 import {
   setAdvancedViewQuery,
@@ -88,9 +88,7 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
       } else {
         return obj;
       }
-    });
-    let modifiedQuery = JSON.stringify(modifiedArray);
-    setLocalQuery(modifiedQuery);
+    }
   }, [query]);
 
   const formatErrors = (errors: (ErrorObject<string, Record<string, any>, unknown> & { dataPath: string })[] | null | undefined) => {
