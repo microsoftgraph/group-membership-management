@@ -106,10 +106,50 @@ function Set-WebApiAzureADApplication {
 	}
 	#endregion
 
-	# These are the function apps that need to interact with swagger.
+	# Create new app roles
+	[String[]]$memberTypes = "User", "Application"
 
-	# Add this url -> "https://localhost:7224/swagger/oauth2-redirect.html" if you want to test the WebAPI locally.
-	$replyUrls = @("https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/swagger/oauth2-redirect.html")
+	$readerRole = @{
+		DisplayName        = "Tenant Reader"
+		Description        = "Tenant Readers can read all destinations managed by Membership Management."
+		Value              = "MembershipManagement.Destination.Read.All"
+		Id                 = [Guid]::NewGuid().ToString()
+		IsEnabled          = $True
+		AllowedMemberTypes = @($memberTypes)
+	}
+
+	$adminRole = @{
+		DisplayName        = "Tenant Administrator"
+		Description        = "Tenant Administrators can make changes to service configuration."
+		Value              = "MembershipManagement.ServiceConfiguration.ReadWrite.All"
+		Id                 = [Guid]::NewGuid().ToString()
+		IsEnabled          = $True
+		AllowedMemberTypes = @($memberTypes)
+	}
+
+	$submissionReviewerRole = @{
+		DisplayName        = "Submission Reviewer"
+		Description        = "Submission Reviewers can can review onboarding submissions."
+		Value              = "MembershipManagement.Destination.ReadWrite.All"
+		Id                 = [Guid]::NewGuid().ToString()
+		IsEnabled          = $True
+		AllowedMemberTypes = @($memberTypes)
+	}
+
+	$tenantJobEditor = @{
+		DisplayName        = "Tenant Job Editor"
+		Description        = "Tenant Job Editors can make edits to any jobs in the tenant."
+		Value              = "Job.ReadWrite.All"
+		Id                 = [Guid]::NewGuid().ToString()
+		IsEnabled          = $True
+		AllowedMemberTypes = @($memberTypes)
+	}
+
+	$appRoles = $webApiApp.AppRole
+	$appRoles += $readerRole
+	$appRoles += $adminRole
+	$appRoles += $submissionReviewerRole
+	$appRoles += $tenantJobEditor
 
 	#region Create Appplication
 	if ($null -eq $webApiApp) {
@@ -124,6 +164,10 @@ function Set-WebApiAzureADApplication {
 				}
 			)
 		}
+
+		# These are the function apps that need to interact with swagger.
+		# Add this url -> "https://localhost:7224/swagger/oauth2-redirect.html" if you want to test the WebAPI locally.
+		$replyUrls = @("https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/swagger/oauth2-redirect.html")
 
 		$webApiApp = New-AzADApplication	-DisplayName $webApiAppDisplayName `
 			-AvailableToOtherTenants $false `
@@ -151,41 +195,6 @@ function Set-WebApiAzureADApplication {
 		$webSettings = $webApiApp.Web
 		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
 		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $true
-
-		# Create new app roles
-		[String[]]$memberTypes = "User", "Application"
-	
-		$readerRole = @{
-			DisplayName        = "Tenant Reader"
-			Description        = "Tenant Readers can read all destinations managed by Membership Management."
-			Value              = "MembershipManagement.Destination.Read.All"
-			Id                 = [Guid]::NewGuid().ToString()
-			IsEnabled          = $True
-			AllowedMemberTypes = @($memberTypes)
-		}
-
-		$adminRole = @{
-			DisplayName        = "Tenant Administrator"
-			Description        = "Tenant Administrators can make changes to service configuration."
-			Value              = "MembershipManagement.ServiceConfiguration.ReadWrite.All"
-			Id                 = [Guid]::NewGuid().ToString()
-			IsEnabled          = $True
-			AllowedMemberTypes = @($memberTypes)
-		}
-		
-		$submissionReviewerRole = @{
-			DisplayName        = "Submission Reviewer"
-			Description        = "Submission Reviewers can can review onboarding submissions."
-			Value              = "MembershipManagement.Submission.ReadWrite.All"
-			Id                 = [Guid]::NewGuid().ToString()
-			IsEnabled          = $True
-			AllowedMemberTypes = @($memberTypes)
-		}
-
-		$appRoles = $webApiApp.AppRole
-		$appRoles += $readerRole
-		$appRoles += $adminRole
-		$appRoles += $submissionReviewerRole
 
 		Update-AzADApplication  -ObjectId $webApiApp.Id `
 								-IdentifierUris "api://$($webApiApp.AppId)" `
@@ -220,9 +229,10 @@ function Set-WebApiAzureADApplication {
 		Write-Verbose "Updating Azure AD app $webApiAppDisplayName"
 		Update-AzADApplication	-ObjectId $($webApiApp.Id) `
 								-DisplayName $webApiAppDisplayName `
-								-AvailableToOtherTenants $false `
 								-OptionalClaim $optionalClaim `
-								-Web $webSettings
+								-Web $webSettings `
+								-AppRole $appRoles `
+								-AvailableToOtherTenants $false
 	}
 
 	Start-Sleep -Seconds 30
