@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Repositories.EntityFramework.Contexts;
 
@@ -11,9 +12,10 @@ using Repositories.EntityFramework.Contexts;
 namespace Repositories.EntityFramework.Contexts.Migrations
 {
     [DbContext(typeof(GMMContext))]
-    partial class GMMContextModelSnapshot : ModelSnapshot
+    [Migration("20240222000231_add_sql_membership_sources_table")]
+    partial class add_sql_membership_sources_table
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

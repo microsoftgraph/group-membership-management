@@ -1,8 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Models;
+using System.Text.Json;
 
 namespace Repositories.EntityFramework.Contexts
 {
@@ -12,6 +15,7 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<PurgedSyncJob> PurgedSyncJobs { get; set; } = null!;
         public DbSet<Status> Statuses { get; set; } = null!;
         public DbSet<Setting> Settings { get; set; } = null!;
+        public DbSet<Entities.SqlMembershipSource> SqlMembershipSources { get; set; } = null!;
         public DbSet<NotificationType> NotificationTypes { get; set; }
         public DbSet<JobNotification> JobNotifications { get; set; }
         public DbSet<DestinationName> DestinationNames { get; set; }
@@ -37,6 +41,35 @@ namespace Repositories.EntityFramework.Contexts
                         v => (SettingKey)Enum.Parse(typeof(SettingKey), v));
                 entity.HasIndex(s => s.SettingKey).IsUnique();
                 entity.Property(s => s.SettingValue);
+            });
+
+            modelBuilder.Entity<Entities.SqlMembershipSource>(source =>
+            {
+                source.HasKey(s => s.Id);
+                source.Property(s => s.Id)
+                .ValueGeneratedOnAdd()
+                .HasDefaultValueSql("NEWSEQUENTIALID()");
+
+                source.Property(s => s.Name)
+                    .IsRequired();
+                source.HasIndex(s => s.Name).IsUnique();
+
+                source.Property(e => e.Attributes)
+                    .HasConversion(
+                        v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                        v => JsonSerializer.Deserialize<List<SqlFilterAttribute>>(v, (JsonSerializerOptions?)null),
+                        new ValueComparer<List<SqlFilterAttribute>>(
+                            (c1, c2) => JsonSerializer.Serialize(c1, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(c2, (JsonSerializerOptions?)null),
+                            c => c == null ? 0 : JsonSerializer.Serialize(c, (JsonSerializerOptions?)null).GetHashCode(),
+                            c => JsonSerializer.Deserialize<List<SqlFilterAttribute>>(JsonSerializer.Serialize(c, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null)));
+
+                source.HasData(new Entities.SqlMembershipSource
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "SqlMembership",
+                    CustomLabel = null,
+                    Attributes = null
+                });
             });
 
             modelBuilder.Entity<SyncJob>()
