@@ -94,7 +94,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         onSourceChange(newSource, partId);
         return newSource;
       });
-    }  
+    }
   }
 
   const handleIncludeFilterChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
@@ -113,7 +113,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         onSourceChange(newSource, partId);
         return newSource;
       });
-    }    
+    }
   }
 
   const handleIncludeLeaderChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
@@ -145,11 +145,11 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   }
 
   return (
-    <div>
+    <div className={classNames.root}>
+      <Label>{strings.HROnboarding.includeOrg}</Label>
       <ChoiceGroup
-        selectedKey={source.includeOrg ? strings.yes : strings.no}    
+        selectedKey={source.includeOrg ? strings.yes : strings.no}
         options={yesNoOptions}
-        label={strings.HROnboarding.includeOrg}
         onChange={handleIncludeOrgChange}
         styles={{
           root: classNames.horizontalChoiceGroup,
@@ -168,10 +168,9 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
               </TooltipHost>
             </div>
             <TextField
-              placeholder={strings.HROnboarding.orgLeaderIdPlaceHolder}
               value={source.ids && source.ids.length > 0 ? source.ids.toString() : ''}
               onChange={handleOrgLeaderIdChange}
-              styles={{fieldGroup: classNames.textFieldFieldGroup}}
+              styles={{ root: classNames.textField, fieldGroup: classNames.textFieldGroup }}
               validateOnLoad={false}
               validateOnFocusOut={false}
             ></TextField>
@@ -194,17 +193,17 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
               onChange={handleDepthChange}
               incrementButtonAriaLabel={strings.HROnboarding.incrementButtonAriaLabel}
               decrementButtonAriaLabel={strings.HROnboarding.decrementButtonAriaLabel}
-              styles={{root: classNames.spinButton}}
+              styles={{ spinButtonWrapper: classNames.spinButton }}
             />
           </div>
         </Stack.Item>
 
         <Stack.Item align="start">
           <div>
+            <Label>{strings.HROnboarding.includeLeader}</Label>
             <ChoiceGroup
               selectedKey={(source.filter?.includes(excludeLeaderQuery))? strings.no : strings.yes}
               options={yesNoOptions}
-              label={strings.HROnboarding.includeLeader}
               onChange={handleIncludeLeaderChange}
               styles={{
                 root: classNames.horizontalChoiceGroup,
@@ -216,10 +215,10 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       </Stack>
       )}
 
+      <Label>{strings.HROnboarding.includeFilter}</Label>
       <ChoiceGroup
-        selectedKey={source.includeFilter ? strings.yes : strings.no}  
+        selectedKey={source.includeFilter ? strings.yes : strings.no}
         options={yesNoOptions}
-        label={strings.HROnboarding.includeFilter}
         onChange={handleIncludeFilterChange}
         styles={{
           root: classNames.horizontalChoiceGroup,
@@ -240,7 +239,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         resizable={true}
         value={source.filter?.toString()}
         onChange={handleFilterChange}
-        styles={{ fieldGroup: classNames.filter }}
+        styles={{ root: classNames.textField, fieldGroup: classNames.textFieldGroup }}
         validateOnLoad={false}
         validateOnFocusOut={false}
       ></TextField></>

@@ -6,8 +6,9 @@ import type React from 'react';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 
 export type HRQuerySourceStyles = {
-  textFieldFieldGroup: IStyle;
-  filter: IStyle;
+  root: IStyle;
+  textFieldGroup: IStyle;
+  textField: IStyle;
   spinButton: IStyle;
   labelContainer: IStyle;
   horizontalChoiceGroup: IStyle;
