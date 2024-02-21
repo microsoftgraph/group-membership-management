@@ -1,4 +1,4 @@
-﻿// Copyright(c) Microsoft Corporation.
+// Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -64,38 +64,33 @@ namespace Services.Tests
 
             var organizationProcessorRequest = new OrganizationProcessorRequest
             {
-                Query = new Query
+                Query = new Query()
                 {
-                    Depth = 0,
-                    Ids = new List<int> { 1000 },
+                    Manager = new Manager {
+                        Depth = 0,
+                        Id = 1000
+                    },
                     Filter = "StandardTitle eq 'Engineer'"
                 },
                 SyncJob = new SyncJob
-                {                    
+                {
                     Id = Guid.NewGuid(),
                     RunId = Guid.NewGuid()
                 }
             };
 
-            ManagerOrgProcessorRequest managerOrgProcessorRequest = null;
             GraphProfileInformationResponse managerOrgProcessorResponse = null;
             GraphProfileInformationResponse managerOrgReaderResponse = null;
 
             context.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(organizationProcessorRequest);
-            context.Setup(x => x.GetInput<ManagerOrgProcessorRequest>()).Returns(() => managerOrgProcessorRequest);
 
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()));
 
             context.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<SyncJob>())).ReturnsAsync("tbl112233445566");
 
             context.Setup(x => x.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
-                                                                            It.Is<string>(x => x == nameof(ManagerOrgProcessorFunction)),
-                                                                            It.IsAny<ManagerOrgProcessorRequest>()))
-                    .Callback<string, object>(async (name, requestObject) =>
-                    {
-                        managerOrgProcessorRequest = requestObject as ManagerOrgProcessorRequest;
-                        managerOrgProcessorResponse = await CallManagerOrgProcessorFunctionAsync(context.Object);
-                    })
+                                                                            It.Is<string>(x => x == nameof(ManagerOrgReaderFunction)),
+                                                                            It.IsAny<ManagerOrgReaderRequest>()))
                     .ReturnsAsync(() => managerOrgProcessorResponse);
 
             context.Setup(x => x.CallActivityAsync<GraphProfileInformationResponse>(
@@ -130,8 +125,6 @@ namespace Services.Tests
             {
                 Query = new Query
                 {
-                    Depth = 0,
-                    Ids = null,
                     Filter = "StandardTitle eq 'Engineer'"
                 },
                 SyncJob = new SyncJob
@@ -141,11 +134,11 @@ namespace Services.Tests
                 }
             };
 
-            ManagerOrgProcessorRequest managerOrgProcessorRequest = null;
+            ManagerOrgReaderRequest managerOrgReaderRequest = null;
             GraphProfileInformationResponse childEntitiesFilterResponse = null;
 
             context.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(organizationProcessorRequest);
-            context.Setup(x => x.GetInput<ManagerOrgProcessorRequest>()).Returns(() => managerOrgProcessorRequest);
+            context.Setup(x => x.GetInput<ManagerOrgReaderRequest>()).Returns(() => managerOrgReaderRequest);
 
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()));
 
@@ -169,12 +162,6 @@ namespace Services.Tests
         {
             var function = new ChildEntitiesFilterFunction(_sqlMembershipObtainerService.Object, _loggingRepository.Object);
             return await function.FilterChildEntities(request);
-        }
-
-        private async Task<GraphProfileInformationResponse> CallManagerOrgProcessorFunctionAsync(IDurableOrchestrationContext context)
-        {
-            var funtion = new ManagerOrgProcessorFunction();
-            return await funtion.ProcessQueryAsync(context);
         }
 
         private async Task<GraphProfileInformationResponse> ManagerOrgReaderFunctionAsync(ManagerOrgReaderRequest request)

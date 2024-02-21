@@ -37,6 +37,7 @@ namespace SqlMembershipObtainer
             [OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
         {
             var mainRequest = context.GetInput<OrchestratorRequest>();
+            if (mainRequest == null || mainRequest.SyncJob == null) { return; }
             var syncJob = mainRequest.SyncJob;
 
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
@@ -48,7 +49,7 @@ namespace SqlMembershipObtainer
                 var currentQuery = currentPart.Value<JObject>("source");
                 var currentQueryAsString = Convert.ToString(currentQuery);
 
-                if (string.IsNullOrWhiteSpace(currentQueryAsString))
+                if (string.IsNullOrWhiteSpace(currentQueryAsString) || currentQueryAsString.Contains("ids"))
                 {
                     await context.CallActivityAsync(
                            nameof(LoggerFunction),
@@ -75,7 +76,7 @@ namespace SqlMembershipObtainer
                             new OrganizationProcessorRequest
                             {
                                 Query = query,
-                                SyncJob = syncJob,
+                                SyncJob = syncJob
                             });
 
                 await context.CallActivityAsync(

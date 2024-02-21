@@ -38,6 +38,7 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework", "..\..\..\Repositories.EntityFramework\Repositories.EntityFramework.csproj", "{279D7C62-303B-4C72-A80E-8A3B4EE34E8D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.NotificationRepository", "..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj", "{524EFA1D-B572-41E1-9D76-A4328C98B789}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mail", "..\..\..\Repositories.Mail\Repositories.Mail.csproj", "{454EEE07-02C1-48A9-B751-88E94EC162C1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -117,6 +118,10 @@ Global
 		{524EFA1D-B572-41E1-9D76-A4328C98B789}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{524EFA1D-B572-41E1-9D76-A4328C98B789}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{524EFA1D-B572-41E1-9D76-A4328C98B789}.Release|Any CPU.Build.0 = Release|Any CPU
+		{454EEE07-02C1-48A9-B751-88E94EC162C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{454EEE07-02C1-48A9-B751-88E94EC162C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{454EEE07-02C1-48A9-B751-88E94EC162C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{454EEE07-02C1-48A9-B751-88E94EC162C1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

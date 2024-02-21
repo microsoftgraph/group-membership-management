@@ -1,4 +1,4 @@
-﻿// Copyright(c) Microsoft Corporation.
+// Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
 using Models;
@@ -20,7 +20,7 @@ namespace Services.Tests.Helpers
                     Requestor = $"requestor_{i}@email.com",
                     Id = Guid.NewGuid(),
                     Period = period,
-                    Query = GetJobQuery(syncType, new[] { Random.Shared.Next(1000, 10000).ToString() }),
+                    Query = GetJobQuery(syncType, Random.Shared.Next(1000, 10000).ToString()),
                     StartDate = startDateBase ?? DateTime.UtcNow.AddDays(-1),
                     Status = SyncStatus.Idle.ToString(),
                     TargetOfficeGroupId = Guid.NewGuid(),
@@ -34,10 +34,10 @@ namespace Services.Tests.Helpers
             return jobs;
         }
 
-        public static string GetJobQuery(string syncType, string[] managerIds)
+        public static string GetJobQuery(string syncType, string managerId)
         {
             var individualQueries = $"{{\"type\":\"{syncType}\"," +
-                                    $"\"source\": {{\"ids\":[{string.Join(",", managerIds)}]," +
+                                    $"\"source\": {{\"id\":[{managerId}]," +
                                     $"\"filter\":\"(Attribute = 'Value')\"}} }}";
 
             return $"[{string.Join(",", individualQueries)}]";

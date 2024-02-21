@@ -1,4 +1,4 @@
-﻿// Copyright(c) Microsoft Corporation.
+// Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models.Helpers;
 using Microsoft.Azure.WebJobs;
@@ -50,39 +50,30 @@ namespace SqlMembershipObtainer
             }
 
             var filter = request.Query.Filter;
-            var orgLeadersPersonnelNumbers = request.Query.Ids;
+            var manager = request.Query.Manager;
 
-            if (orgLeadersPersonnelNumbers?.Count > 0)
+            if (manager != null)
             {
-                foreach (var orgLeaderPersonnelNumber in orgLeadersPersonnelNumbers)
-                {
-                    var queryTask = context.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
-                                                nameof(ManagerOrgProcessorFunction),
-                                                new ManagerOrgProcessorRequest
-                                                {
-                                                    Filter = filter,
-                                                    Depth = request.Query.Depth,
-                                                    PersonnelNumber = orgLeaderPersonnelNumber,
-                                                    SyncJob = request.SyncJob,
-                                                    TableName = tableName
-                                                });
+                var res = await context.CallActivityAsync<GraphProfileInformationResponse>(
+                                                    nameof(ManagerOrgReaderFunction),
+                                                    new ManagerOrgReaderRequest
+                                                    {
+                                                        Filter = filter,
+                                                        Depth = manager.Depth,
+                                                        PersonnelNumber = manager.Id,
+                                                        SyncJob = request.SyncJob,
+                                                        TableName = tableName
+                                                    });
 
-                    queryTasks.Add(queryTask);
-                }
-
-                graphProfileInformation = (await Task.WhenAll(queryTasks))
-                                            .Where(x => x != null)
-                                            .SelectMany(x => JsonConvert.DeserializeObject<List<GraphProfileInformation>>(TextCompressor.Decompress(x.GraphProfiles)))
-                                            .Distinct().ToList();
-
+                graphProfileInformation = JsonConvert.DeserializeObject<List<GraphProfileInformation>>(TextCompressor.Decompress(res.GraphProfiles));
                 graphProfileInformation = graphProfileInformation.GroupBy(user => user.Id).Select(userGrp => userGrp.First()).ToList();
                 response = new GraphProfileInformationResponse
                 {
                     GraphProfiles = TextCompressor.Compress(JsonConvert.SerializeObject(graphProfileInformation)),
-                    GraphProfileCount = graphProfileInformation.Count
+                    GraphProfileCount = res.GraphProfileCount
                 };
             }
-            else if (orgLeadersPersonnelNumbers == null)
+            else
             {
                 if (!string.IsNullOrWhiteSpace(filter))
                 {

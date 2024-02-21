@@ -1,19 +1,25 @@
-﻿// Copyright(c) Microsoft Corporation.
+// Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Newtonsoft.Json;
-using System.Collections.Generic;
 
 namespace SqlMembershipObtainer.Entities
 {
-    public class Query
+    public class Manager
     {
-        [JsonProperty("ids")]
-        public List<int> Ids { get; set; }
+        [JsonProperty("id")]
+        public int Id { get; set; }
 
         [JsonProperty("depth")]
         public int Depth { get; set; }
+    }
+
+    public class Query
+    {
+        [JsonProperty("manager")]
+        public Manager Manager { get; set; }
 
         [JsonProperty("filter")]
         public string Filter { get; set; }
     }
+
 }
