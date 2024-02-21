@@ -31,19 +31,19 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2021-06
 }
 
 module secureSecretsTemplatePrimaryKey 'keyVaultSecretsSecure.bicep' = {
-  name: 'secureSecretsTemplatePrimaryKey'
+  name: 'logAnalyticsWorkspacePrimaryKey'
   params: {
     keyVaultName: keyVaultName
     keyVaultSecrets: {
       secrets: [
-        { 
+        {
           name: 'logAnalyticsPrimarySharedKey'
-          value: listKeys(logAnalyticsWorkspace.id, '2021-06-01').primarySharedKey
+          value: logAnalyticsWorkspace.listKeys().primarySharedKey
         }
       ]
     }
   }
 }
 
-output customerId string = reference(logAnalyticsWorkspace.id, '2021-06-01').customerId
+output customerId string = logAnalyticsWorkspace.properties.customerId
 output resourceId string = logAnalyticsWorkspace.id

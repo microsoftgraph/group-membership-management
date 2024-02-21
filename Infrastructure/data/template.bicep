@@ -335,6 +335,9 @@ module sqlServer 'sqlServer.bicep' =  {
     sqlAdministratorsGroupName: sqlAdministratorsGroupName
     tenantId: tenantId
   }
+  dependsOn:[
+    dataKeyVaultTemplate
+  ]
 }
 
 var isDataKVPresent = !empty(existingDataResources) ? !empty(filter(json(existingDataResources), x => x.Name == keyVaultName && x.ResourceType == 'Microsoft.KeyVault/vaults')) : false
@@ -370,6 +373,9 @@ module serviceBusTemplate 'serviceBus.bicep' = {
     location: location
     keyVaultName: keyVaultName
   }
+  dependsOn: [
+    dataKeyVaultTemplate
+  ]
 }
 
 module serviceBusTopicTemplate 'serviceBusTopic.bicep' = {
@@ -479,6 +485,9 @@ module logAnalyticsTemplate 'logAnalytics.bicep' = {
     location: location
     keyVaultName: keyVaultName
   }
+  dependsOn: [
+    dataKeyVaultTemplate
+  ]
 }
 
 module appInsightsTemplate 'applicationInsights.bicep' = {
@@ -491,6 +500,7 @@ module appInsightsTemplate 'applicationInsights.bicep' = {
     keyVaultName: keyVaultName
   }
   dependsOn: [
+    dataKeyVaultTemplate
     logAnalyticsTemplate
   ]
 }

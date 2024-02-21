@@ -18,6 +18,9 @@ param customDomainName string
 @description('The tags for the resource.')
 param tags object
 
+@description('The provider that submitted the last deployment.')
+param provider string = 'DevOps'
+
 resource staticWebApp 'Microsoft.Web/staticSites@2022-03-01' = {
   name: '${solutionAbbreviation}-ui'
   location: location
@@ -34,7 +37,7 @@ resource staticWebApp 'Microsoft.Web/staticSites@2022-03-01' = {
       skipGithubActionWorkflowGeneration: true
     }
     enterpriseGradeCdnStatus: 'Disabled'
-    provider: 'DevOps'
+    provider: provider
     repositoryUrl: repositoryUrl
     stagingEnvironmentPolicy: 'Disabled'
   }

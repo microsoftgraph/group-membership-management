@@ -18,7 +18,7 @@ param branch string
 param repositoryUrl string
 
 @description('customDomainName')
-param customDomainName string
+param customDomainName string = ''
 
 @description('The client id of the api app registration.')
 param apiAppClientId string
@@ -38,13 +38,20 @@ param sharepointDomain string
 @description('The domain name of the tenant.')
 param tenantDomain string
 
+@description('The name of the data resource group to deploy the resources to.')
+param dataResourceGroupName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
+@description('The name of the compute resource group to deploy the resources to.')
+param computeResourceGroupName string = '${solutionAbbreviation}-compute-${environmentAbbreviation}'
+
+@description('The provider that submitted the last deployment.')
+param provider string = 'DevOps'
 
 var appInsightsName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 resource appInsightsResource 'Microsoft.Insights/components@2020-02-02' existing = {
   name: appInsightsName
-  scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
+  scope: resourceGroup(dataResourceGroupName)
 }
 
 var hiddenLinkTags = {
@@ -55,6 +62,7 @@ var hiddenLinkTags = {
 
 module staticSiteModule 'staticSite.bicep' = {
   name: '${solutionAbbreviation}-ui'
+  scope: resourceGroup(computeResourceGroupName)
   params: {
     solutionAbbreviation: solutionAbbreviation
     location: location
@@ -62,6 +70,7 @@ module staticSiteModule 'staticSite.bicep' = {
     repositoryUrl: repositoryUrl
     customDomainName: customDomainName
     tags: hiddenLinkTags
+    provider: provider
   }
 }
 

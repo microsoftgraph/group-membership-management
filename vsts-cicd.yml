@@ -65,6 +65,9 @@ stages:
          name: 'GroupMembershipObtainer'
          coverageThreshold: 89
       - function:
+         name: 'SqlMembershipObtainer'
+         coverageThreshold: 50
+      - function:
          name: 'PlaceMembershipObtainer'
          coverageThreshold: 45
       - function:
@@ -88,3 +91,9 @@ stages:
       - function:
          name: 'GroupOwnershipObtainer'
          coverageThreshold: 80
+
+  - template: yaml/build-release-package.yml
+    parameters:
+      repoToCheckout: self
+      checkoutPath: '$(Build.BuildNumber)'
+      buildRelease: ${{variables.buildRelease}}

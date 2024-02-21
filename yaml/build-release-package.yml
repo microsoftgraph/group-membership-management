@@ -1,0 +1,83 @@
+parameters:
+- name: repoToCheckout
+  type: string
+- name: checkoutPath
+  type: string
+- name: buildRelease
+  type: boolean
+
+stages:
+
+- stage: Build_ReleasePackage
+  dependsOn:
+  - Build_WebAPP
+  - Build_WebAPI
+  - Build_Functions
+  jobs:
+  - job: Build_ReleasePackage
+    ${{ if parameters.buildRelease }}:
+      strategy:
+        maxParallel: 2
+        matrix:
+          debug:
+            BuildConfiguration: debug
+          release:
+            BuildConfiguration: release
+    ${{ else }}:
+      variables:
+        BuildConfiguration: 'debug'
+
+    steps:
+
+    - ${{ if ne(parameters.repoToCheckout, '') }}:
+      - checkout: ${{ parameters.repoToCheckout }}
+        path: ${{ parameters.checkoutPath }}
+
+    - task: PowerShell@2
+      displayName: 'Build json templates'
+      inputs:
+        targetType: inline
+        workingDirectory: 'Deployment'
+        script: |
+          az bicep build --file localTemplate.bicep
+        pwsh: true
+
+    - task: CopyFiles@2
+      displayName: 'Copy deployment artifacts'
+      inputs:
+        SourceFolder: Deployment
+        Contents: |
+          **/*.json
+          **/*.ps1
+        TargetFolder: '$(build.artifactstagingdirectory)/deployment'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Install EF Core tools'
+      retryCountOnTaskFailure: 3
+      inputs:
+        command: custom
+        custom: 'tool'
+        arguments: 'update --global dotnet-ef --version 6.0.22'
+
+    - task: PowerShell@2
+      displayName: 'Create migrations bundle'
+      inputs:
+        targetType: inline
+        workingDirectory: 'Service/GroupMembershipManagement/Repositories.EntityFramework.Contexts'
+        script: |
+          dotnet ef migrations bundle --context GMMContext --output $(System.DefaultWorkingDirectory)/efbundle.exe
+          ls
+        pwsh: true
+
+    - task: CopyFiles@2
+      displayName: 'copy migrations bundle to function packages'
+      inputs:
+        SourceFolder: $(System.DefaultWorkingDirectory)
+        Contents: efbundle.exe
+        TargetFolder: '$(build.artifactstagingdirectory)/function_packages/'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish web app artifacts'
+      inputs:
+        PathtoPublish: '$(build.artifactstagingdirectory)'
+        ArtifactName: '$(Build.BuildNumber)_$(BuildConfiguration)'

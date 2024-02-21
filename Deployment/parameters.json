@@ -1,0 +1,159 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "graphAppClientId": {
+      "value": ""
+    },
+    "graphAppClientSecret": {
+      "value": ""
+    },
+    "graphAppTenantId": {
+      "value": ""
+    },
+    "webapiClientId": {
+      "value": ""
+    },
+    "webApiTenantId": {
+      "value": ""
+    },
+    "senderUsername": {
+      "value": ""
+    },
+    "senderPassword": {
+      "value": ""
+    },
+    "teamsChannelServiceAccountObjectId": {
+      "value": ""
+    },
+    "teamsChannelServiceAccountUsername": {
+      "value": ""
+    },
+    "teamsChannelServiceAccountPassword": {
+      "value": ""
+    },
+    "supportEmailAddresses": {
+      "value": ""
+    },
+    "syncDisabledCCEmailAddresses": {
+      "value": ""
+    },
+    "syncCompletedCCEmailAddresses": {
+      "value": ""
+    },
+    "location": {
+      "value": ""
+    },
+    "tenantId": {
+      "value": ""
+    },
+    "keyVaultReaders": {
+      "value": [
+        {
+          "objectId": "",
+          "secrets": [
+            "get",
+            "set",
+            "list"
+          ]
+        }
+      ]
+    },
+    "sqlAdministratorsGroupId": {
+      "value": ""
+    },
+    "sqlAdministratorsGroupName": {
+      "value": ""
+    },
+    "sqlSkuCapacity": {
+      "value": 4
+    },
+    "sqlSkuFamily": {
+      "value": "Gen5"
+    },
+    "sqlSkuName": {
+      "value": "GP_S_Gen5"
+    },
+    "sqlSkuTier": {
+      "value": "GeneralPurpose"
+    },
+    "sqlMembershipAppId": {
+      "value": ""
+    },
+    "sqlMembershipAppPasswordCredentialValue": {
+      "value": ""
+    },
+    "notifierProviderId": {
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    "serviceBusTopicSubscriptions": {
+      "value": [
+        {
+          "name": "Organization",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'Organization'"
+        },
+        {
+          "name": "GroupMembership",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'GroupMembership'"
+        },
+        {
+          "name": "PlaceMembership",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'PlaceMembership'"
+        },
+        {
+          "name": "TeamsChannelMembership",
+          "rulename": "syncType",
+          "rulesqlexpression": "Type = 'TeamsChannelMembership'"
+        },
+        {
+          "name": "GroupOwnership",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'GroupOwnership'"
+        },
+        {
+          "name": "SqlMembership",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'SqlMembership'"
+        }
+      ]
+    },
+    "serviceBusMembershipUpdatersTopicSubscriptions": {
+      "value": {
+        "topicName": "membershipUpdaters",
+        "subscriptions": [
+          {
+            "name": "GraphUpdater",
+            "ruleName": "updaterType",
+            "ruleSqlExpression": "Type = 'GroupMembership'"
+          },
+          {
+            "name": "TeamsChannelUpdater",
+            "ruleName": "updaterType",
+            "ruleSqlExpression": "Type = 'TeamsChannelMembership'"
+          }
+        ]
+      }
+    },
+    "apiAppClientId": {
+      "value": ""
+    },
+    "apiServiceBaseUri": {
+      "value": "https://<solution>-compute-<env>-webapi.azurewebsites.net"
+    },
+    "uiAppTenantId": {
+      "value": ""
+    },
+    "uiAppClientId": {
+      "value": ""
+    },
+    "sharepointDomain": {
+      "value": "m365x00000000.sharepoint.com"
+    },
+    "tenantDomain": {
+      "value": "m365x00000000.onmicrosoft.com"
+    }
+  }
+}
