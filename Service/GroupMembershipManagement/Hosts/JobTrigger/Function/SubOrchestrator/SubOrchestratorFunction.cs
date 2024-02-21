@@ -6,6 +6,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
+using Models.Notifications;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
@@ -205,8 +206,7 @@ namespace Hosts.JobTrigger
                                                     new EmailSenderRequest
                                                     {
                                                         SyncJob = syncJob,
-                                                        EmailSubjectTemplateName = DisabledJobEmailSubject,
-                                                        EmailContentTemplateName = SyncDisabledNoGroupEmailBody,
+                                                        NotificationType = NotificationMessageType.DestinationNotExistNotification,
                                                         AdditionalContentParams = new[]
                                                         {
                                                         destinationObject.Value.ObjectId.ToString(),
@@ -229,8 +229,7 @@ namespace Hosts.JobTrigger
                                                     new EmailSenderRequest
                                                     {
                                                         SyncJob = syncJob,
-                                                        EmailSubjectTemplateName = DisabledJobEmailSubject,
-                                                        EmailContentTemplateName = SyncDisabledNoOwnerEmailBody,
+                                                        NotificationType = NotificationMessageType.NotOwnerNotification,
                                                         AdditionalContentParams = new[]
                                                         {
                                                         destinationObject.Value.ObjectId.ToString(),
@@ -251,8 +250,7 @@ namespace Hosts.JobTrigger
                                                     new EmailSenderRequest
                                                     {
                                                         SyncJob = syncJob,
-                                                        EmailSubjectTemplateName = EmailSubject,
-                                                        EmailContentTemplateName = SyncStartedEmailBody,
+                                                        NotificationType = NotificationMessageType.SyncStartedNotification,
                                                         AdditionalContentParams = new[]
                                                         {
                                                             destinationObject.Value.ObjectId.ToString(),

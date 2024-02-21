@@ -3,6 +3,8 @@
 using Microsoft.ApplicationInsights;
 using Models;
 using Models.Entities;
+using Models.Notifications;
+using Models.ServiceBus;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
@@ -40,6 +42,7 @@ namespace Services
         private readonly IGMMResources _gmmResources;
         private readonly IJobTriggerConfig _jobTriggerConfig;
         private readonly TelemetryClient _telemetryClient;
+        private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
 
         private Guid _runId;
         public Guid RunId
@@ -64,6 +67,7 @@ namespace Services
             IKeyVaultSecret<IJobTriggerService, Guid> gmmTeamsChannelServiceAccountId,
             IMailRepository mailRepository,
             IEmailSenderRecipient emailSenderAndRecipients,
+            IServiceBusQueueRepository serviceBusQueueRepository,
             IGMMResources gmmResources,
             IJobTriggerConfig jobTriggerConfig,
             TelemetryClient telemetryClient
@@ -77,6 +81,7 @@ namespace Services
             _serviceBusTopicsRepository = serviceBusTopicsRepository ?? throw new ArgumentNullException(nameof(serviceBusTopicsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException( nameof(teamsChannelRepository));
+            _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
             _gmmAppId = gmmAppId.Secret;
             _gmmTeamsChannelServiceAccountId = gmmTeamsChannelServiceAccountId.Secret;
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
@@ -120,71 +125,30 @@ namespace Services
 
             return null;
         }
-        public async Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters)
+        public async Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters)
         {
-            bool isNotificationDisabled = await IsNotificationDisabledAsync(job.Id, emailContentTemplateName);
-
-            if (isNotificationDisabled)
+            var messageContent = new Dictionary<string, Object>
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = job.RunId,
-                    Message = $"Notification template '{emailContentTemplateName}' is disabled for job {job.Id} with destination group {job.TargetOfficeGroupId}."
-                });
-                return;
-            }
-            string ownerEmails = null;
-            string ccAddress = _emailSenderAndRecipients.SupportEmailAddresses;
-
-            if (!SyncDisabledNoGroupEmailBody.Equals(emailContentTemplateName, StringComparison.InvariantCultureIgnoreCase))
-            {
-                var destinationObjectId = (await ParseDestinationAsync(job)).Value.ObjectId;
-                var owners = await _graphGroupRepository.GetGroupOwnersAsync(destinationObjectId);
-                ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
-            }
-
-            if (emailContentTemplateName.Contains("disabled", StringComparison.InvariantCultureIgnoreCase))
-                ccAddress = _emailSenderAndRecipients.SyncDisabledCCAddresses;
-
-            var message = new EmailMessage
-            {
-                Subject = emailSubjectTemplateName ?? EmailSubject,
-                Content = emailContentTemplateName,
-                SenderAddress = _emailSenderAndRecipients.SenderAddress,
-                SenderPassword = _emailSenderAndRecipients.SenderPassword,
-                ToEmailAddresses = ownerEmails ?? job.Requestor,
-                CcEmailAddresses = ccAddress,
-                AdditionalContentParams = additionalContentParameters
+                { "SyncJob", job },
+                { "AdditionalContentParameters", additionalContentParameters }
             };
-
-            await _mailRepository.SendMailAsync(message, job.RunId);
-        }
-        public async Task<bool> IsNotificationDisabledAsync(Guid jobId, string notificationTypeName)
-        {
-            var notificationType = await _notificationTypesRepository.GetNotificationTypeByNotificationTypeNameAsync(notificationTypeName);
-
-            if (notificationType == null)
+            var body = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(messageContent));
+            var message = new ServiceBusMessage
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = jobId,
-                    Message = $"No notification type ID found for notification type name '{notificationTypeName}'."
-                });
-                return false;
-            }
-
-            if (notificationType.Disabled)
+                MessageId = $"{job.Id}_{job.RunId}_{notificationType}",
+                Body = body
+            };
+            message.ApplicationProperties.Add("MessageType", notificationType.ToString());
+            await _serviceBusQueueRepository.SendMessageAsync(message);
+            await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = jobId,
-                    Message = $"Notifications of type '{notificationTypeName}' have been globally disabled."
-                });
-                return true;
-            }
+                RunId = job.RunId,
+                Message = $"Sent message {message.MessageId} to service bus notifications queue "
 
-            return await _jobNotificationRepository.IsNotificationDisabledForJobAsync(jobId, notificationType.Id);
+            });
+
         }
+        
         public async Task UpdateSyncJobAsync(SyncStatus? status, SyncJob job)
         {
             if (status == SyncStatus.InProgress)

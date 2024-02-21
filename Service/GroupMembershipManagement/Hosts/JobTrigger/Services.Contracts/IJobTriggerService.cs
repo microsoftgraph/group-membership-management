@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Models;
+using Models.Notifications;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -15,7 +16,7 @@ namespace Services.Contracts
         Task<(bool IsValid, string DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob);
         Task<DestinationObject> ParseDestinationAsync(SyncJob syncJob);
         Task<string> GetDestinationNameAsync(SyncJob job);
-        Task SendEmailAsync(SyncJob job, string emailSubjectTemplateName, string emailContentTemplateName, string[] additionalContentParameters);
+        Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters);
         Task<DestinationVerifierResult> DestinationExistsAndGMMCanWriteToItAsync(SyncJob job);
         Task UpdateSyncJobAsync(SyncStatus? status, SyncJob job);
         Task SendMessageAsync(SyncJob job);

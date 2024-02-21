@@ -16,12 +16,14 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.ServiceBusTopics;
 using Services.Contracts;
 using Services.Tests.Helpers;
+using Repositories.ServiceBusQueue;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Models.Notifications;
 
 namespace Services.Tests
 {
@@ -36,6 +38,7 @@ namespace Services.Tests
         Mock<IGMMResources> _gmmResources;
         SyncStatus? _syncStatus = SyncStatus.Idle;
         DestinationVerifierResult _destinationVerifierResult;
+        Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
         SyncJob _syncJob;
         string _destinationName;
         TelemetryClient _telemetryClient;
@@ -381,7 +384,7 @@ namespace Services.Tests
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()), Times.Once());
 
             _jobTriggerService.Verify(x => x.GetDestinationNameAsync(It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>()), Times.Once());
+            _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendMessageAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.InProgress), It.IsAny<SyncJob>()), Times.Once());
@@ -410,6 +413,7 @@ namespace Services.Tests
                         var teamsChannelServiceAccountObjectId = new Mock<IKeyVaultSecret<IJobTriggerService, Guid>>();
                         var emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
                         var serviceBusTopicsRepository = new ServiceBusTopicsRepository(serviceBusSender.Object);
+                        var serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
                         var jobTriggerService = new JobTriggerService(
                                                         _loggingRespository.Object,
                                                         syncJobRepository.Object,
@@ -422,6 +426,7 @@ namespace Services.Tests
                                                         teamsChannelServiceAccountObjectId.Object,
                                                         mailRepository.Object,
                                                         emailSenderAndRecipients.Object,
+                                                        serviceBusQueueRepository.Object,
                                                         gmmResources.Object,
                                                         jobTriggerConfig.Object,
 														_telemetryClient
@@ -449,7 +454,7 @@ namespace Services.Tests
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()), Times.Once());
 
             _jobTriggerService.Verify(x => x.GetDestinationNameAsync(It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>()), Times.Once());
+            _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.InProgress), It.IsAny<SyncJob>()), Times.Once());
 
@@ -486,6 +491,7 @@ namespace Services.Tests
                         var iJobNotificationRepository = new Mock<IJobNotificationsRepository>();
                         var graphGroupRepository = new Mock<IGraphGroupRepository>();
                         var teamsChannelRepository = new Mock<ITeamsChannelRepository>();
+                        var serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
                         var gmmAppId = new Mock<IKeyVaultSecret<IJobTriggerService>>();
                         var teamsChannelServiceAccountObjectId = new Mock<IKeyVaultSecret<IJobTriggerService, Guid>>();
                         var emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
@@ -502,6 +508,7 @@ namespace Services.Tests
                                                         teamsChannelServiceAccountObjectId.Object,
                                                         mailRepository.Object,
                                                         emailSenderAndRecipients.Object,
+                                                        serviceBusQueueRepository.Object,
                                                         gmmResources.Object,
                                                         jobTriggerConfig.Object,
                                                         _telemetryClient
@@ -529,7 +536,7 @@ namespace Services.Tests
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()), Times.Once());
 
             _jobTriggerService.Verify(x => x.GetDestinationNameAsync(It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>()), Times.Once());
+            _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.StuckInProgress), It.IsAny<SyncJob>()), Times.Once());
 

@@ -22,6 +22,8 @@ using System.Collections.Generic;
 using Repositories.Logging;
 using Models.Entities;
 using Newtonsoft.Json;
+using Models.Notifications;
+using Models.ServiceBus;
 
 namespace Services.Tests
 {
@@ -39,11 +41,10 @@ namespace Services.Tests
         private MockMailRepository _mailRepository = null;
         private GMMResources _gMMResources = null;
         private MockJobTriggerConfig _jobTriggerConfig = null;
+        private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
 
-		private const string Organization = "Organization";
+        private const string Organization = "Organization";
         private const string GroupMembership = "GroupMembership";
-        private const string EmailSubject = "EmailSubject";
-        private const string SyncStartedEmailBody = "SyncStartedEmailBody";
         private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
 
         [TestInitialize]
@@ -53,7 +54,7 @@ namespace Services.Tests
             {
                 LearnMoreAboutGMMUrl = "http://learn-more-about-gmm"
             };
-
+            _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _syncJobRepository = new MockDatabaseSyncJobRepository();
             _notificationTypesRepository = new MockNotificationTypesRepository();
             _jobNotificationRepository = new MockJobNotificationRepository();
@@ -74,6 +75,7 @@ namespace Services.Tests
                                         new MockKeyVaultSecret<IJobTriggerService>(),
                                         new MockKeyVaultSecret<IJobTriggerService, Guid>(), _mailRepository,
                                         new MockEmail<IEmailSenderRecipient>(),
+                                        _serviceBusQueueRepository.Object,
                                         _gMMResources,
                                         _jobTriggerConfig,
                                         new TelemetryClient(TelemetryConfiguration.CreateDefault()));
@@ -473,6 +475,7 @@ namespace Services.Tests
                 new MockKeyVaultSecret<IJobTriggerService, Guid>(),
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
+                _serviceBusQueueRepository.Object,
                 _gMMResources,
                 _jobTriggerConfig,
 				new TelemetryClient(TelemetryConfiguration.CreateDefault()));
@@ -493,7 +496,7 @@ namespace Services.Tests
             {
                 _jobTriggerService.RunId = job.RunId.Value;
                 var groupName = await _graphGroupRepository.GetGroupNameAsync(getDestinationObjectId(job));
-                await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
+                await _jobTriggerService.SendEmailAsync(job, NotificationMessageType.SyncStartedNotification, new string[] { });
 
                 Assert.IsNotNull(_jobTriggerService.RunId);
                 Assert.IsNotNull(_graphGroupRepository.RunId);
@@ -501,7 +504,10 @@ namespace Services.Tests
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
-            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Exactly(validStartDateJobs));
+            _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.Is<ServiceBusMessage>(msg =>
+                    msg.ApplicationProperties.ContainsKey("MessageType") &&
+                    msg.ApplicationProperties["MessageType"].ToString() == NotificationMessageType.SyncStartedNotification.ToString())),
+                    Times.Exactly(validStartDateJobs));
         }
 
         [TestMethod]
@@ -522,6 +528,7 @@ namespace Services.Tests
                 new MockKeyVaultSecret<IJobTriggerService, Guid>(),
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
+                _serviceBusQueueRepository.Object,
                 _gMMResources,
                 _jobTriggerConfig,
 				new TelemetryClient(TelemetryConfiguration.CreateDefault()));
@@ -541,7 +548,7 @@ namespace Services.Tests
 			foreach (var job in jobs)
             {
                 var groupName = await _graphGroupRepository.GetGroupNameAsync(getDestinationObjectId(job));
-                await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
+                await _jobTriggerService.SendEmailAsync(job,NotificationMessageType.SyncStartedNotification, new string[] { });
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
@@ -564,7 +571,8 @@ namespace Services.Tests
                 new MockKeyVaultSecret<IJobTriggerService>(),
                 new MockKeyVaultSecret<IJobTriggerService, Guid>(),
                 _mailRepository.Object,
-                new MockEmail<IEmailSenderRecipient>(),
+                new MockEmail<IEmailSenderRecipient>(), 
+                _serviceBusQueueRepository.Object,
                 _gMMResources,
                 _jobTriggerConfig,
 				new TelemetryClient(TelemetryConfiguration.CreateDefault()));
@@ -583,7 +591,7 @@ namespace Services.Tests
 
 			foreach (var job in jobs)
             {
-                await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
+                await _jobTriggerService.SendEmailAsync(job, NotificationMessageType.SyncStartedNotification, new string[] { });
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
@@ -607,6 +615,7 @@ namespace Services.Tests
                 new MockKeyVaultSecret<IJobTriggerService, Guid>(),
                 _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
+                _serviceBusQueueRepository.Object,
                 _gMMResources,
                 _jobTriggerConfig,
 				new TelemetryClient(TelemetryConfiguration.CreateDefault()));
@@ -625,98 +634,11 @@ namespace Services.Tests
 
 			foreach (var job in jobs)
             {
-                await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
+                await _jobTriggerService.SendEmailAsync(job, NotificationMessageType.SyncStartedNotification, new string[] { });
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
         }
-
-		[TestMethod]
-		public async Task VerifyEmailNotSentIfDisabled()
-		{
-			var _mailRepository = new Mock<IMailRepository>();
-
-			_mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
-			SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
-			var notificationName = SyncStartedEmailBody;
-			var notificationTypeId = 1;
-			var mockNotificationTypesData = new Dictionary<string, NotificationType>
-            {
-	            { notificationName, new NotificationType { Id = notificationTypeId, Disabled = false } }
-            };
-			var _notificationTypesRepository = new MockNotificationTypesRepository(mockNotificationTypesData);
-
-			var jobId = job.Id;
-			var mockJobNotificationData = new Dictionary<(Guid, int), bool>
-	        {
-		        { (jobId, notificationTypeId), true }
-	        };
-			var _jobNotificationRepository = new MockJobNotificationRepository(mockJobNotificationData);
-
-			_jobTriggerService = new JobTriggerService(
-				_loggingRepository,
-				_syncJobRepository,
-				_notificationTypesRepository,
-				_jobNotificationRepository,
-				_serviceBusTopicsRepository,
-				_graphGroupRepository,
-                _mockTeamsChannelRepository.Object,
-                new MockKeyVaultSecret<IJobTriggerService>(),
-                new MockKeyVaultSecret<IJobTriggerService, Guid>(),
-                _mailRepository.Object,
-				new MockEmail<IEmailSenderRecipient>(),
-				_gMMResources,
-				_jobTriggerConfig,
-				new TelemetryClient(TelemetryConfiguration.CreateDefault()));
-
-			await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
-			var expectedLogMessage = $"Notification template '{SyncStartedEmailBody}' is disabled for job {job.Id} with destination group {job.TargetOfficeGroupId}.";
-			_mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Never());
-			Assert.AreEqual(1, _loggingRepository.MessagesLoggedCount);
-			Assert.AreEqual(expectedLogMessage, _loggingRepository.MessagesLogged[0].Message);
-		}
-
-		[TestMethod]
-		public async Task VerifyEmailNotSentIfGloballyDisabled()
-		{
-			var _mailRepository = new Mock<IMailRepository>();
-
-			_mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
-			SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
-			var notificationName = SyncStartedEmailBody;
-			var notificationTypeId = 1;
-			var mockNotificationTypesData = new Dictionary<string, NotificationType>
-			{
-				{ notificationName, new NotificationType { Id = notificationTypeId, Disabled = true } }
-			};
-			var _notificationTypesRepository = new MockNotificationTypesRepository(mockNotificationTypesData);
-
-			var jobId = job.Id;
-
-			var _jobNotificationRepository = new MockJobNotificationRepository();
-
-			_jobTriggerService = new JobTriggerService(
-				_loggingRepository,
-				_syncJobRepository,
-				_notificationTypesRepository,
-				_jobNotificationRepository,
-				_serviceBusTopicsRepository,
-				_graphGroupRepository,
-                _mockTeamsChannelRepository.Object,
-                new MockKeyVaultSecret<IJobTriggerService>(),
-                new MockKeyVaultSecret<IJobTriggerService, Guid>(),
-                _mailRepository.Object,
-				new MockEmail<IEmailSenderRecipient>(),
-				_gMMResources,
-				_jobTriggerConfig,
-				new TelemetryClient(TelemetryConfiguration.CreateDefault()));
-
-			await _jobTriggerService.SendEmailAsync(job, EmailSubject, SyncStartedEmailBody, new string[] { });
-			var expectedLogMessage = $"Notifications of type '{SyncStartedEmailBody}' have been globally disabled.";
-			_mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Never());
-			Assert.AreEqual(2, _loggingRepository.MessagesLoggedCount);
-			Assert.AreEqual(expectedLogMessage, _loggingRepository.MessagesLogged[0].Message);
-		}
 
 		[TestMethod]
         public async Task VerifyJobsCountExceedMinimalNumberHigherThanThreshold()
