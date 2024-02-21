@@ -23,9 +23,9 @@ export const strings: IStrings = {
   learnMembershipManagement:
     'Aprenda cómo funciona Membership Management en su organización',
   HROnboarding: {
-    orgLeaderId: "Org. identificación del líder",
-    orgLeaderIdPlaceHolder: "Por favor ingrese Org. identificación del líder",
-    orgLeaderInfo: "Proporcionar ID del líder de la organización",
+    orgLeader: "Proporcionar organización. líder",
+    orgLeaderPlaceHolder: "Por favor ingrese Org. líder",
+    orgLeaderInfo: "Proporcionar organización. líder",
     depth: "Profundidad",
     depthPlaceHolder: "Por favor ingrese la profundidad",
     depthInfo: "Define el nivel de profundidad máximo en la jerarquía organizativa utilizada para recuperar datos. El valor predeterminado es 0, lo que significa que no hay límite de profundidad. Si se especifica profundidad 1, significa que solo se recuperará el líder de la organización. Si se especifica profundidad 2, se recuperará el líder de la organización y todos los que reportan directamente al líder de la organización.",

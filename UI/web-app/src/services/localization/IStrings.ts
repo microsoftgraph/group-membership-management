@@ -18,8 +18,8 @@ export type IStrings = {
   membershipManagement: string;
   learnMembershipManagement: string;
   HROnboarding: {
-    orgLeaderId: string;
-    orgLeaderIdPlaceHolder: string;
+    orgLeader: string;
+    orgLeaderPlaceHolder: string;
     orgLeaderInfo: string;
     depth: string;
     depthPlaceHolder: string;

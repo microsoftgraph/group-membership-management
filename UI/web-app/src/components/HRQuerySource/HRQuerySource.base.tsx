@@ -2,9 +2,10 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption, SpinButton } from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
+import { IPersonaProps } from '@fluentui/react/lib/Persona';
 import type {
   HRQuerySourceProps,
   HRQuerySourceStyleProps,
@@ -12,6 +13,12 @@ import type {
 } from './HRQuerySource.types';
 import { useStrings } from '../../store/hooks';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
+import { AppDispatch } from '../../store';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchOrgLeaderDetails } from '../../store/orgLeaderDetails.api';
+import { getJobOwnerFilterSuggestions } from '../../store/jobs.api';
+import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeIdMapping } from '../../store/orgLeaderDetails.slice';
+import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
@@ -27,6 +34,11 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     childrenGap: 30
   };
 
+  const dispatch = useDispatch<AppDispatch>();
+  const orgLeaderDetails = useSelector(selectOrgLeaderDetails);
+  const objectIdEmployeeIdMapping = useSelector(selectObjectIdEmployeeIdMapping);
+  const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions);
+  const [isDisabled, setIsDisabled] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [source, setSource] = useState<HRSourcePartSource>(props.source);
   const excludeLeaderQuery = `EmployeeId != ${source.ids?.[0]}`
@@ -35,18 +47,42 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     setErrorMessage('');
   }, [source]);
 
-  const handleOrgLeaderIdChange = (_: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '') => {
-    const nonNumericRegex = /[^0-9]/g;
-    if (nonNumericRegex.test(newValue)) {
-      setErrorMessage(strings.HROnboarding.invalidInputErrorMessage);
-      return;
-    }
-    const ids = newValue.trim() !== '' ? [Number(newValue)] : [];
-    setSource(prevSource => {
+  useEffect(() => {
+    setIsDisabled(!orgLeaderDetails.maxDepth);
+  }, [orgLeaderDetails.maxDepth]);
+
+  useEffect(() => {
+    if (orgLeaderDetails.employeeId > 0 && partId === orgLeaderDetails.partId) {
+      const ids: number[] = [orgLeaderDetails.employeeId];
+      setSource(prevSource => {
         const newSource = { ...prevSource, ids };
         onSourceChange(newSource, partId);
         return newSource;
-    });
+      })
+    }
+  }, [orgLeaderDetails.employeeId, orgLeaderDetails.objectId]);
+
+  const getPickerSuggestions = async (
+    filterText: string
+  ): Promise<IPersonaProps[]> => {
+    return filterText && ownerPickerSuggestions ? ownerPickerSuggestions : [];
+  };
+
+  const handleOrgLeaderInputChange = (input: string): string => {
+    dispatch(getJobOwnerFilterSuggestions({displayName: input, alias: input}))
+    return input;
+  }
+
+  const handleOrgLeaderChange = (items?: IPersonaProps[] | undefined) => {
+    setIsDisabled(true);
+    if (items !== undefined && items.length > 0) {
+      dispatch(fetchOrgLeaderDetails({
+        objectId: items[0].id as string,
+        key: items[0].key as number,
+        text: items[0].text as string,
+        partId: partId as number
+      }))
+    }
   };
 
   const handleDepthChange = React.useCallback((event: React.SyntheticEvent<HTMLElement>, newValue?: string) => {
@@ -81,6 +117,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     const includeOrg = option?.key === "Yes";
     if (option?.key === "No") {
       const ids: number[] = [];
+      dispatch(updateOrgLeaderDetails({ employeeId: -1 }));
       const depth = undefined;
       setSource(prevSource => {
         const newSource = { ...prevSource, includeOrg, ids, depth };
@@ -161,19 +198,28 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={stackTokens}>
         <Stack.Item align="start">
           <div>
-             <div className={classNames.labelContainer}>
-              <Label>{strings.HROnboarding.orgLeaderId}</Label>
+            <div className={classNames.labelContainer}>
+              <Label>{strings.HROnboarding.orgLeader}</Label>
               <TooltipHost content={strings.HROnboarding.orgLeaderInfo} id="toolTipOrgLeaderId" calloutProps={{ gapSpace: 0 }}>
                 <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipOrgLeaderId" />
               </TooltipHost>
             </div>
-            <TextField
-              value={source.ids && source.ids.length > 0 ? source.ids.toString() : ''}
-              onChange={handleOrgLeaderIdChange}
-              styles={{ root: classNames.textField, fieldGroup: classNames.textFieldGroup }}
-              validateOnLoad={false}
-              validateOnFocusOut={false}
-            ></TextField>
+            <NormalPeoplePicker
+              onResolveSuggestions={getPickerSuggestions}
+              key={'normal'}
+              resolveDelay={300}
+              itemLimit={1}
+              selectedItems={source.ids && source.ids.length > 0 && source.ids[0] > 0 && !isDisabled ? [
+                {
+                  key: objectIdEmployeeIdMapping[source.ids[0]]?.objectId.toString() || "",
+                  text: objectIdEmployeeIdMapping[source.ids[0]]?.text.toString() || ""
+                },
+              ] : undefined}
+              onInputChange={handleOrgLeaderInputChange}
+              onChange={handleOrgLeaderChange}
+              styles={{ root: classNames.textField, text: classNames.textFieldGroup }}
+              pickerCalloutProps={{directionalHint: DirectionalHint.bottomCenter}}
+            />
           </div>
         </Stack.Item>
 
@@ -187,8 +233,9 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
             </div>
             <SpinButton
               value={source.depth?.toString()}
+              disabled={isDisabled}
               min={0}
-              max={100}
+              max={(partId === orgLeaderDetails.partId) ? orgLeaderDetails.maxDepth : 100}
               step={1}
               onChange={handleDepthChange}
               incrementButtonAriaLabel={strings.HROnboarding.incrementButtonAriaLabel}

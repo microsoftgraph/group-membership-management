@@ -28,6 +28,7 @@ export const graphRequest: PopupRequest = {
 export const config = {
   getJobs: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobs`,
   getJobDetails: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails`,
+  getOrgLeaderDetails: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/orgLeaderDetails`,
   settings: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/settings`,
   patchSetting: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/settings`,
   patchJobDetails: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails`,

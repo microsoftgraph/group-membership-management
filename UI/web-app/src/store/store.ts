@@ -11,6 +11,7 @@ import manageMembershipReducer from './manageMembership.slice';
 import ownerReducer from './owner.slice';
 import pagingBarReducer from './pagingBar.slice';
 import profileReducer from './profile.slice';
+import orgLeaderDetailsReducer from './orgLeaderDetails.slice';
 import settingsReducer from './settings.slice';
 import rolesReducer from './roles.slice';
 
@@ -50,6 +51,7 @@ const rootReducer = combineReducers({
   owner: ownerReducer,
   pagingBar: pagingBarReducer,
   profile: profileReducer,
+  orgLeaderDetails: orgLeaderDetailsReducer,
   settings: settingsReducer,
   roles: rolesReducer,
 });
