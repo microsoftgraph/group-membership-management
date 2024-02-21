@@ -15,6 +15,7 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
 using Repositories.ServiceBusTopics;
 using Repositories.TeamsChannel;
+using Repositories.ServiceBusQueue;
 using Services;
 using Services.Contracts;
 using System;
@@ -79,6 +80,15 @@ namespace Hosts.JobTrigger
                 return new ServiceBusTopicsRepository(sender);
             });
 
+            builder.Services.AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
+            {
+                var configuration = services.GetRequiredService<IConfiguration>();
+                var notificationsQueue = configuration["serviceBusNotificationsQueue"];
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(notificationsQueue);
+                return new ServiceBusQueueRepository(sender);
+            });
+            
             builder.Services.AddScoped<IJobTriggerService, JobTriggerService>();
 
             var rootPath = builder.GetContext().ApplicationRootPath;
