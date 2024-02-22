@@ -11,10 +11,11 @@ namespace Services.Notifier.Contracts
 {
     public interface INotifierService
     {
-        public Task SendEmailAsync(ThresholdNotification notification);
+        public Task SendThresholdEmailAsync(ThresholdNotification notification);
         public Task<List<ThresholdNotification>> RetrieveQueuedNotificationsAsync();
         public Task UpdateNotificationStatusAsync(ThresholdNotification notification, ThresholdNotificationStatus status);
         public Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync(string messageBody);
+        public Task SendEmailAsync(string messageType, string messageBody, string subjectTemplate, string contentTemplate);
 
     }
 }

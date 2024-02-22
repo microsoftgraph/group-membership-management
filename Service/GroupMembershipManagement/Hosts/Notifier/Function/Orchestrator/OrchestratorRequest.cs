@@ -7,5 +7,7 @@ namespace Hosts.Notifier
     {
         public string MessageBody { get; set; }
         public string MessageType { get; set; }
+        public string SubjectTemplate { get; set; }
+        public string ContentTemplate { get; set; }
     }
 }

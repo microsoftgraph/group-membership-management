@@ -22,6 +22,7 @@ using System.Linq;
 using Services.Tests;
 using Hosts.Notifier;
 using System.Text.Json;
+using Repositories.EntityFramework;
 
 namespace Services.Notifier.Tests
 {
@@ -41,6 +42,8 @@ namespace Services.Notifier.Tests
         private ILocalizationRepository _localizationRepository;
         private NotifierService _notifierService;
         private ThresholdNotification _notification;
+        private Mock<INotificationTypesRepository> _notificationTypesRepository;
+        private Mock<IJobNotificationsRepository> _jobNotificationRepository;
         private TelemetryClient _telemetryClient;
 
         [TestInitialize]
@@ -53,6 +56,8 @@ namespace Services.Notifier.Tests
             _mailAddresses = new Mock<IEmailSenderRecipient>();
             _thresholdNotificationService = new Mock<IThresholdNotificationService>();
             _users = new List<AzureADUser>();
+            _notificationTypesRepository = new Mock<INotificationTypesRepository>();
+            _jobNotificationRepository = new Mock<IJobNotificationsRepository>();
             _notification = new ThresholdNotification
             {
                 Id = Guid.NewGuid(),
@@ -95,14 +100,16 @@ namespace Services.Notifier.Tests
                                                 _thresholdNotificationService.Object,
                                                 _notificationRepository.Object,
                                                 _graphGroupRepository.Object,
+                                                _notificationTypesRepository.Object,
+                                                _jobNotificationRepository.Object,
                                                 _telemetryClient
                                                 );
         }
 
         [TestMethod]
-        public async Task TestSendEmail()
+        public async Task TestSendThresholdEmail()
         {
-            await _notifierService.SendEmailAsync(_notification);
+            await _notifierService.SendThresholdEmailAsync(_notification);
             _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), null), Times.Once());
         }
 

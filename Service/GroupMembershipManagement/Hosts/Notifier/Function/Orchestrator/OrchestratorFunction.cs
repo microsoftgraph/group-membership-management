@@ -7,6 +7,7 @@ using Repositories.Contracts;
 using System.Threading.Tasks;
 using Models.ThresholdNotifications;
 using Models.Notifications;
+using Services.Contracts;
 
 namespace Hosts.Notifier
 {
@@ -35,10 +36,29 @@ namespace Hosts.Notifier
             switch (message.MessageType)
             {
                 case nameof(NotificationMessageType.ThresholdNotification):
-                    var notification = await context.CallActivityAsync<ThresholdNotification>(nameof(CreateActionableNotificationFromContentFunction), message);
-                    await context.CallActivityAsync(nameof(SendNotificationFunction), notification);
+                    var notification = await context.CallActivityAsync<ThresholdNotification>(nameof(CreateThresholdNotificationFunction), message);
+                    await context.CallActivityAsync(nameof(SendThresholdNotification), notification);
                     await context.CallActivityAsync(nameof(UpdateNotificationStatusFunction), new UpdateNotificationStatusRequest { Notification = notification, Status = ThresholdNotificationStatus.AwaitingResponse });
                     break;
+
+                case nameof(NotificationMessageType.SyncStartedNotification):
+                    message.SubjectTemplate = NotificationConstants.OnboardingSubject;
+                    message.ContentTemplate = NotificationConstants.SyncStartedContent;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
+                case nameof(NotificationMessageType.DestinationNotExistNotification):
+                    message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
+                    message.ContentTemplate = NotificationConstants.DestinationNotExistContent;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
+                case nameof(NotificationMessageType.NotOwnerNotification):
+                    message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
+                    message.ContentTemplate = NotificationConstants.NotOwnerContent;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
                 default:
                     await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest

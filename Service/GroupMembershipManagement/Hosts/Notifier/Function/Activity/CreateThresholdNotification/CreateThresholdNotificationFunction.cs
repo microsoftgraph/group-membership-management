@@ -11,23 +11,23 @@ using Models;
 
 namespace Hosts.Notifier
 {
-    public class CreateActionableNotificationFromContentFunction
+    public class CreateThresholdNotificationFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly INotifierService _notifierService = null;
 
-        public CreateActionableNotificationFromContentFunction(ILoggingRepository loggingRepository, INotifierService notifierService)
+        public CreateThresholdNotificationFunction(ILoggingRepository loggingRepository, INotifierService notifierService)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _notifierService = notifierService ?? throw new ArgumentNullException(nameof(notifierService));
         }
 
-        [FunctionName(nameof(CreateActionableNotificationFromContentFunction))]
+        [FunctionName(nameof(CreateThresholdNotificationFunction))]
         public async Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync([ActivityTrigger] OrchestratorRequest message)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CreateActionableNotificationFromContentFunction)} function started at: {DateTime.UtcNow}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CreateThresholdNotificationFunction)} function started at: {DateTime.UtcNow}" });
             var notification = await _notifierService.CreateActionableNotificationFromContentAsync(message.MessageBody);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CreateActionableNotificationFromContentFunction)} function completed at: {DateTime.UtcNow}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CreateThresholdNotificationFunction)} function completed at: {DateTime.UtcNow}" });
             return notification;
         }
     }
