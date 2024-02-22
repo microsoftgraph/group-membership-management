@@ -1,4 +1,4 @@
-﻿// Copyright(c) Microsoft Corporation.
+// Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -272,7 +272,7 @@ namespace Services.Tests
             SqlException exception = null;
             try
             {
-                SqlConnection conn = new SqlConnection(@"Data Source=.;Database=GUARANTEED_TO_FAIL;Connection Timeout=1");
+                SqlConnection conn = new SqlConnection(@"Data Source=.;Database=GUARANTEED_TO_FAIL;Connection Timeout=1;Encrypt=true;");
                 conn.Open();
             }
             catch (SqlException ex)
