@@ -4,7 +4,6 @@
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
-using SqlMembershipObtainer.Common.DependencyInjection;
 
 namespace Services
 {
