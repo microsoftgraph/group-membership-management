@@ -470,7 +470,6 @@ module webApiComputeResources '../Service/GroupMembershipManagement/Hosts/WebApi
     location: location
     prereqsResourceGroup: prereqsResourceGroupName
     dataResourceGroup: dataResourceGroupName
-    pipeline: pipeline
   }
   dependsOn: [
     sqlMembershipObtainerComputeResources
