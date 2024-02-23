@@ -19,8 +19,6 @@ namespace Services
 {
     public class JobTriggerService : IJobTriggerService
     {
-        private const string EmailSubject = "EmailSubject";
-        private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
 
         enum Metric
         {
@@ -37,7 +35,6 @@ namespace Services
         private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly string _gmmAppId;
         private readonly Guid _gmmTeamsChannelServiceAccountId;
-        private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IGMMResources _gmmResources;
         private readonly IJobTriggerConfig _jobTriggerConfig;
@@ -65,7 +62,6 @@ namespace Services
             ITeamsChannelRepository teamsChannelRepository,
             IKeyVaultSecret<IJobTriggerService> gmmAppId,
             IKeyVaultSecret<IJobTriggerService, Guid> gmmTeamsChannelServiceAccountId,
-            IMailRepository mailRepository,
             IEmailSenderRecipient emailSenderAndRecipients,
             IServiceBusQueueRepository serviceBusQueueRepository,
             IGMMResources gmmResources,
@@ -84,7 +80,6 @@ namespace Services
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
             _gmmAppId = gmmAppId.Secret;
             _gmmTeamsChannelServiceAccountId = gmmTeamsChannelServiceAccountId.Secret;
-            _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
             _jobTriggerConfig = jobTriggerConfig ?? throw new ArgumentNullException(nameof(jobTriggerConfig));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));

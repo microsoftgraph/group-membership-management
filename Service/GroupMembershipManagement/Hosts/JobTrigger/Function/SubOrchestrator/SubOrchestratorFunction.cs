@@ -21,11 +21,6 @@ namespace Hosts.JobTrigger
 {
     public class SubOrchestratorFunction
     {
-        private const string EmailSubject = "EmailSubject";
-        private const string SyncStartedEmailBody = "SyncStartedEmailBody";
-        private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
-        private const string SyncDisabledNoOwnerEmailBody = "SyncDisabledNoOwnerEmailBody";
-        private const string DisabledJobEmailSubject = "DisabledJobEmailSubject";
 
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly TelemetryClient _telemetryClient = null;

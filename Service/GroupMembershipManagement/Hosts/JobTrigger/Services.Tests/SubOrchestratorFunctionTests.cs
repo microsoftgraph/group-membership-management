@@ -567,6 +567,7 @@ namespace Services.Tests
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()), Times.Once());
             Assert.AreEqual(SyncStatus.DestinationGroupNotFound, _syncStatus);
+            _context.Verify(x => x.CallActivityAsync(nameof(EmailSenderFunction), It.Is<EmailSenderRequest>(r => r.NotificationType == NotificationMessageType.DestinationNotExistNotification)), Times.Once());
         }
 
         [TestMethod]
@@ -583,6 +584,7 @@ namespace Services.Tests
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()), Times.Once());
             Assert.AreEqual(SyncStatus.NotOwnerOfDestinationGroup, _syncStatus);
+            _context.Verify(x => x.CallActivityAsync(nameof(EmailSenderFunction), It.Is<EmailSenderRequest>(r => r.NotificationType == NotificationMessageType.NotOwnerNotification)), Times.Once());
         }
 
         [TestMethod]
