@@ -54,6 +54,7 @@ param uiLocation string
 
 // ADF parameters
 param pipeline string
+param skipADFDeployment bool = false
 
 var prereqsResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
 var dataResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -146,7 +147,7 @@ module computeResources 'computeResources.bicep' = {
 }
 
 // ADF HR Resources
-module adfHRResources 'adfHRResources.bicep' = {
+module adfHRResources 'adfHRResources.bicep' = if (!skipADFDeployment) {
   name: 'adfHRResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {

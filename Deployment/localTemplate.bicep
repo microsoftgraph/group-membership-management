@@ -54,6 +54,7 @@ param uiLocation string = location
 
 // ADF parameters
 param pipeline string = 'ProdPipeline'
+param skipADFDeployment bool = false
 
 var prereqsResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
 var dataResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -115,7 +116,7 @@ module gmmResources 'commonResources.bicep' = {
     sharepointDomain: sharepointDomain
     tenantDomain: tenantDomain
     pipeline: pipeline
-
+    skipADFDeployment: skipADFDeployment
   }
   dependsOn: [
     gmmResourceGroups
