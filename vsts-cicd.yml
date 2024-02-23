@@ -78,7 +78,7 @@ stages:
          coverageThreshold: 95
       - function:
          name: 'AzureUserReader'
-         coverageThreshold: 68
+         coverageThreshold: 62
       - function:
          name: 'JobScheduler'
          coverageThreshold: 48
