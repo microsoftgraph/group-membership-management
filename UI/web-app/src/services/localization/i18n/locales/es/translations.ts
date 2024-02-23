@@ -46,6 +46,16 @@ export const strings: IStrings = {
       addHyperlink: "Agregar URL",
       invalidUrl: "URL inválida"
     },
+    GroupQuerySource: {
+      searchGroupSuggestedText: "Grupos sugeridos",
+      noResultsFoundText: "No se encontraron resultados",
+      loadingText: "Cargando",
+      selectionAriaLabel: "Contactos seleccionados",
+      removeButtonAriaLabel: "Eliminar",
+      validQuery: "Consulta válida.",
+      invalidQuery: "Error al analizar la consulta. Asegúrese de que sea JSON válido.",
+      searchGroupName: "Buscar grupo"
+    }
   },
   AdminConfig: {
       labels: {

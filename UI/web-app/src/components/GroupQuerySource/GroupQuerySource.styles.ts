@@ -7,7 +7,7 @@ export const getStyles = (props: GroupQuerySourceStyleProps): GroupQuerySourceSt
   const { theme } = props;
 
   return {
-    peoplePicker: {
+    groupPicker: {
       borderRadius: 4,
       border: '1px solid',
       borderColor: theme.palette.neutralQuaternary,

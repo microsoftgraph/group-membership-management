@@ -15,19 +15,10 @@ import { Destination } from '../models/Destination';
 import { DestinationPickerPersona } from '../models';
 import { SyncJobQuery } from '../models/SyncJobQuery';
 import { 
-    ISourcePart,
-    placeholderQueryGroupOwnershipPart,
-    placeholderQueryGroupMembershipPart,
-    placeholderQueryHRPart,
-    SourcePartType,
-    SourcePartQuery
+    ISourcePart
 } from '../models/ISourcePart';
-
-export const placeholderAdvancedViewQuery: SyncJobQuery = [
-    placeholderQueryHRPart.query,
-    placeholderQueryGroupMembershipPart.query,
-    placeholderQueryGroupOwnershipPart.query
-]; 
+import { SourcePartType } from '../models/SourcePartType';
+import { SourcePartQuery } from '../models/SourcePartQuery';
 
 export interface ManageMembershipState {
     loadingSearchResults: boolean;
@@ -65,14 +56,14 @@ const initialState: ManageMembershipState = {
         requestor: '',
         startDate: new Date().toISOString(),
         period: 24,
-        query: placeholderAdvancedViewQuery,
+        query: {} as SyncJobQuery,
         thresholdPercentageForAdditions: 100,
         thresholdPercentageForRemovals: 20,
         status: 'Idle'
     },
     isAdvancedView: false,
-    compositeQuery: placeholderAdvancedViewQuery,
-    advancedViewQuery: JSON.stringify(placeholderAdvancedViewQuery),
+    compositeQuery: {} as SyncJobQuery,
+    advancedViewQuery: '',
     sourceParts: []
 };
 
@@ -134,7 +125,7 @@ const manageMembershipSlice = createSlice({
             if (action.payload) {
                 // Switching to advanced view
                 if(state.sourceParts.length === 0) {
-                    state.advancedViewQuery = JSON.stringify(placeholderAdvancedViewQuery);
+                    state.advancedViewQuery = '';
                 }
                 else{
                     const compositeQuery = buildCompositeQuery(state.sourceParts);
@@ -153,7 +144,7 @@ const manageMembershipSlice = createSlice({
                 // Switching from advanced view
                 const advancedViewQuery = state.advancedViewQuery;
                 const isAdvancedQueryValid = state.isAdvancedQueryValid;
-                if (advancedViewQuery && advancedViewQuery !== JSON.stringify(placeholderAdvancedViewQuery)) {
+                if (advancedViewQuery && advancedViewQuery !== '[]') {
                     try {
                         if(isAdvancedQueryValid){
                             const parsedQuery: SyncJobQuery = JSON.parse(advancedViewQuery);
@@ -196,22 +187,19 @@ const manageMembershipSlice = createSlice({
                 case SourcePartType.HR:
                     updatedQuery = {
                         type: type,
-                        source: { ids: [], filter: "", depth: 1 },
-                        exclusionary: false,
+                        source: {}
                     };
                     break;
                 case SourcePartType.GroupMembership:
                     updatedQuery = {
                         type: type,
-                        source: "",
-                        exclusionary: false,
+                        source: ""
                     };
                     break;
                 case SourcePartType.GroupOwnership:
                     updatedQuery = {
                         type: type,
-                        source: [],
-                        exclusionary: false,
+                        source: []
                     };
                     break;
                 default:
@@ -328,15 +316,9 @@ export const manageMembershipAdvancedViewQuery = (state: RootState) => state.man
 export const getSourcePartsFromState = (state: RootState) => state.manageMembership.sourceParts;
 export const manageMembershipIsToggleEnabled = (state: RootState) => {
     const isAdvancedView = state.manageMembership.isAdvancedView;
-    const advancedViewQuery = state.manageMembership.advancedViewQuery;
     const isAdvancedViewQueryValid = state.manageMembership.isAdvancedQueryValid;
     const areAllSourcePartsValid = state.manageMembership.sourceParts.every(part => part.isValid);
-    const isPlaceholderAdvancedViewQuery = advancedViewQuery === JSON.stringify(placeholderAdvancedViewQuery);
-
-    if (isPlaceholderAdvancedViewQuery) {
-        return true;
-    }
-    else if (isAdvancedView && isAdvancedViewQueryValid) {
+    if (isAdvancedView && isAdvancedViewQueryValid) {
         return true;
     }
     else if (!isAdvancedView && areAllSourcePartsValid) {

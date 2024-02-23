@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   classNamesFunction,
@@ -20,11 +20,12 @@ import { useStrings } from '../../store/hooks';
 import { AppDispatch } from '../../store';
 import { searchDestinations } from '../../store/manageMembership.api';
 import { manageMembershipSearchResults, updateSourcePart } from '../../store/manageMembership.slice';
-import { GroupMembershipSourcePart } from '../../models/GroupMembershipSourcePart';
-import { IsGroupMembershipSourcePartQuery, SourcePartType } from '../../models/ISourcePart';
-import { selectedGroups } from '../../store/groupPart.slice';
+import { GroupMembershipSourcePart, IsGroupMembershipSourcePartQuery } from '../../models/GroupMembershipSourcePart';
+import { useSelectedGroupById } from '../../store/groupPart.slice';
+import { SourcePartType } from '../../models/SourcePartType';
 
 export const getClassNames = classNamesFunction<GroupQuerySourceStyleProps, GroupQuerySourceStyles>();
+
 
 export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps> = (props: GroupQuerySourceProps) => {
   const { className, styles, part } = props;
@@ -37,10 +38,8 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
 
 
   const groupId: string = IsGroupMembershipSourcePartQuery(part.query) ? part.query.source : '';
-  const selectedGroupsPersona = useSelector(selectedGroups);
   const searchResults = useSelector(manageMembershipSearchResults);
-
-  const selectedGroupPersona = selectedGroupsPersona?.find((group) => group.id === groupId);
+  const selectedGroupPersona = useSelectedGroupById(groupId);
 
   const groupPersona: IPersonaProps = {
     id: groupId,
@@ -49,13 +48,13 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
 
   const [selectedGroup, setSelectedGroup] = useState<IPersonaProps[]>(groupId && groupPersona.text ? [groupPersona] : []);
 
-  useEffect(() => {
-    const initializeSelectedGroup = async () => {
-      if (IsGroupMembershipSourcePartQuery(part.query) && part.query.source) {
-        dispatch(searchDestinations(part.query.source));
-      }
-    };
+  const initializeSelectedGroup = useCallback(async () => {
+    if (IsGroupMembershipSourcePartQuery(part.query) && part.query.source) {
+      dispatch(searchDestinations(part.query.source));
+    }
+  }, [part.query.source]);
 
+  useEffect(() => {
     initializeSelectedGroup();
   }, [part.query.source]);
 
@@ -66,19 +65,19 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
   }, [selectedGroupPersona, groupId]);
 
 
-  const handleGroupSearchInputChanged = (input: string): string => {
+  const handleGroupSearchInputChanged = useCallback((input: string): string => {
     dispatch(searchDestinations(input));
     return input;
-  };
+  }, [dispatch]);
 
-  const getPickerSuggestions = async (
+  const getPickerSuggestions = useCallback(async (
     text: string,
     currentGroups: IPersonaProps[] | undefined
   ): Promise<IPersonaProps[]> => {
     return text && searchResults ? searchResults : [];
-  };
+  }, [searchResults]);
 
-  const handleGroupPickerChange = (items?: IPersonaProps[]): void => {
+  const handleGroupPickerChange = useCallback((items?: IPersonaProps[]): void => {
     if (items !== undefined && items.length > 0) {
       setSelectedGroup(items);
       dispatch(updateSourcePart({
@@ -103,27 +102,27 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
         isValid: false
       }));
     }
-  };
+  }, [dispatch, part.id, part.query.exclusionary]);
 
   return (
     <div>
-      <Label required>{strings.ManageMembership.labels.searchGroupName}</Label>
+      <Label required>{strings.Components.GroupQuerySource.searchGroupName}</Label>
       <NormalPeoplePicker
         onResolveSuggestions={getPickerSuggestions}
         pickerSuggestionsProps={{
-          suggestionsHeaderText: strings.ManageMembership.labels.searchGroupSuggestedText,
-          noResultsFoundText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.noResultsFoundText,
-          loadingText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.loadingText,
+          suggestionsHeaderText: strings.Components.GroupQuerySource.searchGroupSuggestedText,
+          noResultsFoundText: strings.Components.GroupQuerySource.noResultsFoundText,
+          loadingText: strings.Components.GroupQuerySource.loadingText,
         }}
         key={'normal'}
-        selectionAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.selectionAriaLabel}
-        removeButtonAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.removeButtonAriaLabel}
+        selectionAriaLabel={strings.Components.GroupQuerySource.selectionAriaLabel}
+        removeButtonAriaLabel={strings.Components.GroupQuerySource.removeButtonAriaLabel}
         resolveDelay={300}
         itemLimit={1}
         onInputChange={handleGroupSearchInputChanged}
         onChange={handleGroupPickerChange}
         selectedItems={selectedGroup}
-        styles={{ text: classNames.peoplePicker }}
+        styles={{ text: classNames.groupPicker }}
         pickerCalloutProps={{ calloutMinWidth: 500 }}
       />
     </div>

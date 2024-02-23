@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+import { useSelector } from 'react-redux';
 import { createSlice } from '@reduxjs/toolkit';
 import type { RootState } from './store';
 import { searchDestinations } from './manageMembership.api';
@@ -28,5 +29,12 @@ export const groupPartSlice = createSlice({
   },
 });
 
-export const selectedGroups = (state: RootState) => state.groupPart.searchResults;
+export const selectSelectedGroupById = (state: RootState, id: string) => {
+  return state.groupPart.searchResults?.find((group) => group.id === id);
+};
+
 export default groupPartSlice.reducer;
+
+export const useSelectedGroupById = (id: string) => {
+  return useSelector((state: RootState) => selectSelectedGroupById(state, id));
+};

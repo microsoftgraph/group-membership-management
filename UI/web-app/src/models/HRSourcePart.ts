@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { SourcePartType } from "./ISourcePart";
+import { SourcePartQuery } from "./SourcePartQuery";
+import { SourcePartType } from "./SourcePartType";
 
 export type HRSourcePart = {
     type: SourcePartType.HR;
@@ -16,3 +17,7 @@ export type HRSourcePartSource = {
     includeOrg?: boolean;
     includeFilter?: boolean;
 };
+
+export const IsHRSourcePartQuery = (query: SourcePartQuery): query is HRSourcePart => {
+  return query.type === SourcePartType.HR;
+}

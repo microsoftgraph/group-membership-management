@@ -17,10 +17,12 @@ import { SourcePartStyleProps, SourcePartStyles, SourcePartProps } from './Sourc
 import { AppDispatch } from '../../store';
 import { updateSourcePart, updateSourcePartType } from '../../store/manageMembership.slice';
 import { useStrings } from '../../store/hooks';
-import { ISourcePart, SourcePartQuery, SourcePartType } from '../../models/ISourcePart';
+import { ISourcePart } from '../../models/ISourcePart';
 import { HRQuerySource } from '../HRQuerySource';
 import { HRSourcePart, HRSourcePartSource } from '../../models/HRSourcePart';
 import { GroupQuerySource } from '../GroupQuerySource';
+import { SourcePartType } from '../../models/SourcePartType';
+import { SourcePartQuery } from '../../models/SourcePartQuery';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 

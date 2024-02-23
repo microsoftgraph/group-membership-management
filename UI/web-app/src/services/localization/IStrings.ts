@@ -41,6 +41,16 @@ export type IStrings = {
       addHyperlink: string;
       invalidUrl: string;
     },
+    GroupQuerySource: {
+      searchGroupSuggestedText: string;
+      noResultsFoundText: string;
+      loadingText: string;
+      selectionAriaLabel: string;
+      removeButtonAriaLabel: string;
+      validQuery: string;
+      invalidQuery: string;
+      searchGroupName: string;
+    }
   },
   AdminConfig: {
     labels: {

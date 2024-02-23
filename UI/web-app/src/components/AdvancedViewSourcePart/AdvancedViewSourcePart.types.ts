@@ -7,7 +7,7 @@ import {
     type ITheme,
   } from '@fluentui/react';
   import type React from 'react';
-  import type { SourcePartQuery } from '../../models/ISourcePart';
+import { SourcePartQuery } from '../../models/SourcePartQuery';
   
   export interface IAdvancedViewSourcePartStyles {
     root: IStyle;

@@ -18,3 +18,7 @@ export * from './Status';
 export * from './User';
 export * from './PeoplePickerPersona';
 export * from './DestinationPickerPersona';
+export * from './ISourcePart';
+export * from './HRSourcePart';
+export * from './GroupMembershipSourcePart';
+export * from './GroupOwnershipSourcePart';

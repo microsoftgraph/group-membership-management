@@ -3,7 +3,8 @@
 
 import { type IStyle, type IStyleFunctionOrObject, type ITheme } from '@fluentui/react';
 import type React from 'react';
-import { ISourcePart, SourcePartQuery } from '../../models/ISourcePart';
+import { ISourcePart } from '../../models/ISourcePart';
+import { SourcePartQuery } from '../../models/SourcePartQuery';
 
 export type SourcePartStyles = {
   root: IStyle;

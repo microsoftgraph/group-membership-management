@@ -23,7 +23,8 @@ import {
   updateSourcePart,
   updateSourcePartValidity
 } from '../../store/manageMembership.slice';
-import { ISourcePart, SourcePartQuery } from '../../models/ISourcePart';
+import { ISourcePart } from '../../models/ISourcePart';
+import { SourcePartQuery } from '../../models/SourcePartQuery';
 
 const getClassNames = classNamesFunction<
   IAdvancedViewSourcePartStyleProps,

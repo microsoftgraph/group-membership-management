@@ -6,7 +6,7 @@ import type React from 'react';
 import { ISourcePart } from '../../models/ISourcePart';
 
 export type GroupQuerySourceStyles = {
-  peoplePicker: IStyle;
+  groupPicker: IStyle;
 };
 
 export type GroupQuerySourceStyleProps = {

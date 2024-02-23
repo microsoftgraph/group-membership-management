@@ -19,7 +19,6 @@ import {
   manageMembershipIsAdvancedView,
   manageMembershipIsToggleEnabled,
   manageMembershipQuery,
-  placeholderAdvancedViewQuery,
   setAdvancedViewQuery,
   setCompositeQuery,
   setIsAdvancedView,
@@ -28,7 +27,8 @@ import {
 import { SourcePart } from '../SourcePart';
 import { useStrings } from '../../store/hooks';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
-import { ISourcePart, SourcePartType } from '../../models/ISourcePart';
+import { ISourcePart } from '../../models/ISourcePart';
+import { SourcePartType } from '../../models/SourcePartType';
 
 const getClassNames = classNamesFunction<MembershipConfigurationStyleProps, MembershipConfigurationStyles>();
 
@@ -82,7 +82,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
       }
     } else {
       // When switching back to non-advanced view
-      if (compositeQuery && compositeQuery !== placeholderAdvancedViewQuery) {
+      if (compositeQuery) {
         try {
           const updatedSourceParts: ISourcePart[] = compositeQuery.map((query, index) => {
             const newPart: ISourcePart = {

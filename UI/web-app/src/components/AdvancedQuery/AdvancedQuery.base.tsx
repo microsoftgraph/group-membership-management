@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import {
   IProcessedStyleSet,
   TextField,
@@ -45,9 +45,28 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
       theme: useTheme(),
     }
   );
+  const defaultAdvancedViewQuery: string = `[
+    {
+      "type": "SqlMembership",
+      "source": {
+        "ids": [],
+        "filter": "",
+        "depth": 0
+      },
+    },
+    {
+      "type": "GroupMembership",
+      "source": "00000000-0000-0000-0000-000000000000"
+    },
+    {
+      "type": "GroupOwnership",
+      "source": ["All"]
+    }
+  ]`;
+
   const dispatch = useDispatch<AppDispatch>();
   const [validationMessage, setValidationMessage] = useState<React.ReactNode | null>(null);
-  const [localQuery, setLocalQuery] = useState<string | undefined>(query);
+  const [localQuery, setLocalQuery] = useState<string>(query === '' ? defaultAdvancedViewQuery : query);
   const schema = schemaDefinition;
   const ajv = new Ajv();
 
