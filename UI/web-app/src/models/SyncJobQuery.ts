@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { HRSourcePart } from "./HRSourcePart";
-import { GroupOwnershipSourcePart } from "./GroupOwnershipSourcePart";
-import { GroupMembershipSourcePart } from "./GroupMembershipSourcePart";
+import { SourcePartQuery } from "./SourcePartQuery";
 
-export type SyncJobQuery = (HRSourcePart | GroupMembershipSourcePart | GroupOwnershipSourcePart)[];
+export type SyncJobQuery = SourcePartQuery[];
