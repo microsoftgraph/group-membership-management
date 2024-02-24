@@ -402,7 +402,6 @@ namespace Services.Tests
                     .Callback<string, object>(async (name, request) =>
                     {
                         var gmmResources = new Mock<IGMMResources>();
-                        var mailRepository = new Mock<IMailRepository>();
                         var jobTriggerConfig = new Mock<IJobTriggerConfig>();
                         var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
                         var notificationTypesRepository = new Mock<INotificationTypesRepository>();
@@ -424,7 +423,6 @@ namespace Services.Tests
                                                         teamsChannelRepository.Object,
                                                         gmmAppId.Object,
                                                         teamsChannelServiceAccountObjectId.Object,
-                                                        mailRepository.Object,
                                                         emailSenderAndRecipients.Object,
                                                         serviceBusQueueRepository.Object,
                                                         gmmResources.Object,
@@ -484,7 +482,6 @@ namespace Services.Tests
                     .Callback<string, object>(async (name, request) =>
                     {
                         var gmmResources = new Mock<IGMMResources>();
-                        var mailRepository = new Mock<IMailRepository>();
                         var jobTriggerConfig = new Mock<IJobTriggerConfig>();
                         var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
                         var emailTypeRepository = new Mock<INotificationTypesRepository>();
@@ -506,7 +503,6 @@ namespace Services.Tests
                                                         teamsChannelRepository.Object,
                                                         gmmAppId.Object,
                                                         teamsChannelServiceAccountObjectId.Object,
-                                                        mailRepository.Object,
                                                         emailSenderAndRecipients.Object,
                                                         serviceBusQueueRepository.Object,
                                                         gmmResources.Object,

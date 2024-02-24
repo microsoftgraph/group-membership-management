@@ -62,7 +62,6 @@ namespace Services.Tests
             _serviceBusTopicsRepository = new MockServiceBusTopicsRepository();
             _graphGroupRepository = new MockGraphGroupRepository();
             _mockTeamsChannelRepository = new Mock<ITeamsChannelRepository>();
-            _mailRepository = new MockMailRepository();
             _jobTriggerConfig = new MockJobTriggerConfig();
             _jobTriggerService = new JobTriggerService(
                                         _loggingRepository,
@@ -73,7 +72,7 @@ namespace Services.Tests
                                         _graphGroupRepository,
                                         _mockTeamsChannelRepository.Object,
                                         new MockKeyVaultSecret<IJobTriggerService>(),
-                                        new MockKeyVaultSecret<IJobTriggerService, Guid>(), _mailRepository,
+                                        new MockKeyVaultSecret<IJobTriggerService, Guid>(),
                                         new MockEmail<IEmailSenderRecipient>(),
                                         _serviceBusQueueRepository.Object,
                                         _gMMResources,
@@ -460,8 +459,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task VerifyInitialSyncEmailNotificationIsSent()
         {
-            var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
 
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
@@ -473,7 +470,6 @@ namespace Services.Tests
                 _mockTeamsChannelRepository.Object,
                 new MockKeyVaultSecret<IJobTriggerService>(),
                 new MockKeyVaultSecret<IJobTriggerService, Guid>(),
-                _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
                 _serviceBusQueueRepository.Object,
                 _gMMResources,
@@ -513,9 +509,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task VerifyJobsAreProcessedWithMissingMailSendPermission()
         {
-            var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
-
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
@@ -526,7 +519,6 @@ namespace Services.Tests
                 _mockTeamsChannelRepository.Object,
                 new MockKeyVaultSecret<IJobTriggerService>(),
                 new MockKeyVaultSecret<IJobTriggerService, Guid>(),
-                _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
                 _serviceBusQueueRepository.Object,
                 _gMMResources,
@@ -557,8 +549,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task VerifyJobsAreProcessedWithMissingMailLicenses()
         {
-            var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
 
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
@@ -570,7 +560,6 @@ namespace Services.Tests
                 _mockTeamsChannelRepository.Object,
                 new MockKeyVaultSecret<IJobTriggerService>(),
                 new MockKeyVaultSecret<IJobTriggerService, Guid>(),
-                _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(), 
                 _serviceBusQueueRepository.Object,
                 _gMMResources,
@@ -600,8 +589,6 @@ namespace Services.Tests
         [TestMethod]
         public async Task VerifyJobsAreProcessedMailingExceptions()
         {
-            var _mailRepository = new Mock<IMailRepository>();
-            _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()));
 
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
@@ -613,7 +600,6 @@ namespace Services.Tests
                 _mockTeamsChannelRepository.Object,
                 new MockKeyVaultSecret<IJobTriggerService>(),
                 new MockKeyVaultSecret<IJobTriggerService, Guid>(),
-                _mailRepository.Object,
                 new MockEmail<IEmailSenderRecipient>(),
                 _serviceBusQueueRepository.Object,
                 _gMMResources,
