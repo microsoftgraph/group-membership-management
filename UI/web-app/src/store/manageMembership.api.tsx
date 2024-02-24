@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { config } from '../authConfig';
 import { OnboardingStatus } from '../models/GroupOnboardingStatus';

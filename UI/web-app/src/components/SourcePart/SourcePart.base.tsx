@@ -62,6 +62,19 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     }
   }
 
+  const handleGroupMembershipSourceChange = (sourceId: string, isValid: boolean) => {
+    const newQuery: ISourcePart = {
+      ...part,
+      query: {
+        type: SourcePartType.GroupMembership,
+        source: sourceId,
+        exclusionary: isExclusionary
+      },
+      isValid
+    };
+    dispatch(updateSourcePart(newQuery));
+  };
+
   const handleDelete = () => {
     if (totalSourceParts > 1) {
       onDelete(index);
@@ -162,7 +175,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
           </div>
           )}
           {part.query.type === SourcePartType.GroupMembership && (
-              <GroupQuerySource part={part}/>
+              <GroupQuerySource part={part} onSourceChange={handleGroupMembershipSourceChange}/>
           )}
           <div className={classNames.error}>
             {errorMessage}

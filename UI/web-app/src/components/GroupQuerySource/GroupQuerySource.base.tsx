@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import {
   classNamesFunction,
   type IProcessedStyleSet,
@@ -19,16 +19,14 @@ import type {
 import { useStrings } from '../../store/hooks';
 import { AppDispatch } from '../../store';
 import { searchDestinations } from '../../store/manageMembership.api';
-import { manageMembershipSearchResults, updateSourcePart } from '../../store/manageMembership.slice';
-import { GroupMembershipSourcePart, IsGroupMembershipSourcePartQuery } from '../../models/GroupMembershipSourcePart';
+import { IsGroupMembershipSourcePartQuery } from '../../models/GroupMembershipSourcePart';
 import { useSelectedGroupById } from '../../store/groupPart.slice';
-import { SourcePartType } from '../../models/SourcePartType';
+import { searchGroups } from '../../store/groups.api';
 
 export const getClassNames = classNamesFunction<GroupQuerySourceStyleProps, GroupQuerySourceStyles>();
 
-
 export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps> = (props: GroupQuerySourceProps) => {
-  const { className, styles, part } = props;
+  const { className, styles, part, onSourceChange } = props;
   const classNames: IProcessedStyleSet<GroupQuerySourceStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -36,9 +34,8 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
   const strings = useStrings();
   const dispatch = useDispatch<AppDispatch>();
 
-
   const groupId: string = IsGroupMembershipSourcePartQuery(part.query) ? part.query.source : '';
-  const searchResults = useSelector(manageMembershipSearchResults);
+  const [localSearchResults, setLocalSearchResults] = useState<IPersonaProps[]>([]);
   const selectedGroupPersona = useSelectedGroupById(groupId);
 
   const groupPersona: IPersonaProps = {
@@ -64,9 +61,17 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
     }
   }, [selectedGroupPersona, groupId]);
 
-
   const handleGroupSearchInputChanged = useCallback((input: string): string => {
-    dispatch(searchDestinations(input));
+    if (!input) {
+      setLocalSearchResults([]);
+      return '';
+    }
+    dispatch(searchGroups(input)).then(results => {
+      setLocalSearchResults(results.payload as IPersonaProps[]);
+    }).catch(error => {
+      console.error("Error fetching search destinations", error);
+      setLocalSearchResults([]);
+    });
     return input;
   }, [dispatch]);
 
@@ -74,35 +79,18 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
     text: string,
     currentGroups: IPersonaProps[] | undefined
   ): Promise<IPersonaProps[]> => {
-    return text && searchResults ? searchResults : [];
-  }, [searchResults]);
+    return text && localSearchResults ? localSearchResults : [];
+  }, [localSearchResults]);
 
   const handleGroupPickerChange = useCallback((items?: IPersonaProps[]): void => {
-    if (items !== undefined && items.length > 0) {
+    if (items && items.length > 0) {
       setSelectedGroup(items);
-      dispatch(updateSourcePart({
-        id: part.id,
-        query: ({
-          type: SourcePartType.GroupMembership,
-          source: items[0].id as string,
-          exclusionary: part.query.exclusionary
-        } as GroupMembershipSourcePart),
-        isValid: true,
-      }));
-    }
-    else {
+      onSourceChange(items[0].id ?? '', true);
+    } else {
       setSelectedGroup([]);
-      dispatch(updateSourcePart({
-        id: part.id,
-        query: ({
-          type: SourcePartType.GroupMembership,
-          source: '',
-          exclusionary: part.query.exclusionary
-        } as GroupMembershipSourcePart),
-        isValid: false
-      }));
+      onSourceChange('', false);
     }
-  }, [dispatch, part.id, part.query.exclusionary]);
+  }, [onSourceChange]);
 
   return (
     <div>
