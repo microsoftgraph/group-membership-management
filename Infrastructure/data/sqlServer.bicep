@@ -8,6 +8,9 @@ param solutionAbbreviation string
 @description('Enter an abbreviation for the environment.')
 param environmentAbbreviation string
 
+@description('Whether or not this environment is a production environment that needs to have authorization locks.')
+param isProduction bool
+
 @description('Resource location.')
 param location string
 
@@ -111,7 +114,7 @@ resource primaryDatabase 'Microsoft.Sql/servers/databases@2021-02-01-preview' = 
   }
 }
 
-resource SqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = {
+resource SqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = if(isProduction) {
   scope: primaryDatabase
   name: 'Do Not Delete'
   properties: {
@@ -175,7 +178,7 @@ resource readReplicaDb 'Microsoft.Sql/servers/databases@2021-11-01-preview' = {
   }
 }
 
-resource RSqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = {
+resource RSqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = if(isProduction) {
   scope: readReplicaDb
   name: 'Do Not Delete'
   properties: {

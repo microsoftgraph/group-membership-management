@@ -17,6 +17,9 @@ param computeResourceGroupClassification string = 'compute'
 @maxLength(6)
 param environmentAbbreviation string
 
+@description('Whether or not this environment is a production environment that needs to have authorization locks.')
+param isProduction bool = false
+
 @description('Subscription Id for the environment')
 param subscriptionId string = subscription().subscriptionId
 
@@ -324,9 +327,10 @@ param sqlAdministratorsGroupName string
 module sqlServer 'sqlServer.bicep' =  {
   name: 'sqlServerTemplate'
   params: {
-    environmentAbbreviation: environmentAbbreviation
-    location: location
     solutionAbbreviation: solutionAbbreviation
+    environmentAbbreviation: environmentAbbreviation
+    isProduction: isProduction
+    location: location
     sqlSkuName: sqlSkuName
     sqlSkuTier: sqlSkuTier
     sqlSkuFamily: sqlSkuFamily
