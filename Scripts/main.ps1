@@ -1,4 +1,4 @@
-function Set-UpdateQuery {
+function Update-GmmMigrationIfNeeded {
 	[CmdletBinding()]
 	param(
 		[Parameter(Mandatory=$True)]
@@ -34,4 +34,13 @@ function Set-UpdateQuery {
 		-Verbose
 
 	Write-Verbose "Set-UpdateDestination completed."
+
+	Write-Verbose "Set-UpdateSqlDatabaseNames starting..."
+	. ($scriptsDirectory + '\Scripts\Set-UpdateSqlDatabaseNames.ps1')
+	Set-UpdateSqlDatabaseNames	-SubscriptionName $SubscriptionName  `
+								-SolutionAbbreviation $SolutionAbbreviation `
+								-EnvironmentAbbreviation $EnvironmentAbbreviation `
+								-Verbose
+
+	Write-Verbose "Set-UpdateSqlDatabaseNames completed."
 }

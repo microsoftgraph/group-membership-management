@@ -1,4 +1,4 @@
-parameters:  
+parameters:
 - name: solutionAbbreviation
   type: string
 - name: environmentAbbreviation
@@ -59,10 +59,10 @@ steps:
     Inline: |
      . ${{ parameters.root }}/Scripts/main.ps1
 
-     Set-UpdateQuery -SubscriptionName "${{parameters.subscriptionName}}" `
-     -SolutionAbbreviation "${{parameters.solutionAbbreviation}}" `
-     -EnvironmentAbbreviation "${{parameters.environmentAbbreviation}}" `
-     -Verbose
+     Update-GmmMigrationIfNeeded -SubscriptionName "${{parameters.subscriptionName}}" `
+                                  -SolutionAbbreviation "${{parameters.solutionAbbreviation}}" `
+                                  -EnvironmentAbbreviation "${{parameters.environmentAbbreviation}}" `
+                                  -Verbose
     azurePowerShellVersion: LatestVersion
 
 - powershell: |
