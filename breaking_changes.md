@@ -1,4 +1,69 @@
 # Breaking Changes
+## 2/26/2024
+SyncJobs with SqlMembership source part need to be updated with a new JSON schema:
+
+Old format
+```
+[
+  {
+    "type": "SqlMembership",
+    "sources":
+     [
+       {
+         "ids": [1,2,3],
+         "depth": 2,
+         "filter": "filter statement"
+       }
+     ]
+  }
+]
+```
+
+New format
+```
+[
+  {
+    "type": "SqlMembership",
+    "source": {
+      "manager": {
+        "id": 1,
+        "depth": 2
+      },
+      "filter": "filter statement"
+    }
+  },
+  {
+    "type": "SqlMembership",
+    "source": {
+      "manager": {
+        "id": 2,
+        "depth": 2
+      },
+      "filter": "filter statement"
+    }
+  },
+  {
+    "type": "SqlMembership",
+    "source": {
+      "manager": {
+        "id": 3,
+        "depth": 2
+      },
+      "filter": "filter statement"
+    }
+  }
+]
+```
+
+With this new schema, only one manager id is supported per source part.
+
+A powershell script has been added to help convert all existing SqlMembership jobs to the new format.
+Script can be found here [Set-UpdateSqlMembershipQuery.ps1](
+https://github.com/microsoftgraph/group-membership-management/tree/main/Service/GroupMembershipManagement/Hosts/SqlMembershipObtainer/Scripts/Set-UpdateSqlMembershipQuery.ps1).
+
+    1. . ./Set-UpdateSqlMembershipQuery.ps1
+    2. Set-UpdateSqlMembershipQuery -ConnectionString "<sqlDatabaseConnectionString>"
+
 ## 8/1/2023
 SecurityGroup function has been renamed to GroupMembershipObtainer.
 SecurityGroup service bus topic has been renamed to GroupMembership.
