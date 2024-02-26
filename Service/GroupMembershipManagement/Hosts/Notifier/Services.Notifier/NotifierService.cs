@@ -187,7 +187,7 @@ namespace Services.Notifier
             await _mailRepository.SendMailAsync(message, job.RunId);
         }
 
-        private async Task<bool> IsNotificationDisabledAsync(Guid jobId, string contentTemplate)
+        public async Task<bool> IsNotificationDisabledAsync(Guid jobId, string contentTemplate)
         {
             var notificationType = await _notificationTypesRepository.GetNotificationTypeByNotificationTypeNameAsync(contentTemplate);
 
@@ -214,7 +214,7 @@ namespace Services.Notifier
             return await _jobNotificationRepository.IsNotificationDisabledForJobAsync(jobId, notificationType.Id);
         }
 
-        private async Task<AzureADGroup> ParseDestinationAsync(SyncJob syncJob)
+        public async Task<AzureADGroup> ParseDestinationAsync(SyncJob syncJob)
         {
             if (string.IsNullOrWhiteSpace(syncJob.Destination)) return null;
 

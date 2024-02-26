@@ -47,6 +47,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramewor
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlMembershipObtainer.Entities", "..\..\SqlMembershipObtainer.Common\SqlMembershipObtainer.Entities\SqlMembershipObtainer.Entities.csproj", "{4A9A81B8-E0BF-4668-B9AA-19973460BF43}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework.Contexts", "..\..\..\Repositories.EntityFramework.Contexts\Repositories.EntityFramework.Contexts.csproj", "{7C059CC4-6093-463B-981F-EF73D73E371A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -137,6 +139,10 @@ Global
 		{4A9A81B8-E0BF-4668-B9AA-19973460BF43}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4A9A81B8-E0BF-4668-B9AA-19973460BF43}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4A9A81B8-E0BF-4668-B9AA-19973460BF43}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7C059CC4-6093-463B-981F-EF73D73E371A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C059CC4-6093-463B-981F-EF73D73E371A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C059CC4-6093-463B-981F-EF73D73E371A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C059CC4-6093-463B-981F-EF73D73E371A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
