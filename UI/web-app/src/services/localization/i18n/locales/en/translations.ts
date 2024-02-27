@@ -63,25 +63,41 @@ export const strings: IStrings = {
     }
   },
   AdminConfig: {
+    labels: {
+      pageTitle: "Admin Configuration",
+      saveButton: "Save",
+      saveSuccess: "Saved successfully.",
+    },
+    HyperlinkSettings: {
       labels: {
-          pageTitle: "Admin Configuration",
-          hyperlinks: "Hyperlinks",
-          description: "Provide hyperlinks to the following organization specific information so that your users are empowered to leverage XMM to its fullest.",
-          saveButton: "Save",
-          saveSuccess:  "Saved successfully."
+        hyperlinks: "Hyperlinks",
+        description: "Provide hyperlinks to the following organization specific information so that your users are empowered to leverage XMM to its fullest.",
       },
       dashboardLink: {
-          title: "Dashboard",
-          description: "This is the link that shows on the top right corner of the dashboard. It takes you to an internal site that has all the details on how to leverage XMM at your organization. This could include FAQs, contact information, SLAs, etc.",
+        title: "Dashboard",
+        description: "This is the link that shows on the top right corner of the dashboard. It takes you to an internal site that has all the details on how to leverage XMM at your organization. This could include FAQs, contact information, SLAs, etc.",
       },
       outlookWarningLink: {
         title: "Destination Instructions",
         description: "This link appears when Outlook is involved in the group selected. It takes you to an internal site to make the proper settings when sending emails to the Outlook group.",
       },
       privacyPolicyLink: {
-          title: "Privacy Policy",
-          description: "This is the link that shows on the bottom left corner of the dashboard. It takes you to an internal site that has all the details on how XMM handles and stores user data.",
+        title: "Privacy Policy",
+        description: "This is the link that shows on the bottom left corner of the dashboard. It takes you to an internal site that has all the details on how XMM handles and stores user data.",
       },
+    },
+    CustomSourceSettings: {
+      labels: {
+        customSource: "Custom Source",
+        sourceDescription: "Assign a friendly name to the source of your organization's data so that group owners recognize it when defining the source of their membership destinations.",
+        sourceCustomLabelInput: "Custom Label",
+        listOfAttributes: "List of Attributes",
+        listOfAttributesDescription: "Assign a friendly name to each of the attributes in your custom source so that group owners recognize them when defining the source of their membership destinations.",
+        attributeColumn: "Attribute",
+        customLabelColumn: "Custom Label",
+        customLabelInputPlaceHolder: "Enter a custom label",
+      },
+    },
   },
   Authentication: {
     loginFailed: 'An unexpected error occurred during login.'

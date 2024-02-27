@@ -40,7 +40,50 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
             marginBottom: 24,
             display: 'flex',
             justifyContent: 'flex-end'
+        },
+        customLabelTextField: {
+            borderRadius: 4,
+            border: '1px solid',
+            borderColor: theme.palette.neutralQuaternary,
+            backgroud: theme.palette.white,
+            width: 150,
+        },
+        defaultColumnSpan: {
+            display: 'flex',
+            alignItems: 'center',
+            textAlign: 'center',
+            height: 30,
+            color: theme.palette.neutralPrimary
+        },
+        sourceNameTextFieldContainer: {
+            marginTop: 17,
+            padding: 4
+        },
+        sourceNameTextField: {
+            borderRadius: 4,
+            border: '1px solid',
+            borderColor: theme.palette.neutralQuaternary,
+            backgroud: theme.palette.white,
+            width: 266,
+        },
+        sourceNameDescriptionContainer: {
+            marginTop: 17
+        },
+        listOfAttributesTitleDescriptionContainer: {
+            marginTop: 17,
+            padding: '10px 0px 10px 0px'
+        },
+        detailsListContainer: {
+            marginTop: 4,
+            height: 700,
+            overflowY: 'auto'
+        },
+        descriptionText: {
+            fontWeight: 400,
+            color: theme.palette.black
         }
+
+
     };
 };
 

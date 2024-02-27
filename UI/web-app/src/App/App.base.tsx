@@ -17,9 +17,8 @@ import { selectLoggedIn } from '../store/account.slice';
 import { selectProfile } from '../store/profile.slice';
 import { setLanguage } from '../store/localization.api';
 import { fetchSettings } from '../store/settings.api';
-import { Setting } from '../models/Setting';
-import { selectAllSettings } from '../store/settings.slice';
 import { AppFooter } from '../components/AppFooter';
+import { fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes } from '../store/sqlMembershipSources.api';
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
@@ -34,30 +33,28 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
   const dispatch = useDispatch<AppDispatch>();
   const profile = useSelector(selectProfile);
   const loggedIn = useSelector(selectLoggedIn);
-  const settings: Setting[] | undefined = useSelector(selectAllSettings);
-  const [settingsFetchAttempted, setSettingsFetchAttempted] = useState(false);
-  const settingsLoaded: boolean = settings !== undefined;
-
+  
   // run once after load.
   useEffect(() => {
     if (!loggedIn) {
       dispatch(loginAsync());
     }
-    if (!settingsLoaded) {
-      dispatch(fetchSettings()).then(() => {
-        setSettingsFetchAttempted(true);
-      });
-    } else {
-      setSettingsFetchAttempted(true);
+  }, [dispatch, loggedIn]);
+
+  useEffect(() => {
+    if (loggedIn) {
+      dispatch(fetchSettings());
+      dispatch(fetchDefaultSqlMembershipSource());
+      dispatch(fetchDefaultSqlMembershipSourceAttributes());
     }
-  }, [dispatch, loggedIn, settingsLoaded]);
+  }, [dispatch, loggedIn]);
 
   // run if the localization context change or the user's preferred language changes.
   useEffect(() => {
     dispatch(setLanguage(profile?.userPreferredLanguage));
   }, [dispatch, profile?.userPreferredLanguage]);
 
-  if (loggedIn && (settingsLoaded || settingsFetchAttempted)) {
+  if (loggedIn) {
     return (
       <div className={classNames.root}>
         <AppHeader />

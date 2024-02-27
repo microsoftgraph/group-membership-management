@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { type IStyle, type IStyleFunctionOrObject, type ITheme } from '@fluentui/react';
+import { IProcessedStyleSet, type IStyle, type IStyleFunctionOrObject, type ITheme } from '@fluentui/react';
 import type React from 'react';
-import type { SettingName } from '../../models';
+import type { SettingKey, SqlMembershipAttribute, SqlMembershipSource } from '../../models';
 import type { IStrings } from '../../services/localization';
 
 export type AdminConfigStyles = {
@@ -13,6 +13,14 @@ export type AdminConfigStyles = {
   description: IStyle;
   tiles: IStyle;
   bottomContainer: IStyle;
+  sourceNameTextField: IStyle;
+  customLabelTextField: IStyle;
+  defaultColumnSpan: IStyle;
+  sourceNameDescriptionContainer: IStyle;
+  sourceNameTextFieldContainer: IStyle;
+  listOfAttributesTitleDescriptionContainer: IStyle;
+  detailsListContainer: IStyle;
+  descriptionText: IStyle;
 };
 
 export type AdminConfigStyleProps = {
@@ -34,7 +42,33 @@ export type AdminConfigProps = React.AllHTMLAttributes<HTMLDivElement> & {
 
 export type AdminConfigViewProps = AdminConfigProps & {
   isSaving: boolean;
-  onSave: (settings: { readonly [key in SettingName]: string }) => void;
-  settings: { readonly [key in SettingName]: string };
+  onSave: (settings: { readonly [key in SettingKey]: string }, sqlMembershipSource: SqlMembershipSource | undefined, sqlMembershipAttributes: SqlMembershipAttribute[] | undefined) => void;
+  settings: { readonly [key in SettingKey]: string };
+  sqlMembershipSource: SqlMembershipSource | undefined;
+  sqlMembershipSourceAttributes: SqlMembershipAttribute[] | undefined;
   strings: IStrings['AdminConfig'];
+};
+
+export type HyperlinkSettingsProps = {
+  classNames: IProcessedStyleSet<AdminConfigStyles>;
+  strings: IStrings['AdminConfig'];
+  settings: { readonly [key in SettingKey]: string };
+  setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
+  setHasValidationErrors: React.Dispatch<React.SetStateAction<boolean>>;
+};
+
+export type CustomSourceSettingsProps = {
+  classNames: IProcessedStyleSet<AdminConfigStyles>;
+  sqlMembershipSource: SqlMembershipSource | undefined;
+  sqlMembershipSourceAttributes: SqlMembershipAttribute[] | undefined;
+  strings: IStrings['AdminConfig'];
+  setNewSource: React.Dispatch<React.SetStateAction<SqlMembershipSource | undefined>>;
+  setNewAttributes: React.Dispatch<React.SetStateAction<SqlMembershipAttribute[] | undefined>>;
+};
+
+export type CustomLabelCellProps = {
+  value: string;
+  placeholder: string;
+  onChange: ((event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string | undefined) => void) | undefined;
+  className: string;
 };

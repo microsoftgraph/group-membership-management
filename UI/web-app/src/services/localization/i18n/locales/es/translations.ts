@@ -65,25 +65,41 @@ export const strings: IStrings = {
     }
   },
   AdminConfig: {
+    labels: {
+      pageTitle: "Configuración de Administrador",
+      saveButton: "Guardar",
+      saveSuccess:  "Guardado exitosamente."
+    },
+    HyperlinkSettings: {
       labels: {
-          pageTitle: "Configuración de Administrador",
-          hyperlinks: "Ligas",
-          description: "Incluye ligas con información específica sobre cómo funciona XMM en tu organización para que los usuarios puedan aprovecharlo al máximo.",
-          saveButton: "Guardar",
-          saveSuccess:  "Guardado exitosamente."
+        hyperlinks: "Ligas",
+        description: "Incluye ligas con información específica sobre cómo funciona XMM en tu organización para que los usuarios puedan aprovecharlo al máximo.",
       },
       dashboardLink: {
-          title: "Dashboard",
-          description: "Esta es la liga que se muestra en la esquina superior derecha del dashboard. Te lleva a un sitio interno que tiene todos los detalles sobre cómo aprovechar XMM en tu organización. Esto podría incluir preguntas frecuentes, información de contacto, SLAs, etc.",
+        title: "Dashboard",
+        description: "Esta es la liga que se muestra en la esquina superior derecha del dashboard. Te lleva a un sitio interno que tiene todos los detalles sobre cómo aprovechar XMM en tu organización. Esto podría incluir preguntas frecuentes, información de contacto, SLAs, etc.",
       },
       outlookWarningLink: {
         title: "Instrucciones de destino",
         description: "Esta es la liga que aparece cuando Outlook está involucrado en el grupo seleccionado. Te lleva a un sitio interno para hacer la configuración adecuada al enviar correos electrónicos al grupo de Outlook.",
       },
       privacyPolicyLink: {
-          title: "Política de Privacidad",
-          description: "Esta es la liga que se muestra en la esquina inferior izquierda del dashboard. Te lleva a un sitio interno que tiene todos los detalles sobre cómo XMM maneja y almacena los datos de los usuarios.",
+        title: "Política de Privacidad",
+        description: "Esta es la liga que se muestra en la esquina inferior izquierda del dashboard. Te lleva a un sitio interno que tiene todos los detalles sobre cómo XMM maneja y almacena los datos de los usuarios.",
       },
+    },
+    CustomSourceSettings: {
+      labels: {
+        customSource: "Origen Personalizado",
+        sourceDescription: "Asigne un nombre descriptivo al origen de los datos de su organización para que los propietarios de grupos lo reconozcan al definir el origen de sus destinos de pertenencia.",
+        sourceCustomLabelInput: "Nombre personalizado",
+        listOfAttributes: "Lista de Atributos",
+        listOfAttributesDescription: "Asigne un nombre descriptivo a cada uno de los atributos de el origen personalizado para que los propietarios de grupos los reconozcan al definir la fuente de sus destinos de pertenencia.",
+        attributeColumn: "Atributo",
+        customLabelColumn: "Nombre Personalizado",
+        customLabelInputPlaceHolder: "Entre un nombre personalizado",
+      },
+    },
   },
   Authentication: {
     loginFailed: 'Ocurrió un error inesperado durante el inicio de sesión.'

@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AdminConfigProps } from './AdminConfig.types';
 import {
@@ -10,13 +10,15 @@ import {
   selectOutlookWarningUrl,
   selectPrivacyPolicyUrl,
 } from '../../store/settings.slice';
-import { patchSetting, fetchSettings } from '../../store/settings.api';
+import { patchSetting } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
 import { AdminConfigView } from './AdminConfig.view';
-import { SettingName } from '../../models';
 import { useStrings } from '../../store/hooks';
 import { SettingKey } from '../../models/SettingKey';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
+import { selectSource, selectAttributes, selectIsSourceSaving, selectAreAttributesSaving, setSource, setAttributes } from '../../store/sqlMembershipSources.slice';
+import { SqlMembershipAttribute, SqlMembershipSource } from '../../models';
+import { patchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceCustomLabel } from '../../store/sqlMembershipSources.api';
 
 
 export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props: AdminConfigProps) => {
@@ -30,52 +32,83 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const dashboardUrl = useSelector(selectDashboardUrl);
   const outlookWarningUrl = useSelector(selectOutlookWarningUrl);
   const privacyPolicyUrl = useSelector(selectPrivacyPolicyUrl);
-  const isSaving = useSelector(selectIsSaving);
+  const sqlMembershipSource = useSelector(selectSource);
+  const sqlMembershipSourceAttributes = useSelector(selectAttributes);
+  const isSourceSaving = useSelector(selectIsSourceSaving);
+  const areAttributesSaving = useSelector(selectAreAttributesSaving);
+  const areSettingsSaving = useSelector(selectIsSaving);
   const strings = useStrings().AdminConfig;
 
+  const generateSettings = () => ({
+    [SettingKey.DashboardUrl]: dashboardUrl ?? '',
+    [SettingKey.OutlookWarningUrl]: outlookWarningUrl ?? '',
+    [SettingKey.PrivacyPolicyUrl]: privacyPolicyUrl ?? ''
+  });
+
+  const [settings, setSettings] = useState<{ readonly [key in SettingKey]: string }>(generateSettings());
+
+  useEffect(() => { 
+    setSettings(generateSettings())
+  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl]);
+
   // Create an event handler that should be called when the user clicks the save button.
-  const handleSave = (settings: { readonly [key in SettingName]: string }) => {
-    // should be saving all settings here, not one at a time.
-    new Promise(() => {
+  const handleSave = (newSettings: { readonly [key in SettingKey]: string }, newSqlMembershipSource: SqlMembershipSource | undefined, newSqlMembershipAttributes: SqlMembershipAttribute[] | undefined) => {
+   
+    // save new settings
+    if (JSON.stringify(newSettings) !== JSON.stringify(settings)) {
+
+      setSettings(newSettings);
+
       dispatch(
         patchSetting({
           settingKey: SettingKey.DashboardUrl,
-          settingName: SettingName.DashboardUrl,
-          settingValue: settings[SettingName.DashboardUrl],
+          settingValue: newSettings[SettingKey.DashboardUrl],
         })
       );
       dispatch(patchSetting({
         settingKey: SettingKey.OutlookWarningUrl,
-        settingName: SettingName.OutlookWarningUrl,
-        settingValue: settings[SettingName.OutlookWarningUrl]
+        settingValue: newSettings[SettingKey.OutlookWarningUrl]
       }));
       dispatch(
         patchSetting({
           settingKey: SettingKey.PrivacyPolicyUrl,
-          settingName: SettingName.PrivacyPolicyUrl,
-          settingValue: settings[SettingName.PrivacyPolicyUrl],
+          settingValue: newSettings[SettingKey.PrivacyPolicyUrl],
         })
       );
-    })
-    .then(() => {
-      dispatch(fetchSettings());
-    });
+    }
+
+    if (JSON.stringify(newSqlMembershipSource) !== JSON.stringify(sqlMembershipSource)) {
+      dispatch(
+        patchDefaultSqlMembershipSourceCustomLabel(newSqlMembershipSource?.customLabel ?? '')
+      );
+
+      dispatch(
+        setSource(newSqlMembershipSource)
+      );
+    }
+    
+    if (JSON.stringify(newSqlMembershipAttributes) !== JSON.stringify(sqlMembershipSourceAttributes)) {
+      dispatch(
+        patchDefaultSqlMembershipSourceAttributes(newSqlMembershipAttributes ?? [])
+      );
+
+      dispatch(
+        setAttributes(newSqlMembershipAttributes)
+      );
+    }
     // there is a Toast notification in fluent/react-components (v9) that we should be using for save notifications.
   };
 
   // render the view with the data from the store and the event handler
-
   return (
     <AdminConfigView
       {...props}
-      isSaving={isSaving}
-      settings={{
-        [SettingName.DashboardUrl]: dashboardUrl ?? '',
-        [SettingName.OutlookWarningUrl]: outlookWarningUrl ?? '',
-        [SettingName.PrivacyPolicyUrl]: privacyPolicyUrl ?? '',
-      }}
+      isSaving={areSettingsSaving || isSourceSaving || areAttributesSaving}
+      settings={settings}
       strings={strings}
       onSave={handleSave}
+      sqlMembershipSource={sqlMembershipSource}
+      sqlMembershipSourceAttributes={sqlMembershipSourceAttributes}
     />
   );
 };

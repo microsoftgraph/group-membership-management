@@ -62,22 +62,38 @@ export type IStrings = {
   AdminConfig: {
     labels: {
       pageTitle: string;
-      hyperlinks: string;
-      description: string;
       saveButton: string;
       saveSuccess: string;
     },
-    dashboardLink: {
-      title: string;
-      description: string;
+    HyperlinkSettings: {
+      labels: {
+        hyperlinks: string;
+        description: string;
+      },
+      dashboardLink: {
+        title: string;
+        description: string;
+      },
+      outlookWarningLink: {
+        title: string;
+        description: string;
+      }
+      privacyPolicyLink: {
+        title: string;
+        description: string;
+      },
     },
-    outlookWarningLink: {
-      title: string;
-      description: string;
-    }
-    privacyPolicyLink: {
-      title: string;
-      description: string;
+    CustomSourceSettings: {
+      labels: {
+        customSource: string;
+        sourceDescription: string;
+        sourceCustomLabelInput: string;
+        listOfAttributes: string;
+        listOfAttributesDescription: string;
+        attributeColumn: string;
+        customLabelColumn: string;
+        customLabelInputPlaceHolder: string;
+      },
     },
   },
   Authentication: {
