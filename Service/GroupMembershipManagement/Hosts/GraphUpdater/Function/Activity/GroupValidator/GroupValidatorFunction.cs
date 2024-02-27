@@ -3,19 +3,18 @@
 using Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
+using Models.Notifications;
 
 namespace Hosts.GraphUpdater
 {
     public class GroupValidatorFunction
     {
         private const int NumberOfGraphRetries = 5;
-        private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
         private readonly ILoggingRepository _loggingRepository;
         private readonly IGraphUpdaterService _graphUpdaterService;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
@@ -46,10 +45,10 @@ namespace Hosts.GraphUpdater
                 var syncJob = await _graphUpdaterService.GetSyncJobAsync(request.JobId);
                 if (syncJob != null)
                     await _graphUpdaterService.SendEmailAsync(
-                        syncJob.Requestor,
-                        SyncDisabledNoGroupEmailBody,
-                        new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses },
-						syncJob, null, null, null);
+                        syncJob,
+                        NotificationMessageType.DestinationGroupNotFound,
+                        new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses }
+						);
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);

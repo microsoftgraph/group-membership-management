@@ -22,6 +22,7 @@
     "membershipContainerName": "",
     "actionableEmailProviderId": "", 
     "serviceBusConnectionString": "",
-    "serviceBusMembershipUpdatersTopic": ""
+    "serviceBusMembershipUpdatersTopic": "",
+    "serviceBusNotificationsQueue": ""
   }
 }

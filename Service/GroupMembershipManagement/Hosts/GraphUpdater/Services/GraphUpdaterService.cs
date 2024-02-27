@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 using Microsoft.ApplicationInsights;
 using Models;
-using Polly;
+using Models.ServiceBus;
+using Models.Notifications;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -10,9 +11,9 @@ using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Net.Sockets;
 using System.Threading.Tasks;
 using Metric = Services.Entities.Metric;
+using System.Text.Json;
 
 namespace Services
 {
@@ -28,7 +29,8 @@ namespace Services
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
 		private readonly INotificationTypesRepository _notificationTypesRepository;
 		private readonly IJobNotificationsRepository _jobNotificationRepository;
-		private Guid _runId;
+        private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
+        private Guid _runId;
         public Guid RunId
         {
             get { return _runId; }
@@ -47,7 +49,8 @@ namespace Services
                 IEmailSenderRecipient emailSenderAndRecipients,
                 IDatabaseSyncJobsRepository syncJobRepository,
 				INotificationTypesRepository notificationTypesRepository,
-			    IJobNotificationsRepository jobNotificationRepository)
+			    IJobNotificationsRepository jobNotificationRepository,
+                IServiceBusQueueRepository serviceBusQueueRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
@@ -57,7 +60,8 @@ namespace Services
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
 			_jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
 			_notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
-		}
+            _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
+        }
 
         public async Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId)
         {
@@ -89,58 +93,28 @@ namespace Services
             return await _graphGroupRepository.GroupExists(groupId);
         }
 
-        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, SyncJob syncJob, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)
+        public async Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters)
         {
-			bool isNotificationDisabled = await IsNotificationDisabledAsync(syncJob, contentTemplate);
-
-			if (isNotificationDisabled)
-			{
-				await _loggingRepository.LogMessageAsync(new LogMessage
-				{
-					RunId = syncJob.RunId,
-					Message = $"Notification template '{contentTemplate}' is disabled for job {syncJob.Id} with destination group {syncJob.TargetOfficeGroupId}."
-				});
-				return;
-			}
-			await _mailRepository.SendMailAsync(new EmailMessage
+			 var messageContent = new Dictionary<string, Object>
             {
-                Subject = emailSubject ?? EmailSubject,
-                Content = contentTemplate,
-                SenderAddress = _emailSenderAndRecipients.SenderAddress,
-                SenderPassword = _emailSenderAndRecipients.SenderPassword,
-                ToEmailAddresses = toEmail,
-                CcEmailAddresses = ccEmail,
-                AdditionalContentParams = additionalContentParams,
-                AdditionalSubjectParams = additionalSubjectParams
-            }, syncJob.RunId);
+                { "SyncJob", job },
+                { "AdditionalContentParameters", additionalContentParameters }
+            };
+            var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(messageContent));
+            var message = new ServiceBusMessage
+            {
+                MessageId = $"{job.Id}_{job.RunId}_{notificationType}",
+                Body = body
+            };
+            message.ApplicationProperties.Add("MessageType", notificationType.ToString());
+            await _serviceBusQueueRepository.SendMessageAsync(message);
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                RunId = job.RunId,
+                Message = $"Sent message {message.MessageId} to service bus notifications queue "
+
+            });
         }
-		public async Task<bool> IsNotificationDisabledAsync(SyncJob syncJob, string notificationTypeName)
-		{
-			var notificationType = await _notificationTypesRepository.GetNotificationTypeByNotificationTypeNameAsync(notificationTypeName);
-
-			if (notificationType == null)
-			{
-				await _loggingRepository.LogMessageAsync(new LogMessage
-				{
-					RunId = syncJob.RunId,
-					Message = $"No notification type ID found for notification type name '{notificationTypeName}'."
-				});
-				return false;
-			}
-
-			if (notificationType.Disabled)
-			{
-				await _loggingRepository.LogMessageAsync(new LogMessage
-				{
-					RunId = syncJob.RunId,
-					Message = $"Notifications of type '{notificationTypeName}' have been globally disabled."
-				});
-				return true;
-			}
-
-			return await _jobNotificationRepository.IsNotificationDisabledForJobAsync(syncJob.Id, notificationType.Id);
-		}
-
 		public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set job status to {status}.", RunId = runId });

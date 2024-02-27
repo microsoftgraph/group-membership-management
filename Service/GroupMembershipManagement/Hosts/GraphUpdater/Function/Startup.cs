@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using GraphUpdater.Entities;
@@ -13,6 +14,7 @@ using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
+using Repositories.ServiceBusQueue;
 using Services;
 using Services.Contracts;
 
@@ -58,6 +60,14 @@ namespace Hosts.GraphUpdater
             {
                 var configuration = s.GetService<IConfiguration>();
                 return new GraphUpdaterBatchSize { BatchSize = GetIntSetting(configuration, "GraphUpdater:UpdateBatchSize", 100) };
+            })
+            .AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
+            {
+                var configuration = services.GetRequiredService<IConfiguration>();
+                var notificationsQueue = configuration["serviceBusNotificationsQueue"];
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(notificationsQueue);
+                return new ServiceBusQueueRepository(sender);
             });
         }
 

@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Identity.Client;
 using Models;
+using Models.Notifications;
 using Models.ServiceBus;
 using Newtonsoft.Json;
 using Repositories.Contracts;
@@ -26,7 +27,6 @@ namespace Hosts.GraphUpdater
 {
     public class OrchestratorFunction
     {
-        private const string SyncCompletedEmailBody = "SyncCompletedEmailBody";
         private readonly TelemetryClient _telemetryClient;
         private readonly IGraphUpdaterService _graphUpdaterService = null;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
@@ -192,11 +192,9 @@ namespace Hosts.GraphUpdater
                     await context.CallActivityAsync(nameof(EmailSenderFunction),
                                                     new EmailSenderRequest
                                                     {
-                                                        ToEmail = ownerEmails,
-                                                        CcEmail = _emailSenderAndRecipients.SyncCompletedCCAddresses,
-                                                        ContentTemplate = SyncCompletedEmailBody,
-                                                        AdditionalContentParams = additionalContent,
-                                                        SyncJob = syncJob
+                                                        SyncJob = syncJob,
+                                                        NotificationType = NotificationMessageType.SyncCompletedNotification,
+                                                        AdditionalContentParams = additionalContent
                                                     });
                 }
 
