@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace Services
 {
@@ -127,7 +128,7 @@ namespace Services
                 { "SyncJob", job },
                 { "AdditionalContentParameters", additionalContentParameters }
             };
-            var body = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(messageContent));
+            var body = System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(messageContent));
             var message = new ServiceBusMessage
             {
                 MessageId = $"{job.Id}_{job.RunId}_{notificationType}",

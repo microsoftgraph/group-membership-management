@@ -15,7 +15,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using System.Data.SqlTypes;
-using Newtonsoft.Json;
 
 namespace Services
 {
@@ -327,7 +326,8 @@ namespace Services
                 { "SyncJob", job },
                 { "SendDisableJobNotification", sendDisableJobNotification }
             };
-            var body = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(messageContent));
+            var body = System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(messageContent));
+
             var message = new ServiceBusMessage
             {
                 MessageId = $"{job.Id}_{job.RunId}_{NotificationMessageType.ThresholdNotification}",
