@@ -87,6 +87,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
                 <div className={classNames.divContainer}>
                     <label className={classNames.leftLabelMessage}>{strings.JobsList.PagingBar.page}</label>
                     <TextField
+                        ariaLabel={strings.JobsList.PagingBar.pageNumberAriaLabel}
                         style={{ width: 55 }}
                         value={pageNumber.toString()}
                         onChange={onPageNumberChanged}
@@ -104,6 +105,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
             <div className={classNames.divContainer}>
                 <label className={classNames.leftLabelMessage}>{strings.JobsList.PagingBar.display}</label>
                 <Dropdown
+                    title={strings.JobsList.PagingBar.pageSizeAriaLabel}
                     options={pageSizeOptions}
                     defaultSelectedKey={pageSize}
                     onChange={onPageSizeChanged}

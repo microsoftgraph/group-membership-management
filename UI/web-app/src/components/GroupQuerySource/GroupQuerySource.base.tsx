@@ -103,6 +103,7 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
           loadingText: strings.Components.GroupQuerySource.loadingText,
         }}
         key={'normal'}
+        aria-label={strings.Components.GroupQuerySource.searchGroupName}
         selectionAriaLabel={strings.Components.GroupQuerySource.selectionAriaLabel}
         removeButtonAriaLabel={strings.Components.GroupQuerySource.removeButtonAriaLabel}
         resolveDelay={300}

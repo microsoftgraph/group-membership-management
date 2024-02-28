@@ -115,6 +115,7 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
     <div className={classNames.root}>
       {strings.ManageMembership.labels.query}
       <TextField
+        title={strings.ManageMembership.labels.query}
         styles={{ root: classNames.textField, fieldGroup: classNames.textFieldGroup }}
         multiline
         rows={25}

@@ -11,9 +11,6 @@ export const strings: IStrings = {
   addOwner403Message: 'You do not have permission to complete this operation.',
   addOwnerErrorMessage:
     'We are having trouble adding GMM as the owner. Please try again later.',
-  bannerMessageStart: "Need help? ",
-  clickHere: "Click here",
-  bannerMessageEnd: " to learn more about how Membership Management works in your organization.",
   okButton: 'OK',
   groupIdHeader: 'Enter Group ID',
   groupIdPlaceHolder: 'Group ID',
@@ -39,6 +36,16 @@ export const strings: IStrings = {
     invalidInputErrorMessage: "Invalid input. Please enter only numbers."
   },
   Components: {
+    AppHeader: {
+      title: 'Group Membership Management',
+      settings: 'Settings',
+    },
+    Banner: {
+      bannerMessageStart: "Need help? ",
+      clickHere: "Click here",
+      bannerMessageEnd: " to learn more about how Membership Management works in your organization.",
+      expandBanner: "Expand banner",
+    },
     HyperlinkSetting: {
       address: "Address",
       addHyperlink: "Add hyperlink",
@@ -167,6 +174,8 @@ export const strings: IStrings = {
       of: 'of',
       display: 'Display',
       items: 'Items per page',
+      pageNumberAriaLabel: 'Page number',
+      pageSizeAriaLabel: 'Items per page',
     },
     JobsListFilter: {
       filters: {
@@ -279,6 +288,7 @@ export const strings: IStrings = {
       HR: 'HR',
       groupMembership: 'Group Membership',
       groupOwnership: 'Group Ownership',
+      clickHere: 'Click here',
     }
   },
   delete: 'Delete',

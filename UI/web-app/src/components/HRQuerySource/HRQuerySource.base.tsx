@@ -201,10 +201,11 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
             <div className={classNames.labelContainer}>
               <Label>{strings.HROnboarding.orgLeader}</Label>
               <TooltipHost content={strings.HROnboarding.orgLeaderInfo} id="toolTipOrgLeaderId" calloutProps={{ gapSpace: 0 }}>
-                <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipOrgLeaderId" />
+                <IconButton title={strings.HROnboarding.orgLeaderInfo} iconProps={{ iconName: "Info" }} aria-describedby="toolTipOrgLeaderId" />
               </TooltipHost>
             </div>
             <NormalPeoplePicker
+              aria-label={strings.HROnboarding.orgLeaderInfo}
               onResolveSuggestions={getPickerSuggestions}
               key={'normal'}
               resolveDelay={300}
@@ -277,7 +278,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       <><div className={classNames.labelContainer}>
       <Label>{strings.HROnboarding.filter}</Label>
       <TooltipHost content={strings.HROnboarding.filterInfo} id="toolTipFilterId" calloutProps={{ gapSpace: 0 }}>
-        <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipFilterId" />
+        <IconButton title={strings.HROnboarding.filterInfo} iconProps={{ iconName: "Info" }} aria-describedby="toolTipFilterId" />
       </TooltipHost>
       </div>
       <TextField

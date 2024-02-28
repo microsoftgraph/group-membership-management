@@ -79,6 +79,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
       </a>
       <div className={classNames.settingsContainer}>
         <IconButton
+          title={strings.Components.AppHeader.settings}
           iconProps={{ iconName: 'settings' }}
           className={classNames.settingsIcon}
           styles={buttonStyles}

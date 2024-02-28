@@ -8,9 +8,6 @@ export type IStrings = {
   addOwner400Message: string;
   addOwner403Message: string;
   addOwnerErrorMessage: string;
-  bannerMessageStart: string;
-  clickHere: string;
-  bannerMessageEnd: string;
   okButton: string;
   groupIdHeader: string;
   groupIdPlaceHolder: string;
@@ -36,6 +33,16 @@ export type IStrings = {
     invalidInputErrorMessage: string;
   },
   Components: {
+    AppHeader: {
+      title: string;
+      settings: string;
+    },
+    Banner: {
+      bannerMessageStart: string;
+      clickHere: string;
+      bannerMessageEnd: string;
+      expandBanner: string;
+    },
     HyperlinkSetting: {
       address: string;
       addHyperlink: string;
@@ -162,6 +169,8 @@ export type IStrings = {
       of: string;
       display: string;
       items: string;
+      pageNumberAriaLabel: string;
+      pageSizeAriaLabel: string;
     };
     JobsListFilter: {
       filters: {
@@ -274,6 +283,7 @@ export type IStrings = {
       HR: string;
       groupMembership: string;
       groupOwnership: string;
+      clickHere: string;
     }
   };
   delete: string;

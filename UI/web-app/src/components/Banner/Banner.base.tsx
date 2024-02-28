@@ -61,22 +61,23 @@ export const BannerBase: React.FunctionComponent<IBannerProps> = (props) => {
     <div className={classNames.root}>
       {!collapsed && (
         <div className={classNames.messageContainer}>
-          <InfoIcon className={classNames.icon} />
+          <InfoIcon title={strings.needHelp} className={classNames.icon} />
           <div className={classNames.message}>
-            {strings.bannerMessageStart}
+            {strings.Components.Banner.bannerMessageStart}
             <Link
               href={dashboardUrl}
               onClick={(event) => openLink(event)}
               underline={true}
               className={classNames.link}>
-              {strings.clickHere}
+              {strings.Components.Banner.clickHere}
             </Link>
-            {strings.bannerMessageEnd}
+            {strings.Components.Banner.bannerMessageEnd}
           </div>
         </div>
       )}
       <IconButton
         {...buttonProps}
+        title={strings.Components.Banner.expandBanner}
         className={classNames.toggle}
         styles={buttonStyles}
         onClick={handleToggle}

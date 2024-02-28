@@ -11,10 +11,6 @@ export const strings: IStrings = {
   addOwner403Message: 'No tiene permiso para completar esta operación.',
   addOwnerErrorMessage:
     'Estamos teniendo problemas para agregar GMM como propietario. Inténtalo de nuevo más tarde.',
-  bannerMessageStart:
-    '¿Necesitas ayuda? Haz click aquí para aprender más sobre como Membership Management funciona en tu organización.',
-  clickHere: 'Haz click aquí',
-  bannerMessageEnd: ' para aprender más sobre como Membership Management funciona en tu organización.',
   okButton: 'Aceptar',
   groupIdHeader: 'Introduzca el ID de grupo',
   groupIdPlaceHolder: 'ID de grupo',
@@ -41,6 +37,17 @@ export const strings: IStrings = {
     invalidInputErrorMessage: "Entrada inválida. Por favor ingrese solo números."
   },
   Components: {
+    AppHeader: {
+      title: 'Membership Management',
+      settings: 'Configuración'
+    },
+    Banner:{
+      bannerMessageStart:
+      '¿Necesitas ayuda? Haz click aquí para aprender más sobre como Membership Management funciona en tu organización.',
+      clickHere: 'Haz click aquí',
+      bannerMessageEnd: ' para aprender más sobre como Membership Management funciona en tu organización.',
+      expandBanner: 'Expandir banner'
+    },
     HyperlinkSetting: {
       address: "URL",
       addHyperlink: "Agregar URL",
@@ -170,6 +177,8 @@ export const strings: IStrings = {
       of: 'de',
       display: 'Mostrando',
       items: 'Elementos por página',
+      pageNumberAriaLabel: 'Número de página',
+      pageSizeAriaLabel: 'Tamaño de página'
     },
     JobsListFilter: {
       filters: {
@@ -283,6 +292,7 @@ export const strings: IStrings = {
       HR: 'RH',
       groupMembership: 'Membresía de grupo',
       groupOwnership: 'Propietario de grupo',
+      clickHere: 'Haz click aquí',
     }
   },
   delete: 'Eliminar',

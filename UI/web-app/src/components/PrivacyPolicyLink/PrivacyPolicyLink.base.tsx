@@ -29,7 +29,7 @@ export const PrivacyPolicyLinkBase: React.FunctionComponent<IPrivacyPolicyLinkPr
 
   return !privacyPolicyUrl || privacyPolicyUrl === '' ? null : (
     <div className={classNames.root}>
-      <Link href={privacyPolicyUrl} target='_blank'>{strings.privacyPolicy}</Link>
+      <Link className={classNames.link} href={privacyPolicyUrl} target='_blank'>{strings.privacyPolicy}</Link>
     </div>
   );
 };

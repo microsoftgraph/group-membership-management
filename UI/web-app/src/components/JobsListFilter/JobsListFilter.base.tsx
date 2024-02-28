@@ -338,6 +338,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
                     loadingText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.loadingText,
                   }}
                   key={'normal'}
+                  aria-label={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.label}
                   selectionAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.selectionAriaLabel}
                   removeButtonAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.removeButtonAriaLabel}
                   resolveDelay={300}

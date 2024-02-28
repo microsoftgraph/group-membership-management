@@ -180,6 +180,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
               }}
             />
             <Dropdown
+              title={strings.ManageMembership.labels.increase}
               styles={{ title: classNames.dropdownTitle, root: showIncreaseDropdown ? {} : { visibility: 'hidden' } }}
               className={classNames.thresholdDropdown}
               options={increaseOptions}
@@ -206,6 +207,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
               }}
             />
             <Dropdown
+              title={strings.ManageMembership.labels.decrease}
               styles={{ title: classNames.dropdownTitle, root: showDecreaseDropdown ? {} : { visibility: 'hidden' } }}
               className={classNames.thresholdDropdown}
               options={decreaseOptions}

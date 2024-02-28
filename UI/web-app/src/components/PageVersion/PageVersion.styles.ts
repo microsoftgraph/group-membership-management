@@ -12,7 +12,7 @@ export const getStyles = (props: IPageVersionStyleProps): IPageVersionStyles => 
   return {
     root: [{
       padding: '20px 36px',
-      color: theme.palette.neutralSecondaryAlt,
+      color: theme.palette.neutralSecondary,
       fontSize: 12,
       fontWeight: '400'
     }, className],

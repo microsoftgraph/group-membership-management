@@ -6,6 +6,7 @@ import type React from 'react';
 
 export interface IPrivacyPolicyLinkStyles {
   root: IStyle;
+  link: IStyle;
 }
 
 export interface IPrivacyPolicyLinkStyleProps {

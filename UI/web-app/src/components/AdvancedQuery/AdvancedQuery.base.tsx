@@ -23,7 +23,7 @@ import {
   setIsAdvancedQueryValid,
 } from '../../store/manageMembership.slice';
 import { HRSourcePart } from '../../models/HRSourcePart';
-import { GroupSourcePart } from '../../models/GroupSourcePart';
+import { GroupMembershipSourcePart } from '../../models/GroupMembershipSourcePart';
 import { GroupOwnershipSourcePart } from '../../models/GroupOwnershipSourcePart';
 
 const getClassNames = classNamesFunction<
@@ -72,7 +72,7 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
 
   useEffect(() => {
     let jsonArray = JSON.parse(query);
-    let modifiedArray = jsonArray.map((obj: HRSourcePart | GroupSourcePart | GroupOwnershipSourcePart ) => {
+    let modifiedArray = jsonArray.map((obj: HRSourcePart | GroupMembershipSourcePart | GroupOwnershipSourcePart ) => {
       if (obj.type == "SqlMembership") {
         let { source, ...rest } = obj;
         let modifiedObj = {
@@ -148,6 +148,7 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
     <div className={classNames.root}>
       {strings.ManageMembership.labels.query}
       <TextField
+        title={strings.ManageMembership.labels.query}
         styles={{ root: classNames.textField, fieldGroup: classNames.textFieldGroup }}
         multiline
         rows={25}

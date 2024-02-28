@@ -77,7 +77,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const addGroupOwnerLink: string = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/${selectedDestination?.id}/menuId/`
   const ownershipWarning = onboardingStatus === OnboardingStatus.NotReadyForOnboarding ? (
     <div className={classNames.ownershipWarning}>
-      {strings.ManageMembership.labels.ownershipWarning} <a href={addGroupOwnerLink}>{strings.clickHere}</a>.
+      {strings.ManageMembership.labels.ownershipWarning} <a href={addGroupOwnerLink}>{strings.ManageMembership.labels.clickHere}</a>.
     </div>
   ) : null;
 
@@ -148,6 +148,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                 loadingText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.loadingText,
               }}
               key={'normal'}
+              aria-label={strings.ManageMembership.labels.searchDestination}
               selectionAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.selectionAriaLabel}
               removeButtonAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.removeButtonAriaLabel}
               resolveDelay={300}
