@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 using Microsoft.Graph.Models;
 using Models;
+using Models.Notifications;
+using Models.ServiceBus;
 using Polly;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -9,22 +11,23 @@ using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Repositories.Mocks
 {
     public class MockGraphUpdaterService : IGraphUpdaterService
     {
-        IMailRepository _mailRepository;
+        IServiceBusQueueRepository _serviceBusQueueRepository;
 
         public Dictionary<Guid, Group> Groups { get; set; } = new Dictionary<Guid, Group>();
         public Dictionary<Guid, List<AzureADUser>> GroupsToUsers { get; set; } = new Dictionary<Guid, List<AzureADUser>>();
         public List<SyncJob> Jobs { get; set; } = new List<SyncJob>();
         public Guid RunId { get; set; }
 
-        public MockGraphUpdaterService(IMailRepository mailRepository)
+        public MockGraphUpdaterService(IServiceBusQueueRepository serviceBusQueueRepository)
         {
-            _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
+            _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
         }
 
         public Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId)
@@ -54,18 +57,22 @@ namespace Repositories.Mocks
             return await Task.FromResult(groupExists);
         }
 
-        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, SyncJob syncJob, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)
+        public async Task SendEmailAsync( SyncJob syncJob, NotificationMessageType notificationType, string[] additionalContentParams)
         {
-            var message = new EmailMessage
+            var messageContent = new Dictionary<string, Object>
             {
-                AdditionalContentParams = additionalContentParams,
-                CcEmailAddresses = ccEmail,
-                Content = contentTemplate,
-                ToEmailAddresses = toEmail,
-                AdditionalSubjectParams = additionalSubjectParams
+                { "SyncJob", syncJob },
+                { "AdditionalContentParameters", additionalContentParams }
             };
-
-            await _mailRepository.SendMailAsync(message, syncJob.RunId);
+            var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(messageContent));
+            var message = new ServiceBusMessage
+            {
+                MessageId = $"{syncJob.Id}_{syncJob.RunId}_{notificationType}",
+                Body = body
+            };
+            message.ApplicationProperties.Add("MessageType", notificationType.ToString());
+            await _serviceBusQueueRepository.SendMessageAsync(message);
+    
         }
 
         public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)

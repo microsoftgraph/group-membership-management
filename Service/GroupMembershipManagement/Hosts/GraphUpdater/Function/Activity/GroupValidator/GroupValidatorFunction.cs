@@ -46,7 +46,7 @@ namespace Hosts.GraphUpdater
                 if (syncJob != null)
                     await _graphUpdaterService.SendEmailAsync(
                         syncJob,
-                        NotificationMessageType.DestinationGroupNotFound,
+                        NotificationMessageType.DestinationNotExistNotification,
                         new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses }
 						);
             }

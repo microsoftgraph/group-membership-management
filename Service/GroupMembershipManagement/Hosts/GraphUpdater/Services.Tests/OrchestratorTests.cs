@@ -4,15 +4,19 @@ using DIConcreteTypes;
 using Hosts.GraphUpdater;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Azure.Documents.SystemFunctions;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph.Models;
 using Microsoft.Identity.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.Notifications;
 using Models.ServiceBus;
 using Moq;
 using Newtonsoft.Json;
+using Repositories.Contracts;
 using Repositories.Mocks;
+using Repositories.ServiceBusQueue;
 using Services.Contracts;
 using Services.Tests.Mocks;
 using System;
@@ -21,6 +25,7 @@ using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using ExecutionContext = Microsoft.Azure.WebJobs.ExecutionContext;
 
@@ -41,7 +46,7 @@ namespace Services.Tests
         {
             MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
-            MockMailRepository mockMailRepo;
+            Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
             EmailSenderRecipient mailSenders;
@@ -56,8 +61,8 @@ namespace Services.Tests
             blobStorageRepository = new MockBlobStorageRepository();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            mockMailRepo = new MockMailRepository();
-            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
+            mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
@@ -137,7 +142,7 @@ namespace Services.Tests
             MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
             MockDeltaCachingConfig mockDeltaCachingConfig;
-            MockMailRepository mockMailRepo;
+            Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
             EmailSenderRecipient mailSenders;
@@ -150,8 +155,8 @@ namespace Services.Tests
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            mockMailRepo = new MockMailRepository();
-            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
+            mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
@@ -249,7 +254,7 @@ namespace Services.Tests
             MockDeltaCachingConfig mockDeltaCachingConfig;
             MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
-            MockMailRepository mockMailRepo;
+            Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
             EmailSenderRecipient mailSenders;
@@ -261,8 +266,8 @@ namespace Services.Tests
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            mockMailRepo = new MockMailRepository();
-            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
+            mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
@@ -357,9 +362,11 @@ namespace Services.Tests
             Assert.IsNotNull(mockLoggingRepo.SyncJobProperties);
             Assert.AreEqual(logProperties["RunId"], syncJob.RunId.ToString());
             Assert.AreEqual(logProperties["Id"], syncJob.Id.ToString());
-            Assert.AreEqual(1, mockMailRepo.SentEmails.Count);
-            Assert.AreEqual(7, mockMailRepo.SentEmails[0].AdditionalContentParams.Length);
-            Assert.AreEqual(ownerEmails, mockMailRepo.SentEmails[0].ToEmailAddresses);
+
+            mockServiceBusQueueRepository.Verify(x => x.SendMessageAsync(It.Is<ServiceBusMessage>(msg =>
+                   msg.ApplicationProperties.ContainsKey("MessageType") &&
+                   msg.ApplicationProperties["MessageType"].ToString() == NotificationMessageType.SyncCompletedNotification.ToString())),
+                   Times.Exactly(1));
 
             context.Verify(x => x.CallSubOrchestratorAsync<GroupUpdaterSubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()), Times.Exactly(2));
         }
@@ -369,7 +376,7 @@ namespace Services.Tests
         {
             MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
-            MockMailRepository mockMailRepo;
+            Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
             EmailSenderRecipient mailSenders;
@@ -384,8 +391,8 @@ namespace Services.Tests
             blobStorageRepository = new MockBlobStorageRepository();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            mockMailRepo = new MockMailRepository();
-            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
+            mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
@@ -467,7 +474,7 @@ namespace Services.Tests
         {
             MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
-            MockMailRepository mockMailRepo;
+            Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
             EmailSenderRecipient mailSenders;
@@ -482,8 +489,8 @@ namespace Services.Tests
             blobStorageRepository = new MockBlobStorageRepository();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            mockMailRepo = new MockMailRepository();
-            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
+            mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
@@ -565,7 +572,7 @@ namespace Services.Tests
         {
             MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
-            MockMailRepository mockMailRepo;
+            Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
             EmailSenderRecipient mailSenders;
@@ -580,8 +587,8 @@ namespace Services.Tests
             blobStorageRepository = new MockBlobStorageRepository();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            mockMailRepo = new MockMailRepository();
-            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
+            mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
@@ -624,7 +631,7 @@ namespace Services.Tests
         {
             MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
-            MockMailRepository mockMailRepo;
+            Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
 
@@ -640,8 +647,8 @@ namespace Services.Tests
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            mockMailRepo = new MockMailRepository();
-            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
+            mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
@@ -705,7 +712,7 @@ namespace Services.Tests
         {
             MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
-            MockMailRepository mockMailRepo;
+            Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
 
@@ -720,8 +727,8 @@ namespace Services.Tests
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            mockMailRepo = new MockMailRepository();
-            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
+            mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
@@ -792,7 +799,7 @@ namespace Services.Tests
             MockDeltaCachingConfig mockDeltaCachingConfig;
             MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
-            MockMailRepository mockMailRepo;
+            Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
             EmailSenderRecipient mailSenders;
@@ -804,8 +811,8 @@ namespace Services.Tests
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            mockMailRepo = new MockMailRepository();
-            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
+            mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
@@ -910,7 +917,7 @@ namespace Services.Tests
         {
             MockLoggingRepository mockLoggingRepo;
             TelemetryClient mockTelemetryClient;
-            MockMailRepository mockMailRepo;
+            Mock<IServiceBusQueueRepository> mockServiceBusQueueRepository;
             MockGraphUpdaterService mockGraphUpdaterService;
             DryRunValue dryRun;
             EmailSenderRecipient mailSenders;
@@ -924,8 +931,8 @@ namespace Services.Tests
             mockDeltaCachingConfig = new MockDeltaCachingConfig();
             mockLoggingRepo = new MockLoggingRepository();
             mockTelemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            mockMailRepo = new MockMailRepository();
-            mockGraphUpdaterService = new MockGraphUpdaterService(mockMailRepo);
+            mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
             mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
