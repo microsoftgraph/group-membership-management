@@ -13,5 +13,6 @@ namespace Services.Contracts
         public const string DisabledNotificationSubject = "DisabledJobEmailSubject";
         public const string NotOwnerContent = "SyncDisabledNoOwnerEmailBody";
         public const string DestinationNotExistContent = "SyncDisabledNoGroupEmailBody";
+        public const string SyncCompletedContent = "SyncCompletedEmailBody";
     }
 }
