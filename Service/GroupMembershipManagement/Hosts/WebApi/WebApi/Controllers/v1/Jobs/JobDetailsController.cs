@@ -41,7 +41,9 @@ namespace WebApi.Controllers.v1.Jobs
             };
         }
 
-        [Authorize()]
+        [Authorize(Policy = Models.Roles.TENANT_ADMINISTRATOR)]
+        [Authorize(Policy = Models.Roles.TENANT_SUBMISSION_REVIEWER)]
+        [Authorize(Policy = Models.Roles.TENANT_JOB_EDITOR)]
         [HttpPatch("{syncJobId}")]
         [Consumes("application/json-patch+json")]
         public async Task<ActionResult> UpdateSyncJobAsync(Guid syncJobId, [FromBody] JsonPatchDocument<SyncJobPatch> patchDocument)
@@ -50,7 +52,9 @@ namespace WebApi.Controllers.v1.Jobs
             var claimsIdentity = User.Identity as ClaimsIdentity;
             var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
 
-            var isAllowed = User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR) || User.IsInRole(Models.Roles.TENANT_SUBMISSION_REVIEWER);
+            // This is a double check right now, keeping this in place for future use when the api call is open up to all users
+            var isAllowed = User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR) || User.IsInRole(Models.Roles.TENANT_SUBMISSION_REVIEWER) || User.IsInRole(Models.Roles.TENANT_JOB_EDITOR);
+            
             var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchDocument));
 
             return response.StatusCode switch

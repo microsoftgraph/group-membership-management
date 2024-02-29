@@ -33,6 +33,7 @@ using Repositories.NotificationsRepository;
 using Repositories.SqlMembershipRepository;
 using Services.Contracts.Notifications;
 using Services.Notifications;
+using System.Security.Claims;
 using WebApi.Configuration;
 using WebApi.Models;
 
@@ -101,6 +102,14 @@ namespace WebApi
                 tc.Context.Operation.Name = "WebAPI";
                 return tc;
             });
+
+            builder.Services.AddAuthorization(options =>
+            {
+                options.AddPolicy(Roles.TENANT_ADMINISTRATOR, policy => policy.RequireClaim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR));
+                options.AddPolicy(Roles.TENANT_SUBMISSION_REVIEWER, policy => policy.RequireClaim(ClaimTypes.Role, Roles.TENANT_SUBMISSION_REVIEWER));
+                options.AddPolicy(Roles.TENANT_JOB_EDITOR, policy => policy.RequireClaim(ClaimTypes.Role, Roles.TENANT_JOB_EDITOR));
+            });
+
 
             builder.Services
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -288,6 +297,7 @@ namespace WebApi
             builder.Services.AddScoped<IDatabaseSqlMembershipSourcesRepository, DatabaseSqlMembershipSourcesRepository>();
             builder.Services.AddScoped<INotificationTypesRepository, NotificationTypesRepository>();
             builder.Services.AddScoped<IJobNotificationsRepository, JobNotificationRepository>();
+
 
             var app = builder.Build();
 

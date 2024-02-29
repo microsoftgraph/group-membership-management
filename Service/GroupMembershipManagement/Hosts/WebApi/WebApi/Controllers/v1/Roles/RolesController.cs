@@ -19,14 +19,21 @@ namespace WebApi.Controllers.v1.Roles
         [HttpGet("isAdmin")]
         public ActionResult<bool> GetIsAdmin()
         {
-            return User.IsInRole(WebApi.Models.Roles.TENANT_ADMINISTRATOR);
+            return User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR);
         }
 
         [Authorize]
         [HttpGet("isSubmissionReviewer")]
         public ActionResult<bool> GetIsSubmissionReviewer()
         {
-            return User.IsInRole(WebApi.Models.Roles.TENANT_SUBMISSION_REVIEWER);
+            return User.IsInRole(Models.Roles.TENANT_SUBMISSION_REVIEWER);
+        }
+
+        [Authorize]
+        [HttpGet("isTenantJobEditor")]
+        public ActionResult<bool> GetIsTenantJobEditor()
+        {
+            return User.IsInRole(Models.Roles.TENANT_JOB_EDITOR);
         }
     }
 }

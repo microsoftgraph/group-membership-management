@@ -83,7 +83,8 @@ namespace Services
         {
             if (_httpContextAccessor.HttpContext.User.IsInRole(Roles.TENANT_ADMINISTRATOR)
                 || _httpContextAccessor.HttpContext.User.IsInRole(Roles.TENANT_READER)
-                || _httpContextAccessor.HttpContext.User.IsInRole(Roles.TENANT_SUBMISSION_REVIEWER))
+                || _httpContextAccessor.HttpContext.User.IsInRole(Roles.TENANT_SUBMISSION_REVIEWER)
+                || _httpContextAccessor.HttpContext.User.IsInRole(Roles.TENANT_JOB_EDITOR))
             {
                 return (await _databaseSyncJobsRepository.GetSyncJobAsync(syncJobId), HttpStatusCode.OK);
             }
