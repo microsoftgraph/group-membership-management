@@ -228,6 +228,8 @@ export type IStrings = {
   };
   ManageMembership: {
     manageMembershipButton: string;
+    addSyncButton: string;
+    bulkAddSyncsButton: string;
     labels: {
       abandonOnboarding: string;
       abandonOnboardingDescription: string;

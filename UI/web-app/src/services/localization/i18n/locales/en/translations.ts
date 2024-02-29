@@ -233,6 +233,8 @@ export const strings: IStrings = {
   },
   ManageMembership: {
     manageMembershipButton: 'Manage Membership',
+    addSyncButton: 'Add Sync',
+    bulkAddSyncsButton: 'Bulk Add Syncs',
     labels: {
       abandonOnboarding: 'Abandon Onboarding?',
       abandonOnboardingDescription: 'Are you sure you want to abandon the in-progress onboarding and go back?',
