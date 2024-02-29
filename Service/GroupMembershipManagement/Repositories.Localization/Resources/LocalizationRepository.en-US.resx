@@ -1070,17 +1070,17 @@
     <value>Onboarding</value>
   </data>
   <data name="SyncStartedEmailBody" xml:space="preserve">
-    <value>You received this notification because you are listed as an owner of {1}.
+    <value>You received this notification because you are listed as an owner of **{1}**.
 
-GMM onboarding is requested by {4} to systematically manage the group membership based on the pre-defined rules. Check more specifics in GMM UI.
+{4} requested that GMM systematically manage this group's membership based on predefined rules. You can find more specifics on the predefined rules in the GMM UI.
 
 The group **{1}** with Object Id: {0} **has started its initial sync**.
     </value>
   </data>
   <data name="SyncCompletedEmailBody" xml:space="preserve">
-    <value>You received this notification because you are listed as an owner of {1}.
+    <value>You received this notification because you are listed as an owner of **{1}**.
 
-GMM onboarding is requested by {4} to systematically manage the group membership based on the pre-defined rules. Check more specifics in GMM UI.
+{4} requested that GMM systematically manage this group's membership based on predefined rules. You can find more specifics on the predefined rules in the GMM UI.
 
 The group **{1}** with Id: {0} **has completed its initial sync**. 
 
@@ -1106,7 +1106,7 @@ If this is an intended deletion, there's no further action needed.
     </value>
   </data>
   <data name="SyncDisabledNoSourceGroupEmailBody" xml:space="preserve">
-    <value>You received this notification because you are listed as an owner of this group, {1}.
+    <value>You received this notification because you are listed as an owner of this group, **{1}**.
 
 Membership syncs for group **{1}**, are now **disabled** because its pre-defined source group with object Id: {2} **no longer exists**.
 
@@ -1114,15 +1114,15 @@ Please reach out to GMMsupport to update the source definition and re-enable the
 </value>
   </data>
   <data name="SyncDisabledNoOwnerEmailBody" xml:space="preserve">
-    <value> You received this notification because you are listed as an owner of this group, {2}.
+    <value> You received this notification because you are listed as an owner of this group, **{2}**.
 
-  Membership syncs are **disabled** because **GMM is not an owner** of {2} with object Id {0}.
+  Membership syncs are **disabled** because **GMM is not an owner** of **{2}** with object Id {0}.
 
   GMM can be added as owner of the group following these steps:
 
   1. Follow the [link](https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/{0}/menuId/) to the group.
   2. Click on 'Add Owners' link towards the top of the page.
-  3. Add 'mm-Graph-prodv2'.
+  3. Add 'gmm-Graph-prodv2'.
   4. Once added, re-enable the sync in GMM UI.
     </value>
   </data>
