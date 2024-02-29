@@ -21,12 +21,12 @@ import { useEffect, useState } from 'react';
 import { useStrings } from '../../store/hooks';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
 import { useDispatch, useSelector } from 'react-redux';
-import { selectIsAdmin } from '../../store/roles.slice';
+import { selectIsAdmin, selectIsTenantJobEditor } from '../../store/roles.slice';
 import { AppDispatch } from '../../store';
 import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
 import { getJobOwnerFilterSuggestions } from '../../store/jobs.api';
-import { 
-  setFilterActionRequired, 
+import {
+  setFilterActionRequired,
   setFilterStatus,
   setFilterDestinationId,
   setFilterDestinationType,
@@ -123,11 +123,12 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   const [idValidationErrorMessage, setIdValidationErrorMessage] = useState<string>();
   const [selectedOwners, setSelectedOwners] = useState<IPersonaProps[]>([]);
   const isAdmin = useSelector(selectIsAdmin);
+  const isTenantJobEditor = useSelector(selectIsTenantJobEditor);
   const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions);
   const dispatch = useDispatch<AppDispatch>();
 
   useEffect(() => {
-    
+
   }, [dispatch, ownerPickerSuggestions]);
 
   const handleIdChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
@@ -172,7 +173,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     {
       setSelectedOwners([]);
       dispatch(setFilterDestinationOwner(''));
-    }    
+    }
   };
 
   const handleOwnersInputChanged = (input: string): string => {
@@ -181,7 +182,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     }
     return input;
   }
-  
+
   const isGuidValid = (guid: string): boolean => {
     const guidRegex = new RegExp(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/);
     return guidRegex.test(guid);
@@ -327,7 +328,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
               />
             </Stack.Item>
 
-            {isAdmin ? (
+            {(isAdmin || isTenantJobEditor) ? (
               <Stack.Item align="start">
                 <Label>{strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.label}</Label>
                 <NormalPeoplePicker
@@ -350,7 +351,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
                     {
                       text: classNames.peoplePicker,
                     }
-                  } 
+                  }
                   pickerCalloutProps={
                     {
                       directionalHint: DirectionalHint.bottomCenter,
@@ -371,4 +372,3 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     </div>
   );
 };
-                                           

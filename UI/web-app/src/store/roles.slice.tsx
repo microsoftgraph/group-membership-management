@@ -3,18 +3,20 @@
 
 import { createSlice } from '@reduxjs/toolkit';
 import type { RootState } from './store';
-import { getIsAdmin, getIsSubmissionReviewer } from './roles.api';
+import { getIsAdmin, getIsSubmissionReviewer, getIsTenantJobEditor } from './roles.api';
 
 // Define a type for the slice state
 export type Roles = {
   isAdmin?: boolean;
   isSubmissionReviewer?: boolean;
+  isTenantJobEditor?: boolean;
 }
 
 // Define the initial state using that type
 const initialState: Roles = {
   isAdmin: false,
-  isSubmissionReviewer: false
+  isSubmissionReviewer: false,
+  isTenantJobEditor: false
 };
 
 export const rolesSlice = createSlice({
@@ -28,10 +30,14 @@ export const rolesSlice = createSlice({
     builder.addCase(getIsSubmissionReviewer.fulfilled, (state, action) => {
       state.isSubmissionReviewer = action.payload;
     });
+    builder.addCase(getIsTenantJobEditor.fulfilled, (state, action) => {
+      state.isTenantJobEditor = action.payload;
+    });
   }
 });
 
 export const selectIsAdmin = (state: RootState) => state.roles.isAdmin;
 export const selectIsSubmissionReviewer = (state: RootState) => state.roles.isSubmissionReviewer;
+export const selectIsTenantJobEditor = (state: RootState) => state.roles.isTenantJobEditor;
 
 export default rolesSlice.reducer;

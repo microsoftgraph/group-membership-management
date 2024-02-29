@@ -27,3 +27,16 @@ export const getIsSubmissionReviewer = createAsyncThunk<boolean, void, ThunkConf
     }
   }
 );
+
+
+export const getIsTenantJobEditor = createAsyncThunk<boolean, void, ThunkConfig>(
+  'roles/getIsTenantJobEditor',
+  async (_, { extra }) => {
+    const { gmmApi } = extra.apis;
+    try {
+      return await gmmApi.roles.getIsTenantJobEditor();
+    } catch (error) {
+      throw new Error('Failed to call getIsTenantJobEditor endpoint');
+    }
+  }
+);

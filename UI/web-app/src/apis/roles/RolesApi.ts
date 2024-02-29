@@ -16,4 +16,10 @@ export class RolesApi extends ApiBase implements IRolesApi {
     this.ensureSuccessStatusCode(response);
     return response.data;
   }
+
+  public async getIsTenantJobEditor(): Promise<boolean> {
+    const response = await this.httpClient.get<boolean>(`/isTenantJobEditor`);
+    this.ensureSuccessStatusCode(response);
+    return response.data;
+  }
 }

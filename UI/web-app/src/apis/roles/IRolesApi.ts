@@ -5,4 +5,5 @@
 export interface IRolesApi {
   getIsAdmin(): Promise<boolean>;
   getIsSubmissionReviewer(): Promise<boolean>;
+  getIsTenantJobEditor(): Promise<boolean>;
 }
