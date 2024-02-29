@@ -24,7 +24,9 @@ import {
   MessageBarType,
   IconButton,
   IIconProps,
-  PrimaryButton
+  PrimaryButton,
+  IContextualMenuProps,
+  IContextualMenuItem
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { Text } from '@fluentui/react/lib/Text';
@@ -60,6 +62,8 @@ import {
   setPagingBarVisible,
 } from '../../store/pagingBar.slice';
 
+import { selectIsAdmin, selectIsTenantJobEditor } from '../../store/roles.slice';
+
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
   IJobsListStyles
@@ -93,6 +97,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const filterDestinationName: string | undefined = useSelector(selectPagingBarfilterDestinationName);
   const filterDestinationType: string | undefined = useSelector(selectPagingBarfilterDestinationType);
   const filterDestinationOwner: string | undefined = useSelector(selectPagingBarfilterDestinationOwner);
+  const isAdmin: boolean | undefined = useSelector(selectIsAdmin);
+  const isTenantJobEditor: boolean | undefined = useSelector(selectIsTenantJobEditor);
 
   const getJobsByPage = (): void => {
     setIsShimmerEnabled(true);
@@ -217,6 +223,15 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     return 0;
   });
 
+  const onContextualItemClicked = (
+    ev?: React.MouseEvent | React.KeyboardEvent,
+    item?: IContextualMenuItem
+  ): void => {
+    if(item!.key === 'addSync') {
+      navigate('/ManageMembership', { replace: false, state: { item: 1 } });
+    }
+  };
+
   function onColumnHeaderClick(event?: any, column?: IColumn) {
     if (column) {
       const isSortedDescending: boolean = !!column.isSorted && !column.isSortedDescending;
@@ -224,10 +239,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       dispatch(setIsSortedDescending(isSortedDescending));
     }
   }
-
-  const onManageMembershipsButtonClick = (): void => {
-    navigate('/ManageMembership', { replace: false, state: { item: 1 } });
-  };
 
   const error = useSelector(selectGetJobsError);
 
@@ -250,6 +261,27 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   ): void => {
     dispatch(fetchJobs());
   };
+
+  const menuProps: IContextualMenuProps = {
+    items: [
+      {
+        key: 'addSync',
+        text: strings.ManageMembership.addSyncButton,
+        iconProps: {iconName: 'AddFriend'},
+        onClick: onContextualItemClicked
+      },
+    ],
+    directionalHintFixed: true
+  };
+
+  if(isAdmin || isTenantJobEditor){
+    menuProps.items[1] = {
+      key: 'bulkAddSyncs',
+      text: strings.ManageMembership.bulkAddSyncsButton,
+      iconProps: {iconName: 'AddGroup'},
+      disabled: true
+    };
+  }
 
   const refreshIcon: IIconProps = { iconName: 'Refresh' };
 
@@ -346,7 +378,12 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               <Text variant="xLarge">{strings.JobsList.listOfMemberships}</Text>
             </div>
             {isLowerEnvironment ?
-              <PrimaryButton onClick={onManageMembershipsButtonClick}>{strings.ManageMembership.manageMembershipButton}</PrimaryButton>
+              <PrimaryButton
+                text={strings.ManageMembership.manageMembershipButton}
+                menuProps={menuProps}
+                persistMenu={true}
+              >
+              </PrimaryButton>
               : null
             }
           </div>
