@@ -63,7 +63,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     dispatch(updateSourcePartType({ partId: index, type: item.key as SourcePartType }));
 
     if(item.key === SourcePartType.HR){
-      setHRSourcePartSource({ ids: [], filter: "", depth: 1 });
+      setHRSourcePartSource({ manager: { id: undefined, depth: undefined }, filter: ""});
     }
   }
 

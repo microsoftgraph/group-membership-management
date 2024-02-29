@@ -50,9 +50,11 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const isToggleEnabled = useSelector(manageMembershipIsToggleEnabled);
 
   const sourcePartQuery: HRSourcePartSource = {
-    ids: [],
-    filter: "",
-    depth: undefined
+    manager: {
+      id: undefined,
+      depth: undefined
+    },    
+    filter: ""
   };
 
   const newSourcePart = () => {

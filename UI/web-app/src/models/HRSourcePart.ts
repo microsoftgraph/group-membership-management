@@ -10,10 +10,12 @@ export type HRSourcePart = {
     exclusionary?: boolean;
   };
 
-export type HRSourcePartSource = {
-    ids?: number[];
-    filter?: string;
-    depth?: number;
+  export type HRSourcePartSource = {
+    manager?: {
+      id?: number;
+      depth?: number;
+    };    
+    filter?: string;    
     includeOrg?: boolean;
     includeFilter?: boolean;
 };

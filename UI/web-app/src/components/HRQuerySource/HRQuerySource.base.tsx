@@ -41,7 +41,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [isDisabled, setIsDisabled] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [source, setSource] = useState<HRSourcePartSource>(props.source);
-  const excludeLeaderQuery = `EmployeeId != ${source.ids?.[0]}`
+  const excludeLeaderQuery = `EmployeeId != ${source.manager?.id}`
 
   useEffect(() => {
     setErrorMessage('');
@@ -53,9 +53,15 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
 
   useEffect(() => {
     if (orgLeaderDetails.employeeId > 0 && partId === orgLeaderDetails.partId) {
-      const ids: number[] = [orgLeaderDetails.employeeId];
+      const id: number = orgLeaderDetails.employeeId;
       setSource(prevSource => {
-        const newSource = { ...prevSource, ids };
+        const newSource = {
+          ...prevSource,
+          manager: {
+            ...prevSource.manager,
+            id
+          }
+        };
         onSourceChange(newSource, partId);
         return newSource;
       })
@@ -93,9 +99,15 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     }
     const depth = newValue?.trim() !== '' ? Number(newValue) : undefined;
     setSource(prevSource => {
-        const newSource = { ...prevSource, depth };
-        onSourceChange(newSource, partId);
-        return newSource;
+      const newSource = {
+        ...prevSource,
+        manager: {
+          ...prevSource.manager,
+          depth
+        }
+      };
+      onSourceChange(newSource, partId);
+      return newSource;
     });
   }, []);
 
@@ -116,11 +128,19 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const handleIncludeOrgChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
     const includeOrg = option?.key === "Yes";
     if (option?.key === "No") {
-      const ids: number[] = [];
       dispatch(updateOrgLeaderDetails({ employeeId: -1 }));
+      const id = undefined;
       const depth = undefined;
       setSource(prevSource => {
-        const newSource = { ...prevSource, includeOrg, ids, depth };
+        const newSource = {
+          ...prevSource,
+          includeOrg,
+          manager: {
+            ...prevSource.manager,
+            id,
+            depth
+          }
+        };
         onSourceChange(newSource, partId);
         return newSource;
       });
@@ -157,7 +177,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     setErrorMessage('');
     let filter: string;
     if (option?.key === "No") {
-      if (!source.ids || source.ids.length === 0)
+      if (!source.manager?.id)
       {
         setErrorMessage(strings.HROnboarding.orgLeaderMissingErrorMessage);
         return;
@@ -210,10 +230,10 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
               key={'normal'}
               resolveDelay={300}
               itemLimit={1}
-              selectedItems={source.ids && source.ids.length > 0 && source.ids[0] > 0 && !isDisabled ? [
+              selectedItems={source?.manager?.id && !isDisabled ? [
                 {
-                  key: objectIdEmployeeIdMapping[source.ids[0]]?.objectId.toString() || "",
-                  text: objectIdEmployeeIdMapping[source.ids[0]]?.text.toString() || ""
+                  key: objectIdEmployeeIdMapping[source.manager.id]?.objectId.toString() || "",
+                  text: objectIdEmployeeIdMapping[source.manager.id]?.text.toString() || ""
                 },
               ] : undefined}
               onInputChange={handleOrgLeaderInputChange}
@@ -233,7 +253,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
               </TooltipHost>
             </div>
             <SpinButton
-              value={source.depth?.toString()}
+              value={source.manager?.depth?.toString()}
               disabled={isDisabled}
               min={0}
               max={(partId === orgLeaderDetails.partId) ? orgLeaderDetails.maxDepth : 100}

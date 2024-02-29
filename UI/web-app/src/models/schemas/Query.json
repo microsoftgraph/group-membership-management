@@ -35,21 +35,23 @@
             "source": {
               "type": "object",
               "properties": {
-                "ids": {
-                  "type": "array",
-                  "minItems": 1,
-                  "uniqueItems": true,
-                  "items": {
-                    "type": "integer"
-                  }
+                "manager": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1
+                    },           
+                    "depth": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "additionalProperties": false
                 },
                 "filter": {
                   "type": "string",
                   "minLength": 1
-                },
-                "depth": {
-                  "type": "integer",
-                  "minimum": 1
                 }
               },
               "additionalProperties": false

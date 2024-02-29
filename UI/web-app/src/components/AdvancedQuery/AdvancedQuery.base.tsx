@@ -47,9 +47,11 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
     {
       "type": "SqlMembership",
       "source": {
-        "ids": [],
-        "filter": "",
-        "depth": 0
+        "manager": {
+          "id": 0,
+          "depth": 0
+        },    
+        filter: "" 
       },
     },
     {

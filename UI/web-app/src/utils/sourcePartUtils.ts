@@ -10,12 +10,11 @@ export function removeUnusedProperties<T extends SourcePartQuery>(sourcePart: T)
         const trimmedSource = {
             ...sourcePart,
             source: {
-                ...sourcePart.source,
-                ids: sourcePart.source.ids?.length ? sourcePart.source.ids : undefined,
-                filter: sourcePart.source.filter || undefined,
-                depth: typeof sourcePart.source.depth === 'number' && sourcePart.source.depth > 0 ? sourcePart.source.depth : sourcePart.source.depth,
-                includeOrg: sourcePart.source.includeOrg ?? undefined,
-                includeFilter: sourcePart.source.includeFilter ?? undefined,
+                manager: {
+                    id: sourcePart.source?.manager?.id ?? undefined,
+                    depth: typeof sourcePart.source?.manager?.depth === 'number' && sourcePart.source.manager.depth > 0 ? sourcePart.source.manager.depth : sourcePart.source?.manager?.depth,
+                  },
+                filter: sourcePart.source.filter || undefined
             },
         };
         return trimmedSource as T;
