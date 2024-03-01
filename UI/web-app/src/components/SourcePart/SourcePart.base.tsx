@@ -62,20 +62,12 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
     dispatch(updateSourcePartType({ partId: index, type: item.key as SourcePartType }));
 
-    switch (item.key) {
-      case SourcePartType.HR:
-        setHRSourcePartSource({ ids: [], filter: "", depth: 1 });
-        break;
-      case SourcePartType.GroupMembership:
-        break;
-      case SourcePartType.GroupOwnership:
-        break;
-      default:
-        break;
+    if(item.key === SourcePartType.HR){
+      setHRSourcePartSource({ ids: [], filter: "", depth: 1 });
     }
   }
 
-  const handleGroupMembershipSourceChange = (sourceId: string, isValid: boolean) => {
+  const handleGroupMembershipSourceChange = (sourceId: string) => {
     const newQuery: ISourcePart = {
       ...part,
       query: {
@@ -83,7 +75,6 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
         source: sourceId,
         exclusionary: isExclusionary
       },
-      isValid
     };
     dispatch(updateSourcePart(newQuery));
   };
@@ -102,16 +93,8 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
   useEffect(() => {
     setIsExclusionary(part.query.exclusionary ?? false);
-    switch (part.query.type) {
-      case SourcePartType.HR:
-        const hrInitialState = part.query.source as HRSourcePartSource;
-        setHRSourcePartSource(hrInitialState);
-        break;
-      case SourcePartType.GroupMembership:
-      case SourcePartType.GroupOwnership:
-        break;
-      default:
-        break;
+    if(part.query.type === SourcePartType.HR){
+      setHRSourcePartSource(part.query.source as HRSourcePartSource);
     }
   }, [part.query.type, part.query.exclusionary, part.query.source]);
 
@@ -124,8 +107,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     }
     const newPart: ISourcePart = {
       id: partId,
-      query: newQuery,
-      isValid: true
+      query: newQuery
     };
     dispatch(updateSourcePart(newPart));
   };
@@ -143,8 +125,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
       const updatedSourcePart: ISourcePart = {
         id: index,
-        query: updatedQuery,
-        isValid: true
+        query: updatedQuery
       };
 
       dispatch(updateSourcePart(updatedSourcePart));

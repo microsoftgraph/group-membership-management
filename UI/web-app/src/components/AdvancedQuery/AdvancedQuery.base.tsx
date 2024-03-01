@@ -22,9 +22,7 @@ import {
   setAdvancedViewQuery,
   setIsAdvancedQueryValid,
 } from '../../store/manageMembership.slice';
-import { HRSourcePart } from '../../models/HRSourcePart';
-import { GroupMembershipSourcePart } from '../../models/GroupMembershipSourcePart';
-import { GroupOwnershipSourcePart } from '../../models/GroupOwnershipSourcePart';
+import { removeUnusedProperties } from '../../utils/sourcePartUtils';
 
 const getClassNames = classNamesFunction<
   IAdvancedQueryStyleProps,
@@ -71,22 +69,14 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
   const ajv = new Ajv();
 
   useEffect(() => {
-    let jsonArray = JSON.parse(query);
-    let modifiedArray = jsonArray.map((obj: HRSourcePart | GroupMembershipSourcePart | GroupOwnershipSourcePart ) => {
-      if (obj.type == "SqlMembership") {
-        let { source, ...rest } = obj;
-        let modifiedObj = {
-          ...rest,
-          source: {
-              depth: source?.depth,
-              ...(source?.ids !== undefined && source?.ids?.length > 0 && { ids: source?.ids }),
-              ...(source?.filter !== "" && { filter: source?.filter })
-          },
-          exclusionary: obj.exclusionary
-        };
-        return modifiedObj;
-      } else {
-        return obj;
+    if (query && query.trim().length > 0) {
+      try {
+        let jsonArray = JSON.parse(query);
+        let modifiedArray = jsonArray.map(removeUnusedProperties);
+        let modifiedQuery = JSON.stringify(modifiedArray);
+        setLocalQuery(modifiedQuery);
+      } catch (error) {
+        throw new Error('Error parsing query');
       }
     }
   }, [query]);

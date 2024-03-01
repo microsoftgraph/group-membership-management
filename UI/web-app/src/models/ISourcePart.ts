@@ -6,5 +6,4 @@ import { SourcePartQuery } from "./SourcePartQuery";
 export type ISourcePart = {
     id: number;
     query: SourcePartQuery;
-    isValid: boolean;
 };

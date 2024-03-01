@@ -62,8 +62,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         type: SourcePartType.HR,
         source: sourcePartQuery,
         exclusionary: false
-      },
-      isValid: false
+      }
     };
     dispatch(addSourcePart(newPart));
   };
@@ -91,8 +90,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
                 type: SourcePartType.HR,
                 source: sourcePartQuery,
                 exclusionary: false
-              },
-              isValid: true
+              }
             };
             return newPart;
           });

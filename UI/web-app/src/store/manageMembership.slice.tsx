@@ -14,11 +14,10 @@ import { OnboardingStatus } from '../models/GroupOnboardingStatus';
 import { Destination } from '../models/Destination';
 import { DestinationPickerPersona } from '../models';
 import { SyncJobQuery } from '../models/SyncJobQuery';
-import { 
-    ISourcePart
-} from '../models/ISourcePart';
+import { ISourcePart } from '../models/ISourcePart';
 import { SourcePartType } from '../models/SourcePartType';
 import { SourcePartQuery } from '../models/SourcePartQuery';
+import { isSourcePartValid } from '../utils/sourcePartUtils';
 
 export interface ManageMembershipState {
     loadingSearchResults: boolean;
@@ -131,14 +130,12 @@ const manageMembershipSlice = createSlice({
                     const compositeQuery = buildCompositeQuery(state.sourceParts);
                     const updatedSourceParts = state.sourceParts.map((part, index) => ({ 
                         ...part, 
-                        query: compositeQuery[index], 
-                        isValid: true
+                        query: compositeQuery[index],
                     }));
                     state.sourceParts = updatedSourceParts;
                     state.advancedViewQuery = JSON.stringify(compositeQuery);
                     state.isAdvancedQueryValid = true;
                     state.newJob.query = compositeQuery;
-                    console.log("setIsAdvancedView: ", state.sourceParts)
                 }
             } else {
                 // Switching from advanced view
@@ -151,8 +148,7 @@ const manageMembershipSlice = createSlice({
                             state.compositeQuery = parsedQuery;
                             state.sourceParts = parsedQuery.map((query, index) => ({
                                 id: index + 1,
-                                query: query,
-                                isValid: true
+                                query: query
                             }));
                             state.newJob.query = parsedQuery;
                         }
@@ -207,8 +203,7 @@ const manageMembershipSlice = createSlice({
             }
             state.sourceParts[partIndex] = {
                 ...state.sourceParts[partIndex],
-                query: updatedQuery,
-                isValid: false 
+                query: updatedQuery
             };
         },
         updateSourcePart: (state, action: PayloadAction<ISourcePart>) => {
@@ -216,15 +211,8 @@ const manageMembershipSlice = createSlice({
             if (index !== -1) {
                 state.sourceParts[index] = {
                     ...state.sourceParts[index],
-                    query: action.payload.query,
-                    isValid: action.payload.isValid
+                    query: action.payload.query
                 };
-            }
-        },            
-        updateSourcePartValidity: (state, action: PayloadAction<{ partId: number; isValid: boolean}>) => {
-            const { partId, isValid } = action.payload;
-            if (state.sourceParts[partId]) {
-                state.sourceParts[partId].isValid = isValid;
             }
         },
         deleteSourcePart: (state, action: PayloadAction<number>) => {
@@ -280,7 +268,6 @@ export const {
     addSourcePart,
     updateSourcePartType,
     updateSourcePart,
-    updateSourcePartValidity,
     deleteSourcePart,
     clearSourceParts,
 } = manageMembershipSlice.actions;
@@ -314,11 +301,14 @@ export const manageMembershipisAdvancedQueryValid = (state: RootState) => state.
 export const manageMembershipCompositeQuery = (state: RootState) => state.manageMembership.compositeQuery;
 export const manageMembershipAdvancedViewQuery = (state: RootState) => state.manageMembership.advancedViewQuery;
 export const getSourcePartsFromState = (state: RootState) => state.manageMembership.sourceParts;
-export const areAllSourcePartsValid = (state: RootState) => state.manageMembership.sourceParts.every(part => part.isValid);
+export const areAllSourcePartsValid = (state: RootState): boolean => {
+    return state.manageMembership.sourceParts.every(isSourcePartValid);
+};
+
 export const manageMembershipIsToggleEnabled = (state: RootState) => {
     const isAdvancedView = state.manageMembership.isAdvancedView;
     const isAdvancedViewQueryValid = state.manageMembership.isAdvancedQueryValid;
-    const areAllSourcePartsValid = state.manageMembership.sourceParts.every(part => part.isValid);
+    const areAllSourcePartsValid = state.manageMembership.sourceParts.every(isSourcePartValid);
     if (isAdvancedView && isAdvancedViewQueryValid) {
         return true;
     }

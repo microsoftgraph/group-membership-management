@@ -85,10 +85,10 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
   const handleGroupPickerChange = useCallback((items?: IPersonaProps[]): void => {
     if (items && items.length > 0) {
       setSelectedGroup(items);
-      onSourceChange(items[0].id ?? '', true);
+      onSourceChange(items[0].id ?? '');
     } else {
       setSelectedGroup([]);
-      onSourceChange('', false);
+      onSourceChange('');
     }
   }, [onSourceChange]);
 

@@ -22,7 +22,6 @@ import { AppDispatch } from '../../store';
 import {
   setIsAdvancedQueryValid,
   updateSourcePart,
-  updateSourcePartValidity
 } from '../../store/manageMembership.slice';
 import { ISourcePart } from '../../models/ISourcePart';
 import { GroupOwnershipSourcePart } from '../../models/GroupOwnershipSourcePart';
@@ -85,13 +84,11 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
       const parsedQuery = JSON.parse(localQuery || '{}');
       const validate = ajv.compile(schema);
       const isValid = validate(parsedQuery);
-      const partId: number = part.id;
 
       if(isValid) {
         const updatedSourcePart: ISourcePart = {
           id: part.id,
-          query: JSON.parse(localQuery?? '{}') as GroupOwnershipSourcePart,
-          isValid: true
+          query: JSON.parse(localQuery?? '{}') as GroupOwnershipSourcePart
         };
         dispatch(updateSourcePart(updatedSourcePart));
         setValidationMessage(strings.ManageMembership.labels.validQuery);
@@ -101,8 +98,7 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
         const formattedErrors = formatErrors(errorsFromAjv as ExtendedErrorObject[] | null | undefined);
         setValidationMessage(formattedErrors);
       }
-      dispatch(setIsAdvancedQueryValid(isValid)); 
-      dispatch(updateSourcePartValidity({ partId, isValid }));
+      dispatch(setIsAdvancedQueryValid(isValid));
     }
     catch (error) {
       console.error('Error validating query:', error);
