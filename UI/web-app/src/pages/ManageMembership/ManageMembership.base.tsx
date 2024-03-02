@@ -165,6 +165,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
 
     try {
       await dispatch(postJob(newJob));
+      dispatch(resetManageMembership());
       await dispatch(fetchJobs());
       navigate('/');
       setIsPostingJob(false);
@@ -178,11 +179,11 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   let isNextDisabled = false;
 
   if (currentStep === OnboardingSteps.SelectDestination && !isStep1ConditionsMet) {
-    isNextDisabled = false;
+    isNextDisabled = true;
   } else if (currentStep === OnboardingSteps.RunConfiguration) {
     isNextDisabled = false;
   } else if (currentStep === OnboardingSteps.MembershipConfiguration && !isStep3ConditionsMet) {
-    isNextDisabled = false;
+    isNextDisabled = true;
   } else if (currentStep === OnboardingSteps.Confirmation) {
     isNextDisabled = true;
   }

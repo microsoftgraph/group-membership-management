@@ -122,7 +122,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const [isShimmerEnabled, setIsShimmerEnabled] = useState(false);
   const items = jobs;
   const env = process.env.REACT_APP_ENVIRONMENT_ABBREVIATION?.toLowerCase();
-  const isLowerEnvironment = env !== 'ua' && env !== 'prodv2';
+  const isLowerEnvironment = env !== 'prodv2';
 
   const columns = [
     {

@@ -52,7 +52,7 @@ const initialState: ManageMembershipState = {
     selectedDestination: undefined,
     onboardingStatus: null,
     hasChanges: false,
-    currentStep: 1,
+    currentStep: 0,
     isAdvancedQueryValid: false,
     startDateOption: 'ASAP',
     useThresholdLimits: 'Yes',

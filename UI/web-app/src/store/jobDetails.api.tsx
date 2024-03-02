@@ -51,11 +51,11 @@ export const patchJobDetails = createAsyncThunk<
   headers.append('Authorization', `Bearer ${token}`);
   headers.append('Content-Type', 'application/json-patch+json');
 
-  const patchOperations = {
+  const patchOperations = [{
     op: "replace",
     path: "/Status",
     value: job.status
-  };
+  }];
 
   const options = {
     method: 'PATCH',

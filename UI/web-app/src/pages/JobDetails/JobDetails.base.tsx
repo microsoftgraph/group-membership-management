@@ -199,22 +199,29 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
     setIsJobEnabled(job.enabledOrNot);
   }, [job]);
 
-  const handleStatusChange = (ev: React.MouseEvent<HTMLElement>, checked?: boolean) => {
-    const newStatus = isJobEnabled ? SyncStatus.CustomerPaused : SyncStatus.Idle;
+  const updateJobStatus = async (newStatus: string) => {
     const updatedJob = {
       ...job,
       status: newStatus,
     };
-    dispatch(patchJobDetails(updatedJob));
+
+    try {
+      await dispatch(patchJobDetails(updatedJob))
+      setIsJobEnabled(newStatus === SyncStatus.Idle);
+      setJobStatus(newStatus);
+    } catch (error) {
+      throw new Error('Failed to update job status');
+    };
   };
 
-  const handleApproveSubmission = async (approved: boolean) => {
+  const handleStatusChange = (ev: React.MouseEvent<HTMLElement>, checked?: boolean) => {
+    const newStatus = isJobEnabled ? SyncStatus.CustomerPaused : SyncStatus.Idle;
+    updateJobStatus(newStatus);
+  };
+
+  const handleApproveSubmission = (approved: boolean) => {
     const statusBasedOnReview = approved ? SyncStatus.Idle : SyncStatus.SubmissionRejected;
-    const updatedJob = {
-      ...job,
-      status: statusBasedOnReview,
-    };
-    dispatch(patchJobDetails(updatedJob));
+    updateJobStatus(statusBasedOnReview);
   };
 
   const displayMessage = (errorCode: string | undefined): string | undefined => {
@@ -235,6 +242,7 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
       <div className={classNames.membershipStatusControls}>
         <label className={classNames.toggleLabel}>{strings.JobDetails.labels.sync}</label>
         <Toggle
+          title={isJobEnabled ? strings.JobDetails.labels.enabled : strings.JobDetails.labels.disabled}
           inlineLabel={true}
           checked={isJobEnabled}
           onChange={handleStatusChange}
@@ -253,7 +261,7 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
         {(jobStatus === SyncStatus.PendingReview) && (
           <Stack>
             <div className={classNames.membershipStatusPendingLabel}>
-              <Icon iconName='AlarmClock' className={classNames.clockIcon}/>
+              <Icon iconName='AlarmClock' className={classNames.clockIcon} />
               <Text>{strings.JobDetails.labels.pendingReview}</Text>
             </div>
             <Text>{isSubmissionReviewer ?
