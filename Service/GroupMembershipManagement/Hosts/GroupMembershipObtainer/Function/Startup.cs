@@ -67,6 +67,14 @@ namespace Hosts.GroupMembershipObtainer
             .AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
             {
                 var configuration = services.GetRequiredService<IConfiguration>();
+                var notificationsQueue = configuration["serviceBusNotificationsQueue"];
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(notificationsQueue);
+                return new ServiceBusQueueRepository(sender);
+            })
+            .AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
+            {
+                var configuration = services.GetRequiredService<IConfiguration>();
                 var membershipAggregatorQueue = configuration["serviceBusMembershipAggregatorQueue"];
                 var client = services.GetRequiredService<ServiceBusClient>();
                 var sender = client.CreateSender(membershipAggregatorQueue);
