@@ -1,0 +1,16 @@
+branches: 
+  - name: develop
+comments:
+  - markdown: |
+      # Is your code accessible?
+
+      _Action item:_ To make sure you are not introducing common accessibility issues with this pull request: [Run Accessibility Insights FastPass, Automated checks and Tab stops](https://accessibilityinsights.io/docs/web/overview/). If you find accessibility issues, fix them before completing this pull request. 
+
+    id: "AccessibilityInsights"
+
+    # NitPicker will trigger when a pull request changes a file that matches the `pathFilter`.
+    # The `pathFilter` should be paths and extensions for all files where you make UI changes.
+    # You can specify multiple paths.
+    # Common file types: `.js`, `.jsx`, `.ts`, and `.html`
+    pathFilter:
+      - /**/*.tsx # Change this value to match the paths to your project's UI files.
