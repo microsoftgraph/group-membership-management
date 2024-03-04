@@ -25,9 +25,9 @@ namespace Hosts.Notifier
         [FunctionName(nameof(CreateThresholdNotificationFunction))]
         public async Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync([ActivityTrigger] OrchestratorRequest message)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CreateThresholdNotificationFunction)} function started at: {DateTime.UtcNow}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = message.RunId, Message = $"{nameof(CreateThresholdNotificationFunction)} function started at: {DateTime.UtcNow}" });
             var notification = await _notifierService.CreateActionableNotificationFromContentAsync(message.MessageBody);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CreateThresholdNotificationFunction)} function completed at: {DateTime.UtcNow}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = message.RunId, Message = $"{nameof(CreateThresholdNotificationFunction)} function completed at: {DateTime.UtcNow}" });
             return notification;
         }
     }

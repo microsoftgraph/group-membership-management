@@ -14,5 +14,15 @@ namespace Services.Contracts
         public const string NotOwnerContent = "SyncDisabledNoOwnerEmailBody";
         public const string DestinationNotExistContent = "SyncDisabledNoGroupEmailBody";
         public const string SyncCompletedContent = "SyncCompletedEmailBody";
+        public const string NoValidGroupIdsContent = "SyncDisabledNoValidGroupIds";
+        public const string SyncDisabledNoGroupContent = "SyncDisabledNoSourceGroupEmailBody";
+        public const string NoDataSubject = "NoDataEmailSubject";
+        public const string NoDataContent = "NoDataEmailContent";
+        public const string IncreaseThresholdMessage = "IncreaseThresholdMessage";
+        public const string DecreaseThresholdMessage = "DecreaseThresholdMessage";
+        public const string SyncJobDisabledEmailBody = "SyncJobDisabledEmailBody";
+        public const string SyncThresholdEmailSubject = "SyncThresholdEmailSubject";
+        public const string SyncThresholdBothEmailBody = "SyncThresholdBothEmailBody";
+        public const string SyncThresholdDisablingJobEmailSubject = "SyncThresholdDisablingJobEmailSubject";
     }
 }

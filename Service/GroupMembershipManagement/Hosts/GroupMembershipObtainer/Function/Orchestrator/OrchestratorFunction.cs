@@ -15,6 +15,8 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Repositories.Contracts.InjectConfig;
+using Models.Notifications;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -23,15 +25,19 @@ namespace Hosts.GroupMembershipObtainer
         private readonly ILoggingRepository _log;
         private readonly IConfiguration _configuration;
         private readonly SGMembershipCalculator _calculator;
+        private readonly IEmailSenderRecipient _emailSenderRecipient;
 
         public OrchestratorFunction(
             ILoggingRepository loggingRepository,
             SGMembershipCalculator calculator,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IEmailSenderRecipient emailSenderRecipient
+            )
         {
             _log = loggingRepository;
             _calculator = calculator;
             _configuration = configuration;
+            _emailSenderRecipient = emailSenderRecipient;
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
@@ -67,7 +73,17 @@ namespace Hosts.GroupMembershipObtainer
                     if (sourceGroup.ObjectId == Guid.Empty)
                     {
                         if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Source group id is not a valid, Part# {mainRequest.CurrentPart} {syncJob.Query}. Marking job as {SyncStatus.QueryNotValid}." });
-                        await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest { SyncJob = syncJob, RunId = runId });
+                        var additionalContentParams = new[]
+                        {
+                            syncJob.TargetOfficeGroupId.ToString(),
+                            syncJob.Query,
+                            _emailSenderRecipient.SupportEmailAddresses          
+                        };
+                        await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest {                                                         
+                                                        SyncJob = syncJob,
+                                                        NotificationType = NotificationMessageType.NotValidSourceNotification,
+                                                        AdditionalContentParams = additionalContentParams 
+                                                        });
                         await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.QueryNotValid });
                         await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.QueryNotValid, ResultStatus = ResultStatus.Failure, RunId = runId });
                         return;

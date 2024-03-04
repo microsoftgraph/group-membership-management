@@ -20,25 +20,16 @@ namespace Services
 {
     public class DeltaCalculatorService : IDeltaCalculatorService
     {
-        private const string IncreaseThresholdMessage = "IncreaseThresholdMessage";
-        private const string DecreaseThresholdMessage = "DecreaseThresholdMessage";
-        private const string SyncJobDisabledEmailBody = "SyncJobDisabledEmailBody";
-        private const string SyncThresholdEmailSubject = "SyncThresholdEmailSubject";
-        private const string SyncThresholdBothEmailBody = "SyncThresholdBothEmailBody";
-        private const string SyncThresholdDisablingJobEmailSubject = "SyncThresholdDisablingJobEmailSubject";
 
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly ILoggingRepository _loggingRepository;
-        private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IGraphAPIService _graphAPIService;
         private readonly IThresholdConfig _thresholdConfig;
-        private readonly IGMMResources _gmmResources;
-        private readonly ILocalizationRepository _localizationRepository;
         private readonly INotificationRepository _notificationRepository;
         private readonly bool _isDryRunEnabled;
         private readonly IThresholdNotificationConfig _thresholdNotificationConfig;
         private readonly TelemetryClient _telemetryClient;
-        private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
+        private readonly IServiceBusQueueRepository _notificationsQueueRepository;
 
         private Guid _runId;
         public Guid RunId
@@ -54,29 +45,23 @@ namespace Services
         public DeltaCalculatorService(
             IDatabaseSyncJobsRepository syncJobRepository,
             ILoggingRepository loggingRepository,
-            IEmailSenderRecipient emailSenderAndRecipients,
             IGraphAPIService graphAPIService,
             IDryRunValue dryRun,
             IThresholdConfig thresholdConfig,
             IThresholdNotificationConfig thresholdNotificationConfig,
-            IGMMResources gmmResources,
-            ILocalizationRepository localizationRepository,
             INotificationRepository notificationRepository,
-             IServiceBusQueueRepository serviceBusQueueRepository,
+            IServiceBusQueueRepository notificationsQueueRepository,
             TelemetryClient telemetryClient
             )
         {
-            _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService));
             _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
             _thresholdNotificationConfig = thresholdNotificationConfig ?? throw new ArgumentNullException(nameof(thresholdNotificationConfig));
-            _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
-            _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _isDryRunEnabled = dryRun != null && dryRun.DryRunEnabled;
-            _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
+            _notificationsQueueRepository = notificationsQueueRepository ?? throw new ArgumentNullException(nameof(notificationsQueueRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
@@ -289,7 +274,6 @@ namespace Services
                 RunId = runId
             });
         }
-
         private async Task SendThresholdNotificationAsync(ThresholdResult threshold, SyncJob job, Guid runId)
         {
             var currentThresholdViolations = job.ThresholdViolations + 1;
@@ -307,18 +291,9 @@ namespace Services
             {
                 return;
             }
-
-            if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
-            {
-                await SendActionableEmailNotification(threshold, job, sendDisableJobNotification);
-            }
-            else
-            {
-                await SendNormalThresholdEmail(threshold, job, runId, groupName, sendDisableJobNotification);
-            }
+            await SendThresholdNotification(threshold, job, sendDisableJobNotification, groupName);
         }
-           
-        private async Task SendActionableEmailNotification(ThresholdResult threshold, SyncJob job, bool sendDisableJobNotification)
+        private async Task SendThresholdNotification(ThresholdResult threshold, SyncJob job, bool sendDisableJobNotification, string groupName)
         {
             var messageContent = new Dictionary<string, Object>
             {
@@ -326,66 +301,32 @@ namespace Services
                 { "SyncJob", job },
                 { "SendDisableJobNotification", sendDisableJobNotification }
             };
+
+            if (!_thresholdNotificationConfig.IsThresholdNotificationEnabled)
+            {
+                messageContent.Add("GroupName", groupName);
+            }
             var body = System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(messageContent));
 
+            var messageType = _thresholdNotificationConfig.IsThresholdNotificationEnabled
+                ? NotificationMessageType.ThresholdNotification
+                : NotificationMessageType.NormalThresholdNotification;
+
+            var messageId = $"{job.Id}_{job.RunId}_{messageType}";
+            
             var message = new ServiceBusMessage
             {
-                MessageId = $"{job.Id}_{job.RunId}_{NotificationMessageType.ThresholdNotification}",
+                MessageId = messageId,
                 Body = body
             };
-            message.ApplicationProperties.Add("MessageType", NotificationMessageType.ThresholdNotification.ToString());
-            await _serviceBusQueueRepository.SendMessageAsync(message);
+            message.ApplicationProperties.Add("MessageType", messageType.ToString());
+            await _notificationsQueueRepository.SendMessageAsync(message);
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"Sent message {message.MessageId} to service bus notifications queue ",
                 RunId = job.RunId
             });
-        }
-
-        private async Task SendNormalThresholdEmail(ThresholdResult threshold, SyncJob job, Guid runId, string groupName, bool sendDisableJobNotification)
-        {
-            var emailSubject = SyncThresholdEmailSubject;
-
-            string contentTemplate;
-            string[] additionalContent;
-            string[] additionalSubjectContent = new[] { job.TargetOfficeGroupId.ToString(), groupName };
-
-            var thresholdEmail = GetNormalThresholdEmail(groupName, threshold, job);
-            contentTemplate = thresholdEmail.ContentTemplate;
-            additionalContent = thresholdEmail.AdditionalContent;
-
-            var recipients = _emailSenderAndRecipients.SupportEmailAddresses ?? _emailSenderAndRecipients.SyncDisabledCCAddresses;
-
-            if (!string.IsNullOrWhiteSpace(job.Requestor))
-            {
-                var recipientList = await GetThresholdRecipientsAsync(job.Requestor, job.TargetOfficeGroupId);
-                if (recipientList.Count > 0)
-                    recipients = string.Join(",", recipientList);
-            }
-
-            if (sendDisableJobNotification)
-            {
-                emailSubject = SyncThresholdDisablingJobEmailSubject;
-                contentTemplate = SyncJobDisabledEmailBody;
-                additionalContent = new[]
-                {
-                    groupName,
-                    job.TargetOfficeGroupId.ToString(),
-                    _emailSenderAndRecipients.SupportEmailAddresses,
-                    _gmmResources.LearnMoreAboutGMMUrl
-                };
-            }
-
-            await _graphAPIService.SendEmailAsync(
-                    recipients,
-                    contentTemplate,
-                    additionalContent,
-                    runId,
-                    ccEmail: _emailSenderAndRecipients.SupportEmailAddresses,
-                    emailSubject: emailSubject,
-                    additionalSubjectParams: additionalSubjectContent);
-        }
-
+        }   
         private async Task CloseUnresolvedThresholdNotificationAsync(SyncJob job)
         {
             if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
@@ -401,86 +342,6 @@ namespace Services
                     await _notificationRepository.SaveNotificationAsync(thresholdNotification);
                 }
             }
-        }
-
-        private (string ContentTemplate, string[] AdditionalContent) GetNormalThresholdEmail(string groupName, ThresholdResult threshold, SyncJob job)
-        {
-            string increasedThresholdMessage;
-            string decreasedThresholdMessage;
-            string contentTemplate = SyncThresholdBothEmailBody;
-            string[] additionalContent;
-
-            increasedThresholdMessage = _localizationRepository.TranslateSetting(
-                                                        IncreaseThresholdMessage,
-                                                        job.ThresholdPercentageForAdditions.ToString(),
-                                                        threshold.IncreaseThresholdPercentage.ToString("F2"));
-
-            decreasedThresholdMessage = _localizationRepository.TranslateSetting(
-                                               DecreaseThresholdMessage,
-                                               job.ThresholdPercentageForRemovals.ToString(),
-                                               threshold.DecreaseThresholdPercentage.ToString("F2"));
-
-            if (threshold.IsAdditionsThresholdExceeded && threshold.IsRemovalsThresholdExceeded)
-            {
-                additionalContent = new[]
-                {
-                      job.TargetOfficeGroupId.ToString(),
-                      groupName,
-                      $"{increasedThresholdMessage}\n{decreasedThresholdMessage}",
-                      _gmmResources.LearnMoreAboutGMMUrl,
-                      _emailSenderAndRecipients.SupportEmailAddresses
-                };
-            }
-            else if (threshold.IsAdditionsThresholdExceeded)
-            {
-                additionalContent = new[]
-                {
-                      job.TargetOfficeGroupId.ToString(),
-                      groupName,
-                      $"{increasedThresholdMessage}\n",
-                      _gmmResources.LearnMoreAboutGMMUrl,
-                      _emailSenderAndRecipients.SupportEmailAddresses
-                    };
-            }
-            else
-            {
-                additionalContent = new[]
-                {
-                      job.TargetOfficeGroupId.ToString(),
-                      groupName,
-                      $"{decreasedThresholdMessage}\n",
-                      _gmmResources.LearnMoreAboutGMMUrl,
-                      _emailSenderAndRecipients.SupportEmailAddresses
-                };
-            }
-
-            return (contentTemplate, additionalContent);
-        }
-
-        private async Task<List<string>> GetThresholdRecipientsAsync(string requestors, Guid targetOfficeGroupId)
-        {
-            var recipients = new List<string>();
-            var emails = requestors.Split(',', StringSplitOptions.RemoveEmptyEntries).Distinct().ToList();
-
-            foreach (var email in emails)
-            {
-                if (await _graphAPIService.IsEmailRecipientOwnerOfGroupAsync(email, targetOfficeGroupId))
-                {
-                    recipients.Add(email);
-                }
-            }
-
-            if (recipients.Count > 0) return recipients;
-
-            var top = _thresholdConfig.MaximumNumberOfThresholdRecipients > 0 ? _thresholdConfig.MaximumNumberOfThresholdRecipients + 1 : 0;
-            var owners = await _graphAPIService.GetGroupOwnersAsync(targetOfficeGroupId, top);
-
-            if (owners.Count <= _thresholdConfig.MaximumNumberOfThresholdRecipients || _thresholdConfig.MaximumNumberOfThresholdRecipients == 0)
-            {
-                recipients.AddRange(owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
-            }
-
-            return recipients;
         }
         private void TrackThresholdViolationEvent(Guid groupId)
         {

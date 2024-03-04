@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
+using Models.Notifications;
+using Models.ServiceBus;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -8,6 +10,7 @@ using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Services
@@ -15,11 +18,9 @@ namespace Services
     public class GraphAPIService : IGraphAPIService
     {
         private const int NumberOfGraphRetries = 5;
-        private const string EmailSubject = "EmailSubject";
         private readonly ILoggingRepository _loggingRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
-        private readonly IMailRepository _mailRepository;
-        private readonly IEmailSenderRecipient _emailSenderAndRecipients;
+        private readonly IServiceBusQueueRepository _notificationsQueueRepository;
 
         private Guid _runId;
         public Guid RunId
@@ -35,13 +36,11 @@ namespace Services
         public GraphAPIService(
                 ILoggingRepository loggingRepository,
                 IGraphGroupRepository graphGroupRepository,
-                IMailRepository mailRepository,
-                IEmailSenderRecipient emailSenderAndRecipients)
+                IServiceBusQueueRepository notificationsQueueRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
-            _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
-            _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
+            _notificationsQueueRepository = notificationsQueueRepository ?? throw new ArgumentNullException(nameof(notificationsQueueRepository));
         }
 
         public async Task<string> GetGroupNameAsync(Guid groupId)
@@ -74,26 +73,27 @@ namespace Services
         {
             return await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(email, groupObjectId);
         }
-
-        public async Task SendEmailAsync(string toEmail,
-                                         string contentTemplate,
-                                         string[] additionalContentParams,
-                                         Guid runId,
-                                         string ccEmail = null,
-                                         string emailSubject = null,
-                                         string[] additionalSubjectParams = null)
+        public async Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters)
         {
-            await _mailRepository.SendMailAsync(new EmailMessage
+			 var messageContent = new Dictionary<string, Object>
             {
-                Subject = emailSubject ?? EmailSubject,
-                Content = contentTemplate,
-                SenderAddress = _emailSenderAndRecipients.SenderAddress,
-                SenderPassword = _emailSenderAndRecipients.SenderPassword,
-                ToEmailAddresses = toEmail,
-                CcEmailAddresses = ccEmail,
-                AdditionalContentParams = additionalContentParams,
-                AdditionalSubjectParams = additionalSubjectParams
-            }, runId);
+                { "SyncJob", job },
+                { "AdditionalContentParameters", additionalContentParameters }
+            };
+            var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(messageContent));
+            var message = new ServiceBusMessage
+            {
+                MessageId = $"{job.Id}_{job.RunId}_{notificationType}",
+                Body = body
+            };
+            message.ApplicationProperties.Add("MessageType", notificationType.ToString());
+            await _notificationsQueueRepository.SendMessageAsync(message);
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                RunId = job.RunId,
+                Message = $"Sent message {message.MessageId} to service bus notifications queue "
+
+            });
         }
     }
 }

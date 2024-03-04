@@ -4,6 +4,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Identity.Client;
 using Models;
+using Models.Notifications;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -19,8 +20,6 @@ namespace Hosts.GroupMembershipObtainer
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly SGMembershipCalculator _calculator;
         private const int NumberOfGraphRetries = 5;
-        private const string DisabledJobEmailSubject = "DisabledJobEmailSubject";
-        private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoSourceGroupEmailBody";
 
         public GroupValidatorFunction(ILoggingRepository loggingRepository, SGMembershipCalculator calculator, IEmailSenderRecipient emailSenderAndRecipients)
         {
@@ -51,9 +50,7 @@ namespace Hosts.GroupMembershipObtainer
                         var targetGroupName = await _calculator.GetGroupNameAsync(request.SyncJob.TargetOfficeGroupId);
                         if (request.SyncJob != null && request.ObjectId != default(Guid))
                             await _calculator.SendEmailAsync(request.SyncJob,
-                                                                request.RunId,
-                                                                DisabledJobEmailSubject,
-                                                                SyncDisabledNoGroupEmailBody,
+                                                                NotificationMessageType.SourceNotExistNotification,
                                                                 new[]
                                                                 {
                                                                 request.SyncJob.TargetOfficeGroupId.ToString(),

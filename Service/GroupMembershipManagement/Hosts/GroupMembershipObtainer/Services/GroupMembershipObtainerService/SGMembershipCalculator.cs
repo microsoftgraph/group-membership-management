@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
+using Models.Notifications;
 using Models.ServiceBus;
 using Newtonsoft.Json;
 using Polly;
@@ -19,16 +20,14 @@ namespace Hosts.GroupMembershipObtainer
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
         private readonly ILoggingRepository _log;
-        private readonly IMailRepository _mail;
-        private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly bool _isGroupMembershipDryRunEnabled;
+        private readonly IServiceBusQueueRepository _notificationsQueueRepository;
 
         public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository,
                                       IBlobStorageRepository blobStorageRepository,
-                                      IMailRepository mail,
-                                      IEmailSenderRecipient emailSenderAndRecipients,
                                       IDatabaseSyncJobsRepository databaseSyncJobsRepository,
+                                      IServiceBusQueueRepository notificationsQueueRepository,
                                       ILoggingRepository logging,
                                       IDryRunValue dryRun
                                       )
@@ -36,9 +35,8 @@ namespace Hosts.GroupMembershipObtainer
             _graphGroupRepository = graphGroupRepository;
             _blobStorageRepository = blobStorageRepository;
             _log = logging;
-            _mail = mail;
             _databaseSyncJobsRepository = databaseSyncJobsRepository;
-            _emailSenderAndRecipients = emailSenderAndRecipients;
+            _notificationsQueueRepository = notificationsQueueRepository;
             _isGroupMembershipDryRunEnabled = dryRun.DryRunEnabled;
         }
 
@@ -186,18 +184,28 @@ namespace Hosts.GroupMembershipObtainer
             await _blobStorageRepository.UploadFileAsync(datafileName, JsonConvert.SerializeObject(groupMembership));
         }
 
-        public async Task SendEmailAsync(SyncJob job, Guid runId, string subject, string content, string[] additionalContentParams)
+        public async Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters)
         {
-            await _mail.SendMailAsync(new EmailMessage
+            var messageContent = new Dictionary<string, Object>
             {
-                Subject = subject ?? EmailSubject,
-                Content = content,
-                SenderAddress = _emailSenderAndRecipients.SenderAddress,
-                SenderPassword = _emailSenderAndRecipients.SenderPassword,
-                ToEmailAddresses = job.Requestor,
-                CcEmailAddresses = _emailSenderAndRecipients.SyncDisabledCCAddresses,
-                AdditionalContentParams = additionalContentParams
-            }, runId);
+                { "SyncJob", job },
+                { "AdditionalContentParameters", additionalContentParameters }
+            };
+            var body = System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(messageContent));
+            var message = new ServiceBusMessage
+            {
+                MessageId = $"{job.Id}_{job.RunId}_{notificationType}",
+                Body = body
+            };
+            message.ApplicationProperties.Add("MessageType", notificationType.ToString());
+            await _notificationsQueueRepository.SendMessageAsync(message);
+            await _log.LogMessageAsync(new LogMessage
+            {
+                RunId = job.RunId,
+                Message = $"Sent message {message.MessageId} to service bus notifications queue "
+
+            });
+
         }
 
         public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status)

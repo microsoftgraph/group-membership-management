@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Net.Http;
+using Repositories.ServiceBusQueue;
 
 namespace Tests.Services
 {
@@ -38,6 +39,7 @@ namespace Tests.Services
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
         private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
+        private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
 
         private int _userCount;
         private bool _groupExists;
@@ -66,7 +68,7 @@ namespace Tests.Services
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
-
+            _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _userCount = 10;
             var content = new GroupMembership
             {
@@ -128,9 +130,8 @@ namespace Tests.Services
             _membershipCalculator = new SGMembershipCalculator(
                                             _graphGroupRepository.Object,
                                             _blobStorageRepository.Object,
-                                            _mailRepository.Object,
-                                            _emailSenderRecipient.Object,
                                             _syncJobRepository.Object,
+                                            _serviceBusQueueRepository.Object,
                                             _loggingRepository.Object,
                                             _dryRunValue.Object
                                             );

@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Models.Helpers;
+using Models.Notifications;
 using Models.ServiceBus;
 using Newtonsoft.Json;
 using Repositories.Contracts.InjectConfig;
@@ -23,8 +24,6 @@ namespace Hosts.MembershipAggregator
 {
     public class MembershipSubOrchestratorFunction
     {
-        private const string NoDataEmailSubject = "NoDataEmailSubject";
-        private const string NoDataEmailContent = "NoDataEmailContent";
         private const int MEMBERS_LIMIT = 100000;
         private readonly IThresholdConfig _thresholdConfig = null;
         private readonly IGraphAPIService _graphAPIService = null;
@@ -85,15 +84,12 @@ namespace Hosts.MembershipAggregator
                 });
 
                 var groupInformation = await context.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), request.SyncJob);
-
                 await context.CallActivityAsync(nameof(EmailSenderFunction),
                                                 new EmailSenderRequest
                                                 {
-                                                    SyncJobGroup = groupInformation,
-                                                    EmailSubjectTemplateName = NoDataEmailSubject,
-                                                    EmailContentTemplateName = NoDataEmailContent,
+                                                    SyncJob = request.SyncJob,
+                                                    NotificationType = NotificationMessageType.NoDataNotification,
                                                     AdditionalContentParams = new[] { request.SyncJob.TargetOfficeGroupId.ToString(), groupInformation.Name },
-                                                    AdditionalSubjectParams = new[] { request.SyncJob.TargetOfficeGroupId.ToString(), groupInformation.Name }
                                                 });
 
                 return new MembershipSubOrchestratorResponse

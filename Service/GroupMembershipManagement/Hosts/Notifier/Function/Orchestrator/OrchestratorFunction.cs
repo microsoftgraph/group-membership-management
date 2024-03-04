@@ -8,6 +8,11 @@ using System.Threading.Tasks;
 using Models.ThresholdNotifications;
 using Models.Notifications;
 using Services.Contracts;
+using Hosts.AzureMaintenance.Activity.SendNormalThresholdNotification;
+using Models;
+using System.Text.Json;
+using System.Collections.Generic;
+using System;
 
 namespace Hosts.Notifier
 {
@@ -21,8 +26,12 @@ namespace Hosts.Notifier
         public async Task RunOrchestratorAsync(
             [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            var runId = context.NewGuid();
+            var message = context.GetInput<OrchestratorRequest>();
+            var messageContent = JsonSerializer.Deserialize<Dictionary<string, Object>>(message.MessageBody);
+            SyncJob job = ((JsonElement)messageContent["SyncJob"]).Deserialize<SyncJob>();
+            Guid runId = (Guid)job.RunId;
 
+            message.RunId = runId;
             await context.CallActivityAsync(nameof(LoggerFunction),
                 new LoggerRequest
                 {
@@ -31,14 +40,16 @@ namespace Hosts.Notifier
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
-            var message = context.GetInput<OrchestratorRequest>();
-
             switch (message.MessageType)
             {
                 case nameof(NotificationMessageType.ThresholdNotification):
                     var notification = await context.CallActivityAsync<ThresholdNotification>(nameof(CreateThresholdNotificationFunction), message);
                     await context.CallActivityAsync(nameof(SendThresholdNotification), notification);
                     await context.CallActivityAsync(nameof(UpdateNotificationStatusFunction), new UpdateNotificationStatusRequest { Notification = notification, Status = ThresholdNotificationStatus.AwaitingResponse });
+                    break;
+
+                case nameof(NotificationMessageType.NormalThresholdNotification):
+                    await context.CallActivityAsync(nameof(SendNormalThresholdNotification), message);
                     break;
 
                 case nameof(NotificationMessageType.SyncStartedNotification):
@@ -62,6 +73,24 @@ namespace Hosts.Notifier
                 case nameof(NotificationMessageType.SyncCompletedNotification):
                     message.SubjectTemplate = NotificationConstants.OnboardingSubject;
                     message.ContentTemplate = NotificationConstants.SyncCompletedContent;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
+                case nameof(NotificationMessageType.NotValidSourceNotification):
+                    message.SubjectTemplate = NotificationConstants.OnboardingSubject;
+                    message.ContentTemplate = NotificationConstants.NoValidGroupIdsContent;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
+                case nameof(NotificationMessageType.SourceNotExistNotification):
+                    message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
+                    message.ContentTemplate = NotificationConstants.SyncDisabledNoGroupContent;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
+                case nameof(NotificationMessageType.NoDataNotification):
+                    message.SubjectTemplate = NotificationConstants.NoDataSubject;
+                    message.ContentTemplate = NotificationConstants.NoDataContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 

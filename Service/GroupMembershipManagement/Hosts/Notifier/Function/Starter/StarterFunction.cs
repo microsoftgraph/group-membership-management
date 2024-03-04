@@ -10,6 +10,9 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Azure.Messaging.ServiceBus;
 using System.Text;
+using Polly;
+using System.Collections.Generic;
+using System.Text.Json;
 namespace Hosts.Notifier
 {
     public class StarterFunction
@@ -39,7 +42,10 @@ namespace Hosts.Notifier
                 MessageBody = messageBody,
                 MessageType = messageType
             };
-
+            var messageContent = JsonSerializer.Deserialize<Dictionary<string, Object>>(messageBody);
+            SyncJob job = ((JsonElement)messageContent["SyncJob"]).Deserialize<SyncJob>();
+            Guid runId = (Guid)job.RunId;
+            _loggingRepository.SetSyncJobProperties(runId, job.ToDictionary());
             var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), (orchestratorRequest));
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
         }

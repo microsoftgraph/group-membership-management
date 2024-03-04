@@ -23,6 +23,8 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Repositories.ServiceBusQueue;
+using Models.Notifications;
 
 namespace Tests.Services
 {
@@ -60,11 +62,11 @@ namespace Tests.Services
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
-            _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
             _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
             _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
+            _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             _usersToReturn = 10;
             _querySample = QuerySample.GenerateQuerySample("GroupMembership");
@@ -89,9 +91,8 @@ namespace Tests.Services
             _membershipCalculator = new SGMembershipCalculator(
                                             _graphGroupRepository.Object,
                                             _blobStorageRepository.Object,
-                                            _mailRepository.Object,
-                                            _emailSenderRecipient.Object,
                                             _syncJobRepository.Object,
+                                            _serviceBusQueueRepository.Object,
                                             _loggingRepository.Object,
                                             _dryRunValue.Object
                                             );
@@ -180,7 +181,8 @@ namespace Tests.Services
             var orchestratorFunction = new OrchestratorFunction(
                                             _loggingRepository.Object,
                                             _membershipCalculator,
-                                            _configuration.Object
+                                            _configuration.Object,
+                                            _emailSenderRecipient.Object
                                             );
 
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
@@ -207,7 +209,8 @@ namespace Tests.Services
             var orchestratorFunction = new OrchestratorFunction(
                                            _loggingRepository.Object,
                                            _membershipCalculator,
-                                           _configuration.Object
+                                           _configuration.Object,
+                                            _emailSenderRecipient.Object
                                            );
 
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
@@ -224,7 +227,10 @@ namespace Tests.Services
                                                 It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid)
                                             ), Times.Once);
 
-            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once);
+            _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.Is<ServiceBusMessage>(msg =>
+                msg.ApplicationProperties.ContainsKey("MessageType") &&
+                msg.ApplicationProperties["MessageType"].ToString() == NotificationMessageType.NotValidSourceNotification.ToString())),
+                Times.Exactly(1));
         }
 
         [TestMethod]
@@ -236,7 +242,8 @@ namespace Tests.Services
             var orchestratorFunction = new OrchestratorFunction(
                                            _loggingRepository.Object,
                                            _membershipCalculator,
-                                           _configuration.Object
+                                           _configuration.Object,
+                                            _emailSenderRecipient.Object
                                            );
 
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
@@ -253,7 +260,10 @@ namespace Tests.Services
                                                 It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid)
                                             ), Times.Once);
 
-            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once);
+            _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.Is<ServiceBusMessage>(msg =>
+                msg.ApplicationProperties.ContainsKey("MessageType") &&
+                msg.ApplicationProperties["MessageType"].ToString() == NotificationMessageType.NotValidSourceNotification.ToString())),
+                Times.Exactly(1));
         }
 
         [TestMethod]
@@ -264,7 +274,8 @@ namespace Tests.Services
             var orchestratorFunction = new OrchestratorFunction(
                                             _loggingRepository.Object,
                                             _membershipCalculator,
-                                            _configuration.Object
+                                            _configuration.Object,
+                                            _emailSenderRecipient.Object
                                             );
 
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
@@ -284,7 +295,8 @@ namespace Tests.Services
             var orchestratorFunction = new OrchestratorFunction(
                                             _loggingRepository.Object,
                                             _membershipCalculator,
-                                            _configuration.Object
+                                            _configuration.Object,
+                                            _emailSenderRecipient.Object
                                             );
 
             await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object));
@@ -313,7 +325,8 @@ namespace Tests.Services
             var orchestratorFunction = new OrchestratorFunction(
                                             _loggingRepository.Object,
                                             _membershipCalculator,
-                                            _configuration.Object
+                                            _configuration.Object,
+                                            _emailSenderRecipient.Object
                                             );
 
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
@@ -340,7 +353,8 @@ namespace Tests.Services
             var orchestratorFunction = new OrchestratorFunction(
                                             _loggingRepository.Object,
                                             _membershipCalculator,
-                                            _configuration.Object
+                                            _configuration.Object,
+                                            _emailSenderRecipient.Object
                                             );
 
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
@@ -406,7 +420,7 @@ namespace Tests.Services
 
         private async Task CallEmailSenderFunctionAsync(EmailSenderRequest request)
         {
-            var function = new EmailSenderFunction(_loggingRepository.Object, _membershipCalculator, _emailSenderRecipient.Object);
+            var function = new EmailSenderFunction(_loggingRepository.Object, _membershipCalculator);
             await function.SendEmailAsync(request);
         }
 

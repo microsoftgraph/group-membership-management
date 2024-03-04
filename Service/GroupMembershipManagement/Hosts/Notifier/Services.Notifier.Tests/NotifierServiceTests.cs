@@ -24,6 +24,7 @@ using Hosts.Notifier;
 using System.Text.Json;
 using DIConcreteTypes;
 using Repositories.Logging;
+using Models.Entities;
 
 namespace Services.Notifier.Tests
 {
@@ -46,6 +47,9 @@ namespace Services.Notifier.Tests
         private Mock<INotificationTypesRepository> _notificationTypesRepository;
         private Mock<IJobNotificationsRepository> _jobNotificationRepository;
         private TelemetryClient _telemetryClient;
+        private Mock<IThresholdConfig> _thresholdConfig;
+        private Mock<IGMMResources> _gmmResources;
+
         [TestInitialize]
         public void SetupTest()
         {
@@ -58,6 +62,8 @@ namespace Services.Notifier.Tests
             _users = new List<AzureADUser>();
             _notificationTypesRepository = new Mock<INotificationTypesRepository>();
             _jobNotificationRepository = new Mock<IJobNotificationsRepository>();
+            _thresholdConfig = new Mock<IThresholdConfig>();
+            _gmmResources = new Mock<IGMMResources>();
             _notification = new ThresholdNotification
             {
                 Id = Guid.NewGuid(),
@@ -102,6 +108,8 @@ namespace Services.Notifier.Tests
                                                 _graphGroupRepository.Object,
                                                 _notificationTypesRepository.Object,
                                                 _jobNotificationRepository.Object,
+                                                _thresholdConfig.Object,
+                                                _gmmResources.Object,
                                                 _telemetryClient
                                                 );
         }
@@ -232,6 +240,15 @@ namespace Services.Notifier.Tests
 
             await _notifierService.SendEmailAsync(request.MessageType, request.MessageBody, request.SubjectTemplate, request.ContentTemplate);
             _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task SendNormalThresholdEmailAsync_SendsEmail_WithExpectedParameters()
+        {
+            var messageBody = "{\"SyncJob\": {\"Id\": \"12345678-1234-1234-1234-1234567890ab\", \"TargetOfficeGroupId\": \"12345678-1234-1234-1234-1234567890ab\"}, \"ThresholdResult\": {\"IncreaseThresholdPercentage\": 10.0}, \"SendDisableJobNotification\": false, \"GroupName\": \"Test Group\"}";
+            await _notifierService.SendNormalThresholdEmailAsync(messageBody);
+            _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once());
+
         }
     }
 }

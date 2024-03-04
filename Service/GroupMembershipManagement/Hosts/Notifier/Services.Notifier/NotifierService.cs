@@ -31,6 +31,8 @@ namespace Services.Notifier
         private readonly TelemetryClient _telemetryClient;
         private readonly INotificationTypesRepository _notificationTypesRepository;
         private readonly IJobNotificationsRepository _jobNotificationRepository;
+        private readonly IThresholdConfig _thresholdConfig;
+        private readonly IGMMResources _gmmResources;
         enum MembershipType
         {
             GroupMembership,
@@ -46,6 +48,8 @@ namespace Services.Notifier
             IGraphGroupRepository graphGroupRepository,
             INotificationTypesRepository notificationTypesRepository,
             IJobNotificationsRepository jobNotificationRepository,
+            IThresholdConfig thresholdConfig,
+            IGMMResources gmmResources,
             TelemetryClient telemetryClient)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
@@ -57,6 +61,8 @@ namespace Services.Notifier
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
             _jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
+            _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
+            _gmmResources = gmmResources ?? throw new ArgumentException(nameof(gmmResources));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
@@ -188,6 +194,10 @@ namespace Services.Notifier
                 AdditionalContentParams = additionalContentParameters
             };
 
+            if (messageType.Equals("NoDataNotification", StringComparison.InvariantCultureIgnoreCase))
+            {
+                message.AdditionalSubjectParams = additionalContentParameters;
+            }
             await _mailRepository.SendMailAsync(message, job.RunId);
         }
 
@@ -308,6 +318,150 @@ namespace Services.Notifier
 
             await _notificationRepository.SaveNotificationAsync(thresholdNotification);
             return thresholdNotification;
+        }
+        private (SyncJob job, ThresholdResult threshold, bool sendDisableJobNotification, string groupName) ParseNormalThresholdMessageContent(string messageBody)
+        {
+            var messageContent = JsonSerializer.Deserialize<Dictionary<string, Object>>(messageBody);
+            SyncJob job = ((JsonElement)messageContent["SyncJob"]).Deserialize<SyncJob>();
+            ThresholdResult threshold = ((JsonElement)messageContent["ThresholdResult"]).Deserialize<ThresholdResult>();
+            bool sendDisableJobNotification = ((JsonElement)messageContent["SendDisableJobNotification"]).Deserialize<bool>();
+            string groupName = ((JsonElement)messageContent["GroupName"]).GetString();
+            return (job, threshold, sendDisableJobNotification, groupName);
+        }
+
+        public async Task SendNormalThresholdEmailAsync(string messageBody)
+        {
+            var (job, threshold, sendDisableJobNotification, groupName) = ParseNormalThresholdMessageContent(messageBody);
+
+            var emailSubject = NotificationConstants.SyncThresholdEmailSubject;
+
+            string contentTemplate;
+            string[] additionalContent;
+            string[] additionalSubjectContent = new[] { job.TargetOfficeGroupId.ToString(), groupName };
+
+            var thresholdEmail = GetNormalThresholdEmail(groupName, threshold, job);
+            contentTemplate = thresholdEmail.ContentTemplate;
+            additionalContent = thresholdEmail.AdditionalContent;
+
+            var recipients = _emailSenderAndRecipients.SupportEmailAddresses ?? _emailSenderAndRecipients.SyncDisabledCCAddresses;
+
+            if (!string.IsNullOrWhiteSpace(job.Requestor))
+            {
+                var recipientList = await GetThresholdRecipientsAsync(job.Requestor, job.TargetOfficeGroupId);
+                if (recipientList.Count > 0)
+                    recipients = string.Join(",", recipientList);
+            }
+
+            if (sendDisableJobNotification)
+            {
+                emailSubject = NotificationConstants.SyncThresholdDisablingJobEmailSubject;
+                contentTemplate = NotificationConstants.SyncJobDisabledEmailBody;
+                additionalContent = new[]
+                {
+                    groupName,
+                    job.TargetOfficeGroupId.ToString(),
+                    _emailSenderAndRecipients.SupportEmailAddresses,
+                    _gmmResources.LearnMoreAboutGMMUrl
+                };
+            }
+            var message = new EmailMessage
+            {
+                Subject = emailSubject,
+                Content = contentTemplate,
+                SenderAddress = _emailSenderAndRecipients.SenderAddress,
+                SenderPassword = _emailSenderAndRecipients.SenderPassword,
+                ToEmailAddresses = recipients,
+                CcEmailAddresses = _emailSenderAndRecipients.SupportEmailAddresses,
+                AdditionalContentParams = additionalContent,
+                AdditionalSubjectParams = additionalSubjectContent
+            };
+            await _mailRepository.SendMailAsync(message, job.RunId);
+        }
+        private (string ContentTemplate, string[] AdditionalContent) GetNormalThresholdEmail(string groupName, ThresholdResult threshold, SyncJob job)
+        {
+            string increasedThresholdMessage;
+            string decreasedThresholdMessage;
+            string contentTemplate = NotificationConstants.SyncThresholdBothEmailBody;
+            string[] additionalContent;
+
+            increasedThresholdMessage = _localizationRepository.TranslateSetting(
+                                                        NotificationConstants.IncreaseThresholdMessage,
+                                                        job.ThresholdPercentageForAdditions.ToString(),
+                                                        threshold.IncreaseThresholdPercentage.ToString("F2"));
+
+            decreasedThresholdMessage = _localizationRepository.TranslateSetting(
+                                               NotificationConstants.DecreaseThresholdMessage,
+                                               job.ThresholdPercentageForRemovals.ToString(),
+                                               threshold.DecreaseThresholdPercentage.ToString("F2"));
+
+            if (threshold.IsAdditionsThresholdExceeded && threshold.IsRemovalsThresholdExceeded)
+            {
+                additionalContent = new[]
+                {
+                      job.TargetOfficeGroupId.ToString(),
+                      groupName,
+                      $"{increasedThresholdMessage}\n{decreasedThresholdMessage}",
+                      _gmmResources.LearnMoreAboutGMMUrl,
+                      _emailSenderAndRecipients.SupportEmailAddresses
+                };
+            }
+            else if (threshold.IsAdditionsThresholdExceeded)
+            {
+                additionalContent = new[]
+                {
+                      job.TargetOfficeGroupId.ToString(),
+                      groupName,
+                      $"{increasedThresholdMessage}\n",
+                      _gmmResources.LearnMoreAboutGMMUrl,
+                      _emailSenderAndRecipients.SupportEmailAddresses
+                    };
+            }
+            else
+            {
+                additionalContent = new[]
+                {
+                      job.TargetOfficeGroupId.ToString(),
+                      groupName,
+                      $"{decreasedThresholdMessage}\n",
+                      _gmmResources.LearnMoreAboutGMMUrl,
+                      _emailSenderAndRecipients.SupportEmailAddresses
+                };
+            }
+
+            return (contentTemplate, additionalContent);
+        }
+        private async Task<List<string>> GetThresholdRecipientsAsync(string requestors, Guid targetOfficeGroupId)
+        {
+            var recipients = new List<string>();
+            var emails = requestors.Split(',', StringSplitOptions.RemoveEmptyEntries).Distinct().ToList();
+
+            foreach (var email in emails)
+            {
+                if (await IsEmailRecipientOwnerOfGroupAsync(email, targetOfficeGroupId))
+                {
+                    recipients.Add(email);
+                }
+            }
+
+            if (recipients.Count > 0) return recipients;
+
+            var top = _thresholdConfig.MaximumNumberOfThresholdRecipients > 0 ? _thresholdConfig.MaximumNumberOfThresholdRecipients + 1 : 0;
+            var owners = await GetGroupOwnersAsync(targetOfficeGroupId, top);
+
+            if (owners.Count <= _thresholdConfig.MaximumNumberOfThresholdRecipients || _thresholdConfig.MaximumNumberOfThresholdRecipients == 0)
+            {
+                recipients.AddRange(owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
+            }
+
+            return recipients;
+        }
+        private async Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
+        {
+            return await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(email, groupObjectId);
+        }
+        private async Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0)
+        {
+            return await _graphGroupRepository.GetGroupOwnersAsync(groupObjectId, top);
         }
     }
 }

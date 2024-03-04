@@ -8,5 +8,8 @@ namespace Models.Notifications
         DestinationNotExistNotification = 3,
         SourceNotExistNotification = 4,
         NotOwnerNotification = 5,
+        NotValidSourceNotification= 6,
+        NoDataNotification = 7,
+        NormalThresholdNotification = 8,
     }
 }

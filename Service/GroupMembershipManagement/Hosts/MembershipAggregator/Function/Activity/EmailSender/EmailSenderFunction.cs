@@ -25,10 +25,10 @@ namespace Hosts.MembershipAggregator
         [FunctionName(nameof(EmailSenderFunction))]
         public async Task SendEmailAsync([ActivityTrigger] EmailSenderRequest request)
         {
-            var job = request.SyncJobGroup.SyncJob;
+            var job = request.SyncJob;
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = job.RunId }, VerbosityLevel.DEBUG);
             _graphAPIService.RunId = job.RunId ?? Guid.Empty;
-            await _graphAPIService.SendEmailAsync(request.SyncJobGroup.SyncJob.Requestor, request.EmailContentTemplateName, request.AdditionalContentParams, _graphAPIService.RunId, emailSubject: request.EmailSubjectTemplateName, additionalSubjectParams: request.AdditionalSubjectParams);
+            await _graphAPIService.SendEmailAsync(job, request.NotificationType, request.AdditionalContentParams);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = job.RunId }, VerbosityLevel.DEBUG);
 
         }

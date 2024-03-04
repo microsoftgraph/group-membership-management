@@ -203,27 +203,39 @@ param appConfigurationKeyData array = [
     }
   }
   {
-    key: 'MembershipAggregator:MaximumNumberOfThresholdRecipients'
+    key: 'NumberOfThresholdViolationsFollowUps'
     value: '3'
     contentType: 'integer'
     tag: {
       tag1: 'MembershipAggregator'
+      tag2: 'Notifier'
     }
   }
   {
-    key: 'MembershipAggregator:NumberOfThresholdViolationsToNotify'
+    key: 'MaximumNumberOfThresholdRecipients'
+    value: '3'
+    contentType: 'integer'
+    tag: {
+      tag1: 'MembershipAggregator'
+      tag2: 'Notifier'
+    }
+  }
+  {
+    key: 'NumberOfThresholdViolationsToNotify'
     value: '2'
     contentType: 'integer'
     tag: {
       tag1: 'MembershipAggregator'
+      tag2: 'Notifier'
     }
   }
   {
-    key: 'MembershipAggregator:NumberOfThresholdViolationsToDisableJob'
+    key: 'NumberOfThresholdViolationsToDisableJob'
     value: '7'
     contentType: 'integer'
     tag: {
       tag1: 'MembershipAggregator'
+      tag2: 'Notifier'
     }
   }
   {

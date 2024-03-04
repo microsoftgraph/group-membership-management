@@ -60,6 +60,23 @@ namespace Hosts.Notifier
                 settings.ActionableEmailProviderId = configuration.GetValue<Guid>("actionableEmailProviderId");
                 settings.ApiHostname = configuration.GetValue<string>("apiHostname");
             });
+            builder.Services.AddOptions<ThresholdConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.MaximumNumberOfThresholdRecipients = GetIntSetting(configuration, "MaximumNumberOfThresholdRecipients", 10);
+                settings.NumberOfThresholdViolationsToNotify = GetIntSetting(configuration, "NumberOfThresholdViolationsToNotify", 3);
+                settings.NumberOfThresholdViolationsFollowUps = GetIntSetting(configuration, "NumberOfThresholdViolationsFollowUps", 3);
+                settings.NumberOfThresholdViolationsToDisableJob = GetIntSetting(configuration, "NumberOfThresholdViolationsToDisableJob", 10);
+            });
+            builder.Services.AddSingleton<IThresholdConfig>(services =>
+            {
+                return new ThresholdConfig
+                    (
+                        services.GetService<IOptions<ThresholdConfig>>().Value.MaximumNumberOfThresholdRecipients,
+                        services.GetService<IOptions<ThresholdConfig>>().Value.NumberOfThresholdViolationsToNotify,
+                        services.GetService<IOptions<ThresholdConfig>>().Value.NumberOfThresholdViolationsFollowUps,
+                        services.GetService<IOptions<ThresholdConfig>>().Value.NumberOfThresholdViolationsToDisableJob
+                    );
+            });
             builder.Services.AddScoped<IThresholdNotificationConfig>((sp) =>
             {
                 return new ThresholdNotificationConfig(true);

@@ -17,6 +17,7 @@ using Repositories.ServiceBusTopics;
 using Repositories.ServiceBusQueue;
 using Services;
 using Services.Contracts;
+using Microsoft.ApplicationInsights;
 
 [assembly: FunctionsStartup(typeof(Hosts.MembershipAggregator.Startup))]
 
@@ -33,10 +34,10 @@ namespace Hosts.MembershipAggregator
 
             builder.Services.AddOptions<ThresholdConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
-                settings.MaximumNumberOfThresholdRecipients = GetIntSetting(configuration, "MembershipAggregator:MaximumNumberOfThresholdRecipients", 10);
-                settings.NumberOfThresholdViolationsToNotify = GetIntSetting(configuration, "MembershipAggregator:NumberOfThresholdViolationsToNotify", 3);
-                settings.NumberOfThresholdViolationsFollowUps = GetIntSetting(configuration, "MembershipAggregator:NumberOfThresholdViolationsFollowUps", 3);
-                settings.NumberOfThresholdViolationsToDisableJob = GetIntSetting(configuration, "MembershipAggregator:NumberOfThresholdViolationsToDisableJob", 10);
+                settings.MaximumNumberOfThresholdRecipients = GetIntSetting(configuration, "MaximumNumberOfThresholdRecipients", 10);
+                settings.NumberOfThresholdViolationsToNotify = GetIntSetting(configuration, "NumberOfThresholdViolationsToNotify", 3);
+                settings.NumberOfThresholdViolationsFollowUps = GetIntSetting(configuration, "NumberOfThresholdViolationsFollowUps", 3);
+                settings.NumberOfThresholdViolationsToDisableJob = GetIntSetting(configuration, "NumberOfThresholdViolationsToDisableJob", 10);
             });
 
             builder.Services.AddSingleton((services) =>
@@ -44,8 +45,23 @@ namespace Hosts.MembershipAggregator
                 return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
             })
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
-            .AddScoped<IGraphAPIService, GraphAPIService>()
-            .AddScoped<IDeltaCalculatorService, DeltaCalculatorService>()
+            .AddScoped<IGraphAPIService, GraphAPIService>((services) =>
+            {
+                var loggingRepository = services.GetRequiredService<ILoggingRepository>();
+                var graphGroupRepository = services.GetRequiredService<IGraphGroupRepository>();
+
+                var configuration = services.GetRequiredService<IConfiguration>();
+                var notificationsQueue = configuration["serviceBusNotificationsQueue"];
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(notificationsQueue);
+                var notificationsQueueRepository = new ServiceBusQueueRepository(sender);
+
+                return new GraphAPIService(
+                    loggingRepository,
+                    graphGroupRepository,
+                    notificationsQueueRepository
+                );
+            })
             .AddSingleton<IThresholdConfig>(services =>
             {
                 return new ThresholdConfig
@@ -72,13 +88,34 @@ namespace Hosts.MembershipAggregator
                 var sender = client.CreateSender(membershipAggregatorQueue);
                 return new ServiceBusTopicsRepository(sender);
             })
-            .AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
+            .AddScoped<IDeltaCalculatorService, DeltaCalculatorService>((services) =>
             {
+                var syncJobRepository = services.GetRequiredService<IDatabaseSyncJobsRepository>();
+                var loggingRepository = services.GetRequiredService<ILoggingRepository>();
+                var graphAPIService = services.GetRequiredService<IGraphAPIService>();
+                var dryRun = services.GetRequiredService<IDryRunValue>();
+                var telemetryClient = services.GetRequiredService<TelemetryClient>();                
+                var thresholdConfig = services.GetRequiredService<IThresholdConfig>();
+                var thresholdNotificationConfig = services.GetRequiredService<IThresholdNotificationConfig>();
+                var notificationRepository = services.GetRequiredService<INotificationRepository>();
+
                 var configuration = services.GetRequiredService<IConfiguration>();
                 var notificationsQueue = configuration["serviceBusNotificationsQueue"];
                 var client = services.GetRequiredService<ServiceBusClient>();
                 var sender = client.CreateSender(notificationsQueue);
-                return new ServiceBusQueueRepository(sender);
+                var notificationsQueueRepository = new ServiceBusQueueRepository(sender);
+
+                return new DeltaCalculatorService(
+                    syncJobRepository,
+                    loggingRepository,
+                    graphAPIService,
+                    dryRun,
+                    thresholdConfig,
+                    thresholdNotificationConfig,
+                    notificationRepository,
+                    notificationsQueueRepository,
+                    telemetryClient
+                );
             });
         }
 

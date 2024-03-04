@@ -14,15 +14,11 @@ namespace Hosts.GroupMembershipObtainer
     {
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly SGMembershipCalculator _calculator = null;
-        private readonly IEmailSenderRecipient _emailSenderRecipient = null;
-        private const string EmailSubject = "EmailSubject";
-        private const string SyncDisabledNoValidGroupIds = "SyncDisabledNoValidGroupIds";
 
-        public EmailSenderFunction(ILoggingRepository loggingRepository, SGMembershipCalculator calculator, IEmailSenderRecipient emailSenderRecipient)
+        public EmailSenderFunction(ILoggingRepository loggingRepository, SGMembershipCalculator calculator)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _calculator = calculator ?? throw new ArgumentNullException(nameof(calculator));
-            _emailSenderRecipient = emailSenderRecipient ?? throw new ArgumentNullException(nameof(emailSenderRecipient));
         }
 
         [FunctionName(nameof(EmailSenderFunction))]
@@ -32,7 +28,7 @@ namespace Hosts.GroupMembershipObtainer
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
                 _calculator.RunId = request.RunId;
-                await _calculator.SendEmailAsync(request.SyncJob, request.RunId, EmailSubject, SyncDisabledNoValidGroupIds, new[] { request.SyncJob.TargetOfficeGroupId.ToString(), request.SyncJob.Query, _emailSenderRecipient.SupportEmailAddresses });
+                await _calculator.SendEmailAsync(request.SyncJob, request.NotificationType, request.AdditionalContentParams);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             }
         }

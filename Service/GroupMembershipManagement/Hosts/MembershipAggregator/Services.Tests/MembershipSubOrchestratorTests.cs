@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph.Models.Security;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.Notifications;
 using Models.ServiceBus;
 using Models.ThresholdNotifications;
 using Moq;
@@ -60,7 +61,7 @@ namespace Services.Tests
         private Mock<ILocalizationRepository> _localizationRepository;
         private Mock<INotificationRepository> _notificationRepository;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
-
+        private Mock<IServiceBusQueueRepository> _notificationsQueueRepository;
         [TestInitialize]
         public void SetupTest()
         {
@@ -70,12 +71,10 @@ namespace Services.Tests
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _durableContext = new Mock<IDurableOrchestrationContext>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
-            _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _graphAPIService = new Mock<IGraphAPIService>();
-            _gmmResources = new Mock<IGMMResources>();
-            _localizationRepository = new Mock<ILocalizationRepository>();
             _notificationRepository = new Mock<INotificationRepository>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            _notificationsQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             _dryRun = new Mock<IDryRunValue>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
@@ -84,15 +83,12 @@ namespace Services.Tests
                                             (
                                                 _syncJobRepository.Object,
                                                 _loggingRepository.Object,
-                                                _emailSenderRecipient.Object,
                                                 _graphAPIService.Object,
                                                 _dryRun.Object,
                                                 _thresholdConfig.Object,
                                                 _thresholdNotificationConfig.Object,
-                                                _gmmResources.Object,
-                                                _localizationRepository.Object,
                                                 _notificationRepository.Object,
-                                                _serviceBusQueueRepository.Object,
+                                                _notificationsQueueRepository.Object,
                                                 _telemetryClient
                                             );
 
@@ -305,8 +301,6 @@ namespace Services.Tests
             var currentThresholdViolations = 0;
             _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);
             _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(2);
-            _graphAPIService.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>())).ReturnsAsync(true);
-
             _numberOfUsersForDestinationPart = 5;
             _syncJob.ThresholdViolations = currentThresholdViolations;
 
@@ -325,16 +319,8 @@ namespace Services.Tests
                                                                     It.Is<SyncStatus?>(x => x == SyncStatus.Idle)
                                                                 )
                                                                     , Times.Once());
+            _notificationsQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Exactly(0));
 
-            _graphAPIService.Verify(x => x.SendEmailAsync(
-                                            It.IsAny<string>(),
-                                            It.IsAny<string>(),
-                                            It.IsAny<string[]>(),
-                                            It.IsAny<Guid>(),
-                                            It.IsAny<string>(),
-                                            It.IsAny<string>(),
-                                            It.IsAny<string[]>()
-                                        ), Times.Never());
         }
 
         [TestMethod]
@@ -371,7 +357,6 @@ namespace Services.Tests
         {
             _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(5);
             _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(2);
-            _graphAPIService.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>())).ReturnsAsync(true);
 
             _numberOfUsersForSourcePart = 5;
             _syncJob.ThresholdViolations = 1;
@@ -391,16 +376,7 @@ namespace Services.Tests
                                                                 )
                                                                     , Times.Once());
 
-            _graphAPIService.Verify(x => x.SendEmailAsync(
-                                            It.IsAny<string>(),
-                                            It.IsAny<string>(),
-                                            It.IsAny<string[]>(),
-                                            It.IsAny<Guid>(),
-                                            It.IsAny<string>(),
-                                            It.IsAny<string>(),
-                                            It.IsAny<string[]>()
-                                        )
-                                            , Times.Once());
+            _notificationsQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Exactly(1));
         }
 
         [TestMethod]
@@ -423,16 +399,7 @@ namespace Services.Tests
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Membership increase in")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Threshold exceeded")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
 
-            _graphAPIService.Verify(x => x.SendEmailAsync(
-                                                        It.IsAny<string>(),
-                                                        It.IsAny<string>(),
-                                                        It.IsAny<string[]>(),
-                                                        It.IsAny<Guid>(),
-                                                        It.IsAny<string>(),
-                                                        It.IsAny<string>(),
-                                                        It.IsAny<string[]>()
-                                                    )
-                                                        , Times.Once());
+            _notificationsQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once());
 
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
                                                                     It.IsAny<IEnumerable<SyncJob>>(),
@@ -461,16 +428,7 @@ namespace Services.Tests
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Membership increase in")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Threshold exceeded")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
 
-            _graphAPIService.Verify(x => x.SendEmailAsync(
-                                                        It.IsAny<string>(),
-                                                        It.IsAny<string>(),
-                                                        It.IsAny<string[]>(),
-                                                        It.IsAny<Guid>(),
-                                                        It.IsAny<string>(),
-                                                        It.IsAny<string>(),
-                                                        It.IsAny<string[]>()
-                                                    )
-                                                        , Times.Once());
+            _notificationsQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once());
 
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
                                                                     It.IsAny<IEnumerable<SyncJob>>(),
@@ -499,16 +457,7 @@ namespace Services.Tests
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Membership decrease in")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Threshold exceeded")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
 
-            _graphAPIService.Verify(x => x.SendEmailAsync(
-                                                        It.IsAny<string>(),
-                                                        It.IsAny<string>(),
-                                                        It.IsAny<string[]>(),
-                                                        It.IsAny<Guid>(),
-                                                        It.IsAny<string>(),
-                                                        It.IsAny<string>(),
-                                                        It.IsAny<string[]>()
-                                                    )
-                                                        , Times.Once());
+            _notificationsQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once());
 
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(
                                                                     It.IsAny<IEnumerable<SyncJob>>(),
@@ -527,15 +476,12 @@ namespace Services.Tests
                                 (
                                     _syncJobRepository.Object,
                                     _loggingRepository.Object,
-                                    _emailSenderRecipient.Object,
                                     _graphAPIService.Object,
                                     _dryRun.Object,
                                     _thresholdConfig.Object,
                                     _thresholdNotificationConfig.Object,
-                                    _gmmResources.Object,
-                                    _localizationRepository.Object,
                                     _notificationRepository.Object,
-                                    _serviceBusQueueRepository.Object,
+                                    _notificationsQueueRepository.Object,
                                     _telemetryClient
                                 );
 
@@ -563,15 +509,12 @@ namespace Services.Tests
                                 (
                                     _syncJobRepository.Object,
                                     _loggingRepository.Object,
-                                    _emailSenderRecipient.Object,
                                     _graphAPIService.Object,
                                     _dryRun.Object,
                                     _thresholdConfig.Object,
                                     _thresholdNotificationConfig.Object,
-                                    _gmmResources.Object,
-                                    _localizationRepository.Object,
                                     _notificationRepository.Object,
-                                    _serviceBusQueueRepository.Object,
+                                    _notificationsQueueRepository.Object,
                                     _telemetryClient
                                 );
 
@@ -594,15 +537,12 @@ namespace Services.Tests
                                 (
                                     _syncJobRepository.Object,
                                     _loggingRepository.Object,
-                                    _emailSenderRecipient.Object,
                                     _graphAPIService.Object,
                                     _dryRun.Object,
                                     _thresholdConfig.Object,
                                     _thresholdNotificationConfig.Object,
-                                    _gmmResources.Object,
-                                    _localizationRepository.Object,
                                     _notificationRepository.Object,
-                                    _serviceBusQueueRepository.Object,
+                                    _notificationsQueueRepository.Object,
                                     _telemetryClient
                                 );
 
@@ -785,7 +725,7 @@ namespace Services.Tests
             _syncJob.ThresholdViolations = 2;
             _thresholdNotificationConfig.Setup(x => x.IsThresholdNotificationEnabled).Returns(true);
             _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsFollowUps).Returns(3);
-            _serviceBusQueueRepository.Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()))
+            _notificationsQueueRepository.Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()))
             .Returns(Task.CompletedTask);
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
@@ -793,7 +733,7 @@ namespace Services.Tests
 
             Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
 
-            _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once());
+            _notificationsQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.Contains("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
         }
 
@@ -808,16 +748,9 @@ namespace Services.Tests
 
             Assert.IsNull(response.FilePath);
             Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
-            _graphAPIService.Verify(x => x.SendEmailAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    It.IsAny<string[]>(),
-                    It.IsAny<Guid>(),
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    It.IsAny<string[]>()
-                )
-                    , Times.Once());
+            _graphAPIService.Verify(api => api.SendEmailAsync(
+                          _syncJob, NotificationMessageType.NoDataNotification, It.IsAny<string[]>()),
+                          Times.Once());
         }
 
         [TestMethod]

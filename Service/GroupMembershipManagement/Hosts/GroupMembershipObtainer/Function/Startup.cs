@@ -43,7 +43,6 @@ namespace Hosts.GroupMembershipObtainer
                 return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
             })
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
-            .AddScoped<SGMembershipCalculator>()
             .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
             {
                 var configuration = s.GetService<IConfiguration>();
@@ -51,6 +50,23 @@ namespace Hosts.GroupMembershipObtainer
                 var containerName = configuration["membershipContainerName"];
 
                 return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
+            })
+            .AddScoped<SGMembershipCalculator>(services =>
+            {
+                var configuration = services.GetRequiredService<IConfiguration>();
+                var notificationsQueue = configuration["serviceBusNotificationsQueue"];
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(notificationsQueue);
+                var notificationsQueueRepository = new ServiceBusQueueRepository(sender);
+
+                return new SGMembershipCalculator(
+                    services.GetRequiredService<IGraphGroupRepository>(),
+                    services.GetRequiredService<IBlobStorageRepository>(),
+                    services.GetRequiredService<IDatabaseSyncJobsRepository>(),
+                    notificationsQueueRepository,  
+                    services.GetRequiredService<ILoggingRepository>(),
+                    services.GetRequiredService<IDryRunValue>()
+                );
             })
             .AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
             {

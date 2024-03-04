@@ -16,6 +16,7 @@ namespace Services.Notifier.Contracts
         public Task UpdateNotificationStatusAsync(ThresholdNotification notification, ThresholdNotificationStatus status);
         public Task<Models.ThresholdNotifications.ThresholdNotification> CreateActionableNotificationFromContentAsync(string messageBody);
         public Task SendEmailAsync(string messageType, string messageBody, string subjectTemplate, string contentTemplate);
+        public Task SendNormalThresholdEmailAsync(string messageBody);
 
     }
 }

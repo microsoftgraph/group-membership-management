@@ -14,6 +14,10 @@ using System.Threading.Tasks;
 using Tests.FunctionApps.Mocks;
 using Tests.Services;
 using Models;
+using Models.Notifications;
+using Repositories.ServiceBusQueue;
+using Moq;
+using Repositories.Contracts;
 
 namespace Tests.FunctionApps
 {
@@ -50,13 +54,12 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
 
-            var mail = new MockMailRepository();
-            var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+            var notificationsQueueRepository = new Mock<IServiceBusQueueRepository>();
             var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
-            var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, blobRepository, syncJobs, notificationsQueueRepository.Object, new MockLoggingRepository(), dryRun);
             var testJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
@@ -108,13 +111,12 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
 
-            var mail = new MockMailRepository();
-            var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+            var notificationsQueueRepository = new Mock<IServiceBusQueueRepository>();
             var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
-            var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, blobRepository, syncJobs, notificationsQueueRepository.Object, new MockLoggingRepository(), dryRun);
             var testJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
@@ -165,13 +167,12 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
 
-            var mail = new MockMailRepository();
-            var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+            var notificationsQueueRepository = new Mock<IServiceBusQueueRepository>();
             var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
-            var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, blobRepository, syncJobs, notificationsQueueRepository.Object, new MockLoggingRepository(), dryRun);
             var testJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
@@ -224,14 +225,13 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
 
-            var mail = new MockMailRepository();
-            var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+            var notificationsQueueRepository = new Mock<IServiceBusQueueRepository>();
             var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
-            var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, blobRepository, syncJobs, notificationsQueueRepository.Object, new MockLoggingRepository(), dryRun);
 
             var sampleQuery = QuerySample.GenerateQuerySample("GroupMembership");
             var testJob = new SyncJob
@@ -247,7 +247,7 @@ namespace Tests.FunctionApps
             var partIndex = 0;
             var partOneSource = sampleQuery.GetSourceId(partIndex);
 
-            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Subject", "Content", null);
+            await calc.SendEmailAsync(testJob, NotificationMessageType.NotValidSourceNotification, null);
             Assert.AreEqual(0, blobRepository.Sent.Count);
         }
 
@@ -283,14 +283,13 @@ namespace Tests.FunctionApps
                 ThrowNonSocketExceptionFromGroupExists = errorOnGroupExists
             };
 
-            var mail = new MockMailRepository();
-            var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+            var notificationsQueueRepository = new Mock<IServiceBusQueueRepository>();
             var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
-            var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, blobRepository, syncJobs, notificationsQueueRepository.Object, new MockLoggingRepository(), dryRun);
 
             var sampleQuery = QuerySample.GenerateQuerySample("GroupMembership");
             var testJob = new SyncJob
@@ -306,7 +305,7 @@ namespace Tests.FunctionApps
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
 
-            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Subject", "Content", null);
+            await calc.SendEmailAsync(testJob, NotificationMessageType.NotValidSourceNotification, null);
             Assert.AreEqual(0, blobRepository.Sent.Count);
         }
 
@@ -343,14 +342,13 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
 
-            var mail = new MockMailRepository();
-            var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+            var notificationsQueueRepository = new Mock<IServiceBusQueueRepository>();
             var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
-            var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, blobRepository, syncJobs, notificationsQueueRepository.Object, new MockLoggingRepository(), dryRun);
 
             var sampleQuery = QuerySample.GenerateQuerySample("GroupMembership");
             var testJob = new SyncJob
@@ -365,7 +363,7 @@ namespace Tests.FunctionApps
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
 
-            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Subject", "Content", null);
+            await calc.SendEmailAsync(testJob, NotificationMessageType.NotValidSourceNotification, null);
             Assert.AreEqual(0, blobRepository.Sent.Count);
         }
 
@@ -385,14 +383,13 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
 
-            var mail = new MockMailRepository();
-            var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+            var notificationsQueueRepository = new Mock<IServiceBusQueueRepository>();
             var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
-            var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, blobRepository, syncJobs, notificationsQueueRepository.Object, new MockLoggingRepository(), dryRun);
 
             var sampleQuery = QuerySample.GenerateQuerySample("GroupMembership");
             var testJob = new SyncJob
@@ -444,14 +441,13 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
 
-            var mail = new MockMailRepository();
-            var mailAddresses = new MockEmail<IEmailSenderRecipient>();
+            var notificationsQueueRepository = new Mock<IServiceBusQueueRepository>();
             var syncJobs = new MockDatabaseSyncJobRepository();
             var dryRun = new MockDryRunValue() { DryRunEnabled = false };
             var blobRepository = new MockBlobStorageRepository();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
-            var calc = new SGMembershipCalculator(graphRepo, blobRepository, mail, mailAddresses, syncJobs, new MockLoggingRepository(), dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, blobRepository, syncJobs, notificationsQueueRepository.Object, new MockLoggingRepository(), dryRun);
 
             var sampleQuery = QuerySample.GenerateQuerySample("GroupMembership");
             var testJob = new SyncJob
@@ -465,7 +461,7 @@ namespace Tests.FunctionApps
             syncJobs.Jobs.Add(testJob);
 
             var partOneSource = _querySample.GetSourceId(_partIndex);
-            await calc.SendEmailAsync(testJob, Guid.NewGuid(), "Subject", "Content", null);
+            await calc.SendEmailAsync(testJob, NotificationMessageType.NotValidSourceNotification, null);
             Assert.AreEqual(0, blobRepository.Sent.Count);
         }
     }
