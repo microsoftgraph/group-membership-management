@@ -354,8 +354,8 @@ function Deploy-Resources {
         -ScriptsDirectory "$scriptsDirectory\Scripts\PostDeployment"
 
     Set-DBMigrations `
-    -ConnectionString $connectionString `
-    -ScriptsDirectory $scriptsDirectory
+        -ConnectionString $connectionString `
+        -ScriptsDirectory "$scriptsDirectory\function_packages"
 
     Set-FunctionAppCode `
         -ComputeResourceGroup $computeResourceGroup `
