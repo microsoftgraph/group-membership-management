@@ -95,7 +95,7 @@ function Set-SqlServerFirewallRule {
 function Set-SQLServerPermissions {
     param (
         [Parameter(Mandatory = $true)]
-        [SecureString]$ConnectionString,
+        [string]$ConnectionString,
         [Parameter(Mandatory = $true)]
         [string]$ComputeResourceGroup
     )
@@ -106,7 +106,7 @@ function Set-SQLServerPermissions {
     $context = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
     $sqlToken = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($context.Account, $context.Environment, $context.Tenant.Id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "https://database.windows.net").AccessToken
     $connection = New-Object System.Data.SqlClient.SqlConnection
-    $connection.ConnectionString = ($ConnectionString | ConvertFrom-SecureString -AsPlainText)
+    $connection.ConnectionString = $ConnectionString
     $connection.AccessToken = $sqlToken
 
     $sqlScript = "IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'$($context.Account.Id)')
@@ -168,7 +168,7 @@ function Set-RBACPermissions {
 function Set-DBMigrations {
     param (
         [Parameter(Mandatory = $true)]
-        [SecureString]$ConnectionString,
+        [string]$ConnectionString,
         [Parameter(Mandatory = $true)]
         [string]$ScriptsDirectory
     )
@@ -182,7 +182,7 @@ function Set-DBMigrations {
     Write-Host "`nApplying database migrations"
     Write-Host "Interactively sign in to Azure AD to apply database migrations"
 
-    $PlainConnectionString = ($ConnectionString | ConvertFrom-SecureString -AsPlainText)
+    $PlainConnectionString = $ConnectionString
     . ("$ScriptsDirectory\function_packages\efbundle.exe") --connection "$PlainConnectionString;Authentication=Active Directory Interactive;"
 }
 
@@ -307,7 +307,7 @@ function Deploy-Resources {
         -AsPlainText
 
     Set-SQLServerPermissions `
-    -ConnectionString (ConvertTo-SecureString $connectionString -AsPlainText -Force) `
+    -ConnectionString $connectionString `
     -ComputeResourceGroup $computeResourceGroup
 
     Set-RBACPermissions `
@@ -316,7 +316,7 @@ function Deploy-Resources {
     -ScriptsDirectory $scriptsDirectory
 
     Set-DBMigrations `
-    -ConnectionString (ConvertTo-SecureString $connectionString -AsPlainText -Force) `
+    -ConnectionString $connectionString `
     -ScriptsDirectory $scriptsDirectory
 
     Set-FunctionAppCode `
