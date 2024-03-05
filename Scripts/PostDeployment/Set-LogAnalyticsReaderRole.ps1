@@ -31,13 +31,20 @@ function Set-LogAnalyticsReaderRole
 		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation,
 		[Parameter(Mandatory = $False)]
+		[string] $DataResourceGroupName = $null,
+		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
 	)
 
 	$functionApps = @("JobScheduler")
 
 	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
-	$logAnalyticsWorkspaceResourceName = $resourceGroupName
+	if($DataResourceGroupName)
+	{
+		$resourceGroupName = $DataResourceGroupName
+	}
+
+	$logAnalyticsWorkspaceResourceName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
 
 	foreach ($functionApp in $functionApps)
 	{

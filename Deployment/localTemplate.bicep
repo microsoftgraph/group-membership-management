@@ -7,6 +7,7 @@ param environmentAbbreviation string
 param keyVaultReaders array
 param isManagedApplication bool = false
 param managedResourceGroupName string = '${solutionAbbreviation}-mrg-${environmentAbbreviation}'
+param appConfigurationName string = '${solutionAbbreviation}-appConfig-${environmentAbbreviation}'
 
 // prereqs parameters
 // parameters for prereqs key vault
@@ -117,6 +118,7 @@ module gmmResources 'commonResources.bicep' = {
     tenantDomain: tenantDomain
     pipeline: pipeline
     skipADFDeployment: skipADFDeployment
+    appConfigurationName: appConfigurationName
   }
   dependsOn: [
     gmmResourceGroups

@@ -7,6 +7,7 @@ param environmentAbbreviation string
 param keyVaultReaders array
 param isManagedApplication bool
 param managedResourceGroupName string
+param appConfigurationName string
 
 // prereqs parameters
 // parameters for prereqs key vault
@@ -140,6 +141,7 @@ module computeResources 'computeResources.bicep' = {
     sharepointDomain: sharepointDomain
     tenantDomain: tenantDomain
     pipeline: pipeline
+    appConfigurationName: appConfigurationName
   }
   dependsOn: [
     dataResources

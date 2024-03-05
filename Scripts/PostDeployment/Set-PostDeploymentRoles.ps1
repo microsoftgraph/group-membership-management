@@ -29,7 +29,9 @@ function Set-PostDeploymentRoles {
 		[Parameter(Mandatory=$True)]
 		[string] $EnvironmentAbbreviation,
         [Parameter(Mandatory = $False)]
-		[System.Collections.ArrayList] $UserPrincipalNames
+		[System.Collections.ArrayList] $UserPrincipalNames,
+        [Parameter(Mandatory = $False)]
+		[string] $DataResourceGroupName = $null
     )
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -37,16 +39,19 @@ function Set-PostDeploymentRoles {
 
     Set-StorageAccountContainerManagedIdentityRoles	-SolutionAbbreviation $SolutionAbbreviation `
                                                     -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                                    -DataResourceGroupName $DataResourceGroupName `
                                                     -Verbose
 
     . ($scriptsDirectory + '\PostDeployment\Set-AppConfigurationManagedIdentityRoles.ps1')
     Set-AppConfigurationManagedIdentityRoles    -SolutionAbbreviation $SolutionAbbreviation `
                                                 -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                                -DataResourceGroupName $DataResourceGroupName `
                                                 -Verbose
 
     . ($scriptsDirectory + '\PostDeployment\Set-LogAnalyticsReaderRole.ps1')
     Set-LogAnalyticsReaderRole	-SolutionAbbreviation $SolutionAbbreviation `
                                 -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                -DataResourceGroupName $DataResourceGroupName `
                                 -Verbose
 
     . ($scriptsDirectory + '\PostDeployment\Set-ADFManagedIdentityRoles.ps1')

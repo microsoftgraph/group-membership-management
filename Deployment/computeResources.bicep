@@ -4,7 +4,8 @@ param environmentAbbreviation string
 param solutionAbbreviation string
 param tenantId string
 param managedResourceGroupName string
-param isManagedApplication bool = true
+param isManagedApplication bool
+param appConfigurationName string
 
 // UI parameters
 param customDomainName string
@@ -353,6 +354,7 @@ module nonProdServiceComputeResources '../Service/GroupMembershipManagement/Host
     storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
+    appConfigurationName: appConfigurationName
   }
   dependsOn: [
     nonProdServiceDataResources
@@ -470,7 +472,7 @@ module webApiComputeResources '../Service/GroupMembershipManagement/Hosts/WebApi
     location: location
     prereqsResourceGroup: prereqsResourceGroupName
     dataResourceGroup: dataResourceGroupName
-    pipeline: pipeline
+    adfPipeline: pipeline
   }
   dependsOn: [
     sqlMembershipObtainerComputeResources

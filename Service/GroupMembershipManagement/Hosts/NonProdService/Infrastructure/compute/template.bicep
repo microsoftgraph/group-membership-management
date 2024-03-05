@@ -155,11 +155,12 @@ param appConfigurationKeyData array = [
 
 module appConfigurationTemplate 'appConfigurationKeyValues.bicep' = {
   name: 'appConfigurationTemplate-NonProdService'
-  scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
+  scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     solutionAbbreviation: solutionAbbreviation
     environmentAbbreviation: environmentAbbreviation
     appConfigurationKeyData: appConfigurationKeyData
+    appConfigurationName: appConfigurationName
   }
 }
 

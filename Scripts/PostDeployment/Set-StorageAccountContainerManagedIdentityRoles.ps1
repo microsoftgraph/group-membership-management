@@ -31,6 +31,8 @@ function Set-StorageAccountContainerManagedIdentityRoles
 		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation,
 		[Parameter(Mandatory = $False)]
+		[string] $DataResourceGroupName = $null,
+		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
 	)
 
@@ -41,7 +43,13 @@ function Set-StorageAccountContainerManagedIdentityRoles
 
 		Write-Host "Granting app service access to storage account blobs";
 
+
 		$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
+		if($DataResourceGroupName)
+		{
+			$resourceGroupName = $DataResourceGroupName
+		}
+
 		$ProductionFunctionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp"
 		$StagingFunctionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp/slots/staging"
 

@@ -30,6 +30,8 @@ function Set-AppConfigurationManagedIdentityRoles
 		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation,
 		[Parameter(Mandatory = $False)]
+		[string] $DataResourceGroupName = $null,
+		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
 	)
 
@@ -37,6 +39,11 @@ function Set-AppConfigurationManagedIdentityRoles
 	$webApi = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
 
 	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
+	if($DataResourceGroupName)
+	{
+		$resourceGroupName = $DataResourceGroupName
+	}
+
 	$appConfigName = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation"
 
 	foreach ($functionApp in $functionApps)

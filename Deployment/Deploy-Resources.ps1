@@ -4,7 +4,7 @@ function Set-Subscription {
         [string]$ScriptsDirectory
     )
 
-    . ($ScriptsDirectory + '\Scripts\Add-AzAccountIfNeeded.ps1')
+    . ($ScriptsDirectory + '\Add-AzAccountIfNeeded.ps1')
     Add-AzAccountIfNeeded | Out-Null
 
     if (-not $SubscriptionId) {
@@ -161,7 +161,7 @@ function Set-RBACPermissions {
     # grant permissions to resources
     Write-Host "`nGranting permissions to resources"
 
-    . ($ScriptsDirectory + '\Scripts\PostDeployment\Set-PostDeploymentRoles.ps1')
+    . ($ScriptsDirectory + '\Set-PostDeploymentRoles.ps1')
     Set-PostDeploymentRoles -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
 }
 
@@ -182,8 +182,7 @@ function Set-DBMigrations {
     Write-Host "`nApplying database migrations"
     Write-Host "Interactively sign in to Azure AD to apply database migrations"
 
-    $PlainConnectionString = $ConnectionString
-    . ("$ScriptsDirectory\function_packages\efbundle.exe") --connection "$PlainConnectionString;Authentication=Active Directory Interactive;"
+    . ("$ScriptsDirectory\efbundle.exe") --connection "$ConnectionString;Authentication=Active Directory Interactive;"
 }
 
 function Set-FunctionAppCode {
@@ -191,7 +190,9 @@ function Set-FunctionAppCode {
         [Parameter(Mandatory = $true)]
         [string]$ComputeResourceGroup,
         [Parameter(Mandatory = $true)]
-        [string]$ScriptsDirectory
+        [string]$FunctionsPackagesDirectory,
+        [Parameter(Mandatory = $true)]
+        [string]$WebApiPackagesDirectory
     )
 
     # publish function apps code
@@ -206,7 +207,7 @@ function Set-FunctionAppCode {
         Publish-AzWebApp `
             -ResourceGroupName $computeResourceGroup `
             -Name $functionApp.Name `
-            -ArchivePath "$ScriptsDirectory\function_packages\$functionName.zip" `
+            -ArchivePath "$FunctionsPackagesDirectory\$functionName.zip" `
             -Force `
     }
 
@@ -216,10 +217,37 @@ function Set-FunctionAppCode {
     $webApiName = $webApi.Name.Split("-")[3]
     Publish-AzWebApp `
         -ResourceGroupName $computeResourceGroup `
-        -Name $functionApp.Name `
-        -ArchivePath "$ScriptsDirectory\webapi_package\$webApiName.zip" `
+        -Name $webApi.Name `
+        -ArchivePath "$WebApiPackagesDirectory\$webApiName.zip" `
         -Force `
 
+}
+
+function Disable-KeyVaultFirewallRules {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string[]]$ResourceGroups
+    )
+
+    # disable firewall rules for key vaults
+    Write-Host "Disabling firewall rules for key vaults"
+
+    # apply firewall rules to key vaults
+    foreach ($resourceGroup in $ResourceGroups) {
+        $keyVaults = Get-AzKeyVault -ResourceGroupName $resourceGroup
+        foreach ($keyVault in $keyVaults) {
+            $keyVaultName = $keyVault.VaultName
+            $keyVaultResourceGroup = $keyVault.ResourceGroupName
+
+            Write-Host "Disabling firewall rules for key vault $keyVaultName in resource group $keyVaultResourceGroup"
+
+            Update-AzKeyVaultNetworkRuleSet `
+                -VaultName $keyVaultName `
+                -ResourceGroupName $keyVaultResourceGroup `
+                -Bypass AzureServices `
+                -DefaultAction Allow
+        }
+    }
 }
 
 function Set-KeyVaultFirewallRules {
@@ -236,8 +264,8 @@ function Set-KeyVaultFirewallRules {
     Write-Host "Enabling firewall rules for key vaults"
 
     # get ip addresses for firewall rules
-    . ($ScriptsDirectory + '\Deployment\Update-KeyVaultBicepWithFirewallIPs.ps1') -FolderPathToSaveIpRules "$ScriptsDirectory\Deployment\"
-    $ipRules = Get-Content "$ScriptsDirectory\Deployment\ipRules.txt"
+    . ($ScriptsDirectory + '\Get-FirewallIPRules.ps1') -FolderPathToSaveIpRules $ScriptsDirectory
+    $ipRules = Get-Content "$ScriptsDirectory\ipRules.txt"
     $ipRules += $ipAddress
 
     # apply firewall rules to key vaults
@@ -271,7 +299,9 @@ function Deploy-Resources {
         [Parameter(Mandatory = $true)]
         [string]$TemplateFilePath,
         [Parameter(Mandatory = $true)]
-        [string]$ParameterFilePath
+        [string]$ParameterFilePath,
+        [Parameter(Mandatory = $false)]
+        [bool]$SkipResourceProvidersCheck = $false
     )
 
     # define the resource groups
@@ -283,21 +313,29 @@ function Deploy-Resources {
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
-    Set-Subscription -ScriptsDirectory $scriptsDirectory
-    Set-ResourceProviders
+    Set-Subscription -ScriptsDirectory "$scriptsDirectory\Scripts"
+    if (!$SkipResourceProvidersCheck) {
+        Set-ResourceProviders
+    }
+
+    Disable-KeyVaultFirewallRules -ResourceGroups $resourceGroups
 
     Set-GMMResources `
-    -SolutionAbbreviation $SolutionAbbreviation `
-    -EnvironmentAbbreviation $EnvironmentAbbreviation `
-    -Location $Location `
-    -TemplateFilePath $TemplateFilePath `
-    -ParameterFilePath $ParameterFilePath
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -Location $Location `
+        -TemplateFilePath $TemplateFilePath `
+        -ParameterFilePath $ParameterFilePath
+
+    Start-Sleep -Seconds 30
+
+    Disable-KeyVaultFirewallRules -ResourceGroups $resourceGroups
 
     Set-SqlServerFirewallRule `
-    -SolutionAbbreviation $SolutionAbbreviation `
-    -EnvironmentAbbreviation $EnvironmentAbbreviation `
-    -Location $Location `
-    -ipAddress $ipAddress
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -Location $Location `
+        -ipAddress $ipAddress
 
     # retrieve SQL connection strings
     # Basic connection string
@@ -311,22 +349,23 @@ function Deploy-Resources {
     -ComputeResourceGroup $computeResourceGroup
 
     Set-RBACPermissions `
-    -SolutionAbbreviation $SolutionAbbreviation `
-    -EnvironmentAbbreviation $EnvironmentAbbreviation `
-    -ScriptsDirectory $scriptsDirectory
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -ScriptsDirectory "$scriptsDirectory\Scripts\PostDeployment"
 
     Set-DBMigrations `
     -ConnectionString $connectionString `
     -ScriptsDirectory $scriptsDirectory
 
     Set-FunctionAppCode `
-    -ComputeResourceGroup $computeResourceGroup `
-    -ScriptsDirectory $scriptsDirectory
+        -ComputeResourceGroup $computeResourceGroup `
+        -FunctionsPackagesDirectory "$scriptsDirectory\function_packages" `
+        -WebApiPackagesDirectory "$scriptsDirectory\webapi_package"
 
     Set-KeyVaultFirewallRules `
-    -ResourceGroups $resourceGroups `
-    -ipAddress $ipAddress `
-    -ScriptsDirectory $scriptsDirectory
+        -ResourceGroups $resourceGroups `
+        -ipAddress $ipAddress `
+        -ScriptsDirectory "$scriptsDirectory\Scripts"
 }
 
 
