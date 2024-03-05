@@ -234,6 +234,11 @@ function Disable-KeyVaultFirewallRules {
 
     # apply firewall rules to key vaults
     foreach ($resourceGroup in $ResourceGroups) {
+        $rgObject = Get-AzResourceGroup -Name $resourceGroup -ErrorAction SilentlyContinue
+        if ($null -eq $rgObject) {
+            continue
+        }
+
         $keyVaults = Get-AzKeyVault -ResourceGroupName $resourceGroup
         foreach ($keyVault in $keyVaults) {
             $keyVaultName = $keyVault.VaultName
