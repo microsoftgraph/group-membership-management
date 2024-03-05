@@ -237,8 +237,8 @@ export const strings: IStrings = {
   },
   ManageMembership: {
     manageMembershipButton: 'Administrar membresía',
-    addSyncButton: 'Agregar sincronizacion',
-    bulkAddSyncsButton: 'Agregar sincronizacion',
+    addSyncButton: 'Agregar sincronización',
+    bulkAddSyncsButton: 'Agregar sincronizaciones',
     labels: {
       abandonOnboarding: '¿Abandonar Onboarding?',
       abandonOnboardingDescription: '¿Estás seguro de que quieres abandonar el onboarding en progreso y regresar?',
