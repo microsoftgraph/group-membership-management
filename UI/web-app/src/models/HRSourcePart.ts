@@ -15,9 +15,7 @@ export type HRSourcePart = {
       id?: number;
       depth?: number;
     };    
-    filter?: string;    
-    includeOrg?: boolean;
-    includeFilter?: boolean;
+    filter?: string;
 };
 
 export const IsHRSourcePartQuery = (query: SourcePartQuery): query is HRSourcePart => {

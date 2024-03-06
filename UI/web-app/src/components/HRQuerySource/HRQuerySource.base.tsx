@@ -39,6 +39,8 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const objectIdEmployeeIdMapping = useSelector(selectObjectIdEmployeeIdMapping);
   const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions);
   const [isDisabled, setIsDisabled] = useState(true);
+  const [includeOrg, setIncludeOrg] = useState(false);
+  const [includeFilter, setIncludeFilter] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [source, setSource] = useState<HRSourcePartSource>(props.source);
   const excludeLeaderQuery = `EmployeeId != ${source.manager?.id}`
@@ -126,15 +128,14 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   ];
 
   const handleIncludeOrgChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
-    const includeOrg = option?.key === "Yes";
     if (option?.key === "No") {
+      setIncludeOrg(false);
       dispatch(updateOrgLeaderDetails({ employeeId: -1 }));
       const id = undefined;
       const depth = undefined;
       setSource(prevSource => {
         const newSource = {
           ...prevSource,
-          includeOrg,
           manager: {
             ...prevSource.manager,
             id,
@@ -146,8 +147,9 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       });
     }
     else if (option?.key === "Yes") {
+      setIncludeOrg(true);
       setSource(prevSource => {
-        const newSource = { ...prevSource, includeOrg };
+        const newSource = { ...prevSource};
         onSourceChange(newSource, partId);
         return newSource;
       });
@@ -155,18 +157,19 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   }
 
   const handleIncludeFilterChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
-    const includeFilter = option?.key === "Yes";
     if (option?.key === "No") {
+      setIncludeFilter(false);
       const filter = "";
       setSource(prevSource => {
-        const newSource = { ...prevSource, filter, includeFilter };
+        const newSource = { ...prevSource, filter };
         onSourceChange(newSource, partId);
         return newSource;
       });
     }
     else if (option?.key === "Yes") {
+      setIncludeFilter(true);
       setSource(prevSource => {
-        const newSource = { ...prevSource, includeFilter };
+        const newSource = { ...prevSource };
         onSourceChange(newSource, partId);
         return newSource;
       });
@@ -205,7 +208,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     <div className={classNames.root}>
       <Label>{strings.HROnboarding.includeOrg}</Label>
       <ChoiceGroup
-        selectedKey={source.includeOrg ? strings.yes : strings.no}
+        selectedKey={(includeOrg || source?.manager?.id) ? strings.yes : strings.no}
         options={yesNoOptions}
         onChange={handleIncludeOrgChange}
         styles={{
@@ -214,7 +217,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         }}
       />
 
-      {(source.includeOrg === true) && (
+      {(includeOrg || source?.manager?.id) && (
       <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={stackTokens}>
         <Stack.Item align="start">
           <div>
@@ -285,7 +288,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
 
       <Label>{strings.HROnboarding.includeFilter}</Label>
       <ChoiceGroup
-        selectedKey={source.includeFilter ? strings.yes : strings.no}
+        selectedKey={(includeFilter || source.filter) ? strings.yes : strings.no}
         options={yesNoOptions}
         onChange={handleIncludeFilterChange}
         styles={{
@@ -294,7 +297,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         }}
       />
 
-      {(source.includeFilter === true) && (
+      {(includeFilter || source.filter) && (
       <><div className={classNames.labelContainer}>
       <Label>{strings.HROnboarding.filter}</Label>
       <TooltipHost content={strings.HROnboarding.filterInfo} id="toolTipFilterId" calloutProps={{ gapSpace: 0 }}>
