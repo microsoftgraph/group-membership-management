@@ -193,7 +193,6 @@ namespace Services.Notifier
                 CcEmailAddresses = ccAddress,
                 AdditionalContentParams = additionalContentParameters
             };
-
             if (messageType.Equals("NoDataNotification", StringComparison.InvariantCultureIgnoreCase))
             {
                 message.AdditionalSubjectParams = additionalContentParameters;
