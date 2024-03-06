@@ -36,7 +36,13 @@ function Set-ADFManagedIdentityRoles
     $azureDataFactoryName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
     $servicePrincipals = New-Object System.Collections.ArrayList
     $azureDataFactoryObject = Get-AzResource -Name $azureDataFactoryName
-    
+
+    if ($null -eq $azureDataFactoryObject)
+    {
+        Write-Host "The $azureDataFactoryName ADF resource was not found!";
+        return;
+    }
+
     foreach ($name in $UserPrincipalNames)
     {
         $userPrincipal = Get-AzADUser -UserPrincipalName $name
