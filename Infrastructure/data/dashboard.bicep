@@ -414,7 +414,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     Service: '117px'
                     Groups: '93px'
                   }
-                  Query: 'ApplicationLog_CL \n | where location_s == "JobTrigger" and Message startswith "Linked services:" \n | project TimeGenerated, Destination_s, Services = split(tostring(extract("services:(.*)", 1, Message)),",") \n | mv-expand Service = Services \n | summarize Groups=dcount(Destination_s) by tostring(Service) \n | order by Groups\n\n'
+                  Query: 'ApplicationLog_CL \n | where location_s == "JobTrigger" and Message startswith "Linked services:" \n | project TimeGenerated, TargetOfficeGroupId_g, Services = split(tostring(extract("services:(.*)", 1, Message)),",") \n | mv-expand Service = Services \n | summarize Groups=dcount(TargetOfficeGroupId_g) by tostring(Service) \n | order by Groups\n\n'
                 }
               }
               partHeader: {
