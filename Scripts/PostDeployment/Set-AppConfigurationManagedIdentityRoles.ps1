@@ -45,6 +45,7 @@ function Set-AppConfigurationManagedIdentityRoles
 	}
 
 	$appConfigName = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation"
+	$appConfigObject = Get-AzAppConfigurationStore -ResourceGroupName $resourceGroupName -Name $appConfigName;
 
 	foreach ($functionApp in $functionApps)
 	{
@@ -65,7 +66,6 @@ function Set-AppConfigurationManagedIdentityRoles
 			# Grant the app service access to the app configuration
 			if ($appServicePrincipal)
 			{
-				$appConfigObject = Get-AzAppConfigurationStore -ResourceGroupName $resourceGroupName -Name $appConfigName;
 
 				if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $appConfigObject.Id))
 				{

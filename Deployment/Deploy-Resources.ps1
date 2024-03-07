@@ -1,3 +1,22 @@
+function Deploy-PostDeploymentUpdates {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptsDirectory
+    )
+
+    . ($ScriptsDirectory + '\main.ps1')
+    $currentContext = Get-AzContext
+    Set-UpdateQuery `
+        -SubscriptionName $currentContext.Subscription.Name `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation
+}
+
 function Set-Subscription {
     param (
         [Parameter(Mandatory = $false)]
@@ -311,7 +330,7 @@ function Stop-FunctionApps {
     $functionApps = Get-AzFunctionApp -ResourceGroupName $ResourceGroupName
     foreach ($functionApp in $functionApps) {
         Write-Host "Stopping function app $($functionApp.Name)"
-        Stop-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $functionApp.Name
+        Stop-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $functionApp.Name -Force
     }
 }
 
@@ -352,7 +371,9 @@ function Deploy-Resources {
         [Parameter(Mandatory = $true)]
         [string]$ParameterFilePath,
         [Parameter(Mandatory = $false)]
-        [bool]$SkipResourceProvidersCheck = $false
+        [bool]$SkipResourceProvidersCheck = $false,
+        [Parameter(Mandatory = $false)]
+        [bool]$StartFunctions = $true
     )
 
     # define the resource groups
@@ -372,6 +393,7 @@ function Deploy-Resources {
         Set-ResourceProviders
     }
 
+    Stop-FunctionApps -ResourceGroupName $computeResourceGroup
     Disable-KeyVaultFirewallRules -ResourceGroups $resourceGroups
 
     Set-GMMResources `
@@ -420,6 +442,15 @@ function Deploy-Resources {
         -ResourceGroups $resourceGroups `
         -ipAddress $ipAddress `
         -ScriptsDirectory "$scriptsDirectory\Scripts"
+
+    Deploy-PostDeploymentUpdates `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -ScriptsDirectory "$ScriptsDirectory\scripts"
+
+    if ($StartFunctions) {
+        Start-FunctionApps -ResourceGroupName $computeResourceGroup
+    }
 }
 
 
