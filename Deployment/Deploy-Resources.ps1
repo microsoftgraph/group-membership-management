@@ -1,5 +1,7 @@
 function Set-Subscription {
     param (
+        [Parameter(Mandatory = $false)]
+        [string]$SubscriptionId,
         [Parameter(Mandatory = $true)]
         [string]$ScriptsDirectory
     )
@@ -292,6 +294,38 @@ function Set-KeyVaultFirewallRules {
     }
 }
 
+function Stop-FunctionApps {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$ResourceGroupName
+    )
+
+    # stop function apps
+    Write-Host "`nStopping function apps"
+
+    $functionApps = Get-AzFunctionApp -ResourceGroupName $ResourceGroupName
+    foreach ($functionApp in $functionApps) {
+        Write-Host "Stopping function app $($functionApp.Name)"
+        Stop-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $functionApp.Name
+    }
+}
+
+function Start-FunctionApps {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$ResourceGroupName
+    )
+
+    # start function apps
+    Write-Host "`nStarting function apps"
+
+    $functionApps = Get-AzFunctionApp -ResourceGroupName $ResourceGroupName
+    foreach ($functionApp in $functionApps) {
+        Write-Host "Starting function app $($functionApp.Name)"
+        Start-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $functionApp.Name
+    }
+}
+
 function Deploy-Resources {
     [CmdletBinding()]
     param (
@@ -301,6 +335,8 @@ function Deploy-Resources {
         [string]$EnvironmentAbbreviation,
         [Parameter(Mandatory = $true)]
         [string]$Location,
+        [Parameter(Mandatory = $false)]
+        [string]$SubscriptionId,
         [Parameter(Mandatory = $true)]
         [string]$TemplateFilePath,
         [Parameter(Mandatory = $true)]
@@ -318,7 +354,10 @@ function Deploy-Resources {
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
-    Set-Subscription -ScriptsDirectory "$scriptsDirectory\Scripts"
+    Set-Subscription `
+        -ScriptsDirectory "$scriptsDirectory\Scripts" `
+        -SubscriptionId $SubscriptionId
+
     if (!$SkipResourceProvidersCheck) {
         Set-ResourceProviders
     }
@@ -350,8 +389,8 @@ function Deploy-Resources {
         -AsPlainText
 
     Set-SQLServerPermissions `
-    -ConnectionString $connectionString `
-    -ComputeResourceGroup $computeResourceGroup
+        -ConnectionString $connectionString `
+        -ComputeResourceGroup $computeResourceGroup
 
     Set-RBACPermissions `
         -SolutionAbbreviation $SolutionAbbreviation `
