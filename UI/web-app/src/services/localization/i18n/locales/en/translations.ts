@@ -32,7 +32,7 @@ export const strings: IStrings = {
     includeOrg: "Do you want this source to be based on organization structure?",
     includeFilter: "Do you want to filter by properties?",
     includeLeader: "Include leader",
-    orgLeaderMissingErrorMessage: "Provide org leader id",
+    orgLeaderMissingErrorMessage: "This user doesn't exist in the HR Data source",
     invalidInputErrorMessage: "Invalid input. Please enter only numbers."
   },
   Components: {
