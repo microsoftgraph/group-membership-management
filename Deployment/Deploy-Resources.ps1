@@ -300,6 +300,11 @@ function Stop-FunctionApps {
         [string]$ResourceGroupName
     )
 
+    $rgObject = Get-AzResourceGroup -Name $ResourceGroupName -ErrorAction SilentlyContinue
+    if ($null -eq $rgObject) {
+        return
+    }
+
     # stop function apps
     Write-Host "`nStopping function apps"
 
@@ -315,6 +320,11 @@ function Start-FunctionApps {
         [Parameter(Mandatory = $true)]
         [string]$ResourceGroupName
     )
+
+    $rgObject = Get-AzResourceGroup -Name $ResourceGroupName -ErrorAction SilentlyContinue
+    if ($null -eq $rgObject) {
+        return
+    }
 
     # start function apps
     Write-Host "`nStarting function apps"
