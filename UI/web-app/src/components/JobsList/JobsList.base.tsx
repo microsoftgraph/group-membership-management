@@ -129,6 +129,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const items = jobs;
   const env = process.env.REACT_APP_ENVIRONMENT_ABBREVIATION?.toLowerCase();
   const isLowerEnvironment = env !== 'prodv2';
+  const isOnboardingEnabled = isLowerEnvironment || isAdmin;
 
   const columns = [
     {
@@ -377,7 +378,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
             <div className={classNames.title}>
               <Text variant="xLarge">{strings.JobsList.listOfMemberships}</Text>
             </div>
-            {isLowerEnvironment ?
+            {isOnboardingEnabled ?
               <PrimaryButton
                 text={strings.ManageMembership.manageMembershipButton}
                 menuProps={menuProps}
