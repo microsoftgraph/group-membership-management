@@ -108,51 +108,6 @@ function Set-UIAzureADApplication {
 	}
 	#endregion
 
-	# Define the app roles
-	[String[]]$memberTypes = "User", "Application"
-
-	$readerRole = @{
-		DisplayName        = "Tenant Reader"
-		Description        = "Tenant Readers can read all destinations managed by Membership Management."
-		Value              = "MembershipManagement.Destination.Read.All"
-		Id                 = [Guid]::NewGuid().ToString()
-		IsEnabled          = $True
-		AllowedMemberTypes = @($memberTypes)
-	}
-
-	$adminRole = @{
-		DisplayName        = "Tenant Administrator"
-		Description        = "Tenant Administrators can make changes to service configuration."
-		Value              = "MembershipManagement.ServiceConfiguration.ReadWrite.All"
-		Id                 = [Guid]::NewGuid().ToString()
-		IsEnabled          = $True
-		AllowedMemberTypes = @($memberTypes)
-	}
-
-	$submissionReviewerRole = @{
-		DisplayName        = "Submission Reviewer"
-		Description        = "Submission Reviewers can can review onboarding submissions."
-		Value              = "MembershipManagement.Destination.ReadWrite.All"
-		Id                 = [Guid]::NewGuid().ToString()
-		IsEnabled          = $True
-		AllowedMemberTypes = @($memberTypes)
-	}
-
-	$tenantJobEditor = @{
-		DisplayName        = "Tenant Job Editor"
-		Description        = "Tenant Job Editors can make edits to any jobs in the tenant."
-		Value              = "Job.ReadWrite.All"
-		Id                 = [Guid]::NewGuid().ToString()
-		IsEnabled          = $True
-		AllowedMemberTypes = @($memberTypes)
-	}
-
-	$appRoles = $uiApp.AppRole
-	$appRoles += $readerRole
-	$appRoles += $adminRole
-	$appRoles += $submissionReviewerRole
-	$appRoles += $tenantJobEditor
-
 	#region Create Appplication
 	if ($null -eq $uiApp) {
 		Write-Verbose "Creating Azure AD app $uiAppDisplayName"
@@ -196,7 +151,6 @@ function Set-UIAzureADApplication {
 								-IdentifierUris "api://$($uiApp.AppId)" `
 								-DisplayName $uiAppDisplayName `
 								-Web $webSettings `
-								-AppRole $appRoles `
 								-AvailableToOtherTenants $false
 	}
 	else {
@@ -208,7 +162,6 @@ function Set-UIAzureADApplication {
 		Update-AzADApplication	-ObjectId $($uiApp.Id) `
 								-DisplayName $uiAppDisplayName `
 								-Web $webSettings `
-								-AppRole $appRoles `
 								-AvailableToOtherTenants $false
 	}
 
