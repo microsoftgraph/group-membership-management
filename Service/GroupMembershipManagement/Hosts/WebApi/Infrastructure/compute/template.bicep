@@ -203,54 +203,14 @@ module appService 'appService.bicep' = {
     location: location
     servicePlanName: servicePlanName
     appSettings: appSettings
+    dataKeyVaultName: dataKeyVaultName
+    dataResourceGroup: dataResourceGroup
+    prereqsKeyVaultName: prereqsKeyVaultName
+    prereqsResourceGroup: prereqsResourceGroup
+    tenantId: tenantId
   }
   dependsOn: [
     appInsights
     servicePlanTemplate
-  ]
-}
-
-module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'dataKeyVaultPoliciesTemplate-WebApi'
-  scope: resourceGroup(dataResourceGroup)
-  params: {
-    name: dataKeyVaultName
-    policies: [
-      {
-        objectId: appService.outputs.principalId
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    appService
-  ]
-}
-
-module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'prereqsKeyVaultPoliciesTemplate-WebApi'
-  scope: resourceGroup(prereqsResourceGroup)
-  params: {
-    name: prereqsKeyVaultName
-    policies: [
-      {
-        objectId: appService.outputs.principalId
-        secrets: [
-          'get'
-          'list'
-        ]
-        certificates: [
-          'get'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    appService
   ]
 }

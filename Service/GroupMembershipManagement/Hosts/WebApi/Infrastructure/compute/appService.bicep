@@ -11,6 +11,21 @@ param servicePlanName string
 @description('Application settings')
 param appSettings array
 
+@description('Name of the \'data\' key vault.')
+param dataKeyVaultName string
+
+@description('Name of the resource group where the \'data\' key vault is located.')
+param dataResourceGroup string
+
+@description('Name of the resource group where the \'prereqs\' key vault is located.')
+param prereqsKeyVaultName string
+
+@description('Name of the resource group where the \'prereqs\' key vault is located.')
+param prereqsResourceGroup string
+
+@description('Tenant id.')
+param tenantId string
+
 resource websiteTemplate 'Microsoft.Web/sites@2022-03-01' = {
   name: name
   location: location
@@ -19,12 +34,6 @@ resource websiteTemplate 'Microsoft.Web/sites@2022-03-01' = {
     httpsOnly: true
     reserved: false
     serverFarmId: resourceId('Microsoft.Web/serverfarms', servicePlanName)
-    siteConfig: {
-      netFrameworkVersion: 'v6.0'
-      ftpsState: 'Disabled'
-      minTlsVersion: '1.2'
-      appSettings: appSettings
-    }
   }
   identity: {
     type: 'SystemAssigned'
@@ -46,5 +55,68 @@ resource sites_scm 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-
     allow: false
   }
 }
+
+module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
+  name: 'dataKeyVaultPoliciesTemplate-WebApi'
+  scope: resourceGroup(dataResourceGroup)
+  params: {
+    name: dataKeyVaultName
+    policies: [
+      {
+        objectId: websiteTemplate.identity.principalId
+        secrets: [
+          'get'
+          'list'
+        ]
+      }
+    ]
+    tenantId: tenantId
+  }
+  dependsOn: [
+    sites_ftp
+    sites_scm
+  ]
+}
+
+module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
+  name: 'prereqsKeyVaultPoliciesTemplate-WebApi'
+  scope: resourceGroup(prereqsResourceGroup)
+  params: {
+    name: prereqsKeyVaultName
+    policies: [
+      {
+        objectId: websiteTemplate.identity.principalId
+        secrets: [
+          'get'
+          'list'
+        ]
+        certificates: [
+          'get'
+        ]
+      }
+    ]
+    tenantId: tenantId
+  }
+  dependsOn: [
+    sites_ftp
+    sites_scm
+  ]
+}
+
+resource websiteConfig 'Microsoft.Web/sites/config@2022-03-01' = {
+  name: 'web'
+  parent: websiteTemplate
+  properties: {
+    netFrameworkVersion: 'v6.0'
+    ftpsState: 'Disabled'
+    minTlsVersion: '1.2'
+    appSettings: appSettings
+  }
+  dependsOn: [
+      dataKeyVaultPoliciesTemplate
+      prereqsKeyVaultPoliciesTemplate
+    ]
+}
+
 
 output principalId string = websiteTemplate.identity.principalId
