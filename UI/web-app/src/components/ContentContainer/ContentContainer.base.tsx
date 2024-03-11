@@ -37,7 +37,8 @@ export const ContentContainerBase: React.FunctionComponent<IContentContainerProp
                 {removeButton === true ? (<></>) :
                     useLinkButton === true ? (
                         <Link className={classNames.linkButton} onClick={actionOnClick}>
-                            {actionText}<Icon iconName={linkButtonIconName} />
+                            {actionText} 
+                            {linkButtonIconName ? <Icon iconName={linkButtonIconName} /> : <></>}
                         </Link>
                     ) : (
                         <ActionButton

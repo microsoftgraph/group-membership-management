@@ -22,7 +22,8 @@ import {
   setAdvancedViewQuery,
   setCompositeQuery,
   setIsAdvancedView,
-  setIsAdvancedQueryValid
+  setIsAdvancedQueryValid,
+  manageMembershipIsEditingExistingJob
 } from '../../store/manageMembership.slice';
 import { SourcePart } from '../SourcePart';
 import { useStrings } from '../../store/hooks';
@@ -41,6 +42,8 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const dispatch = useDispatch<AppDispatch>();
   const strings = useStrings();
 
+  const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
+
   const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
   const sourceParts = useSelector(getSourcePartsFromState);
 
@@ -53,7 +56,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     manager: {
       id: undefined,
       depth: undefined
-    },    
+    },
     filter: ""
   };
 
@@ -142,11 +145,16 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
             />
           ))}
         </div>
-        <div className={classNames.addButtonContainer}>
-          <DefaultButton iconProps={{ iconName: 'Add' }} onClick={newSourcePart}  >
-            {strings.ManageMembership.labels.addSourcePart}
-          </DefaultButton>
-        </div>
+        {isEditingExistingJob ?
+          <></> :
+          <div className={classNames.addButtonContainer}>
+            <DefaultButton
+              iconProps={{ iconName: 'Add' }}
+              onClick={newSourcePart}>
+              {strings.ManageMembership.labels.addSourcePart}
+            </DefaultButton>
+          </div>
+        }
       </>) : (<div className={classNames.card}>
         <AdvancedQuery
           query={advancedViewQuery}

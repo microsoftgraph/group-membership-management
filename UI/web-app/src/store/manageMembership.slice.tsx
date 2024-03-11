@@ -12,7 +12,7 @@ import {
 } from './manageMembership.api';
 import { OnboardingStatus } from '../models/GroupOnboardingStatus';
 import { Destination } from '../models/Destination';
-import { DestinationPickerPersona } from '../models';
+import { DestinationPickerPersona, JobDetails } from '../models';
 import { SyncJobQuery } from '../models/SyncJobQuery';
 import { ISourcePart } from '../models/ISourcePart';
 import { SourcePartType } from '../models/SourcePartType';
@@ -36,6 +36,7 @@ export interface ManageMembershipState {
     compositeQuery?: SyncJobQuery; // Made up of source parts' queries
     advancedViewQuery?: string;
     sourceParts: ISourcePart[];
+    isEditingExistingJob: boolean;
 }
 
 const initialState: ManageMembershipState = {
@@ -63,7 +64,8 @@ const initialState: ManageMembershipState = {
     isAdvancedView: false,
     compositeQuery: {} as SyncJobQuery,
     advancedViewQuery: '',
-    sourceParts: []
+    sourceParts: [],
+    isEditingExistingJob: false
 };
 
 const manageMembershipSlice = createSlice({
@@ -223,6 +225,23 @@ const manageMembershipSlice = createSlice({
         clearSourceParts: (state) => {
             state.sourceParts = [];
         },
+        setJobDetailsForExistingJob: (state, action: PayloadAction<JobDetails>) => {
+            const { source } = action.payload;
+            state.advancedViewQuery = JSON.stringify(source);
+            state.compositeQuery = buildCompositeQuery(JSON.parse(source));
+            state.sourceParts = JSON.parse(source).map((query: SourcePartQuery, index: number) => ({
+                ...query,
+                id: index + 1,
+                query: query,
+                isValid: true
+            }));
+        },
+        setIsEditingExistingJob: (state, action: PayloadAction<boolean>) => {
+            state.isEditingExistingJob = action.payload;
+            if (!action.payload) {
+                Object.assign(state, initialState);
+            }
+        },
     },
     extraReducers: (builder) => {
         builder.addCase(getGroupOnboardingStatus.fulfilled, (state, action) => {
@@ -270,6 +289,8 @@ export const {
     updateSourcePart,
     deleteSourcePart,
     clearSourceParts,
+    setJobDetailsForExistingJob,
+    setIsEditingExistingJob
 } = manageMembershipSlice.actions;
 
 // General
@@ -277,6 +298,7 @@ export const manageMembershipHasChanges = (state: RootState) => state.manageMemb
 export const manageMembershipCurrentStep = (state: RootState) => state.manageMembership.currentStep;
 export const manageMembershipSelectedDestinationType = (state: RootState) => state.manageMembership.selectedDestination?.type;
 export const manageMembershipSelectedDestinationName = (state: RootState) => state.manageMembership.selectedDestination?.name;
+export const manageMembershipIsEditingExistingJob = (state: RootState) => state.manageMembership.isEditingExistingJob;
 
 // Onboarding values
 export const manageMembershipSelectedDestination = (state: RootState) => state.manageMembership.selectedDestination;

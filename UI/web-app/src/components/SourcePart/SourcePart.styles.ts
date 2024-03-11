@@ -47,6 +47,7 @@ export const getStyles = (props: SourcePartStyleProps): SourcePartStyles => {
         controls: {
             display: 'flex',
             flexDirection: 'row',
+            flexWrap: 'wrap',
             flex: '0 1 auto',
             gap: 32
         },

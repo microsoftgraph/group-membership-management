@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   classNamesFunction,
   type IProcessedStyleSet,
@@ -22,6 +22,7 @@ import { searchDestinations } from '../../store/manageMembership.api';
 import { IsGroupMembershipSourcePartQuery } from '../../models/GroupMembershipSourcePart';
 import { useSelectedGroupById } from '../../store/groupPart.slice';
 import { searchGroups } from '../../store/groups.api';
+import { manageMembershipIsEditingExistingJob } from '../../store/manageMembership.slice';
 
 export const getClassNames = classNamesFunction<GroupQuerySourceStyleProps, GroupQuerySourceStyles>();
 
@@ -37,6 +38,7 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
   const groupId: string = IsGroupMembershipSourcePartQuery(part.query) ? part.query.source : '';
   const [localSearchResults, setLocalSearchResults] = useState<IPersonaProps[]>([]);
   const selectedGroupPersona = useSelectedGroupById(groupId);
+  const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
 
   const groupPersona: IPersonaProps = {
     id: groupId,
@@ -113,6 +115,7 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
         selectedItems={selectedGroup}
         styles={{ text: classNames.groupPicker }}
         pickerCalloutProps={{ calloutMinWidth: 500 }}
+        disabled={isEditingExistingJob}
       />
     </div>
   );

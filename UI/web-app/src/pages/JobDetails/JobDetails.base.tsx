@@ -22,7 +22,7 @@ import {
 } from '@fluentui/react/lib/Stack';
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { InfoLabel } from '../../components/InfoLabel';
 import { PageHeader } from '../../components/PageHeader';
 import { type Job } from '../../models/Job';
@@ -50,6 +50,7 @@ import { useStrings } from '../../store/hooks';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
 import { selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { SyncStatus } from '../../models';
+import { OnboardingSteps } from '../../models/OnboardingSteps';
 
 
 export interface IContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
@@ -77,6 +78,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   );
   const location = useLocation();
   const job: Job = location.state.item;
+  const navigate = useNavigate();
 
   const dispatch = useDispatch<AppDispatch>();
   const jobDetails = useSelector(selectSelectedJobDetails);
@@ -93,6 +95,10 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  const openMembershipConfiguration = (): void => {
+    navigate('/ManageMembership', { state: { currentStep: OnboardingSteps.MembershipConfiguration, jobId: job.syncJobId } });
+  };
+  
   useEffect(() => {
     dispatch(setPagingBarVisible(false));
     dispatch(
@@ -146,11 +152,10 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
         <ContentContainer
           title={strings.JobDetails.labels.sourceParts}
           children={<label>{jobDetails?.source}</label>}
-          removeButton={true}
-        // Hidden until feature is enabled
-        // actionText={strings.JobDetails.editButton}
-        // useLinkButton={true}
-        // linkButtonIconName='edit'
+          removeButton={false}
+          actionText={strings.JobDetails.viewDetails}
+          useLinkButton={true}
+          actionOnClick={openMembershipConfiguration}
         />
       </div>
     </Page >

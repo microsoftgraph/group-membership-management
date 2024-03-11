@@ -43,7 +43,7 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
   const navigate = useNavigate();
 
   const backButtonOnClick = (): void => {
-    navigate('/');
+    navigate(-1);
   };
 
   return (
@@ -55,7 +55,7 @@ export const PageHeaderBase: React.FunctionComponent<IPageHeaderProps> = (
           <ActionButton
             className={classNames.backButton}
             iconProps={leftArrowIcon}
-            text={strings.backToDashboard}
+            text={onBackToDashboardButtonClick ? strings.backToDashboard : strings.back} 
             onClick={onBackToDashboardButtonClick ?? backButtonOnClick}
           />
           <Banner />

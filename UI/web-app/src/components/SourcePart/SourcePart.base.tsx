@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   classNamesFunction,
   ChoiceGroup,
@@ -15,7 +15,7 @@ import { DefaultButton, IconButton } from '@fluentui/react/lib/Button';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { SourcePartStyleProps, SourcePartStyles, SourcePartProps } from './SourcePart.types';
 import { AppDispatch } from '../../store';
-import { updateSourcePart, updateSourcePartType } from '../../store/manageMembership.slice';
+import { manageMembershipIsEditingExistingJob, updateSourcePart, updateSourcePartType } from '../../store/manageMembership.slice';
 import { useStrings } from '../../store/hooks';
 import { ISourcePart } from '../../models/ISourcePart';
 import { HRQuerySource } from '../HRQuerySource';
@@ -53,17 +53,18 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   ];
 
   const dispatch = useDispatch<AppDispatch>();
-  const [expanded, setExpanded] = useState(false);
   const [isExclusionary, setIsExclusionary] = useState(query.exclusionary);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
+  const [expanded, setExpanded] = useState(isEditingExistingJob);
 
   const handleSourceTypeChanged = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption | undefined): void => {
     if (!item) return;
 
     dispatch(updateSourcePartType({ partId: index, type: item.key as SourcePartType }));
 
-    if(item.key === SourcePartType.HR){
-      setHRSourcePartSource({ manager: { id: undefined, depth: undefined }, filter: ""});
+    if (item.key === SourcePartType.HR) {
+      setHRSourcePartSource({ manager: { id: undefined, depth: undefined }, filter: "" });
     }
   }
 
@@ -93,7 +94,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
   useEffect(() => {
     setIsExclusionary(part.query.exclusionary ?? false);
-    if(part.query.type === SourcePartType.HR){
+    if (part.query.type === SourcePartType.HR) {
       setHRSourcePartSource(part.query.source as HRSourcePartSource);
     }
   }, [part.query.type, part.query.exclusionary, part.query.source]);
@@ -157,6 +158,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
               required={true}
               selectedKey={part.query.type}
               onChange={handleSourceTypeChanged}
+              disabled={isEditingExistingJob}
             />
             <ChoiceGroup
               className={classNames.exclusionaryPart}
@@ -165,15 +167,19 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
               required={true}
               onChange={handleExclusionaryChange}
               selectedKey={isExclusionary ? 'Yes' : 'No'}
+              disabled={isEditingExistingJob}
             />
-            <DefaultButton iconProps={{ iconName: 'Delete' }} className={classNames.deleteButton} onClick={handleDelete} >
-              {strings.delete}
-            </DefaultButton>
+            {isEditingExistingJob ?
+              <></>
+              : <DefaultButton iconProps={{ iconName: 'Delete' }} className={classNames.deleteButton} onClick={handleDelete} >
+                {strings.delete}
+              </DefaultButton>
+            }
           </div>
 
           {part.query.type === SourcePartType.HR && (
             <div key={SourcePartType.HR} className={classNames.advancedQuery}>
-              <HRQuerySource source={hrSourcePartSource} partId={index} onSourceChange={handleSourceChange} />
+              <HRQuerySource source={hrSourcePartSource} partId={index} onSourceChange={isEditingExistingJob ? () => { } : handleSourceChange} />
             </div>
           )}
           {part.query.type === SourcePartType.GroupMembership && (
