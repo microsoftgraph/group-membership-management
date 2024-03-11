@@ -13,6 +13,9 @@ using Models.ThresholdNotifications;
 using Repositories.Contracts;
 using Hosts.Notifier;
 using System.Text.Json;
+using Models.ServiceBus;
+using Services.Tests;
+using System.Linq;
 
 namespace Services.Notifier.Tests
 {
@@ -22,6 +25,7 @@ namespace Services.Notifier.Tests
         private Mock<IDurableOrchestrationContext> _durableContext;
         private Mock<ILoggingRepository> _loggerFunction;
         private OrchestratorFunction _orchestratorFunction;
+        private const string GroupMembership = "GroupMembership";
 
         [TestInitialize]
         public void SetupTest()
@@ -37,13 +41,17 @@ namespace Services.Notifier.Tests
             var runId = Guid.NewGuid();
             _durableContext.Setup(x => x.NewGuid()).Returns(runId);
 
+            SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
+
             var messageContent = new Dictionary<string, object>
-            {
-                { "ThresholdResult", JsonSerializer.Serialize(new ThresholdResult()) },
-                { "SyncJob", JsonSerializer.Serialize(new SyncJob()) },
-                { "SendDisableJobNotification", true.ToString() }
-            };
+                {
+                    { "ThresholdResult", new ThresholdResult() },
+                    { "SyncJob", job },
+                    { "SendDisableJobNotification", true.ToString() }
+                };
+
             var serializedMessageContent = JsonSerializer.Serialize(messageContent);
+
             var orchestratorRequest = new OrchestratorRequest
             {
                 MessageType = nameof(NotificationMessageType.ThresholdNotification),
@@ -53,7 +61,7 @@ namespace Services.Notifier.Tests
 
             var thresholdNotification = new ThresholdNotification();
             _durableContext.Setup(x => x.CallActivityAsync<ThresholdNotification>(nameof(CreateThresholdNotificationFunction), It.IsAny<OrchestratorRequest>()))
-                           .ReturnsAsync(thresholdNotification);
+                            .ReturnsAsync(thresholdNotification);
 
             await _orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
@@ -66,6 +74,5 @@ namespace Services.Notifier.Tests
             _durableContext.Verify(x => x.CallActivityAsync(
                 nameof(LoggerFunction), It.IsAny<LoggerRequest>()), Times.AtLeastOnce);
         }
-
     }
 }
