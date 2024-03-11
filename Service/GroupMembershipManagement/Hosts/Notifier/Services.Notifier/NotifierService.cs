@@ -31,7 +31,11 @@ namespace Services.Notifier
         private readonly TelemetryClient _telemetryClient;
         private readonly INotificationTypesRepository _notificationTypesRepository;
         private readonly IJobNotificationsRepository _jobNotificationRepository;
-
+        enum MembershipType
+        {
+            GroupMembership,
+            TeamsChannelMembership
+        }
         public NotifierService(
             ILoggingRepository loggingRepository,
             IMailRepository mailRepository,
@@ -235,7 +239,7 @@ namespace Services.Notifier
 
             string type = typeElement.GetString();
 
-            if (type == "TeamsChannelMembership")
+            if (type == MembershipType.TeamsChannelMembership.ToString())
             {
                 if (!valueElement.TryGetProperty("channelId", out JsonElement channelIdElement)) return null;
 
@@ -246,7 +250,7 @@ namespace Services.Notifier
                     ChannelId = channelIdElement.GetString()
                 };
             }
-            else if (type == "GroupMembership")
+            else if (type == MembershipType.GroupMembership.ToString())
             {
                 return new AzureADGroup
                 {
