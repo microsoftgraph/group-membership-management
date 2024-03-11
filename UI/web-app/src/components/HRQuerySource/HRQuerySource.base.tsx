@@ -19,6 +19,7 @@ import { fetchOrgLeaderDetails } from '../../store/orgLeaderDetails.api';
 import { getJobOwnerFilterSuggestions } from '../../store/jobs.api';
 import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeIdMapping } from '../../store/orgLeaderDetails.slice';
 import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
+import { manageMembershipIsEditingExistingJob } from '../../store/manageMembership.slice';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
@@ -38,6 +39,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const orgLeaderDetails = useSelector(selectOrgLeaderDetails);
   const objectIdEmployeeIdMapping = useSelector(selectObjectIdEmployeeIdMapping);
   const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions);
+  const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const [isDisabled, setIsDisabled] = useState(true);
   const [includeOrg, setIncludeOrg] = useState(false);
   const [includeFilter, setIncludeFilter] = useState(false);
@@ -215,6 +217,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
           root: classNames.horizontalChoiceGroup,
           flexContainer: classNames.horizontalChoiceGroupContainer
         }}
+        disabled={isEditingExistingJob}
       />
 
       {(includeOrg || source?.manager?.id) && (
@@ -243,6 +246,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
               onChange={handleOrgLeaderChange}
               styles={{ root: classNames.textField, text: classNames.textFieldGroup }}
               pickerCalloutProps={{directionalHint: DirectionalHint.bottomCenter}}
+              disabled={isEditingExistingJob}
             />
           </div>
         </Stack.Item>
@@ -257,7 +261,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
             </div>
             <SpinButton
               value={source.manager?.depth?.toString()}
-              disabled={isDisabled}
+              disabled={isDisabled || isEditingExistingJob}
               min={0}
               max={(partId === orgLeaderDetails.partId) ? orgLeaderDetails.maxDepth : 100}
               step={1}
@@ -280,6 +284,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
                 root: classNames.horizontalChoiceGroup,
                 flexContainer: classNames.horizontalChoiceGroupContainer
               }}
+              disabled={isEditingExistingJob}
             />
           </div>
         </Stack.Item>
@@ -295,6 +300,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
           root: classNames.horizontalChoiceGroup,
           flexContainer: classNames.horizontalChoiceGroupContainer
         }}
+        disabled={isEditingExistingJob}
       />
 
       {(includeFilter || source.filter) && (
@@ -313,6 +319,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         styles={{ root: classNames.textField, fieldGroup: classNames.textFieldGroup }}
         validateOnLoad={false}
         validateOnFocusOut={false}
+        disabled={isEditingExistingJob}
       ></TextField></>
       )}
 

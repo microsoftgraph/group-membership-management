@@ -16,7 +16,7 @@ import {
 } from '../../store/jobs.slice';
 import { AppDispatch } from '../../store';
 
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   classNamesFunction,
   IProcessedStyleSet,
@@ -61,6 +61,7 @@ import {
   selectPagingBarfilterDestinationOwner,
   setPagingBarVisible,
 } from '../../store/pagingBar.slice';
+import { resetManageMembership } from '../../store/manageMembership.slice';
 
 import { selectIsAdmin, selectIsTenantJobEditor } from '../../store/roles.slice';
 
@@ -229,6 +230,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     item?: IContextualMenuItem
   ): void => {
     if(item!.key === 'addSync') {
+      dispatch(resetManageMembership());
       navigate('/ManageMembership', { replace: false, state: { item: 1 } });
     }
   };
