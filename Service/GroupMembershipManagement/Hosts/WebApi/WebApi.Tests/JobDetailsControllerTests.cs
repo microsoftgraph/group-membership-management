@@ -47,7 +47,7 @@ namespace Services.Tests
             _jobEntity = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                Status = ((SyncStatus)Random.Shared.Next(1, 15)).ToString(),
+                Status = SyncStatus.Idle.ToString(),
                 TargetOfficeGroupId = Guid.NewGuid(),
                 LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-4),
                 LastSuccessfulStartTime = DateTime.UtcNow.AddHours(-5),
