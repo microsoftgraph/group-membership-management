@@ -20,7 +20,7 @@ namespace Repositories.EntityFramework
         }
         public async Task UpdateAttributes(DestinationAttributes destinationAttributes)
         {
-           
+
             var job = await _writeContext.SyncJobs
                 .Include(p => p.DestinationOwners)
                     .ThenInclude(owner => owner.SyncJobs)
@@ -51,11 +51,11 @@ namespace Repositories.EntityFramework
             }
 
             if (destinationAttributes.Owners != null)
-            {  
+            {
                 // Add owners that do not already exist
                 foreach (var ownerId in destinationAttributes.Owners)
                 {
-                    if (!job.DestinationOwners.Any(o => o.Id == ownerId))
+                    if (!job.DestinationOwners.Any(o => o.ObjectId == ownerId))
                     {
                         var existingOwner = await _writeContext.DestinationOwners
                             .Include(o => o.SyncJobs)

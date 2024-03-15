@@ -18,7 +18,7 @@ namespace Hosts.DestinationAttributesUpdater
 
         public OrchestratorFunction()
         {
-  
+
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
@@ -32,25 +32,36 @@ namespace Hosts.DestinationAttributesUpdater
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
-            var destinationTypes = new List<string> { "GroupMembership", "TeamsChannelMembership" };
-
-            foreach(var destinationType in destinationTypes)
+            try
             {
+                var destinationTypes = new List<string> { "GroupMembership", "TeamsChannelMembership" };
 
-                var destinationsList = await context.CallActivityAsync<List<(string Destination, Guid TableId)>>(nameof(DestinationReaderFunction), destinationType);
-
-                int index = 0;
-                while (index < destinationsList.Count)
+                foreach (var destinationType in destinationTypes)
                 {
-                    var batch = destinationsList.Skip(index).Take(BATCH_SIZE).ToList();
-                    var attributeReaderRequest = new AttributeReaderRequest { Destinations = batch, DestinationType = destinationType};
-                    var destinationAttributesList = await context.CallActivityAsync<List<DestinationAttributes>>(nameof(AttributeReaderFunction), attributeReaderRequest);
-                    foreach (var destinationAttributes in destinationAttributesList)
+
+                    var destinationsList = await context.CallActivityAsync<List<(string Destination, Guid TableId)>>(nameof(DestinationReaderFunction), destinationType);
+
+                    int index = 0;
+                    while (index < destinationsList.Count)
                     {
-                        await context.CallActivityAsync(nameof(AttributeCacheUpdaterFunction), destinationAttributes);
+                        var batch = destinationsList.Skip(index).Take(BATCH_SIZE).ToList();
+                        var attributeReaderRequest = new AttributeReaderRequest { Destinations = batch, DestinationType = destinationType };
+                        var destinationAttributesList = await context.CallActivityAsync<List<DestinationAttributes>>(nameof(AttributeReaderFunction), attributeReaderRequest);
+                        foreach (var destinationAttributes in destinationAttributesList)
+                        {
+                            await context.CallActivityAsync(nameof(AttributeCacheUpdaterFunction), destinationAttributes);
+                        }
+                        index += BATCH_SIZE;
                     }
-                    index += BATCH_SIZE;
                 }
+            }
+            catch (Exception ex)
+            {
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                   new LoggerRequest
+                   {
+                       Message = $"An unexpected error occurred.\n{ex}"
+                   });
             }
 
             await context.CallActivityAsync(nameof(LoggerFunction),
@@ -59,7 +70,6 @@ namespace Hosts.DestinationAttributesUpdater
                    Message = $"{nameof(OrchestratorFunction)} function completed at: {context.CurrentUtcDateTime}",
                    Verbosity = VerbosityLevel.DEBUG
                });
-
         }
     }
 }
