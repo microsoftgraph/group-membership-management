@@ -21,12 +21,9 @@ namespace Repositories.EntityFramework
 
         public async Task<string> GetDestinationName(SyncJob syncJob)
         {
-            await _readContext.Entry(syncJob).Reference(job => job.DestinationName).LoadAsync();
-            
-            if(syncJob.DestinationName != null) 
-                return syncJob.DestinationName.Name;
+            DestinationName? destinationName = await _readContext.DestinationNames.SingleOrDefaultAsync(name => syncJob.Id == name.Id);
 
-            return "";
+            return destinationName!.Name;
         }
 
         public async Task UpdateAttributes(DestinationAttributes destinationAttributes)

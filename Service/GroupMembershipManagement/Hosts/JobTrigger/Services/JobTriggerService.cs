@@ -108,10 +108,10 @@ namespace Services
         {
             var destination = (await ParseDestinationAsync(job));
 
-            // Try to get the name from the table first?
+            // Try to get the name from the DestinationNames table first
 
             var destinationName = await _databaseDestinationAttributesRepository.GetDestinationName(job);
-            if(destinationName != "")
+            if(destinationName != null)
             {
                 return destinationName;
             }
