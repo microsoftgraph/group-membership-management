@@ -196,8 +196,14 @@ namespace Hosts.JobTrigger
 
                 var verifierResult = await context.CallActivityAsync<DestinationVerifierResult>(nameof(DestinationVerifierFunction), syncJob);
 
+                var destinationName = await context.CallActivityAsync<string>(nameof(DestinationNameReaderFunction), syncJob);
+
                 if (verifierResult == DestinationVerifierResult.NotFound)
                 {
+                    if (destinationName == null)
+                        destinationName = "Destination name not found";
+
+                    // Get the last-known name of the group from Sql DestinationNames table
                     await context.CallActivityAsync(nameof(EmailSenderFunction),
                                                     new EmailSenderRequest
                                                     {
@@ -206,7 +212,7 @@ namespace Hosts.JobTrigger
                                                         AdditionalContentParams = new[]
                                                         {
                                                         destinationObject.Value.ObjectId.ToString(),
-                                                        _emailSenderAndRecipients.SyncDisabledCCAddresses
+                                                        destinationName
                                                         }
                                                     });
 
@@ -216,8 +222,6 @@ namespace Hosts.JobTrigger
                                                     new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationGroupNotFound, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
                     return;
                 }
-
-                var destinationName = await context.CallActivityAsync<string>(nameof(DestinationNameReaderFunction), syncJob);
 
                 if (verifierResult == DestinationVerifierResult.NotOwnedByGMM)
                 {

@@ -18,6 +18,17 @@ namespace Repositories.EntityFramework
             _writeContext = writeContext ?? throw new ArgumentNullException(nameof(writeContext));
             _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
+
+        public async Task<string> GetDestinationName(SyncJob syncJob)
+        {
+            await _readContext.Entry(syncJob).Reference(job => job.DestinationName).LoadAsync();
+            
+            if(syncJob.DestinationName != null) 
+                return syncJob.DestinationName.Name;
+
+            return "";
+        }
+
         public async Task UpdateAttributes(DestinationAttributes destinationAttributes)
         {
 

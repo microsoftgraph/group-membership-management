@@ -31,6 +31,7 @@ namespace Services
 
         private readonly ILoggingRepository _loggingRepository;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
+        private readonly IDatabaseDestinationAttributesRepository _databaseDestinationAttributesRepository;
         private readonly INotificationTypesRepository _notificationTypesRepository;
         private readonly IJobNotificationsRepository _jobNotificationRepository;
         private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
@@ -58,6 +59,7 @@ namespace Services
         public JobTriggerService(
             ILoggingRepository loggingRepository,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
+            IDatabaseDestinationAttributesRepository databaseDestinationAttributesRepository,
             INotificationTypesRepository notificationTypesRepository,
             IJobNotificationsRepository jobNotificationRepository,
             IServiceBusTopicsRepository serviceBusTopicsRepository,
@@ -75,6 +77,7 @@ namespace Services
             _emailSenderAndRecipients = emailSenderAndRecipients;
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
+            _databaseDestinationAttributesRepository = databaseDestinationAttributesRepository ?? throw new ArgumentNullException(nameof(databaseDestinationAttributesRepository));
             _jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
             _notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
             _serviceBusTopicsRepository = serviceBusTopicsRepository ?? throw new ArgumentNullException(nameof(serviceBusTopicsRepository));
@@ -105,6 +108,14 @@ namespace Services
         {
             var destination = (await ParseDestinationAsync(job));
 
+            // Try to get the name from the table first?
+
+            var destinationName = await _databaseDestinationAttributesRepository.GetDestinationName(job);
+            if(destinationName != "")
+            {
+                return destinationName;
+            }
+
             if (destination.Type == "TeamsChannelMembership")
             {
                 var channel = new AzureADTeamsChannel
@@ -123,6 +134,7 @@ namespace Services
 
             return null;
         }
+
         public async Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters)
         {
             var messageContent = new Dictionary<string, Object>
