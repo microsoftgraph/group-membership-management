@@ -30,7 +30,7 @@ namespace SqlMembershipObtainer
 
         [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
-        [ServiceBusTrigger("%serviceBusTopicName%", "SqlMembership", Connection = "serviceBusConnectionString")] ServiceBusReceivedMessage message,
+        [ServiceBusTrigger("%serviceBusTopicName%", "SqlMembership", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
         [DurableClient] IDurableOrchestrationClient starter)
         {
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));

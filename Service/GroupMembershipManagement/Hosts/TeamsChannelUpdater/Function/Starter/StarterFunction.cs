@@ -26,7 +26,7 @@ namespace Hosts.TeamsChannelUpdater
 
         [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
-             [ServiceBusTrigger("%serviceBusMembershipUpdatersTopic%", "TeamsChannelUpdater", Connection = "serviceBusConnectionString")] ServiceBusReceivedMessage message,
+             [ServiceBusTrigger("%serviceBusMembershipUpdatersTopic%", "TeamsChannelUpdater", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
              [DurableClient] IDurableOrchestrationClient starter)
         {
             var request = JsonConvert.DeserializeObject<MembershipHttpRequest>(Encoding.UTF8.GetString(message.Body));

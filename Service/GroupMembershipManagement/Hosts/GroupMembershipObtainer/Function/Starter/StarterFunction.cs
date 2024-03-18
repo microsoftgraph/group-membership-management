@@ -28,7 +28,7 @@ namespace Hosts.GroupMembershipObtainer
 
         [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
-            [ServiceBusTrigger("%serviceBusSyncJobTopic%", "GroupMembership", Connection = "serviceBusTopicConnection")] ServiceBusReceivedMessage message,
+            [ServiceBusTrigger("%serviceBusSyncJobTopic%", "GroupMembership", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
             [DurableClient] IDurableOrchestrationClient starter)
         {
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));

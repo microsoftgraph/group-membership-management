@@ -25,7 +25,7 @@ namespace Hosts.Notifier
 
         [FunctionName(nameof(StarterFunction))]
         public async Task ProcessServiceBusMessageAsync(
-            [ServiceBusTrigger("%serviceBusNotificationsQueue%", Connection = "serviceBusConnectionString")] ServiceBusReceivedMessage message,
+            [ServiceBusTrigger("%serviceBusNotificationsQueue%", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
             [DurableClient] IDurableOrchestrationClient starter)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);

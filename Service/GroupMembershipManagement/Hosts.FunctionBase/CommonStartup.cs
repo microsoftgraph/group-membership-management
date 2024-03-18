@@ -98,7 +98,7 @@ namespace Hosts.FunctionBase
                 options.UseSqlServer(GetValueOrThrow("ConnectionStrings:JobsContextReadOnly")),
                 ServiceLifetime.Scoped
             );
-            
+
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
             builder.Services.AddScoped<IDatabaseDestinationAttributesRepository, DatabaseDestinationAttributesRespository>();
             builder.Services.AddScoped<INotificationTypesRepository, NotificationTypesRepository>();
@@ -200,14 +200,12 @@ namespace Hosts.FunctionBase
 
             builder.Services.AddSingleton(services =>
             {
-                var serviceBusConnectionString = GetValueOrDefault("serviceBusConnectionString");
-                if (string.IsNullOrWhiteSpace(serviceBusConnectionString))
-                    serviceBusConnectionString = GetValueOrDefault("serviceBusTopicConnection");
+                var serviceBusFQN = GetValueOrDefault("gmmServiceBus__fullyQualifiedNamespace");
 
-                if (string.IsNullOrWhiteSpace(serviceBusConnectionString))
-                    throw new ArgumentNullException($"Could not start because of missing configuration option: servicebus connection string");
+                if (string.IsNullOrWhiteSpace(serviceBusFQN))
+                    throw new ArgumentNullException($"Could not start because of missing configuration option: servicebus fully qualified namespace.");
 
-                return new ServiceBusClient(serviceBusConnectionString);
+                return new ServiceBusClient(serviceBusFQN, new DefaultAzureCredential());
             });
         }
 

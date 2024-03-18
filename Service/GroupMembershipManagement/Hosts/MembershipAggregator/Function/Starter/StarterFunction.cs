@@ -23,7 +23,7 @@ namespace Hosts.MembershipAggregator
 
         [FunctionName("ServiceBusStarterFunction")]
         public async Task ProcessServiceBusMessageAsync(
-            [ServiceBusTrigger("%serviceBusMembershipAggregatorQueue%", Connection = "serviceBusConnectionString")] ServiceBusReceivedMessage message,
+            [ServiceBusTrigger("%serviceBusMembershipAggregatorQueue%", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
             [DurableClient] IDurableOrchestrationClient starter)
         {
             var request = JsonConvert.DeserializeObject<MembershipAggregatorHttpRequest>(Encoding.UTF8.GetString(message.Body));

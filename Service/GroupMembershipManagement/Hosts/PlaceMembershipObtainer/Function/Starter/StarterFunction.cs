@@ -28,7 +28,7 @@ namespace Hosts.PlaceMembershipObtainer
 
         [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
-           [ServiceBusTrigger("%serviceBusSyncJobTopic%", "PlaceMembership", Connection = "serviceBusTopicConnection")] ServiceBusReceivedMessage message,
+           [ServiceBusTrigger("%serviceBusSyncJobTopic%", "PlaceMembership", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
            [DurableClient] IDurableOrchestrationClient starter)
         {
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));

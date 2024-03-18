@@ -29,7 +29,7 @@ namespace Hosts.GroupOwnershipObtainer
 
         [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
-        [ServiceBusTrigger("%serviceBusSyncJobTopic%", "GroupOwnership", Connection = "serviceBusTopicConnection")] ServiceBusReceivedMessage message,
+        [ServiceBusTrigger("%serviceBusSyncJobTopic%", "GroupOwnership", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
         [DurableClient] IDurableOrchestrationClient starter)
         {
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));

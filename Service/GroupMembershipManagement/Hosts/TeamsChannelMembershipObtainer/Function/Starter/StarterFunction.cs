@@ -29,7 +29,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
 
         [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
-            [ServiceBusTrigger("%serviceBusSyncJobTopic%", "TeamsChannelMembership", Connection = "serviceBusTopicConnection")] ServiceBusReceivedMessage message,
+            [ServiceBusTrigger("%serviceBusSyncJobTopic%", "TeamsChannelMembership", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
             [DurableClient] IDurableOrchestrationClient starter)
         {
 
