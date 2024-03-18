@@ -18,23 +18,6 @@ function Update-GmmMigrationIfNeeded {
 
   	Set-AzContext -SubscriptionName $SubscriptionName
 
-	. ($scriptsDirectory + '\Scripts\Set-UpdateGroupMembershipQuery.ps1')
-		Set-UpdateGroupMembershipQuery -SubscriptionName $SubscriptionName `
-                                 	 -SolutionAbbreviation $SolutionAbbreviation `
-							         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-                                 	 -Verbose
-
-  	Write-Verbose "Set-UpdateQuery completed."
-
-	Write-Verbose "Set-UpdateDestination starting..."
-	. ($scriptsDirectory + '\Scripts\Set-UpdateDestination.ps1')
-	Set-UpdateDestination -SubscriptionName $SubscriptionName `
-		-SolutionAbbreviation $SolutionAbbreviation `
-		-EnvironmentAbbreviation $EnvironmentAbbreviation `
-		-Verbose
-
-	Write-Verbose "Set-UpdateDestination completed."
-
 	Write-Verbose "Set-UpdateSqlDatabaseNames starting..."
 	. ($scriptsDirectory + '\Scripts\Set-UpdateSqlDatabaseNames.ps1')
 	Set-UpdateSqlDatabaseNames	-SubscriptionName $SubscriptionName  `
