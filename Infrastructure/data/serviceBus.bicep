@@ -10,10 +10,8 @@ param sku string = 'Standard'
 @description('Location for the service bus.')
 param location string
 
-@description('Key vault name.')
+@description('Data KeyVault name.')
 param keyVaultName string
-
-var authRuleResourceId = resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', name, 'RootManageSharedAccessKey')
 
 resource serviceBus 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' = {
   name: name
@@ -23,35 +21,24 @@ resource serviceBus 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' = {
   }
   properties: {
     minimumTlsVersion: '1.2'
+    disableLocalAuth: true
   }
 }
 
-module secureSecretsTemplatePrimaryKey 'keyVaultSecretsSecure.bicep' = {
-  name: 'secureSecretsTemplatePrimaryKey'
+module serviceBusSecrets 'keyVaultSecretsSecure.bicep' = {
+  name: 'serviceBusSecretsTemplate'
   params: {
     keyVaultName: keyVaultName
     keyVaultSecrets: {
       secrets: [
         {
-          name: 'serviceBusPrimaryKey'
-          value: listkeys(authRuleResourceId, '2017-04-01').primaryKey
+          name: 'serviceBusFQN'
+          value: '${name}.servicebus.windows.net'
         }
       ]
     }
   }
-}
-
-module secureSecretsTemplateConnectionString 'keyVaultSecretsSecure.bicep' = {
-  name: 'secureSecretsTemplateConnectionString'
-  params: {
-    keyVaultName: keyVaultName
-    keyVaultSecrets: {
-      secrets: [
-        {
-          name: 'serviceBusConnectionString'
-          value: listkeys(authRuleResourceId, '2017-04-01').primaryConnectionString
-        }
-      ]
-    }
-  }
+  dependsOn: [
+    serviceBus
+  ]
 }
