@@ -27,7 +27,7 @@
     "actionableEmailProviderId": "",
     "serviceBusMembershipAggregatorQueue": "",
     "serviceBusNotificationsQueue": "",
-    "serviceBusConnectionString": ""
+    "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net"
   },
   "ConnectionStrings": {}
 }

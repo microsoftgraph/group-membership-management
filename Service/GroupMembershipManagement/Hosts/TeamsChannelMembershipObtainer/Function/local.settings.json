@@ -25,7 +25,7 @@
     "senderPassword": "",
     "serviceBusSyncJobTopic": "",
     "serviceBusMembershipAggregatorQueue": "",
-    "serviceBusTopicConnection": "",
+    "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net",
     "supportEmailAddresses": "",
     "syncDisabledCCEmailAddresses": "",
     "TeamsChannelMembershipObtainer:IsDryRunEnabled": "",

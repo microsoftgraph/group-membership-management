@@ -3,7 +3,7 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet",
-    "serviceBusConnectionString": "<serviceBusConnectionString>",
+    "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net",
     "pipeline": "",
     "dataFactoryName": "gmm-data-<env>-adf",
     "dataResourceGroup": "gmm-data-<env>",

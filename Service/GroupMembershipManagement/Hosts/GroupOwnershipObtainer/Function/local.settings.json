@@ -7,7 +7,7 @@
     "appConfigurationEndpoint": "",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "",
     "serviceBusSyncJobTopic": "syncJobs",
-    "serviceBusTopicConnection": "",
+    "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net",
     "graphCredentials:ClientCertificateName": "not-set",
     "graphCredentials:ClientSecret": "",
     "graphCredentials:ClientId": "",

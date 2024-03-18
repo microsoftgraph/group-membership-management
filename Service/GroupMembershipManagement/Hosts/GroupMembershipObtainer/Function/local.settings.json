@@ -7,7 +7,7 @@
     "graphCredentials:KeyVaultTenantId": "",
     "appConfigurationEndpoint": "",
     "serviceBusSyncJobTopic": "",
-    "serviceBusTopicConnection": "",
+    "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net",
     "graphCredentials:ClientSecret": "",
     "graphCredentials:ClientId": "",
     "graphCredentials:TenantId": "",

@@ -7,7 +7,7 @@
     "logAnalyticsPrimarySharedKey": "",
     "ConnectionStrings:JobsContext": "",
     "ConnectionStrings:JobsContextReadOnly": "",
-    "serviceBusConnectionString": "",
+    "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net",
     "serviceBusSyncJobTopic": "",
     "jobTriggerSchedule": "0 */1 * * * *",
     "syncDisabledCCEmailAddresses": "",
