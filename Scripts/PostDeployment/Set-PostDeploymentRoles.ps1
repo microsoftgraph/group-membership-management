@@ -31,7 +31,9 @@ function Set-PostDeploymentRoles {
         [Parameter(Mandatory = $False)]
 		[System.Collections.ArrayList] $UserPrincipalNames,
         [Parameter(Mandatory = $False)]
-		[string] $DataResourceGroupName = $null
+		[string] $DataResourceGroupName = $null,
+        [Parameter(Mandatory = $False)]
+		[string] $ComputeResourceGroupName = $null
     )
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -58,5 +60,12 @@ function Set-PostDeploymentRoles {
     Set-ADFManagedIdentityRoles	-SolutionAbbreviation $SolutionAbbreviation `
                                 -EnvironmentAbbreviation $EnvironmentAbbreviation `
                                 -UserPrincipalNames $UserPrincipalNames
+
+    . ($scriptsDirectory + '\PostDeployment\Set-ServiceBusManagedIdentityRoles.ps1')
+    Set-ServiceBusManagedIdentityRoles -SolutionAbbreviation $SolutionAbbreviation `
+                                       -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                       -DataResourceGroupName $DataResourceGroupName `
+                                       -ComputeResourceGroupName $ComputeResourceGroupName `
+                                       -Verbose
 
 }
