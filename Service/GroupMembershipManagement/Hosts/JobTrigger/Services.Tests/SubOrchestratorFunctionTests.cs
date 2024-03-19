@@ -405,6 +405,7 @@ namespace Services.Tests
                         var gmmResources = new Mock<IGMMResources>();
                         var jobTriggerConfig = new Mock<IJobTriggerConfig>();
                         var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+                        var destinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
                         var notificationTypesRepository = new Mock<INotificationTypesRepository>();
                         var iJobNotificationRepository = new Mock<IJobNotificationsRepository>();
                         var graphGroupRepository = new Mock<IGraphGroupRepository>();
@@ -417,6 +418,7 @@ namespace Services.Tests
                         var jobTriggerService = new JobTriggerService(
                                                         _loggingRespository.Object,
                                                         syncJobRepository.Object,
+                                                        destinationAttributesRepository.Object,
                                                         notificationTypesRepository.Object,
                                                         iJobNotificationRepository.Object,
                                                         serviceBusTopicsRepository,
@@ -485,6 +487,7 @@ namespace Services.Tests
                         var gmmResources = new Mock<IGMMResources>();
                         var jobTriggerConfig = new Mock<IJobTriggerConfig>();
                         var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+                        var destinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
                         var emailTypeRepository = new Mock<INotificationTypesRepository>();
                         var iJobNotificationRepository = new Mock<IJobNotificationsRepository>();
                         var graphGroupRepository = new Mock<IGraphGroupRepository>();
@@ -497,6 +500,7 @@ namespace Services.Tests
                         var jobTriggerService = new JobTriggerService(
                                                         _loggingRespository.Object,
                                                         syncJobRepository.Object,
+                                                        destinationAttributesRepository.Object,
 														emailTypeRepository.Object,
                                                         iJobNotificationRepository.Object,
 														serviceBusTopicsRepository,

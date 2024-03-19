@@ -35,6 +35,7 @@ namespace Services.Tests
     {
         private JobTriggerService _jobTriggerService = null;
         private MockDatabaseSyncJobRepository _syncJobRepository = null;
+        private Mock<IDatabaseDestinationAttributesRepository> _destinationAttributesRepository = null;
         private MockNotificationTypesRepository _notificationTypesRepository = null;
         private MockJobNotificationRepository _jobNotificationRepository = null;
         private MockLoggingRepository _loggingRepository = null;
@@ -61,6 +62,7 @@ namespace Services.Tests
             };
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _syncJobRepository = new MockDatabaseSyncJobRepository();
+            _destinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
             _notificationTypesRepository = new MockNotificationTypesRepository();
             _jobNotificationRepository = new MockJobNotificationRepository();
             _loggingRepository = new MockLoggingRepository();
@@ -71,6 +73,7 @@ namespace Services.Tests
             _jobTriggerService = new JobTriggerService(
                                         _loggingRepository,
                                         _syncJobRepository,
+                                        _destinationAttributesRepository.Object,
                                         _notificationTypesRepository,
                                         _jobNotificationRepository,
                                         _serviceBusTopicsRepository,
@@ -464,6 +467,7 @@ namespace Services.Tests
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
+                _destinationAttributesRepository.Object,
                 _notificationTypesRepository,
                 _jobNotificationRepository,
                 _serviceBusTopicsRepository,
@@ -513,6 +517,7 @@ namespace Services.Tests
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
+                _destinationAttributesRepository.Object,
                 _notificationTypesRepository,
 				_jobNotificationRepository,
 				_serviceBusTopicsRepository,
@@ -554,7 +559,8 @@ namespace Services.Tests
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
-				_notificationTypesRepository,
+                _destinationAttributesRepository.Object,
+                _notificationTypesRepository,
 				_jobNotificationRepository,
 				_serviceBusTopicsRepository,
                 _graphGroupRepository,
@@ -594,7 +600,8 @@ namespace Services.Tests
             _jobTriggerService = new JobTriggerService(
                 _loggingRepository,
                 _syncJobRepository,
-			    _notificationTypesRepository,
+                _destinationAttributesRepository.Object,
+                _notificationTypesRepository,
 				_jobNotificationRepository,
 				_serviceBusTopicsRepository,
                 _graphGroupRepository,
