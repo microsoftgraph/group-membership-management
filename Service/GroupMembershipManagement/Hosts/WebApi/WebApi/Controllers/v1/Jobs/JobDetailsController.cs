@@ -48,7 +48,7 @@ namespace WebApi.Controllers.v1.Jobs
         {
             var user = User;
             var claimsIdentity = User.Identity as ClaimsIdentity;
-            var userName = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Upn)?.Value;
+            var userName = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Upn)?.Value ?? user.Identity?.Name;
 
             var isAllowed = User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR) || User.IsInRole(Models.Roles.TENANT_SUBMISSION_REVIEWER);
             var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userName, syncJobId, patchDocument));

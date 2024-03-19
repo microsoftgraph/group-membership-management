@@ -46,7 +46,7 @@ namespace WebApi.Controllers.v1.Jobs
         {
             var user = User;
             var claimsIdentity = User.Identity as ClaimsIdentity;
-            var userName = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Upn)?.Value;
+            var userName = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Upn)?.Value ?? user.Identity?.Name;
             var response = await _postJobRequestHandler.ExecuteAsync(new PostJobRequest(userName, newSyncJob));
 
             switch (response.StatusCode)
