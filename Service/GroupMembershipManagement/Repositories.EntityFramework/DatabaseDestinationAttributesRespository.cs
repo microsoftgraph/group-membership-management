@@ -19,11 +19,11 @@ namespace Repositories.EntityFramework
             _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
 
-        public async Task<string> GetDestinationName(SyncJob syncJob)
+        public async Task<string?> GetDestinationName(SyncJob syncJob)
         {
             DestinationName? destinationName = await _readContext.DestinationNames.SingleOrDefaultAsync(name => syncJob.Id == name.Id);
 
-            return destinationName!.Name;
+            return destinationName?.Name;
         }
 
         public async Task UpdateAttributes(DestinationAttributes destinationAttributes)
