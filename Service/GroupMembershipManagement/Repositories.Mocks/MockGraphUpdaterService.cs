@@ -115,7 +115,7 @@ namespace Repositories.Mocks
             return Task.FromResult(userOwners.Select(x => new AzureADUser { ObjectId = Guid.Parse(x.Id) }).ToList());
         }
 
-        public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null, string adaptiveCardTemplateDirectory = "")
+        public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, SyncJob syncJob, string ccEmail, string emailSubject, string[] additionalSubjectParams)
         {
             throw new NotImplementedException();
         }
