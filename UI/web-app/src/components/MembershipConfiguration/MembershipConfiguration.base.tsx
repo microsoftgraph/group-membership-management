@@ -60,6 +60,12 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     filter: ""
   };
 
+  useEffect(() => {
+    if (!isEditingExistingJob) {
+      dispatch(clearSourceParts());
+    }
+}, [dispatch, isEditingExistingJob]);
+
   const newSourcePart = () => {
     const newPart: ISourcePart = {
       id: sourceParts.length + 1,
