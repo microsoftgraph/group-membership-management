@@ -24,6 +24,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Models.Notifications;
+using Models.Helpers;
+using System.Text.Json;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Services.Tests
 {
@@ -76,10 +79,8 @@ namespace Services.Tests
                 }
             };
 
-            var serializedDestinationObject = JsonConvert.SerializeObject(destinationObject, Formatting.Indented, new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.All
-            });
+            var options = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
+            var serializedDestinationObject = JsonSerializer.Serialize(destinationObject, options);
 
             _jobTriggerService.Setup(x => x.ParseAndValidateDestinationAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => (true, serializedDestinationObject));
 

@@ -1,18 +1,19 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Hosts.DestinationAttributesUpdater;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.Helpers;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
-using Hosts.DestinationAttributesUpdater;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Newtonsoft.Json;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Services.Tests
 {
@@ -35,6 +36,8 @@ namespace Services.Tests
         private const string EmailSubject = "EmailSubject";
         private const string SyncStartedEmailBody = "SyncStartedEmailBody";
         private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
+
+        private JsonSerializerOptions _destinationObjectSerializerOptions;
 
         [TestInitialize]
         public void InitializeTest()
@@ -75,6 +78,8 @@ namespace Services.Tests
                    {
                        await CallLoggerFunctionAsync(request as LoggerRequest);
                    });
+
+            _destinationObjectSerializerOptions = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
         }
 
         public Guid getDestinationObjectId(SyncJob job)
@@ -86,7 +91,7 @@ namespace Services.Tests
         public async Task TestSuccessfulRun()
         {
             var destination1 = new DestinationObject() { Type = "GroupMembership", Value = new GroupDestinationValue() { ObjectId = Guid.NewGuid() } };
-            var serializedDestination1 = serializeDestination(destination1);
+            var serializedDestination1 = SerializeDestination(destination1);
             var jobId1 = Guid.NewGuid();
             var destinations = new List<(string Destination, Guid JobId)>() { (serializedDestination1, jobId1) };
             _mockDestinationAttributeUpdaterService.Setup(x => x.GetDestinationsAsync(It.IsAny<string>())).ReturnsAsync(() => destinations);
@@ -104,7 +109,7 @@ namespace Services.Tests
 
             _context.Verify(x => x.CallActivityAsync<List<(string Destination, Guid JobId)>>(It.Is<string>(x => x == nameof(DestinationReaderFunction)), It.IsAny<string>()),
                                 Times.Exactly(2));
-            _context.Verify(x => x.CallActivityAsync<List<DestinationAttributes>>(It.Is<string>(x => x == nameof(AttributeReaderFunction)), It.Is<AttributeReaderRequest>(x => deserializeDestination(x.Destinations[0].Destination).Value.ObjectId == deserializeDestination(destinations[0].Destination).Value.ObjectId)),
+            _context.Verify(x => x.CallActivityAsync<List<DestinationAttributes>>(It.Is<string>(x => x == nameof(AttributeReaderFunction)), It.Is<AttributeReaderRequest>(x => DeserializeDestination(x.Destinations[0].Destination).Value.ObjectId == DeserializeDestination(destinations[0].Destination).Value.ObjectId)),
                                 Times.Once());
             _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(AttributeCacheUpdaterFunction)), It.Is<DestinationAttributes>(x => x == destinationAttributes1)),
                                 Times.Once());
@@ -136,20 +141,14 @@ namespace Services.Tests
             await loggerFunction.LogMessageAsync(request);
         }
 
-        private string serializeDestination(DestinationObject destination)
+        private string SerializeDestination(DestinationObject destination)
         {
-            return JsonConvert.SerializeObject(destination, Formatting.Indented, new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.All
-            });
+            return JsonSerializer.Serialize(destination, _destinationObjectSerializerOptions);
         }
 
-        private DestinationObject deserializeDestination(string  destination)
+        private DestinationObject DeserializeDestination(string destination)
         {
-            return JsonConvert.DeserializeObject<DestinationObject>(destination, new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.All
-            });
+            return JsonSerializer.Deserialize<DestinationObject>(destination, _destinationObjectSerializerOptions);
         }
     }
 }

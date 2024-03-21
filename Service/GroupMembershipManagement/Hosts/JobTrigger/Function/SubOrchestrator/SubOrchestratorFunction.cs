@@ -6,6 +6,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
+using Models.Helpers;
 using Models.Notifications;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -15,7 +16,9 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Hosts.JobTrigger
 {
@@ -91,10 +94,8 @@ namespace Hosts.JobTrigger
                         return;
                     }
 
-                    destinationObject = JsonConvert.DeserializeObject<DestinationObject>(parsedAndValidatedDestination.DestinationObject, new JsonSerializerSettings
-                    {
-                        TypeNameHandling = TypeNameHandling.Auto
-                    });
+                    var options = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
+                    destinationObject = JsonSerializer.Deserialize<DestinationObject>(parsedAndValidatedDestination.DestinationObject, options);
 
                     if (destinationObject.Type == "GroupMembership")
                     {

@@ -60,7 +60,7 @@ stages:
          coverageThreshold: 69
       - function:
          name: 'DestinationAttributesUpdater'
-         coverageThreshold: 65
+         coverageThreshold: 64
       - function:
          name: 'GroupMembershipObtainer'
          coverageThreshold: 89

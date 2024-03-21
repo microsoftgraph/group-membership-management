@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.Helpers;
 using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -9,7 +10,9 @@ using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Services.Tests
 {
@@ -65,10 +68,8 @@ namespace Services.Tests
                 Value = new GroupDestinationValue() { ObjectId = Guid.NewGuid() }
             };
 
-            var serializedDestination = JsonConvert.SerializeObject(destination, Formatting.Indented, new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.All
-            });
+            var options = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
+            var serializedDestination = JsonSerializer.Serialize(destination, options);
 
             Guid tableId = Guid.NewGuid();
 

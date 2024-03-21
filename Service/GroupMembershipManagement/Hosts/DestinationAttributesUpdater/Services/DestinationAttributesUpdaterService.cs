@@ -3,10 +3,12 @@
 
 using Models;
 using Models.Entities;
-using Newtonsoft.Json;
+using Models.Helpers;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Services.Contracts;
+using System.Text.Json;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Services
 {
@@ -16,6 +18,7 @@ namespace Services
         private readonly IDatabaseDestinationAttributesRepository _databaseDestinationAttributesRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ITeamsChannelRepository _teamsChannelRepository;
+        private readonly JsonSerializerOptions _destinationObjectSerializerOptions;
 
         public DestinationAttributesUpdaterService(
             IDatabaseSyncJobsRepository databaseSyncJobsRepository, 
@@ -27,6 +30,7 @@ namespace Services
             _databaseDestinationAttributesRepository = databaseDestinationAttributesRepository;
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
+            _destinationObjectSerializerOptions = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
         }
 
         public async Task<List<(string Destination, Guid JobId)>> GetDestinationsAsync(string destinationType)
@@ -66,10 +70,7 @@ namespace Services
                     continue;
                 }
 
-                var serializedDestination = JsonConvert.SerializeObject(destination, Formatting.Indented, new JsonSerializerSettings
-                {
-                    TypeNameHandling = TypeNameHandling.All
-                });
+                var serializedDestination = JsonSerializer.Serialize(destination, _destinationObjectSerializerOptions);
 
                 destinations.Add((serializedDestination, job.Id));
             }
@@ -82,10 +83,7 @@ namespace Services
             
             var destinationAttributesList = new List<DestinationAttributes>();
             List<(DestinationObject? Destination, Guid JobId)> destinationObjectsMap = destinations
-                .Select(d => (JsonConvert.DeserializeObject<DestinationObject>(d.Destination, new JsonSerializerSettings
-                {
-                    TypeNameHandling = TypeNameHandling.Auto
-                }), d.JobId))
+                .Select(d => (JsonSerializer.Deserialize<DestinationObject>(d.Destination, _destinationObjectSerializerOptions), d.JobId))
                 .ToList();
             
             var destinationObjects = destinationObjectsMap.Select(d => d.Destination).ToList();

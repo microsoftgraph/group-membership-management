@@ -15,6 +15,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Text.Json;
+using Models.Helpers;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Services
 {
@@ -202,10 +204,8 @@ namespace Services
             }
             else
             {
-                var serializedDestinationObject = JsonConvert.SerializeObject(destinationObject, Formatting.Indented, new JsonSerializerSettings
-                {
-                    TypeNameHandling = TypeNameHandling.All
-                });
+                var options = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
+                var serializedDestinationObject = JsonSerializer.Serialize(destinationObject, options);
 
                 return (true, serializedDestinationObject);
             }

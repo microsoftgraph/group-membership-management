@@ -24,6 +24,9 @@ using Models.Entities;
 using Newtonsoft.Json;
 using Models.Notifications;
 using Models.ServiceBus;
+using Models.Helpers;
+using System.Text.Json;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Services.Tests
 {
@@ -46,6 +49,8 @@ namespace Services.Tests
         private const string Organization = "Organization";
         private const string GroupMembership = "GroupMembership";
         private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
+
+        private JsonSerializerOptions _destinationObjectSerializerOptions;
 
         [TestInitialize]
         public void InitializeTest()
@@ -78,6 +83,8 @@ namespace Services.Tests
                                         _gMMResources,
                                         _jobTriggerConfig,
                                         new TelemetryClient(TelemetryConfiguration.CreateDefault()));
+
+            _destinationObjectSerializerOptions = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
         }
 
         public Guid getDestinationObjectId(SyncJob job)
@@ -96,10 +103,7 @@ namespace Services.Tests
 
             Assert.AreEqual(true, parsedAndValidated.IsValid);
 
-            var destinationObject = JsonConvert.DeserializeObject<DestinationObject>(parsedAndValidated.DestinationObject, new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.Auto
-            });
+            var destinationObject = JsonSerializer.Deserialize<DestinationObject>(parsedAndValidated.DestinationObject, _destinationObjectSerializerOptions);
 
             Assert.AreEqual(objectId, destinationObject.Value.ObjectId);
         }
@@ -116,10 +120,7 @@ namespace Services.Tests
 
             Assert.AreEqual(true, parsedAndValidated.IsValid);
 
-            var destinationObject = JsonConvert.DeserializeObject<DestinationObject>(parsedAndValidated.DestinationObject, new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.Auto
-            });
+            var destinationObject = JsonSerializer.Deserialize<DestinationObject>(parsedAndValidated.DestinationObject, _destinationObjectSerializerOptions);
 
             Assert.AreEqual(objectId, destinationObject.Value.ObjectId);
             Assert.AreEqual(channelId, (destinationObject.Value as TeamsChannelDestinationValue).ChannelId);
