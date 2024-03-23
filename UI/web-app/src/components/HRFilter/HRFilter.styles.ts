@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import type { HRQuerySourceStyleProps, HRQuerySourceStyles } from './HRQuerySource.types';
+import type { HRFilterStyleProps, HRFilterStyles } from './HRFilter.types';
 
-export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles => {
+export const getStyles = (props: HRFilterStyleProps): HRFilterStyles => {
   const { className, theme } = props;
 
   return {

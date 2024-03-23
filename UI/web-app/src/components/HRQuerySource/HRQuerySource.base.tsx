@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint } from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
@@ -19,7 +19,9 @@ import { fetchOrgLeaderDetails } from '../../store/orgLeaderDetails.api';
 import { getJobOwnerFilterSuggestions } from '../../store/jobs.api';
 import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeIdMapping } from '../../store/orgLeaderDetails.slice';
 import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
-import { manageMembershipIsEditingExistingJob } from '../../store/manageMembership.slice';
+import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
+import { selectAttributes } from '../../store/sqlMembershipSources.slice';
+import { HRFilter } from '../HRFilter';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
@@ -35,6 +37,11 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     childrenGap: 30
   };
 
+  type ChildType = {
+    filter: string;
+  };
+
+
   const dispatch = useDispatch<AppDispatch>();
   const orgLeaderDetails = useSelector(selectOrgLeaderDetails);
   const objectIdEmployeeIdMapping = useSelector(selectObjectIdEmployeeIdMapping);
@@ -43,9 +50,41 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [isDisabled, setIsDisabled] = useState(true);
   const [includeOrg, setIncludeOrg] = useState(false);
   const [includeFilter, setIncludeFilter] = useState(false);
+  const [addAttribute, setAddAttribute] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [filter, setFilter] = useState<string>('');
   const [source, setSource] = useState<HRSourcePartSource>(props.source);
+  const [children, setChildren] = useState<ChildType[]>([]);
   const excludeLeaderQuery = `EmployeeId != ${source.manager?.id}`
+  const attributes = useSelector(selectAttributes);
+
+  useEffect(() => {
+    setAddAttribute(false);
+  }, [props.source, source]);
+
+  useEffect(() => {
+    if (children.length === 0) {
+      setIncludeFilter(false);
+    }
+  }, [children]);
+
+
+  useEffect(() => {
+    const regex = /( And | Or )/g;
+    if (props.source.filter != undefined && addAttribute) {
+    const parts = props.source.filter.split(regex);
+    let childFilters = [];
+    let currentFilter = "";
+    for (let i = 0; i < parts.length; i += 2) {
+      currentFilter = parts[i].trim();
+      if (i + 1 < parts.length) {
+        currentFilter += parts[i + 1];
+      }
+      childFilters.push(currentFilter);
+    }
+    setChildren(childFilters.map(filter => ({ filter })));
+  }
+  }, [props.source.filter]);
 
   useEffect(() => {
     setErrorMessage('');
@@ -115,13 +154,21 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     });
   }, []);
 
-  const handleFilterChange = (_: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '') => {
-    const filter = newValue;
+  const addComponent = () => {
+    setAddAttribute(true);
+    setSource(props.source);
+    setChildren(prevChildren => [...prevChildren, { filter: ''}]);
+  };
+
+  const removeComponent = (indexToRemove: number) => {
+    const childToRemove = children[indexToRemove];
+    const filter = source.filter?.replace(childToRemove.filter, '').trim();
     setSource(prevSource => {
         const newSource = { ...prevSource, filter };
         onSourceChange(newSource, partId);
         return newSource;
     });
+    setChildren(prevChildren => prevChildren.filter((_, index) => index !== indexToRemove));
   };
 
   const yesNoOptions: IChoiceGroupOption[] = [
@@ -169,7 +216,11 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       });
     }
     else if (option?.key === "Yes") {
+      if (children.length === 0) {
+        addComponent();
+      }
       setIncludeFilter(true);
+      dispatch(fetchDefaultSqlMembershipSourceAttributes());
       setSource(prevSource => {
         const newSource = { ...prevSource };
         onSourceChange(newSource, partId);
@@ -302,25 +353,29 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         }}
         disabled={isEditingExistingJob}
       />
-
-      {(includeFilter || source.filter) && (
-      <><div className={classNames.labelContainer}>
-      <Label>{strings.HROnboarding.filter}</Label>
-      <TooltipHost content={strings.HROnboarding.filterInfo} id="toolTipFilterId" calloutProps={{ gapSpace: 0 }}>
-        <IconButton title={strings.HROnboarding.filterInfo} iconProps={{ iconName: "Info" }} aria-describedby="toolTipFilterId" />
-      </TooltipHost>
+      {(includeFilter || source.filter) && (attributes) && (attributes.length > 0) &&
+      (
+        <div>
+        {children.map((child, index) => (
+        <div key={index}>
+        <HRFilter
+          key={index}
+          index={index}
+          source={source}
+          parentFilter={props.source.filter}
+          partId={partId}
+          attributes={attributes}
+          childFilters={children}
+          filter={child.filter}
+          onSourceChange={onSourceChange}
+          onRemove={() => removeComponent(index)}
+        />
+        </div>
+        ))}
+        <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={addComponent}>
+          Add attribute
+        </ActionButton>
       </div>
-      <TextField
-        placeholder={strings.HROnboarding.filterPlaceHolder}
-        multiline rows={3}
-        resizable={true}
-        value={source.filter?.toString()}
-        onChange={handleFilterChange}
-        styles={{ root: classNames.textField, fieldGroup: classNames.textFieldGroup }}
-        validateOnLoad={false}
-        validateOnFocusOut={false}
-        disabled={isEditingExistingJob}
-      ></TextField></>
       )}
 
       <div className={classNames.error}>
