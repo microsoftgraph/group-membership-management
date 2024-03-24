@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { classNamesFunction, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList} from '@fluentui/react';
+import { classNamesFunction, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { AdminConfigStyleProps, AdminConfigStyles, AdminConfigViewProps, CustomLabelCellProps, CustomSourceSettingsProps, HyperlinkSettingsProps } from './AdminConfig.types';
 import { PageSection } from '../../components/PageSection';
@@ -15,14 +15,14 @@ const getClassNames = classNamesFunction<AdminConfigStyleProps, AdminConfigStyle
 
 export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (props: AdminConfigViewProps) => {
   // extract props
-  const { className, isSaving, onSave, settings, sqlMembershipSource, sqlMembershipSourceAttributes, strings, styles } = props;
+  const { className, isSaving, onSave, settings, sqlMembershipSource, sqlMembershipSourceAttributes, strings, styles, isHyperlinkAdmin, isCustomMembershipProviderAdmin } = props;
 
   // generate class names
   const classNames: IProcessedStyleSet<AdminConfigStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
   });
-  
+
   // setup the ui state
   const [newSettings, setNewSettings] = useState(settings);
   const [newSource, setNewSource] = useState<SqlMembershipSource | undefined>(sqlMembershipSource);
@@ -48,7 +48,6 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
     const hasAttributesChanges = JSON.stringify(newAttributes) !== JSON.stringify(sqlMembershipSourceAttributes);
     return hasSettingsChanges || hasSourceChanges || hasAttributesChanges;
   };
-  
 
   // setup ui event handlers
   const handleOnSaveButtonClick = () => {
@@ -67,36 +66,40 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
         <div className={classNames.card}>
           <PageSection>
             <Pivot>
-              <PivotItem
-                headerText={strings.HyperlinkSettings.labels.hyperlinks}
-                headerButtonProps={{
-                  'data-order': 1,
-                  'data-title': strings.HyperlinkSettings.labels.hyperlinks,
-                }}
-              >
-                <HyperlinkSettings
-                  classNames={classNames}
-                  strings={strings}
-                  settings={newSettings}
-                  setSettings={setNewSettings}
-                  setHasValidationErrors={setHasUrlValidationErrors}/>
+              {isHyperlinkAdmin ??
+                <PivotItem
+                  headerText={strings.HyperlinkSettings.labels.hyperlinks}
+                  headerButtonProps={{
+                    'data-order': 1,
+                    'data-title': strings.HyperlinkSettings.labels.hyperlinks,
+                  }}
+                >
+                  <HyperlinkSettings
+                    classNames={classNames}
+                    strings={strings}
+                    settings={newSettings}
+                    setSettings={setNewSettings}
+                    setHasValidationErrors={setHasUrlValidationErrors} />
 
-              </PivotItem>
-              <PivotItem
-                headerText={'Custom Source'}
-                headerButtonProps={{
-                  'data-order': 2,
-                  'data-title': 'Custom Source',
-                }}
-              >
-                <CustomSourceSettings
-                  classNames={classNames}
-                  sqlMembershipSource={sqlMembershipSource}
-                  sqlMembershipSourceAttributes={sqlMembershipSourceAttributes}
-                  setNewAttributes={setNewAttributes}
-                  setNewSource={setNewSource}
-                  strings={strings}/>
-              </PivotItem>
+                </PivotItem>
+              }
+              {isCustomMembershipProviderAdmin ??
+                <PivotItem
+                  headerText={'Custom Source'}
+                  headerButtonProps={{
+                    'data-order': 2,
+                    'data-title': 'Custom Source',
+                  }}
+                >
+                  <CustomSourceSettings
+                    classNames={classNames}
+                    sqlMembershipSource={sqlMembershipSource}
+                    sqlMembershipSourceAttributes={sqlMembershipSourceAttributes}
+                    setNewAttributes={setNewAttributes}
+                    setNewSource={setNewSource}
+                    strings={strings} />
+                </PivotItem>
+              }
             </Pivot>
           </PageSection>
         </div>
@@ -113,7 +116,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
 };
 
 const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (props: HyperlinkSettingsProps) => {
-  
+
   const { classNames, strings, settings, setSettings, setHasValidationErrors } = props;
 
   const [urlValidations, setUrlValidations] = useState<{ readonly [key in SettingKey]: boolean }>({
@@ -154,8 +157,8 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
           link={settings[SettingKey.OutlookWarningUrl]}
           onLinkChange={handleSettingChange(SettingKey.OutlookWarningUrl)}
           onValidation={handleUrlSettingValidation(SettingKey.OutlookWarningUrl)}
-            ></HyperlinkSetting>
-          <HyperlinkSetting
+        ></HyperlinkSetting>
+        <HyperlinkSetting
           title={strings.HyperlinkSettings.privacyPolicyLink.title}
           description={strings.HyperlinkSettings.privacyPolicyLink.description}
           link={settings[SettingKey.PrivacyPolicyUrl]}
@@ -168,14 +171,14 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
 }
 
 const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> = (props: CustomSourceSettingsProps) => {
-  
+
   const { classNames, sqlMembershipSource, sqlMembershipSourceAttributes, setNewAttributes, setNewSource, strings } = props;
 
   const [attributeMap, setAttributeMap] = useState<{ [key: string]: SqlMembershipAttribute } | undefined>(undefined);
   const [isSortedDescending, setIsSortedDescending] = useState(false);
   const [sortKey, setSortKey] = useState('attribute');
   const [sourceNameValue, setSourceNameValue] = useState(sqlMembershipSource?.customLabel || '');
-  
+
   // Using useMemo to only recalculate attributes when sqlMembershipSourceAttributes change
   const attributes = useMemo(() => {
     return sqlMembershipSourceAttributes;
@@ -193,7 +196,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
     }, {});
 
     setAttributeMap(newAttributeMap);
-  }, [attributes]); 
+  }, [attributes]);
 
   useEffect(() => {
     const newAttributeSettings = attributeMap ? Object.values(attributeMap) : undefined;
@@ -202,7 +205,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
 
   const onSourceNameChange: (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string | undefined) => void = (event, newValue) => {
     const newSourceName = newValue ? newValue : '';
-    setNewSource({...sqlMembershipSource, customLabel: newSourceName} as SqlMembershipSource);
+    setNewSource({ ...sqlMembershipSource, customLabel: newSourceName } as SqlMembershipSource);
     setSourceNameValue(newSourceName);
   };
 
@@ -215,7 +218,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
   };
 
   const handleFieldChange = useCallback(
-    (attributeName: any, fieldName: any, newValue: any): any => {      
+    (attributeName: any, fieldName: any, newValue: any): any => {
       setAttributeMap((prevRowsData: any) => ({
         ...prevRowsData,
         [attributeName]: {
@@ -301,7 +304,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
       <div className={classNames.sourceNameTextFieldContainer}>
         <TextField
           label={strings.CustomSourceSettings.labels.sourceCustomLabelInput}
-          required = {!sourceNameValue.trim()}
+          required={!sourceNameValue.trim()}
           value={sourceNameValue}
           disabled={sqlMembershipSource === undefined}
           onChange={onSourceNameChange}

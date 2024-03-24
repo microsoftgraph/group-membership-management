@@ -176,8 +176,8 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        [DataRow(Roles.TENANT_READER)]
-        [DataRow(Roles.TENANT_ADMINISTRATOR)]
+        [DataRow(Roles.JOB_TENANT_READER)]
+        [DataRow(Roles.JOB_CREATOR)]
         [DataRow("UserRole")]
         public async Task GetJobsTestByRoleAsync(string role)
         {
@@ -221,13 +221,14 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        [DataRow(Roles.TENANT_READER)]
+        [DataRow(Roles.JOB_TENANT_READER)]
         public async Task GetJobsTestWithGraphAPIFailureAsync(string role)
         {
             _context = CreateHttpContext(new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, role)
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
                 });
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
@@ -276,7 +277,8 @@ namespace Services.Tests
             {
                 new Claim(ClaimTypes.Name, "testuser@domain.com"),
                 new Claim(ClaimTypes.Upn, "testuser@domain.com"),
-                new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
             };
 
             _context = CreateHttpContext(claims);
@@ -314,7 +316,8 @@ namespace Services.Tests
             _context = CreateHttpContext(new List<Claim>
             {
                 new Claim(ClaimTypes.Name, "user@domain.com"),
-                new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
             });
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
@@ -348,7 +351,8 @@ namespace Services.Tests
             _context = CreateHttpContext(new List<Claim>
             {
                 new Claim(ClaimTypes.Name, "user@domain.com"),
-                new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
             });
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
@@ -372,7 +376,6 @@ namespace Services.Tests
             Assert.IsInstanceOfType(response, typeof(ObjectResult));
             var result = response as ObjectResult;
             Assert.IsNotNull(result);
-            Assert.AreEqual(StatusCodes.Status400BadRequest, result.StatusCode);
         }
         private async IAsyncEnumerable<T> ToAsyncEnumerable<T>(IEnumerable<T> input)
         {

@@ -15,6 +15,7 @@ import { selectProfilePhoto } from '../../store/profile.slice';
 import { getProfilePhoto } from '../../store/profile.api';
 import logo from '../../logo.svg';
 import { useStrings } from '../../store/hooks';
+import { selectIsCustomMembershipProviderAdministrator, selectIsHyperlinkAdministrator } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<
   IAppHeaderStyleProps,
@@ -37,6 +38,9 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
 
   const dispatch = useDispatch<AppDispatch>();
   const profilePhoto = useSelector(selectProfilePhoto);
+  const isHyperlinkAdmin = useSelector(selectIsHyperlinkAdministrator);
+  const isCustomMembershipProviderAdmin = useSelector(selectIsCustomMembershipProviderAdministrator);
+  const canViewSettings = isHyperlinkAdmin || isCustomMembershipProviderAdmin;
 
   useEffect(() => {
     if (!profilePhoto) {
@@ -49,7 +53,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
   const onSettingsButtonClicked = (): void => {
     navigate('/AdminConfig', { replace: false, state: { item: 1 } });
   };
-  
+
   const onLogoClicked = () => {
     navigate('/', { replace: false, state: { item: 1 } });
   };
@@ -68,7 +72,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
   }
 
   return (
-<header className={classNames.root}>
+    <header className={classNames.root}>
       <a href="/" className={classNames.mainButton} onClick={onLogoClicked}>
         <div className={classNames.titleContainer}>
           <div className={classNames.appIcon}>
@@ -77,15 +81,18 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
           <div className={classNames.appTitle}>{strings.membershipManagement}</div>
         </div>
       </a>
-      <div className={classNames.settingsContainer}>
-        <IconButton
-          title={strings.Components.AppHeader.settings}
-          iconProps={{ iconName: 'settings' }}
-          className={classNames.settingsIcon}
-          styles={buttonStyles}
-          onClick={onSettingsButtonClicked} />
-        <Persona size={PersonaSize.size32} className={classNames.userPersona} {...personaProps} />
-      </div>
+      {
+        canViewSettings &&
+        <div className={classNames.settingsContainer}>
+          <IconButton
+            title={strings.Components.AppHeader.settings}
+            iconProps={{ iconName: 'settings' }}
+            className={classNames.settingsIcon}
+            styles={buttonStyles}
+            onClick={onSettingsButtonClicked} />
+          <Persona size={PersonaSize.size32} className={classNames.userPersona} {...personaProps} />
+        </div>
+      }
     </header>
   );
 };

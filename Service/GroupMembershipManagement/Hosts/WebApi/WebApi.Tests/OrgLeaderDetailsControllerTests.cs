@@ -35,7 +35,7 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, Roles.TENANT_READER)
+                    new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER)
                 })
             };
 

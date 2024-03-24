@@ -109,19 +109,28 @@ function Set-WebApiAzureADApplication {
 	# Create new app roles
 	[String[]]$memberTypes = "User", "Application"
 
-	$readerRole = @{
-		DisplayName        = "Tenant Reader"
-		Description        = "Tenant Readers can read all destinations managed by Membership Management."
-		Value              = "MembershipManagement.Destination.Read.All"
+	$jobCreatorRole = @{
+		DisplayName        = "Job Creator"
+		Description        = "Can create jobs and have access to the Membership Management page."
+		Value              = "Job.Create"
 		Id                 = [Guid]::NewGuid().ToString()
 		IsEnabled          = $True
 		AllowedMemberTypes = @($memberTypes)
 	}
 
-	$adminRole = @{
-		DisplayName        = "Tenant Administrator"
-		Description        = "Tenant Administrators can make changes to service configuration."
-		Value              = "MembershipManagement.ServiceConfiguration.ReadWrite.All"
+	$jobTenantReaderRole = @{
+		DisplayName        = "Job Tenant Reader"
+		Description        = "Can read all destinations in the tenant."
+		Value              = "Job.Read.All"
+		Id                 = [Guid]::NewGuid().ToString()
+		IsEnabled          = $True
+		AllowedMemberTypes = @($memberTypes)
+	}
+
+	$jobTenantWriterRole = @{
+		DisplayName        = "Job Tenant Writer"
+		Description        = "Can create, view, and update all destinations in the tenant."
+		Value              = "Job.ReadWrite.All"
 		Id                 = [Guid]::NewGuid().ToString()
 		IsEnabled          = $True
 		AllowedMemberTypes = @($memberTypes)
@@ -129,27 +138,38 @@ function Set-WebApiAzureADApplication {
 
 	$submissionReviewerRole = @{
 		DisplayName        = "Submission Reviewer"
-		Description        = "Submission Reviewers can can review onboarding submissions."
-		Value              = "MembershipManagement.Destination.ReadWrite.All"
+		Description        = "Can view and manage Submission Requests for all groups."
+		Value              = "Submission.ReadWrite.All"
 		Id                 = [Guid]::NewGuid().ToString()
 		IsEnabled          = $True
 		AllowedMemberTypes = @($memberTypes)
 	}
 
-	$tenantJobEditor = @{
-		DisplayName        = "Tenant Job Editor"
-		Description        = "Tenant Job Editors can make edits to any jobs in the tenant."
-		Value              = "Job.ReadWrite.All"
+	$hyperlinkAdministratorRole = @{
+		DisplayName        = "Hyperlink Administrator"
+		Description        = "Can add, update, or remove custom URLs."
+		Value              = "Settings.Hyperlink.ReadWrite.All"
+		Id                 = [Guid]::NewGuid().ToString()
+		IsEnabled          = $True
+		AllowedMemberTypes = @($memberTypes)
+	}
+
+	$customMembershipProviderAdministratorRole = @{
+		DisplayName        = "Custom Membership Provider Administrator"
+		Description        = "Can add, update, or remove custom field names."
+		Value              = "Settings.CustomSource.ReadWrite.All"
 		Id                 = [Guid]::NewGuid().ToString()
 		IsEnabled          = $True
 		AllowedMemberTypes = @($memberTypes)
 	}
 
 	$appRoles = $webApiApp.AppRole
-	$appRoles += $readerRole
-	$appRoles += $adminRole
+	$appRoles += $jobCreatorRole
+	$appRoles += $jobTenantReaderRole
+	$appRoles += $jobTenantWriterRole
 	$appRoles += $submissionReviewerRole
-	$appRoles += $tenantJobEditor
+	$appRoles += $hyperlinkAdministratorRole
+	$appRoles += $customMembershipProviderAdministratorRole
 
 	#region Create Appplication
 	if ($null -eq $webApiApp) {

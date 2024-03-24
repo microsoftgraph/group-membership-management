@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using WebApi.Controllers.v1.Roles;
 using WebApi.Models;
+using WebApi.Models.DTOs;
 
 namespace Services.Tests
 {
@@ -21,67 +22,25 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public void Get_IsAdmin_ForAdminUser()
+        public void GetAllRolesStatus_ForVariousUsers()
         {
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR),
+                new Claim(ClaimTypes.Role, Roles.JOB_CREATOR),
+                new Claim(ClaimTypes.Role, Roles.HYPERLINK_ADMINISTRATOR)
             };
 
             _rolesController.ControllerContext = CreateControllerContext(claims);
 
-            var result = _rolesController.GetIsAdmin();
+            var result = _rolesController.GetAllRoles();
 
             Assert.IsNotNull(result);
-            Assert.IsTrue(result.Value);
-        }
-
-        [TestMethod]
-        public void Get_IsAdmin_ForRegularUser()
-        {
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Role, "Reader"),
-            };
-
-            _rolesController.ControllerContext = CreateControllerContext(claims);
-
-            var result = _rolesController.GetIsAdmin();
-
-            Assert.IsNotNull(result);
-            Assert.IsFalse(result.Value);
-        }
-
-        [TestMethod]
-        public void Get_IsSubmissionReviewer_ForSubmissionReviewerUser()
-        {
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Role, Roles.TENANT_SUBMISSION_REVIEWER),
-            };
-
-            _rolesController.ControllerContext = CreateControllerContext(claims);
-
-            var result = _rolesController.GetIsSubmissionReviewer();
-
-            Assert.IsNotNull(result);
-            Assert.IsTrue(result.Value);
-        }
-
-        [TestMethod]
-        public void Get_SubmissionReviewer_ForRegularUser()
-        {
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Role, "Reader"),
-            };
-
-            _rolesController.ControllerContext = CreateControllerContext(claims);
-
-            var result = _rolesController.GetIsSubmissionReviewer();
-
-            Assert.IsNotNull(result);
-            Assert.IsFalse(result.Value);
+            var okResult = result.Result as OkObjectResult;
+            Assert.IsNotNull(okResult);
+            var rolesStatuses = okResult.Value as RolesObject;
+            Assert.IsNotNull(rolesStatuses);
+            Assert.IsTrue(rolesStatuses.IsJobCreator);
+            Assert.IsTrue(rolesStatuses.IsHyperlinkAdministrator);
         }
 
         private ControllerContext CreateControllerContext(List<Claim> claims)

@@ -62,14 +62,10 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
             }
         }
 
-        [Authorize()]
+        [Authorize(Roles = Models.Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR)]
         [HttpPatch("default")]
         public async Task<IActionResult> PatchDefaultSourceCustomLabelAsync([FromBody] string customLabel)
         {
-            var isAdmin = User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR);
-            if (!isAdmin)
-                return Unauthorized();
-
             try
             {
                 await _patchDefaultSqlMembershipSourceCustomLabelHandler.ExecuteAsync(new PatchDefaultSqlMembershipSourceCustomLabelRequest(customLabel));
@@ -81,14 +77,10 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
             }
         }
 
-        [Authorize()]
+        [Authorize(Roles = Models.Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR)]
         [HttpPatch("defaultAttributes")]
         public async Task<IActionResult> PatchDefaultSourceAttributesAsync([FromBody] List<SqlMembershipAttribute> attributes)
         {
-            var isAdmin = User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR);
-            if (!isAdmin)
-                return Unauthorized();
-
             try
             {
                 await _patchDefaultSqlMembershipSourceAttributesHandler.ExecuteAsync(new PatchDefaultSqlMembershipSourceAttributesRequest(attributes));

@@ -21,7 +21,7 @@ import { useEffect, useState } from 'react';
 import { useStrings } from '../../store/hooks';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
 import { useDispatch, useSelector } from 'react-redux';
-import { selectIsAdmin, selectIsTenantJobEditor } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { AppDispatch } from '../../store';
 import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
 import { getJobOwnerFilterSuggestions } from '../../store/jobs.api';
@@ -122,8 +122,8 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   const [destinationName, setDestinationName] = useState<string>();
   const [idValidationErrorMessage, setIdValidationErrorMessage] = useState<string>();
   const [selectedOwners, setSelectedOwners] = useState<IPersonaProps[]>([]);
-  const isAdmin = useSelector(selectIsAdmin);
-  const isTenantJobEditor = useSelector(selectIsTenantJobEditor);
+  const isTenantJobWriter = useSelector(selectIsJobTenantWriter);
+  const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
   const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions);
   const dispatch = useDispatch<AppDispatch>();
 
@@ -328,7 +328,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
               />
             </Stack.Item>
 
-            {(isAdmin || isTenantJobEditor) ? (
+            {(isTenantJobWriter || isSubmissionReviewer) ? (
               <Stack.Item align="start">
                 <Label>{strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.label}</Label>
                 <NormalPeoplePicker

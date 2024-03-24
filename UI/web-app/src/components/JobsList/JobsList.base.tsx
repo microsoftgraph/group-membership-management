@@ -63,7 +63,7 @@ import {
 } from '../../store/pagingBar.slice';
 import { resetManageMembership } from '../../store/manageMembership.slice';
 
-import { selectIsAdmin, selectIsTenantJobEditor } from '../../store/roles.slice';
+import { selectIsJobTenantWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -98,8 +98,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const filterDestinationName: string | undefined = useSelector(selectPagingBarfilterDestinationName);
   const filterDestinationType: string | undefined = useSelector(selectPagingBarfilterDestinationType);
   const filterDestinationOwner: string | undefined = useSelector(selectPagingBarfilterDestinationOwner);
-  const isAdmin: boolean | undefined = useSelector(selectIsAdmin);
-  const isTenantJobEditor: boolean | undefined = useSelector(selectIsTenantJobEditor);
+  const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
 
   const getJobsByPage = (): void => {
     setIsShimmerEnabled(true);
@@ -130,7 +129,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const items = jobs;
   const env = process.env.REACT_APP_ENVIRONMENT_ABBREVIATION?.toLowerCase();
   const isLowerEnvironment = env !== 'prodv2';
-  const isOnboardingEnabled = isLowerEnvironment || isAdmin;
+  const isOnboardingEnabled = isLowerEnvironment || isTenantJobWriter;
 
   const columns = [
     {
@@ -277,7 +276,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     directionalHintFixed: true
   };
 
-  if(isAdmin || isTenantJobEditor){
+  if(isTenantJobWriter){
     menuProps.items[1] = {
       key: 'bulkAddSyncs',
       text: strings.ManageMembership.bulkAddSyncsButton,

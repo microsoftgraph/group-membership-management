@@ -103,14 +103,6 @@ namespace WebApi
                 return tc;
             });
 
-            builder.Services.AddAuthorization(options =>
-            {
-                options.AddPolicy(Roles.TENANT_ADMINISTRATOR, policy => policy.RequireClaim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR));
-                options.AddPolicy(Roles.TENANT_SUBMISSION_REVIEWER, policy => policy.RequireClaim(ClaimTypes.Role, Roles.TENANT_SUBMISSION_REVIEWER));
-                options.AddPolicy(Roles.TENANT_JOB_EDITOR, policy => policy.RequireClaim(ClaimTypes.Role, Roles.TENANT_JOB_EDITOR));
-            });
-
-
             builder.Services
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddMicrosoftIdentityWebApi(azureAdConfigSection);

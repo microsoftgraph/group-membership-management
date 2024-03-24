@@ -8,13 +8,15 @@ namespace Services.Messages.Requests
 {
     public class PostJobRequest : RequestBase
     {
-        public PostJobRequest(string userIdentity, NewSyncJobDTO newSyncJob)
+        public PostJobRequest(string userIdentity, NewSyncJobDTO newSyncJob, bool isJobTenantWriter)
         {
             UserIdentity = userIdentity;
             NewSyncJob = newSyncJob;
+            IsJobTenantWriter = isJobTenantWriter;
         }
         public NewSyncJobDTO NewSyncJob { get; }
         public string UserIdentity { get; }
+        public bool IsJobTenantWriter { get; set; }
 
     }
 }

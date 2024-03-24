@@ -46,7 +46,7 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, Roles.TENANT_READER)
+                    new Claim(ClaimTypes.Role, Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR)
                 })
             };
 
@@ -186,12 +186,12 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PatchDefaultSourceCustomLabelWhenTenantAdminTestAsync()
+        public async Task PatchDefaultSourceCustomLabelWhenCustomMembershipProviderAdminTestAsync()
         {
             _sqlMembershipSourcesController.ControllerContext = CreateControllerContext(new List<Claim>
             {
                 new Claim(ClaimTypes.Name, "user@domain.com"),
-                new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR)
+                new Claim(ClaimTypes.Role, Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR)
             });
 
             var response = await _sqlMembershipSourcesController.PatchDefaultSourceCustomLabelAsync("NewCustomLabel");
@@ -202,22 +202,12 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PatchDefaultSourceCustomLabelWhenNotTenantAdminTestAsync()
-        {
-            var response = await _sqlMembershipSourcesController.PatchDefaultSourceCustomLabelAsync("NewCustomLabel");
-
-            Assert.IsInstanceOfType(response, typeof(UnauthorizedResult));
-
-            _databaseSqlMembershipSourcesRepository.Verify(x => x.UpdateDefaultSourceCustomLabelAsync("NewCustomLabel"), Times.Never());
-        }
-
-        [TestMethod]
-        public async Task PatchDefaultSourceAttributesWhenTenantAdminTestAsync()
+        public async Task PatchDefaultSourceAttributesWhenCustomMembershipProviderAdminTestAsync()
         {
             _sqlMembershipSourcesController.ControllerContext = CreateControllerContext(new List<Claim>
             {
                 new Claim(ClaimTypes.Name, "user@domain.com"),
-                new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR)
+                new Claim(ClaimTypes.Role, Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR)
             });
 
             var attributes = new List<SqlMembershipAttribute>()
@@ -235,27 +225,6 @@ namespace Services.Tests
 
             _databaseSqlMembershipSourcesRepository.Verify(x => x.UpdateDefaultSourceAttributesAsync(It.Is<List<SqlMembershipAttribute>>(list => list[0].Name == "Name4" && list[0].CustomLabel == "CustomLabel4")), Times.Once());
         }
-
-        [TestMethod]
-        public async Task PatchDefaultSourceAttributesWhenNotTenantAdminTestAsync()
-        {
-            var attributes = new List<SqlMembershipAttribute>()
-            {
-                new SqlMembershipAttribute
-                {
-                    Name = "Name4",
-                    CustomLabel = "CustomLabel4"
-                }
-            };
-
-            var response = await _sqlMembershipSourcesController.PatchDefaultSourceAttributesAsync(attributes);
-
-            Assert.IsInstanceOfType(response, typeof(UnauthorizedResult));
-
-            _databaseSqlMembershipSourcesRepository.Verify(x => x.UpdateDefaultSourceAttributesAsync(It.IsAny<List<SqlMembershipAttribute>>()), Times.Never());
-        }
-
-
 
         private ControllerContext CreateControllerContext(List<Claim> claims)
         {

@@ -6,7 +6,7 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import { type User } from '../models/User';
 import { ThunkConfigWithErrors } from './store';
 import { setLoggingIn, setLoggedIn } from './account.slice';
-import { getIsAdmin, getIsSubmissionReviewer, getIsTenantJobEditor } from './roles.api';
+import { getAllRoles } from './roles.api';
 
 export const loginAsync = createAsyncThunk<User, void, ThunkConfigWithErrors<string>>(
   'account/login',
@@ -20,9 +20,7 @@ export const loginAsync = createAsyncThunk<User, void, ThunkConfigWithErrors<str
       await authenticationService.loginAsync();
       dispatch(setLoggingIn(false));
       dispatch(setLoggedIn(true));
-      dispatch(getIsAdmin());
-      dispatch(getIsSubmissionReviewer());
-      dispatch(getIsTenantJobEditor());
+      dispatch(getAllRoles());
     }
 
     return authenticationService.getActiveAccount() ?? rejectWithValue(strings.Authentication.loginFailed);

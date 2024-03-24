@@ -39,8 +39,15 @@ namespace Services
             try
             {
                 var newSyncJobEntity = MapSyncJobDTOtoEntity(request.NewSyncJob);
-
                 var destinationId = newSyncJobEntity.TargetOfficeGroupId;
+
+                var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, destinationId);
+                if (!(isGroupOwner || request.IsJobTenantWriter))
+                {
+                    response.StatusCode = HttpStatusCode.Forbidden;
+                    return response;
+                }
+
                 var destinationName = await _graphGroupRepository.GetGroupNameAsync(destinationId);
                 newSyncJobEntity.DestinationName = new DestinationName { Name = destinationName };
 

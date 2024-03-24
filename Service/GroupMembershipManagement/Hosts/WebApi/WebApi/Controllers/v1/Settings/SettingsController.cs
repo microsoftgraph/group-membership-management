@@ -64,14 +64,10 @@ namespace WebApi.Controllers.v1.Settings
             }
         }
 
-        [Authorize()]
+        [Authorize(Roles = Models.Roles.HYPERLINK_ADMINISTRATOR)]
         [HttpPatch("{settingKey}")]
         public async Task<IActionResult> PatchSettingAsync(SettingKey settingKey, [FromBody] string settingValue)
         {
-            var isAdmin = User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR);
-            if (!isAdmin)
-                return Unauthorized();
-
             try
             {
                 await _patchSettingRequestHandler.ExecuteAsync(new PatchSettingRequest(settingKey, settingValue));

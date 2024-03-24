@@ -47,6 +47,8 @@ export type AdminConfigViewProps = AdminConfigProps & {
   sqlMembershipSource: SqlMembershipSource | undefined;
   sqlMembershipSourceAttributes: SqlMembershipAttribute[] | undefined;
   strings: IStrings['AdminConfig'];
+  isHyperlinkAdmin: boolean;
+  isCustomMembershipProviderAdmin: boolean;
 };
 
 export type HyperlinkSettingsProps = {

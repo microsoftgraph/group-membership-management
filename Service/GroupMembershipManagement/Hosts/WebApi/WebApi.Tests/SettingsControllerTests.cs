@@ -45,7 +45,7 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR)
+                    new Claim(ClaimTypes.Role, Roles.HYPERLINK_ADMINISTRATOR)
                 })
             };
             _settingKey = SettingKey.DashboardUrl;
@@ -92,8 +92,18 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PatchSettingWhenTenantAdminTestAsync()
+        [DataRow(Roles.HYPERLINK_ADMINISTRATOR)]
+        public async Task PatchSettingWhenHyperlinkAdminTestAsync(string role)
         {
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role)
+                })
+            };
+
             _settingsRepository.Setup(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()))
                                .Verifiable();
 
@@ -103,29 +113,6 @@ namespace Services.Tests
 
             _settingsRepository.Verify(x => x.PatchSettingAsync(_settingKey, "updatedValue"), Times.Once());
         }
-
-        [TestMethod]
-        public async Task PatchSettingWhenNotAdminTestAsync()
-        {
-            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler)
-            {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
-                    new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, Roles.TENANT_READER)
-                })
-            };
-
-            _settingsRepository.Setup(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()))
-                   .Verifiable();
-
-            var response = await _settingsController.PatchSettingAsync(_settingKey, "updatedValue");
-
-            Assert.IsInstanceOfType(response, typeof(UnauthorizedResult));
-
-            _settingsRepository.Verify(x => x.PatchSettingAsync(_settingKey, "updatedValue"), Times.Never());
-        }
-
         private ControllerContext CreateControllerContext(HttpContext httpContext)
         {
             return new ControllerContext { HttpContext = httpContext };

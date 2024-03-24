@@ -28,16 +28,39 @@ Note:
 TenantId <tenant-id> - This is the tenant where your GMM resources are located, i.e. keyvaults, storage account.
 DevTenantId <dev-tenant-id> - If the application is going to be installed in a different tenant, set that tenant id here. This is an optional parameter, if not provided TenantId value is used by default.
 
-## Create an AAD Group for GMM Admins
+## Roles as policy to gate functionality
 
-Login and follow these steps in the tenant that was set in "AppTenantId" to run the `Set-WebApiAzureADApplication.ps1` script in the previous step.
+In order to control access to the WebAPI, several roles are created when the WebAPI application is created by the script above.
 
-In order to control access to the WebAPI, several roles are created when the WebAPI application is created by the script below, 'Reader', 'Admin', 'SubmissionReviewer'.
+The roles are:
 
-1. Create a new Microsoft Entra ID Group or use an existing one.
-2. Add members to the group, members of this group will act as GMM administrators. Administrators will have access to all jobs present in GMM and will be able to perform any CRUD action on them.
+- Job Creator
+    - Users with this role can view and have access to Membership Management page.
+    - They can view onboarded destinations for groups they own. 
+    - They can submit onboarding requests for groups they own. 
 
-## Add Admin role to you GMM Admins group
+- Job Tenant Reader
+    - Users with this role can __read or view__ all destinations in the tenant, whether they own the destinations being synced or not. 
+
+- Job Tenant Writer
+    - Users with this role can __update__ all destinations in the tenant, whether they own the destinations being synced or not.
+    - They can submit onboarding requests for groups, whether they own them or not.
+
+- Submission Reviewer
+    - View Submission Requests for all groups​.
+    - Approve/decline Submission requests​.
+    - View user information from custom source.
+    - _Note: for Submission Reviewers to be able to see all pending requests, they need to also have the Job Tenant Reader role_
+
+- Hyperlink Administrator
+    - Users with this role can __add, update, and remove__ custom urls from the Admin Settings page.
+
+- Custom Membership Provider Administrator
+    - Users with this role can __add, update, and remove__ custom field names from the Admin Settings page.
+
+
+
+## Add a role to a group
 
 Login and follow these steps in the tenant that was set in "AppTenantId" to run the Set-WebApiAzureADApplication.ps1 script in the previous step.
 
@@ -48,8 +71,8 @@ You might need to change the "Application Type" filter to "All Applications".
 4. Click on the name of your application.
 5. On the left menu select "Users and groups".
 6. Click on "Add user/group"
-7. Under "Users and groups", click on "None selected" and search for group created in the previous step and select it.
-8. Under "Select a role" click on "None selected", from the roles list select "Admin"
+7. Under "Users and groups", click on "None selected" and search for the group created in the previous step and select it.
+8. Under "Select a role" click on "None selected", from the roles list select the appropriate role for this group (or individual user).
 9. Click "Assign"
 
 Note: Individual users can be added and granted the proper permission, if you decide not to use a group.

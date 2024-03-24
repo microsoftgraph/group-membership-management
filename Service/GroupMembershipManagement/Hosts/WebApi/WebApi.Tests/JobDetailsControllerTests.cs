@@ -14,6 +14,7 @@ using System.Security.Claims;
 using WebApi.Controllers.v1.Jobs;
 using WebApi.Models;
 using WebApi.Models.DTOs;
+using Roles = WebApi.Models.Roles;
 using SyncJob = Models.SyncJob;
 using SyncJobDetails = WebApi.Models.DTOs.SyncJobDetails;
 
@@ -93,8 +94,8 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        [DataRow(Roles.TENANT_READER)]
-        [DataRow(Roles.TENANT_ADMINISTRATOR)]
+        [DataRow(Roles.JOB_CREATOR)]
+        [DataRow(Roles.JOB_TENANT_READER)]
         [DataRow("UserRole")]
         public async Task GetJobDetailsTestAsync(string role)
         {
@@ -131,8 +132,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        [DataRow(Roles.TENANT_READER)]
-        [DataRow(Roles.TENANT_ADMINISTRATOR)]
+        [DataRow(Roles.JOB_TENANT_READER)]
         public async Task GetJobDetailsTestRequestorNotAnOwnerAsync(string role)
         {
             var context = CreateHttpContext(new List<Claim>
@@ -171,11 +171,16 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PatchJobWithInvalidStatus()
+        [DataRow(Roles.JOB_TENANT_WRITER)]
+        public async Task PatchJobWithInvalidStatus(string role)
         {
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _patchJobHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim> { new Claim(ClaimTypes.Name, "user@domain.com") })
+                ControllerContext = CreateControllerContext(new List<Claim> { 
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+                })
             };
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
@@ -190,11 +195,15 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PatchJobWithEmptyStatus()
+        [DataRow(Roles.JOB_TENANT_WRITER)]
+        public async Task PatchJobWithEmptyStatus(string role)
         {
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _patchJobHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim> { new Claim(ClaimTypes.Name, "user@domain.com") })
+                ControllerContext = CreateControllerContext(new List<Claim> { 
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
@@ -209,13 +218,17 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PatchJobStatusWhenJobIsInProgress()
+        [DataRow(Roles.JOB_TENANT_WRITER)]
+        public async Task PatchJobStatusWhenJobIsInProgress(string role)
         {
             _jobEntity.Status = SyncStatus.InProgress.ToString();
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _patchJobHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim> { new Claim(ClaimTypes.Name, "user@domain.com") })
+                ControllerContext = CreateControllerContext(new List<Claim> { 
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
@@ -234,13 +247,17 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PatchNonExistentJob()
+        [DataRow(Roles.JOB_TENANT_WRITER)]
+        public async Task PatchNonExistentJob(string role)
         {
             _jobEntity = null;
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _patchJobHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim> { new Claim(ClaimTypes.Name, "user@domain.com") })
+                ControllerContext = CreateControllerContext(new List<Claim> { 
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
@@ -254,12 +271,16 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PatchJobWhenIsNotOwnerOfTheGroup()
+        [DataRow(Roles.JOB_CREATOR)]
+        public async Task PatchJobWhenIsNotOwnerOfTheGroup(string role)
         {
             _isGroupOwner = false;
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _patchJobHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim> { new Claim(ClaimTypes.Name, "user@domain.com") })
+                ControllerContext = CreateControllerContext(new List<Claim> { 
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
@@ -272,16 +293,16 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PatchJobWhenIsNotOwnerOfTheGroupButIsAdmin()
+        [DataRow(Roles.JOB_TENANT_WRITER)]
+        public async Task PatchJobWhenIsNotOwnerOfTheGroupButIsJobTenantWriter(string role)
         {
             _isGroupOwner = false;
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _patchJobHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> { 
                     new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, Roles.TENANT_ADMINISTRATOR)
-                })
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
@@ -294,7 +315,8 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PatchJobWhenIsAnOwner()
+        [DataRow(Roles.JOB_CREATOR)]
+        public async Task PatchJobWhenIsAnOwner(string role)
         {
             var userId = Guid.NewGuid().ToString();
             _jobEntity.DestinationOwners = new List<DestinationOwner>
@@ -305,12 +327,10 @@ namespace Services.Tests
                     }
                 };
 
-            var context = CreateHttpContext(new List<Claim>
-                {
+            var context = CreateHttpContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, "UserRole"),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
-                });
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())});
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
 

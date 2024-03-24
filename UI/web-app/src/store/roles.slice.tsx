@@ -3,20 +3,26 @@
 
 import { createSlice } from '@reduxjs/toolkit';
 import type { RootState } from './store';
-import { getIsAdmin, getIsSubmissionReviewer, getIsTenantJobEditor } from './roles.api';
+import { getAllRoles } from './roles.api';
 
 // Define a type for the slice state
 export type Roles = {
-  isAdmin?: boolean;
-  isSubmissionReviewer?: boolean;
-  isTenantJobEditor?: boolean;
+  isJobCreator: boolean;
+  isJobTenantReader: boolean;
+  isJobTenantWriter: boolean;
+  isSubmissionReviewer: boolean;
+  isHyperlinkAdministrator: boolean;
+  isCustomMembershipProviderAdministrator: boolean;
 }
 
 // Define the initial state using that type
 const initialState: Roles = {
-  isAdmin: false,
+  isJobCreator: false,
+  isJobTenantReader: false,
+  isJobTenantWriter: false,
   isSubmissionReviewer: false,
-  isTenantJobEditor: false
+  isHyperlinkAdministrator: false,
+  isCustomMembershipProviderAdministrator: false,
 };
 
 export const rolesSlice = createSlice({
@@ -24,20 +30,17 @@ export const rolesSlice = createSlice({
   initialState,
   reducers: { },
   extraReducers: (builder) => {
-    builder.addCase(getIsAdmin.fulfilled, (state, action) => {
-      state.isAdmin = action.payload;
-    });
-    builder.addCase(getIsSubmissionReviewer.fulfilled, (state, action) => {
-      state.isSubmissionReviewer = action.payload;
-    });
-    builder.addCase(getIsTenantJobEditor.fulfilled, (state, action) => {
-      state.isTenantJobEditor = action.payload;
+    builder.addCase(getAllRoles.fulfilled, (state, action) => {
+      Object.assign(state, action.payload);
     });
   }
 });
 
-export const selectIsAdmin = (state: RootState) => state.roles.isAdmin;
+export const selectIsJobCreator = (state: RootState) => state.roles.isJobCreator;
+export const selectIsJobTenantReader = (state: RootState) => state.roles.isJobTenantReader;
+export const selectIsJobTenantWriter = (state: RootState) => state.roles.isJobTenantWriter;
 export const selectIsSubmissionReviewer = (state: RootState) => state.roles.isSubmissionReviewer;
-export const selectIsTenantJobEditor = (state: RootState) => state.roles.isTenantJobEditor;
+export const selectIsHyperlinkAdministrator = (state: RootState) => state.roles.isHyperlinkAdministrator;
+export const selectIsCustomMembershipProviderAdministrator = (state: RootState) => state.roles.isCustomMembershipProviderAdministrator;
 
 export default rolesSlice.reducer;

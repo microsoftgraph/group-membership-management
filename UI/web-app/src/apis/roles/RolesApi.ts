@@ -2,23 +2,11 @@
 // Licensed under the MIT license.
 
 import { ApiBase } from '../ApiBase';
-import { IRolesApi } from './IRolesApi';
+import { IRolesApi, Roles } from './IRolesApi';
 
 export class RolesApi extends ApiBase implements IRolesApi {
-  public async getIsAdmin(): Promise<boolean> {
-    const response = await this.httpClient.get<boolean>(`/isAdmin`);
-    this.ensureSuccessStatusCode(response);
-    return response.data;
-  }
-
-  public async getIsSubmissionReviewer(): Promise<boolean> {
-    const response = await this.httpClient.get<boolean>(`/isSubmissionReviewer`);
-    this.ensureSuccessStatusCode(response);
-    return response.data;
-  }
-
-  public async getIsTenantJobEditor(): Promise<boolean> {
-    const response = await this.httpClient.get<boolean>(`/isTenantJobEditor`);
+  public async getAllRoles(): Promise<Roles> {
+    const response = await this.httpClient.get<Roles>(`/roles/getAllRoles`);
     this.ensureSuccessStatusCode(response);
     return response.data;
   }

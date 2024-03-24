@@ -41,31 +41,41 @@ namespace WebApi.Controllers.v1.Jobs
             };
         }
 
-        [Authorize(Policy = Models.Roles.TENANT_ADMINISTRATOR)]
-        [Authorize(Policy = Models.Roles.TENANT_SUBMISSION_REVIEWER)]
-        [Authorize(Policy = Models.Roles.TENANT_JOB_EDITOR)]
+        [Authorize(Roles = Models.Roles.JOB_TENANT_WRITER + "," + Models.Roles.SUBMISSION_REVIEWER)]
         [HttpPatch("{syncJobId}")]
         [Consumes("application/json-patch+json")]
         public async Task<ActionResult> UpdateSyncJobAsync(Guid syncJobId, [FromBody] JsonPatchDocument<SyncJobPatch> patchDocument)
         {
-            var user = User;
-            var claimsIdentity = User.Identity as ClaimsIdentity;
-            var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
-
-            // This is a double check right now, keeping this in place for future use when the api call is open up to all users
-            var isAllowed = User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR) || User.IsInRole(Models.Roles.TENANT_SUBMISSION_REVIEWER) || User.IsInRole(Models.Roles.TENANT_JOB_EDITOR);
-            
-            var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchDocument));
-
-            return response.StatusCode switch
+            try
             {
-                System.Net.HttpStatusCode.OK => Ok(),
-                System.Net.HttpStatusCode.NotFound => NotFound(),
-                System.Net.HttpStatusCode.BadRequest => BadRequest(response.ErrorCode),
-                System.Net.HttpStatusCode.Forbidden => Forbid(),
-                System.Net.HttpStatusCode.PreconditionFailed => Problem(statusCode: (int)System.Net.HttpStatusCode.PreconditionFailed, detail: response.ErrorCode),
-                _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
-            };
+                var user = User;
+                var claimsIdentity = User.Identity as ClaimsIdentity;
+                var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return new ForbidResult();
+                }
+
+                // This is a double check right now, keeping this in place for future use when the api call is open up to all users
+                var isAllowed = User.IsInRole(Models.Roles.JOB_TENANT_WRITER) || User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
+            
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchDocument));
+
+                return response.StatusCode switch
+                {
+                    System.Net.HttpStatusCode.OK => Ok(),
+                    System.Net.HttpStatusCode.NotFound => NotFound(),
+                    System.Net.HttpStatusCode.BadRequest => BadRequest(response.ErrorCode),
+                    System.Net.HttpStatusCode.Forbidden => Forbid(),
+                    System.Net.HttpStatusCode.PreconditionFailed => Problem(statusCode: (int)System.Net.HttpStatusCode.PreconditionFailed, detail: response.ErrorCode),
+                    _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
+                };
+            }
+            catch (Exception ex)
+            {
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: ${ex}");
+            }
         }
     }
 }

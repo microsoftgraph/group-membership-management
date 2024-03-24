@@ -16,24 +16,20 @@ namespace WebApi.Controllers.v1.Roles
         }
 
         [Authorize]
-        [HttpGet("isAdmin")]
-        public ActionResult<bool> GetIsAdmin()
+        [HttpGet("getAllRoles")]
+        public ActionResult<Models.DTOs.RolesObject> GetAllRoles()
         {
-            return User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR);
-        }
+            var roleStatus = new Models.DTOs.RolesObject
+            {
+                IsJobCreator = User.IsInRole(Models.Roles.JOB_CREATOR),
+                IsJobTenantReader = User.IsInRole(Models.Roles.JOB_TENANT_READER),
+                IsJobTenantWriter = User.IsInRole(Models.Roles.JOB_TENANT_WRITER),
+                IsSubmissionReviewer = User.IsInRole(Models.Roles.SUBMISSION_REVIEWER),
+                IsHyperlinkAdministrator = User.IsInRole(Models.Roles.HYPERLINK_ADMINISTRATOR),
+                IsCustomMembershipProviderAdministrator = User.IsInRole(Models.Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR)
+            };
 
-        [Authorize]
-        [HttpGet("isSubmissionReviewer")]
-        public ActionResult<bool> GetIsSubmissionReviewer()
-        {
-            return User.IsInRole(Models.Roles.TENANT_SUBMISSION_REVIEWER);
-        }
-
-        [Authorize]
-        [HttpGet("isTenantJobEditor")]
-        public ActionResult<bool> GetIsTenantJobEditor()
-        {
-            return User.IsInRole(Models.Roles.TENANT_JOB_EDITOR);
+            return Ok(roleStatus);
         }
     }
 }

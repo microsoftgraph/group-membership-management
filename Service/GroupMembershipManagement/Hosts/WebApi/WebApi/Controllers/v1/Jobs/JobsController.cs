@@ -30,7 +30,7 @@ namespace WebApi.Controllers.v1.Jobs
             _postJobRequestHandler = postJobRequestHandler ?? throw new ArgumentNullException(nameof(postJobRequestHandler));
         }
 
-        [Authorize()]
+        [Authorize(Roles = Models.Roles.JOB_CREATOR + "," + Models.Roles.JOB_TENANT_READER)]
         [HttpGet()]
         public async Task<ActionResult<IEnumerable<SyncJob>>> GetJobsAsync(ODataQueryOptions<SyncJobModel> queryOptions)
         {
@@ -40,27 +40,42 @@ namespace WebApi.Controllers.v1.Jobs
             return Ok(response.Model);
         }
 
-        [Authorize()]
+        [Authorize(Roles = Models.Roles.JOB_CREATOR + "," + Models.Roles.JOB_TENANT_WRITER)]
         [HttpPost()]
         public async Task<ActionResult> PostJobAsync([FromBody] NewSyncJobDTO newSyncJob)
         {
-            var user = User;
-            var claimsIdentity = User.Identity as ClaimsIdentity;
-            var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
-            var response = await _postJobRequestHandler.ExecuteAsync(new PostJobRequest(userId, newSyncJob));
-
-            switch (response.StatusCode)
+            try
             {
-                case HttpStatusCode.Created:
-                    return new CreatedResult($"api/jobs/{response.NewSyncJobId}", response);
-                case HttpStatusCode.BadRequest:
-                    return new BadRequestObjectResult(response);
-                case HttpStatusCode.Forbidden:
+                var user = User;
+                var claimsIdentity = User.Identity as ClaimsIdentity;
+                var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+
+                if (string.IsNullOrEmpty(userId))
+                {
                     return new ForbidResult();
-                case HttpStatusCode.InternalServerError:
-                    return new ObjectResult(response) { StatusCode = (int)HttpStatusCode.InternalServerError };
-                default:
-                    return new BadRequestResult();
+                }
+
+                var isJobTenantWriter = User.IsInRole(Models.Roles.JOB_TENANT_WRITER);
+
+                var response = await _postJobRequestHandler.ExecuteAsync(new PostJobRequest(userId, newSyncJob, isJobTenantWriter));
+
+                switch (response.StatusCode)
+                {
+                    case HttpStatusCode.Created:
+                        return new CreatedResult($"api/jobs/{response.NewSyncJobId}", response);
+                    case HttpStatusCode.BadRequest:
+                        return new BadRequestObjectResult(response);
+                    case HttpStatusCode.Forbidden:
+                        return new ForbidResult();
+                    case HttpStatusCode.InternalServerError:
+                        return new ObjectResult(response) { StatusCode = (int)HttpStatusCode.InternalServerError };
+                    default:
+                        return new BadRequestResult();
+                }
+            }
+            catch (Exception ex)
+            {
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: ${ex}");
             }
         }
     }
