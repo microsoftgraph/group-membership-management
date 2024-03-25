@@ -21,7 +21,7 @@ namespace Common.DependencyInjection
             return CreateAuthProviderFromSecret(credentials);
         }
 
-        private static TokenCredential CreateAuthProviderFromSecret(GraphCredentials creds)
+        public static TokenCredential CreateAuthProviderFromSecret(GraphCredentials creds)
         {
             return new ClientSecretCredential(creds.TenantId, creds.ClientId, creds.ClientSecret);
         }

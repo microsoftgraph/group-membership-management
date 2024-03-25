@@ -28,6 +28,7 @@ using Repositories.EntityFramework.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Repositories.EntityFramework;
 using Repositories.FeatureFlag;
+using Azure.Core;
 
 namespace Hosts.FunctionBase
 {
@@ -144,26 +145,45 @@ namespace Hosts.FunctionBase
                     creds.Value.SupportEmailAddresses);
             });
 
-            builder.Services.AddOptions<MailAdaptiveCardConfig>().Configure<IConfiguration>((settings, configuration) =>
+            builder.Services.AddOptions<MailConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.IsAdaptiveCardEnabled = configuration.GetValue<bool>("Mail:IsAdaptiveCardEnabled");
+                settings.GMMHasSendMailApplicationPermissions = configuration.GetValue("Mail:IsMailApplicationPermissionGranted", false);
+                settings.SenderAddress = configuration.GetValue<string>("senderAddress");
             });
-            builder.Services.AddSingleton<IMailAdaptiveCardConfig>(services =>
+
+            builder.Services.AddSingleton<IMailConfig>(services =>
             {
-                var creds = services.GetService<IOptions<MailAdaptiveCardConfig>>();
-                return new MailAdaptiveCardConfig(creds.Value.IsAdaptiveCardEnabled);
+                var mailConfig = services.GetService<IOptions<MailConfig>>();
+                return new MailConfig(mailConfig.Value.IsAdaptiveCardEnabled,
+                    mailConfig.Value.GMMHasSendMailApplicationPermissions,
+                    mailConfig.Value.SenderAddress);
             });
+
 
             builder.Services.AddSingleton<IMailRepository>(services =>
             {
-                var mailCredentials = services.GetService<IOptions<EmailSenderRecipient>>();
+                var mailConfig = services.GetService<IOptions<MailConfig>>();
                 var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
-                graphCredentials.ServiceAccountUserName = mailCredentials.Value.SenderAddress;
-                graphCredentials.ServiceAccountPassword = mailCredentials.Value.SenderPassword;
+
+                TokenCredential graphTokenCredential;
+
+                if (mailConfig.Value.GMMHasSendMailApplicationPermissions)
+                {
+                    graphTokenCredential = FunctionAppDI.CreateAuthProviderFromSecret(graphCredentials);
+                }
+                else
+                {
+                    var mailCredentials = services.GetService<IOptions<EmailSenderRecipient>>();
+                    graphCredentials.ServiceAccountUserName = mailCredentials.Value.SenderAddress;
+                    graphCredentials.ServiceAccountPassword = mailCredentials.Value.SenderPassword;
+
+                    graphTokenCredential = FunctionAppDI.CreateServiceAccountAuthProvider(graphCredentials);
+                }
 
                 return new MailRepository(
-                    new GraphServiceClient(FunctionAppDI.CreateServiceAccountAuthProvider(graphCredentials)),
-                        services.GetService<IMailAdaptiveCardConfig>(),
+                    new GraphServiceClient(graphTokenCredential),
+                        services.GetService<IMailConfig>(),
                         services.GetService<ILocalizationRepository>(),
                         services.GetService<ILoggingRepository>(),
                         GetValueOrDefault("actionableEmailProviderId"),

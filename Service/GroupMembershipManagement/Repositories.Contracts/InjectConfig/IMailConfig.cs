@@ -3,8 +3,10 @@
 
 namespace Repositories.Contracts.InjectConfig
 {
-    public interface IMailAdaptiveCardConfig
+    public interface IMailConfig
     {
         public bool IsAdaptiveCardEnabled { get; }
+        public bool GMMHasSendMailApplicationPermissions { get; set; }
+        public string SenderAddress { get; set; }
     }
 }

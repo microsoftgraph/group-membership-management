@@ -19,7 +19,7 @@ namespace Repositories.Mail
 {
     public class MailRepository : IMailRepository
     {
-        private readonly IMailAdaptiveCardConfig _mailAdaptiveCardConfig;
+        private readonly IMailConfig _mailConfig;
         private readonly ILocalizationRepository _localizationRepository;
         private readonly GraphServiceClient _graphClient;
         private readonly ILoggingRepository _loggingRepository;
@@ -27,10 +27,10 @@ namespace Repositories.Mail
         private readonly IGraphGroupRepository _graphGroupRepository;
         private Guid groupId;
 
-        public MailRepository(GraphServiceClient graphClient, IMailAdaptiveCardConfig mailAdaptiveCardConfig, ILocalizationRepository localizationRepository, ILoggingRepository loggingRepository, string actionableEmailProviderId, IGraphGroupRepository graphGroupRepository)
+        public MailRepository(GraphServiceClient graphClient, IMailConfig mailAdaptiveCardConfig, ILocalizationRepository localizationRepository, ILoggingRepository loggingRepository, string actionableEmailProviderId, IGraphGroupRepository graphGroupRepository)
         {
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
-            _mailAdaptiveCardConfig = mailAdaptiveCardConfig ?? throw new ArgumentNullException(nameof(mailAdaptiveCardConfig));
+            _mailConfig = mailAdaptiveCardConfig ?? throw new ArgumentNullException(nameof(mailAdaptiveCardConfig));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _actionableEmailProviderId = actionableEmailProviderId ?? throw new ArgumentNullException(nameof(actionableEmailProviderId));
@@ -52,7 +52,7 @@ namespace Repositories.Mail
             {
                 message = GetHTMLMessage(emailMessage);
             }
-            else if (_mailAdaptiveCardConfig.IsAdaptiveCardEnabled)
+            else if (_mailConfig.IsAdaptiveCardEnabled)
             {
                 message = GetAdaptiveCardMessage(emailMessage);
             }
@@ -73,13 +73,26 @@ namespace Repositories.Mail
 
             try
             {
-                var body = new Microsoft.Graph.Me.SendMail.SendMailPostRequestBody
+                if(_mailConfig.GMMHasSendMailApplicationPermissions)
                 {
-                    Message = message,
-                    SaveToSentItems = true
-                };
+                    var body = new Microsoft.Graph.Users.Item.SendMail.SendMailPostRequestBody
+                    {
+                        Message = message,
+                        SaveToSentItems = true
+                    };
 
-                await _graphClient.Me.SendMail.PostAsync(body);
+                    await _graphClient.Users[_mailConfig.SenderAddress].SendMail.PostAsync(body);
+                }
+                else
+                {
+                    var body = new Microsoft.Graph.Me.SendMail.SendMailPostRequestBody
+                    {
+                        Message = message,
+                        SaveToSentItems = true
+                    };
+
+                    await _graphClient.Me.SendMail.PostAsync(body);
+                }
             }
             catch (ServiceException ex) when (ex.GetBaseException().GetType().Name == "MsalUiRequiredException")
             {
