@@ -252,19 +252,6 @@
                 "type": "TextBlock",
                 "text": "**${$root.thresholdPercentageForAdditions}% increase** and **${$root.thresholdPercentageForRemovals}% decrease** alerts are configured for this group. If you would like to change these alert percentages or disable them, please pause the sync and contact GMM support for further inquiry.",
                 "wrap": true
-              },
-              {
-                "type": "ActionSet",
-                "actions": [
-                  {
-                    "type": "Action.OpenUrl",
-                    "title": "Learn more about GMM",
-                    "url": "https://microsoft.sharepoint.com/sites/Office365/SitePages/Group-Membership-Management.aspx",
-                    "isPrimary": false
-                  }
-                ],
-                "horizontalAlignment": "Left",
-                "separator": true
               }
             ],
             "spacing": "Medium"
@@ -416,19 +403,6 @@
                 "type": "TextBlock",
                 "text": "**${$root.thresholdPercentageForAdditions}% increase** and **${$root.thresholdPercentageForRemovals}% decrease** alerts are configured for this group. If you would like to change these alert percentages or disable them, please pause the sync and contact GMM support for further inquiry.",
                 "wrap": true
-              },
-              {
-                "type": "ActionSet",
-                "actions": [
-                  {
-                    "type": "Action.OpenUrl",
-                    "title": "Learn more about GMM",
-                    "url": "https://microsoft.sharepoint.com/sites/Office365/SitePages/Group-Membership-Management.aspx",
-                    "isPrimary": false
-                  }
-                ],
-                "horizontalAlignment": "Left",
-                "separator": true
               }
             ],
             "spacing": "Medium"
@@ -878,19 +852,6 @@
               "text": "If you would like to re-onboard on to GMM, please reach out to the GMM team.",
               "wrap": true,
               "spacing": "Small"
-            },
-            {
-              "type": "ActionSet",
-              "actions": [
-                {
-                  "type": "Action.OpenUrl",
-                  "title": "Contact GMM",
-                  "url": "https://microsoft.sharepoint.com/sites/Office365/SitePages/Group-Membership-Management.aspx",
-                  "isPrimary": false
-                }
-              ],
-              "horizontalAlignment": "Center"
-              
             }
           ],
           "separator": true
@@ -1063,7 +1024,7 @@ Your group {0} with Id {1} is currently offboarded from Group Membership Managem
 
 If you believe this group should be continued managed by Group Membership Management (GMM), please reach out to GMM support before {2} to restore the current onboarding details. Otherwise, you may submit a new GMM onboarding request after the deadline if GMM is still needed.
 
-Please feel free to contact GMMSupport if you have any questions.
+Please feel free to contact support if you have any questions.
 
 Thank you,
 GMM Team</value>
@@ -1125,7 +1086,7 @@ Actions needed - Please 'Reply All' indicating what GMM should do about the thre
 1. The membership change looks right.  Please allow the threshold to be exceeded this time only.
 2. The membership change looks right.  Please allow the threshold to be exceeded, and update the default threshold to X%.
 3. The membership change looks right.  I don’t need the threshold check in the future so please disable this feature. (Not recommended)
-4. The projected increase or decrease does not look right to me. Please do not allow the sync to exceed the threshold. I will contact GMMSupport to follow up.
+4. The projected increase or decrease does not look right to me. Please do not allow the sync to exceed the threshold. I will contact support to follow up.
 
 The group sync will be PAUSED until your response is received.
 
