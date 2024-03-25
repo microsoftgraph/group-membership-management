@@ -43,6 +43,7 @@ Set-SenderRecipientCredentials	-SubscriptionName "<subscription name>" `
 								-SecureSyncCompletedCCEmailAddresses $secureSyncCompletedCCEmailAddresses `
 								-SecureSyncDisabledCCEmailAddresses $secureSyncDisabledCCEmailAddresses `
 								-SecureSupportEmailAddresses $secureSupportEmailAddresses `
+								-GmmGraphAppHasMailApplicationPermissions $false `
 								-Verbose
 
 #>
@@ -65,6 +66,8 @@ function Set-SenderRecipientCredentials {
 		[SecureString] $SecureSyncDisabledCCEmailAddresses,
 		[Parameter(Mandatory=$False)]
 		[SecureString] $SecureSupportEmailAddresses,
+		[Parameter(Mandatory=$False)]
+		[boolean] $GmmGraphAppHasMailApplicationPermissions,
 		[Parameter(Mandatory=$False)]
 		[string] $ErrorActionPreference = $Stop
 	)
@@ -143,5 +146,25 @@ function Set-SenderRecipientCredentials {
 	Write-Verbose "$supportEmailAddressesSecretName added to vault..."
 
 	#endregion
+
+	#region If GMM Graph App has Application permission for Mail.Send, add app config value to indicate it
+	if($GmmGraphAppHasMailApplicationPermissions) {
+
+		$dataResourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+		$appConfigName = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation"
+		$appConfigObject = Get-AzAppConfigurationStore -ResourceGroupName $dataResourceGroupName -Name $appConfigName;
+
+		Set-AzAppConfigurationKeyValue -Endpoint $appConfigObject.Endpoint `
+										-Key "Mail:IsMailApplicationPermissionGranted" `
+										-Value "true" `
+										-ContentType "boolean" `
+										-Etag { tag1="Mail" }
+
+		Write-Host "Updated Mail:IsMailApplicationPermissionGranted key with the value $isMailApplicationPermissionGranted";
+
+	}
+
+	#endregion
+
 	Write-Verbose "Set-SenderRecipientCredentials completed."
 }
