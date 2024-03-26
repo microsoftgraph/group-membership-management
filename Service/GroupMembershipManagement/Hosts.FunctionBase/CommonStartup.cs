@@ -145,30 +145,22 @@ namespace Hosts.FunctionBase
                     creds.Value.SupportEmailAddresses);
             });
 
-            builder.Services.AddOptions<MailConfig>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.IsAdaptiveCardEnabled = configuration.GetValue<bool>("Mail:IsAdaptiveCardEnabled");
-                settings.GMMHasSendMailApplicationPermissions = configuration.GetValue("Mail:IsMailApplicationPermissionGranted", false);
-                settings.SenderAddress = configuration.GetValue<string>("senderAddress");
-            });
-
             builder.Services.AddSingleton<IMailConfig>(services =>
             {
-                var mailConfig = services.GetService<IOptions<MailConfig>>();
-                return new MailConfig(mailConfig.Value.IsAdaptiveCardEnabled,
-                    mailConfig.Value.GMMHasSendMailApplicationPermissions,
-                    mailConfig.Value.SenderAddress);
+                var configuration = services.GetService<IConfiguration>();
+                return new MailConfig(configuration.GetValue<bool>("Mail:IsAdaptiveCardEnabled"),
+                    configuration.GetValue("Mail:IsMailApplicationPermissionGranted", false),
+                    configuration.GetValue<string>("senderAddress"));
             });
-
 
             builder.Services.AddSingleton<IMailRepository>(services =>
             {
-                var mailConfig = services.GetService<IOptions<MailConfig>>();
+                var mailConfig = services.GetService<IMailConfig>();
                 var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
 
                 TokenCredential graphTokenCredential;
 
-                if (mailConfig.Value.GMMHasSendMailApplicationPermissions)
+                if (mailConfig.GMMHasSendMailApplicationPermissions)
                 {
                     graphTokenCredential = FunctionAppDI.CreateAuthProviderFromSecret(graphCredentials);
                 }
