@@ -200,10 +200,9 @@ namespace Hosts.JobTrigger
 
                 if (verifierResult == DestinationVerifierResult.NotFound)
                 {
-                    if (destinationName == null)
-                        destinationName = "Destination name not found";
+                    if (destinationName == "")
+                        destinationName = "NAME NOT FOUND";
 
-                    // Get the last-known name of the group from Sql DestinationNames table
                     await context.CallActivityAsync(nameof(EmailSenderFunction),
                                                     new EmailSenderRequest
                                                     {
@@ -212,7 +211,7 @@ namespace Hosts.JobTrigger
                                                         AdditionalContentParams = new[]
                                                         {
                                                         destinationObject.Value.ObjectId.ToString(),
-                                                        destinationName
+                                                        $"'{destinationName}'"
                                                         }
                                                     });
 

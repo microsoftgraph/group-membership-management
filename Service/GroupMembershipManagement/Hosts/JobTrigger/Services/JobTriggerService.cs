@@ -132,7 +132,7 @@ namespace Services
                 return await _graphGroupRepository.GetGroupNameAsync(objectId);
             }
 
-            return null;
+            return "";
         }
 
         public async Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters)

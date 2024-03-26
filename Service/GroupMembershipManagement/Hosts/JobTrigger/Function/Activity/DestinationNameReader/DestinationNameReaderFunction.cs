@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
@@ -27,7 +28,7 @@ namespace Hosts.JobTrigger
 
             if (syncJob == null)
                 return null;
-           
+            
             _jobTriggerService.RunId = syncJob.RunId ?? Guid.Empty;
             var destinationName = await _jobTriggerService.GetDestinationNameAsync(syncJob);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationNameReaderFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
