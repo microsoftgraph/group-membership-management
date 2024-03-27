@@ -33,13 +33,13 @@ namespace Repositories.SqlMembershipRepository
                 var selectQuery = @$"
                         WITH emp AS (
                               SELECT *, 1 AS Depth
-                              FROM {tableName}
+                              FROM [users].[{tableName}]
                               WHERE EmployeeId = {personnelNumber}
 
                               UNION ALL
 
                               SELECT e.*, emp.Depth + 1
-                              FROM {tableName} e INNER JOIN emp
+                              FROM [users].[{tableName}] e INNER JOIN emp
                               ON e.ManagerId = emp.EmployeeId
                         )
                         SELECT *
@@ -96,20 +96,20 @@ namespace Repositories.SqlMembershipRepository
                 var selectDepthQuery = @$"
                     WITH emp AS (
                             SELECT *, 1 AS Depth
-                            FROM {tableName}
+                            FROM [users].[{tableName}]
                             WHERE AzureObjectId = '{azureObjectId}'
 
                             UNION ALL
 
                             SELECT e.*, emp.Depth + 1
-                            FROM {tableName} e INNER JOIN emp
+                            FROM [users].[{tableName}] e INNER JOIN emp
                             ON e.ManagerId = emp.EmployeeId
                     )
                     SELECT MAX(Depth) AS MaxDepth
                     FROM emp e
                 ";
 
-                var selectIdQuery = $"SELECT EmployeeId FROM {tableName} WHERE AzureObjectId = '{azureObjectId}'";
+                var selectIdQuery = $"SELECT EmployeeId FROM [users].[{tableName}] WHERE AzureObjectId = '{azureObjectId}'";
                 var credential = new DefaultAzureCredential();
                 var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
 
@@ -165,7 +165,7 @@ namespace Repositories.SqlMembershipRepository
             var retryPolicy = GetRetryPolicy();
             try
             {
-                var selectQuery = $"SELECT EmployeeId, AzureObjectId FROM {tableName} WHERE {query}";
+                var selectQuery = $"SELECT EmployeeId, AzureObjectId FROM [users].[{tableName}] WHERE {query}";
                 var credential = new DefaultAzureCredential();
                 var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
                 await retryPolicy.Execute(async () =>
@@ -243,7 +243,7 @@ namespace Repositories.SqlMembershipRepository
             var retryPolicy = GetRetryPolicy();
             try
             {
-                var selectQuery = $"SELECT name FROM sys.columns WHERE object_id = OBJECT_ID('{tableName}') ORDER BY name";
+                var selectQuery = $"SELECT name FROM sys.columns WHERE object_id = OBJECT_ID('[users].[{tableName}]') ORDER BY name";
                 var credential = new DefaultAzureCredential();
                 var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
                 await retryPolicy.Execute(async () =>

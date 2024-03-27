@@ -26,7 +26,7 @@ namespace Services
         {
             var response = new GetOrgLeaderDetailsResponse();
             var adfRunId = await _dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
-            var tableName = string.Concat("tbl", adfRunId.Replace("-", ""));
+            var tableName = adfRunId.Replace("-", "");
             var (maxDepth, employeeId) = await _sqlMembershipRepository.GetOrgLeaderDetailsAsync(request.ObjectId, tableName);
             response.MaxDepth = maxDepth;
             response.EmployeeId = employeeId;

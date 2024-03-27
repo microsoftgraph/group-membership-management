@@ -97,7 +97,7 @@ namespace Services
         private async Task<string> GetTableNameAsync()
         {
             var adfRunId = await GetADFRunIdAsync();
-            var tableName = string.Concat("tbl", adfRunId.Replace("-", ""));
+            var tableName = adfRunId.Replace("-", "");
             var tableExists = await CheckIfTableExistsAsync(tableName);
 
             return tableExists ? tableName : "";

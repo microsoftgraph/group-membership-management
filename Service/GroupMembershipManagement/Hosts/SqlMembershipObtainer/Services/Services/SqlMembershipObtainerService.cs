@@ -137,7 +137,7 @@ namespace Services
         public async Task<string> GetTableNameAsync(Guid? runId, Guid? targetOfficeGroupId)
         {
             var adfRunId = await GetADFRunIdAsync(runId);
-            var tableName = string.Concat("tbl", adfRunId.Replace("-", ""));
+            var tableName = adfRunId.Replace("-", "");
             var tableExists = await CheckIfTableExists(tableName, runId, targetOfficeGroupId);
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
