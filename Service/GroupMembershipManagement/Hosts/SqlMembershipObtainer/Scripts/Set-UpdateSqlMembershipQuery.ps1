@@ -92,6 +92,7 @@ function Set-UpdateSqlMembershipQuery {
                                 }
 
                                 $newQueryPart = $newQueryPart | ConvertTo-Json -Depth 100 -Compress
+                                $newQueryPart = ([regex]'(?i)\\u([0-9a-h]{4})').Replace($newQueryPart, {param($Match) "$([char][int64]"0x$($Match.Groups[1].Value)")"})
 
                                 $newQueryParts += $newQueryPart
                             }
