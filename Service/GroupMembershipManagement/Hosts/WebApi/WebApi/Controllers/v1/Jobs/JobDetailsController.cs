@@ -48,10 +48,10 @@ namespace WebApi.Controllers.v1.Jobs
         {
             var user = User;
             var claimsIdentity = User.Identity as ClaimsIdentity;
-            var userName = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Upn)?.Value ?? user.Identity?.Name;
+            var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
 
             var isAllowed = User.IsInRole(Models.Roles.TENANT_ADMINISTRATOR) || User.IsInRole(Models.Roles.TENANT_SUBMISSION_REVIEWER);
-            var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userName, syncJobId, patchDocument));
+            var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchDocument));
 
             return response.StatusCode switch
             {
