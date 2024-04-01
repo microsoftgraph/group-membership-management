@@ -5,6 +5,12 @@
 Local auth has been disabled for App Configuration resource.
 Going forward, the service connection used to deploy GMM resources must have "Azure App Configuration Data Owner" RBAC permission, before deploying this version.
 
+To grant the permission run Set-ServicePrincipalManagedIdentityRoles script.
+```
+1. . .\Set-ServicePrincipalManagedIdentityRoles.ps1
+2. Set-ServicePrincipalManagedIdentityRoles -solutionAbbreviation <solution> -environmentAbbreviation <env>
+```
+Reference:
 https://github.com/Azure/AppConfiguration/issues/692#issuecomment-1991914653
 
 ## 2/26/2024
