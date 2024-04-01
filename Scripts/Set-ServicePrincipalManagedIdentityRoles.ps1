@@ -77,4 +77,7 @@ function Set-ServicePrincipalManagedIdentityRoles {
         $resourceGroupName = "$solutionAbbreviation-$resourceGroupType-$environmentAbbreviation"
         Set-Role -RoleDefinitionName "Contributor" -ResourceGroupName $resourceGroupName -ObjectId $servicePrincipal.Id
     }
+
+    $dataResourceGroupName = "$solutionAbbreviation-data-$environmentAbbreviation"
+    Set-Role -RoleDefinitionName "App Configuration Data Owner" -ResourceGroupName $dataResourceGroupName -ObjectId $servicePrincipal.Id
 }
