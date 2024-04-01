@@ -13,7 +13,7 @@ param appConfigurationKeyData array
 @description('Array of feature flags objects. {id:"value", description:"description", enabled:true, createdBy:"value", createdDate:"data" }')
 param featureFlags array
 
-resource configurationStore 'Microsoft.AppConfiguration/configurationStores@2023-03-01' = {
+resource configurationStore 'Microsoft.AppConfiguration/configurationStores@2023-08-01-preview' = {
   name: configStoreName
   location: location
   identity: {
@@ -21,13 +21,16 @@ resource configurationStore 'Microsoft.AppConfiguration/configurationStores@2023
   }
   properties: {
     disableLocalAuth: true
+    dataPlaneProxy:{
+      authenticationMode: 'Pass-through'
+    }
   }
   sku: {
     name: appConfigurationSku
   }
 }
 
-resource configurationStoreKeyValues 'Microsoft.AppConfiguration/configurationStores/keyValues@2023-03-01' = [for item in appConfigurationKeyData: {
+resource configurationStoreKeyValues 'Microsoft.AppConfiguration/configurationStores/keyValues@2023-08-01-preview' = [for item in appConfigurationKeyData: {
   parent: configurationStore
   name: '${item.key}'
   properties: {
@@ -37,7 +40,7 @@ resource configurationStoreKeyValues 'Microsoft.AppConfiguration/configurationSt
   }
 }]
 
-resource configurationStoreFeatureFlags 'Microsoft.AppConfiguration/configurationStores/keyValues@2023-03-01' = [for flag in featureFlags: {
+resource configurationStoreFeatureFlags 'Microsoft.AppConfiguration/configurationStores/keyValues@2023-08-01-preview' = [for flag in featureFlags: {
   parent: configurationStore
   name: '.appconfig.featureflag~2F${flag.id}'
   properties: {
