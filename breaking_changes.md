@@ -1,4 +1,12 @@
 # Breaking Changes
+
+## 5/1/2024
+
+Local auth has been disabled for App Configuration resource.
+Going forward, the service connection used to deploy GMM resources must have "Azure App Configuration Data Owner" RBAC permission, before deploying this version.
+
+https://github.com/Azure/AppConfiguration/issues/692#issuecomment-1991914653
+
 ## 2/26/2024
 SyncJobs with SqlMembership source part need to be updated with a new JSON schema:
 
