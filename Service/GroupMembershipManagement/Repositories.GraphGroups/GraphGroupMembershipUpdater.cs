@@ -38,8 +38,8 @@ namespace Repositories.GraphGroups
 
         private delegate HttpRequestMessage MakeBulkRequest(List<AzureADUser> batch);
 
-        private List<AzureADUser> _usersNotFound = new List<AzureADUser>();
-        private List<AzureADUser> _usersAlreadyExist = new List<AzureADUser>();
+        private ConcurrentBag<AzureADUser> _usersNotFound = new ConcurrentBag<AzureADUser>();
+        private ConcurrentBag<AzureADUser> _usersAlreadyExist = new ConcurrentBag<AzureADUser>();
 
         public Guid? RunId { get; set; }
 
@@ -116,7 +116,7 @@ namespace Repositories.GraphGroups
                     ResponseCode.Error :
                     ResponseCode.Ok);
 
-            return (status, responses.Sum(x => x.SuccessCount), _usersNotFound, _usersAlreadyExist);
+            return (status, responses.Sum(x => x.SuccessCount), _usersNotFound.ToList(), _usersAlreadyExist.ToList());
         }
 
         private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessQueue(ConcurrentQueue<ChunkOfUsers> queue, MakeBulkRequest makeRequest, int threadNumber, int batchSize, Guid targetGroupId)
