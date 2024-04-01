@@ -19,7 +19,9 @@ resource configurationStore 'Microsoft.AppConfiguration/configurationStores@2023
   identity: {
     type: 'SystemAssigned'
   }
-  properties: {}
+  properties: {
+    disableLocalAuth: true
+  }
   sku: {
     name: appConfigurationSku
   }
