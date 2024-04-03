@@ -1,45 +1,47 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using System;
-using System.Text;
-using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
-using Newtonsoft.Json;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
+using System;
+using System.Threading.Tasks;
 
 namespace Hosts.TeamsChannelUpdater
 {
     public class StarterFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IThresholdNotificationConfig _thresholdNotificationConfig;
+        private readonly ServiceBusReceiver _serviceBusReceiver = null;
 
-        public StarterFunction(ILoggingRepository loggingRepository, IThresholdNotificationConfig thresholdNotificationConfig)
+        public StarterFunction(ILoggingRepository loggingRepository, ServiceBusReceiver serviceBusReceiver)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _thresholdNotificationConfig = thresholdNotificationConfig ?? throw new ArgumentNullException(nameof(thresholdNotificationConfig));
+            _serviceBusReceiver = serviceBusReceiver ?? throw new ArgumentNullException(nameof(serviceBusReceiver));
         }
 
         [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
-             [ServiceBusTrigger("%serviceBusMembershipUpdatersTopic%", "TeamsChannelUpdater", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
-             [DurableClient] IDurableOrchestrationClient starter)
+         [TimerTrigger("%triggerSchedule%")] TimerInfo myTimer,
+         [DurableClient] IDurableOrchestrationClient starter)
         {
-            var request = JsonConvert.DeserializeObject<MembershipHttpRequest>(Encoding.UTF8.GetString(message.Body));
-            var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
-            _loggingRepository.SetSyncJobProperties(runId, request.SyncJob.ToDictionary());
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Processing message {message.MessageId}", RunId = runId }, VerbosityLevel.INFO);
+            var instanceId = nameof(QueueMessageOrchestratorFunction);
+            var orchestratorStatus = await starter.GetStatusAsync(instanceId);
+            var isRunning = orchestratorStatus != null
+                    && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Completed
+                    && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Terminated
+                    && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Failed;
 
-            var instanceId = await starter.StartNewAsync(nameof(MessageOrchestrator), request);
+            if (!isRunning)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Calling {instanceId}" }, VerbosityLevel.INFO);
+                await starter.StartNewAsync(instanceId, instanceId, (object)null);
+            }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId}", RunId = runId }, VerbosityLevel.DEBUG);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
         }
     }
 }

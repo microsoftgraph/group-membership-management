@@ -135,6 +135,7 @@ var appSettings = {
   appConfigurationEndpoint: appConfigurationEndpoint
   serviceBusMembershipUpdatersTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipUpdatersTopic, '2019-09-01').secretUriWithVersion})'
   gmmServiceBus__fullyQualifiedNamespace: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusFQN, '2019-09-01').secretUriWithVersion})'
+  triggerSchedule: '0,30 * * * * *'
 }
 
 var stagingSettings = {

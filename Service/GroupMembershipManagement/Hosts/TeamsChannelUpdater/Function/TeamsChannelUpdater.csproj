@@ -10,9 +10,9 @@
     <_FunctionsSkipCleanOutput>true</_FunctionsSkipCleanOutput>
 </PropertyGroup>
   <ItemGroup>
+	<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.17.4" />
 	<PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
 	<PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" Version="2.13.0" />
-	<PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" Version="5.11.0" />
 	<PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.2.0" />
   </ItemGroup>
   <ItemGroup>
