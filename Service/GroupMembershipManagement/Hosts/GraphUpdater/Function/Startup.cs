@@ -17,6 +17,7 @@ using Repositories.GraphGroups;
 using Repositories.ServiceBusQueue;
 using Services;
 using Services.Contracts;
+using System;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
 [assembly: FunctionsStartup(typeof(Hosts.GraphUpdater.Startup))]
@@ -68,6 +69,13 @@ namespace Hosts.GraphUpdater
                 var client = services.GetRequiredService<ServiceBusClient>();
                 var sender = client.CreateSender(notificationsQueue);
                 return new ServiceBusQueueRepository(sender);
+            })
+            .AddSingleton(services =>
+            {
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var serviceBusMembershipUpdatersTopic = GetValueOrThrow("serviceBusMembershipUpdatersTopic");
+                var receiver = client.CreateReceiver(serviceBusMembershipUpdatersTopic, "GraphUpdater");
+                return receiver;
             });
         }
 
