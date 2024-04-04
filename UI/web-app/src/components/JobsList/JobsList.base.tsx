@@ -63,7 +63,7 @@ import {
 } from '../../store/pagingBar.slice';
 import { resetManageMembership } from '../../store/manageMembership.slice';
 
-import { selectIsJobTenantWriter } from '../../store/roles.slice';
+import { selectIsJobCreator, selectIsJobTenantWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -99,6 +99,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const filterDestinationType: string | undefined = useSelector(selectPagingBarfilterDestinationType);
   const filterDestinationOwner: string | undefined = useSelector(selectPagingBarfilterDestinationOwner);
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
+  const isJobCreator: boolean | undefined = useSelector(selectIsJobCreator);
 
   const getJobsByPage = (): void => {
     setIsShimmerEnabled(true);
@@ -127,10 +128,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
 
   const [isShimmerEnabled, setIsShimmerEnabled] = useState(false);
   const items = jobs;
-  const env = process.env.REACT_APP_ENVIRONMENT_ABBREVIATION?.toLowerCase();
-  const isLowerEnvironment = env !== 'prodv2';
-  const isOnboardingEnabled = isLowerEnvironment || isTenantJobWriter;
-
   const columns = [
     {
       key: 'targetGroupType',
@@ -379,7 +376,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
             <div className={classNames.title}>
               <Text variant="xLarge">{strings.JobsList.listOfMemberships}</Text>
             </div>
-            {isOnboardingEnabled ?
+            {isJobCreator ?
               <PrimaryButton
                 text={strings.ManageMembership.manageMembershipButton}
                 menuProps={menuProps}
