@@ -122,8 +122,9 @@ export const strings: IStrings = {
       frequency: 'Frecuencia',
       frequencyDescription: 'Cada {0} hrs',
       requestor: 'Solicitante',
-      increaseThreshold: 'Aumentar límite',
-      decreaseThreshold: 'Disminuir límite',
+      increaseThreshold: 'Límite de incremento',
+      decreaseThreshold: 'Límite de decremento',
+      noThresholdSet: 'No se estableció un límite',
       thresholdViolations: 'Violaciones del límite',
       sourceParts: 'Partes de origen',
       membershipStatus: 'Estado de la membresía',
@@ -148,9 +149,9 @@ export const strings: IStrings = {
       frequency: 'Frecuencia de la sincronización de este grupo.',
       requestor: 'Usuario quien solicitó la integración a GMM.',
       increaseThreshold:
-        'Número de usuarios que pueden ser añadidos al grupo destino, expresados como porcentaje del tamaño actual del grupo.',
+        'Si GMM detecta grandes cambios en la membresía, usted (el propietario del grupo) puede querer revisar estos cambios. Esta configuración permite a GMM suspender las actualizaciones si se supera un umbral que usted define. Este valor (expresado como un porcentaje del tamaño actual del grupo) limita el número de usuarios que pueden ser añadidos al grupo objetivo. Si se supera el número, GMM esperará su aprobación para continuar.',
       decreaseThreshold:
-        'Número de usuarios que pueden ser removidos del grupo destino, expresados como porcentaje del tamaño actual del grupo.',
+        'Si GMM detecta grandes cambios en la membresía, usted (el propietario del grupo) puede querer revisar estos cambios. Esta configuración permite a GMM suspender las actualizaciones si se supera un umbral que usted define. Este valor (expresado como un porcentaje del tamaño actual del grupo) limita el número de usuarios que pueden ser eliminados del grupo objetivo. Si se supera el número, GMM esperará su aprobación para continuar.',
       thresholdViolations:
         'Número de ocasiones en las que se han excedido los límites.',
     },

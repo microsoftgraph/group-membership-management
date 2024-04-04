@@ -537,7 +537,7 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
         <div className={classNames.itemData}>
           {jobDetails != null ? (
             <Text variant="medium" block>
-              {jobDetails.thresholdPercentageForAdditions}%
+              {jobDetails.thresholdPercentageForAdditions === -1 ? `${strings.JobDetails.labels.noThresholdSet}`: `${jobDetails.thresholdPercentageForAdditions}%`}
             </Text>
           ) : (
             <Shimmer width="100%" />
@@ -553,7 +553,7 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
         <div className={classNames.itemData}>
           {jobDetails != null ? (
             <Text variant="medium" block>
-              {jobDetails.thresholdPercentageForRemovals}%
+              {jobDetails.thresholdPercentageForRemovals === -1 ? `${strings.JobDetails.labels.noThresholdSet}`: `${jobDetails.thresholdPercentageForRemovals}%`}
             </Text>
           ) : (
             <Shimmer width="100%" />

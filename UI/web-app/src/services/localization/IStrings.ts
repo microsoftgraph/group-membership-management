@@ -119,6 +119,7 @@ export type IStrings = {
       requestor: string;
       increaseThreshold: string;
       decreaseThreshold: string;
+      noThresholdSet: string;
       thresholdViolations: string;
       sourceParts: string;
       membershipStatus: string;
