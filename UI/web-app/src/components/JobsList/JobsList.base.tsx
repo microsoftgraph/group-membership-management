@@ -63,7 +63,7 @@ import {
 } from '../../store/pagingBar.slice';
 import { resetManageMembership } from '../../store/manageMembership.slice';
 
-import { selectIsJobCreator, selectIsJobTenantWriter } from '../../store/roles.slice';
+import { selectIsJobTenantWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -99,7 +99,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const filterDestinationType: string | undefined = useSelector(selectPagingBarfilterDestinationType);
   const filterDestinationOwner: string | undefined = useSelector(selectPagingBarfilterDestinationOwner);
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
-  const isJobCreator: boolean | undefined = useSelector(selectIsJobCreator);
 
   const getJobsByPage = (): void => {
     setIsShimmerEnabled(true);
@@ -225,7 +224,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     ev?: React.MouseEvent | React.KeyboardEvent,
     item?: IContextualMenuItem
   ): void => {
-    if(item!.key === 'addSync') {
+    if (item!.key === 'addSync') {
       dispatch(resetManageMembership());
       navigate('/ManageMembership', { replace: false, state: { item: 1 } });
     }
@@ -266,18 +265,18 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       {
         key: 'addSync',
         text: strings.ManageMembership.addSyncButton,
-        iconProps: {iconName: 'AddFriend'},
+        iconProps: { iconName: 'AddFriend' },
         onClick: onContextualItemClicked
       },
     ],
     directionalHintFixed: true
   };
 
-  if(isTenantJobWriter){
+  if (isTenantJobWriter) {
     menuProps.items[1] = {
       key: 'bulkAddSyncs',
       text: strings.ManageMembership.bulkAddSyncsButton,
-      iconProps: {iconName: 'AddGroup'},
+      iconProps: { iconName: 'AddGroup' },
       disabled: true
     };
   }
@@ -312,7 +311,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
 
       case 'enabledOrNot':
         return (
-          <div className={fieldContent ? classNames.enabled : classNames.disabled }>
+          <div className={fieldContent ? classNames.enabled : classNames.disabled}>
             {fieldContent ? strings.JobDetails.labels.enabled : strings.JobDetails.labels.disabled}
           </div>
         );
@@ -322,14 +321,14 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           fieldContent ?
             (fieldContent.includes(ActionRequired.PendingReview) ?
               <div>
-                <AlarmClockIcon className={classNames.pendingReviewIcon}/> {fieldContent}
+                <AlarmClockIcon className={classNames.pendingReviewIcon} /> {fieldContent}
               </div>
               : fieldContent.includes(ActionRequired.SubmissionRejected) ?
                 <div>
-                  <ErrorBadgeIcon className={classNames.rejectedIcon}/> {fieldContent}
+                  <ErrorBadgeIcon className={classNames.rejectedIcon} /> {fieldContent}
                 </div>
                 : <div>
-                  <ReportHackedIcon className={classNames.actionRequiredIcon}/> {fieldContent}
+                  <ReportHackedIcon className={classNames.actionRequiredIcon} /> {fieldContent}
                 </div>
             )
             : <></>
@@ -376,15 +375,11 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
             <div className={classNames.title}>
               <Text variant="xLarge">{strings.JobsList.listOfMemberships}</Text>
             </div>
-            {isJobCreator ?
-              <PrimaryButton
-                text={strings.ManageMembership.manageMembershipButton}
-                menuProps={menuProps}
-                persistMenu={true}
-              >
-              </PrimaryButton>
-              : null
-            }
+            <PrimaryButton
+              text={strings.ManageMembership.manageMembershipButton}
+              menuProps={menuProps}
+              persistMenu={true}
+            />
           </div>
           <div className={classNames.tabContent}>
             <ShimmeredDetailsList

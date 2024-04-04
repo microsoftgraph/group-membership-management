@@ -11,6 +11,7 @@ import type React from 'react';
 export interface IAppStyles {
   root: IStyle;
   content: IStyle;
+  permissionDenied: IStyle;
 }
 
 export interface IAppStyleProps {

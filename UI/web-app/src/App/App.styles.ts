@@ -32,5 +32,12 @@ export const getStyles = (props: IAppStyleProps): IAppStyles => {
       width: '100%',
       flexGrow: 1,
     },
+    permissionDenied: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: '100%',
+      height: '50vh'
+    }
   };
 };

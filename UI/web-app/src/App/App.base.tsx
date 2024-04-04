@@ -7,24 +7,27 @@ import React, { useEffect, useState } from 'react';
 
 import { useSelector, useDispatch } from 'react-redux';
 import { Outlet } from 'react-router-dom';
-
+import { Text } from '@fluentui/react/lib/Text';
 import { type IAppProps, type IAppStyleProps, type IAppStyles } from './App.types';
 import { AppHeader } from '../components/AppHeader';
 import { Loader } from '../components/Loader';
 import { AppDispatch } from '../store';
 import { loginAsync } from '../store/account.api';
 import { selectLoggedIn } from '../store/account.slice';
+import { useStrings } from '../store/hooks';
 import { selectProfile } from '../store/profile.slice';
 import { setLanguage } from '../store/localization.api';
 import { fetchSettings } from '../store/settings.api';
 import { AppFooter } from '../components/AppFooter';
 import { fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes } from '../store/sqlMembershipSources.api';
+import { selectIsJobCreator } from '../store/roles.slice';
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
 export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) => {
   const { className, styles } = props;
   const theme = useTheme();
+  const strings = useStrings();
   const classNames: IProcessedStyleSet<IAppStyles> = getClassNames(styles, {
     className,
     theme,
@@ -33,7 +36,8 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
   const dispatch = useDispatch<AppDispatch>();
   const profile = useSelector(selectProfile);
   const loggedIn = useSelector(selectLoggedIn);
-  
+  const isJobCreator = useSelector(selectIsJobCreator);
+
   // run once after load.
   useEffect(() => {
     if (!loggedIn) {
@@ -59,9 +63,13 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
       <div className={classNames.root}>
         <AppHeader />
         <div className={classNames.content}>
-          <Outlet />
+          {isJobCreator ?
+            <Outlet />
+            : <div className={classNames.permissionDenied}>
+            <Text>{strings.permissionDenied}</Text>
+        </div>}
         </div>
-        <AppFooter/>
+        <AppFooter />
       </div>
     );
   } else {
