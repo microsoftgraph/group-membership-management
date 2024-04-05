@@ -145,6 +145,7 @@ export type IStrings = {
       approve: string;
       reject: string;
       submissionRejected: string;
+      removeGMM: string;
     };
     descriptions: {
       lastModifiedby: string;

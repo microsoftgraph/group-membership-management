@@ -30,6 +30,7 @@ namespace Models
         New = 22,
         DeveloperPaused = 23,
         PendingReview = 24,
-        SubmissionRejected = 25
+        SubmissionRejected = 25,
+        Removed = 26
     }
 }

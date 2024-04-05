@@ -150,6 +150,7 @@ export const strings: IStrings = {
       approve: 'Aprobar',
       reject: 'Rechazar',
       submissionRejected: 'Solicitud rechazada',
+      removeGMM: 'Dejar de administrar con GMM',
     },
     descriptions: {
       lastModifiedby: 'Usuario quien hizo el último cambio a este grupo.',

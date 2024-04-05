@@ -98,7 +98,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const openMembershipConfiguration = (): void => {
     navigate('/ManageMembership', { state: { currentStep: OnboardingSteps.MembershipConfiguration, jobId: job.syncJobId } });
   };
-  
+
   useEffect(() => {
     dispatch(setPagingBarVisible(false));
     dispatch(
@@ -157,6 +157,14 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
           useLinkButton={true}
           actionOnClick={openMembershipConfiguration}
         />
+        <div className={classNames.removeGMM}>
+          <ActionButton
+            iconProps={{ iconName: 'Delete' }}
+            title={strings.JobDetails.labels.removeGMM}
+            ariaLabel={strings.JobDetails.labels.removeGMM}>
+            {strings.JobDetails.labels.removeGMM}
+          </ActionButton>
+        </div>
       </div>
     </Page >
   );

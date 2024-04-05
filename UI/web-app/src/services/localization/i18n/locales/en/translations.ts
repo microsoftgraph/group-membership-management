@@ -148,6 +148,7 @@ export const strings: IStrings = {
       approve: 'Approve',
       reject: 'Reject',
       submissionRejected: 'Submission Rejected',
+      removeGMM: 'Remove GMM Management',
     },
     descriptions: {
       lastModifiedby: 'User who made the last change to this job.',

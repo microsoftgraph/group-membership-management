@@ -24,6 +24,7 @@ export interface IJobDetailsStyles {
     clockIcon: IStyle;
     membershipStatusActionButtons: IStyle;
     membershipStatusPendingLabel: IStyle;
+    removeGMM: IStyle;
 }
 
 export interface IJobDetailsStyleProps {

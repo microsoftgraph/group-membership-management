@@ -91,6 +91,11 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             display: "flex",
             gap: 10,
             marginBottom: 24
+        },
+        removeGMM: {
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "flex-end",
         }
     };
 };
