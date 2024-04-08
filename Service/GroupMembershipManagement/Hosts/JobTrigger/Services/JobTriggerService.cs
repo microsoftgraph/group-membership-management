@@ -93,7 +93,7 @@ namespace Services
 
         public async Task<(List<SyncJob> jobs, bool jobTriggerThresholdExceeded, int maxJobsAllowed)> GetSyncJobsAsync()
         {
-            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress, SyncStatus.TransientError);
+            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress, SyncStatus.TransientError);
             var filteredJobs = ApplyJobTriggerFilters(jobs).ToList();
             var jobsExcludingFiltered = jobs.Except(filteredJobs).ToList();
             var activeInProgressJobs = jobsExcludingFiltered.Where(job => job.Status == SyncStatus.InProgress.ToString()).ToList();

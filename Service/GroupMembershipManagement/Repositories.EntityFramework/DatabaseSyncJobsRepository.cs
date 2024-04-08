@@ -52,12 +52,17 @@ namespace Repositories.EntityFramework
         {
             return await _readContext.SyncJobs.FromSqlRaw<SyncJob>(@"SELECT * FROM [dbo].[SyncJobs] WHERE JSON_VALUE(Destination, '$[0].value.objectId') = {0}", objectId.ToString()).FirstOrDefaultAsync();
         }
-        public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(params SyncStatus[] statusFilters)
+        public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureScheduledJobs, params SyncStatus[] statusFilters)
         {
             IQueryable<SyncJob> query = _readContext.SyncJobs;
 
             DateTime currentUtcTime = DateTime.UtcNow;
             query = query.Where(job => job.StartDate <= currentUtcTime);
+
+            if (!includeFutureScheduledJobs)
+            {
+                query = query.Where(job => job.ScheduledDate <= currentUtcTime);
+            }
 
             if (!statusFilters.Contains(SyncStatus.All))
             {
@@ -73,8 +78,7 @@ namespace Repositories.EntityFramework
             IQueryable<SyncJob> query = _readContext.SyncJobs;
 
             DateTime currentUtcTime = DateTime.UtcNow;
-            query = query.Where(job => job.StartDate <= currentUtcTime);
-
+            
             if (!statusFilters.Contains(SyncStatus.All))
             {
                 var statuses = statusFilters.Select(x => x.ToString()).ToList();

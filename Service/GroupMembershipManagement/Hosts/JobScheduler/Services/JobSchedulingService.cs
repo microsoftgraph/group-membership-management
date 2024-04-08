@@ -58,7 +58,8 @@ namespace Services
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
-            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(SyncStatus.All);
+            var includeFutureScheduledJobs = true;
+            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(includeFutureScheduledJobs, SyncStatus.All);
             return jobs.ToList();
         }
 

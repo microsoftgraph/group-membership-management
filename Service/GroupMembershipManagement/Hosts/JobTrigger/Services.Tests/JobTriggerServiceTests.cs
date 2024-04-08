@@ -326,9 +326,29 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
             var response = await _jobTriggerService.GetSyncJobsAsync();
-			var jobs = response.jobs;
+            var jobs = response.jobs;
 
-			var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
+            var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
+
+            Assert.AreEqual(validStartDateJobs, jobs.Count);
+        }
+
+        [TestMethod]
+        public async Task VerifyJobsWithValidScheduledDateAreProcessed()
+        {
+            var validStartDateJobs = 5;
+            var futureStartDateJobs = 3;
+
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(validStartDateJobs, Organization));
+            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(futureStartDateJobs, Organization, scheduledDateBase: DateTime.UtcNow.AddDays(5)));
+
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
+            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
+
+            var response = await _jobTriggerService.GetSyncJobsAsync();
+            var jobs = response.jobs;
+
+            var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
         }

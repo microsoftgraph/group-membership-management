@@ -10,7 +10,7 @@ namespace Services.Tests
 {
     static class SampleDataHelper
     {
-        public static List<SyncJob> CreateSampleSyncJobs(int numberOfJobs, string syncType, int period = 1, DateTime? startDateBase = null, DateTime? lastRunTime = null)
+        public static List<SyncJob> CreateSampleSyncJobs(int numberOfJobs, string syncType, int period = 1, DateTime? startDateBase = null, DateTime? lastRunTime = null, DateTime? scheduledDateBase = null)
         {
             var jobs = new List<SyncJob>();
 
@@ -29,7 +29,8 @@ namespace Services.Tests
                     TargetOfficeGroupId = Guid.NewGuid(),
                     LastRunTime = lastRunTime ?? SqlDateTime.MinValue.Value,
                     RunId = Guid.NewGuid(),
-                    Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]"
+                    Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]",
+                    ScheduledDate = scheduledDateBase ?? DateTime.UtcNow.AddDays(-1),
                 };
 
                 jobs.Add(job);
