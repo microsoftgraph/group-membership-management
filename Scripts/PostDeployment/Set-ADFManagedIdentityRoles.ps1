@@ -35,7 +35,7 @@ function Set-ADFManagedIdentityRoles
     $appServices = @("webapi")
     $azureDataFactoryName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
     $servicePrincipals = New-Object System.Collections.ArrayList
-    $azureDataFactoryObject = Get-AzResource -Name $azureDataFactoryName
+    $azureDataFactoryObject = Get-AzResource -Name $azureDataFactoryName -ResourceType "Microsoft.DataFactory/factories"
 
     if ($null -eq $azureDataFactoryObject)
     {

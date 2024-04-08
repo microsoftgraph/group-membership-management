@@ -11,7 +11,7 @@ function Deploy-PostDeploymentUpdates {
 
     . ($ScriptsDirectory + '\main.ps1')
     $currentContext = Get-AzContext
-    Set-UpdateQuery `
+    Update-GmmMigrationIfNeeded `
         -SubscriptionName $currentContext.Subscription.Name `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation
