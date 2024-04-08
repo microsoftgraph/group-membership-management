@@ -180,6 +180,17 @@ var productionSettings = {
   AzureFunctionsWebHost__hostid: 'JobTrigger'
 }
 
+resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: dataKeyVaultName
+}
+
+module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
+  name: 'userAssignedManagedIdentityNameReaderTemplate'
+  params: {
+    value: dataKeyVault.getSecret('graphUserAssignedManagedIdentityName')
+  }
+}
+
 module functionAppTemplate_JobTrigger 'functionApp.bicep' = {
   name: 'functionAppTemplate-JobTrigger'
   params: {
@@ -188,6 +199,9 @@ module functionAppTemplate_JobTrigger 'functionApp.bicep' = {
     location: location
     servicePlanName: servicePlanName
     secretSettings: commonSettings
+    userManagedIdentities:{
+      graphUserAssignedManagedIdentityName: userAssignedManagedIdentityNameReader.outputs.value
+    }
   }
   dependsOn: [
     servicePlanTemplate
@@ -202,6 +216,9 @@ module functionAppSlotTemplate_JobTrigger 'functionAppSlot.bicep' = {
     location: location
     servicePlanName: servicePlanName
     secretSettings: commonSettings
+    userManagedIdentities:{
+      graphUserAssignedManagedIdentityName: userAssignedManagedIdentityNameReader.outputs.value
+    }
   }
   dependsOn: [
     functionAppTemplate_JobTrigger
