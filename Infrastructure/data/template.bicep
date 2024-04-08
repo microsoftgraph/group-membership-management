@@ -345,6 +345,7 @@ module sqlServer 'sqlServer.bicep' =  {
 }
 
 var isDataKVPresent = !empty(existingDataResources) ? !empty(filter(json(existingDataResources), x => x.Name == keyVaultName && x.ResourceType == 'Microsoft.KeyVault/vaults')) : false
+var graphUserAssignedManagedIdentityName = '${solutionAbbreviation}-identity-${environmentAbbreviation}-Graph'
 
 module dataKeyVaultTemplate 'keyVault.bicep' = if(!isDataKVPresent) {
   name: 'dataKeyVaultTemplate'
@@ -366,6 +367,18 @@ module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
   }
   dependsOn: [
     dataKeyVaultTemplate
+  ]
+}
+
+module graphUserAssignedManagedIdentity 'userAssignedIdentity.bicep' = {
+  name: 'graphUserAssignedManagedIdentity'
+  params: {
+    identityName: graphUserAssignedManagedIdentityName
+    location: location
+  }
+  dependsOn:[
+    dataKeyVaultTemplate
+    dataKeyVaultPoliciesTemplate
   ]
 }
 
@@ -594,6 +607,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'serviceBusNotificationsQueue'
         value: serviceBusNotificationsQueue
+      }
+      {
+        name: 'graphUserAssignedManagedIdentityName'
+        value: graphUserAssignedManagedIdentityName
       }
     ]
   }
