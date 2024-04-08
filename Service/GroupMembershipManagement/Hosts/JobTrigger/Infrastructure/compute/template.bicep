@@ -182,6 +182,7 @@ var productionSettings = {
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: dataKeyVaultName
+  scope: resourceGroup(dataKeyVaultResourceGroup)
 }
 
 module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
