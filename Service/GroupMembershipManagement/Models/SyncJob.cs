@@ -76,6 +76,12 @@ namespace Models
         public DateTime StartDate { get; set; } = SqlDateTime.MinValue.Value;
 
         /// <summary>
+        /// Scheduled Date (UTC)
+        /// </summary>
+        [IgnoreLogging]
+        public DateTime ScheduledDate { get; set; } = SqlDateTime.MinValue.Value;
+
+        /// <summary>
         /// Ignore threshold check if this is set to true
         /// </summary>
         [IgnoreLogging]

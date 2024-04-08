@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Repositories.EntityFramework.Contexts;
 
@@ -11,9 +12,10 @@ using Repositories.EntityFramework.Contexts;
 namespace Repositories.EntityFramework.Contexts.Migrations
 {
     [DbContext(typeof(GMMContext))]
-    partial class GMMContextModelSnapshot : ModelSnapshot
+    [Migration("20240408190733_add_scheduleddate_property")]
+    partial class add_scheduleddate_property
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
