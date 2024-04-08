@@ -192,6 +192,11 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
   }
 }
 
+resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
+  name: userAssignedManagedIdentityNameReader.outputs.value
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+}
+
 module functionAppTemplate_JobTrigger 'functionApp.bicep' = {
   name: 'functionAppTemplate-JobTrigger'
   params: {
@@ -201,11 +206,12 @@ module functionAppTemplate_JobTrigger 'functionApp.bicep' = {
     servicePlanName: servicePlanName
     secretSettings: commonSettings
     userManagedIdentities:{
-      graphUserAssignedManagedIdentityName: userAssignedManagedIdentityNameReader.outputs.value
+      '${graphUAMI.id}' : {}
     }
   }
   dependsOn: [
     servicePlanTemplate
+    graphUAMI
   ]
 }
 
@@ -218,11 +224,12 @@ module functionAppSlotTemplate_JobTrigger 'functionAppSlot.bicep' = {
     servicePlanName: servicePlanName
     secretSettings: commonSettings
     userManagedIdentities:{
-      graphUserAssignedManagedIdentityName: userAssignedManagedIdentityNameReader.outputs.value
+      '${graphUAMI.id}' : {}
     }
   }
   dependsOn: [
     functionAppTemplate_JobTrigger
+    graphUAMI
   ]
 }
 
