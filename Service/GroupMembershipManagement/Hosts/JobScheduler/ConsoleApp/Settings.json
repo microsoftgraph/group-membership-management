@@ -6,7 +6,6 @@
   "resetJobs": "",
   "daysToAddForReset": "",
   "distributeJobs": "",
-  "includeFutureJobs": "",
   "defaultRuntime": "",
   "startTimeDelayMinutes": "",
   "delayBetweenSyncsSeconds": "",

@@ -8,11 +8,8 @@ using Repositories.Logging;
 using DIConcreteTypes;
 using Services.Contracts;
 using Repositories.Contracts;
-using Azure.Identity;
-using Azure.Monitor.Query;
 using Repositories.EntityFramework;
 using Repositories.EntityFramework.Contexts;
-using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.EntityFrameworkCore;
 
 namespace JobScheduler
@@ -45,7 +42,6 @@ namespace JobScheduler
                 appSettings.ResetJobs,
                 appSettings.DaysToAddForReset,
                 appSettings.DistributeJobs,
-                appSettings.IncludeFutureJobs,
                 appSettings.StartTimeDelayMinutes,
                 appSettings.DelayBetweenSyncsSeconds,
                 appSettings.DefaultRuntimeSeconds,
