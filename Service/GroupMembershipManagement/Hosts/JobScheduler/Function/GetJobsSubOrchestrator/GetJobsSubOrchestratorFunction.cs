@@ -33,22 +33,19 @@ namespace Hosts.JobScheduler
             await context.CallActivityAsync(nameof(LoggerFunction),
                 new LoggerRequest
                 {
-                    Message = "Retrieving enabled sync jobs" + (_jobSchedulerConfig.IncludeFutureJobs ? " including those with future StartDate values" : "")
+                    Message = "Retrieving enabled sync jobs"
                 });
 
             var jobs = new List<DistributionSyncJob>();
 
-            var segmentResponse = await context.CallActivityAsync<GetJobsResponse>(nameof(GetJobsFunction), new GetJobsRequest
-            {
-                IncludeFutureJobs = _jobSchedulerConfig.IncludeFutureJobs
-            });
+            var segmentResponse = await context.CallActivityAsync<GetJobsResponse>(nameof(GetJobsFunction), null);
 
             jobs = segmentResponse.JobsSegment;
 
             await context.CallActivityAsync(nameof(LoggerFunction),
                 new LoggerRequest
                 {
-                    Message = $"Retrieved {jobs.Count} enabled sync jobs" + (_jobSchedulerConfig.IncludeFutureJobs ? " including those with future StartDate values" : "")
+                    Message = $"Retrieved {jobs.Count} enabled sync jobs"
                 });
 
             await context.CallActivityAsync(nameof(LoggerFunction),

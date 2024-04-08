@@ -17,7 +17,6 @@ namespace Services
 
         private const int MINUTES_IN_HOUR = 60;
         private const int SECONDS_IN_MINUTE = 60;
-        private const int JobsBatchSize = 100;
 
 
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
@@ -34,14 +33,14 @@ namespace Services
             _loggingRepository = loggingRepository;
         }
 
-        public async Task<List<DistributionSyncJob>> ResetJobsAsync(List<DistributionSyncJob> jobs, int daysToAddForReset, bool includeFutureJobs)
+        public async Task<List<DistributionSyncJob>> ResetJobsAsync(List<DistributionSyncJob> jobs, int daysToAddForReset)
         {
             var newStartTime = DateTime.UtcNow.AddDays(daysToAddForReset);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Updating {jobs.Count} jobs to have StartDate of {newStartTime}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Updating {jobs.Count} jobs to have ScheduledDate of {newStartTime}" });
 
-            List<DistributionSyncJob> updatedJobs = ResetJobStartTimes(jobs, newStartTime, includeFutureJobs);
+            List<DistributionSyncJob> updatedJobs = ResetJobStartTimes(jobs, newStartTime);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Updated {jobs.Count} jobs to have StartDate of {newStartTime}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Updated {jobs.Count} jobs to have ScheduledDate of {newStartTime}" });
 
             return updatedJobs;
         }
@@ -57,9 +56,9 @@ namespace Services
             return updatedJobs;
         }
 
-        public async Task<List<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs)
+        public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
-            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(includeFutureJobs, SyncStatus.All);
+            var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(SyncStatus.All);
             return jobs.ToList();
         }
 
@@ -74,7 +73,7 @@ namespace Services
             return new SyncJob
             {
                 Id = updateMergeSyncJob.Id,
-                StartDate = updateMergeSyncJob.StartDate
+                ScheduledDate = updateMergeSyncJob.ScheduledDate
             };
         }
 
@@ -83,12 +82,11 @@ namespace Services
             return jobs.Select(x => MapUpdateMergeSyncJobToEntity(x)).ToList();
         }
 
-        public List<DistributionSyncJob> ResetJobStartTimes(List<DistributionSyncJob> syncJobsToReset, DateTime newStartTime, bool includeFutureStartDates = false)
+        public List<DistributionSyncJob> ResetJobStartTimes(List<DistributionSyncJob> syncJobsToReset, DateTime newStartTime)
         {
             List<DistributionSyncJob> updatedSyncJobs = syncJobsToReset.Select(job =>
             {
-                if (includeFutureStartDates || job.StartDate.CompareTo(newStartTime) < 0)
-                    job.StartDate = newStartTime;
+                job.ScheduledDate = newStartTime;
                 return job;
             }).ToList();
 
@@ -167,7 +165,7 @@ namespace Services
                 var serializedJob = JsonConvert.SerializeObject(job);
                 var updatedJob = JsonConvert.DeserializeObject<DistributionSyncJob>(serializedJob);
 
-                updatedJob.StartDate = earliestTime;
+                updatedJob.ScheduledDate = earliestTime;
                 var groupRuntime = runtimeMap.ContainsKey(job.Destination) ? runtimeMap[job.Destination] : runtimeMap["Default"];
                 DateTime updatedTime = earliestTime.AddSeconds(groupRuntime + bufferBetweenSyncsSeconds);
                 int index = jobThreads.IndexOf(earliestTime);

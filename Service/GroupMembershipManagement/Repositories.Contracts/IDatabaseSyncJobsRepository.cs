@@ -15,11 +15,11 @@ namespace Repositories.Contracts
         Task<SyncJob> GetSyncJobAsync(Guid syncJobId);
         IQueryable<SyncJob> GetSyncJobs(bool asNoTracking = false);
         Task<List<SyncJob>> GetSyncJobsAsync();
-        Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters);
+        Task<IEnumerable<SyncJob>> GetSyncJobsAsync(params SyncStatus[] statusFilters);
 		Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus? status);
         Task<List<SyncJob>> GetSyncJobsByDestinationAsync(string destinationType);
         Task<SyncJob> GetSyncJobByObjectIdAsync(Guid objectId);
-        Task<int> GetSyncJobCountAsync(bool includeFutureJobs, params SyncStatus[] statusFilters); 
+        Task<int> GetSyncJobCountAsync(params SyncStatus[] statusFilters); 
         Task UpdateSyncJobFromNotificationAsync(SyncJob job, SyncStatus status);
         Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null);
         Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs);

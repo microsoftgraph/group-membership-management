@@ -9,8 +9,8 @@ namespace Services.Contracts
 {
     public interface IJobSchedulingService
     {
-        public Task<List<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs);
-        public Task<List<DistributionSyncJob>> ResetJobsAsync(List<DistributionSyncJob> jobs, int daysToAddForReset, bool includeFutureJobs);
+        public Task<List<SyncJob>> GetSyncJobsAsync();
+        public Task<List<DistributionSyncJob>> ResetJobsAsync(List<DistributionSyncJob> jobs, int daysToAddForReset);
         public Task<List<DistributionSyncJob>> DistributeJobsAsync(List<DistributionSyncJob> jobs, int startTimeDelayMinutes, int delayBetweenSyncsSeconds);
         public Task BatchUpdateSyncJobsAsync(IEnumerable<UpdateMergeSyncJob> updatedSyncJobs);
     }

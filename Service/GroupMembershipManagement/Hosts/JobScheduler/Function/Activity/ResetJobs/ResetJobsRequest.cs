@@ -10,6 +10,5 @@ namespace Hosts.JobScheduler
     {
         public List<DistributionSyncJob> JobsToReset;
         public int DaysToAddForReset;
-        public bool IncludeFutureJobs;
     }
 }

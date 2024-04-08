@@ -52,15 +52,12 @@ namespace Repositories.EntityFramework
         {
             return await _readContext.SyncJobs.FromSqlRaw<SyncJob>(@"SELECT * FROM [dbo].[SyncJobs] WHERE JSON_VALUE(Destination, '$[0].value.objectId') = {0}", objectId.ToString()).FirstOrDefaultAsync();
         }
-        public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
+        public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(params SyncStatus[] statusFilters)
         {
             IQueryable<SyncJob> query = _readContext.SyncJobs;
 
-            if (!includeFutureJobs)
-            {
-                DateTime currentUtcTime = DateTime.UtcNow;
-                query = query.Where(job => job.StartDate <= currentUtcTime);
-            }
+            DateTime currentUtcTime = DateTime.UtcNow;
+            query = query.Where(job => job.StartDate <= currentUtcTime);
 
             if (!statusFilters.Contains(SyncStatus.All))
             {
@@ -71,15 +68,12 @@ namespace Repositories.EntityFramework
             return await query.ToListAsync();
         }
 
-        public async Task<int> GetSyncJobCountAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
+        public async Task<int> GetSyncJobCountAsync(params SyncStatus[] statusFilters)
         {
             IQueryable<SyncJob> query = _readContext.SyncJobs;
 
-            if (!includeFutureJobs)
-            {
-                DateTime currentUtcTime = DateTime.UtcNow;
-                query = query.Where(job => job.StartDate <= currentUtcTime);
-            }
+            DateTime currentUtcTime = DateTime.UtcNow;
+            query = query.Where(job => job.StartDate <= currentUtcTime);
 
             if (!statusFilters.Contains(SyncStatus.All))
             {
@@ -147,7 +141,7 @@ namespace Repositories.EntityFramework
             foreach (var job in jobs)
             {
                 _writeContext.Set<SyncJob>().Attach(job);
-                _writeContext.Entry(job).Property(x => x.StartDate).IsModified = true;
+                _writeContext.Entry(job).Property(x => x.ScheduledDate).IsModified = true;
             }
 
             await _writeContext.SaveChangesAsync();

@@ -58,48 +58,19 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public void ResetAllStartTimes()
+        public void ResetAllScheduledDates()
         {
             List<DistributionSyncJob> jobs = CreateSampleSyncJobs(10, 1);
             DateTime newStartTime = DateTime.UtcNow;
 
-            List<DistributionSyncJob> updatedJobs = _jobSchedulingService.ResetJobStartTimes(jobs, newStartTime, false);
+            List<DistributionSyncJob> updatedJobs = _jobSchedulingService.ResetJobStartTimes(jobs, newStartTime);
 
             Assert.AreEqual(jobs.Count, updatedJobs.Count);
 
             foreach (DistributionSyncJob job in updatedJobs)
             {
-                Assert.AreEqual(job.StartDate, newStartTime);
+                Assert.AreEqual(job.ScheduledDate, newStartTime);
             }
-        }
-
-        [TestMethod]
-        public void ResetOlderStartTimes()
-        {
-            DateTime newStartTime = DateTime.UtcNow.Date;
-            List<DistributionSyncJob> jobs = CreateSampleSyncJobs(10, 1, newStartTime.AddDays(4));
-
-            List<DistributionSyncJob> updatedJobs = _jobSchedulingService.ResetJobStartTimes(jobs, newStartTime, false);
-
-            Assert.AreEqual(jobs.Count, updatedJobs.Count);
-
-            int startTimeUpdatedCount = 0;
-            int startTimeNotUpdatedCount = 0;
-
-            foreach (DistributionSyncJob job in updatedJobs)
-            {
-                if (job.StartDate == newStartTime)
-                {
-                    startTimeUpdatedCount++;
-                }
-                else
-                {
-                    startTimeNotUpdatedCount++;
-                }
-            }
-
-            Assert.AreEqual(startTimeUpdatedCount, 6);
-            Assert.AreEqual(startTimeNotUpdatedCount, 4);
         }
 
         [TestMethod]
@@ -120,7 +91,7 @@ namespace Services.Tests
             List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
 
             Assert.AreEqual(updatedJobs.Count, 1);
-            Assert.IsTrue(updatedJobs[0].StartDate > dateTimeNow);
+            Assert.IsTrue(updatedJobs[0].ScheduledDate > dateTimeNow);
         }
 
         [TestMethod]
@@ -139,8 +110,8 @@ namespace Services.Tests
             for (int i = 0; i < jobs.Count; i++)
             {
                 Assert.AreEqual(jobs[i].TargetOfficeGroupId, updatedJobs[i].TargetOfficeGroupId);
-                Assert.IsTrue(jobs[i].StartDate < dateTimeNow);
-                Assert.IsTrue(updatedJobs[i].StartDate >= dateTimeNow.AddSeconds(60 * START_TIME_DELAY_MINUTES +
+                Assert.IsTrue(jobs[i].ScheduledDate < dateTimeNow);
+                Assert.IsTrue(updatedJobs[i].ScheduledDate >= dateTimeNow.AddSeconds(60 * START_TIME_DELAY_MINUTES +
                     i * (DEFAULT_RUNTIME_SECONDS + BUFFER_SECONDS)));
             }
         }
@@ -153,7 +124,7 @@ namespace Services.Tests
             var longerDefaultRuntimeService = new DefaultRuntimeRetrievalService(_jobSchedulerConfig.Object.DefaultRuntimeSeconds);
 
             JobSchedulerConfig jobSchedulerConfig = new JobSchedulerConfig(
-                                                        true, 0, true, false,
+                                                        true, 0, true,
                                                         START_TIME_DELAY_MINUTES,
                                                         BUFFER_SECONDS,
                                                         DEFAULT_RUNTIME_SECONDS,
@@ -185,15 +156,15 @@ namespace Services.Tests
             for (int i = 0; i < jobs.Count; i++)
             {
                 Assert.AreEqual(jobs[i].TargetOfficeGroupId, updatedJobs[i].TargetOfficeGroupId);
-                Assert.IsTrue(jobs[i].StartDate < dateTimeNow);
+                Assert.IsTrue(jobs[i].ScheduledDate < dateTimeNow);
                 if (i < 8)
                 {
-                    Assert.IsTrue(updatedJobs[i].StartDate >= dateTimeNow.AddSeconds(60 * START_TIME_DELAY_MINUTES +
+                    Assert.IsTrue(updatedJobs[i].ScheduledDate >= dateTimeNow.AddSeconds(60 * START_TIME_DELAY_MINUTES +
                         i / 2 * (defaultTenMinuteRuntime + BUFFER_SECONDS)));
                 }
                 else
                 {
-                    Assert.IsTrue(updatedJobs[i].StartDate >= dateTimeNow.AddSeconds(60 * START_TIME_DELAY_MINUTES +
+                    Assert.IsTrue(updatedJobs[i].ScheduledDate >= dateTimeNow.AddSeconds(60 * START_TIME_DELAY_MINUTES +
                         (i - 5) * (defaultTenMinuteRuntime + BUFFER_SECONDS)));
                 }
             }
@@ -214,16 +185,16 @@ namespace Services.Tests
             for (int i = 0; i < jobs.Count; i++)
             {
                 Assert.AreEqual(jobs[i].TargetOfficeGroupId, updatedJobs[i].TargetOfficeGroupId);
-                Assert.IsTrue(jobs[i].StartDate < dateTimeNow);
+                Assert.IsTrue(jobs[i].ScheduledDate < dateTimeNow);
 
                 if (i < 3)
                 {
-                    Assert.IsTrue(updatedJobs[i].StartDate >= dateTimeNow.AddSeconds(60 * START_TIME_DELAY_MINUTES +
+                    Assert.IsTrue(updatedJobs[i].ScheduledDate >= dateTimeNow.AddSeconds(60 * START_TIME_DELAY_MINUTES +
                         i * (DEFAULT_RUNTIME_SECONDS + BUFFER_SECONDS)));
                 }
                 else
                 {
-                    Assert.IsTrue(updatedJobs[i].StartDate >= dateTimeNow.AddSeconds(60 * START_TIME_DELAY_MINUTES +
+                    Assert.IsTrue(updatedJobs[i].ScheduledDate >= dateTimeNow.AddSeconds(60 * START_TIME_DELAY_MINUTES +
                         (i - 3) * (DEFAULT_RUNTIME_SECONDS + BUFFER_SECONDS)));
                 }
             }
@@ -267,9 +238,9 @@ namespace Services.Tests
 
             Assert.AreEqual(concurrencyNumber, 1);
             Assert.AreEqual(updatedJobs.Count, numberOfJobs);
-            Assert.IsTrue(updatedJobs[0].StartDate > dateTimeNow);
+            Assert.IsTrue(updatedJobs[0].ScheduledDate > dateTimeNow);
 
-            var baseStartDate = updatedJobs.First().StartDate;
+            var baseStartDate = updatedJobs.First().ScheduledDate;
             var currentJobIndex = 0;
             foreach (var updateJob in updatedJobs)
             {
@@ -279,15 +250,15 @@ namespace Services.Tests
                     baseStartDate = baseStartDate.AddSeconds(BUFFER_SECONDS + previousJobRunTime.Max);
                 }
 
-                Assert.AreEqual(updateJob.StartDate, baseStartDate);
+                Assert.AreEqual(updateJob.ScheduledDate, baseStartDate);
                 currentJobIndex++;
             }
         }
 
-        private List<DistributionSyncJob> CreateSampleSyncJobs(int numberOfJobs, int period, DateTime? startDateBase = null, DateTime? lastRunTimeBase = null)
+        private List<DistributionSyncJob> CreateSampleSyncJobs(int numberOfJobs, int period, DateTime? scheduledDateBase = null, DateTime? lastRunTimeBase = null)
         {
             var jobs = new List<DistributionSyncJob>();
-            DateTime StartDateBase = startDateBase ?? DateTime.UtcNow.AddDays(-1);
+            DateTime ScheduledDateBase = scheduledDateBase ?? DateTime.UtcNow.AddDays(-1);
             DateTime LastRunTimeBase = lastRunTimeBase ?? DateTime.UtcNow.AddDays(-1);
 
             for (int i = 0; i < numberOfJobs; i++)
@@ -296,7 +267,7 @@ namespace Services.Tests
                 {
                     Id = Guid.NewGuid(),
                     Period = period,
-                    StartDate = StartDateBase.AddDays(-1 * i),
+                    ScheduledDate = ScheduledDateBase.AddDays(-1 * i),
                     Status = SyncStatus.Idle.ToString(),
                     TargetOfficeGroupId = Guid.NewGuid(),
                     LastRunTime = LastRunTimeBase.AddDays(-1 * i),

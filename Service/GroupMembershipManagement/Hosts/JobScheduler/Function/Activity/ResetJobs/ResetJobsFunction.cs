@@ -27,7 +27,7 @@ namespace Hosts.JobScheduler
         public async Task<List<DistributionSyncJob>> ResetJobsAsync([ActivityTrigger] ResetJobsRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ResetJobsFunction)} function started at: {DateTime.UtcNow}" });
-            var updatedJobs = await _jobSchedulingService.ResetJobsAsync(request.JobsToReset, request.DaysToAddForReset, request.IncludeFutureJobs);
+            var updatedJobs = await _jobSchedulingService.ResetJobsAsync(request.JobsToReset, request.DaysToAddForReset);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ResetJobsFunction)} function completed at: {DateTime.UtcNow}" });
 
             return updatedJobs;

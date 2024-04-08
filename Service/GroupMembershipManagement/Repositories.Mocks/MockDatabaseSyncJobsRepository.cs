@@ -33,7 +33,7 @@ namespace Repositories.Mocks
             return await Task.FromResult(Jobs);
         }
 
-		public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
+		public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(params SyncStatus[] statusFilters)
 		{
 			var jobs = Jobs.Where(x => (x.StartDate <= DateTime.UtcNow)
 										&& (DateTime.UtcNow - x.LastRunTime > TimeSpan.FromHours(x.Period))
@@ -41,27 +41,20 @@ namespace Repositories.Mocks
 
 			return await Task.FromResult(jobs);
 		}
-		public async Task<int> GetSyncJobCountAsync(bool includeFutureJobs, params SyncStatus[] statusFilters)
+		public async Task<int> GetSyncJobCountAsync(params SyncStatus[] statusFilters)
 		{
-			IEnumerable<SyncJob> jobs = Jobs; 
+			IEnumerable<SyncJob> jobs = Jobs;
+            DateTime currentUtcTime = DateTime.UtcNow;
 
-			if (statusFilters.Contains(SyncStatus.All))
+            if (statusFilters.Contains(SyncStatus.All))
 			{
-				if (!includeFutureJobs)
-				{
-					DateTime currentUtcTime = DateTime.UtcNow;
-					jobs = jobs.Where(job => job.StartDate <= currentUtcTime);
-				}
+				jobs = jobs.Where(job => job.StartDate <= currentUtcTime);
 
 				return await Task.FromResult(jobs.Count());
 			}
 
-			if (!includeFutureJobs)
-			{
-				var statuses = statusFilters.Select(x => x.ToString()).ToList();
-				DateTime currentUtcTime = DateTime.UtcNow;
-				jobs = jobs.Where(job => job.StartDate <= currentUtcTime && statuses.Contains(job.Status));
-			}
+			var statuses = statusFilters.Select(x => x.ToString()).ToList();
+			jobs = jobs.Where(job => job.StartDate <= currentUtcTime && statuses.Contains(job.Status));
 
 			return await Task.FromResult(jobs.Count());
 		}

@@ -37,17 +37,17 @@ namespace Services
                 return;
             }
 
-            List<DistributionSyncJob> jobsToUpdate = await GetSyncJobsAsync(_jobSchedulerConfig.IncludeFutureJobs);
+            List<DistributionSyncJob> jobsToUpdate = await GetSyncJobsAsync();
             List<DistributionSyncJob> jobsWithUpdates = null;
 
             if (_jobSchedulerConfig.ResetJobs)
             {
                 var newStartTime = DateTime.UtcNow.AddDays(_jobSchedulerConfig.DaysToAddForReset);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resetting {jobsToUpdate.Count} jobs to have StartDate of {newStartTime}" });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resetting {jobsToUpdate.Count} jobs to have ScheduledDate of {newStartTime}" });
 
-                jobsWithUpdates = await _jobSchedulingService.ResetJobsAsync(jobsToUpdate, _jobSchedulerConfig.DaysToAddForReset, _jobSchedulerConfig.IncludeFutureJobs);
+                jobsWithUpdates = await _jobSchedulingService.ResetJobsAsync(jobsToUpdate, _jobSchedulerConfig.DaysToAddForReset);
 
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Reset {jobsToUpdate.Count} jobs to have StartDate of {newStartTime}" });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Reset {jobsToUpdate.Count} jobs to have ScheduledDate of {newStartTime}" });
             }
 
             else if (_jobSchedulerConfig.DistributeJobs)
@@ -65,9 +65,9 @@ namespace Services
             }
         }
 
-        private async Task<List<DistributionSyncJob>> GetSyncJobsAsync(bool includeFutureJobs)
+        private async Task<List<DistributionSyncJob>> GetSyncJobsAsync()
         {
-            var jobs = await _jobSchedulingService.GetSyncJobsAsync(includeFutureJobs);
+            var jobs = await _jobSchedulingService.GetSyncJobsAsync();
             return jobs.Select(x => new DistributionSyncJob(x)).ToList();
         }
 

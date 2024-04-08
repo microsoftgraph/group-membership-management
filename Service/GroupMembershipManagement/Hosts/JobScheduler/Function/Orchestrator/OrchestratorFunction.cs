@@ -64,8 +64,7 @@ namespace Hosts.JobScheduler
                     new ResetJobsRequest
                     {
                         JobsToReset = jobsToUpdate,
-                        DaysToAddForReset = _jobSchedulerConfig.DaysToAddForReset,
-                        IncludeFutureJobs = _jobSchedulerConfig.IncludeFutureJobs
+                        DaysToAddForReset = _jobSchedulerConfig.DaysToAddForReset
                     });
 
                 await context.CallActivityAsync(nameof(LoggerFunction),

@@ -10,7 +10,7 @@ namespace Models
     {
         public Guid Id { get; set; }
 
-        public DateTime StartDate { get; set; } = SqlDateTime.MinValue.Value;
+        public DateTime ScheduledDate { get; set; } = SqlDateTime.MinValue.Value;
 
         public UpdateMergeSyncJob() { }
     }

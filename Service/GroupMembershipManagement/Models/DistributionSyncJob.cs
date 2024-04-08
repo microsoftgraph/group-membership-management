@@ -22,12 +22,12 @@ namespace Models
             Period = syncJob.Period;
             Status = syncJob.Status;
             Id = syncJob.Id;
-            StartDate = syncJob.StartDate;
+            ScheduledDate = syncJob.ScheduledDate;
         }
 
         public DistributionSyncJob() { }
 
-        public int CompareTo(Models.DistributionSyncJob other)
+        public int CompareTo(DistributionSyncJob other)
         {
             if (Status == other.Status || (Status != SyncStatus.Idle.ToString() && other.Status != SyncStatus.Idle.ToString()))
             {

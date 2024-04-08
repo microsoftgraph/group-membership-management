@@ -10,7 +10,6 @@ namespace Services.Contracts
         public bool ResetJobs { get; }
         public int DaysToAddForReset { get; }
         public bool DistributeJobs { get; }
-        public bool IncludeFutureJobs { get; }
         public int StartTimeDelayMinutes { get; set; }
         public int DelayBetweenSyncsSeconds { get; }
         public int DefaultRuntimeSeconds { get; }
@@ -24,7 +23,6 @@ namespace Services.Contracts
             bool resetJobs,
             int daysToAddForReset,
             bool distributeJobs,
-            bool includeFutureJobs,
             int startTimeDelayMinutes,
             int delayBetweenSyncsSeconds,
             int defaultRuntimeSeconds,
@@ -38,7 +36,6 @@ namespace Services.Contracts
             ResetJobs = resetJobs;
             DaysToAddForReset = daysToAddForReset;
             DistributeJobs = distributeJobs;
-            IncludeFutureJobs = includeFutureJobs;
             StartTimeDelayMinutes = startTimeDelayMinutes;
             DelayBetweenSyncsSeconds = delayBetweenSyncsSeconds;
             DefaultRuntimeSeconds = defaultRuntimeSeconds;
