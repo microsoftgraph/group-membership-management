@@ -81,13 +81,14 @@ namespace Services
 
         private async Task<(SyncJob? syncJob, HttpStatusCode statusCode)> GetSyncJobAsync(Guid syncJobId)
         {
-            if (_httpContextAccessor.HttpContext.User.IsInRole(Roles.JOB_TENANT_READER))
+            var userId = _httpContextAccessor.HttpContext.User.Claims.FirstOrDefault(x => x.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+            if (string.IsNullOrWhiteSpace(userId)) return (null, HttpStatusCode.Forbidden);
+
+            if (_httpContextAccessor.HttpContext.User.IsInRole(Roles.JOB_TENANT_READER) || 
+                _httpContextAccessor.HttpContext.User.IsInRole(Roles.JOB_TENANT_WRITER))
             {
                 return (await _databaseSyncJobsRepository.GetSyncJobAsync(syncJobId), HttpStatusCode.OK);
             }
-
-            var userId = _httpContextAccessor.HttpContext.User.Claims.FirstOrDefault(x => x.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
-            if (string.IsNullOrWhiteSpace(userId)) return (null, HttpStatusCode.Forbidden);
 
             if (!await _databaseSyncJobsRepository.GetSyncJobs(true).AnyAsync(x => x.Id == syncJobId))
             {

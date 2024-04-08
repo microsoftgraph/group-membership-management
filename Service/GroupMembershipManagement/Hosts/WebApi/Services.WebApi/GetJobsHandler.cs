@@ -100,7 +100,8 @@ namespace Services
         {
             var query = _databaseSyncJobsRepository.GetSyncJobs(true);
 
-            if (_httpContextAccessor.HttpContext.User.IsInRole(Roles.JOB_TENANT_READER))
+            if (_httpContextAccessor.HttpContext.User.IsInRole(Roles.JOB_TENANT_READER) || 
+                _httpContextAccessor.HttpContext.User.IsInRole(Roles.JOB_TENANT_WRITER))
             {
                 return query;
             }
