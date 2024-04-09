@@ -18,7 +18,7 @@ then as someone who can write to the prereqs key vault in the other. Make sure y
 that contains the key vault.
 
 .PARAMETER SubscriptionName
-Subscription Name on you primary tenant where the keyvaults exists.
+Subscription Name on your primary tenant where the keyvaults exists.
 
 .PARAMETER SolutionAbbreviation
 Solution Abbreviation
@@ -106,72 +106,7 @@ function Set-WebApiAzureADApplication {
 	}
 	#endregion
 
-	# Create new app roles
-	[String[]]$memberTypes = "User", "Application"
-
-	$jobCreatorRole = @{
-		DisplayName        = "Job Creator"
-		Description        = "Can create jobs and have access to the Membership Management page."
-		Value              = "Job.Create"
-		Id                 = [Guid]::NewGuid().ToString()
-		IsEnabled          = $True
-		AllowedMemberTypes = @($memberTypes)
-	}
-
-	$jobTenantReaderRole = @{
-		DisplayName        = "Job Tenant Reader"
-		Description        = "Can read all destinations in the tenant."
-		Value              = "Job.Read.All"
-		Id                 = [Guid]::NewGuid().ToString()
-		IsEnabled          = $True
-		AllowedMemberTypes = @($memberTypes)
-	}
-
-	$jobTenantWriterRole = @{
-		DisplayName        = "Job Tenant Writer"
-		Description        = "Can create, view, and update all destinations in the tenant."
-		Value              = "Job.ReadWrite.All"
-		Id                 = [Guid]::NewGuid().ToString()
-		IsEnabled          = $True
-		AllowedMemberTypes = @($memberTypes)
-	}
-
-	$submissionReviewerRole = @{
-		DisplayName        = "Submission Reviewer"
-		Description        = "Can view and manage Submission Requests for all groups."
-		Value              = "Submission.ReadWrite.All"
-		Id                 = [Guid]::NewGuid().ToString()
-		IsEnabled          = $True
-		AllowedMemberTypes = @($memberTypes)
-	}
-
-	$hyperlinkAdministratorRole = @{
-		DisplayName        = "Hyperlink Administrator"
-		Description        = "Can add, update, or remove custom URLs."
-		Value              = "Settings.Hyperlink.ReadWrite.All"
-		Id                 = [Guid]::NewGuid().ToString()
-		IsEnabled          = $True
-		AllowedMemberTypes = @($memberTypes)
-	}
-
-	$customMembershipProviderAdministratorRole = @{
-		DisplayName        = "Custom Membership Provider Administrator"
-		Description        = "Can add, update, or remove custom field names."
-		Value              = "Settings.CustomSource.ReadWrite.All"
-		Id                 = [Guid]::NewGuid().ToString()
-		IsEnabled          = $True
-		AllowedMemberTypes = @($memberTypes)
-	}
-
-	$appRoles = $webApiApp.AppRole
-	$appRoles += $jobCreatorRole
-	$appRoles += $jobTenantReaderRole
-	$appRoles += $jobTenantWriterRole
-	$appRoles += $submissionReviewerRole
-	$appRoles += $hyperlinkAdministratorRole
-	$appRoles += $customMembershipProviderAdministratorRole
-
-	#region Create Appplication
+	#region Create Application
 	if ($null -eq $webApiApp) {
 		Write-Verbose "Creating Azure AD app $webApiAppDisplayName"
 
@@ -220,7 +155,6 @@ function Set-WebApiAzureADApplication {
 								-IdentifierUris "api://$($webApiApp.AppId)" `
 								-DisplayName $webApiAppDisplayName `
 								-Web $webSettings `
-								-AppRole $appRoles `
 								-AvailableToOtherTenants $false
 	}
 	else {
@@ -251,11 +185,14 @@ function Set-WebApiAzureADApplication {
 								-DisplayName $webApiAppDisplayName `
 								-OptionalClaim $optionalClaim `
 								-Web $webSettings `
-								-AppRole $appRoles `
 								-AvailableToOtherTenants $false
 	}
 
 	Start-Sleep -Seconds 30
+
+	# Update roles if needed
+	. ($scriptsDirectory + '\Scripts\Set-AppRolesIfNeeded.ps1')
+		Set-AppRolesIfNeeded -WebApiObjectId $webApiApp.Id -TenantId $DevTenantId
 
 	# These need to go into the key vault
 	$webApiAppTenantId = $DevTenantId;
