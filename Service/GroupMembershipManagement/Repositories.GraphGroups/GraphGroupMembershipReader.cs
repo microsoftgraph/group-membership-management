@@ -361,64 +361,92 @@ namespace Repositories.GraphGroups
             return response;
         }
 
-        public async Task<bool> IsEmailRecipientMemberOfGroupAsync(string email, Guid groupObjectId, Guid? runId)
+        public async Task<bool> IsEmailRecipientMemberOfGroupAsync(string userIdentifier, Guid groupObjectId, Guid? runId)
         {
-            User user = null;
-            var nativeResponseHandler = new NativeResponseHandler();
-            var userByMailResponse = new UserCollectionResponse();
-
-            try
+            await _loggingRepository.LogMessageAsync(new LogMessage
             {
+                RunId = runId,
+                Message = $"Checking on user existence for user identifier '{userIdentifier}' to determine if it is a member of group {groupObjectId}."
+            });
+            
+            Guid userId;
 
-                await _graphServiceClient.Users.GetAsync(requestConfiguration =>
-                {
-                    requestConfiguration.QueryParameters.Filter = $"Mail eq '{email}' or UserPrincipalName eq '{email}'";
-                    requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
-                });
+            var identifierIsObjectId = Guid.TryParse(userIdentifier, out userId);
 
-                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
-
-                if (nativeResponse.IsSuccessStatusCode)
-                {
-                    userByMailResponse = await DeserializeResponseAsync(nativeResponse, UserCollectionResponse.CreateFromDiscriminatorValue);
-
-                    if (userByMailResponse.Value.Count == 0)
-                    {
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            RunId = runId,
-                            Message = $"No user was found when checking for group ownership for group {groupObjectId}."
-                        });
-
-                        return false;
-                    }
-
-                    user = userByMailResponse.Value[0];
-                }
-                else
-                {
-                    throw new Exception($"Unable to verify group ownership at this time.");
-                }
-            }
-            catch (Exception ex)
+            if (!identifierIsObjectId)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
+                    RunId = runId,
+                    Message = $"Getting user information for email '{userIdentifier}'."
                 });
 
-                throw;
+                User user = null;
+                var nativeResponseHandler = new NativeResponseHandler();
+                var userByMailResponse = new UserCollectionResponse();
+
+                try
+                {
+
+                    await _graphServiceClient.Users.GetAsync(requestConfiguration =>
+                    {
+                        requestConfiguration.QueryParameters.Filter = $"Mail eq '{userIdentifier}' or UserPrincipalName eq '{userIdentifier}' or id eq '{userIdentifier}'";
+                        requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                    });
+
+                    var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                    if (nativeResponse.IsSuccessStatusCode)
+                    {
+                        userByMailResponse = await DeserializeResponseAsync(nativeResponse, UserCollectionResponse.CreateFromDiscriminatorValue);
+
+                        if (userByMailResponse.Value.Count == 0)
+                        {
+                            await _loggingRepository.LogMessageAsync(new LogMessage
+                            {
+                                RunId = runId,
+                                Message = $"No user was found when checking for user with email {userIdentifier}."
+                            });
+
+                            return false;
+                        }
+
+                        user = userByMailResponse.Value[0];
+                        Guid.TryParse(user.Id, out userId);
+                    }
+                    else
+                    {
+                        throw new Exception($"Unable to verify user existence at this time.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = ex.GetBaseException().ToString(),
+                        RunId = runId
+                    });
+
+                    throw;
+                }
+            }
+            else
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = $"User identifier is already an object id: '{userId}'."
+                });
             }
 
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 RunId = runId,
-                Message = $"Checking if email is a member of the group {groupObjectId}."
+                Message = $"Checking if email recipient is a member of the group {groupObjectId}."
             });
 
-            return await IsGroupMemberAsync($"id eq '{user.Id}'", groupObjectId, runId);
+            return await IsGroupMemberAsync($"id eq '{userId}'", groupObjectId, runId);
         }
         private async Task<bool> IsGroupMemberAsync(string query, Guid groupObjectId, Guid? runId)
         {

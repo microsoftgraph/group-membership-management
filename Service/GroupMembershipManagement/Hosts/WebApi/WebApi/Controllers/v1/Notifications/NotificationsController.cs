@@ -2,14 +2,11 @@
 // Licensed under the MIT license.
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OData.Query;
 using Microsoft.Extensions.Options;
 using Microsoft.O365.ActionableMessages.Utilities;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using WebApi.Models;
 using WebApi.Models.Requests;
 
@@ -41,8 +38,8 @@ namespace WebApi.Controllers.v1.Notifications
         [Route("{id}/card")]
         public async Task<ActionResult<string>> GetCardAsync(Guid id)
         {
-            var userEmail = await GetUserEmail(); 
-            var response = await _notificationCardHandler.ExecuteAsync(new NotificationCardRequest(id, userEmail));
+            var userIdentification = await GetUserEmailOrObjectId(); 
+            var response = await _notificationCardHandler.ExecuteAsync(new NotificationCardRequest(id, userIdentification));
             Response.Headers["card-update-in-body"] = "true";
             return Content(response.CardJson, "application/json");
         }
@@ -51,13 +48,13 @@ namespace WebApi.Controllers.v1.Notifications
         [HttpPost()]
         public async Task<ActionResult<string>> ResolveNotificationAsync(Guid id, [FromBody] ResolveNotification model)
         {
-            var userEmail = await GetUserEmail();
-            var response = await _resolveNotificationHandler.ExecuteAsync(new ResolveNotificationRequest(id, userEmail, model.Resolution));
+            var userIdentification = await GetUserEmailOrObjectId();
+            var response = await _resolveNotificationHandler.ExecuteAsync(new ResolveNotificationRequest(id, userIdentification, model.Resolution));
             Response.Headers["card-update-in-body"] = "true";
             return Content(response.CardJson, "application/json");
         }
 
-        private async Task<string> GetUserEmail()
+        private async Task<string> GetUserEmailOrObjectId()
         {
             var bearerToken = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
             var currentSettings = _webApiSettings.Value;

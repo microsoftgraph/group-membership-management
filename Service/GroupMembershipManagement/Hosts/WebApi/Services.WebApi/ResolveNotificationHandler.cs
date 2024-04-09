@@ -42,24 +42,24 @@ namespace Services
         protected override async Task<ResolveNotificationResponse> ExecuteCoreAsync(ResolveNotificationRequest request)
         {
             var response = new ResolveNotificationResponse();
-            var thresholdNotification = await _notificationRepository.GetThresholdNotificationByIdAsync(request.Id);
+            var thresholdNotification = await _notificationRepository.GetThresholdNotificationByIdAsync(request.ThresholdNotificationId);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"ResolveNotificationHandler request: " +
-                $"Id: {request.Id}, UserEmail: {request.UserEmail}, TargetOfficeGroupId: {thresholdNotification?.TargetOfficeGroupId}"
+                $"ThresholdNotificationId: {request.ThresholdNotificationId}, UserIdentifier: {request.UserIdentifier}, TargetOfficeGroupId: {thresholdNotification?.TargetOfficeGroupId}"
             });
             if (thresholdNotification == null)
             {
-                response.CardJson = _thresholdNotificationService.CreateNotFoundNotificationCard(request.Id);
+                response.CardJson = _thresholdNotificationService.CreateNotFoundNotificationCard(request.ThresholdNotificationId);
                 return response;
             }
 
-            var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserEmail, thresholdNotification.TargetOfficeGroupId);
+            var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentifier, thresholdNotification.TargetOfficeGroupId);
             if (!isGroupOwner)
             {
                 // Check if user is in the list of GMM Admins
-                var isInAuthorizedGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(request.UserEmail, _gmmEmailReceivers.ActionableMessageViewerGroupId);
+                var isInAuthorizedGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(request.UserIdentifier, _gmmEmailReceivers.ActionableMessageViewerGroupId);
                 if (!isInAuthorizedGroup)
                 {
                     // Unauthorized
@@ -74,7 +74,7 @@ namespace Services
                 thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
                 thresholdNotification.CardState = ThresholdNotificationCardState.NoCard;
                 thresholdNotification.Resolution = resolution;
-                thresholdNotification.ResolvedByUPN = request.UserEmail;
+                thresholdNotification.ResolvedByUPN = request.UserIdentifier;
                 thresholdNotification.ResolvedTime = DateTime.UtcNow;
 
                 await handleSyncJobResolution(thresholdNotification);

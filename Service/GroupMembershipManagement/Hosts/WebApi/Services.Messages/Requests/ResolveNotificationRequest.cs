@@ -9,13 +9,13 @@ namespace Services.Messages.Requests
     {
         public ResolveNotificationRequest(Guid id, string? userEmail, string resolution)
         {
-            this.Id = id;
-            this.UserEmail = userEmail ?? string.Empty;
-            this.Resolution = resolution;
+            ThresholdNotificationId = id;
+            UserIdentifier = userEmail ?? string.Empty;
+            Resolution = resolution;
         }
 
-        public Guid Id { get; }
-        public string UserEmail { get; }
+        public Guid ThresholdNotificationId { get; }
+        public string UserIdentifier { get; }
         public string Resolution { get; }
     }
 }

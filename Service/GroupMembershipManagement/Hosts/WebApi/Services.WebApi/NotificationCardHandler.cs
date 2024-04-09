@@ -35,20 +35,20 @@ namespace Services.WebApi
         protected override async Task<NotificationCardResponse> ExecuteCoreAsync(NotificationCardRequest request)
         {
             var response = new NotificationCardResponse();
-            var notification = await _notificationRepository.GetThresholdNotificationByIdAsync(request.Id);
+            var notification = await _notificationRepository.GetThresholdNotificationByIdAsync(request.ThresholdNotificationId);
 
             if (notification == null)
             {
                 // Not Found
-                response.CardJson = _thresholdNotificationService.CreateNotFoundNotificationCard(request.Id);
+                response.CardJson = _thresholdNotificationService.CreateNotFoundNotificationCard(request.ThresholdNotificationId);
                 return response;
             }
 
-            var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserEmail, notification.TargetOfficeGroupId);
+            var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentifier, notification.TargetOfficeGroupId);
             if (!isGroupOwner)
             {
                 // Check if user is in the list of GMM Admins
-                var isInAuthorizedGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(request.UserEmail, _gmmEmailReceivers.ActionableMessageViewerGroupId);
+                var isInAuthorizedGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(request.UserIdentifier, _gmmEmailReceivers.ActionableMessageViewerGroupId);
                 if (!isInAuthorizedGroup)
                 {
                     // Unauthorized
