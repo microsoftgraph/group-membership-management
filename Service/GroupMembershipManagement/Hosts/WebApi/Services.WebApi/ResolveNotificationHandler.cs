@@ -70,11 +70,20 @@ namespace Services
 
             if (thresholdNotification.Status != ThresholdNotificationStatus.Resolved)
             {
+                var resolvedByMail = request.UserIdentifier;
+
+                Guid userId;
+                if(Guid.TryParse(resolvedByMail, out userId))
+                {
+                    var user = await _graphGroupRepository.GetUserByUpnOrIdAsync(userId.ToString(), true);
+                    resolvedByMail = user.Mail;
+                }
+
                 var resolution = Enum.Parse<ThresholdNotificationResolution>(request.Resolution);
                 thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
                 thresholdNotification.CardState = ThresholdNotificationCardState.NoCard;
                 thresholdNotification.Resolution = resolution;
-                thresholdNotification.ResolvedByUPN = request.UserIdentifier;
+                thresholdNotification.ResolvedByUPN = resolvedByMail;
                 thresholdNotification.ResolvedTime = DateTime.UtcNow;
 
                 await handleSyncJobResolution(thresholdNotification);

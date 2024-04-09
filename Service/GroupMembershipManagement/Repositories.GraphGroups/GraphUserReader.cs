@@ -47,14 +47,22 @@ namespace Repositories.GraphGroups
             return tenantUsers.ToList();
         }
 
-        public async Task<AzureADUser> GetUserByEmailAsync(string emailAddress, Guid? runId)
+        public async Task<AzureADUser> GetUserByUpnOrIdAsync(string userIdentifier, Guid? runId, bool includeMailProperty)
         {
             AzureADUser userDetails = null;
 
             try
             {
-                var user = await _graphServiceClient.Users[emailAddress].GetAsync();
-                if (user != null) userDetails = new AzureADUser { ObjectId = Guid.Parse(user.Id) };
+                var user = await _graphServiceClient.Users[userIdentifier].GetAsync();
+                if (user != null) userDetails = new AzureADUser
+                {
+                    ObjectId = Guid.Parse(user.Id)
+                };
+
+                if (includeMailProperty)
+                {
+                    userDetails.Mail = user.Mail;
+                }
             }
 
             catch (Exception exception)
@@ -62,7 +70,7 @@ namespace Repositories.GraphGroups
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     RunId = runId,
-                    Message = $"Exception: {exception}, FailedMethod: {nameof(GetUserByEmailAsync)}, UserEmail: {emailAddress}"
+                    Message = $"Exception: {exception}, FailedMethod: {nameof(GetUserByUpnOrIdAsync)}, UserIdentifier: {userIdentifier}"
                 });
             }
 

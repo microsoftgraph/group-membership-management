@@ -35,7 +35,7 @@ namespace Repositories.GraphGroups
             {
                 foreach (var room in roomsResponse.Value)
                 {
-                    var user = await _graphUserReader.GetUserByEmailAsync(room.EmailAddress, runId);
+                    var user = await _graphUserReader.GetUserByUpnOrIdAsync(room.EmailAddress, runId);
                     if (user != null) users.Add(user);
                 }
             }
@@ -51,7 +51,7 @@ namespace Repositories.GraphGroups
                     {
                         foreach (var room in roomsResponse.Value)
                         {
-                            var user = await _graphUserReader.GetUserByEmailAsync(room.EmailAddress, runId);
+                            var user = await _graphUserReader.GetUserByUpnOrIdAsync(room.EmailAddress, runId);
                             if (user != null) users.Add(user);
                         }
                     }
@@ -70,7 +70,7 @@ namespace Repositories.GraphGroups
             {
                 foreach (var room in response.Value)
                 {
-                    var user = await _graphUserReader.GetUserByEmailAsync(room.EmailAddress, runId);
+                    var user = await _graphUserReader.GetUserByUpnOrIdAsync(room.EmailAddress, runId);
                     if (user != null) users.Add(user);
                 }
             }
@@ -88,7 +88,7 @@ namespace Repositories.GraphGroups
                     {
                         foreach (var room in response.Value)
                         {
-                            var user = await _graphUserReader.GetUserByEmailAsync(room.EmailAddress, runId);
+                            var user = await _graphUserReader.GetUserByUpnOrIdAsync(room.EmailAddress, runId);
                             if (user != null) users.Add(user);
                         }
                     }

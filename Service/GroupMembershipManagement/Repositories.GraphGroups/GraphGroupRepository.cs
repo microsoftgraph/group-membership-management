@@ -157,9 +157,9 @@ namespace Repositories.GraphGroups
             return await _graphGroupMembershipReader.GetNextTransitiveMembersPageAsync(nextPageUrl, RunId);
         }
 
-        public async Task<AzureADUser> GetUserByEmailAsync(string emailAddress)
+        public async Task<AzureADUser> GetUserByUpnOrIdAsync(string userIdentifier, bool includeMailProperty = false)
         {
-            return await _graphUserReader.GetUserByEmailAsync(emailAddress, RunId);
+            return await _graphUserReader.GetUserByUpnOrIdAsync(userIdentifier, RunId, includeMailProperty);
         }
 
         public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)>
