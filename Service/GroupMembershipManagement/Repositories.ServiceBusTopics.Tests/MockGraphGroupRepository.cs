@@ -93,7 +93,7 @@ namespace Repositories.ServiceBusTopics.Tests
         {
             throw new NotImplementedException();
         }
-        public Task<AzureADUser> GetUserByEmailAsync(string emailAddress)
+        public Task<AzureADUser> GetUserByUpnOrIdAsync(string userIdentifier, bool includeMailProperty)
         {
             throw new NotImplementedException();
         }

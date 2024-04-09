@@ -101,7 +101,7 @@ namespace Tests.FunctionApps.Mocks
         {
             throw new NotImplementedException();
         }
-        public Task<AzureADUser> GetUserByEmailAsync(string emailAddress)
+        public Task<AzureADUser> GetUserByUpnOrIdAsync(string userIdentifier, bool includeMailProperty)
         {
             throw new NotImplementedException();
         }
@@ -178,7 +178,7 @@ namespace Tests.FunctionApps.Mocks
         {
             throw new NotImplementedException();
         }
-        
+
         public Task<List<AzureADGroup>> SearchDestinationsAsync(string query)
         {
             throw new NotImplementedException();

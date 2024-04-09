@@ -47,7 +47,7 @@ namespace Repositories.GraphGroups
             return tenantUsers.ToList();
         }
 
-        public async Task<AzureADUser> GetUserByUpnOrIdAsync(string userIdentifier, Guid? runId, bool includeMailProperty)
+        public async Task<AzureADUser> GetUserByUpnOrIdAsync(string userIdentifier, Guid? runId, bool includeMailProperty = false)
         {
             AzureADUser userDetails = null;
 
