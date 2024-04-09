@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Dropdown, IDropdownOption, ActionButton } from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Dropdown, IDropdownOption, ComboBox, ActionButton, IComboBoxOption, IComboBox } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import type {
@@ -34,7 +34,8 @@ export const HRFilterBase: React.FunctionComponent<HRFilterProps> = (props: HRFi
   const [selectedEqualityOperator, setSelectedEqualityOperator] = useState<IDropdownOption | undefined>();
   const [selectedAttributeValue, setSelectedAttributeValue] = useState<string>('');
   const [selectedOrAndOperator, setSelectedOrAndOperator] = useState<IDropdownOption | undefined>();
-  let options: IDropdownOption[] = [];
+  let options: IComboBoxOption[] = [];
+  const [filteredOptions, setFilteredOptions] = useState<IComboBoxOption[]>([]);
 
   const [dropdownValues, setDropdownValues] = useState({
     dropdownA: '',
@@ -53,9 +54,23 @@ export const HRFilterBase: React.FunctionComponent<HRFilterProps> = (props: HRFi
   ];
 
   const orAndOperatorOptions: IDropdownOption[] = [
-    { key: 'Or', text: 'Or' },
-    { key: 'And', text: 'And' }
+    { key: '', text: '' },
+    { key: 'Or', text: strings.or },
+    { key: 'And', text: strings.and }
   ];
+
+  useEffect(() => {
+    setSource(prevSource => {
+      let filter = source.filter;
+      const newSource = { ...prevSource, filter };
+      onSourceChange(newSource, partId);
+      return newSource;
+    });
+  }, [source.filter]);
+
+  useEffect(() => {
+    setSelectedOrAndOperator({key: '', text: ''});
+  }, [childFilters]);
 
   useEffect(() => {
    if (filter != undefined)
@@ -70,7 +85,14 @@ export const HRFilterBase: React.FunctionComponent<HRFilterProps> = (props: HRFi
     }
   }, [filter]);
 
-  const getOptions = (attributes: SqlMembershipAttribute[]): IDropdownOption[] => {
+  useEffect(() => {
+    if (attributes.length > 0) {
+      const newOptions = getOptions(attributes);
+      setFilteredOptions(newOptions);
+    }
+  }, [attributes]);
+
+  const getOptions = (attributes: SqlMembershipAttribute[]): IComboBoxOption[] => {
     options = attributes?.map((attribute, index) => ({
       key: attribute.name,
       text: attribute.name,
@@ -82,7 +104,18 @@ export const HRFilterBase: React.FunctionComponent<HRFilterProps> = (props: HRFi
     onRemove();
   };
 
-  const handleAttributeChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
+  const onInputValueChange = (text: string) => {
+    if (!text) {
+      setFilteredOptions(getOptions(attributes));
+      return;
+    }
+
+    let options = getOptions(attributes);
+    const filtered = options.filter(opt => opt.text.toLowerCase().startsWith(text.toLowerCase()));
+    setFilteredOptions(filtered);
+  };
+
+  const handleAttributeChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption): void => {
     setSelectedAttribute(item);
     setDropdownValues({
       dropdownA: "",
@@ -257,16 +290,20 @@ export const HRFilterBase: React.FunctionComponent<HRFilterProps> = (props: HRFi
       <Stack.Item align="start">
         <div>
           <div className={classNames.labelContainer}>
-            <Label>Attribute</Label>
-            <TooltipHost content={strings.HROnboarding.orgLeaderInfo} id="toolTipOrgLeaderId" calloutProps={{ gapSpace: 0 }}>
-              <IconButton title={strings.HROnboarding.orgLeaderInfo} iconProps={{ iconName: "Info" }} aria-describedby="toolTipOrgLeaderId" />
+          <Label>{strings.HROnboarding.attribute}</Label>
+            <TooltipHost content={strings.HROnboarding.attributeInfo} id="toolTipOrgLeaderId" calloutProps={{ gapSpace: 0 }}>
+              <IconButton title={strings.HROnboarding.attributeInfo} iconProps={{ iconName: "Info" }} aria-describedby="toolTipOrgLeaderId" />
             </TooltipHost>
           </div>
-          <Dropdown
-            selectedKey={dropdownValues.dropdownA !== "" ? dropdownValues.dropdownA : selectedAttribute?.key}
+          <ComboBox
+            selectedKey={dropdownValues.dropdownA ?? selectedAttribute?.key}
+            options={filteredOptions}
+            onInputValueChange={onInputValueChange}
             onChange={handleAttributeChange}
-            options={attributes.length > 0 ? getOptions(attributes) : []}
-            styles={{root: classNames.root, title: classNames.dropdownTitle}}
+            styles={{root: classNames.comboBoxTitle, rootHovered: classNames.comboBoxHover}}
+            allowFreeInput
+            autoComplete="off"
+            useComboBoxAsMenuWidth={true}
           />
         </div>
       </Stack.Item>
@@ -274,13 +311,13 @@ export const HRFilterBase: React.FunctionComponent<HRFilterProps> = (props: HRFi
       <Stack.Item align="start">
         <div>
            <div className={classNames.labelContainer}>
-            <Label>Equality operator</Label>
-            <TooltipHost content={strings.HROnboarding.depthInfo} id="toolTipDepthId" calloutProps={{ gapSpace: 0 }}>
-              <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipDepthId" />
+           <Label>{strings.HROnboarding.equalityOperator}</Label>
+            <TooltipHost content={strings.HROnboarding.equalityOperatorInfo} id="toolTipDepthId" calloutProps={{ gapSpace: 0 }}>
+              <IconButton title={strings.HROnboarding.equalityOperatorInfo} iconProps={{ iconName: "Info" }} aria-describedby="toolTipDepthId" />
             </TooltipHost>
           </div>
           <Dropdown
-            selectedKey={dropdownValues.dropdownB !== "" ? dropdownValues.dropdownB : selectedEqualityOperator?.key}
+            selectedKey={dropdownValues.dropdownB ?? selectedEqualityOperator?.key}
             onChange={handleEqualityOperatorChange}
             options={equalityOperatorOptions}
             styles={{root: classNames.root, title: classNames.dropdownTitle}}
@@ -291,9 +328,9 @@ export const HRFilterBase: React.FunctionComponent<HRFilterProps> = (props: HRFi
       <Stack.Item align="start">
         <div>
            <div className={classNames.labelContainer}>
-            <Label>Value</Label>
-            <TooltipHost content={strings.HROnboarding.depthInfo} id="toolTipDepthId" calloutProps={{ gapSpace: 0 }}>
-              <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipDepthId" />
+           <Label>{strings.HROnboarding.attributeValue}</Label>
+            <TooltipHost content={strings.HROnboarding.attributeValueInfo} id="toolTipDepthId" calloutProps={{ gapSpace: 0 }}>
+              <IconButton title={strings.HROnboarding.attributeValueInfo} iconProps={{ iconName: "Info" }} aria-describedby="toolTipDepthId" />
             </TooltipHost>
           </div>
           <TextField
@@ -310,13 +347,13 @@ export const HRFilterBase: React.FunctionComponent<HRFilterProps> = (props: HRFi
       <Stack.Item align="start">
         <div>
            <div className={classNames.labelContainer}>
-            <Label>And/Or</Label>
-            <TooltipHost content={strings.HROnboarding.depthInfo} id="toolTipDepthId" calloutProps={{ gapSpace: 0 }}>
-              <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipDepthId" />
+            <Label>{strings.HROnboarding.orAndOperator}</Label>
+            <TooltipHost content={strings.HROnboarding.orAndOperatorInfo} id="toolTipDepthId" calloutProps={{ gapSpace: 0 }}>
+              <IconButton title={strings.HROnboarding.orAndOperatorInfo} iconProps={{ iconName: "Info" }} aria-describedby="toolTipDepthId" />
             </TooltipHost>
           </div>
           <Dropdown
-            selectedKey={dropdownValues.dropdownD !== "" ? dropdownValues.dropdownD : selectedOrAndOperator?.key}
+            selectedKey={dropdownValues.dropdownD ?? selectedOrAndOperator?.key}
             onChange={handleOrAndOperatorChange}
             options={orAndOperatorOptions}
             styles={{root: classNames.root, title: classNames.dropdownTitle}}
@@ -325,9 +362,9 @@ export const HRFilterBase: React.FunctionComponent<HRFilterProps> = (props: HRFi
       </Stack.Item>
 
       <Stack.Item align="start">
-          <ActionButton iconProps={{ iconName: "Blocked2" }} onClick={() => removeComponent(key)}>
-            Remove
-          </ActionButton>
+        <ActionButton className={classNames.removeButton} iconProps={{ iconName: "Blocked2" }} onClick={() => removeComponent(key)}>
+        {strings.remove}
+        </ActionButton>
       </Stack.Item>
       </Stack>
 

@@ -39,27 +39,37 @@ export const getStyles = (props: HRFilterStyleProps): HRFilterStyles => {
       borderStyle: 'solid',
       borderWidth: 1,
       borderColor: theme.palette.neutralQuaternary,
-      minWidth: 200
+      minWidth: 250
     },
     textFieldGroup: {
       border: 'none'
+    },
+    removeButton: {
+      marginLeft: 'auto',
+      color: theme.semanticColors.primaryButtonBackground,
+      borderColor: theme.semanticColors.primaryButtonBackground,
+      borderRadius: 4,
+      border: 'none',
+      marginTop: '25px'
     },
     dropdownTitle: {
       borderRadius: 4,
       borderStyle: 'solid',
       borderWidth: 1,
       borderColor: theme.palette.neutralQuaternary,
-      minWidth: 200
+      minWidth: 250
     },
-    spinButton: {
+    comboBoxHover: {      
       '&:after': {
         borderColor: theme.palette.neutralQuaternary
-      },
-      selectors: {
-        [`@media (max-width: 600px)`]: {
-          width: 10
-        }
       }
+    },
+    comboBoxTitle: {
+      borderRadius: 4,
+      borderStyle: 'solid',
+      borderWidth: 1,
+      border: 'none',
+      minWidth: 250
     },
     error: {
       fontWeight: 400,

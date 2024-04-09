@@ -34,6 +34,16 @@ export const strings: IStrings = {
     includeOrg: "¿Quiere que esta fuente se base en la estructura de la organización?",
     includeFilter: "¿Quieres filtrar por propiedades?",
     includeLeader: "incluir líder",
+    addAttribute: "Agregar atributo",
+    attribute: "Seleccione el atributo",
+    equalityOperator: "Seleccione el operador de igualdad",
+    attributeValue: "Seleccione el operador de igualdad",
+    orAndOperator: "Seleccione And/Or",
+    attributeInfo: "Seleccione el atributo",
+    equalityOperatorInfo: "Seleccione el operador de igualdad",
+    attributeValueInfo: "Seleccione el operador de igualdad",
+    orAndOperatorInfo: "Seleccione Y/O",
+    missingAttributeErrorMessage: "Proporcione la información que falta en el atributo anterior",
     orgLeaderMissingErrorMessage: "Este usuario no existe en la fuente de datos de RR.HH.",
     invalidInputErrorMessage: "Entrada inválida. Por favor ingrese solo números."
   },
@@ -315,6 +325,7 @@ export const strings: IStrings = {
       clickHere: 'Haz click aquí',
     }
   },
+  remove: 'Eliminar',
   delete: 'Eliminar',
   edit: 'Editar',
   submit: 'Enviar',
@@ -330,5 +341,7 @@ export const strings: IStrings = {
   version: 'Versión',
   yes: 'Sí',
   no: 'No',
+  or: 'O',
+  and: 'Y',
   privacyPolicy: 'Política de Privacidad',
 };

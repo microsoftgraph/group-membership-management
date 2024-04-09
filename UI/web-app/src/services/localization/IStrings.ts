@@ -30,6 +30,16 @@ export type IStrings = {
     includeOrg: string;
     includeFilter: string;
     includeLeader: string;
+    addAttribute: string;
+    attribute: string;
+    equalityOperator: string;
+    attributeValue: string;
+    orAndOperator: string;
+    attributeInfo: string;
+    equalityOperatorInfo: string;
+    attributeValueInfo: string;
+    orAndOperatorInfo: string;
+    missingAttributeErrorMessage: string;
     orgLeaderMissingErrorMessage: string;
     invalidInputErrorMessage: string;
   },
@@ -306,6 +316,7 @@ export type IStrings = {
       clickHere: string;
     }
   };
+  remove: string;
   delete: string;
   edit: string;
   submit: string;
@@ -321,5 +332,7 @@ export type IStrings = {
   version: string;
   yes: string;
   no: string;
+  or: string;
+  and: string;
   privacyPolicy: string;
 };

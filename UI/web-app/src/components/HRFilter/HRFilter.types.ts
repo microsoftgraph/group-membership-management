@@ -10,11 +10,13 @@ export type HRFilterStyles = {
   root: IStyle;
   textFieldGroup: IStyle;
   textField: IStyle;
-  spinButton: IStyle;
   labelContainer: IStyle;
   dropdownTitle: IStyle;
+  comboBoxHover: IStyle;
+  comboBoxTitle: IStyle;
   horizontalChoiceGroup: IStyle;
   horizontalChoiceGroupContainer: IStyle;
+  removeButton: IStyle;
   error: IStyle;
 };
 

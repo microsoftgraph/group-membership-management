@@ -33,6 +33,16 @@ export const strings: IStrings = {
     includeOrg: "Do you want this source to be based on organization structure?",
     includeFilter: "Do you want to filter by properties?",
     includeLeader: "Include leader",
+    addAttribute: "Add attribute",
+    attribute: "Attribute",
+    equalityOperator: "Equality operator",
+    attributeValue: "Value",
+    orAndOperator: "And/Or",
+    attributeInfo: "Select the attribute",
+    equalityOperatorInfo: "Select the equality operator",
+    attributeValueInfo: "Select the attribute value",
+    orAndOperatorInfo: "Select And/Or",
+    missingAttributeErrorMessage: "Please provide missing info in the previous attribute",
     orgLeaderMissingErrorMessage: "This user doesn't exist in the HR Data source",
     invalidInputErrorMessage: "Invalid input. Please enter only numbers."
   },
@@ -311,6 +321,7 @@ export const strings: IStrings = {
       clickHere: 'Click here',
     }
   },
+  remove: 'Remove',
   delete: 'Delete',
   edit: 'Edit',
   submit: 'Submit',
@@ -326,5 +337,7 @@ export const strings: IStrings = {
   version: 'Version',
   yes: 'Yes',
   no: 'No',
+  or: 'Or',
+  and: 'And',
   privacyPolicy: 'Privacy Policy',
 };
