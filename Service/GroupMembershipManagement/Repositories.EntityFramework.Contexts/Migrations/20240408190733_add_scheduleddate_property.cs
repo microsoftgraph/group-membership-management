@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -19,7 +19,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                 table: "SyncJobs",
                 type: "datetime2",
                 nullable: false,
-                defaultValue: new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+                defaultValue: new DateTime(1601, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc));
 
             migrationBuilder.CreateTable(
                 name: "SyncJobChanges",
