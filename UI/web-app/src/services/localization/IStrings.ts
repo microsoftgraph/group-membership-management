@@ -343,4 +343,7 @@ export type IStrings = {
   or: string;
   and: string;
   privacyPolicy: string;
+  hoursAgo: string;
+  hoursLeft: string;
+  pendingInitialSync: string;
 };

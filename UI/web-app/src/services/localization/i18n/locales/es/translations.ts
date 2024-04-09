@@ -352,4 +352,7 @@ export const strings: IStrings = {
   or: 'O',
   and: 'Y',
   privacyPolicy: 'Política de Privacidad',
+  hoursAgo: 'horas atrás',
+  hoursLeft: 'horas restantes',
+  pendingInitialSync: 'En espera de correr el primer sync',
 };

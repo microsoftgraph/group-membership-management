@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import moment from 'moment';
 import { SyncStatus, ActionRequired } from '../models/Status';
 import { type Job } from '../models/Job';
 import { ThunkConfig } from './store';
@@ -13,6 +12,7 @@ import {
   PagingOptions,
   PeoplePickerPersona
 } from '../models';
+import { formatLastRunTime, formatNextRunTime } from '../utils/dateUtils';
 
 export interface JobsResponse {
   jobs: Job[];
@@ -28,37 +28,10 @@ export const fetchJobs = createAsyncThunk<Page<Job>, PagingOptions | undefined, 
       const jobsPage = await gmmApi.jobs.getAllJobs(pagingOptions);
 
       const mapped = jobsPage.items.map((index) => {
-        const currentTime = moment.utc();
-        var lastRunTime = moment.utc(index['lastSuccessfulRunTime']);
-        var hoursAgo = currentTime.diff(lastRunTime, 'hours');
-        index['lastSuccessfulRunTime'] =
-          hoursAgo > index['period']
-            ? moment.utc(index['lastSuccessfulRunTime']).local().format('MM/DD/YYYY') +
-              ' >' +
-              index['period'] +
-              ' hrs ago'
-            : moment.utc(index['lastSuccessfulRunTime']).local().format('MM/DD/YYYY') +
-              ' ' +
-              hoursAgo.toString() +
-              ' hrs ago';
-
-        var nextRunTime = moment.utc(index['estimatedNextRunTime']);
-        var isPast = nextRunTime.isBefore(moment.utc()); // Check if nextRunTime is in the past
-        var hoursLeft = isPast ? 0 : Math.abs(currentTime.diff(nextRunTime, 'hours'));
-
-        index['estimatedNextRunTime'] =
-          hoursAgo > index['period'] || index['status'] === SyncStatus.CustomerPaused
-            ? ''
-            : isPast || hoursLeft === 0
-              ? 'in < 1 hr'
-              : moment.utc(index['estimatedNextRunTime']).local().format('MM/DD/YYYY') +
-                ' in ' +
-                hoursLeft.toString() +
-                ' hrs';
-
         index['enabledOrNot'] =
-          index['status'] === SyncStatus.Idle || index['status'] === SyncStatus.InProgress ? true : false;
-
+        index['status'] === SyncStatus.Idle || index['status'] === SyncStatus.InProgress ? true : false;
+        index['lastSuccessfulRunTime'] = formatLastRunTime(index['lastSuccessfulRunTime'], index['period']).join(' ');
+        index['estimatedNextRunTime'] = formatNextRunTime(index['estimatedNextRunTime'], index['period'], index['enabledOrNot']).join(' ');
         index['arrow'] = '';
 
         return index;
