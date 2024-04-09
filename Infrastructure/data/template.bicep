@@ -612,6 +612,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         name: 'graphUserAssignedManagedIdentityName'
         value: graphUserAssignedManagedIdentityName
       }
+      {
+        name: 'graphUserAssignedManagedIdentityClientId'
+        value: graphUserAssignedManagedIdentity.outputs.clientId
+      }
     ]
   }
   dependsOn: [
@@ -621,6 +625,7 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
     serviceBusTemplate
     logAnalyticsTemplate
     appInsightsTemplate
+    graphUserAssignedManagedIdentity
   ]
 }
 

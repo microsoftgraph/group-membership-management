@@ -8,3 +8,5 @@ resource userAssignedManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIden
   name: identityName
   location: location
 }
+
+output clientId string = userAssignedManagedIdentity.properties.clientId
