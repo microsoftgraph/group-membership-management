@@ -30,8 +30,7 @@ namespace Services
 
             if (_jobSchedulerConfig.GetRunTimeFromLogs)
             {
-                var metricToUse = _jobSchedulerConfig.RunTimeMetric?.Equals("avg", StringComparison.InvariantCultureIgnoreCase) ?? false
-                                  ? "AvgProcessingTime" : "MaxProcessingTime";
+                var metricToUse = _jobSchedulerConfig.RunTimeMetric ?? "MedianProcessingTime";
 
                 var queryResults = await _logsQueryClient.QueryWorkspaceAsync(
                                                     _jobSchedulerConfig.WorkspaceId,
