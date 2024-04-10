@@ -154,6 +154,14 @@
     },
     "tenantDomain": {
       "value": "m365x00000000.onmicrosoft.com"
+    },
+    "appConfigurationDataOwners": {
+      "value": [
+        {
+          "principalId": "<guid>",
+          "principalType": "Device|ForeignGroup|Group|ServicePrincipal|User"
+        }
+      ]
     }
   }
 }
