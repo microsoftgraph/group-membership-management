@@ -8,6 +8,9 @@ param keyVaultReaders array
 param isManagedApplication bool = false
 param managedResourceGroupName string = '${solutionAbbreviation}-mrg-${environmentAbbreviation}'
 param appConfigurationName string = '${solutionAbbreviation}-appConfig-${environmentAbbreviation}'
+param appConfigurationDataOwners array
+@description('Must be tre for the initial deployment')
+param grantappConfigurationDataOwnersPermission bool = true
 
 // prereqs parameters
 // parameters for prereqs key vault
@@ -69,6 +72,8 @@ module gmmResourceGroups 'resourceGroups.bicep' = {
     prereqsResourceGroupName: prereqsResourceGroupName
     dataResourceGroupName: dataResourceGroupName
     computeResourceGroupName: computeResourceGroupName
+    appConfigurationDataOwners: appConfigurationDataOwners
+    grantappConfigurationDataOwnersPermission: grantappConfigurationDataOwnersPermission
   }
 }
 
