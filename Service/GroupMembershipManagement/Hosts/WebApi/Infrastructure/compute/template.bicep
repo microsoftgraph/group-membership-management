@@ -76,6 +76,7 @@ var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataRe
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var sqlServerBasicConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'sqlServerBasicConnectionString')
+var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   scope: resourceGroup(dataResourceGroup)
@@ -182,6 +183,10 @@ var appSettings = [
   {
     name: 'ADF:ResourceGroup'
     value: dataResourceGroup
+  }
+  {
+    name: 'Settings:GraphUserAssignedManagedIdentityClientId'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
   }
 ]
 
