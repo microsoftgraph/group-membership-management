@@ -367,10 +367,10 @@ namespace Services.Tests
         }
 
         /// <summary>
-        /// /notifications/{id}/card - Get card for a notification that no longer exists
+        /// /notifications/{id}/card - Get unauthorized card for a notification with a user who is not an owner nor in the actionable message viewer group
         /// </summary>
         [TestMethod]
-        public async Task GetNotificationCard_HandleUserNotGroupOwnerTestAsync()
+        public async Task GetNotificationCard_HandleUserNotGroupOwnerOrInViewerGroupTestAsync()
         {
             var claims = new List<Claim>
             {
@@ -386,6 +386,35 @@ namespace Services.Tests
             Assert.IsNotNull(result?.Content);
             Assert.AreEqual("application/json", result.ContentType);
             ValidateUnauthorizedCard(result.Content);
+        }
+
+        /// <summary>
+        /// /notifications/{id}/card - Get valid card for a notification with a user who is not an owner but is in the actionable message viewer group
+        /// </summary>
+        [TestMethod]
+        public async Task GetNotificationCard_HandleUserNotGroupOwnerButInViewerGroupTestAsync()
+        {
+            var userObjectId = Guid.NewGuid().ToString();
+
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(
+                It.Is<string>(s => s == userObjectId), It.IsAny<Guid>()))
+                .ReturnsAsync(true);
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Upn, userObjectId),
+            };
+
+            _tokenValidationResult.ActionPerformer = userObjectId;
+            _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
+
+            var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
+            var result = response.Result as ContentResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result?.Content);
+            Assert.AreEqual("application/json", result.ContentType);
+            ValidateUnresolvedCard(result.Content);
         }
 
         /// <summary>
