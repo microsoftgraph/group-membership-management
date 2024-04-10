@@ -63,7 +63,11 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
       <div className={classNames.root}>
         <AppHeader />
         <div className={classNames.content}>
+          {isJobCreator ?
             <Outlet />
+            : <div className={classNames.permissionDenied}>
+            <Text>{strings.permissionDenied}</Text>
+        </div>}
         </div>
         <AppFooter />
       </div>

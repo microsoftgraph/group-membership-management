@@ -149,6 +149,8 @@ export const strings: IStrings = {
       reject: 'Reject',
       submissionRejected: 'Submission Rejected',
       removeGMM: 'Remove GMM Management',
+      removeGMMWarning: 'Are you sure you want to remove GMM management from this group? You will need to remove GMM as a group owner from the group manually in Azure AD. Link opens in new tab.',
+      removeGMMConfirmation: 'Yes, remove GMM management',
     },
     descriptions: {
       lastModifiedby: 'User who made the last change to this job.',
@@ -173,6 +175,7 @@ export const strings: IStrings = {
       jobInProgress: 'Job is in progress. Please try again later.',
       notGroupOwner: 'You are not an owner of this group.',
       internalError: 'We can\'t process your request at this time. Please try again later',
+      removeGMMError: 'Error removing GMM management from this group:',
     },
     openInAzure: 'Open in Azure',
     viewDetails: 'View Details',

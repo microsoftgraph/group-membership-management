@@ -13,7 +13,10 @@ import {
   ActionButton,
   DefaultButton,
   PrimaryButton,
-  Icon
+  Icon,
+  Dialog,
+  DialogType,
+  DialogFooter
 } from '@fluentui/react';
 
 import {
@@ -27,13 +30,14 @@ import { InfoLabel } from '../../components/InfoLabel';
 import { PageHeader } from '../../components/PageHeader';
 import { type Job } from '../../models/Job';
 import { type AppDispatch } from '../../store';
-import { fetchJobDetails, patchJobDetails } from '../../store/jobDetails.api';
+import { fetchJobDetails, patchJobDetails, removeGMM } from '../../store/jobDetails.api';
 import {
   selectSelectedJobDetails,
   setGetJobDetailsError,
   selectGetJobDetailsError,
   selectPatchJobDetailsResponse,
-  selectPatchJobDetailsError
+  selectPatchJobDetailsError,
+  selectRemoveGMMError
 } from '../../store/jobs.slice';
 
 import { ContentContainer } from '../../components/ContentContainer/ContentContainer'
@@ -51,6 +55,7 @@ import { setPagingBarVisible } from '../../store/pagingBar.slice';
 import { selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { SyncStatus } from '../../models';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
+import { fetchJobs } from '../../store/jobs.api';
 
 
 export interface IContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
@@ -83,6 +88,9 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const dispatch = useDispatch<AppDispatch>();
   const jobDetails = useSelector(selectSelectedJobDetails);
   const error = useSelector(selectGetJobDetailsError);
+  const [showRemoveGMMDialog, setShowRemoveGMMDialog] = useState(false);
+  const [showRemoveGMMError, setShowRemoveGMMError] = useState(false);
+  const removeGMMError = useSelector(selectRemoveGMMError);
 
   const OpenInNewWindowIcon: IIconProps = { iconName: 'OpenInNewWindow' };
 
@@ -97,6 +105,27 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   const openMembershipConfiguration = (): void => {
     navigate('/ManageMembership', { state: { currentStep: OnboardingSteps.MembershipConfiguration, jobId: job.syncJobId } });
+  };
+
+  const onRemoveGMMButtonClick = (): void => {
+    setShowRemoveGMMDialog(true);
+  };
+
+  const onDialogClose = () => {
+    setShowRemoveGMMDialog(false);
+  };
+
+  const onConfirmRemove = async () => {
+    try {
+      var url = `https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/${job.targetGroupId}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      await dispatch(removeGMM({ syncJobId: job.syncJobId }));
+      await dispatch(fetchJobs());
+      navigate('/');
+    } catch (error) {
+      setShowRemoveGMMError(true);
+      throw new Error (`Failed to remove GMM: ${error}`);
+    }
   };
 
   useEffect(() => {
@@ -123,6 +152,18 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
             }
           >
             {error}
+          </MessageBar>
+        )}
+        {showRemoveGMMError && (
+          <MessageBar
+            messageBarType={MessageBarType.error}
+            isMultiline={false}
+            onDismiss={() => setShowRemoveGMMError(false)}
+            dismissButtonAriaLabel={
+              strings.JobDetails.MessageBar.dismissButtonAriaLabel as string
+            }
+          >
+            {strings.JobDetails.Errors.removeGMMError} {removeGMMError}
           </MessageBar>
         )}
       </div>
@@ -161,11 +202,27 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
           <ActionButton
             iconProps={{ iconName: 'Delete' }}
             title={strings.JobDetails.labels.removeGMM}
-            ariaLabel={strings.JobDetails.labels.removeGMM}>
+            ariaLabel={strings.JobDetails.labels.removeGMM}
+            onClick={onRemoveGMMButtonClick}>
             {strings.JobDetails.labels.removeGMM}
           </ActionButton>
         </div>
       </div>
+      <Dialog
+        hidden={!showRemoveGMMDialog}
+        onDismiss={onDialogClose}
+        dialogContentProps={{
+          type: DialogType.normal,
+          title: strings.JobDetails.labels.removeGMM,
+          subText: strings.JobDetails.labels.removeGMMWarning
+        }}
+        modalProps={{ isBlocking: true}}
+      >
+        <DialogFooter>
+          <PrimaryButton onClick={onConfirmRemove} text={strings.JobDetails.labels.removeGMMConfirmation} />
+          <DefaultButton onClick={onDialogClose} text={strings.cancel} />
+        </DialogFooter>
+      </Dialog>
     </Page >
   );
 };

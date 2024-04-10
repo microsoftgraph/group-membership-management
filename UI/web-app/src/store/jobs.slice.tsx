@@ -3,7 +3,7 @@
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-import { fetchJobDetails, patchJobDetails } from './jobDetails.api';
+import { fetchJobDetails, patchJobDetails, removeGMM } from './jobDetails.api';
 import { fetchJobs, postJob, getJobOwnerFilterSuggestions } from './jobs.api';
 import type { RootState } from './store';
 import { type Job } from '../models/Job';
@@ -25,6 +25,9 @@ export interface JobsState {
   postJobLoading: boolean;
   postJobError: string | undefined;
   jobOwnerFilterSuggestions?: PeoplePickerPersona[];
+  removeGMMLoading: boolean;
+  removeGMMResponse: PatchJobResponse | undefined;
+  removeGMMError: string | undefined;
 }
 
 // Define the initial state using that type
@@ -39,7 +42,10 @@ const initialState: JobsState = {
   patchJobDetailsError: undefined,
   postJobLoading: false,
   postJobError: undefined,
-  jobOwnerFilterSuggestions: []
+  jobOwnerFilterSuggestions: [],
+  removeGMMLoading: false,
+  removeGMMResponse: undefined,
+  removeGMMError: undefined,
 };
 
 export const jobsSlice = createSlice({
@@ -112,6 +118,21 @@ export const jobsSlice = createSlice({
     builder.addCase(getJobOwnerFilterSuggestions.fulfilled, (state, {payload}: PayloadAction<PeoplePickerPersona[]>) => {
       state.jobOwnerFilterSuggestions = payload;
     });
+
+    // removeGMM
+    builder.addCase(removeGMM.pending, (state) => {
+      state.removeGMMLoading = true;
+      state.removeGMMResponse = undefined;
+      state.removeGMMError = undefined;
+    });
+    builder.addCase(removeGMM.fulfilled, (state, action) => {
+      state.removeGMMLoading = false;
+      state.removeGMMResponse = action.payload;
+    });
+    builder.addCase(removeGMM.rejected, (state, action) => {
+      state.removeGMMLoading = false;
+      state.removeGMMError = action.error.message;
+    });
   }
 });
 
@@ -140,5 +161,9 @@ export const selectPatchJobDetailsError = (state: RootState) => state.jobs.patch
 export const selectPostJobLoading = (state: RootState) => state.jobs.postJobLoading;
 export const selectPostJobError = (state: RootState) => state.jobs.postJobError;
 export const selectJobOwnerFilterSuggestions = (state: RootState) => state.jobs.jobOwnerFilterSuggestions;
+
+export const selectRemoveGMMLoading = (state: RootState) => state.jobs.removeGMMLoading;
+export const selectRemoveGMMResponse = (state: RootState) => state.jobs.removeGMMResponse;
+export const selectRemoveGMMError = (state: RootState) => state.jobs.removeGMMError;
 
 export default jobsSlice.reducer;

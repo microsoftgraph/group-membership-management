@@ -151,6 +151,8 @@ export const strings: IStrings = {
       reject: 'Rechazar',
       submissionRejected: 'Solicitud rechazada',
       removeGMM: 'Dejar de administrar con GMM',
+      removeGMMWarning: '¿Estás seguro de que deseas dejar de administrar este grupo con GMM? Deberás eliminar manualmente a GMM de los dueños del grupo. Liga se abrirá en una nueva pestaña.',
+      removeGMMConfirmation: 'Sí, dejar de administrar',
     },
     descriptions: {
       lastModifiedby: 'Usuario quien hizo el último cambio a este grupo.',
@@ -175,7 +177,8 @@ export const strings: IStrings = {
     Errors:{
       jobInProgress: 'La sincronización está en progreso. Por favor intente más tarde.',
       notGroupOwner: 'No eres propietario de este grupo.',
-      internalError: 'No podemos procesar su solicitud en este momento. Por favor, inténtelo de nuevo más tarde.'
+      internalError: 'No podemos procesar su solicitud en este momento. Por favor, inténtelo de nuevo más tarde.',
+      removeGMMError: 'Error al dejar de administrar con GMM.',
     },
     openInAzure: 'Abrir en Azure',
     viewDetails: 'Ver Detalles',

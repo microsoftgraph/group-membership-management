@@ -146,6 +146,8 @@ export type IStrings = {
       reject: string;
       submissionRejected: string;
       removeGMM: string;
+      removeGMMWarning: string;
+      removeGMMConfirmation: string;
     };
     descriptions: {
       lastModifiedby: string;
@@ -168,6 +170,7 @@ export type IStrings = {
       jobInProgress: string;
       notGroupOwner: string;
       internalError: string;
+      removeGMMError: string;
     }
     openInAzure: string;
     viewDetails: string;

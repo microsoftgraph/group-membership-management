@@ -107,3 +107,51 @@ export const patchJobDetails = createAsyncThunk<
     throw new Error('InternalError');
   }
 });
+
+export const removeGMM = createAsyncThunk<
+  PatchJobResponse,
+  { syncJobId: string },
+  ThunkConfig
+>('jobs/removeGMM', async ({ syncJobId }, { extra }) => {
+  const { authenticationService } = extra.services;
+  const token = await authenticationService.getTokenAsync(TokenType.GMM);
+  const headers = new Headers({
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  });
+
+
+  const options = {
+    method: 'POST',
+    headers
+  };
+
+  try {
+    const response = await fetch(`${config.removeGMM(syncJobId)}`, options);
+    if (response.ok) {
+      return {
+        ok: response.ok,
+        statusCode: response.status
+      };
+    } else {
+      const errorResponse = await response.json();
+      let patchResponse: PatchJobResponse = {
+        ok: errorResponse.ok,
+        statusCode: errorResponse.status,
+        errorCode: errorResponse?.detail,
+        responseData: errorResponse?.responseData,
+      };
+
+      if (errorResponse.status === 403) {
+        patchResponse.errorCode = 'NotGroupOwner';
+      } else if (errorResponse.status === 500) {
+        patchResponse.errorCode = 'InternalError';
+      }
+
+      return patchResponse;
+    }
+  } catch (error) {
+    throw new Error(`Failed to remove GMM: ${error}`);
+  }
+});
+

@@ -17,12 +17,15 @@ namespace WebApi.Controllers.v1.Jobs
     public class JobDetailsController : ControllerBase
     {
         private readonly IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> _getJobDetailsRequestHandler;
+        private readonly IRequestHandler<RemoveGMMRequest, RemoveGMMResponse> _removeGMMRequestHandler;
         private readonly IRequestHandler<PatchJobRequest, PatchJobResponse> _patchJobRequestHandler;
 
         public JobDetailsController(IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> getJobsRequestHandler,
+                                    IRequestHandler<RemoveGMMRequest, RemoveGMMResponse> removeGMMRequestHandler,
                                     IRequestHandler<PatchJobRequest, PatchJobResponse> patchJobRequestHandler)
         {
             _getJobDetailsRequestHandler = getJobsRequestHandler ?? throw new ArgumentNullException(nameof(getJobsRequestHandler));
+            _removeGMMRequestHandler = removeGMMRequestHandler ?? throw new ArgumentNullException(nameof(removeGMMRequestHandler));
             _patchJobRequestHandler = patchJobRequestHandler;
         }
 
@@ -61,6 +64,40 @@ namespace WebApi.Controllers.v1.Jobs
                 var isAllowed = User.IsInRole(Models.Roles.JOB_TENANT_WRITER) || User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
             
                 var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchDocument));
+
+                return response.StatusCode switch
+                {
+                    System.Net.HttpStatusCode.OK => Ok(),
+                    System.Net.HttpStatusCode.NotFound => NotFound(),
+                    System.Net.HttpStatusCode.BadRequest => BadRequest(response.ErrorCode),
+                    System.Net.HttpStatusCode.Forbidden => Forbid(),
+                    System.Net.HttpStatusCode.PreconditionFailed => Problem(statusCode: (int)System.Net.HttpStatusCode.PreconditionFailed, detail: response.ErrorCode),
+                    _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
+                };
+            }
+            catch (Exception ex)
+            {
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: ${ex}");
+            }
+        }
+
+        [Authorize(Roles = Models.Roles.JOB_TENANT_WRITER + "," + Models.Roles.JOB_CREATOR)]
+        [HttpPost("{syncJobId}/removeGMM")]
+        public async Task<ActionResult> RemoveGMMAsync(Guid syncJobId)
+        {
+            try
+            {
+                var user = User;
+                var claimsIdentity = User.Identity as ClaimsIdentity;
+                var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return new ForbidResult();
+                }
+
+                var isJobTenantWriter = User.IsInRole(Models.Roles.JOB_TENANT_WRITER);
+                var response = await _removeGMMRequestHandler.ExecuteAsync(new RemoveGMMRequest(userId, isJobTenantWriter, syncJobId));
 
                 return response.StatusCode switch
                 {

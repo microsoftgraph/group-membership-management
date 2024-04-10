@@ -12,6 +12,7 @@ export enum SyncStatus {
   InProgress = 'InProgress',
   PendingReview = 'PendingReview',
   SubmissionRejected = 'SubmissionRejected',
+  Removed = 'Removed'
 }
 
 export enum ActionRequired {
