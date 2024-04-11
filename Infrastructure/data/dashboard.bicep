@@ -414,7 +414,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     Service: '117px'
                     Groups: '93px'
                   }
-                  Query: 'ApplicationLog_CL \n | where location_s == "JobTrigger" and Message startswith "Linked services:" \n | project TimeGenerated, TargetOfficeGroupId_g, Services = split(tostring(extract("services:(.*)", 1, Message)),",") \n | mv-expand Service = Services \n | summarize Groups=dcount(TargetOfficeGroupId_g) by tostring(Service) \n | order by Groups\n\n'
+                  Query: 'ApplicationLog_CL \n | where location_s == "JobTrigger" and Message startswith "Linked services:" \n | join kind = inner ( \n    app("${resourceGroup}").customEvents \n    | where name == "SyncComplete" \n    | project timestamp,\n        Destination = tostring(customDimensions["Destination"]),\n        Result = tostring(customDimensions["Result"]),\n        DryRun = tobool(customDimensions["IsDryRunEnabled"])\n    | where Result == "Success" and DryRun == false\n    | distinct Destination\n)\non $left.Destination_s == $right.Destination\n| project TimeGenerated, Destination_s, TargetOfficeGroupId_g, Services = split(tostring(extract("services:(.*)", 1, Message)),",") \n| mv-expand Service = Services \n| distinct Destination_s, tostring(Service) \n| summarize Groups=count() by tostring(Service) \n | order by Groups\n\n'
                 }
               }
               partHeader: {
