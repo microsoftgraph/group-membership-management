@@ -123,7 +123,7 @@ var appSettings =  {
   maxRetryAfterAttempts: '4'
   maxExceptionHandlingAttempts: '2'
   appConfigurationEndpoint: appConfigurationEndpoint
-  graphUserAssignedManagedIdentityClientId: '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
+  'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
 }
 
 var stagingSettings = {
