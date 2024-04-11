@@ -13,9 +13,9 @@ using Microsoft.Graph;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
+using Repositories.ServiceBusQueue;
 using Repositories.ServiceBusTopics;
 using Repositories.TeamsChannel;
-using Repositories.ServiceBusQueue;
 using Services;
 using Services.Contracts;
 using System;
@@ -39,7 +39,7 @@ namespace Hosts.JobTrigger
             builder.Services.AddOptions<JobTriggerConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.GMMHasGroupReadWriteAllPermissions = GetBoolSetting(configuration, "JobTrigger:IsGroupReadWriteAllGranted", false);
-                settings.JobCountThreshold = GetIntSetting(configuration, "JobTrigger:JobCountThreshold", 100); 
+                settings.JobCountThreshold = GetIntSetting(configuration, "JobTrigger:JobCountThreshold", 100);
                 settings.JobPercentThreshold = GetIntSetting(configuration, "JobTrigger:JobPercentThreshold", 25);
             });
 
@@ -54,7 +54,11 @@ namespace Hosts.JobTrigger
 
             builder.Services.AddSingleton((services) =>
             {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
+                var configuration = services.GetService<IConfiguration>();
+                var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
+                var authenticationType = MapStringToAuthenticationType(configuration["GraphAPI:AuthenticationType"]);
+                var crendential = FunctionAppDI.CreateAuthenticationProvider(graphCredentials, authenticationType);
+                return new GraphServiceClient(crendential);
             })
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
@@ -88,7 +92,7 @@ namespace Hosts.JobTrigger
                 var sender = client.CreateSender(notificationsQueue);
                 return new ServiceBusQueueRepository(sender);
             });
-            
+
             builder.Services.AddScoped<IJobTriggerService, JobTriggerService>();
 
             var rootPath = builder.GetContext().ApplicationRootPath;

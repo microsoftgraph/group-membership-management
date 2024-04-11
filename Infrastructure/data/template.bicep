@@ -290,6 +290,15 @@ param appConfigurationKeyData array = [
       tag1: 'ThresholdNotification'
     }
   }
+  {
+    key: 'GraphAPI:AuthenticationType'
+    value: 'ClientSecret'
+    contentType: 'string'
+    tag: {
+      tag1: 'GraphAPI'
+    }
+    description: 'Authentication type for Graph API. Possible values: UserAssignedManagedIdentity, ClientSecret, Certificate'
+  }
 ]
 
 @description('Array of feature flags objects. {id:"value", description:"description", enabled:true }')

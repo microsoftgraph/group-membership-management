@@ -13,5 +13,6 @@ namespace Common.DependencyInjection
         public string KeyVaultTenantId { get; set; }
         public string ServiceAccountUserName { get; set; }
         public string ServiceAccountPassword { get; set; }
+        public string UserAssignedManagedIdentityClientId { get; set; }
     }
 }

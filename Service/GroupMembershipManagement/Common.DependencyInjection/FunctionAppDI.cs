@@ -10,6 +10,30 @@ namespace Common.DependencyInjection
 {
     public static class FunctionAppDI
     {
+        public static TokenCredential CreateAuthenticationProvider(GraphCredentials credentials, AuthenticationType authenticationType)
+        {
+            TokenCredential tokenCredential = null;
+            switch (authenticationType)
+            {
+                default:
+                case AuthenticationType.Unknown:
+                    throw new Exception($"AuthenticationType is not valid, " +
+                                        $"verify GraphAPI:AuthenticationType setting has been properly set in your App Configuration.");
+                case AuthenticationType.ClientSecret:
+                    tokenCredential = CreateAuthProviderFromSecret(credentials);
+                    break;
+                case AuthenticationType.Certificate:
+                    tokenCredential = CreateAuthProviderFromCertificate(credentials);
+                    break;
+                case AuthenticationType.UserAssignedManagedIdentity:
+                    tokenCredential = CreateUserAssignedManagedIdentityCredential(credentials.UserAssignedManagedIdentityClientId);
+                    break;
+            }
+
+            return tokenCredential;
+        }
+
+        [Obsolete("Use CreateAuthenticationProvider(GraphCredentials credentials, AuthenticationType authenticationType) instead.")]
         public static TokenCredential CreateAuthenticationProvider(GraphCredentials credentials)
         {
             if (!string.IsNullOrWhiteSpace(credentials.ClientCertificateName)
@@ -34,6 +58,11 @@ namespace Common.DependencyInjection
         public static TokenCredential CreateServiceAccountAuthProvider(GraphCredentials creds)
         {
             return new UsernamePasswordCredential(creds.ServiceAccountUserName, creds.ServiceAccountPassword, creds.TenantId, creds.ClientId);
+        }
+
+        public static TokenCredential CreateUserAssignedManagedIdentityCredential(string clientId)
+        {
+            return new ManagedIdentityCredential(clientId);
         }
 
         private static X509Certificate2 GetCertificate(string certificateName, string keyVaultName)

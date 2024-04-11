@@ -233,5 +233,18 @@ namespace Hosts.FunctionBase
         {
             return Environment.GetEnvironmentVariable(key, EnvironmentVariableTarget.Process) ?? string.Empty;
         }
+
+        public AuthenticationType MapStringToAuthenticationType(string input)
+        {
+            if (Enum.TryParse(typeof(AuthenticationType), input, true, out object result))
+            {
+                return (AuthenticationType)result;
+            }
+            else
+            {
+                return AuthenticationType.Unknown;
+            }
+        }
+
     }
 }
