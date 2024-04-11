@@ -4171,7 +4171,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "ResourceUnitsUsedByType"\n| extend Type = tostring(customDimensions["QueryType"])\n| extend ResourceUnitsUsed = toint(customDimensions["ResourceUnitsUsed"])\n| extend QueryType = case(Type == "Transitive" or Type == "Delta" or Type == "DeltaLink", Type, "Other")\n| summarize sum(ResourceUnitsUsed) by bin(timestamp, 1m), QueryType, operation_Name\n| extend DisplayOperationName = iif(QueryType == "Other", operation_Name, "")\n| summarize TotalResourceUnitsUsed = sum(sum_ResourceUnitsUsed) by bin(timestamp, 1m), DisplayOperationName, QueryType\n| project timestamp, iif(QueryType == "Other", DisplayOperationName, QueryType), TotalResourceUnitsUsed\n| order by timestamp desc\n\n'
+                  Query: 'customEvents\n| where name == "ResourceUnitsUsedByType"\n| order by timestamp desc\n| project timestamp,\n    QueryType = tostring(customDimensions["QueryType"]),\n    ResourceUnitsUsed = toint(customDimensions["ResourceUnitsUsed"])\n| summarize sum(ResourceUnitsUsed) by bin(timestamp, 1m), QueryType\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'ResourceUnitsUsedByType'
