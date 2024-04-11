@@ -57,8 +57,8 @@ namespace Hosts.JobTrigger
                 var configuration = services.GetService<IConfiguration>();
                 var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
                 var authenticationType = MapStringToAuthenticationType(configuration["GraphAPI:AuthenticationType"]);
-                var crendential = FunctionAppDI.CreateAuthenticationProvider(graphCredentials, authenticationType);
-                return new GraphServiceClient(crendential);
+                var credential = FunctionAppDI.CreateAuthenticationProvider(graphCredentials, authenticationType);
+                return new GraphServiceClient(credential);
             })
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
