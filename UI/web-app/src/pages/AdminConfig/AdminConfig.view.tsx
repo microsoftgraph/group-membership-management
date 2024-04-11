@@ -66,7 +66,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
         <div className={classNames.card}>
           <PageSection>
             <Pivot>
-              {isHyperlinkAdmin ??
+              {isHyperlinkAdmin &&
                 <PivotItem
                   headerText={strings.HyperlinkSettings.labels.hyperlinks}
                   headerButtonProps={{
@@ -83,7 +83,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
 
                 </PivotItem>
               }
-              {isCustomMembershipProviderAdmin ??
+              {isCustomMembershipProviderAdmin &&
                 <PivotItem
                   headerText={'Custom Source'}
                   headerButtonProps={{
