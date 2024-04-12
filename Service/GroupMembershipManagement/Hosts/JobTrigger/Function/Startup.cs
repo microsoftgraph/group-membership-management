@@ -52,15 +52,8 @@ namespace Hosts.JobTrigger
                 return new KeyVaultSecret<IJobTriggerService, Guid>(Guid.Parse(configuration["teamsChannelServiceAccountObjectId"]));
             });
 
-            builder.Services.AddSingleton((services) =>
-            {
-                var configuration = services.GetService<IConfiguration>();
-                var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
-                var authenticationType = MapStringToAuthenticationType(configuration["GraphAPI:AuthenticationType"]);
-                var credential = FunctionAppDI.CreateAuthenticationProvider(graphCredentials, authenticationType);
-                return new GraphServiceClient(credential);
-            })
-            .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
+            builder.Services.AddGraphAPIClient();
+            builder.Services.AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
             builder.Services.AddTransient<ITeamsChannelRepository, TeamsChannelRepository>((services) =>
             {
