@@ -1,22 +1,21 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Common.DependencyInjection;
+using DIConcreteTypes;
+using Hosts.AzureMaintenance;
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Repositories.Contracts;
-using Hosts.AzureMaintenance;
+using Repositories.Contracts.InjectConfig;
+using Repositories.EntityFramework;
+using Repositories.GraphGroups;
+using Repositories.NotificationsRepository;
 using Services;
 using Services.Contracts;
-using Repositories.Contracts.InjectConfig;
-using DIConcreteTypes;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Configuration;
-using Common.DependencyInjection;
-using Microsoft.Graph;
-using Repositories.GraphGroups;
-using Repositories.EntityFramework;
-using Repositories.NotificationsRepository;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 
@@ -64,10 +63,7 @@ namespace Hosts.AzureMaintenance
 
 
             builder.Services.AddSingleton<IKeyVaultSecret<IAzureMaintenanceService>>(services => new KeyVaultSecret<IAzureMaintenanceService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
-            .AddSingleton((services) =>
-            {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
-            })
+            .AddGraphAPIClient()
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
             builder.Services.AddScoped<IAzureMaintenanceService>(services =>

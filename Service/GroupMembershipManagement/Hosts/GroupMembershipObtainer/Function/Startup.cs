@@ -8,7 +8,6 @@ using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Microsoft.Graph;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -38,10 +37,7 @@ namespace Hosts.GroupMembershipObtainer
                 return new DeltaCachingConfig(services.GetService<IOptions<DeltaCachingConfig>>().Value.DeltaCacheEnabled);
             });
 
-            builder.Services.AddSingleton((services) =>
-            {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
-            })
+            builder.Services.AddGraphAPIClient()
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
             .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
             {

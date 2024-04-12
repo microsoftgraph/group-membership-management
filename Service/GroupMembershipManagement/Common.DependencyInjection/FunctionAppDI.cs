@@ -12,7 +12,7 @@ namespace Common.DependencyInjection
     {
         public static TokenCredential CreateAuthenticationProvider(GraphCredentials credentials, AuthenticationType authenticationType)
         {
-            TokenCredential tokenCredential = null;
+            TokenCredential tokenCredential;
             switch (authenticationType)
             {
                 default:
@@ -31,18 +31,6 @@ namespace Common.DependencyInjection
             }
 
             return tokenCredential;
-        }
-
-        [Obsolete("Use CreateAuthenticationProvider(GraphCredentials credentials, AuthenticationType authenticationType) instead.")]
-        public static TokenCredential CreateAuthenticationProvider(GraphCredentials credentials)
-        {
-            if (!string.IsNullOrWhiteSpace(credentials.ClientCertificateName)
-                && credentials.ClientCertificateName != "not-set")
-            {
-                return CreateAuthProviderFromCertificate(credentials);
-            }
-
-            return CreateAuthProviderFromSecret(credentials);
         }
 
         public static TokenCredential CreateAuthProviderFromSecret(GraphCredentials creds)

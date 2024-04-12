@@ -7,8 +7,6 @@ using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using Microsoft.Graph;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -60,7 +58,7 @@ namespace SqlMembershipObtainer
 
             builder.Services.AddSingleton<IDataFactoryRepository, DataFactoryRepository>();
 
-            builder.Services.AddSingleton(services => new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value)));
+            builder.Services.AddGraphAPIClient();
 
             builder.Services.AddSingleton<IDataFactoryService, DataFactoryService>();
             builder.Services.AddScoped<ISqlMembershipObtainerService, SqlMembershipObtainerService>();

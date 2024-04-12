@@ -9,7 +9,6 @@ using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Microsoft.Graph;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -17,7 +16,6 @@ using Repositories.GraphGroups;
 using Repositories.ServiceBusQueue;
 using Services;
 using Services.Contracts;
-using System;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
 [assembly: FunctionsStartup(typeof(Hosts.GraphUpdater.Startup))]
@@ -42,10 +40,7 @@ namespace Hosts.GraphUpdater
                 return new DeltaCachingConfig(services.GetService<IOptions<DeltaCachingConfig>>().Value.DeltaCacheEnabled);
             });
 
-            builder.Services.AddSingleton((services) =>
-            {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
-            })
+            builder.Services.AddGraphAPIClient()
 
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
             .AddScoped<IGraphUpdaterService, GraphUpdaterService>()

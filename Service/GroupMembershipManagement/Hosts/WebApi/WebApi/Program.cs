@@ -248,10 +248,7 @@ namespace WebApi
             builder.Services.AddSingleton<INotificationRepository, NotificationRepository>();
 
             builder.Services.Configure<GraphCredentials>(builder.Configuration.GetSection("Settings:GraphCredentials"))
-            .AddSingleton((services) =>
-            {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetRequiredService<IOptions<GraphCredentials>>().Value));
-            })
+            .AddGraphAPIClient()
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
 

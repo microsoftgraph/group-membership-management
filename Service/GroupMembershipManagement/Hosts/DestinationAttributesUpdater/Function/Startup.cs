@@ -30,10 +30,7 @@ namespace Hosts.DestinationAttributesUpdater
             base.Configure(builder);
 
             builder.Services.AddSingleton<IKeyVaultSecret<IDestinationAttributesUpdaterService>>(services => new KeyVaultSecret<IDestinationAttributesUpdaterService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
-            .AddSingleton((services) =>
-            {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
-            })
+            .AddGraphAPIClient()
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
             builder.Services.AddTransient<ITeamsChannelRepository, TeamsChannelRepository>((services) =>

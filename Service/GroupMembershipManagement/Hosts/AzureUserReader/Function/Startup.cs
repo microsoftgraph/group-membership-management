@@ -6,8 +6,6 @@ using DIConcreteTypes;
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using Microsoft.Graph;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.GraphAzureADUsers;
@@ -27,8 +25,7 @@ namespace Hosts.AzureUserReader
         {
             base.Configure(builder);
 
-            builder.Services.AddSingleton(services =>
-                new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value)));
+            builder.Services.AddGraphAPIClient();
 
             builder.Services.AddSingleton<IGraphServiceAttemptsValue>(services =>
             {

@@ -7,7 +7,6 @@ using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Microsoft.Graph;
 using NonProdService.Activity.LoadTestingSyncJobCreator;
 using NonProdService.LoadTestingPrepSubOrchestrator;
 using Repositories.Contracts;
@@ -31,10 +30,7 @@ namespace Hosts.NonProdService
             base.Configure(builder);
 
             builder.Services.AddSingleton<IKeyVaultSecret<INonProdService>>(services => new KeyVaultSecret<INonProdService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
-            .AddSingleton((services) =>
-            {
-                return new GraphServiceClient(FunctionAppDI.CreateAuthenticationProvider(services.GetService<IOptions<GraphCredentials>>().Value));
-            })
+            .AddGraphAPIClient()
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
             .AddSingleton<IGraphUserRepository, GraphUserRepository>();
 
