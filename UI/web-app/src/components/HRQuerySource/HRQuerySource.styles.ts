@@ -44,6 +44,9 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
     textFieldGroup: {
       border: 'none'
     },
+    detailsList: {
+      minWidth: 1500
+    },
     dropdownTitle: {
       borderRadius: 4,
       borderStyle: 'solid',
@@ -60,6 +63,12 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
           width: 10
         }
       }
+    },
+    removeButton: {
+      color: theme.semanticColors.primaryButtonBackground,
+      borderColor: theme.semanticColors.primaryButtonBackground,
+      borderRadius: 4,
+      border: 'none'
     },
     error: {
       fontWeight: 400,

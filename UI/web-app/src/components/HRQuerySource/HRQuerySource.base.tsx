@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint, ActionButton } from '@fluentui/react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, IDragDropEvents, mergeStyles } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
@@ -22,7 +22,8 @@ import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
 import { manageMembershipIsEditingExistingJob } from '../../store/manageMembership.slice';
 import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
 import { selectAttributes } from '../../store/sqlMembershipSources.slice';
-import { HRFilter } from '../HRFilter';
+import { SqlMembershipAttribute } from '../../models';
+import { IFilterPart } from '../../models/IFilterPart';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
@@ -42,11 +43,16 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     filter: string;
   };
 
+  type FilteredOptionsState = {
+    [key: number]: IComboBoxOption[];
+  };
+
   const dispatch = useDispatch<AppDispatch>();
   const orgLeaderDetails = useSelector(selectOrgLeaderDetails);
   const objectIdEmployeeIdMapping = useSelector(selectObjectIdEmployeeIdMapping);
   const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions);
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
+  const [isDragAndDropEnabled, setIsDragAndDropEnabled] = useState(false);
   const [isDisabled, setIsDisabled] = useState(true);
   const [includeOrg, setIncludeOrg] = useState(false);
   const [includeFilter, setIncludeFilter] = useState(false);
@@ -55,13 +61,58 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [children, setChildren] = useState<ChildType[]>([]);
   const excludeLeaderQuery = `EmployeeId <> ${source.manager?.id}`
   const attributes = useSelector(selectAttributes);
+  const [filteredOptions, setFilteredOptions] = useState<FilteredOptionsState>({});
+  const [items, setItems] = useState<IFilterPart[]>([]);
+  let options: IComboBoxOption[] = [];
+  const draggedItem = useRef<any | undefined>();
+  const draggedIndex = useRef<number>(-1);
 
   useEffect(() => {
     if (children.length === 0) {
       setIncludeFilter(false);
+      setFilteredOptions({});
+    } else {
+      let items: IFilterPart[] = children.map((child, index) => ({
+        attribute: child.filter.split(' ')[0],
+        equalityOperator: child.filter.split(' ')[1],
+        value: child.filter.split(' ')[2],
+        andOr: child.filter.split(' ')[3]
+      }));
+      setItems(items);
     }
   }, [children]);
 
+  useEffect(() => {
+    setFilteredOptions({});
+  }, [children]);
+
+  useEffect(() => {
+    if (children.length > 0) {
+      let newStr = "";
+      for (let i = 0; i < children.length; i++) {
+        newStr += children[i].filter;
+        if (i < children.length - 1) {
+            newStr += " ";
+        }
+      }
+      if (isDragAndDropEnabled) {
+        setSource(prevSource => {
+          const newSource = { ...prevSource, filter: newStr };
+          onSourceChange(newSource, partId);
+          return newSource;
+        });
+      }
+    }
+  }, [children]);
+
+
+  const getOptions = (attributes?: SqlMembershipAttribute[]): IComboBoxOption[] => {
+    options = attributes?.map((attribute, index) => ({
+      key: attribute.name,
+      text: attribute.name,
+    })) || [];
+    return options;
+  };
 
   useEffect(() => {
     const regex = /( And | Or )/g;
@@ -76,8 +127,10 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         }
         childFilters.push(currentFilter);
     }
-    setChildren(childFilters.map(filter => ({ filter })));
-  }
+    setChildren(childFilters.map(filter => ({
+      filter
+    })));
+    }
   }, [props.source.filter]);
 
   useEffect(() => {
@@ -167,13 +220,15 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         }
     }
     if (result || children.length === 0) {
-      setChildren(prevChildren => [...prevChildren, { filter: ''}]);
+    setChildren(prevChildren => [...prevChildren, { filter: ''}]);
     } else {
       setErrorMessage(strings.HROnboarding.missingAttributeErrorMessage);
     }
   };
 
   const removeComponent = (indexToRemove: number) => {
+    if (indexToRemove === -1) return;
+    setFilteredOptions({});
     const childToRemove = children[indexToRemove];
     const newFilter = props.source.filter?.replace(childToRemove.filter, '').trim();
     setSource(prevSource => {
@@ -187,6 +242,12 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const yesNoOptions: IChoiceGroupOption[] = [
     { key: 'Yes', text: strings.yes },
     { key: 'No', text: strings.no }
+  ];
+
+  const orAndOperatorOptions: IDropdownOption[] = [
+    { key: '', text: '' },
+    { key: 'Or', text: strings.or },
+    { key: 'And', text: strings.and }
   ];
 
   const handleIncludeOrgChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
@@ -216,6 +277,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const handleIncludeFilterChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
     if (option?.key === "No") {
       setIncludeFilter(false);
+      setFilteredOptions({});
       const filter = "";
       setSource(prevSource => {
         const newSource = { ...prevSource, filter };
@@ -265,6 +327,344 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       return newSource;
     });
   }
+
+  const equalityOperatorOptions: IDropdownOption[] = [
+    { key: '=', text: '=' },
+    { key: '<', text: '<' },
+    { key: '<=', text: '<=' },
+    { key: '>', text: '>'},
+    { key: '>=', text: '>=' },
+    { key: '<>', text: '<>' }
+  ];
+
+  const handleAttributeChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number): void => {
+    if (item) {
+      const updatedItems = items.map((it, idx) => {
+        if (idx === index) {
+          return { ...it, attribute: item.text };
+        }
+        return it;
+      });
+      setItems(updatedItems);
+    }
+
+    const regex = /(?<= And | Or )/;
+    let segments = props.source.filter?.split(regex);
+    if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
+      const a = item.text;
+      let filter: string;
+      if (source.filter !== "") {
+        filter = `${source.filter} ` + a;
+      } else {
+        filter = a;
+      }
+      setSource(prevSource => {
+        const newSource = { ...prevSource, filter };
+        onSourceChange(newSource, partId);
+        return newSource;
+      });
+    }
+    else if (segments && index !== undefined && segments[index] && item) {
+      let words = segments[index].split(' ');
+      if (words[0] === "") {
+        words = segments[index].trim().split(' ');
+
+      }
+      if (words.length > 0) {
+          words[0] = item.text;
+      }
+      segments[index] = words.join(' ');
+      const updatedFilter = segments.join('');
+      setSource(prevSource => {
+        let filter = updatedFilter;
+        const newSource = { ...prevSource, filter };
+        onSourceChange(newSource, partId);
+        return newSource;
+      });
+    }
+  };
+
+  const handleEqualityOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number): void => {
+    const regex = /(?<= And | Or )/;
+    let segments = props.source.filter?.split(regex);
+    if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
+      let a = item.text;
+      let filter: string;
+      if (source.filter !== "") {
+        filter = `${source.filter} ` + a;
+      } else {
+        filter = a;
+      }
+      setSource(prevSource => {
+        const newSource = { ...prevSource, filter };
+        onSourceChange(newSource, partId);
+        return newSource;
+      });
+    }
+    else if (segments && index !== undefined && segments[index] && item) {
+      let words = segments[index].split(' ');
+      if (words[0] === "") {
+        words = segments[index].trim().split(' ');
+      }
+      if (words.length > 0) {
+          words[1] = item.text;
+      }
+      segments[index] = words.join(' ');
+      const updatedFilter = segments.join('');
+      setSource(prevSource => {
+        let filter = updatedFilter;
+        const newSource = { ...prevSource, filter };
+        onSourceChange(newSource, partId);
+        return newSource;
+      });
+    }
+  };
+
+  const handleAttributeValueChange = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number) => {
+    const updatedItems = items.map((item, idx) => {
+        if (idx === index) {
+            return { ...item, value: newValue };
+        }
+        return item;
+    });
+    setItems(updatedItems);
+};
+
+  const handleBlur = (event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, index?: number) => {
+    var newValue = event.target.value.trim();
+    const regex = /(?<= And | Or )/;
+    let segments = props.source.filter?.split(regex);
+    if (newValue !== "" && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
+      let filter: string;
+      if (source.filter !== "") {
+        filter = `${source.filter} ` + newValue;
+      } else {
+        filter = newValue;
+      }
+      setSource(prevSource => {
+          const newSource = { ...prevSource, filter };
+          onSourceChange(newSource, partId);
+          return newSource;
+      });
+    }
+    else if (segments && index !== undefined && segments[index] && newValue) {
+      let words = segments[index].split(' ');
+      if (words[0] === "") {
+        words = segments[index].trim().split(' ');
+      }
+      if (words.length > 0) {
+          words[2] = newValue;
+      }
+      segments[index] = words.join(' ');
+      const updatedFilter = segments.join('');
+      setSource(prevSource => {
+        let filter = updatedFilter;
+        const newSource = { ...prevSource, filter };
+        onSourceChange(newSource, partId);
+        return newSource;
+      });
+    }
+  }
+
+  const handleOrAndOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number): void => {
+    const regex = /(?<= And | Or )/;
+    let segments = props.source.filter?.split(regex);
+    if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
+      const a = item.text;
+      let filter: string;
+      if (source.filter !== "") {
+        filter = `${source.filter} ` + a;
+      } else {
+        filter = a;
+      }
+      setSource(prevSource => {
+        const newSource = { ...prevSource, filter };
+        onSourceChange(newSource, partId);
+        return newSource;
+      });
+    }
+    else if (segments && index !== undefined && segments[index] && item) {
+      let  words = segments[index].split(' ');
+      if (words[0] === "") { words = segments[index].trim().split(' '); }
+      if (words[0] === "") {
+        words = segments[index].trim().split(' ');
+      }
+      if (words.length > 0) {
+          words[3] = item.text;
+      }
+      segments[index] = words.join(' ');
+      const updatedFilter = segments.join('');
+      setSource(prevSource => {
+        let filter = updatedFilter;
+        const newSource = { ...prevSource, filter };
+        onSourceChange(newSource, partId);
+        return newSource;
+      });
+    }
+  };
+
+  const onInputValueChange = (text: string, index: number) => {
+    let newFilteredOptions = { ...filteredOptions };
+    if (attributes && attributes.length > 0) {
+      if (!text) {
+        newFilteredOptions[index] = getOptions(attributes);
+      } else {
+        let options = getOptions(attributes);
+        newFilteredOptions[index] = options.filter(opt => opt.text.toLowerCase().startsWith(text.toLowerCase()));
+      }
+      setFilteredOptions(newFilteredOptions);
+    }
+  };
+
+  const columns = [
+    {
+      key: 'attribute',
+      name: 'Attribute',
+      fieldName: 'attribute',
+      minWidth: 200,
+      maxWidth: 200,
+      isResizable: false
+    },
+    {
+      key: 'equalityOperator',
+      name: 'Equality Operator',
+      fieldName: 'equalityOperator',
+      minWidth: 200,
+      maxWidth: 200,
+      isResizable: false
+    },
+    {
+      key: 'value',
+      name: 'Value',
+      fieldName: 'value',
+      minWidth: 200,
+      maxWidth: 200,
+      isResizable: false
+    },
+    {
+      key: 'andOr',
+      name: 'And/Or',
+      fieldName: 'andOr',
+      minWidth: 200,
+      maxWidth: 200,
+      isResizable: true
+    },
+    {
+      key: 'remove',
+      name: '',
+      fieldName: 'remove',
+      minWidth: 200,
+      maxWidth: 200,
+      isResizable: true
+    }
+  ];
+
+  const onRenderItemColumn = (item?: any, index?: number, column?: IColumn): JSX.Element => {
+    if (typeof index !== 'undefined' && items[index]) {
+      switch (column?.key) {
+        case 'attribute':
+          return <ComboBox
+          selectedKey={items[index].attribute}
+          options={filteredOptions[index] || getOptions(attributes)}
+          onInputValueChange={(text) => onInputValueChange(text, index)}
+          onChange={(event, option) => handleAttributeChange(event, option, index)}
+          allowFreeInput
+          autoComplete="off"
+          useComboBoxAsMenuWidth={true}
+        />;
+        case 'equalityOperator':
+          return <Dropdown
+          selectedKey={item.equalityOperator}
+          onChange={(event, option) => handleEqualityOperatorChange(event, option, index)}
+          options={equalityOperatorOptions}
+          styles={{root: classNames.root, title: classNames.dropdownTitle}}
+        />;
+        case 'value':
+          return <TextField
+          value={items[index].value}
+          onChange={(event, newValue) => handleAttributeValueChange(event, newValue!, index)}
+          onBlur={(event) => handleBlur(event, index)}
+          styles={{ fieldGroup: classNames.textField }}
+          validateOnLoad={false}
+          validateOnFocusOut={false}
+        ></TextField>;
+        case 'andOr':
+          return <Dropdown
+          selectedKey={item.andOr ? item.andOr : ""}
+          onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
+          options={orAndOperatorOptions}
+          styles={{root: classNames.root, title: classNames.dropdownTitle}}
+        />;
+        case 'remove':
+          return <ActionButton
+          className={classNames.removeButton}
+          iconProps={{ iconName: "Blocked2" }}
+          onClick={() => removeComponent(index ?? -1)}>
+          {strings.remove}
+        </ActionButton>;
+        default:
+          return (
+            <div>
+              <Label />
+            </div>
+          );
+      }
+    }
+    else {
+      return (<div />);
+    }
+  };
+
+  const getDragDropEvents = (): IDragDropEvents => {
+    return {
+      canDrop: () => true,
+      canDrag: () => true,
+      onDragEnter: () => "",
+      onDragLeave: () => {},
+      onDrop: (item) => {
+        setIsDragAndDropEnabled(true);
+        const selectedCount = selection.getSelectedCount();
+        let newItems = [...items];
+        let newSelectedIndices = [];
+        if (selectedCount > 1) {
+            const selectedItems = selection.getSelection() as any[];
+            const insertIndex = newItems.indexOf(item);
+            newItems = newItems.filter(i => !selectedItems.includes(i));
+            newItems.splice(insertIndex, 0, ...selectedItems);
+            newSelectedIndices = selectedItems.map(item => newItems.indexOf(item));
+            let newChildren: ChildType[] = newItems.map((item) => ({
+              filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
+            }));
+            setChildren(newChildren);
+            setItems(newItems);
+        } else {
+            const insertIndex = newItems.indexOf(item);
+            newItems = newItems.filter(i => i !== draggedItem.current);
+            newItems.splice(insertIndex, 0, draggedItem.current);
+            newSelectedIndices.push(insertIndex);
+            let newChildren: ChildType[] = newItems.map((item) => ({
+              filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
+            }));
+            setChildren(newChildren);
+            setItems(newItems);
+        }
+        selection.setAllSelected(false);
+        newSelectedIndices.forEach(index => selection.setIndexSelected(index, true, false));
+      },
+      onDragStart: (item?: any, itemIndex?: number) => {
+        draggedItem.current = item;
+        draggedIndex.current = itemIndex!;
+      },
+      onDragEnd: () => {
+        draggedItem.current = undefined;
+        draggedIndex.current = -1;
+      },
+    };
+  };
+
+  const [selection] = useState(() => new Selection({
+    onSelectionChanged: () => {}
+  }));
 
   return (
     <div className={classNames.root}>
@@ -363,44 +763,25 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         disabled={isEditingExistingJob}
       />
 
-      {((source.filter && (source.filter.includes("(") || source.filter.includes(")")))) ?
-       (
-        <><div className={classNames.labelContainer}>
-        <Label>{strings.HROnboarding.filter}</Label>
-        <TooltipHost content={strings.HROnboarding.filterInfo} id="toolTipFilterId" calloutProps={{ gapSpace: 0 }}>
-          <IconButton title={strings.HROnboarding.filterInfo} iconProps={{ iconName: "Info" }} aria-describedby="toolTipFilterId" />
-        </TooltipHost>
-        </div>
-        <TextField
-          placeholder={strings.HROnboarding.filterPlaceHolder}
-          multiline rows={3}
-          resizable={true}
-          value={source.filter?.toString()}
-          onChange={handleFilterChange}
-          styles={{ root: classNames.textField, fieldGroup: classNames.textFieldGroup }}
-          validateOnLoad={false}
-          validateOnFocusOut={false}
-          disabled={isEditingExistingJob}
-        ></TextField></>
-        ) : attributes && attributes.length > 0 && (includeFilter || source.filter) ?
+      {(includeFilter || source.filter) ?
         (
           <div>
-          {children.map((child, index) => (
-          <div key={index}>
-          <HRFilter
-            key={index}
-            index={index}
-            source={source}
-            parentFilter={props.source.filter}
-            partId={partId}
-            attributes={attributes}
-            childFilters={children}
-            filter={child.filter}
-            onSourceChange={onSourceChange}
-            onRemove={() => removeComponent(index)}
+          <DetailsList
+            setKey="items"
+            items={items}
+            columns={columns}
+            selectionPreservedOnEmptyClick={true}
+            selection={selection}
+            onRenderItemColumn={onRenderItemColumn}
+            dragDropEvents={getDragDropEvents()}
+            layoutMode={DetailsListLayoutMode.justified}
+            ariaLabelForSelectionColumn="Toggle selection"
+            ariaLabelForSelectAllCheckbox="Toggle selection for all items"
+            checkButtonAriaLabel="select row"
+            styles={{
+              root: classNames.detailsList
+            }}
           />
-          </div>
-          ))}
           <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={addComponent}>
             {strings.HROnboarding.addAttribute}
           </ActionButton>
