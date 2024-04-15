@@ -83,7 +83,7 @@ namespace Services
                     job.Status,
                     job.Period,
                     job.LastSuccessfulRunTime,
-                    job.StartDate > job.LastSuccessfulRunTime ? job.StartDate : job.LastSuccessfulRunTime.AddHours(job.Period)
+                    job.StartDate > job.ScheduledDate ? job.StartDate : job.ScheduledDate
                 )
                 {
                     TargetGroupName = targetGroups.ContainsKey(job.TargetOfficeGroupId) ? targetGroups[job.TargetOfficeGroupId].Name : null,
