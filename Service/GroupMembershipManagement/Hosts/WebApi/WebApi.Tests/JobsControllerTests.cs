@@ -108,15 +108,17 @@ namespace Services.Tests
                 "Distribution"
             };
 
+            var currentDataTimeUtc = DateTime.UtcNow;
             _jobEntities = Enumerable.Range(0, _jobCount).Select(x => new SyncJob
             {
                 Id = Guid.NewGuid(),
                 Status = ((SyncStatus)Random.Shared.Next(1, 15)).ToString(),
                 Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]",
                 TargetOfficeGroupId = Guid.NewGuid(),
-                LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-4),
-                LastSuccessfulStartTime = DateTime.UtcNow.AddHours(-5),
-                StartDate = DateTime.UtcNow.AddMonths(-1),
+                LastSuccessfulRunTime = currentDataTimeUtc.AddHours(-4),
+                LastSuccessfulStartTime = currentDataTimeUtc.AddHours(-5),
+                StartDate = currentDataTimeUtc.AddMonths(-1),
+                ScheduledDate = currentDataTimeUtc.AddHours(2),
                 ThresholdPercentageForAdditions = 10,
                 ThresholdPercentageForRemovals = 10,
                 Period = 6,
@@ -215,7 +217,7 @@ namespace Services.Tests
             Assert.AreEqual(_jobCount, jobs.Count);
             Assert.AreEqual(_jobCount, jobs.Select(x => x.TargetGroupId).Distinct().Count());
             Assert.IsTrue(jobs.All(x => x.SyncJobId.ToString() != null));
-            Assert.IsTrue(jobs.All(x => x.EstimatedNextRunTime == x.LastSuccessfulRunTime.AddHours(6)));
+            Assert.IsTrue(jobs.All(x => x.EstimatedNextRunTime == x.LastSuccessfulRunTime.AddHours(x.Period)));
             Assert.IsTrue(jobs.All(x => x.Status != null));
             Assert.IsTrue(jobs.All(x => x.TargetGroupType != null));
         }
@@ -264,7 +266,7 @@ namespace Services.Tests
             Assert.AreEqual(_jobCount, jobs.Count);
             Assert.AreEqual(_jobCount, jobs.Select(x => x.TargetGroupId).Distinct().Count());
             Assert.IsTrue(jobs.All(x => x.SyncJobId.ToString() != null));
-            Assert.IsTrue(jobs.All(x => x.EstimatedNextRunTime == x.LastSuccessfulRunTime.AddHours(6)));
+            Assert.IsTrue(jobs.All(x => x.EstimatedNextRunTime == x.LastSuccessfulRunTime.AddHours(x.Period)));
             Assert.IsTrue(jobs.All(x => x.Status != null));
             Assert.IsTrue(jobs.All(x => x.TargetGroupType == "Group"));
 
