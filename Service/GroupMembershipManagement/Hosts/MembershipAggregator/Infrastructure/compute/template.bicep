@@ -201,6 +201,26 @@ var productionSettings = {
   AzureFunctionsWebHost__hostid: 'MembershipAggregator'
 }
 
+resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: dataKeyVaultName
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+}
+
+module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
+  name: 'userAssignedManagedIdentityNameReaderTemplate'
+  params: {
+    value: dataKeyVault.getSecret('graphUserAssignedManagedIdentityName')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
+  name: userAssignedManagedIdentityNameReader.outputs.value
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+}
+
 module functionAppTemplate_MembershipAggregator 'functionApp.bicep' = {
   name: 'functionAppTemplate-MembershipAggregator'
   params: {
@@ -212,9 +232,13 @@ module functionAppTemplate_MembershipAggregator 'functionApp.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     tenantId: tenantId
     secretSettings: commonSettings
+    userManagedIdentities:{
+      '${graphUAMI.id}' : {}
+    }
   }
   dependsOn: [
     servicePlanTemplate
+    graphUAMI
   ]
 }
 
@@ -229,6 +253,9 @@ module functionAppSlotTemplate_MembershipAggregator 'functionAppSlot.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     tenantId: tenantId
     secretSettings: commonSettings
+    userManagedIdentities:{
+      '${graphUAMI.id}' : {}
+    }
   }
   dependsOn: [
     functionAppTemplate_MembershipAggregator

@@ -174,6 +174,26 @@ var productionSettings = {
   AzureFunctionsWebHost__hostid: 'DestinationAttributesUpdater'
 }
 
+resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: dataKeyVaultName
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+}
+
+module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
+  name: 'userAssignedManagedIdentityNameReaderTemplate'
+  params: {
+    value: dataKeyVault.getSecret('graphUserAssignedManagedIdentityName')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
+  name: userAssignedManagedIdentityNameReader.outputs.value
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+}
+
 module functionAppTemplate_DestinationAttributesUpdater 'functionApp.bicep' = {
   name: 'functionAppTemplate-DestinationAttributesUpdater'
   params: {
@@ -182,9 +202,13 @@ module functionAppTemplate_DestinationAttributesUpdater 'functionApp.bicep' = {
     location: location
     servicePlanName: servicePlanName
     secretSettings: commonSettings
+    userManagedIdentities:{
+      '${graphUAMI.id}' : {}
+    }
   }
   dependsOn: [
     servicePlanTemplate
+    graphUAMI
   ]
 }
 
@@ -196,6 +220,9 @@ module functionAppSlotTemplate_DestinationAttributesUpdater 'functionAppSlot.bic
     location: location
     servicePlanName: servicePlanName
     secretSettings: commonSettings
+    userManagedIdentities:{
+      '${graphUAMI.id}' : {}
+    }
   }
   dependsOn: [
     functionAppTemplate_DestinationAttributesUpdater

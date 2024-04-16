@@ -26,6 +26,11 @@ param dataKeyVaultName string
 @description('Name of the resource group where the \'data\' key vault is located.')
 param dataKeyVaultResourceGroup string
 
+@description('User assigned managed identities. Single or list of user assigned managed identities. Format: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{identityName}')
+param userManagedIdentities object = {}
+
+var deployUserManagedIdentity = userManagedIdentities != null && userManagedIdentities != {}
+
 resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
   name: name
   kind: kind
@@ -42,7 +47,8 @@ resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
     }
   }
   identity: {
-    type: 'SystemAssigned'
+    type: deployUserManagedIdentity ? 'SystemAssigned, UserAssigned' : 'SystemAssigned'
+    userAssignedIdentities: deployUserManagedIdentity ? userManagedIdentities : null
   }
 }
 

@@ -173,6 +173,26 @@ var productionSettings = {
   AzureFunctionsWebHost__hostid: 'GraphUpdater'
 }
 
+resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: dataKeyVaultName
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+}
+
+module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
+  name: 'userAssignedManagedIdentityNameReaderTemplate'
+  params: {
+    value: dataKeyVault.getSecret('graphUserAssignedManagedIdentityName')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
+  name: userAssignedManagedIdentityNameReader.outputs.value
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+}
+
 module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
   name: 'functionAppTemplate-GraphUpdater'
   params: {
@@ -183,9 +203,13 @@ module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     secretSettings: commonSettings
+    userManagedIdentities:{
+      '${graphUAMI.id}' : {}
+    }
   }
   dependsOn: [
     servicePlanTemplate
+    graphUAMI
   ]
 }
 
@@ -199,6 +223,9 @@ module functionAppSlotTemplate_GraphUpdater 'functionAppSlot.bicep' = {
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     secretSettings: commonSettings
+    userManagedIdentities:{
+      '${graphUAMI.id}' : {}
+    }
   }
   dependsOn: [
     functionAppTemplate_GraphUpdater

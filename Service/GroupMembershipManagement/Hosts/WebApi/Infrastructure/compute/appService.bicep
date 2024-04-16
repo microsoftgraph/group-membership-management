@@ -26,6 +26,11 @@ param prereqsResourceGroup string
 @description('Tenant id.')
 param tenantId string
 
+@description('User assigned managed identities. Single or list of user assigned managed identities. Format: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{identityName}')
+param userManagedIdentities object = {}
+
+var deployUserManagedIdentity = userManagedIdentities != null && userManagedIdentities != {}
+
 resource websiteTemplate 'Microsoft.Web/sites@2022-03-01' = {
   name: name
   location: location
@@ -36,7 +41,8 @@ resource websiteTemplate 'Microsoft.Web/sites@2022-03-01' = {
     serverFarmId: resourceId('Microsoft.Web/serverfarms', servicePlanName)
   }
   identity: {
-    type: 'SystemAssigned'
+    type: deployUserManagedIdentity ? 'SystemAssigned, UserAssigned' : 'SystemAssigned'
+    userAssignedIdentities: deployUserManagedIdentity ? userManagedIdentities : null
   }
 }
 

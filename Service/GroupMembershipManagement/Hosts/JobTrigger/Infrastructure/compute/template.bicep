@@ -192,6 +192,9 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
   params: {
     value: dataKeyVault.getSecret('graphUserAssignedManagedIdentityName')
   }
+  dependsOn: [
+    dataKeyVault
+  ]
 }
 
 resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
@@ -231,7 +234,6 @@ module functionAppSlotTemplate_JobTrigger 'functionAppSlot.bicep' = {
   }
   dependsOn: [
     functionAppTemplate_JobTrigger
-    graphUAMI
   ]
 }
 

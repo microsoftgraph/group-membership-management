@@ -190,6 +190,26 @@ var appSettings = [
   }
 ]
 
+resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: dataKeyVaultName
+  scope: resourceGroup(dataResourceGroup)
+}
+
+module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
+  name: 'userAssignedManagedIdentityNameReaderTemplate'
+  params: {
+    value: dataKeyVault.getSecret('graphUserAssignedManagedIdentityName')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
+  name: userAssignedManagedIdentityNameReader.outputs.value
+  scope: resourceGroup(dataResourceGroup)
+}
+
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-WebApi'
   params: {
@@ -213,9 +233,13 @@ module appService 'appService.bicep' = {
     prereqsKeyVaultName: prereqsKeyVaultName
     prereqsResourceGroup: prereqsResourceGroup
     tenantId: tenantId
+    userManagedIdentities:{
+      '${graphUAMI.id}' : {}
+    }
   }
   dependsOn: [
     appInsights
     servicePlanTemplate
+    graphUAMI
   ]
 }

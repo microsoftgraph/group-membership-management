@@ -20,6 +20,11 @@ param servicePlanName string
 @description('app settings')
 param appSettings object
 
+@description('User assigned managed identities. Single or list of user assigned managed identities. Format: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{identityName}')
+param userManagedIdentities object = {}
+
+var deployUserManagedIdentity = userManagedIdentities != null && userManagedIdentities != {}
+
 resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
   name: name
   location: location
@@ -35,7 +40,8 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
     }
   }
   identity: {
-    type: 'SystemAssigned'
+    type: deployUserManagedIdentity ? 'SystemAssigned, UserAssigned' : 'SystemAssigned'
+    userAssignedIdentities: deployUserManagedIdentity ? userManagedIdentities : null
   }
 }
 
