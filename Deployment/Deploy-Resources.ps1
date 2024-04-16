@@ -184,6 +184,10 @@ function Set-RBACPermissions {
 
     . ($ScriptsDirectory + '\Set-PostDeploymentRoles.ps1')
     Set-PostDeploymentRoles -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+
+    . ($ScriptsDirectory + '\Set-UserManagedIdentityPermissions.ps1')
+    Set-UserManagedIdentityPermissions -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+
 }
 
 function Set-DBMigrations {

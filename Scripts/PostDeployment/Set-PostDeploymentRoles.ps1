@@ -33,7 +33,9 @@ function Set-PostDeploymentRoles {
         [Parameter(Mandatory = $False)]
 		[string] $DataResourceGroupName = $null,
         [Parameter(Mandatory = $False)]
-		[string] $ComputeResourceGroupName = $null
+		[string] $ComputeResourceGroupName = $null,
+        [Parameter(Mandatory = $False)]
+		[string] $SetUserAssignedManagedIdentityPermissions = $false
     )
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -67,5 +69,12 @@ function Set-PostDeploymentRoles {
                                        -DataResourceGroupName $DataResourceGroupName `
                                        -ComputeResourceGroupName $ComputeResourceGroupName `
                                        -Verbose
+
+    if ($SetUserAssignedManagedIdentityPermissions) {
+        . ($scriptsDirectory + '\PostDeployment\Set-UserManagedIdentityPermissions.ps1')
+        Set-UserManagedIdentityPermissions	-SolutionAbbreviation $SolutionAbbreviation `
+                                            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                            -Verbose
+    }
 
 }
