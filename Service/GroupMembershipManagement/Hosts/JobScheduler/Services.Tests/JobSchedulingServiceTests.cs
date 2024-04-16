@@ -212,7 +212,7 @@ namespace Services.Tests
             var numberOfJobs = 5;
             var periodInHours = 1;
             var jobs = CreateSampleSyncJobs(numberOfJobs, periodInHours);
-            var groupRuntimes = new List<(string Destination, double Max, double Avg)>();
+            var groupRuntimes = new List<(string Destination, double Median, double Average)>();
             var max = 100.0;
             var avg = 5.0;
             foreach (var job in jobs)
@@ -233,7 +233,7 @@ namespace Services.Tests
             DateTime dateTimeNow = DateTime.UtcNow;
             List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
 
-            double totalTimeInSeconds = groupRuntimes.Select(x => x.Max).Sum() + (jobs.Count - groupRuntimes.Count) * DEFAULT_RUNTIME_SECONDS;
+            double totalTimeInSeconds = groupRuntimes.Select(x => x.Median).Sum() + (jobs.Count - groupRuntimes.Count) * DEFAULT_RUNTIME_SECONDS;
             int concurrencyNumber = (int)Math.Ceiling(totalTimeInSeconds / (periodInHours * 3600));
 
             Assert.AreEqual(concurrencyNumber, 1);
@@ -247,7 +247,7 @@ namespace Services.Tests
                 if (currentJobIndex > 0)
                 {
                     var previousJobRunTime = groupRuntimes.First(x => x.Destination == updatedJobs[currentJobIndex - 1].Destination);
-                    baseStartDate = baseStartDate.AddSeconds(BUFFER_SECONDS + previousJobRunTime.Max);
+                    baseStartDate = baseStartDate.AddSeconds(BUFFER_SECONDS + previousJobRunTime.Median);
                 }
 
                 Assert.AreEqual(updateJob.ScheduledDate, baseStartDate);
@@ -283,7 +283,7 @@ namespace Services.Tests
         private Response<LogsQueryResult> CreateLogsQueryResult(List<(string Destination, double Max, double Avg)> groupRuntimes)
         {
             var columns = new List<LogsTableColumn>();
-            var columnNames = new[] { "Destination", "MaxProcessingTime", "AvgProcessingTime" };
+            var columnNames = new[] { "Destination", "MedianProcessingTime", "AverageProcessingTime" };
             var logsTableColumnConstructor = typeof(LogsTableColumn).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic,
                                                                                     new[] { typeof(string), typeof(LogsColumnType) });
 
