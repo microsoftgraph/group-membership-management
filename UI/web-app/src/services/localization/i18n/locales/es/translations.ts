@@ -158,7 +158,7 @@ export const strings: IStrings = {
       lastModifiedby: 'Usuario quien hizo el último cambio a este grupo.',
       startDate: 'Fecha en la que este grupo fue integrado a GMM.',
       endDate: 'Fecha de la última sincronización de este grupo.',
-      type: 'Tipo de sincronización.',
+      type: 'El tipo de destino. Actualmente, GMM solo administra la membresía de los destinos de grupo. En el futuro, también admitirá la membresía de los canales de Teams.',
       id: 'ID de objecto del grupo destino.',
       lastRun: 'Fecha de la última sincronización de este grupo.',
       nextRun: 'Fecha de la próxima sincronización de este grupo.',
@@ -185,7 +185,7 @@ export const strings: IStrings = {
     editButton: 'Editar',
   },
   JobsList: {
-    listOfMemberships: 'Lista de membresías',
+    listOfMemberships: 'Grupos administrados',
     ShimmeredDetailsList: {
       toggleSelection: 'Alternar selección',
       toggleAllSelection: 'Alternar selecciones para todo',
@@ -288,7 +288,8 @@ export const strings: IStrings = {
       noResultsFound: 'No se encontraron resultados',
       appsUsed: 'Este grupo utiliza las siguientes aplicaciones.',
       outlookWarning: 'Hay configuraciones importantes a considerar antes de enviar correo a este grupo de Outlook. Sigue las instrucciones de tu organización.',
-      ownershipWarning: 'Atención: GMM no es dueño de este grupo Por favor agrégalo como propietrario antes de continuar.',
+      appIdNotOwnerWarning: 'Atención: GMM no es dueño de este grupo Por favor agrégalo como propietrario antes de continuar.',
+      userNotOwnerWarning: 'Atención: No eres dueño de este grupo. Solo los propietarios pueden administrar la membresía.',
       step2title: 'Paso 2: Configuración de ejecución ',
       step2description: '',
       advancedQuery: 'Consulta avanzada',

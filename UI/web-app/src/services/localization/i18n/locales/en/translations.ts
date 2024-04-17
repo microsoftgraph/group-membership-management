@@ -156,7 +156,7 @@ export const strings: IStrings = {
       lastModifiedby: 'User who made the last change to this job.',
       startDate: 'Date of the onboarding of this job into GMM.',
       endDate: 'Date of the last run of this job.',
-      type: 'Sync type.',
+      type: 'The destination\'s type. Currently GMM only manages the membership of Group destinations. In the future it will also support Teams Channel membership.',
       id: 'Object ID of the destination group.',
       lastRun: 'Time of the last run of this job.',
       nextRun: 'Next run time for this job.',
@@ -182,7 +182,7 @@ export const strings: IStrings = {
     editButton: 'Edit',
   },
   JobsList: {
-    listOfMemberships: 'List of memberships',
+    listOfMemberships: 'Managed groups',
     ShimmeredDetailsList: {
       toggleSelection: 'Toggle selection',
       toggleAllSelection: 'Toggle selection for all items',
@@ -284,7 +284,8 @@ export const strings: IStrings = {
       noResultsFound: 'No results found',
       appsUsed: 'This group uses the following apps:',
       outlookWarning: 'There are important settings that should be considered before sending email to this Outlook group. Follow the instructions on your organization.',
-      ownershipWarning: 'Warning: GMM is not the owner of this group! It will not be able to manage membership for this group until you add it.',
+      appIdNotOwnerWarning: 'Warning: GMM is not the owner of this group! It will not be able to manage membership for this group until you add it.',
+      userNotOwnerWarning: 'Warning: You are not the owner of this group! You can only manage memberships with GMM for groups you own.',
       step2title: 'Step 2: Run Configuration',
       step2description: '',
       advancedQuery: 'Advanced Query',

@@ -252,7 +252,7 @@ const MembershipDetails: React.FunctionComponent<IContentProps> = (
     <div className={classNames.card}>
       <div>
         <Text className={classNames.title} block>
-          {strings.JobDetails.labels.pageTitle}
+          {strings.JobDetails.labels.pageTitle} - {props.job.targetGroupName}
         </Text>
       </div>
       {/* <div> // Hidden until feature is enabled

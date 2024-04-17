@@ -7,6 +7,7 @@ namespace Models
     {
         Onboarded,
         ReadyForOnboarding,
-        NotReadyForOnboarding
+        AppIdNotOwner,
+        UserNotOwner
     }
 }

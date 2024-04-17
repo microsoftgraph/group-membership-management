@@ -75,9 +75,15 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   };
 
   const addGroupOwnerLink: string = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/${selectedDestination?.id}/menuId/`
-  const ownershipWarning = onboardingStatus === OnboardingStatus.NotReadyForOnboarding ? (
+  const appIdNotOwnerWarning = onboardingStatus === OnboardingStatus.AppIdNotOwner ? (
     <div className={classNames.ownershipWarning}>
-      {strings.ManageMembership.labels.ownershipWarning} <a href={addGroupOwnerLink}>{strings.ManageMembership.labels.clickHere}</a>.
+      {strings.ManageMembership.labels.appIdNotOwnerWarning} <a href={addGroupOwnerLink}>{strings.ManageMembership.labels.clickHere}</a>.
+    </div>
+  ) : null;
+
+  const userNotOwnerWarning = onboardingStatus === OnboardingStatus.UserNotOwner ? (
+    <div className={classNames.ownershipWarning}>
+      {strings.ManageMembership.labels.userNotOwnerWarning}
     </div>
   ) : null;
 
@@ -202,7 +208,8 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                       Yammer
                     </ActionButton>
                   )}
-                  {ownershipWarning}
+                  {appIdNotOwnerWarning}
+                  {userNotOwnerWarning}
                   {alreadyOnboardedWarning}
                 </div>
               ) : null}

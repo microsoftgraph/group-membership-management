@@ -49,10 +49,12 @@ export const fetchJobs = createAsyncThunk<Page<Job>, PagingOptions | undefined, 
         index['estimatedNextRunTime'] =
           hoursAgo > index['period'] || index['status'] === SyncStatus.CustomerPaused
             ? ''
-            : moment.utc(index['estimatedNextRunTime']).local().format('MM/DD/YYYY') +
-              ' ' +
-              hoursLeft.toString() +
-              ' hrs left';
+            : isPast || hoursLeft === 0
+              ? 'in < 1 hr'
+              : moment.utc(index['estimatedNextRunTime']).local().format('MM/DD/YYYY') +
+                ' in ' +
+                hoursLeft.toString() +
+                ' hrs';
 
         index['enabledOrNot'] =
           index['status'] === SyncStatus.Idle || index['status'] === SyncStatus.InProgress ? true : false;

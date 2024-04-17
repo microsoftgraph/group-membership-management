@@ -279,7 +279,8 @@ export type IStrings = {
       noResultsFound: string;
       appsUsed: string;
       outlookWarning: string;
-      ownershipWarning: string;
+      appIdNotOwnerWarning: string;
+      userNotOwnerWarning: string;
       step2title: string;
       step2description: string;
       advancedQuery: string;

@@ -8,5 +8,12 @@ namespace Services.Messages.Requests
     public class GetGroupOnboardingStatusRequest : RequestBase
     {
         public Guid GroupId { get; set; }
+        public string UserIdentity { get; }
+
+        public GetGroupOnboardingStatusRequest(Guid groupId, string userIdentity)
+        {
+            GroupId = groupId;
+            UserIdentity = userIdentity;
+        }
     }
 }

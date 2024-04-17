@@ -10,6 +10,8 @@ using WebApi.Models.Responses;
 using Models;
 using Microsoft.Extensions.Options;
 using Common.DependencyInjection;
+using System.Security.Claims;
+using WebApi.Models;
 
 namespace Services.Tests
 {
@@ -55,10 +57,12 @@ namespace Services.Tests
 
             _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler)
             {
-                ControllerContext = new ControllerContext
+                ControllerContext = CreateControllerContext(new List<Claim>
                 {
-                    HttpContext = _context
-                }
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_CREATOR),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+                })
             };
 
             _groupTypes = new List<string>
@@ -149,6 +153,7 @@ namespace Services.Tests
             Guid groupNotOnboarded = Guid.NewGuid();
             _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync((SyncJob)null);
             _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(true);
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(true);
 
             var response = await _destinationController.GetGroupOnboardingStatusAsync(groupNotOnboarded);
             var result = response.Result as OkObjectResult;
@@ -160,6 +165,26 @@ namespace Services.Tests
             var onboardingStatus = result.Value;
             Assert.IsNotNull(onboardingStatus);
             Assert.AreEqual(OnboardingStatus.ReadyForOnboarding, onboardingStatus);
+        }
+
+        private ControllerContext CreateControllerContext(HttpContext httpContext)
+        {
+            return new ControllerContext { HttpContext = httpContext };
+        }
+
+        private ControllerContext CreateControllerContext(List<Claim> claims)
+        {
+            return new ControllerContext { HttpContext = CreateHttpContext(claims) };
+        }
+
+        private HttpContext CreateHttpContext(List<Claim> claims)
+        {
+            var identity = new ClaimsIdentity(claims, "TestAuthType");
+            var principal = new ClaimsPrincipal(identity);
+            var httpContext = new DefaultHttpContext();
+            httpContext.User = principal;
+
+            return httpContext;
         }
     }
 }

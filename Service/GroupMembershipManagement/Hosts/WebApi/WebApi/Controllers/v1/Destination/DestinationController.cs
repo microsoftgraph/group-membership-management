@@ -9,6 +9,7 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using System.Security.Claims;
 using AzureADGroup = Models.AzureADGroup;
 
 namespace WebApi.Controllers.v1.Destination
@@ -52,8 +53,24 @@ namespace WebApi.Controllers.v1.Destination
         [HttpGet("groups/{groupId}/onboarding-status")]
         public async Task<ActionResult<GetGroupOnboardingStatusResponse>> GetGroupOnboardingStatusAsync(Guid groupId)
         {
-            var response = await _getGroupOnboardingStatusHandler.ExecuteAsync(new GetGroupOnboardingStatusRequest { GroupId = groupId });
-            return Ok(response.Status);
+            try
+            {
+                var user = User;
+                var claimsIdentity = User.Identity as ClaimsIdentity;
+                var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return new ForbidResult();
+                }
+
+                var response = await _getGroupOnboardingStatusHandler.ExecuteAsync(new GetGroupOnboardingStatusRequest (groupId, userId));
+                return Ok(response.Status);
+            }
+            catch (Exception ex)
+            {
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: ${ex}");
+            }
         }
     }
 }

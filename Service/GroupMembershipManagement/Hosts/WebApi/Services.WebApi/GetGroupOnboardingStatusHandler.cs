@@ -29,6 +29,7 @@ namespace Services
         protected override async Task<GetGroupOnboardingStatusResponse> ExecuteCoreAsync(GetGroupOnboardingStatusRequest request)
         {
             var isAppIdOwner = await _graphGroupRepository.IsAppIDOwnerOfGroup(_gmmAppId, request.GroupId);
+            var isUserOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, request.GroupId);
             var syncJobExists = await _syncJobRepository.GetSyncJobByObjectIdAsync(request.GroupId);
             bool isOnboarded = syncJobExists != null;
 
@@ -38,13 +39,17 @@ namespace Services
             {
                 response.Status = OnboardingStatus.Onboarded;
             }
-            else if (isAppIdOwner)
+            else if (!isAppIdOwner)
             {
-                response.Status = OnboardingStatus.ReadyForOnboarding;
+                response.Status = OnboardingStatus.AppIdNotOwner;
+            }
+            else if (!isUserOwner)
+            {
+                response.Status = OnboardingStatus.UserNotOwner;
             }
             else
             {
-                response.Status = OnboardingStatus.NotReadyForOnboarding;
+                response.Status = OnboardingStatus.ReadyForOnboarding;
             }
 
             return response;
