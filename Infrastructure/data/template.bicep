@@ -142,6 +142,13 @@ param logAnalyticsName string = '${solutionAbbreviation}-${resourceGroupClassifi
 ])
 param logAnalyticsSku string = 'PerGB2018'
 
+@allowed([
+  'UserAssignedManagedIdentity'
+  'ClientSecret'
+  'Certificate'
+])
+param authenticationType string = 'ClientSecret'
+
 @description('Enter app configuration name.')
 @minLength(1)
 @maxLength(24)
@@ -304,7 +311,7 @@ param appConfigurationKeyData array = [
   }
   {
     key: 'GraphAPI:AuthenticationType'
-    value: 'ClientSecret'
+    value: authenticationType
     contentType: 'string'
     tag: {
       tag1: 'GraphAPI'
