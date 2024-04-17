@@ -199,19 +199,19 @@
           },
           {
             "type": "TextBlock",
-            "text": "${$root.changeQuantityForAdditions} members will be **added**, which will increase the group size by **${$root.changePercentageForAdditions}%**.",
+            "text": "GMM has identified **${$root.changeQuantityForAdditions}** members to be added, increasing the group size by **${$root.changePercentageForAdditions}%**, which is more than the current additions threshold of **${$root.thresholdPercentageForAdditions}%**.",
             "wrap": true,
             "spacing": "Small",
             "color": "Accent",
-            "$when": "${$root.changeQuantityForAdditions &gt; 0}"
+            "$when": "${$root.changePercentageForAdditions &gt; $root.thresholdPercentageForAdditions}"
           },
           {
             "type": "TextBlock",
-            "text": "${$root.changeQuantityForRemovals} members will be **removed**, which will decrease the group size by **${$root.changePercentageForRemovals}%**.",
+            "text": "GMM has identified **${$root.changeQuantityForRemovals}** members to be removed, decreasing the group size by **${$root.changePercentageForRemovals}%**, which is more than the current removals threshold of **${$root.thresholdPercentageForRemovals}%**",
             "wrap": true,
             "spacing": "Small",
             "color": "Accent",
-            "$when": "${$root.changeQuantityForRemovals &gt; 0}"
+            "$when": "${$root.changePercentageForRemovals &gt; $root.thresholdPercentageForRemovals}"
           },
           {
             "type": "TextBlock",
@@ -606,7 +606,7 @@
           "wrap": true,
           "spacing": "Small",
           "color": "Accent",
-          "$when": "${$root.changeQuantityForAdditions &gt; 0}"
+          "$when": "${$root.changePercentageForAdditions &gt; $root.thresholdPercentageForAdditions}"
         },
         {
           "type": "TextBlock",
@@ -614,7 +614,7 @@
           "wrap": true,
           "spacing": "Small",
           "color": "Accent",
-          "$when": "${$root.changeQuantityForRemovals &gt; 0}"
+          "$when": "${$root.changePercentageForRemovals &gt; $root.thresholdPercentageForRemovals}"
         },
         {
           "type": "Container",
