@@ -40,10 +40,17 @@ function Set-UserManagedIdentityPermissions {
 	$uamiSPN = Get-MgServicePrincipal -Filter "displayName eq '$uamiName'"
 	$graphApiSPN = Get-MgServicePrincipal -Filter "AppId eq '00000003-0000-0000-c000-000000000000'"
 
+	$currentAppRoleAssignments = Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $uamiSPN.Id
 	$appRoles = @("GroupMember.Read.All", "Member.Read.Hidden", "User.Read.All")
 	foreach ($appRoleName in $appRoles) {
 
 		$appRole = $graphApiSPN.AppRoles | Where-Object { $_.Value -eq $appRoleName -and $_.AllowedMemberTypes -contains "Application" }
+		$isRoleAssigned = $currentAppRoleAssignments | Where-Object { $_.AppRoleId -eq $appRole.Id }
+
+		if ($isRoleAssigned) {
+			Write-Host "Role $appRoleName is already assigned to $uamiName. Skipping..."
+			continue
+		}
 
 		$bodyParam = @{
 			PrincipalId = $uamiSPN.Id
