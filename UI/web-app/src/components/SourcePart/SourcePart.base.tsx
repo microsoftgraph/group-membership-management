@@ -11,11 +11,11 @@ import {
   IDropdownOption,
   IProcessedStyleSet,
 } from '@fluentui/react';
-import { DefaultButton, IconButton } from '@fluentui/react/lib/Button';
+import { ActionButton, DefaultButton, IconButton } from '@fluentui/react/lib/Button';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { SourcePartStyleProps, SourcePartStyles, SourcePartProps } from './SourcePart.types';
 import { AppDispatch } from '../../store';
-import { manageMembershipIsEditingExistingJob, updateSourcePart, updateSourcePartType } from '../../store/manageMembership.slice';
+import { manageMembershipIsEditingExistingJob, updateSourcePart, copySourcePart, updateSourcePartType } from '../../store/manageMembership.slice';
 import { useStrings } from '../../store/hooks';
 import { ISourcePart } from '../../models/ISourcePart';
 import { HRQuerySource } from '../HRQuerySource';
@@ -87,6 +87,19 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       setErrorMessage(strings.ManageMembership.labels.deleteLastSourcePartWarning);
     }
   }
+
+  const handleCopy = () => {
+    const newQuery: HRSourcePart = {
+      type: SourcePartType.HR,
+      source: part.query.source as HRSourcePartSource,
+      exclusionary: isExclusionary
+    }
+    const newPart: ISourcePart = {
+      id: index + 1,
+      query: newQuery
+    };
+    dispatch(copySourcePart(newPart));
+  };
 
   useEffect(() => {
     setErrorMessage('');
@@ -191,6 +204,13 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
           <div className={classNames.error}>
             {errorMessage}
           </div>
+          {part.query.type === SourcePartType.HR && (part.query.source.filter !== "" || part.query.source.manager?.id !== undefined) && (totalSourceParts === part.id) && (
+          <ActionButton
+            iconProps={{ iconName: "Copy" }}
+            onClick={handleCopy}>
+            {strings.copy}
+        </ActionButton>
+        )}
         </div>
       }
     </div>

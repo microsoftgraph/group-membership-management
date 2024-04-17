@@ -217,6 +217,11 @@ const manageMembershipSlice = createSlice({
                 };
             }
         },
+
+        copySourcePart: (state, action: PayloadAction<ISourcePart>) => {
+            state.sourceParts.push(action.payload);
+        },
+
         deleteSourcePart: (state, action: PayloadAction<number>) => {
             state.sourceParts = state.sourceParts.filter(part => part.id !== action.payload);
             const compositeQuery = buildCompositeQuery(state.sourceParts);
@@ -287,6 +292,7 @@ export const {
     addSourcePart,
     updateSourcePartType,
     updateSourcePart,
+    copySourcePart,
     deleteSourcePart,
     clearSourceParts,
     setJobDetailsForExistingJob,

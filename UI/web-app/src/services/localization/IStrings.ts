@@ -316,6 +316,7 @@ export type IStrings = {
       clickHere: string;
     }
   };
+  copy: string;
   remove: string;
   delete: string;
   edit: string;

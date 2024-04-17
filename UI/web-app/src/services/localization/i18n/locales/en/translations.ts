@@ -321,6 +321,7 @@ export const strings: IStrings = {
       clickHere: 'Click here',
     }
   },
+  copy: 'Copy',
   remove: 'Remove',
   delete: 'Delete',
   edit: 'Edit',
