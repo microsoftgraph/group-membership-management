@@ -11,7 +11,12 @@ param appConfigurationName string = '${solutionAbbreviation}-appConfig-${environ
 param appConfigurationDataOwners array
 @description('Must be true for the initial deployment')
 param grantAppConfigurationDataOwnersPermission bool = true
-
+@allowed([
+  'UserAssignedManagedIdentity'
+  'ClientSecret'
+  'Certificate'
+])
+param authenticationType string
 // prereqs parameters
 // parameters for prereqs key vault
 param graphAppCertificateName string = 'not-set'
@@ -124,6 +129,7 @@ module gmmResources 'commonResources.bicep' = {
     pipeline: pipeline
     skipADFDeployment: skipADFDeployment
     appConfigurationName: appConfigurationName
+    authenticationType: authenticationType
   }
   dependsOn: [
     gmmResourceGroups

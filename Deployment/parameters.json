@@ -162,6 +162,9 @@
           "principalType": "Device|ForeignGroup|Group|ServicePrincipal|User"
         }
       ]
+    },
+    "authenticationType":{
+      "value": "UserAssignedManagedIdentity|ClientSecret|'Certificate"
     }
   }
 }

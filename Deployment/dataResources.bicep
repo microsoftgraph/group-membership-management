@@ -12,6 +12,7 @@ param sqlSkuFamily string
 param sqlSkuName string
 param sqlSkuTier string
 param tenantId string
+param authenticationType string
 
 //data resources
 module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
@@ -31,5 +32,6 @@ module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
     sqlSkuName: sqlSkuName
     sqlSkuTier: sqlSkuTier
     tenantId: tenantId
+    authenticationType: authenticationType
   }
 }

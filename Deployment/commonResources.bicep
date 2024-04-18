@@ -8,6 +8,7 @@ param keyVaultReaders array
 param isManagedApplication bool
 param managedResourceGroupName string
 param appConfigurationName string
+param authenticationType string
 
 // prereqs parameters
 // parameters for prereqs key vault
@@ -115,6 +116,7 @@ module dataResources 'dataResources.bicep' = {
     sqlSkuName: sqlSkuName
     sqlSkuTier: sqlSkuTier
     tenantId: tenantId
+    authenticationType: authenticationType
   }
   dependsOn: [
     prereqResources
