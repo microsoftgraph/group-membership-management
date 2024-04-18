@@ -21,7 +21,7 @@ import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeI
 import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
 import { manageMembershipIsEditingExistingJob } from '../../store/manageMembership.slice';
 import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
-import { selectAttributes } from '../../store/sqlMembershipSources.slice';
+import { selectAttributes, selectSource } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipAttribute } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
 
@@ -61,6 +61,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [children, setChildren] = useState<ChildType[]>([]);
   const excludeLeaderQuery = `EmployeeId <> ${source.manager?.id}`
   const attributes = useSelector(selectAttributes);
+  const hrSource = useSelector(selectSource);
   const [filteredOptions, setFilteredOptions] = useState<FilteredOptionsState>({});
   const [items, setItems] = useState<IFilterPart[]>([]);
   let options: IComboBoxOption[] = [];
@@ -85,6 +86,11 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   useEffect(() => {
     setFilteredOptions({});
   }, [children]);
+
+  useEffect(() => {
+    if (!includeOrg) { setErrorMessage(''); }
+  }, [includeOrg]);
+
 
   useEffect(() => {
     if (children.length > 0) {
@@ -152,6 +158,14 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     }
   }, [orgLeaderDetails.employeeId, orgLeaderDetails.objectId]);
 
+  useEffect(() => {
+    if (orgLeaderDetails.employeeId === 0 && orgLeaderDetails.maxDepth === 0 && includeOrg && partId === orgLeaderDetails.partId) {
+      setErrorMessage(hrSource?.name && hrSource?.name !== "" ?
+      orgLeaderDetails.text + strings.HROnboarding.customOrgLeaderMissingErrorMessage + hrSource?.name + strings.HROnboarding.source :
+      orgLeaderDetails.text + strings.HROnboarding.orgLeaderMissingErrorMessage);
+    }
+  }, [orgLeaderDetails]);
+
   const getPickerSuggestions = async (
     filterText: string
   ): Promise<IPersonaProps[]> => {
@@ -159,11 +173,14 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   };
 
   const handleOrgLeaderInputChange = (input: string): string => {
+    setIncludeOrg(true);
+    setErrorMessage('');
     dispatch(getJobOwnerFilterSuggestions({displayName: input, alias: input}))
     return input;
   }
 
   const handleOrgLeaderChange = (items?: IPersonaProps[] | undefined) => {
+    setIncludeOrg(true);
     setIsDisabled(true);
     if (items !== undefined && items.length > 0) {
       dispatch(fetchOrgLeaderDetails({
@@ -751,6 +768,12 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       </Stack>
       )}
 
+
+      <div className={classNames.error}>
+        {errorMessage}
+      </div>
+      <br />
+
       <Label>{strings.HROnboarding.includeFilter}</Label>
       <ChoiceGroup
         selectedKey={(includeFilter || source.filter) ? strings.yes : strings.no}
@@ -788,10 +811,6 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
           </div>
         ) : null
       }
-
-      <div className={classNames.error}>
-        {errorMessage}
-      </div>
 
     </div>
   );

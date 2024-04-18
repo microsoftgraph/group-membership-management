@@ -43,7 +43,9 @@ export const strings: IStrings = {
     attributeValueInfo: "Select the attribute value",
     orAndOperatorInfo: "Select And/Or",
     missingAttributeErrorMessage: "Please provide missing info in the previous attribute",
-    orgLeaderMissingErrorMessage: "This user doesn't exist in the HR Data source",
+    customOrgLeaderMissingErrorMessage: " doesn't exist in the ",
+    source: " source",
+    orgLeaderMissingErrorMessage: " doesn't exist in the HR Data source",
     invalidInputErrorMessage: "Invalid input. Please enter only numbers."
   },
   Components: {

@@ -44,7 +44,9 @@ export const strings: IStrings = {
     attributeValueInfo: "Seleccione el operador de igualdad",
     orAndOperatorInfo: "Seleccione Y/O",
     missingAttributeErrorMessage: "Proporcione la información que falta en el atributo anterior",
+    customOrgLeaderMissingErrorMessage: " no existe en ",
     orgLeaderMissingErrorMessage: "Este usuario no existe en la fuente de datos de RR.HH.",
+    source: " fuente",
     invalidInputErrorMessage: "Entrada inválida. Por favor ingrese solo números."
   },
   Components: {

@@ -40,7 +40,9 @@ export type IStrings = {
     attributeValueInfo: string;
     orAndOperatorInfo: string;
     missingAttributeErrorMessage: string;
+    customOrgLeaderMissingErrorMessage: string;
     orgLeaderMissingErrorMessage: string;
+    source: string;
     invalidInputErrorMessage: string;
   },
   Components: {
