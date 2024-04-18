@@ -366,7 +366,7 @@ namespace Repositories.GraphGroups
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 RunId = runId,
-                Message = $"Checking on user existence for user identifier '{userIdentifier}' to determine if it is a member of group {groupObjectId}."
+                Message = $"Checking on user existence to determine if it is a member of group {groupObjectId}."
             });
             
             Guid userId;
@@ -378,7 +378,7 @@ namespace Repositories.GraphGroups
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     RunId = runId,
-                    Message = $"Getting user information for email '{userIdentifier}'."
+                    Message = $"Getting user information."
                 });
 
                 User user = null;
@@ -405,7 +405,7 @@ namespace Repositories.GraphGroups
                             await _loggingRepository.LogMessageAsync(new LogMessage
                             {
                                 RunId = runId,
-                                Message = $"No user was found when checking for user with email {userIdentifier}."
+                                Message = $"No user was found when checking for user."
                             });
 
                             return false;
@@ -435,7 +435,7 @@ namespace Repositories.GraphGroups
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     RunId = runId,
-                    Message = $"User identifier is already an object id: '{userId}'."
+                    Message = $"User identifier is already an object id. No Graph call required."
                 });
             }
 
