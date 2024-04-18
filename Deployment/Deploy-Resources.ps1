@@ -1,3 +1,45 @@
+$ErrorActionPreference = "Stop"
+<#
+.SYNOPSIS
+This script will deploy all resources and grant permissions
+
+.PARAMETER SolutionAbbreviation
+Abbreviation used to denote the overall solution (or application)
+
+.PARAMETER EnvironmentAbbreviation
+Abbreviation for the environment
+
+.PARAMETER Location
+Location where the resources will be deployed
+
+.PARAMETER TemplateFilePath
+Template file path
+
+.PARAMETER ParameterFilePath
+Parameter file path
+
+.PARAMETER SubscriptionId
+Optional.
+Subscription Id where the resources will be deployed.
+
+.PARAMETER SkipResourceProvidersCheck
+Optional.
+Flag to skip the resource providers check.
+
+.PARAMETER SetUserAssignedManagedIdentityPermissions
+Optional.
+If you are using a user-assigned managed identity, set this flag to true to assign the necessary permissions to the managed identity.
+
+.EXAMPLE
+Deploy-PrivateResources -SolutionAbbreviation "<solution-abbreviation>" `
+                        -EnvironmentAbbreviation "<environment-abbreviation>" `
+                        -Location "<location>" `
+                        -TemplateFilePath "<template-file-path>" `
+                        -ParameterFilePath "<parameter-file-path>" `
+                        -SubscriptionId "<subscription-id>" `
+                        -Verbose
+#>
+
 function Deploy-PostDeploymentUpdates {
     [CmdletBinding()]
     param (
@@ -176,17 +218,19 @@ function Set-RBACPermissions {
         [Parameter(Mandatory = $true)]
         [string]$EnvironmentAbbreviation,
         [Parameter(Mandatory = $true)]
-        [string]$ScriptsDirectory
+        [string]$ScriptsDirectory,
+        [Parameter(Mandatory = $false)]
+		[bool] $SetUserAssignedManagedIdentityPermissions = $false
     )
 
     # grant permissions to resources
     Write-Host "`nGranting permissions to resources"
 
     . ($ScriptsDirectory + '\Set-PostDeploymentRoles.ps1')
-    Set-PostDeploymentRoles -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
-
-    . ($ScriptsDirectory + '\Set-UserManagedIdentityPermissions.ps1')
-    Set-UserManagedIdentityPermissions -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+    Set-PostDeploymentRoles `
+    -SolutionAbbreviation $SolutionAbbreviation `
+    -EnvironmentAbbreviation $EnvironmentAbbreviation `
+    -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions
 
 }
 
@@ -377,7 +421,9 @@ function Deploy-Resources {
         [Parameter(Mandatory = $false)]
         [bool]$SkipResourceProvidersCheck = $false,
         [Parameter(Mandatory = $false)]
-        [bool]$StartFunctions = $true
+        [bool]$StartFunctions = $true,
+        [Parameter(Mandatory = $false)]
+		[bool] $SetUserAssignedManagedIdentityPermissions = $false
     )
 
     # define the resource groups
@@ -431,7 +477,8 @@ function Deploy-Resources {
     Set-RBACPermissions `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -ScriptsDirectory "$scriptsDirectory\Scripts\PostDeployment"
+        -ScriptsDirectory "$scriptsDirectory\Scripts\PostDeployment" `
+        -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions
 
     Set-DBMigrations `
         -ConnectionString $connectionString `
