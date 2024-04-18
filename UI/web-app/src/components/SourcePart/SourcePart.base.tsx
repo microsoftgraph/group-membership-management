@@ -24,6 +24,8 @@ import { GroupQuerySource } from '../GroupQuerySource';
 import { SourcePartType } from '../../models/SourcePartType';
 import { SourcePartQuery } from '../../models/SourcePartQuery';
 import { AdvancedViewSourcePart } from '../AdvancedViewSourcePart';
+import { selectSource } from '../../store/sqlMembershipSources.slice';
+import { SqlMembershipSource } from '../../models';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
@@ -46,17 +48,13 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     { key: 'No', text: strings.no },
   ];
 
-  const sourceTypeOptions: IDropdownOption[] = [
-    { key: SourcePartType.HR, text: strings.ManageMembership.labels.HR },
-    { key: SourcePartType.GroupMembership, text: strings.ManageMembership.labels.groupMembership },
-    { key: SourcePartType.GroupOwnership, text: strings.ManageMembership.labels.groupOwnership }
-  ];
 
   const dispatch = useDispatch<AppDispatch>();
   const [isExclusionary, setIsExclusionary] = useState(query.exclusionary);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const [expanded, setExpanded] = useState(isEditingExistingJob);
+  const hrSource = useSelector(selectSource);
 
   const handleSourceTypeChanged = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption | undefined): void => {
     if (!item) return;
@@ -104,6 +102,21 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   useEffect(() => {
     setErrorMessage('');
   }, [query, expanded]);
+
+  const getOptions = (hrSource?: SqlMembershipSource): IDropdownOption[] => {
+    let sourceTypeOptions: IDropdownOption[] = [];
+    if (hrSource) {
+      sourceTypeOptions.push({
+        key: SourcePartType.HR,
+        text: hrSource.customLabel || hrSource.name,
+      });
+    } else {
+      sourceTypeOptions.push( { key: SourcePartType.HR, text: strings.ManageMembership.labels.HR });
+    }
+    sourceTypeOptions.push( { key: SourcePartType.GroupMembership, text: strings.ManageMembership.labels.groupMembership });
+    sourceTypeOptions.push( { key: SourcePartType.GroupOwnership, text: strings.ManageMembership.labels.groupOwnership });
+    return sourceTypeOptions;
+  };
 
   useEffect(() => {
     setIsExclusionary(part.query.exclusionary ?? false);
@@ -166,7 +179,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
           <div className={classNames.controls}>
             <Dropdown
               styles={{ title: classNames.dropdownTitle }}
-              options={sourceTypeOptions}
+              options={getOptions(hrSource)}
               label="Source Type"
               required={true}
               selectedKey={part.query.type}
