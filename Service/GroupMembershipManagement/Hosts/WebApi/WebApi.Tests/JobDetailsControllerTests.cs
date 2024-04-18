@@ -356,7 +356,7 @@ namespace Services.Tests
 
         [TestMethod]
         [DataRow(Roles.JOB_CREATOR)]
-        public async Task RemoveGMMAsync_AuthorizedUser_ReturnsOk(string role)
+        public async Task RemoveGMMAsyncWhenIsAnAuthorizedUser(string role)
         {
             var syncJobId = Guid.NewGuid();
 
@@ -375,6 +375,59 @@ namespace Services.Tests
             var result = response as OkResult;
 
             Assert.IsInstanceOfType(result, typeof(OkResult));
+        }
+
+        [TestMethod]
+        [DataRow(Roles.HYPERLINK_ADMINISTRATOR)]
+        public async Task RemoveGMMAsyncWhenIsAnUnauthorizedUser(string role)
+        {
+            var syncJobId = Guid.NewGuid();
+
+            var context = CreateHttpContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())});
+
+
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            {
+                ControllerContext = CreateControllerContext(context)
+            };
+
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+                                    .ReturnsAsync(() => false);
+
+            var response = await _jobDetailsController.RemoveGMMAsync(syncJobId);
+            var result = response as ForbidResult;
+
+            Assert.IsInstanceOfType(result, typeof(ForbidResult));
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_CREATOR)]
+        public async Task RemoveGMMAsyncWhenInvalidGroup(string role)
+        {
+            var syncJobId = Guid.NewGuid();
+
+            var context = CreateHttpContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "notOwner@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())});
+
+
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            {
+                ControllerContext = CreateControllerContext(context)
+            };
+
+            _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
+                              .ReturnsAsync((SyncJob)null);
+
+            var response = await _jobDetailsController.RemoveGMMAsync(syncJobId);
+            var result = response as NotFoundResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(404, result.StatusCode);
         }
 
         private ControllerContext CreateControllerContext(HttpContext httpContext)
