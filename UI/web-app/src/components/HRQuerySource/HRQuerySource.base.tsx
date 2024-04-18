@@ -322,7 +322,9 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     if (option?.key === "No") {
       if (!source.manager?.id)
       {
-        setErrorMessage(strings.HROnboarding.orgLeaderMissingErrorMessage);
+        setErrorMessage(hrSource?.name && hrSource?.name !== "" ?
+          orgLeaderDetails.text + strings.HROnboarding.customOrgLeaderMissingErrorMessage + hrSource?.name + strings.HROnboarding.source :
+          orgLeaderDetails.text + strings.HROnboarding.orgLeaderMissingErrorMessage);
         return;
       }
       if (source.filter && source.filter !== "") {
@@ -639,15 +641,35 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       onDragEnter: () => "",
       onDragLeave: () => {},
       onDrop: (item) => {
-        setIsDragAndDropEnabled(true);
         const selectedCount = selection.getSelectedCount();
+        let sourceItems;
+        if (selectedCount <= 0) {
+          sourceItems = items;
+        } else {
+          sourceItems = selection.getSelection() as any[];
+        }
+        let transformedItems: ChildType[] = sourceItems.map((item) => ({
+          filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
+        }));
+
+        const hasUndefined = transformedItems.some((item) => item.filter.includes("undefined"));
+        if (hasUndefined) { return; }
+        setIsDragAndDropEnabled(true);
         let newItems = [...items];
         let newSelectedIndices = [];
         if (selectedCount > 1) {
             const selectedItems = selection.getSelection() as any[];
             const insertIndex = newItems.indexOf(item);
             newItems = newItems.filter(i => !selectedItems.includes(i));
-            newItems.splice(insertIndex, 0, ...selectedItems);
+            newItems.splice(insertIndex, 0, ...selectedItems);          
+            let allItems: ChildType[] = items.map((item) => ({
+              filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
+            }));
+
+            const index = allItems.findIndex((item) => item.filter.includes("undefined"));
+            if (insertIndex === index) {              
+              return;
+            }
             newSelectedIndices = selectedItems.map(item => newItems.indexOf(item));
             let newChildren: ChildType[] = newItems.map((item) => ({
               filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
@@ -658,7 +680,15 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
             const insertIndex = newItems.indexOf(item);
             newItems = newItems.filter(i => i !== draggedItem.current);
             newItems.splice(insertIndex, 0, draggedItem.current);
-            newSelectedIndices.push(insertIndex);
+            newSelectedIndices.push(insertIndex);           
+            let allItems: ChildType[] = items.map((item) => ({
+              filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
+            }));
+
+            const index = allItems.findIndex((item) => item.filter.includes("undefined"));
+            if (insertIndex === index) {            
+              return;
+            }
             let newChildren: ChildType[] = newItems.map((item) => ({
               filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
             }));
