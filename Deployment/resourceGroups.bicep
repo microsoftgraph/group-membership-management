@@ -29,5 +29,6 @@ module appConfigurationRBAC 'rbacTemplate.bicep' = if (grantAppConfigurationData
     // App Configuration Data Owner
     roleDefinitionId: '5ae67dd6-50cb-40e7-96ff-dc2bfa4b606b'
     principals: appConfigurationDataOwners
+    dataResourceGroupName: dataResourceGroupName
   }
 }
