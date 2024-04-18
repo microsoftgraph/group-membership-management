@@ -23,6 +23,7 @@ namespace Repositories.Contracts
         Task UpdateSyncJobFromNotificationAsync(SyncJob job, SyncStatus status);
         Task UpdateSyncJobsAsync(IEnumerable<SyncJob> jobs, SyncStatus? status = null);
         Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs);
+        Task DeleteSyncJobAsync(SyncJob job);
         Task BatchUpdateSyncJobsAsync(List<SyncJob> jobs);
     }
 }

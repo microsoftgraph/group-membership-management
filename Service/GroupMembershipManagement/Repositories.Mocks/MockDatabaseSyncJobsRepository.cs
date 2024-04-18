@@ -91,6 +91,11 @@ namespace Repositories.Mocks
             throw new NotImplementedException();
         }
 
+        public Task DeleteSyncJobAsync(SyncJob job)
+        {
+            throw new NotImplementedException();
+        }
+
         public IQueryable<SyncJob> GetSyncJobs(bool asNoTracking = false)
         {
             throw new NotImplementedException();

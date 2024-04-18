@@ -139,6 +139,25 @@ namespace Repositories.EntityFramework
 
             await _writeContext.SaveChangesAsync();
         }
+        public async Task DeleteSyncJobAsync(SyncJob job)
+        {
+            var jobWithOwners = await _writeContext.SyncJobs
+            .Include(p => p.DestinationOwners)
+                .ThenInclude(owner => owner.SyncJobs)
+            .SingleOrDefaultAsync(j => j.Id == job.Id);
+
+            foreach (var owner in jobWithOwners.DestinationOwners)
+            {
+                if (owner.SyncJobs.Count() < 2)
+                {
+                    _writeContext.DestinationOwners.Remove(owner);
+                }
+            }
+
+            _writeContext.SyncJobs.Remove(jobWithOwners);
+            
+            await _writeContext.SaveChangesAsync();
+        }
 
         public async Task BatchUpdateSyncJobsAsync(List<SyncJob> jobs)
         {

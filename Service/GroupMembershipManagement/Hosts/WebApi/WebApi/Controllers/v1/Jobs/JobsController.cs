@@ -30,7 +30,7 @@ namespace WebApi.Controllers.v1.Jobs
             _postJobRequestHandler = postJobRequestHandler ?? throw new ArgumentNullException(nameof(postJobRequestHandler));
         }
 
-        [Authorize(Roles = Models.Roles.JOB_CREATOR + "," + Models.Roles.JOB_TENANT_READER)]
+        [Authorize(Roles = Models.Roles.JOB_CREATOR + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
         [HttpGet()]
         public async Task<ActionResult<IEnumerable<SyncJob>>> GetJobsAsync(ODataQueryOptions<SyncJobModel> queryOptions)
         {

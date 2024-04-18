@@ -149,8 +149,8 @@ export const strings: IStrings = {
       reject: 'Reject',
       submissionRejected: 'Submission Rejected',
       removeGMM: 'Remove GMM Management',
-      removeGMMWarning: 'Are you sure you want to remove GMM management from this group? You will need to remove GMM as a group owner from the group manually in Azure AD. Link opens in new tab.',
-      removeGMMConfirmation: 'Yes, remove GMM management',
+      removeGMMWarning: 'Are you sure you want to remove GMM management from this group? You will need to manually remove GMM as a group owner in Microsoft Entra ID.',
+      removeGMMConfirmation: 'Confirm (Link opens in new tab)',
     },
     descriptions: {
       lastModifiedby: 'User who made the last change to this job.',

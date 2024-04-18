@@ -37,7 +37,9 @@ import {
   selectGetJobDetailsError,
   selectPatchJobDetailsResponse,
   selectPatchJobDetailsError,
-  selectRemoveGMMError
+  selectRemoveGMMError,
+  selectRemoveGMMLoading,
+  selectJobsLoading
 } from '../../store/jobs.slice';
 
 import { ContentContainer } from '../../components/ContentContainer/ContentContainer'
@@ -56,6 +58,7 @@ import { selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { SyncStatus } from '../../models';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { fetchJobs } from '../../store/jobs.api';
+import { Loader } from '../../components/Loader';
 
 
 export interface IContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
@@ -91,6 +94,9 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const [showRemoveGMMDialog, setShowRemoveGMMDialog] = useState(false);
   const [showRemoveGMMError, setShowRemoveGMMError] = useState(false);
   const removeGMMError = useSelector(selectRemoveGMMError);
+  const jobsLoading = useSelector(selectJobsLoading);
+  const removeGMMPending = useSelector(selectRemoveGMMLoading);
+  const showLoader = jobsLoading || removeGMMPending;
 
   const OpenInNewWindowIcon: IIconProps = { iconName: 'OpenInNewWindow' };
 
@@ -117,14 +123,13 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   const onConfirmRemove = async () => {
     try {
-      var url = `https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/${job.targetGroupId}`;
-      window.open(url, '_blank', 'noopener,noreferrer');
       await dispatch(removeGMM({ syncJobId: job.syncJobId }));
       await dispatch(fetchJobs());
+      setShowRemoveGMMDialog(false);
       navigate('/');
     } catch (error) {
       setShowRemoveGMMError(true);
-      throw new Error (`Failed to remove GMM: ${error}`);
+      throw new Error(`Failed to remove GMM: ${error}`);
     }
   };
 
@@ -140,89 +145,99 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   return (
     <Page>
       <PageHeader />
-      {/* Error Message */}
-      <div>
-        {error && (
-          <MessageBar
-            messageBarType={MessageBarType.error}
-            isMultiline={false}
-            onDismiss={onMessageBarDismiss}
-            dismissButtonAriaLabel={
-              strings.JobDetails.MessageBar.dismissButtonAriaLabel as string
-            }
+      {showLoader ? <Loader />
+        : <>
+          {/* Error Message */}
+          <div>
+            {error && (
+              <MessageBar
+                messageBarType={MessageBarType.error}
+                isMultiline={false}
+                onDismiss={onMessageBarDismiss}
+                dismissButtonAriaLabel={
+                  strings.JobDetails.MessageBar.dismissButtonAriaLabel as string
+                }
+              >
+                {error}
+              </MessageBar>
+            )}
+            {showRemoveGMMError && (
+              <MessageBar
+                messageBarType={MessageBarType.error}
+                isMultiline={false}
+                onDismiss={() => setShowRemoveGMMError(false)}
+                dismissButtonAriaLabel={
+                  strings.JobDetails.MessageBar.dismissButtonAriaLabel as string
+                }
+              >
+                {strings.JobDetails.Errors.removeGMMError} {removeGMMError}
+              </MessageBar>
+            )}
+          </div>
+          <div className={classNames.root}>
+            <MembershipDetails job={job} classNames={classNames} />
+            <ContentContainer
+              title={strings.JobDetails.labels.membershipStatus}
+              children={<MembershipStatusContent job={job} classNames={classNames} />}
+              removeButton={true}
+            />
+            <ContentContainer
+              title={strings.JobDetails.labels.destination}
+              actionText={strings.JobDetails.openInAzure}
+              actionIcon={OpenInNewWindowIcon}
+              actionOnClick={openInAzure}
+              children={<MembershipDestination job={job} jobDetails={jobDetails} classNames={classNames} />}
+            />
+            <ContentContainer
+              title={strings.JobDetails.labels.configuration}
+              children={<MembershipConfiguration job={job} classNames={classNames} />}
+              removeButton={true}
+            // Hidden until feature is enabled
+            // actionText={strings.JobDetails.editButton}
+            // useLinkButton={true}
+            // linkButtonIconName='edit'
+            />
+            <ContentContainer
+              title={strings.JobDetails.labels.sourceParts}
+              children={<label>{jobDetails?.source}</label>}
+              removeButton={false}
+              actionText={strings.JobDetails.viewDetails}
+              useLinkButton={true}
+              actionOnClick={openMembershipConfiguration}
+            />
+            <div className={classNames.removeGMM}>
+              <ActionButton
+                iconProps={{ iconName: 'Delete' }}
+                title={strings.JobDetails.labels.removeGMM}
+                ariaLabel={strings.JobDetails.labels.removeGMM}
+                onClick={onRemoveGMMButtonClick}>
+                {strings.JobDetails.labels.removeGMM}
+              </ActionButton>
+            </div>
+          </div>
+          <Dialog
+            hidden={!showRemoveGMMDialog}
+            onDismiss={onDialogClose}
+            dialogContentProps={{
+              type: DialogType.normal,
+              title: strings.JobDetails.labels.removeGMM,
+              subText: strings.JobDetails.labels.removeGMMWarning
+            }}
+            modalProps={{
+              isBlocking: true
+            }}
           >
-            {error}
-          </MessageBar>
-        )}
-        {showRemoveGMMError && (
-          <MessageBar
-            messageBarType={MessageBarType.error}
-            isMultiline={false}
-            onDismiss={() => setShowRemoveGMMError(false)}
-            dismissButtonAriaLabel={
-              strings.JobDetails.MessageBar.dismissButtonAriaLabel as string
-            }
-          >
-            {strings.JobDetails.Errors.removeGMMError} {removeGMMError}
-          </MessageBar>
-        )}
-      </div>
-      <div className={classNames.root}>
-        <MembershipDetails job={job} classNames={classNames} />
-        <ContentContainer
-          title={strings.JobDetails.labels.membershipStatus}
-          children={<MembershipStatusContent job={job} classNames={classNames} />}
-          removeButton={true}
-        />
-        <ContentContainer
-          title={strings.JobDetails.labels.destination}
-          actionText={strings.JobDetails.openInAzure}
-          actionIcon={OpenInNewWindowIcon}
-          actionOnClick={openInAzure}
-          children={<MembershipDestination job={job} jobDetails={jobDetails} classNames={classNames} />}
-        />
-        <ContentContainer
-          title={strings.JobDetails.labels.configuration}
-          children={<MembershipConfiguration job={job} classNames={classNames} />}
-          removeButton={true}
-        // Hidden until feature is enabled
-        // actionText={strings.JobDetails.editButton}
-        // useLinkButton={true}
-        // linkButtonIconName='edit'
-        />
-        <ContentContainer
-          title={strings.JobDetails.labels.sourceParts}
-          children={<label>{jobDetails?.source}</label>}
-          removeButton={false}
-          actionText={strings.JobDetails.viewDetails}
-          useLinkButton={true}
-          actionOnClick={openMembershipConfiguration}
-        />
-        <div className={classNames.removeGMM}>
-          <ActionButton
-            iconProps={{ iconName: 'Delete' }}
-            title={strings.JobDetails.labels.removeGMM}
-            ariaLabel={strings.JobDetails.labels.removeGMM}
-            onClick={onRemoveGMMButtonClick}>
-            {strings.JobDetails.labels.removeGMM}
-          </ActionButton>
-        </div>
-      </div>
-      <Dialog
-        hidden={!showRemoveGMMDialog}
-        onDismiss={onDialogClose}
-        dialogContentProps={{
-          type: DialogType.normal,
-          title: strings.JobDetails.labels.removeGMM,
-          subText: strings.JobDetails.labels.removeGMMWarning
-        }}
-        modalProps={{ isBlocking: true}}
-      >
-        <DialogFooter>
-          <PrimaryButton onClick={onConfirmRemove} text={strings.JobDetails.labels.removeGMMConfirmation} />
-          <DefaultButton onClick={onDialogClose} text={strings.cancel} />
-        </DialogFooter>
-      </Dialog>
+            <DialogFooter>
+              <PrimaryButton 
+                onClick={onConfirmRemove} 
+                text={strings.JobDetails.labels.removeGMMConfirmation}
+                styles={{ root: { padding: '16px'} }}
+              />
+              <DefaultButton onClick={onDialogClose} text={strings.cancel} />
+            </DialogFooter>
+          </Dialog>
+        </>
+      }
     </Page >
   );
 };
@@ -602,7 +617,7 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
         <div className={classNames.itemData}>
           {jobDetails != null ? (
             <Text variant="medium" block>
-              {jobDetails.thresholdPercentageForAdditions === -1 ? `${strings.JobDetails.labels.noThresholdSet}`: `${jobDetails.thresholdPercentageForAdditions}%`}
+              {jobDetails.thresholdPercentageForAdditions === -1 ? `${strings.JobDetails.labels.noThresholdSet}` : `${jobDetails.thresholdPercentageForAdditions}%`}
             </Text>
           ) : (
             <Shimmer width="100%" />
@@ -618,7 +633,7 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
         <div className={classNames.itemData}>
           {jobDetails != null ? (
             <Text variant="medium" block>
-              {jobDetails.thresholdPercentageForRemovals === -1 ? `${strings.JobDetails.labels.noThresholdSet}`: `${jobDetails.thresholdPercentageForRemovals}%`}
+              {jobDetails.thresholdPercentageForRemovals === -1 ? `${strings.JobDetails.labels.noThresholdSet}` : `${jobDetails.thresholdPercentageForRemovals}%`}
             </Text>
           ) : (
             <Shimmer width="100%" />

@@ -151,8 +151,8 @@ export const strings: IStrings = {
       reject: 'Rechazar',
       submissionRejected: 'Solicitud rechazada',
       removeGMM: 'Dejar de administrar con GMM',
-      removeGMMWarning: '¿Estás seguro de que deseas dejar de administrar este grupo con GMM? Deberás eliminar manualmente a GMM de los dueños del grupo. Liga se abrirá en una nueva pestaña.',
-      removeGMMConfirmation: 'Sí, dejar de administrar',
+      removeGMMWarning: '¿Estás seguro de que deseas dejar de administrar este grupo con GMM? Deberás eliminar manualmente a GMM de los dueños del grupo.',
+      removeGMMConfirmation: 'Confirmar (Liga se abrirá en una nueva pestaña.)',
     },
     descriptions: {
       lastModifiedby: 'Usuario quien hizo el último cambio a este grupo.',

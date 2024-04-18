@@ -54,8 +54,7 @@ namespace Services
                 SyncStatus.NotOwnerOfDestinationGroup,
                 SyncStatus.SecurityGroupNotFound,
                 SyncStatus.ThresholdExceeded,
-                SyncStatus.SubmissionRejected,
-                SyncStatus.Removed);
+                SyncStatus.SubmissionRejected);
 
             return ApplyJobTriggerFilters(jobs).ToList();
         }

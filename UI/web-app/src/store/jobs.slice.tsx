@@ -9,7 +9,7 @@ import type { RootState } from './store';
 import { type Job } from '../models/Job';
 import { type JobDetails } from '../models/JobDetails';
 import { PeoplePickerPersona } from '../models/PeoplePickerPersona';
-import { PatchJobResponse } from '../models';
+import { PatchJobResponse, RemoveGMMResponse } from '../models';
 
 // Define a type for the slice state
 export interface JobsState {
@@ -26,7 +26,7 @@ export interface JobsState {
   postJobError: string | undefined;
   jobOwnerFilterSuggestions?: PeoplePickerPersona[];
   removeGMMLoading: boolean;
-  removeGMMResponse: PatchJobResponse | undefined;
+  removeGMMResponse: RemoveGMMResponse | undefined;
   removeGMMError: string | undefined;
 }
 
@@ -141,6 +141,7 @@ export const { setJobs, setGetJobsError, setGetJobDetailsError } =
   jobsSlice.actions;
 
 export const selectAllJobs = (state: RootState) => state.jobs.jobs;
+export const selectJobsLoading = (state: RootState) => state.jobs.jobsLoading;
 
 export const selectSelectedJobDetails = (state: RootState) =>
   state.jobs.selectedJob;

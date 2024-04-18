@@ -1,16 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Common.DependencyInjection;
-using Microsoft.AspNetCore.JsonPatch;
-using Microsoft.Extensions.Options;
+
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
-using Services.WebApi;
 using System.Net;
-using WebApi.Models.DTOs;
+using LogMessage = Models.LogMessage;
 
 namespace Services
 {
@@ -18,16 +15,15 @@ namespace Services
     {
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
-        private readonly PatchJobHandler _patchJobHandler;
+        private readonly ILoggingRepository _loggingRepository;
 
         public RemoveGMMHandler(ILoggingRepository loggingRepository,
                               IGraphGroupRepository graphGroupRepository,
-                              IDatabaseSyncJobsRepository syncJobRepository,
-                              PatchJobHandler patchJobHandler) : base(loggingRepository)
+                              IDatabaseSyncJobsRepository syncJobRepository) : base(loggingRepository)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
-            _patchJobHandler = patchJobHandler ?? throw new ArgumentNullException(nameof(patchJobHandler));
+            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         protected override async Task<RemoveGMMResponse> ExecuteCoreAsync(RemoveGMMRequest request)
@@ -51,25 +47,27 @@ namespace Services
                 };
             }
 
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(e => e.Status, "Removed");
-
-            var patchJobRequest = new PatchJobRequest(true, request.UserIdentity, request.SyncJobId, patchDocument);
-            var patchJobResponse = await _patchJobHandler.ExecuteAsync(patchJobRequest);
-
-            if (patchJobResponse.StatusCode != HttpStatusCode.OK)
+            try
             {
+                await _syncJobRepository.DeleteSyncJobAsync(syncJob);
+
                 return new RemoveGMMResponse
                 {
-                    StatusCode = patchJobResponse.StatusCode,
-                    ErrorCode = patchJobResponse.ErrorCode
+                    StatusCode = HttpStatusCode.OK
+                };
+            } catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Error removing GMM from job:\n{ex.Message}",
+                    RunId = null
+                });
+
+                return new RemoveGMMResponse
+                {
+                    StatusCode = HttpStatusCode.InternalServerError
                 };
             }
-
-            return new RemoveGMMResponse
-            {
-                StatusCode = HttpStatusCode.OK
-            };
         }
 
     }

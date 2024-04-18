@@ -10,6 +10,7 @@ import { PatchJobResponse } from '../models/PatchJobResponse';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
 import { Job } from '../models/Job';
+import { RemoveGMMResponse } from '../models';
 
 export const fetchJobDetails = createAsyncThunk<
   JobDetails,
@@ -109,7 +110,7 @@ export const patchJobDetails = createAsyncThunk<
 });
 
 export const removeGMM = createAsyncThunk<
-  PatchJobResponse,
+  RemoveGMMResponse,
   { syncJobId: string },
   ThunkConfig
 >('jobs/removeGMM', async ({ syncJobId }, { extra }) => {
@@ -135,7 +136,7 @@ export const removeGMM = createAsyncThunk<
       };
     } else {
       const errorResponse = await response.json();
-      let patchResponse: PatchJobResponse = {
+      let removeGMMResponse: RemoveGMMResponse = {
         ok: errorResponse.ok,
         statusCode: errorResponse.status,
         errorCode: errorResponse?.detail,
@@ -143,12 +144,12 @@ export const removeGMM = createAsyncThunk<
       };
 
       if (errorResponse.status === 403) {
-        patchResponse.errorCode = 'NotGroupOwner';
+        removeGMMResponse.errorCode = 'NotGroupOwner';
       } else if (errorResponse.status === 500) {
-        patchResponse.errorCode = 'InternalError';
+        removeGMMResponse.errorCode = 'InternalError';
       }
 
-      return patchResponse;
+      return removeGMMResponse;
     }
   } catch (error) {
     throw new Error(`Failed to remove GMM: ${error}`);

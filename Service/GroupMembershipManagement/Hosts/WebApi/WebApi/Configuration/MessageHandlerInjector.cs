@@ -37,7 +37,6 @@ namespace WebApi.Configuration
 
             services.AddTransient<IRequestHandler<PatchJobRequest, PatchJobResponse>, PatchJobHandler>();
             services.AddTransient<IRequestHandler<PostJobRequest, PostJobResponse>, PostJobHandler>();
-            services.AddTransient<PatchJobHandler>();
             services.AddTransient<IRequestHandler<RemoveGMMRequest, RemoveGMMResponse>, RemoveGMMHandler>();
 
             return services;

@@ -11,8 +11,7 @@ export enum SyncStatus {
   Idle = 'Idle',
   InProgress = 'InProgress',
   PendingReview = 'PendingReview',
-  SubmissionRejected = 'SubmissionRejected',
-  Removed = 'Removed'
+  SubmissionRejected = 'SubmissionRejected'
 }
 
 export enum ActionRequired {

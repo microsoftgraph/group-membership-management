@@ -12,6 +12,7 @@ export * from './Page';
 export * from './PagingOptions';
 export * from './PatchJobResponse';
 export * from './PostJobResponse';
+export * from './RemoveGMMResponse';
 export * from './Setting';
 export * from './SettingKey';
 export * from './Status';

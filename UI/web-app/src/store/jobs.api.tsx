@@ -27,9 +27,7 @@ export const fetchJobs = createAsyncThunk<Page<Job>, PagingOptions | undefined, 
     try {
       const jobsPage = await gmmApi.jobs.getAllJobs(pagingOptions);
 
-      const filteredJobs = jobsPage.items.filter(job => job.status !== SyncStatus.Removed);
-
-      const mapped = filteredJobs.map((index) => {
+      const mapped = jobsPage.items.map((index) => {
         const currentTime = moment.utc();
         var lastRunTime = moment.utc(index['lastSuccessfulRunTime']);
         var hoursAgo = currentTime.diff(lastRunTime, 'hours');

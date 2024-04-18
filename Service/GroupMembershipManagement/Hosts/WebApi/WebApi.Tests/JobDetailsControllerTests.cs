@@ -71,6 +71,8 @@ namespace Services.Tests
                                   return jobs.BuildMock();
                               });
 
+            _syncJobRepository.Setup(x => x.DeleteSyncJobAsync(It.IsAny<SyncJob>()));
+
             _getJobDetailsHandler = new GetJobDetailsHandler(_loggingRepository.Object,
                                                              _syncJobRepository.Object,
                                                              _graphGroupRepository.Object,
@@ -82,8 +84,7 @@ namespace Services.Tests
 
             _removeGMMHandler = new RemoveGMMHandler(_loggingRepository.Object,
                                                     _graphGroupRepository.Object,
-                                                   _syncJobRepository.Object,
-                                                   _patchJobHandler);
+                                                   _syncJobRepository.Object);
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler);
         }
