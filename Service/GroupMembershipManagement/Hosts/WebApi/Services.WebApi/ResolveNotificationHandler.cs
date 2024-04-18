@@ -55,11 +55,14 @@ namespace Services
                 return response;
             }
 
+            var isInAuthorizedGroup = false;
+
             var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentifier, thresholdNotification.TargetOfficeGroupId);
             if (!isGroupOwner)
             {
-                // Check if user is in the list of GMM Admins
-                var isInAuthorizedGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(request.UserIdentifier, _gmmEmailReceivers.ActionableMessageViewerGroupId);
+                // Check if user is in the list of GMM Support / Actionable Message Viewer Group
+                isInAuthorizedGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(request.UserIdentifier, _gmmEmailReceivers.ActionableMessageViewerGroupId);
+
                 if (!isInAuthorizedGroup)
                 {
                     // Unauthorized
@@ -73,7 +76,7 @@ namespace Services
                 var resolvedByMail = request.UserIdentifier;
 
                 Guid userId;
-                if(Guid.TryParse(resolvedByMail, out userId))
+                if (Guid.TryParse(resolvedByMail, out userId))
                 {
                     var user = await _graphGroupRepository.GetUserByUpnOrIdAsync(userId.ToString(), true);
                     resolvedByMail = user.Mail;
@@ -83,7 +86,7 @@ namespace Services
                 thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
                 thresholdNotification.CardState = ThresholdNotificationCardState.NoCard;
                 thresholdNotification.Resolution = resolution;
-                thresholdNotification.ResolvedBy = resolvedByMail;
+                thresholdNotification.ResolvedBy = isInAuthorizedGroup ? "GMM Support" : resolvedByMail;
                 thresholdNotification.ResolvedTime = DateTime.UtcNow;
 
                 await handleSyncJobResolution(thresholdNotification);
@@ -105,13 +108,13 @@ namespace Services
                 job.IgnoreThresholdOnce = true;
                 job.Status = SyncStatus.Idle.ToString();
                 await _syncJobRepository.UpdateSyncJobFromNotificationAsync(job, SyncStatus.Idle);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resolved Notification. Setting the status of the sync back to Idle."});
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resolved Notification. Setting the status of the sync back to Idle." });
             }
             else if (notification.Resolution == ThresholdNotificationResolution.Paused)
             {
                 job.Status = SyncStatus.CustomerPaused.ToString();
                 await _syncJobRepository.UpdateSyncJobFromNotificationAsync(job, SyncStatus.CustomerPaused);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resolved Notification. Setting the status of the sync to CustomerPaused."});
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resolved Notification. Setting the status of the sync to CustomerPaused." });
             }
         }
         private void TrackNotificationResponseEvent(Guid groupId, string timeElapsedForResponse)
