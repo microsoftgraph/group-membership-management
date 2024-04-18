@@ -32,8 +32,10 @@ function Set-UserManagedIdentityPermissions {
 	. ($scriptsDirectory + '\Install-MSGraphIfNeeded.ps1')
 	Install-MSGraphIfNeeded
 
+	$currentTenantId = (Get-AzContext).Tenant.Id
+
 	# Connect to Microsoft Graph
-	Connect-MgGraph -Scopes "Directory.ReadWrite.All"
+	Connect-MgGraph -Scopes "Directory.ReadWrite.All" -TenantId $currentTenantId
 
 	# Get the User Assigned Managed Identity and Graph Service Principal
 	$uamiName = "$SolutionAbbreviation-identity-$EnvironmentAbbreviation-Graph"
