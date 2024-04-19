@@ -5438,12 +5438,12 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   PartTitle: 'Threshold Violations Created'
                   Dimensions: {
                     xAxis: {
-                      name: 'Bin'
+                      name: 'Day'
                       type: 'datetime'
                     }
                     yAxis: [
                       {
-                        name: 'count_'
+                        name: 'NotificationsCount'
                         type: 'long'
                       }
                     ]
