@@ -2,9 +2,9 @@
 // Licensed under the MIT license.
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceCustomLabel } from './sqlMembershipSources.api';
+import { fetchAttributeValues, fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceCustomLabel } from './sqlMembershipSources.api';
 import type { RootState } from './store';
-import { SqlMembershipAttribute, SqlMembershipSource } from '../models';
+import { SqlMembershipAttribute, SqlMembershipAttributeValue, SqlMembershipSource } from '../models';
 
 export interface SettingsState {
 
@@ -12,6 +12,13 @@ export interface SettingsState {
   attributes: SqlMembershipAttribute[] | undefined;
   isSourceLoading: boolean;
   areAttributesLoading: boolean;
+  areAttributeValuesLoading: boolean;
+  attributeValues: {
+    [attribute: string]: {
+      values: SqlMembershipAttributeValue[];
+      type: string | undefined;
+    }
+  };
   isSourceSaving: boolean;
   areAttributesSaving: boolean;
   error: string | undefined;
@@ -22,8 +29,10 @@ export interface SettingsState {
 const initialState: SettingsState = {
   source: undefined,
   attributes: undefined,
+  attributeValues: {},
   isSourceLoading: false,
   areAttributesLoading: false,
+  areAttributeValuesLoading: false,
   isSourceSaving: false,
   areAttributesSaving: false,
   error: undefined,
@@ -68,6 +77,22 @@ const sqlMembershipSourcesSlice = createSlice({
       state.error = action.error.message;
     });
 
+    builder.addCase(fetchAttributeValues.pending, (state) => {
+      state.areAttributeValuesLoading = true;
+    });
+    builder.addCase(fetchAttributeValues.fulfilled, (state, action) => {
+      state.areAttributeValuesLoading = false;
+      const { attribute, values} = action.payload;
+      state.attributeValues[attribute] = {
+        values: values,
+        type: undefined
+      };
+    });
+    builder.addCase(fetchAttributeValues.rejected, (state, action) => {
+      state.areAttributeValuesLoading = false;
+      state.error = action.error.message;
+    });
+
     builder.addCase(patchDefaultSqlMembershipSourceCustomLabel.pending, (state) => {
       state.isSourceSaving = true;
     });
@@ -105,8 +130,10 @@ export const { setSource, setAttributes } = sqlMembershipSourcesSlice.actions;
 
 export const selectSource = (state: RootState) => state.sqlMembershipSources.source;
 export const selectAttributes = (state: RootState) => state.sqlMembershipSources.attributes;
+export const selectAttributeValues = (state: RootState) => state.sqlMembershipSources.attributeValues;
 export const selectIsSourceLoading = (state: RootState) => state.sqlMembershipSources.isSourceLoading;
 export const selectAreAttributesLoading = (state: RootState) => state.sqlMembershipSources.areAttributesLoading;
+export const selectAreAttributeValuesLoading = (state: RootState) => state.sqlMembershipSources.areAttributeValuesLoading;
 export const selectIsSourceSaving = (state: RootState) => state.sqlMembershipSources.isSourceSaving;
 export const selectAreAttributesSaving = (state: RootState) => state.sqlMembershipSources.areAttributesSaving;
 

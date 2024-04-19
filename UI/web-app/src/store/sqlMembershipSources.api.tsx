@@ -3,7 +3,9 @@
 
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { ThunkConfig } from './store';
-import { SqlMembershipAttribute } from '../models';
+import { SqlMembershipAttribute, SqlMembershipAttributeValue } from '../models';
+import { GetAttributeValuesResponse } from '../models/GetAttributeValuesResponse';
+import { GetAttributeValuesRequest } from '../models/GetAttributeValuesRequest';
 
 export const fetchDefaultSqlMembershipSource = createAsyncThunk<SqlMembershipAttribute, void, ThunkConfig>(
     'sqlMembershipSources/fetchDefaultSqlMembershipSource',
@@ -30,6 +32,27 @@ export const fetchDefaultSqlMembershipSourceAttributes = createAsyncThunk<SqlMem
       }
     }
   );
+
+export const fetchAttributeValues = createAsyncThunk<GetAttributeValuesResponse, GetAttributeValuesRequest, ThunkConfig>(
+  'fetchSqlFilterAttributeValues',
+  async (request, { extra }) => {
+    const { gmmApi } = extra.apis;
+    try {
+      const response = await gmmApi.sqlMembershipSources.fetchDefaultSqlMembershipSourceAttributeValues(request.attribute);
+      const payload: GetAttributeValuesResponse = {
+        values: response,
+        attribute: request.attribute
+      };
+      return payload;
+    } catch (error) {
+      const payload: GetAttributeValuesResponse = {
+        values: [],
+        attribute: request.attribute
+      };
+      return payload;
+    }
+  }
+);
 
 export const patchDefaultSqlMembershipSourceCustomLabel = createAsyncThunk<void, string, ThunkConfig>(
     'sqlMembershipSources/patchDefaultSqlMembershipSourceCustomLabel',

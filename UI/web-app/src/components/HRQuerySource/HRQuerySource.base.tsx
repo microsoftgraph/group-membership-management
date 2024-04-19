@@ -21,8 +21,9 @@ import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeI
 import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
 import { manageMembershipIsEditingExistingJob } from '../../store/manageMembership.slice';
 import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
-import { selectAttributes, selectSource } from '../../store/sqlMembershipSources.slice';
-import { SqlMembershipAttribute } from '../../models';
+import { fetchAttributeValues } from '../../store/sqlMembershipSources.api';
+import { selectAttributes, selectAttributeValues } from '../../store/sqlMembershipSources.slice';
+import { SqlMembershipAttribute, SqlMembershipAttributeValue } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
@@ -61,10 +62,12 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [children, setChildren] = useState<ChildType[]>([]);
   const excludeLeaderQuery = `EmployeeId <> ${source.manager?.id}`
   const attributes = useSelector(selectAttributes);
-  const hrSource = useSelector(selectSource);
+  const attributeValues = useSelector(selectAttributeValues);
   const [filteredOptions, setFilteredOptions] = useState<FilteredOptionsState>({});
+  const [filteredValueOptions, setFilteredValueOptions] = useState<FilteredOptionsState>({});
   const [items, setItems] = useState<IFilterPart[]>([]);
   let options: IComboBoxOption[] = [];
+  let valueOptions: IComboBoxOption[] = [];
   const draggedItem = useRef<any | undefined>();
   const draggedIndex = useRef<number>(-1);
 
@@ -72,6 +75,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     if (children.length === 0) {
       setIncludeFilter(false);
       setFilteredOptions({});
+      setFilteredValueOptions({});
     } else {
       let items: IFilterPart[] = children.map((child, index) => ({
         attribute: child.filter.split(' ')[0],
@@ -85,6 +89,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
 
   useEffect(() => {
     setFilteredOptions({});
+    setFilteredValueOptions({});
   }, [children]);
 
   useEffect(() => {
@@ -115,9 +120,17 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const getOptions = (attributes?: SqlMembershipAttribute[]): IComboBoxOption[] => {
     options = attributes?.map((attribute, index) => ({
       key: attribute.name,
-      text: attribute.name,
+      text: attribute.customLabel ? attribute.customLabel : attribute.name,
     })) || [];
     return options;
+  };
+
+  const getValueOptions = (attributeValues?: SqlMembershipAttributeValue[]): IComboBoxOption[] => {
+    valueOptions = attributeValues?.map((attributeValue, index) => ({
+      key: attributeValue.code,
+      text: attributeValue.description ? attributeValue.description : attributeValue.code
+    })) || [];
+    return valueOptions;
   };
 
   useEffect(() => {
@@ -246,6 +259,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const removeComponent = (indexToRemove: number) => {
     if (indexToRemove === -1) return;
     setFilteredOptions({});
+    setFilteredValueOptions({});
     const childToRemove = children[indexToRemove];
     const newFilter = props.source.filter?.replace(childToRemove.filter, '').trim();
     setSource(prevSource => {
@@ -295,6 +309,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     if (option?.key === "No") {
       setIncludeFilter(false);
       setFilteredOptions({});
+      setFilteredValueOptions({});
       const filter = "";
       setSource(prevSource => {
         const newSource = { ...prevSource, filter };
@@ -358,6 +373,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
 
   const handleAttributeChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number): void => {
     if (item) {
+      dispatch(fetchAttributeValues({attribute: item.key as string }));
       const updatedItems = items.map((it, idx) => {
         if (idx === index) {
           return { ...it, attribute: item.text };
@@ -370,7 +386,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     const regex = /(?<= And | Or )/;
     let segments = props.source.filter?.split(regex);
     if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
-      const a = item.text;
+      const a = item.key.toString();
       let filter: string;
       if (source.filter !== "") {
         filter = `${source.filter} ` + a;
@@ -390,7 +406,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
 
       }
       if (words.length > 0) {
-          words[0] = item.text;
+          words[0] = item.key.toString();
       }
       segments[index] = words.join(' ');
       const updatedFilter = segments.join('');
@@ -439,7 +455,54 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     }
   };
 
-  const handleAttributeValueChange = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number) => {
+  const handleAttributeValueChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number): void => {
+    if (item) {
+      const updatedItems = items.map((it, idx) => {
+        if (idx === index) {
+          return { ...it, value: item.text };
+        }
+        return it;
+      });
+      setItems(updatedItems);
+    }
+
+    const regex = /(?<= And | Or )/;
+    let segments = props.source.filter?.split(regex);
+    if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
+      const a = item.key.toString();
+      let filter: string;
+      if (source.filter !== "") {
+        filter = `${source.filter} ` + a;
+      } else {
+        filter = a;
+      }
+      setSource(prevSource => {
+        const newSource = { ...prevSource, filter };
+        onSourceChange(newSource, partId);
+        return newSource;
+      });
+    }
+    else if (segments && index !== undefined && segments[index] && item) {
+      let words = segments[index].split(' ');
+      if (words[0] === "") {
+        words = segments[index].trim().split(' ');
+
+      }
+      if (words.length > 0) {
+          words[2] = item.key.toString();
+      }
+      segments[index] = words.join(' ');
+      const updatedFilter = segments.join('');
+      setSource(prevSource => {
+        let filter = updatedFilter;
+        const newSource = { ...prevSource, filter };
+        onSourceChange(newSource, partId);
+        return newSource;
+      });
+    }
+  };
+
+  const handleTAttributeValueChange = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number) => {
     const updatedItems = items.map((item, idx) => {
         if (idx === index) {
             return { ...item, value: newValue };
@@ -522,7 +585,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     }
   };
 
-  const onInputValueChange = (text: string, index: number) => {
+  const onAttributeChange = (text: string, index: number) => {
     let newFilteredOptions = { ...filteredOptions };
     if (attributes && attributes.length > 0) {
       if (!text) {
@@ -532,6 +595,20 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         newFilteredOptions[index] = options.filter(opt => opt.text.toLowerCase().startsWith(text.toLowerCase()));
       }
       setFilteredOptions(newFilteredOptions);
+    }
+  };
+
+  const onAttributeValueChange = (text: string, index: number) => {
+    let newFilteredValueOptions = { ...filteredValueOptions };
+    const currentAttributeValues = attributeValues[items[index].attribute].values || [];
+    if (currentAttributeValues.length > 0) {
+      if (!text) {
+          newFilteredValueOptions[index] = getValueOptions(currentAttributeValues);
+      } else {
+          let valueOptions = getValueOptions(currentAttributeValues);
+          newFilteredValueOptions[index] = valueOptions.filter(opt => opt.text.toLowerCase().startsWith(text.toLowerCase()));
+      }
+      setFilteredValueOptions(newFilteredValueOptions);
     }
   };
 
@@ -585,7 +662,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
           return <ComboBox
           selectedKey={items[index].attribute}
           options={filteredOptions[index] || getOptions(attributes)}
-          onInputValueChange={(text) => onInputValueChange(text, index)}
+          onInputValueChange={(text) => onAttributeChange(text, index)}
           onChange={(event, option) => handleAttributeChange(event, option, index)}
           allowFreeInput
           autoComplete="off"
@@ -599,14 +676,26 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
           styles={{root: classNames.root, title: classNames.dropdownTitle}}
         />;
         case 'value':
-          return <TextField
-          value={items[index].value}
-          onChange={(event, newValue) => handleAttributeValueChange(event, newValue!, index)}
-          onBlur={(event) => handleBlur(event, index)}
-          styles={{ fieldGroup: classNames.textField }}
-          validateOnLoad={false}
-          validateOnFocusOut={false}
-        ></TextField>;
+          if (attributeValues && attributeValues[items[index].attribute] && attributeValues[items[index].attribute].values.length > 0) {
+            return <ComboBox
+              selectedKey={items[index].value}
+              options={filteredValueOptions[index] || getValueOptions(attributeValues[items[index].attribute].values)}
+              onInputValueChange={(text) => onAttributeValueChange(text, index)}
+              onChange={(event, option) => handleAttributeValueChange(event, option, index)}
+              allowFreeInput
+              autoComplete="off"
+              useComboBoxAsMenuWidth={true}
+              />
+          } else {
+            return <TextField
+              value={items[index].value}
+              onChange={(event, newValue) => handleTAttributeValueChange(event, newValue!, index)}
+              onBlur={(event) => handleBlur(event, index)}
+              styles={{ fieldGroup: classNames.textField }}
+              validateOnLoad={false}
+              validateOnFocusOut={false}
+          ></TextField>;
+          }
         case 'andOr':
           return <Dropdown
           selectedKey={item.andOr ? item.andOr : ""}

@@ -18,6 +18,7 @@ export * from './SettingKey';
 export * from './Status';
 export * from './SqlMembershipSource';
 export * from './SqlMembershipAttribute';
+export * from './SqlMembershipAttributeValue';
 export * from './User';
 export * from './PeoplePickerPersona';
 export * from './DestinationPickerPersona';
