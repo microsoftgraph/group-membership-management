@@ -41,13 +41,15 @@ export const fetchAttributeValues = createAsyncThunk<GetAttributeValuesResponse,
       const response = await gmmApi.sqlMembershipSources.fetchDefaultSqlMembershipSourceAttributeValues(request.attribute);
       const payload: GetAttributeValuesResponse = {
         values: response,
-        attribute: request.attribute
+        attribute: request.attribute,
+        type: request.type
       };
       return payload;
     } catch (error) {
       const payload: GetAttributeValuesResponse = {
         values: [],
-        attribute: request.attribute
+        attribute: request.attribute,
+        type: request.type
       };
       return payload;
     }

@@ -81,7 +81,10 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       let items: IFilterPart[] = children.map((child, index) => ({
         attribute: child.filter.split(' ')[0],
         equalityOperator: child.filter.split(' ')[1],
-        value: child.filter.split(' ')[2],
+        value:  attributeValues[child.filter.split(' ')[0]] &&
+                attributeValues[child.filter.split(' ')[0]].values &&
+                attributeValues[child.filter.split(' ')[0]].values.length > 0 &&
+                child.filter.split(' ')[2] && child.filter.split(' ')[2].startsWith("'") && child.filter.split(' ')[2].endsWith("'") ? child.filter.split(' ')[2].slice(1, -1) : child.filter.split(' ')[2],
         andOr: child.filter.split(' ')[3]
       }));
       setItems(items);
@@ -117,6 +120,18 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     }
   }, [children]);
 
+  const checkType = (value: string, type: string | undefined): string => {
+    switch (type) {
+      case "nvarchar":
+        if (value.startsWith("'") && value.endsWith("'")) {
+          return value;
+        } else {
+            return `'${value}'`;
+        }
+      default:
+        return value;
+    }
+  };
 
   const getOptions = (attributes?: SqlMembershipAttribute[]): IComboBoxOption[] => {
     options = attributes?.map((attribute, index) => ({
@@ -374,7 +389,8 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
 
   const handleAttributeChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number): void => {
     if (item) {
-      dispatch(fetchAttributeValues({attribute: item.key as string }));
+      const selectedAttribute = attributes?.find(attribute => attribute.name === item.key);
+      dispatch(fetchAttributeValues({attribute: item.key as string, type: selectedAttribute?.type }));
       const updatedItems = items.map((it, idx) => {
         if (idx === index) {
           return { ...it, attribute: item.text };
@@ -464,33 +480,90 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         }
         return it;
       });
-      setItems(updatedItems);
-    }
 
+      const selectedValue = item.key.toString();
+      let selectedValueAfterConversion: string = "";
+
+      selectedValueAfterConversion = checkType(selectedValue, attributeValues[updatedItems[index ?? 0].attribute.toString()].type);
+      setItems(updatedItems);
+
+      const regex = /(?<= And | Or )/;
+      let segments = props.source.filter?.split(regex);
+      if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
+        let filter: string;
+        if (source.filter !== "") {
+          filter = `${source.filter} ` + selectedValueAfterConversion || selectedValue;
+        } else {
+          filter = selectedValueAfterConversion || selectedValue;
+        }
+        setSource(prevSource => {
+          const newSource = { ...prevSource, filter };
+          onSourceChange(newSource, partId);
+          return newSource;
+        });
+      }
+      else if (segments && index !== undefined && segments[index] && item) {
+        let words = segments[index].split(' ');
+        if (words[0] === "") {
+          words = segments[index].trim().split(' ');
+        }
+        if (words.length > 0) {
+            words[2] = selectedValueAfterConversion || selectedValue;
+        }
+        segments[index] = words.join(' ');
+        const updatedFilter = segments.join('');
+        setSource(prevSource => {
+          let filter = updatedFilter;
+          const newSource = { ...prevSource, filter };
+          onSourceChange(newSource, partId);
+          return newSource;
+        });
+      }
+    }
+  };
+
+  const handleTAttributeValueChange = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number) => {
+    const updatedItems = items.map((it, idx) => {
+        if (idx === index) {
+            return { ...it, value: newValue };
+        }
+        return it;
+    });
+
+    const selectedValue = newValue;
+    let selectedValueAfterConversion: string = "";
+
+    selectedValueAfterConversion = checkType(selectedValue, attributeValues[items[index ?? 0].attribute].type);
+    setItems(updatedItems);
+  }
+
+  const handleBlur = (event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, index?: number) => {
+    var newValue = event.target.value.trim();
+    const selectedValue = newValue;
+    let selectedValueAfterConversion: string = "";
+    selectedValueAfterConversion = checkType(selectedValue, attributeValues[items[index ?? 0].attribute].type);
     const regex = /(?<= And | Or )/;
     let segments = props.source.filter?.split(regex);
-    if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
-      const a = item.key.toString();
+    if (selectedValueAfterConversion !== "" && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
       let filter: string;
       if (source.filter !== "") {
-        filter = `${source.filter} ` + a;
+        filter = `${source.filter} ` + selectedValueAfterConversion || selectedValue;
       } else {
-        filter = a;
+        filter = selectedValueAfterConversion || selectedValue;
       }
       setSource(prevSource => {
-        const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId);
-        return newSource;
+          const newSource = { ...prevSource, filter };
+          onSourceChange(newSource, partId);
+          return newSource;
       });
     }
-    else if (segments && index !== undefined && segments[index] && item) {
+    else if (segments && index !== undefined && segments[index] && selectedValueAfterConversion) {
       let words = segments[index].split(' ');
       if (words[0] === "") {
         words = segments[index].trim().split(' ');
-
       }
       if (words.length > 0) {
-          words[2] = item.key.toString();
+          words[2] = selectedValueAfterConversion || selectedValue;
       }
       segments[index] = words.join(' ');
       const updatedFilter = segments.join('');
@@ -502,52 +575,6 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       });
     }
   };
-
-  const handleTAttributeValueChange = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number) => {
-    const updatedItems = items.map((item, idx) => {
-        if (idx === index) {
-            return { ...item, value: newValue };
-        }
-        return item;
-    });
-    setItems(updatedItems);
-};
-
-  const handleBlur = (event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, index?: number) => {
-    var newValue = event.target.value.trim();
-    const regex = /(?<= And | Or )/;
-    let segments = props.source.filter?.split(regex);
-    if (newValue !== "" && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
-      let filter: string;
-      if (source.filter !== "") {
-        filter = `${source.filter} ` + newValue;
-      } else {
-        filter = newValue;
-      }
-      setSource(prevSource => {
-          const newSource = { ...prevSource, filter };
-          onSourceChange(newSource, partId);
-          return newSource;
-      });
-    }
-    else if (segments && index !== undefined && segments[index] && newValue) {
-      let words = segments[index].split(' ');
-      if (words[0] === "") {
-        words = segments[index].trim().split(' ');
-      }
-      if (words.length > 0) {
-          words[2] = newValue;
-      }
-      segments[index] = words.join(' ');
-      const updatedFilter = segments.join('');
-      setSource(prevSource => {
-        let filter = updatedFilter;
-        const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId);
-        return newSource;
-      });
-    }
-  }
 
   const handleOrAndOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number): void => {
     const regex = /(?<= And | Or )/;
@@ -762,7 +789,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
             }
             newSelectedIndices = selectedItems.map(item => newItems.indexOf(item));
             let newChildren: ChildType[] = newItems.map((item) => ({
-              filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
+              filter: `${item.attribute} ${item.equalityOperator} ${valueNeedsQuotes(item.value, item.attribute)} ${item.andOr}`,
             }));
             setChildren(newChildren);
             setItems(newItems);
@@ -780,7 +807,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
               return;
             }
             let newChildren: ChildType[] = newItems.map((item) => ({
-              filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
+              filter: `${item.attribute} ${item.equalityOperator} ${valueNeedsQuotes(item.value,  item.attribute)} ${item.andOr}`,
             }));
             setChildren(newChildren);
             setItems(newItems);
@@ -797,6 +824,10 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         draggedIndex.current = -1;
       },
     };
+  };
+
+  const valueNeedsQuotes = (value: string, attribute: string) => {
+    return attributeValues[attribute].values.length > 0 && attributeValues[attribute].type === "nvarchar" ? `'${value}'` : value;
   };
 
   const [selection] = useState(() => new Selection({

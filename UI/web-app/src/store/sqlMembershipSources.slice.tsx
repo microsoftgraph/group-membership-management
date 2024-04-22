@@ -82,10 +82,10 @@ const sqlMembershipSourcesSlice = createSlice({
     });
     builder.addCase(fetchAttributeValues.fulfilled, (state, action) => {
       state.areAttributeValuesLoading = false;
-      const { attribute, values} = action.payload;
+      const { attribute, type, values} = action.payload;
       state.attributeValues[attribute] = {
         values: values,
-        type: undefined
+        type: type
       };
     });
     builder.addCase(fetchAttributeValues.rejected, (state, action) => {
@@ -122,7 +122,7 @@ const sqlMembershipSourcesSlice = createSlice({
       state.patchResponse = action.payload;
       state.patchError = action.error.message;
     });
-    
+
   },
 });
 

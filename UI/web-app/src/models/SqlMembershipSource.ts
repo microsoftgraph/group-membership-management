@@ -4,5 +4,6 @@
 export type SqlMembershipSource = {
     name: string;
     customLabel: string;
+    type: string;
   };
   
