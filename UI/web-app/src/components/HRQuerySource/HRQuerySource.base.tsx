@@ -22,7 +22,7 @@ import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
 import { manageMembershipIsEditingExistingJob } from '../../store/manageMembership.slice';
 import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
 import { fetchAttributeValues } from '../../store/sqlMembershipSources.api';
-import { selectAttributes, selectAttributeValues } from '../../store/sqlMembershipSources.slice';
+import { selectAttributes, selectSource, selectAttributeValues } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipAttribute, SqlMembershipAttributeValue } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
 
@@ -63,6 +63,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const excludeLeaderQuery = `EmployeeId <> ${source.manager?.id}`
   const attributes = useSelector(selectAttributes);
   const attributeValues = useSelector(selectAttributeValues);
+  const hrSource = useSelector(selectSource);
   const [filteredOptions, setFilteredOptions] = useState<FilteredOptionsState>({});
   const [filteredValueOptions, setFilteredValueOptions] = useState<FilteredOptionsState>({});
   const [items, setItems] = useState<IFilterPart[]>([]);
@@ -750,13 +751,13 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
             const selectedItems = selection.getSelection() as any[];
             const insertIndex = newItems.indexOf(item);
             newItems = newItems.filter(i => !selectedItems.includes(i));
-            newItems.splice(insertIndex, 0, ...selectedItems);          
+            newItems.splice(insertIndex, 0, ...selectedItems);
             let allItems: ChildType[] = items.map((item) => ({
               filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
             }));
 
             const index = allItems.findIndex((item) => item.filter.includes("undefined"));
-            if (insertIndex === index) {              
+            if (insertIndex === index) {
               return;
             }
             newSelectedIndices = selectedItems.map(item => newItems.indexOf(item));
@@ -769,13 +770,13 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
             const insertIndex = newItems.indexOf(item);
             newItems = newItems.filter(i => i !== draggedItem.current);
             newItems.splice(insertIndex, 0, draggedItem.current);
-            newSelectedIndices.push(insertIndex);           
+            newSelectedIndices.push(insertIndex);
             let allItems: ChildType[] = items.map((item) => ({
               filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
             }));
 
             const index = allItems.findIndex((item) => item.filter.includes("undefined"));
-            if (insertIndex === index) {            
+            if (insertIndex === index) {
               return;
             }
             let newChildren: ChildType[] = newItems.map((item) => ({
