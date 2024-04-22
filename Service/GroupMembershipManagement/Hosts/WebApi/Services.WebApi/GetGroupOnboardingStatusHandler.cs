@@ -7,7 +7,6 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
-using WebApi.Models.DTOs;
 
 namespace Services
 {
@@ -24,7 +23,7 @@ namespace Services
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
-            _gmmAppId = graphCredentials.Value.ClientId;
+            _gmmAppId = graphCredentials.Value.GMMOwnerAppId;
         }
 
         protected override async Task<GetGroupOnboardingStatusResponse> ExecuteCoreAsync(GetGroupOnboardingStatusRequest request)

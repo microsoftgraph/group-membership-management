@@ -62,7 +62,7 @@ namespace Hosts.AzureMaintenance
             builder.Services.AddSingleton<INotificationRepository, NotificationRepository>();
 
 
-            builder.Services.AddSingleton<IKeyVaultSecret<IAzureMaintenanceService>>(services => new KeyVaultSecret<IAzureMaintenanceService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
+            builder.Services
             .AddGraphAPIClient()
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 

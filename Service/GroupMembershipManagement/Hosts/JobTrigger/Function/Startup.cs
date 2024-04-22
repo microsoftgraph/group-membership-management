@@ -47,16 +47,8 @@ namespace Hosts.JobTrigger
 
             builder.Services.AddSingleton<IKeyVaultSecret<IJobTriggerService>>(services =>
             {
-                var configuration = services.GetService<IConfiguration>();
-                var authenticationType = ServiceCollectionExtensions.MapStringToAuthenticationType(configuration["GraphAPI:AuthenticationType"]);
                 var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
-
-                if (authenticationType == AuthenticationType.UserAssignedManagedIdentity)
-                {
-                    return new KeyVaultSecret<IJobTriggerService>(graphCredentials.UserAssignedManagedIdentityClientId);
-                }
-
-                return new KeyVaultSecret<IJobTriggerService>(graphCredentials.ClientId);
+                return new KeyVaultSecret<IJobTriggerService>(graphCredentials.GMMOwnerAppId);
             })
             .AddSingleton<IKeyVaultSecret<IJobTriggerService, Guid>>(services =>
             {

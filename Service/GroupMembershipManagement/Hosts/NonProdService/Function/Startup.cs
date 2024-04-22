@@ -29,7 +29,7 @@ namespace Hosts.NonProdService
         {
             base.Configure(builder);
 
-            builder.Services.AddSingleton<IKeyVaultSecret<INonProdService>>(services => new KeyVaultSecret<INonProdService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
+            builder.Services
             .AddGraphAPIClient()
             .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
             .AddSingleton<IGraphUserRepository, GraphUserRepository>();

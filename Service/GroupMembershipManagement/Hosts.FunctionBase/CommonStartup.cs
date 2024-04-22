@@ -123,7 +123,13 @@ namespace Hosts.FunctionBase
                 return new GMMResources(creds.Value.LearnMoreAboutGMMUrl);
             });
 
-            builder.Services.AddOptions<GraphCredentials>().Configure<IConfiguration>((settings, configuration) => configuration.GetSection("graphCredentials").Bind(settings));
+            builder.Services.AddOptions<GraphCredentials>()
+                            .Configure<IConfiguration>((settings, configuration) =>
+                            {
+                                configuration.GetSection("graphCredentials").Bind(settings);
+                                var authenticationType = Common.DependencyInjection.ServiceCollectionExtensions.MapStringToAuthenticationType(configuration["GraphAPI:AuthenticationType"]);
+                                settings.AuthenticationType = authenticationType;
+                            });
 
             builder.Services.AddOptions<EmailSenderRecipient>().Configure<IConfiguration>((settings, configuration) =>
             {

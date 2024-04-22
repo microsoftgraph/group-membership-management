@@ -29,7 +29,7 @@ namespace Hosts.DestinationAttributesUpdater
         {
             base.Configure(builder);
 
-            builder.Services.AddSingleton<IKeyVaultSecret<IDestinationAttributesUpdaterService>>(services => new KeyVaultSecret<IDestinationAttributesUpdaterService>(services.GetService<IOptions<GraphCredentials>>().Value.ClientId))
+            builder.Services
             .AddGraphAPIClient()
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 

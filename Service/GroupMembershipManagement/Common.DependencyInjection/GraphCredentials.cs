@@ -14,5 +14,18 @@ namespace Common.DependencyInjection
         public string ServiceAccountUserName { get; set; }
         public string ServiceAccountPassword { get; set; }
         public string UserAssignedManagedIdentityClientId { get; set; }
+        public AuthenticationType AuthenticationType { get; set; }
+        public string GMMOwnerAppId
+        {
+            get
+            {
+                return AuthenticationType switch
+                {
+                    AuthenticationType.ClientSecret or AuthenticationType.Certificate => ClientId,
+                    AuthenticationType.UserAssignedManagedIdentity => UserAssignedManagedIdentityClientId,
+                    _ => ClientId
+                };
+            }
+        }
     }
 }
