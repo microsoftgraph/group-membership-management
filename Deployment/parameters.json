@@ -164,7 +164,7 @@
       ]
     },
     "authenticationType":{
-      "value": "UserAssignedManagedIdentity|ClientSecret|'Certificate"
+      "value": "UserAssignedManagedIdentity|ClientSecret|Certificate"
     }
   }
 }
