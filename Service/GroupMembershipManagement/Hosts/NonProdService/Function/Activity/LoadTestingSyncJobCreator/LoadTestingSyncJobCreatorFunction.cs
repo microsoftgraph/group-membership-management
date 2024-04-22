@@ -10,6 +10,7 @@ using Repositories.Contracts;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Data.SqlTypes;
 
 namespace Hosts.NonProdService
 {
@@ -73,6 +74,8 @@ namespace Hosts.NonProdService
                         ThresholdPercentageForRemovals = 20,
                         ThresholdViolations = 0,
                         StartDate = nextJobTime,
+                        LastRunTime = SqlDateTime.MinValue.Value.AddDays(1),
+                        IgnoreThresholdOnce = true,
                         Query = query
                     };
 
