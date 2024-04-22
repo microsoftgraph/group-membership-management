@@ -179,7 +179,7 @@ function Set-UIAzureADApplication {
 
 	if ($TenantId -ne $DevTenantId) {
 		Write-Host "Please sign in to your primary tenant."
-		Connect-AzAccount -Tenant $TenantId
+		Connect-AzAccount -Tenant $TenantId -Confirm
 	}
 
 	Set-AzContext -Subscription $SubscriptionName
