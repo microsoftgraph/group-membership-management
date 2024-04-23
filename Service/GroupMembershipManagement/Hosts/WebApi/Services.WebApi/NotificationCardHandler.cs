@@ -53,25 +53,24 @@ namespace Services.WebApi
                 {
                     // Unauthorized
                     response.CardJson = await _thresholdNotificationService.CreateUnauthorizedNotificationCardAsync(notification);
+                    return response;
                 }
+            }
+
+            if (notification.Status == ThresholdNotificationStatus.Resolved)
+            {
+                // Resolved
+                response.CardJson = await _thresholdNotificationService.CreateResolvedNotificationCardAsync(notification);
+            }
+            else if (notification.Status == ThresholdNotificationStatus.Expired)
+            {
+                // Expired
+                response.CardJson = _thresholdNotificationService.CreateExpiredNotificationCardAsync(notification);
             }
             else
             {
-                if (notification.Status == ThresholdNotificationStatus.Resolved)
-                {
-                    // Resolved
-                    response.CardJson = await _thresholdNotificationService.CreateResolvedNotificationCardAsync(notification);
-                }
-                else if (notification.Status == ThresholdNotificationStatus.Expired)
-                {
-                    // Expired
-                    response.CardJson = _thresholdNotificationService.CreateExpiredNotificationCardAsync(notification);
-                }
-                else
-                {
-                    // Unresolved
-                    response.CardJson = await _thresholdNotificationService.CreateNotificationCardAsync(notification);
-                }
+                // Unresolved
+                response.CardJson = await _thresholdNotificationService.CreateNotificationCardAsync(notification);
             }
 
             return response;
