@@ -27,7 +27,7 @@ function Set-AppRolesIfNeeded {
         [Guid] $TenantId
     )
     Write-Verbose "Set-AppRolesIfNeeded starting..."
-    
+
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
     . ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
     Install-AzModuleIfNeeded
@@ -38,10 +38,19 @@ function Set-AppRolesIfNeeded {
 
     [String[]]$memberTypes = "User", "Application"
 
-    $jobCreatorRole = @{
-        DisplayName        = "Job Creator"
-        Description        = "Can create jobs and have access to the Membership Management page."
-        Value              = "Job.Create"
+    $jobOwnerReaderRole = @{
+        DisplayName        = "Job Reader"
+        Description        = "Can read owned destinations in the tenant."
+        Value              = "Job.Read.OwnedBy"
+        Id                 = [Guid]::NewGuid().ToString()
+        IsEnabled          = $True
+        AllowedMemberTypes = @($memberTypes)
+    }
+
+    $jobOwnerWriterRole = @{
+        DisplayName        = "Job Writer"
+        Description        = "Can create, view, and update owned destinations in the tenant."
+        Value              = "Job.ReadWrite.OwnedBy"
         Id                 = [Guid]::NewGuid().ToString()
         IsEnabled          = $True
         AllowedMemberTypes = @($memberTypes)
@@ -92,13 +101,14 @@ function Set-AppRolesIfNeeded {
         AllowedMemberTypes = @($memberTypes)
     }
 
-    $newAppRoles = @($jobCreatorRole, 
-                         $jobTenantReaderRole, 
-                         $jobTenantWriterRole, 
-                         $submissionReviewerRole, 
-                         $hyperlinkAdministratorRole, 
-                         $customMembershipProviderAdministratorRole
-                        )
+    $newAppRoles = @($jobOwnerReaderRole,
+                        $jobOwnerWriterRole,
+                        $jobTenantReaderRole,
+                        $jobTenantWriterRole,
+                        $submissionReviewerRole,
+                        $hyperlinkAdministratorRole,
+                        $customMembershipProviderAdministratorRole
+                    )
 
     $currentAppRoles = $WebApiApp.AppRole
 
