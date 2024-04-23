@@ -5200,18 +5200,18 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "NotificationSent"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"])\n| summarize by TargetOfficeGroupId, Bin = bin(timestamp, 1d)\n| summarize count() by Bin\n'
+                  Query: 'customEvents\n| where name == "NotificationSent"\n| order by Bin desc \n| order by Bin desc'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
-                  PartTitle: 'Notifications Sent'
+                  PartTitle: 'Notifications Sent Per Day'
                   Dimensions: {
                     xAxis: {
-                      name: 'Bin'
+                      name: 'Date'
                       type: 'datetime'
                     }
                     yAxis: [
                       {
-                        name: 'count_'
+                        name: 'Notifications count'
                         type: 'long'
                       }
                     ]
@@ -5316,18 +5316,18 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "NotificationResponseReceived"\n| order by timestamp desc\n| project timestamp,\n    TargetOfficeGroupId = tostring(customDimensions["TargetOfficeGroupId"])\n| summarize by TargetOfficeGroupId, Bin = bin(timestamp, 1d)\n| summarize count() by Bin\n'
+                  Query: 'customEvents\n| where name == "NotificationResponseReceived"\n| summarize Count = count() by Bin = bin(timestamp, 1d) \n| order by Bin desc'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
-                  PartTitle: 'Notifications Responses Received'
+                  PartTitle: 'Notifications Responses Received Per Day'
                   Dimensions: {
                     xAxis: {
-                      name: 'Bin'
+                      name: 'Date'
                       type: 'datetime'
                     }
                     yAxis: [
                       {
-                        name: 'count_'
+                        name: 'Responses received count'
                         type: 'long'
                       }
                     ]
@@ -5443,7 +5443,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     }
                     yAxis: [
                       {
-                        name: 'NotificationsCount'
+                        name: 'Notifications Count'
                         type: 'long'
                       }
                     ]
