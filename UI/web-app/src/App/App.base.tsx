@@ -20,7 +20,7 @@ import { setLanguage } from '../store/localization.api';
 import { fetchSettings } from '../store/settings.api';
 import { AppFooter } from '../components/AppFooter';
 import { fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes } from '../store/sqlMembershipSources.api';
-import { selectIsJobCreator } from '../store/roles.slice';
+import { selectHasAccess } from '../store/roles.slice';
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
@@ -36,7 +36,7 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
   const dispatch = useDispatch<AppDispatch>();
   const profile = useSelector(selectProfile);
   const loggedIn = useSelector(selectLoggedIn);
-  const isJobCreator = useSelector(selectIsJobCreator);
+  const hasAccess = useSelector(selectHasAccess);
 
   // run once after load.
   useEffect(() => {
@@ -63,11 +63,12 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
       <div className={classNames.root}>
         <AppHeader />
         <div className={classNames.content}>
-          {isJobCreator ?
-            <Outlet />
-            : <div className={classNames.permissionDenied}>
-            <Text>{strings.permissionDenied}</Text>
-        </div>}
+          {hasAccess ?
+            <Outlet /> :
+            <div className={classNames.permissionDenied}>
+              <Text>{strings.permissionDenied}</Text>
+            </div>
+          }
         </div>
         <AppFooter />
       </div>

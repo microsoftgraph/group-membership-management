@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 
 export interface Roles {
-  isJobCreator(): boolean;
+  isJobOwnerReader(): boolean;
+  isJobOwnerWriter(): boolean;
   isJobTenantReader(): boolean;
   isJobTenantWriter(): boolean;
   isHyperlinkAdministrator(): boolean;

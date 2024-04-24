@@ -63,7 +63,7 @@ import {
 } from '../../store/pagingBar.slice';
 import { resetManageMembership } from '../../store/manageMembership.slice';
 
-import { selectIsJobTenantWriter } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -99,6 +99,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const filterDestinationType: string | undefined = useSelector(selectPagingBarfilterDestinationType);
   const filterDestinationOwner: string | undefined = useSelector(selectPagingBarfilterDestinationOwner);
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
+  const isJobWriter: boolean | undefined = useSelector(selectIsJobWriter);
 
   const getJobsByPage = (): void => {
     setIsShimmerEnabled(true);
@@ -375,11 +376,13 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
             <div className={classNames.title}>
               <Text variant="xLarge">{strings.JobsList.listOfMemberships}</Text>
             </div>
-            <PrimaryButton
-              text={strings.ManageMembership.manageMembershipButton}
-              menuProps={menuProps}
-              persistMenu={true}
-            />
+            {isJobWriter && 
+              <PrimaryButton
+                text={strings.ManageMembership.manageMembershipButton}
+                menuProps={menuProps}
+                persistMenu={true}
+              />
+            }
           </div>
           <div className={classNames.tabContent}>
             <ShimmeredDetailsList
