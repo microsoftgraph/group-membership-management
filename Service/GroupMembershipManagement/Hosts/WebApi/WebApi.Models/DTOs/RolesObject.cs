@@ -9,7 +9,8 @@ namespace WebApi.Models.DTOs
         {
 
         }
-        public bool IsJobCreator { get; set; }
+        public bool IsJobOwnerReader { get; set; }
+        public bool IsJobOwnerWriter { get; set; }
         public bool IsJobTenantReader { get; set; }
         public bool IsJobTenantWriter { get; set; }
         public bool IsSubmissionReviewer { get; set; }

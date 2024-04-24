@@ -21,7 +21,8 @@ namespace WebApi.Controllers.v1.Roles
         {
             var roleStatus = new Models.DTOs.RolesObject
             {
-                IsJobCreator = User.IsInRole(Models.Roles.JOB_OWNER_WRITER),
+                IsJobOwnerReader = User.IsInRole(Models.Roles.JOB_OWNER_READER),
+                IsJobOwnerWriter = User.IsInRole(Models.Roles.JOB_OWNER_WRITER),
                 IsJobTenantReader = User.IsInRole(Models.Roles.JOB_TENANT_READER),
                 IsJobTenantWriter = User.IsInRole(Models.Roles.JOB_TENANT_WRITER),
                 IsSubmissionReviewer = User.IsInRole(Models.Roles.SUBMISSION_REVIEWER),

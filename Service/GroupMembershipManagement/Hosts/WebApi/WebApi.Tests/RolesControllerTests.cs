@@ -39,7 +39,7 @@ namespace Services.Tests
             Assert.IsNotNull(okResult);
             var rolesStatuses = okResult.Value as RolesObject;
             Assert.IsNotNull(rolesStatuses);
-            Assert.IsTrue(rolesStatuses.IsJobCreator);
+            Assert.IsTrue(rolesStatuses.IsJobOwnerWriter);
             Assert.IsTrue(rolesStatuses.IsHyperlinkAdministrator);
         }
 
