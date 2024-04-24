@@ -40,7 +40,8 @@ import {
   areAllSourcePartsValid,
   setJobDetailsForExistingJob,
   setIsEditingExistingJob,
-  manageMembershipIsEditingExistingJob
+  manageMembershipIsEditingExistingJob,
+  manageMembershipCompositeQuery
 } from '../../store/manageMembership.slice';
 import { getGroupEndpoints, getGroupOnboardingStatus } from '../../store/manageMembership.api';
 import { NewJob } from '../../models/NewJob';
@@ -54,6 +55,7 @@ import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { selectSelectedJobDetails, selectSelectedJobLoading } from '../../store/jobs.slice';
 import { fetchJobDetails } from '../../store/jobDetails.api';
 import { Loader } from '../../components/Loader';
+import { SyncJobQuery } from '../../models/SyncJobQuery';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -111,8 +113,6 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     }
   }, [dispatch, locationState]);
 
-  // Onboarding values
-  const onboardingQuery = useSelector(manageMembershipQuery);
 
   useEffect(() => {
     if (jobDetails) {
@@ -128,6 +128,15 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const thresholdPercentageForRemovals = useSelector(manageMembershipThresholdPercentageForRemovals);
   const requestor = useSelector(selectAccountUsername);
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
+  const advancedViewQuery = useSelector(manageMembershipQuery);
+  const sourcePartsQuery = useSelector(manageMembershipCompositeQuery);
+
+  let finalQuery: SyncJobQuery;
+  if(!sourcePartsQuery || sourcePartsQuery.length === 0) {
+    finalQuery = advancedViewQuery;
+  } else {
+    finalQuery = sourcePartsQuery;
+  }
 
   const handleSearchDestinationChange = (selectedDestinations: IPersonaProps[] | undefined) => {
     dispatch(setHasChanges(true));
@@ -192,7 +201,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       requestor: requestor ?? '',
       startDate: startDate,
       period: period,
-      query: onboardingQuery,
+      query: finalQuery,
       thresholdPercentageForAdditions: thresholdPercentageForAdditions,
       thresholdPercentageForRemovals: thresholdPercentageForRemovals,
       status: 'Idle',
