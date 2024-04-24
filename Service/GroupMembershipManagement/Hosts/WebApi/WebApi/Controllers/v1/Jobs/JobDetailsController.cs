@@ -29,7 +29,7 @@ namespace WebApi.Controllers.v1.Jobs
             _patchJobRequestHandler = patchJobRequestHandler;
         }
 
-        [Authorize()]
+        [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
         [HttpGet()]
         public async Task<ActionResult<IEnumerable<SyncJob>>> GetJobDetailsAsync(Guid syncJobId)
         {
@@ -81,7 +81,7 @@ namespace WebApi.Controllers.v1.Jobs
             }
         }
 
-        [Authorize(Roles = Models.Roles.JOB_TENANT_WRITER + "," + Models.Roles.JOB_OWNER_WRITER)]
+        [Authorize(Roles = Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_WRITER)]
         [HttpPost("{syncJobId}/removeGMM")]
         public async Task<ActionResult> RemoveGMMAsync(Guid syncJobId)
         {
