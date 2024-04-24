@@ -34,16 +34,22 @@ In order to control access to the WebAPI, several roles are created when the Web
 
 The roles are:
 
-- Job Creator
-    - Users with this role can view and have access to Membership Management page.
-    - They can view onboarded destinations for groups they own. 
-    - They can submit onboarding requests for groups they own. 
+- Job Owner Reader
+    - Users with this role have **read** access to Membership Management page.
+    - They can view onboarded destinations that they own.
+
+- Job Owner Writer
+    - Users with this role have **read write** access to groups that they own in the Membership Management page.
+    - They can view onboarded destinations that they own.
+    - They can submit updates or onboarding requests for destinations that they own.
 
 - Job Tenant Reader
-    - Users with this role can __read or view__ all destinations in the tenant, whether they own the destinations being synced or not. 
+    - Users with this role have access to Membership Management page.
+    - Users with this role can **read** all destinations in the tenant, whether they own the destinations being synced or not.
 
 - Job Tenant Writer
-    - Users with this role can __update__ all destinations in the tenant, whether they own the destinations being synced or not.
+    - Users with this role have access to Membership Management page.
+    - Users with this role can **update** all destinations in the tenant, whether they own the destinations being synced or not.
     - They can submit onboarding requests for groups, whether they own them or not.
 
 - Submission Reviewer
@@ -53,10 +59,10 @@ The roles are:
     - _Note: for Submission Reviewers to be able to see all pending requests, they need to also have the Job Tenant Reader role_
 
 - Hyperlink Administrator
-    - Users with this role can __add, update, and remove__ custom urls from the Admin Settings page.
+    - Users with this role can **add, update, and remove** custom urls from the Admin Settings page.
 
 - Custom Membership Provider Administrator
-    - Users with this role can __add, update, and remove__ custom field names from the Admin Settings page.
+    - Users with this role can **add, update, and remove** custom field names from the Admin Settings page.
 
 
 
