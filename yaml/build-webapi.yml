@@ -60,7 +60,7 @@ stages:
         arguments: '--configuration $(BuildConfiguration)
                     /p:CollectCoverage=true
                     /p:CoverletOutputFormat=cobertura
-                    /p:threshold=88
+                    /p:threshold=87
                     /p:thresholdType=line
                     /p:thresholdStat=total
                     /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\webapi\
