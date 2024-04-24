@@ -81,7 +81,7 @@ namespace WebApi.Controllers.v1.Jobs
             }
         }
 
-        [Authorize(Roles = Models.Roles.JOB_TENANT_WRITER + "," + Models.Roles.JOB_CREATOR)]
+        [Authorize(Roles = Models.Roles.JOB_TENANT_WRITER + "," + Models.Roles.JOB_OWNER_WRITER)]
         [HttpPost("{syncJobId}/removeGMM")]
         public async Task<ActionResult> RemoveGMMAsync(Guid syncJobId)
         {

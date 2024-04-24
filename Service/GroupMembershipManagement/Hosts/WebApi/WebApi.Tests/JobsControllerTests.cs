@@ -179,7 +179,7 @@ namespace Services.Tests
 
         [TestMethod]
         [DataRow(Roles.JOB_TENANT_READER)]
-        [DataRow(Roles.JOB_CREATOR)]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
         [DataRow("UserRole")]
         public async Task GetJobsTestByRoleAsync(string role)
         {

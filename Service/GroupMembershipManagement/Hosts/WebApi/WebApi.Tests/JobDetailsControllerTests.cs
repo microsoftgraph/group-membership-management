@@ -100,7 +100,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        [DataRow(Roles.JOB_CREATOR)]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
         [DataRow(Roles.JOB_TENANT_READER)]
         [DataRow("UserRole")]
         public async Task GetJobDetailsTestAsync(string role)
@@ -277,7 +277,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        [DataRow(Roles.JOB_CREATOR)]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task PatchJobWhenIsNotOwnerOfTheGroup(string role)
         {
             _isGroupOwner = false;
@@ -321,7 +321,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        [DataRow(Roles.JOB_CREATOR)]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task PatchJobWhenIsAnOwner(string role)
         {
             var userId = Guid.NewGuid().ToString();
@@ -355,7 +355,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        [DataRow(Roles.JOB_CREATOR)]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task RemoveGMMAsyncWhenIsAnAuthorizedUser(string role)
         {
             var syncJobId = Guid.NewGuid();
@@ -404,7 +404,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        [DataRow(Roles.JOB_CREATOR)]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task RemoveGMMAsyncWhenInvalidGroup(string role)
         {
             var syncJobId = Guid.NewGuid();

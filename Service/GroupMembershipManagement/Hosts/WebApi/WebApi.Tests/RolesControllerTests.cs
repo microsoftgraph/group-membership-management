@@ -26,7 +26,7 @@ namespace Services.Tests
         {
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Role, Roles.JOB_CREATOR),
+                new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
                 new Claim(ClaimTypes.Role, Roles.HYPERLINK_ADMINISTRATOR)
             };
 
