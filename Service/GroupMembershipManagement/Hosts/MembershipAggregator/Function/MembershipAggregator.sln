@@ -45,6 +45,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mail", "..\..\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Localization", "..\..\..\Repositories.Localization\Repositories.Localization.csproj", "{B80AE4DB-AA03-43DD-9944-A8099633D1FF}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.ServiceBusQueue", "..\..\..\Repositories.ServiceBusQueue\Repositories.ServiceBusQueue.csproj", "{737C2CF9-70EE-48D2-829B-DA7B6B38FB37}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -135,6 +137,10 @@ Global
 		{B80AE4DB-AA03-43DD-9944-A8099633D1FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B80AE4DB-AA03-43DD-9944-A8099633D1FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B80AE4DB-AA03-43DD-9944-A8099633D1FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{737C2CF9-70EE-48D2-829B-DA7B6B38FB37}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{737C2CF9-70EE-48D2-829B-DA7B6B38FB37}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{737C2CF9-70EE-48D2-829B-DA7B6B38FB37}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{737C2CF9-70EE-48D2-829B-DA7B6B38FB37}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
