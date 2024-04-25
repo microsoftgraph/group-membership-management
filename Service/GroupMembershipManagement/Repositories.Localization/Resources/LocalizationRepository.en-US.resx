@@ -879,7 +879,7 @@
     <value> {
     "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
     "type": "AdaptiveCard",
-    "version": "1.0",
+    "version": "1.4",
     "createdUtc": "${$root.cardCreatedTime}",
     "body": [
         {
@@ -954,13 +954,63 @@
                 }
             ],
             "separator": true
+        },
+        {
+            "type": "Container",
+            "items": [
+                {
+                    "type": "ColumnSet",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "width": "auto",
+                            "items": [
+                                {
+                                    "type": "ActionSet",
+                                    "actions": [
+                                        {
+                                            "type": "Action.OpenUrl",
+                                            "title": "Learn more about GMM",
+                                            "url": "$root.DashboardUrl"
+                                        }
+                                    ],
+                                    "$when": "${$root.DashboardUrl != \"\"}"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "Column",
+                            "width": "stretch"
+                        },
+                        {
+                            "type": "Column",
+                            "width": "auto",
+                            "items": [
+                                {
+                                    "type": "ActionSet",
+                                    "actions": [
+                                        {
+                                            "type": "Action.OpenUrl",
+                                            "title": "View in GMM UI",
+                                            "url": "$root.UIUrl"
+                                        }
+                                    ],
+                                    "$when": "${$root.UIUrl != \"\"}"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "separator": true,
+            "spacing": "ExtraLarge"
         }
     ],
     "padding": "None",
     "@type": "AdaptiveCard",
     "@context": "http://schema.org/extensions",
     "originator": "${$root.providerId}"
-  }</value>
+}</value>
   </data>
   <data name="EmailSubject" xml:space="preserve">
     <value>Onboarding</value>

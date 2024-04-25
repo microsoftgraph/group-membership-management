@@ -101,6 +101,7 @@ namespace Hosts.FunctionBase
             );
 
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
+            builder.Services.AddScoped<IDatabaseSettingsRepository, DatabaseSettingsRepository>();
             builder.Services.AddScoped<IDatabaseDestinationAttributesRepository, DatabaseDestinationAttributesRespository>();
             builder.Services.AddScoped<INotificationTypesRepository, NotificationTypesRepository>();
             builder.Services.AddScoped<IJobNotificationsRepository, JobNotificationRepository>();
@@ -185,7 +186,8 @@ namespace Hosts.FunctionBase
                         services.GetService<ILocalizationRepository>(),
                         services.GetService<ILoggingRepository>(),
                         GetValueOrDefault("actionableEmailProviderId"),
-                        services.GetService<IGraphGroupRepository>());
+                        services.GetService<IGraphGroupRepository>(),
+                        services.GetService<IDatabaseSettingsRepository>());
             });
 
             builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>

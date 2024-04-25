@@ -25,9 +25,10 @@ namespace Repositories.Mail
         private readonly ILoggingRepository _loggingRepository;
         private readonly string _actionableEmailProviderId;
         private readonly IGraphGroupRepository _graphGroupRepository;
+        private readonly IDatabaseSettingsRepository _settingsRepository;
         private Guid groupId;
 
-        public MailRepository(GraphServiceClient graphClient, IMailConfig mailAdaptiveCardConfig, ILocalizationRepository localizationRepository, ILoggingRepository loggingRepository, string actionableEmailProviderId, IGraphGroupRepository graphGroupRepository)
+        public MailRepository(GraphServiceClient graphClient, IMailConfig mailAdaptiveCardConfig, ILocalizationRepository localizationRepository, ILoggingRepository loggingRepository, string actionableEmailProviderId, IGraphGroupRepository graphGroupRepository, IDatabaseSettingsRepository settingsRepository)
         {
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
             _mailConfig = mailAdaptiveCardConfig ?? throw new ArgumentNullException(nameof(mailAdaptiveCardConfig));
@@ -35,6 +36,7 @@ namespace Repositories.Mail
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _actionableEmailProviderId = actionableEmailProviderId ?? throw new ArgumentNullException(nameof(actionableEmailProviderId));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
+            _settingsRepository = settingsRepository ?? throw new ArgumentNullException(nameof(settingsRepository));
         }
 
         public async Task SendMailAsync(EmailMessage emailMessage, Guid? runId)
@@ -137,6 +139,11 @@ namespace Repositories.Mail
 
             string groupId = emailMessage?.AdditionalContentParams[0];
             string destinationGroupName = string.IsNullOrEmpty(emailMessage?.DestinationGroupName) ? "" : emailMessage.DestinationGroupName;
+            var urlSetting = await _settingsRepository.GetSettingByKeyAsync(SettingKey.UIUrl);
+            var dashboardUrlSetting = await _settingsRepository.GetSettingByKeyAsync(SettingKey.DashboardUrl);
+
+            string UIUrl = urlSetting?.SettingValue ?? "";
+            string dashboardUrl = dashboardUrlSetting?.SettingValue ?? "";
 
             var cardData = new DefaultCardTemplate
             {
@@ -146,6 +153,8 @@ namespace Repositories.Mail
                 GroupId = groupId,
                 CardCreatedTime = DateTime.UtcNow,
                 DestinationGroupName = destinationGroupName,
+                UIUrl = UIUrl,
+                DashboardUrl = dashboardUrl
             };
 
             var template = new AdaptiveCardTemplate(adaptiveCardJson);
