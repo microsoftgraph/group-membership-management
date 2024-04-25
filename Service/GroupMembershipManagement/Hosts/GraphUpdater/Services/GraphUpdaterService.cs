@@ -121,16 +121,20 @@ namespace Services
 
             var isDryRunSync = job.IsDryRunEnabled || isDryRun;
 
+            var currentDate = DateTime.UtcNow;
             if (isDryRunSync)
-                job.DryRunTimeStamp = DateTime.UtcNow;
+            {
+                job.DryRunTimeStamp = currentDate;
+            }
             else
             {
                 if (status == SyncStatus.Idle)
-                    job.LastSuccessfulRunTime = DateTime.UtcNow;
+                    job.LastSuccessfulRunTime = currentDate;
 
-                job.LastRunTime = DateTime.UtcNow;
+                job.LastRunTime = currentDate;
             }
 
+            job.ScheduledDate = currentDate.AddHours(job.Period);
             job.RunId = runId;
 
             await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, status);

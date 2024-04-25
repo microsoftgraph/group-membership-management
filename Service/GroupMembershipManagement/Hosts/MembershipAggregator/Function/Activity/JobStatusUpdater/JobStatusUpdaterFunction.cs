@@ -12,12 +12,12 @@ namespace Hosts.MembershipAggregator
     public class JobStatusUpdaterFunction
     {
         private readonly ILoggingRepository _loggingRepository;
-        private readonly IDatabaseSyncJobsRepository _syncJobrespository;
+        private readonly IDatabaseSyncJobsRepository _syncJobRepository;
 
         public JobStatusUpdaterFunction(ILoggingRepository loggingRepository, IDatabaseSyncJobsRepository syncJobRespository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _syncJobrespository = syncJobRespository ?? throw new ArgumentNullException(nameof(syncJobRespository));
+            _syncJobRepository = syncJobRespository ?? throw new ArgumentNullException(nameof(syncJobRespository));
         }
 
         [FunctionName(nameof(JobStatusUpdaterFunction))]
@@ -25,25 +25,30 @@ namespace Hosts.MembershipAggregator
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
-            var syncJob = await _syncJobrespository.GetSyncJobAsync(request.SyncJob.Id);
+            var syncJob = await _syncJobRepository.GetSyncJobAsync(request.SyncJob.Id);
             if (syncJob != null)
             {
+                var currentDate = DateTime.UtcNow;
                 if (request.ThresholdViolations.HasValue)
                     syncJob.ThresholdViolations = request.ThresholdViolations.Value;
 
                 if (request.IsDryRun)
-                    syncJob.DryRunTimeStamp = DateTime.UtcNow;
+                    syncJob.DryRunTimeStamp = currentDate;
                 else
-                    syncJob.LastRunTime = DateTime.UtcNow;
-
-                if (request.DeltaStatus == Services.Entities.MembershipDeltaStatus.NoChanges)
                 {
-                    if (syncJob.IgnoreThresholdOnce) syncJob.IgnoreThresholdOnce = false;
+                    syncJob.LastRunTime = currentDate;
 
-                    syncJob.LastSuccessfulRunTime = DateTime.UtcNow;
+                    if (request.DeltaStatus == Services.Entities.MembershipDeltaStatus.NoChanges)
+                    {
+                        if (syncJob.IgnoreThresholdOnce) syncJob.IgnoreThresholdOnce = false;
+
+                        syncJob.LastSuccessfulRunTime = currentDate;
+                    }
                 }
 
-                await _syncJobrespository.UpdateSyncJobsAsync(new[] { syncJob }, request.Status);
+                syncJob.ScheduledDate = currentDate.AddHours(syncJob.Period);
+
+                await _syncJobRepository.UpdateSyncJobsAsync(new[] { syncJob }, request.Status);
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
