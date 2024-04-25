@@ -152,7 +152,7 @@ resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
 }
 
 module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
-  name: 'userAssignedManagedIdentityNameReaderTemplate'
+  name: 'uamiNameReader-AzureUserReader'
   params: {
     value: dataKeyVault.getSecret('graphUserAssignedManagedIdentityName')
   }
