@@ -56,7 +56,7 @@ namespace Repositories.Mail
             }
             else if (_mailConfig.IsAdaptiveCardEnabled)
             {
-                message = GetAdaptiveCardMessage(emailMessage);
+                message = await GetAdaptiveCardMessage(emailMessage);
             }
             else
             {
@@ -130,7 +130,7 @@ namespace Repositories.Mail
             return message;
         }
 
-        public Message GetAdaptiveCardMessage(EmailMessage emailMessage)
+        public async Task<Message> GetAdaptiveCardMessage(EmailMessage emailMessage)
         {
             var subjectContent = _localizationRepository.TranslateSetting(emailMessage?.Subject, emailMessage?.AdditionalSubjectParams);
             var messageContent = _localizationRepository.TranslateSetting(emailMessage?.Content, emailMessage?.AdditionalContentParams);
@@ -139,8 +139,8 @@ namespace Repositories.Mail
 
             string groupId = emailMessage?.AdditionalContentParams[0];
             string destinationGroupName = string.IsNullOrEmpty(emailMessage?.DestinationGroupName) ? "" : emailMessage.DestinationGroupName;
-            var urlSetting = await _settingsRepository.GetSettingByKeyAsync(SettingKey.UIUrl);
-            var dashboardUrlSetting = await _settingsRepository.GetSettingByKeyAsync(SettingKey.DashboardUrl);
+            var urlSetting =  await _settingsRepository.GetSettingByKeyAsync(SettingKey.UIUrl);
+            var dashboardUrlSetting =  await _settingsRepository.GetSettingByKeyAsync(SettingKey.DashboardUrl);
 
             string UIUrl = urlSetting?.SettingValue ?? "";
             string dashboardUrl = dashboardUrlSetting?.SettingValue ?? "";

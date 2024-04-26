@@ -13,6 +13,8 @@ namespace Models.AdaptiveCards
         public string MessageContent { get; set; }
         public DateTime CardCreatedTime { get; set; }
         public string DestinationGroupName { get; set; }
+        public string UIUrl { get; set; }
+        public string DashboardUrl { get; set; }
     }
 }
                

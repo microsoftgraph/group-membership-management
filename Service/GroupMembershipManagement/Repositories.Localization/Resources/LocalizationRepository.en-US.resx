@@ -971,7 +971,7 @@
                                         {
                                             "type": "Action.OpenUrl",
                                             "title": "Learn more about GMM",
-                                            "url": "$root.DashboardUrl"
+                                            "url": "${$root.DashboardUrl}"
                                         }
                                     ],
                                     "$when": "${$root.DashboardUrl != \"\"}"
@@ -992,7 +992,7 @@
                                         {
                                             "type": "Action.OpenUrl",
                                             "title": "View in GMM UI",
-                                            "url": "$root.UIUrl"
+                                            "url": "${$root.UIUrl}"
                                         }
                                     ],
                                     "$when": "${$root.UIUrl != \"\"}"
