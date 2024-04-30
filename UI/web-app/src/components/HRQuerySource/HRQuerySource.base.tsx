@@ -227,7 +227,6 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     let operators: string[] = [];
 
     input = input.trim();
-    console.log("input", input);
     for (let i = 0; i < input.length; i++) {
         const char = input[i];
 
@@ -259,14 +258,14 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     return groups;
 }
 
-function parseSegment(segment: string): Group {
+function parseSegment(segment: string, groupOperator?: string): Group {
     if (segment.includes('(') && segment.includes(')')) {
       let children: Group[] = [];
         const innerSegments = segment.match(/\((.*?)\)/g)?.map(innerSegment => innerSegment.replace(/^\(|\)$/g, ''));
-
+        const contentOutsideParentheses = segment.replace(/\s*\([^)]*\)\s*/g, '||').split('||');
           if (innerSegments) {
-            innerSegments.forEach((innerSegment) => {
-              const childGroup = parseSegment(innerSegment);
+            innerSegments.forEach((innerSegment, index) => {
+              const childGroup = parseSegment(innerSegment, contentOutsideParentheses && contentOutsideParentheses.length >= 0 ? contentOutsideParentheses[index+1] : "");
               children.push(childGroup);
             });
           }
@@ -274,15 +273,16 @@ function parseSegment(segment: string): Group {
           let start = segment.indexOf('(');
           let end = segment.lastIndexOf(')');
           let remainingSegment = segment.substring(0, start) + segment.substring(end + 1);
+          var match = remainingSegment.match(/\s*(Or|And)\s*$/i);
+          var operator = match ? match[1] : null;
           remainingSegment = remainingSegment.replace(/\s*(Or|And)\s*$/, '').trim();
 
           if (remainingSegment) {
-            console.log("Remaining segment:", remainingSegment);
             return {
                 name: '',
                 items: parseSegment(remainingSegment).items,
                 children: children,
-                andOr: ''
+                andOr: operator ?? ''
             };
         }
     }
@@ -299,7 +299,7 @@ function parseSegment(segment: string): Group {
         name: '',
         items,
         children: [],
-        andOr: ''
+        andOr: groupOperator ?? ''
     };
 }
 
@@ -307,6 +307,9 @@ function setItemsBasedOnGroups(groups: Group[]) {
   let items: IFilterPart[] = [];
   groups.forEach(group => {
       items.push(...group.items);
+      group.children.forEach(child => {
+        items.push(...child.items);
+      });
       setItemsBasedOnGroups(group.children);
   });
   setItems(items);
@@ -314,8 +317,6 @@ function setItemsBasedOnGroups(groups: Group[]) {
 
 const getGroupLabels = (groups: Group[]) => {
   const str = stringifyGroups(groups);
-  console.log("groups", groups);
-  console.log("str", str);
   setGroupQuery(str);
   const groupQuery = str;
   const groupingEnabled = true;
@@ -1076,12 +1077,16 @@ const checkType = (value: string, type: string | undefined): string => {
             )
           );
         case 'remove':
-          return <ActionButton
-          className={classNames.removeButton}
-          iconProps={{ iconName: "Blocked2" }}
-          onClick={() => removeComponent(index ?? -1)}>
-          {strings.remove}
-        </ActionButton>;
+          return (
+            !groupingEnabled ? (
+            <ActionButton
+            className={classNames.removeButton}
+            iconProps={{ iconName: "Blocked2" }}
+            onClick={() => removeComponent(index ?? -1)}>
+            {strings.remove}
+          </ActionButton>
+          ) : (<div />)
+        );
         default:
           return (
             <div>
@@ -1276,7 +1281,6 @@ const checkType = (value: string, type: string | undefined): string => {
     selection.setAllSelected(false);
     setGroupingEnabled(true);
   }
-
 
     function onGroupClick() {
       let newGroups = [...groups];
