@@ -4,15 +4,9 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { fetchAttributeValues, fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceCustomLabel } from './sqlMembershipSources.api';
 import type { RootState } from './store';
-import { SqlMembershipAttribute, SqlMembershipSource } from '../models';
+import { SqlMembershipAttribute, SqlMembershipAttributeValue, SqlMembershipSource } from '../models';
 import { IFilterPart } from '../models/IFilterPart';
 import { Group } from '../models/Group';
-
-// export interface Group {
-//   name: string;
-//   items: IFilterPart[];
-//   children: Group[];
-// }
 
 export interface SettingsState {
 
@@ -34,20 +28,10 @@ export interface SettingsState {
   patchError: string | undefined;
   filterGroups: {
     [partId: number]: {
-      groupQuery: string;
-      //originalItems: IFilterPart[];
-      groupingEnabled: boolean;
-      // groupItems: IFilterPart[];
-      // children: Group[];
+      groupQuery: string;     
+      groupingEnabled: boolean;      
     }
   };
-
-  // agroups: any;
-  // filterGroups: {
-  //   [partId: number]: {
-  //     groups: Group[];
-  //   }
-  // } | undefined;
 };
 
 const initialState: SettingsState = {
@@ -63,8 +47,6 @@ const initialState: SettingsState = {
   patchResponse: undefined,
   patchError: undefined,
   filterGroups: {}
-  // agroups: undefined,
-  // filterGroups: {}
 };
 
 const sqlMembershipSourcesSlice = createSlice({
@@ -79,8 +61,7 @@ const sqlMembershipSourcesSlice = createSlice({
     },
     setFilterGroups: (state, action: PayloadAction<{partId: number, groupQuery: string, groupingEnabled: boolean}>) => {
       state.filterGroups[action.payload.partId] = {
-        groupQuery: action.payload.groupQuery,
-        //originalItems: action.payload.items,       
+        groupQuery: action.payload.groupQuery,     
         groupingEnabled: action.payload.groupingEnabled };
     }
   },
@@ -162,6 +143,7 @@ const sqlMembershipSourcesSlice = createSlice({
 export const { setSource, setAttributes, setFilterGroups } = sqlMembershipSourcesSlice.actions;
 export const selectSource = (state: RootState) => state.sqlMembershipSources.source;
 export const selectAttributes = (state: RootState) => state.sqlMembershipSources.attributes;
+export const selectAttributeValues = (state: RootState) => state.sqlMembershipSources.attributeValues;
 export const selectFilterGroups = (state: RootState) => state.sqlMembershipSources.filterGroups;
 export const selectIsSourceLoading = (state: RootState) => state.sqlMembershipSources.isSourceLoading;
 export const selectAreAttributesLoading = (state: RootState) => state.sqlMembershipSources.areAttributesLoading;

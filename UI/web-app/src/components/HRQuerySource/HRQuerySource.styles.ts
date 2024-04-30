@@ -59,7 +59,7 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       borderStyle: 'solid',
       borderWidth: 1,
       borderColor: theme.palette.neutralQuaternary,
-      minWidth: 20      
+      minWidth: 20
     },
     spinButton: {
       '&:after': {

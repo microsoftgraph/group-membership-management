@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, IDragDropEvents, SelectionMode, IDropdownStyles} from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
@@ -21,8 +21,9 @@ import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeI
 import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
 import { manageMembershipIsEditingExistingJob } from '../../store/manageMembership.slice';
 import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
-import { selectAttributes, selectFilterGroups, setFilterGroups } from '../../store/sqlMembershipSources.slice';
-import { SqlMembershipAttribute } from '../../models';
+import { fetchAttributeValues } from '../../store/sqlMembershipSources.api';
+import { selectAttributes, selectSource, selectAttributeValues, selectFilterGroups, setFilterGroups } from '../../store/sqlMembershipSources.slice';
+import { SqlMembershipAttribute, SqlMembershipAttributeValue } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
@@ -327,6 +328,18 @@ const getGroupLabels = (groups: Group[]) => {
   dispatch(setFilterGroups({partId, groupQuery, groupingEnabled}));
 }
 
+const checkType = (value: string, type: string | undefined): string => {
+  switch (type) {
+    case "nvarchar":
+      if (value.startsWith("'") && value.endsWith("'")) {
+        return value;
+      } else {
+          return `'${value}'`;
+      }
+    default:
+      return value;
+  }
+};
 
   const getOptions = (attributes?: SqlMembershipAttribute[]): IComboBoxOption[] => {
     options = attributes?.map((attribute, index) => ({
@@ -769,6 +782,15 @@ const getGroupLabels = (groups: Group[]) => {
       selectedValueAfterConversion = checkType(selectedValue, attributeValues[updatedItems[index ?? 0].attribute.toString()].type);
       setItems(updatedItems);
 
+      if (groupingEnabled && index != null) {
+        const updateParams: UpdateParam = {
+          property: "value",
+          newValue: selectedValueAfterConversion || selectedValue
+        };
+        updateGroupItem(updateParams, index);
+        return;
+      }
+
       const regex = /(?<= And | Or )/;
       let segments = props.source.filter?.split(regex);
       if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
@@ -1013,15 +1035,26 @@ const getGroupLabels = (groups: Group[]) => {
           styles={{root: classNames.root, title: classNames.dropdownTitle}}
         />;
         case 'value':
-          return <div>
-            <TextField
-          value={item.value}
-          onChange={(event, newValue) => handleAttributeValueChange(event, newValue!, index)}
-          onBlur={(event) => handleBlur(event, index)}
-          styles={{ fieldGroup: classNames.textField }}
-          validateOnLoad={false}
-          validateOnFocusOut={false}
-        ></TextField></div>;
+          if (attributeValues && attributeValues[items[index].attribute] && attributeValues[items[index].attribute].values.length > 0) {
+            return <ComboBox
+              selectedKey={items[index].value}
+              options={filteredValueOptions[index] || getValueOptions(attributeValues[items[index].attribute].values)}
+              onInputValueChange={(text) => onAttributeValueChange(text, index)}
+              onChange={(event, option) => handleAttributeValueChange(event, option, index)}
+              allowFreeInput
+              autoComplete="off"
+              useComboBoxAsMenuWidth={true}
+              />
+          } else {
+            return <TextField
+              value={items[index].value}
+              onChange={(event, newValue) => handleTAttributeValueChange(event, newValue!, index)}
+              onBlur={(event) => handleBlur(event, index)}
+              styles={{ fieldGroup: classNames.textField }}
+              validateOnLoad={false}
+              validateOnFocusOut={false}
+          ></TextField>;
+          }
         case 'andOr':
           return (
             !groupingEnabled ? (
@@ -1135,6 +1168,10 @@ const getGroupLabels = (groups: Group[]) => {
         draggedIndex.current = -1;
       },
     };
+  };
+
+  const valueNeedsQuotes = (value: string, attribute: string) => {
+    return attributeValues[attribute].values.length > 0 && attributeValues[attribute].type === "nvarchar" ? `'${value}'` : value;
   };
 
   const handleSelectionChanged = () => {

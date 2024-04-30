@@ -24,7 +24,8 @@ import { GroupQuerySource } from '../GroupQuerySource';
 import { SourcePartType } from '../../models/SourcePartType';
 import { SourcePartQuery } from '../../models/SourcePartQuery';
 import { AdvancedViewSourcePart } from '../AdvancedViewSourcePart';
-import { selectFilterGroups, setFilterGroups } from '../../store/sqlMembershipSources.slice';
+import { selectSource } from '../../store/sqlMembershipSources.slice';
+import { SqlMembershipSource } from '../../models';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
@@ -53,7 +54,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const [errorMessage, setErrorMessage] = useState<string>('');
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const [expanded, setExpanded] = useState(isEditingExistingJob);
-  const filterGroups = useSelector(selectFilterGroups);
+  const hrSource = useSelector(selectSource);
 
   const handleSourceTypeChanged = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption | undefined): void => {
     if (!item) return;
@@ -95,11 +96,6 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       id: index + 1,
       query: newQuery
     };
-    // dispatch(setFilterGroups({
-    //   partId: index + 1,
-    //   groupQuery: filterGroups[index].groupQuery,      
-    //   groupingEnabled: filterGroups[index].groupingEnabled     
-    // }));
     dispatch(copySourcePart(newPart));
   };
 
