@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect, useRef, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, IDragDropEvents } from '@fluentui/react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, IDragDropEvents, SelectionMode, IDropdownStyles} from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
@@ -21,9 +21,8 @@ import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeI
 import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
 import { manageMembershipIsEditingExistingJob } from '../../store/manageMembership.slice';
 import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
-import { fetchAttributeValues } from '../../store/sqlMembershipSources.api';
-import { selectAttributes, selectSource, selectAttributeValues } from '../../store/sqlMembershipSources.slice';
-import { SqlMembershipAttribute, SqlMembershipAttributeValue } from '../../models';
+import { selectAttributes, selectFilterGroups, setFilterGroups } from '../../store/sqlMembershipSources.slice';
+import { SqlMembershipAttribute } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
@@ -48,11 +47,19 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     [key: number]: IComboBoxOption[];
   };
 
+  interface Group {
+    name: string;
+    items: IFilterPart[];
+    children: Group[];
+    andOr: string;
+  }
+
   const dispatch = useDispatch<AppDispatch>();
   const orgLeaderDetails = useSelector(selectOrgLeaderDetails);
   const objectIdEmployeeIdMapping = useSelector(selectObjectIdEmployeeIdMapping);
   const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions);
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
+  const filterGroups = useSelector(selectFilterGroups);
   const [isDragAndDropEnabled, setIsDragAndDropEnabled] = useState(false);
   const [isDisabled, setIsDisabled] = useState(true);
   const [includeOrg, setIncludeOrg] = useState(false);
@@ -71,30 +78,46 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   let valueOptions: IComboBoxOption[] = [];
   const draggedItem = useRef<any | undefined>();
   const draggedIndex = useRef<number>(-1);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
+  const [groupingEnabled, setGroupingEnabled] = useState(false);
+  const [groupQuery, setGroupQuery] = useState<string>();
 
   useEffect(() => {
-    if (children.length === 0) {
-      setIncludeFilter(false);
-      setFilteredOptions({});
-      setFilteredValueOptions({});
-    } else {
-      let items: IFilterPart[] = children.map((child, index) => ({
-        attribute: child.filter.split(' ')[0],
-        equalityOperator: child.filter.split(' ')[1],
-        value:  attributeValues[child.filter.split(' ')[0]] &&
-                attributeValues[child.filter.split(' ')[0]].values &&
-                attributeValues[child.filter.split(' ')[0]].values.length > 0 &&
-                child.filter.split(' ')[2] && child.filter.split(' ')[2].startsWith("'") && child.filter.split(' ')[2].endsWith("'") ? child.filter.split(' ')[2].slice(1, -1) : child.filter.split(' ')[2],
-        andOr: child.filter.split(' ')[3]
-      }));
-      setItems(items);
+    if (!groupingEnabled) {
+      if (children.length === 0) {
+        setIncludeFilter(false);
+        setFilteredOptions({});
+      } else {
+        let items: IFilterPart[] = children.map((child, index) => ({
+          attribute: child.filter.split(' ')[0],
+          equalityOperator: child.filter.split(' ')[1],
+          value: child.filter.split(' ')[2],
+          andOr: child.filter.split(' ')[3]
+        }));
+        setItems(items);
+      }
     }
   }, [children]);
 
   useEffect(() => {
-    setFilteredOptions({});
-    setFilteredValueOptions({});
-  }, [children]);
+    if (!groupingEnabled) {
+      const newGroups = [
+        {
+          name: "",
+          items: items.map((item) => ({
+            attribute: item.attribute,
+            equalityOperator: item.equalityOperator,
+            value: item.value,
+            andOr: item.andOr,
+          })),
+          children: [],
+          andOr: ""
+        },
+      ];
+      setGroups(newGroups);
+    }
+  }, [items]);
 
   useEffect(() => {
     if (!includeOrg) { setErrorMessage(''); }
@@ -120,18 +143,190 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     }
   }, [children]);
 
-  const checkType = (value: string, type: string | undefined): string => {
-    switch (type) {
-      case "nvarchar":
-        if (value.startsWith("'") && value.endsWith("'")) {
-          return value;
-        } else {
-            return `'${value}'`;
-        }
-      default:
-        return value;
+  function stringifyGroup(group: Group): string {
+    let result = '(';
+
+    result += `${group.items.map((item, index) => {
+      if (index < group.items.length - 1) {
+          return item.attribute + ' ' + item.equalityOperator + ' ' + item.value + ' ' + item.andOr;
+      } else {
+          return item.attribute + ' ' + item.equalityOperator + ' ' + item.value;
+      }
+    }).join(' ')}`;
+
+    if (group.children.length === 0) {
+      result += ')';
     }
-  };
+
+    if (group.andOr)
+    {
+      result += ` ${group.andOr} `;
+    }
+
+    group.children.forEach((child, index) => {
+        result += stringifyGroup(child);
+        if (index < group.children.length - 1) {
+            result += ' ';
+        }
+    });
+
+    if (group.children.length > 0) {
+      result += ')';
+    }
+
+    return result;
+  }
+
+  function stringifyGroups(groups: Group[]): string {
+      let result = '';
+
+      groups.forEach((group, index) => {
+          result += stringifyGroup(group);
+          if (index < groups.length - 1) {
+              result += ' ';
+          }
+      });
+
+      return result;
+  }
+
+  function parseFilterPart(part: string): IFilterPart {
+    const operators = ["<=", ">=", "<>", "=", ">", "<"];
+    let operatorFound = '';
+    let operatorIndex = -1;
+
+    for (const operator of operators) {
+      const index = part.indexOf(operator);
+      if (index !== -1) {
+        operatorFound = operator;
+        operatorIndex = index;
+        break;
+      }
+    }
+
+    if (operatorIndex === -1) {
+      throw new Error('No operator found in filter part: ' + part);
+    }
+    const attribute = part.slice(0, operatorIndex).trim();
+    const value = part.slice(operatorIndex + operatorFound.length).trim();
+
+    return {
+      attribute,
+      equalityOperator: operatorFound,
+      value,
+      andOr: ""
+    };
+  }
+
+
+  function parseGroup(input: string): Group[] {
+    const groups: Group[] = [];
+    let depth = 0;
+    let currentSegment = '';
+    let operators: string[] = [];
+
+    input = input.trim();
+    console.log("input", input);
+    for (let i = 0; i < input.length; i++) {
+        const char = input[i];
+
+        if (char === '(') {
+            if (depth > 0) {
+                currentSegment += char;
+            }
+            depth++;
+        } else if (char === ')') {
+            depth--;
+            if (depth === 0) {
+                groups.push(parseSegment(currentSegment));
+                currentSegment = '';
+            } else {
+                currentSegment += char;
+            }
+        } else if (depth === 0 && (input.substr(i, 3) === ' Or' || input.substr(i, 4) === ' And')) {
+            operators.push(input.substr(i, input.substr(i, 4) === ' And' ? 4 : 3).trim());
+            i += operators[operators.length - 1].length - 1;
+        } else if (depth > 0) {
+            currentSegment += char;
+        }
+    }
+
+    for (let i = 0; i < groups.length - 1; i++) {
+        groups[i].andOr = operators[i] || '';
+    }
+
+    return groups;
+}
+
+function parseSegment(segment: string): Group {
+    if (segment.includes('(') && segment.includes(')')) {
+      let children: Group[] = [];
+        const innerSegments = segment.match(/\((.*?)\)/g)?.map(innerSegment => innerSegment.replace(/^\(|\)$/g, ''));
+
+          if (innerSegments) {
+            innerSegments.forEach((innerSegment) => {
+              const childGroup = parseSegment(innerSegment);
+              children.push(childGroup);
+            });
+          }
+
+          let start = segment.indexOf('(');
+          let end = segment.lastIndexOf(')');
+          let remainingSegment = segment.substring(0, start) + segment.substring(end + 1);
+          remainingSegment = remainingSegment.replace(/\s*(Or|And)\s*$/, '').trim();
+
+          if (remainingSegment) {
+            console.log("Remaining segment:", remainingSegment);
+            return {
+                name: '',
+                items: parseSegment(remainingSegment).items,
+                children: children,
+                andOr: ''
+            };
+        }
+    }
+    const items = segment.split(/ And | Or /).map(parseFilterPart);
+    const operators = segment.match(/ And | Or /g) || [];
+
+    items.forEach((item, index) => {
+        if (index < items.length - 1) {
+            item.andOr = operators[index].trim();
+        }
+    });
+
+    return {
+        name: '',
+        items,
+        children: [],
+        andOr: ''
+    };
+}
+
+function setItemsBasedOnGroups(groups: Group[]) {
+  let items: IFilterPart[] = [];
+  groups.forEach(group => {
+      items.push(...group.items);
+      setItemsBasedOnGroups(group.children);
+  });
+  setItems(items);
+}
+
+const getGroupLabels = (groups: Group[]) => {
+  const str = stringifyGroups(groups);
+  console.log("groups", groups);
+  console.log("str", str);
+  setGroupQuery(str);
+  const groupQuery = str;
+  const groupingEnabled = true;
+  const filter = str;
+  setSource(prevSource => {
+      const newSource = { ...prevSource, filter };
+      onSourceChange(newSource, partId);
+      return newSource;
+  });
+  dispatch(setFilterGroups({partId, groupQuery, groupingEnabled}));
+}
+
 
   const getOptions = (attributes?: SqlMembershipAttribute[]): IComboBoxOption[] => {
     options = attributes?.map((attribute, index) => ({
@@ -150,21 +345,29 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   };
 
   useEffect(() => {
-    const regex = /( And | Or )/g;
-    if (props.source.filter != undefined) {
-      const parts = props.source.filter.split(regex);
-      let childFilters = [];
-      let currentFilter = "";
-      for (let i = 0; i < parts.length; i += 2) {
-        currentFilter = parts[i].trim();
-        if (i + 1 < parts.length) {
-          currentFilter += parts[i + 1];
-        }
-        childFilters.push(currentFilter);
+    if (props.source.filter && !groupingEnabled && (props.source.filter.includes("(") || props.source.filter.includes(")"))) {
+      const a = parseGroup(props.source.filter);
+      const b = setItemsBasedOnGroups(a);
+      setGroups(a);
+      setGroupingEnabled(true);
     }
-    setChildren(childFilters.map(filter => ({
-      filter
-    })));
+    else {
+      const regex = /( And | Or )/g;
+      if (props.source.filter != undefined) {
+        const parts = props.source.filter.split(regex);
+        let childFilters = [];
+        let currentFilter = "";
+        for (let i = 0; i < parts.length; i += 2) {
+          currentFilter = parts[i].trim();
+          if (i + 1 < parts.length) {
+            currentFilter += parts[i + 1];
+          }
+          childFilters.push(currentFilter);
+        }
+        setChildren(childFilters.map(filter => ({
+          filter
+        })));
+      }
     }
   }, [props.source.filter]);
 
@@ -398,6 +601,57 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     { key: '<>', text: '<>' }
   ];
 
+  interface UpdateParam {
+    property: "attribute" | "value" | "andOr" | "equalityOperator";
+    newValue: string;
+  }
+
+  const updateGroupItem = (updateParams: UpdateParam, index: number, otherIndex?: number): void => {
+    const { property, newValue } = updateParams;
+    const groupIndex = groups.findIndex(group =>
+      group.children?.some(child =>
+          child.items.some(item =>
+              JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
+          )
+      ) || group.items?.some(item =>
+          JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
+      )
+    );
+    const childIndex = groupIndex !== -1 ? groups[groupIndex].children.findIndex(child =>
+      child.items.some(item =>
+          JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
+      )
+    ) : -1;
+
+    const ifGroupItem = groups.some(group => isGroupItem(group, items[selectedIndices[0]]));
+    const ifGroupChild = groups.some(group => isGroupChild(group, items[selectedIndices[0]]));
+
+    if(!ifGroupItem && !ifGroupChild) {
+      if (otherIndex != null) {
+        groups[index].children[otherIndex].andOr = newValue;
+      } else {
+        groups[index].andOr = newValue;
+      }
+      setGroups(groups);
+      getGroupLabels(groups);
+      return;
+    }
+
+    if(ifGroupItem && groups[groupIndex].items[index ?? 0]) {
+      groups[groupIndex].items[index ?? 0][property] = newValue;
+    }
+    if(ifGroupChild && groups[groupIndex].children[childIndex].items[index ?? 0]) {
+      groups[groupIndex].children[childIndex].items[index ?? 0][property] = newValue;
+    }
+
+    const updatedItems = [...items];
+    if (updatedItems[selectedIndices[0]]) updatedItems[selectedIndices[0]][property] = newValue;
+
+    setItems(updatedItems);
+    setGroups(groups);
+    getGroupLabels(groups);
+  }
+
   const handleAttributeChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number): void => {
     if (item) {
       const selectedAttribute = attributes?.find(attribute => attribute.name === item.key);
@@ -409,6 +663,15 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         return it;
       });
       setItems(updatedItems);
+    }
+
+    if (groupingEnabled && item && index != null) {
+      const updateParams: UpdateParam = {
+        property: "attribute",
+        newValue: item.text
+      };
+      updateGroupItem(updateParams, index);
+      return;
     }
 
     const regex = /(?<= And | Or )/;
@@ -448,6 +711,14 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   };
 
   const handleEqualityOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number): void => {
+    if (groupingEnabled && item && index != null) {
+      const updateParams: UpdateParam = {
+        property: "equalityOperator",
+        newValue: item.text
+      };
+      updateGroupItem(updateParams, index);
+      return;
+    }
     const regex = /(?<= And | Or )/;
     let segments = props.source.filter?.split(regex);
     if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
@@ -549,6 +820,14 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   }
 
   const handleBlur = (event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, index?: number) => {
+    if (groupingEnabled && index != null) {
+      const updateParams: UpdateParam = {
+        property: "value",
+        newValue: event.target.value.trim()
+      };
+      updateGroupItem(updateParams, index);
+      return;
+    }
     var newValue = event.target.value.trim();
     const selectedValue = newValue;
     let selectedValueAfterConversion: string = "";
@@ -587,7 +866,26 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     }
   };
 
+  const handleGroupOrAndOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number, childIndex?: number): void => {
+    if (groupingEnabled && item && index != null) {
+      const updateParams: UpdateParam = {
+        property: "andOr",
+        newValue: item.text
+      };
+      updateGroupItem(updateParams, index, childIndex);
+      return;
+    }
+  }
+
   const handleOrAndOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number): void => {
+    if (groupingEnabled && item && index != null) {
+      const updateParams: UpdateParam = {
+        property: "andOr",
+        newValue: item.text
+      };
+      updateGroupItem(updateParams, index);
+      return;
+    }
     const regex = /(?<= And | Or )/;
     let segments = props.source.filter?.split(regex);
     if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
@@ -694,12 +992,12 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     }
   ];
 
-  const onRenderItemColumn = (item?: any, index?: number, column?: IColumn): JSX.Element => {
+  const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn): JSX.Element => {
     if (typeof index !== 'undefined' && items[index]) {
       switch (column?.key) {
         case 'attribute':
           return <ComboBox
-          selectedKey={items[index].attribute}
+          selectedKey={item.attribute}
           options={filteredOptions[index] || getOptions(attributes)}
           onInputValueChange={(text) => onAttributeChange(text, index)}
           onChange={(event, option) => handleAttributeChange(event, option, index)}
@@ -715,33 +1013,35 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
           styles={{root: classNames.root, title: classNames.dropdownTitle}}
         />;
         case 'value':
-          if (attributeValues && attributeValues[items[index].attribute] && attributeValues[items[index].attribute].values.length > 0) {
-            return <ComboBox
-              selectedKey={items[index].value}
-              options={filteredValueOptions[index] || getValueOptions(attributeValues[items[index].attribute].values)}
-              onInputValueChange={(text) => onAttributeValueChange(text, index)}
-              onChange={(event, option) => handleAttributeValueChange(event, option, index)}
-              allowFreeInput
-              autoComplete="off"
-              useComboBoxAsMenuWidth={true}
-              />
-          } else {
-            return <TextField
-              value={items[index].value}
-              onChange={(event, newValue) => handleTAttributeValueChange(event, newValue!, index)}
-              onBlur={(event) => handleBlur(event, index)}
-              styles={{ fieldGroup: classNames.textField }}
-              validateOnLoad={false}
-              validateOnFocusOut={false}
-          ></TextField>;
-          }
+          return <div>
+            <TextField
+          value={item.value}
+          onChange={(event, newValue) => handleAttributeValueChange(event, newValue!, index)}
+          onBlur={(event) => handleBlur(event, index)}
+          styles={{ fieldGroup: classNames.textField }}
+          validateOnLoad={false}
+          validateOnFocusOut={false}
+        ></TextField></div>;
         case 'andOr':
-          return <Dropdown
-          selectedKey={item.andOr ? item.andOr : ""}
-          onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
-          options={orAndOperatorOptions}
-          styles={{root: classNames.root, title: classNames.dropdownTitle}}
-        />;
+          return (
+            !groupingEnabled ? (
+              <Dropdown
+                selectedKey={item.andOr ? item.andOr : ""}
+                onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
+                options={orAndOperatorOptions}
+                styles={{ root: classNames.root, title: classNames.dropdownTitle }}
+              />
+            ) : (
+              index >= 0 && index < items.length - 1 ? (
+                <Dropdown
+                  selectedKey={item.andOr ? item.andOr : ""}
+                  onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
+                  options={orAndOperatorOptions}
+                  styles={{ root: classNames.root, title: classNames.dropdownTitle }}
+                />
+              ) : (<div />)
+            )
+          );
         case 'remove':
           return <ActionButton
           className={classNames.removeButton}
@@ -837,13 +1137,256 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     };
   };
 
-  const valueNeedsQuotes = (value: string, attribute: string) => {
-    return attributeValues[attribute].values.length > 0 && attributeValues[attribute].type === "nvarchar" ? `'${value}'` : value;
+  const handleSelectionChanged = () => {
+    setSelectedIndices(selection.getSelectedIndices());
   };
 
   const [selection] = useState(() => new Selection({
-    onSelectionChanged: () => {}
+    onSelectionChanged: handleSelectionChanged
   }));
+
+  function isGroupItem(group: Group, item: IFilterPart): boolean {
+    return group.items.some(groupItem => JSON.stringify(groupItem) === JSON.stringify(item));
+  }
+
+  function isGroupChild(group: Group, item: IFilterPart): boolean {
+    return group.children.some(childGroup => isGroupItem(childGroup, item));
+  }
+
+  function onUnGroupClick() {
+    let newGroups = [...groups];
+    let indices: { selectedItemIndex: number, groupIndex: number; childIndex: number }[] = [];
+    const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
+
+    selectedItems.forEach((selectedItem, index) => {
+      const ifGroupItem = groups.some(group => isGroupItem(group, selectedItem));
+      const ifGroupChild = groups.some(group => isGroupChild(group, selectedItem));
+      if (ifGroupItem)
+      {
+        const groupIndex = groups.findIndex(group => group.items?.some(item => JSON.stringify(item) === JSON.stringify(selectedItem)));
+        if (groupIndex === 0) {
+          return;
+        }
+        else if (groupIndex > 0) {
+          indices.push({ selectedItemIndex: index, groupIndex, childIndex: -1 });
+        }
+      }
+      if (ifGroupChild) {
+        const groupIndex = groups.findIndex(group =>
+          group.children?.some(child =>
+              child.items.some(item =>
+                  JSON.stringify(item) === JSON.stringify(selectedItem)
+              )
+          )
+        );
+
+        if (groupIndex !== -1) {
+          const group = groups[groupIndex];
+          const childIndex = group.children?.findIndex(child =>
+            child.items?.some(item =>
+                JSON.stringify(item) === JSON.stringify(selectedItem)
+            )
+          );
+          indices.push({ selectedItemIndex: index, groupIndex, childIndex });
+        }
+      }
+    });
+
+    const groupIndices = indices.map(({ groupIndex }) => groupIndex);
+    const allSameGroupIndex = groupIndices.every((groupIndex, index, array) => groupIndex === array[0]);
+    const childIndices = indices.map(({ childIndex }) => childIndex);
+    const allSameChildIndex = childIndices.every((childIndex, index, array) => childIndex === array[0]);
+
+    let clonedNewGroups: Group[] = JSON.parse(JSON.stringify(newGroups));
+    const childItems = selectedItems;
+    const filterItems = (groupIndex: number) => {
+      clonedNewGroups[groupIndex].items = clonedNewGroups[groupIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
+        !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
+      if (clonedNewGroups[groupIndex].items.length === 0) {
+        clonedNewGroups[groupIndex].andOr = "";
+        clonedNewGroups[groupIndex-1].andOr = "";
+      }
+    };
+    const filterChildren = (groupIndex: number, childIndex: number) => {
+      clonedNewGroups[groupIndex].children[childIndex].items = clonedNewGroups[groupIndex].children[childIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
+        !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
+      if (clonedNewGroups[groupIndex].children[childIndex].items.length === 0) {
+        clonedNewGroups[groupIndex].children[childIndex].andOr = "";
+      }
+    };
+
+    if (allSameGroupIndex && allSameChildIndex && groupIndices[0] > 0 && childIndices[0] >= 0) {
+      clonedNewGroups[groupIndices[0]].items = [...clonedNewGroups[groupIndices[0]].items, ...childItems];
+      filterChildren(groupIndices[0], childIndices[0]);
+    }
+
+    else if (allSameGroupIndex && groupIndices[0] > 0 && childIndices[0] === -1) {
+      clonedNewGroups[0].items = [...clonedNewGroups[0].items, ...childItems];
+      filterItems(groupIndices[0]);
+    }
+
+    clonedNewGroups = clonedNewGroups.filter((group: { items: any[]; children: any[]; }) =>
+      group.items.length > 0 || group.children.some((child: { items: any[]; }) => child.items.length > 0)
+    );
+
+    clonedNewGroups.forEach((group: { children: any[]; andOr: string}) => {
+      group.children = group.children.filter((child: { items: any[]; }) => child.items.length > 0);
+
+    });
+    setGroups(clonedNewGroups);
+    getGroupLabels(clonedNewGroups);
+    setSelectedIndices([]);
+    selection.setAllSelected(false);
+    setGroupingEnabled(true);
+  }
+
+
+    function onGroupClick() {
+      let newGroups = [...groups];
+      let indices: { selectedItemIndex: number, groupIndex: number; childIndex: number }[] = [];
+      const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
+      selectedItems.forEach((selectedItem, index) => {
+
+        const ifGroupItem = groups.some(group => isGroupItem(group, selectedItem));
+        if (ifGroupItem)
+        {
+          const groupIndex = groups.findIndex(group => group.items?.some(item => JSON.stringify(item) === JSON.stringify(selectedItem)));
+          if (groupIndex === 0) {
+            indices.push({ selectedItemIndex: index, groupIndex, childIndex: -1 });
+          }
+          else if (groupIndex > 0) {
+            indices.push({ selectedItemIndex: index, groupIndex, childIndex: -1 });
+          }
+        }
+      });
+
+      selectedItems.forEach((selectedItem, index) => {
+        const ifGroupChild = groups.some(group => isGroupChild(group, selectedItem));
+        if (ifGroupChild) {
+          return;
+        }
+      });
+
+      const groupIndices = indices.map(({ groupIndex }) => groupIndex);
+      const allSameGroupIndex = groupIndices.every((groupIndex, index, array) => groupIndex === array[0]);
+
+      let clonedNewGroups: Group[] = JSON.parse(JSON.stringify(newGroups));
+      const childItems = selectedItems.map(selectedItem => ({ attribute: selectedItem.attribute, equalityOperator: selectedItem.equalityOperator, value: selectedItem.value, andOr: selectedItem.andOr }));
+      const filterItems = (groupIndex: number) => {
+        clonedNewGroups[groupIndex].items = clonedNewGroups[groupIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
+          !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
+      };
+
+      if (allSameGroupIndex && groupIndices[0] === 0) {
+        const newGroup: Group = {
+          name: "",
+          items: childItems,
+          children: [],
+          andOr: ""
+        };
+        clonedNewGroups.push(newGroup);
+        filterItems(groupIndices[0]);
+      }
+
+      else if (allSameGroupIndex && groupIndices[0] > 0) {
+        clonedNewGroups[groupIndices[0]].children = [
+          ...(clonedNewGroups[groupIndices[0]].children || []),
+          {
+            name: ``,
+            items: childItems,
+            children: [],
+            andOr: ""
+          }
+        ];
+        filterItems(groupIndices[0]);
+      }
+      clonedNewGroups = clonedNewGroups.filter((group: { items: string | any[]; children: string | any[]; }) => group.items?.length > 0 || group.children?.length > 0);
+      setGroups(clonedNewGroups);
+      getGroupLabels(clonedNewGroups);
+      setSelectedIndices([]);
+      selection.setAllSelected(false);
+      setGroupingEnabled(true);
+    }
+
+  const dropdownStyles: Partial<IDropdownStyles> = {
+    dropdown: { width: 100 },
+  };
+
+  const renderItems = (items: IFilterPart[], conjunction: string, index: number, isLastItem: boolean) => {
+    const selection: Selection = new Selection({
+      onSelectionChanged: () => handleSelectionChange(selection, index)
+    });
+    return (
+      <div>
+      <DetailsList
+        styles={{ root: classNames.detailsList }}
+        items={items}
+        columns={columns}
+        onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column)}
+        selection={selection}
+        selectionPreservedOnEmptyClick={true}
+        layoutMode={DetailsListLayoutMode.justified}
+      />
+      </div>
+    );
+  };
+
+  const renderGroup = (group: Group, parentIndex: number) => {
+    return (
+      <div>
+      <Stack key={parentIndex}>
+        <Stack tokens={{ childrenGap: 10 }}>
+          {group.items.length > 0 && renderItems(group.items, 'And', parentIndex, parentIndex === groups.length - 1)}
+          {((group.items && group.items.length > 0 && parentIndex !== groups.length - 1) || (group.children && group.children.length > 0)) && (
+          <div>
+          <Dropdown
+            onChange={(event, option) => handleGroupOrAndOperatorChange(event, option, parentIndex)}
+            selectedKey={group.andOr}
+            options={orAndOperatorOptions}
+            styles={dropdownStyles}
+          />
+          </div>
+          )}
+          {group.children && renderChildren(group.children, parentIndex)}
+        </Stack>
+      </Stack>
+      </div>
+    );
+  };
+
+  const renderChildren = (children: Group[], parentIndex: number) => {
+    return children.map((childGroup: Group, childIndex: number) => (
+      <Stack key={parentIndex + '-' + childIndex} tokens={{ childrenGap: 10 }} style={{ paddingLeft: '50px' }}>
+        <Label>{childGroup.name}</Label>
+        <Stack tokens={{ childrenGap: 10 }}>
+          {childGroup.items.length > 0 && renderItems(childGroup.items, childGroup.items[childGroup.items.length-1].andOr, parentIndex, childIndex === children.length - 1)}
+          {((childGroup.items && childGroup.items.length > 0 && (childIndex !== children.length - 1 || parentIndex !== groups.length - 1)) || (childGroup.children && childGroup.children.length > 0)) && (
+          <div>
+          <Dropdown
+            onChange={(event, option) => handleGroupOrAndOperatorChange(event, option, parentIndex, childIndex)}
+            selectedKey={childGroup.andOr}
+            options={orAndOperatorOptions}
+            styles={dropdownStyles}
+          />
+          </div>
+          )}
+          {childGroup.children && renderChildren(childGroup.children, parentIndex)}
+        </Stack>
+      </Stack>
+    ));
+  };
+
+  function handleSelectionChange(selection: Selection, index: number) {
+    const selectedItems = selection.getSelection() as any[];
+    const selectedIndices = selectedItems.map(selectedItem => {
+      return items.findIndex(item =>
+        item.attribute === selectedItem.attribute &&
+        item.equalityOperator === selectedItem.equalityOperator &&
+        item.value === selectedItem.value &&
+        item.andOr === selectedItem.andOr);
+    });
+    setSelectedIndices(selectedIndices);
+  }
 
   return (
     <div className={classNames.root}>
@@ -970,29 +1513,60 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         ) : attributes && attributes.length > 0 && (includeFilter || source.filter) ?
         (
           <div>
-          <DetailsList
-            setKey="items"
-            items={items}
-            columns={columns}
-            selectionPreservedOnEmptyClick={true}
-            selection={selection}
-            onRenderItemColumn={onRenderItemColumn}
-            dragDropEvents={getDragDropEvents()}
-            layoutMode={DetailsListLayoutMode.justified}
-            ariaLabelForSelectionColumn="Toggle selection"
-            ariaLabelForSelectAllCheckbox="Toggle selection for all items"
-            checkButtonAriaLabel="select row"
-            styles={{
-              root: classNames.detailsList
-            }}
-          />
-          <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={addComponent}>
+            <ActionButton
+              iconProps={{ iconName: 'GroupObject' }}
+              onClick={onGroupClick}
+              disabled={!(selectedIndices.length > 1)}>
+              Group
+            </ActionButton>
+            <ActionButton
+              iconProps={{ iconName: 'GroupObject' }}
+              onClick={onUnGroupClick}
+              disabled={!(selectedIndices.length > 0 && groups.length > 0 && (groupingEnabled || (filterGroups[partId] && filterGroups[partId].groupingEnabled)))}>
+              Ungroup
+            </ActionButton>
+          <br/>
+
+
+          {(groupingEnabled || (filterGroups[partId] && filterGroups[partId].groupingEnabled) || groups != null) ? (
+            <div>
+              {groups.map((group: Group, index: number) => (
+                <div>
+                <React.Fragment key={index}>
+                  {renderGroup(group, index)}
+                </React.Fragment>
+                </div>
+              ))}
+            </div>
+            ) : (
+            <DetailsList
+              setKey="items"
+              items={items}
+              columns={columns}
+              selectionPreservedOnEmptyClick={true}
+              selection={selection}
+              onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column)}
+              dragDropEvents={getDragDropEvents()}
+              layoutMode={DetailsListLayoutMode.justified}
+              ariaLabelForSelectionColumn="Toggle selection"
+              ariaLabelForSelectAllCheckbox="Toggle selection for all items"
+              checkButtonAriaLabel="select row"
+              styles={{
+                root: classNames.detailsList
+              }}
+            />
+          )}
+
+          {!groupingEnabled && <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={addComponent}>
             {strings.HROnboarding.addAttribute}
-          </ActionButton>
+          </ActionButton>}
           </div>
         ) : null
       }
 
+      <div className={classNames.error}>
+        {errorMessage}
+      </div>
     </div>
   );
 };

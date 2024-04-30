@@ -54,6 +54,13 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       borderColor: theme.palette.neutralQuaternary,
       minWidth: 200
     },
+    andor: {
+      borderRadius: 4,
+      borderStyle: 'solid',
+      borderWidth: 1,
+      borderColor: theme.palette.neutralQuaternary,
+      minWidth: 20      
+    },
     spinButton: {
       '&:after': {
         borderColor: theme.palette.neutralQuaternary
