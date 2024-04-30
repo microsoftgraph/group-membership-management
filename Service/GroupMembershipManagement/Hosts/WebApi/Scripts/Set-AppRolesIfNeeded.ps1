@@ -35,82 +35,104 @@ function Set-AppRolesIfNeeded {
     Connect-AzAccount -Tenant $TenantId
 
     $WebApiApp = Get-AzADApplication -ObjectId $WebApiObjectId
-
-    [String[]]$memberTypes = "User", "Application"
-
-    $jobOwnerReaderRole = @{
-        DisplayName        = "Job Reader"
-        Description        = "Can read owned destinations in the tenant."
-        Value              = "Job.Read.OwnedBy"
-        Id                 = [Guid]::NewGuid().ToString()
-        IsEnabled          = $True
-        AllowedMemberTypes = @($memberTypes)
+    if (-not $WebApiApp) {
+        Write-Error "Failed to retrieve the Azure AD application with Object Id: $WebApiObjectId"
+        return
     }
 
-    $jobOwnerWriterRole = @{
-        DisplayName        = "Job Writer"
-        Description        = "Can create, view, and update owned destinations in the tenant."
-        Value              = "Job.ReadWrite.OwnedBy"
-        Id                 = [Guid]::NewGuid().ToString()
-        IsEnabled          = $True
-        AllowedMemberTypes = @($memberTypes)
+    $memberTypes = "User", "Application"
+
+    $newAppRoles = @(
+        @{
+            DisplayName        = "Job Reader"
+            Description        = "Can read owned destinations in the tenant."
+            Value              = "Job.Read.OwnedBy"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "Job Writer"
+            Description        = "Can create, view, and update owned destinations in the tenant."
+            Value              = "Job.ReadWrite.OwnedBy"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "Job Tenant Reader"
+            Description        = "Can read all destinations in the tenant."
+            Value              = "Job.Read.All"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "Job Tenant Writer"
+            Description        = "Can create, view, and update all destinations in the tenant."
+            Value              = "Job.ReadWrite.All"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "Submission Reviewer"
+            Description        = "Can view and manage Submission Requests for all groups."
+            Value              = "Submission.ReadWrite.All"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "Hyperlink Administrator"
+            Description        = "Can add, update, or remove custom URLs."
+            Value              = "Settings.Hyperlink.ReadWrite.All"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "Custom Membership Provider Administrator"
+            Description        = "Can add, update, or remove custom field names."
+            Value              = "Settings.CustomSource.ReadWrite.All"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        }
+
+    )
+
+    $newAppRolesLookup = @{}
+    foreach ($role in $newAppRoles) {
+        $newAppRolesLookup[$role.Value] = $role
     }
 
-    $jobTenantReaderRole = @{
-        DisplayName        = "Job Tenant Reader"
-        Description        = "Can read all destinations in the tenant."
-        Value              = "Job.Read.All"
-        Id                 = [Guid]::NewGuid().ToString()
-        IsEnabled          = $True
-        AllowedMemberTypes = @($memberTypes)
+    if ($WebApiApp.AppRole -eq $null) {
+        Write-Verbose "No existing app roles found. Initializing an empty array."
+        $currentAppRoles = @()
+    } else {
+        $currentAppRoles = $WebApiApp.AppRole.Clone()
+
+        foreach ($role in $currentAppRoles) {
+            if (-not $newAppRolesLookup.ContainsKey($role.Value) -and $role.IsEnabled) {
+                Write-Verbose "Disabling role: $($role.DisplayName)"
+                $role.IsEnabled = $false
+            }
+        }
+
+        try {
+            Update-AzADApplication -ObjectId $WebApiObjectId -AppRole $currentAppRoles
+            Write-Host "Roles have been disabled as needed."
+        }
+        catch {
+            Write-Error "Failed to disable roles: $_"
+            return
+        }
+
+        $currentAppRoles = $currentAppRoles | Where-Object {
+            $newAppRolesLookup.ContainsKey($_.Value)
+        }
     }
-
-    $jobTenantWriterRole = @{
-        DisplayName        = "Job Tenant Writer"
-        Description        = "Can create, view, and update all destinations in the tenant."
-        Value              = "Job.ReadWrite.All"
-        Id                 = [Guid]::NewGuid().ToString()
-        IsEnabled          = $True
-        AllowedMemberTypes = @($memberTypes)
-    }
-
-    $submissionReviewerRole = @{
-        DisplayName        = "Submission Reviewer"
-        Description        = "Can view and manage Submission Requests for all groups."
-        Value              = "Submission.ReadWrite.All"
-        Id                 = [Guid]::NewGuid().ToString()
-        IsEnabled          = $True
-        AllowedMemberTypes = @($memberTypes)
-    }
-
-    $hyperlinkAdministratorRole = @{
-        DisplayName        = "Hyperlink Administrator"
-        Description        = "Can add, update, or remove custom URLs."
-        Value              = "Settings.Hyperlink.ReadWrite.All"
-        Id                 = [Guid]::NewGuid().ToString()
-        IsEnabled          = $True
-        AllowedMemberTypes = @($memberTypes)
-    }
-
-    $customMembershipProviderAdministratorRole = @{
-        DisplayName        = "Custom Membership Provider Administrator"
-        Description        = "Can add, update, or remove custom field names."
-        Value              = "Settings.CustomSource.ReadWrite.All"
-        Id                 = [Guid]::NewGuid().ToString()
-        IsEnabled          = $True
-        AllowedMemberTypes = @($memberTypes)
-    }
-
-    $newAppRoles = @($jobOwnerReaderRole,
-                        $jobOwnerWriterRole,
-                        $jobTenantReaderRole,
-                        $jobTenantWriterRole,
-                        $submissionReviewerRole,
-                        $hyperlinkAdministratorRole,
-                        $customMembershipProviderAdministratorRole
-                    )
-
-    $currentAppRoles = $WebApiApp.AppRole
 
     foreach ($role in $newAppRoles) {
         $exists = $currentAppRoles | Where-Object { $_.Value -eq $role.Value }
@@ -118,13 +140,11 @@ function Set-AppRolesIfNeeded {
             Write-Verbose "Adding role: $($role.DisplayName)"
             $currentAppRoles += $role
         }
-        else {
-            Write-Verbose "Role already exists: $($role.DisplayName)"
-        }
     }
+
     try {
         Update-AzADApplication -ObjectId $WebApiObjectId -AppRole $currentAppRoles
-        Write-Host "Application updated with new roles."
+        Write-Host "Application updated with new roles and removed obsolete roles."
     }
     catch {
         Write-Error "Failed to update application roles: $_"
