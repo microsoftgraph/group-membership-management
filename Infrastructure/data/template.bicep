@@ -284,7 +284,7 @@ param appConfigurationKeyData array = [
   }
   {
     key: 'Mail:IsAdaptiveCardEnabled'
-    value: 'false'
+    value: 'true'
     contentType: 'bool'
     tag: {
       tag1: 'Mail'

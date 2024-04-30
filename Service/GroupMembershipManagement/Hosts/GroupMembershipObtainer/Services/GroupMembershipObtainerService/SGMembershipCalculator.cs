@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
+using Models.Entities;
 using Models.Notifications;
 using Models.ServiceBus;
 using Newtonsoft.Json;
@@ -12,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using Models.Helpers;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -23,11 +25,13 @@ namespace Hosts.GroupMembershipObtainer
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly bool _isGroupMembershipDryRunEnabled;
         private readonly IServiceBusQueueRepository _notificationsQueueRepository;
+        private readonly IDatabaseDestinationAttributesRepository _databaseDestinationAttributesRepository;
 
         public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository,
                                       IBlobStorageRepository blobStorageRepository,
                                       IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                                       IServiceBusQueueRepository notificationsQueueRepository,
+                                      IDatabaseDestinationAttributesRepository databaseDestinationAttributesRepository,
                                       ILoggingRepository logging,
                                       IDryRunValue dryRun
                                       )
@@ -37,6 +41,7 @@ namespace Hosts.GroupMembershipObtainer
             _log = logging;
             _databaseSyncJobsRepository = databaseSyncJobsRepository;
             _notificationsQueueRepository = notificationsQueueRepository;
+            _databaseDestinationAttributesRepository = databaseDestinationAttributesRepository;
             _isGroupMembershipDryRunEnabled = dryRun.DryRunEnabled;
         }
 
@@ -53,6 +58,8 @@ namespace Hosts.GroupMembershipObtainer
                 _graphGroupRepository.RunId = value;
             }
         }
+
+        public object GraphRepository { get; set; }
 
         public async Task<PolicyResult<bool>> GroupExistsAsync(Guid objectId, Guid runId)
         {
@@ -216,6 +223,42 @@ namespace Hosts.GroupMembershipObtainer
         public async Task<string> GetGroupNameAsync(Guid groupId)
         {
             return await _graphGroupRepository.GetGroupNameAsync(groupId);
+        }
+        public async Task<string> GetDestinationNameAsync(SyncJob job)
+        {
+            var destination = DestinationParser.ParseDestination(job);   
+            if (destination == null)
+            {
+                await _log.LogMessageAsync(new LogMessage
+                {
+                    RunId = job.RunId,
+                    Message = "Failed to parse destination from job."
+                });
+                return null;
+            }
+            // Try to get the name from the DestinationNames table first
+
+            var destinationName = await _databaseDestinationAttributesRepository.GetDestinationName(job);
+
+            if (destinationName != null)
+            {
+                return destinationName;
+            }
+
+            await _log.LogMessageAsync(new LogMessage
+            {
+                RunId = job.RunId,
+                Message = "Destination name not found in database; attempting to retrieve from Graph"
+            });
+
+            if (destination.Type == "GroupMembership")
+            {
+                var objectId = destination.Value.ObjectId;
+                return await _graphGroupRepository.GetGroupNameAsync(objectId);
+            }
+            
+            return null;
+            
         }
     }
 }

@@ -25,6 +25,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Repositories.ServiceBusQueue;
 using Models.Notifications;
+using Repositories.EntityFramework;
+using Repositories.TeamsChannel;
 
 namespace Tests.Services
 {
@@ -42,6 +44,8 @@ namespace Tests.Services
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
         private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
         private Mock<IConfigurationRefresherProvider> _configurationRefresherProvider;
+        private Mock<IDatabaseDestinationAttributesRepository> _databaseDestinationAttributesRepository;
+        private Mock<ITeamsChannelRepository> _teamsChannelRepository;
         private Mock<Microsoft.Azure.WebJobs.ExecutionContext> _executionContext;
         private int _usersToReturn;
         private QuerySample _querySample;
@@ -67,7 +71,8 @@ namespace Tests.Services
             _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
-
+            _databaseDestinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
+            _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
             _usersToReturn = 10;
             _querySample = QuerySample.GenerateQuerySample("GroupMembership");
 
@@ -93,6 +98,7 @@ namespace Tests.Services
                                             _blobStorageRepository.Object,
                                             _syncJobRepository.Object,
                                             _serviceBusQueueRepository.Object,
+                                            _databaseDestinationAttributesRepository.Object,
                                             _loggingRepository.Object,
                                             _dryRunValue.Object
                                             );
@@ -114,7 +120,11 @@ namespace Tests.Services
                                             await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
                                         });
 
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(DestinationNameReaderFunction), It.IsAny<SyncJob>()))
+                                        .ReturnsAsync("ExpectedDestinationName");
+
             AzureADGroup sourceGroup = null;
+            string id = null;
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
                     .Callback<string, object>(async (name, request) =>
@@ -123,12 +133,12 @@ namespace Tests.Services
                         await CallTelemetryTrackerFunctionAsync(telemetryRequest);
                     });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<AzureADGroup>(It.IsAny<string>(), It.IsAny<GroupReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(AzureADGroup, string)>(It.IsAny<string>(), It.IsAny<GroupReaderRequest>()))
                                         .Callback<string, object>(async (name, request) =>
                                         {
-                                            sourceGroup = await CallSourceGroupsReaderFunctionAsync(request as GroupReaderRequest);
-                                        })
-                                        .ReturnsAsync(() => sourceGroup);
+                                            (sourceGroup, id) = await CallSourceGroupsReaderFunctionAsync(request as GroupReaderRequest);
+                                        }).
+                                        ReturnsAsync(() => (sourceGroup, id));
 
             _subOrchestratorResponseStatus = SyncStatus.InProgress;
             _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
@@ -201,10 +211,11 @@ namespace Tests.Services
         }
 
         [TestMethod]
-        public async Task TestOldSourceGroupsQueryFormatAsync()
+        public async Task TestInvalidQuerySourceAsync()
         {
-            var oldQueryFormat = "[{ \"type\": \"GroupMembership\", \"sources\": [\"0fab28de-4d33-4bb7-be1f-17e46cf75200\",\"ab7b7af7-fa0f-4874-bb03-15d435506595\"]}]";
-            _orchestratorRequest.SyncJob.Query = oldQueryFormat;
+            var invalidSource  = "[{ \"type\": \"GroupMembership\", \"source\": \"0fab28de-4d33-4bb7-17e46cf75200\"}]";
+
+            _orchestratorRequest.SyncJob.Query = invalidSource;
 
             var orchestratorFunction = new OrchestratorFunction(
                                            _loggingRepository.Object,
@@ -264,6 +275,23 @@ namespace Tests.Services
                 msg.ApplicationProperties.ContainsKey("MessageType") &&
                 msg.ApplicationProperties["MessageType"].ToString() == NotificationMessageType.NotValidSourceNotification.ToString())),
                 Times.Exactly(1));
+        }
+        [TestMethod]
+        public async Task TestGetGroupsNameAsync()
+        {
+
+            _querySample.QueryParts.ForEach(x => x.SourceId = Guid.Empty);
+            _orchestratorRequest.SyncJob.Query = _querySample.GetQuery();
+            var orchestratorFunction = new OrchestratorFunction(
+                                           _loggingRepository.Object,
+                                           _membershipCalculator,
+                                           _configuration.Object,
+                                            _emailSenderRecipient.Object
+                                           );
+
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(nameof(DestinationNameReaderFunction), _orchestratorRequest.SyncJob), Times.Once());
+
         }
 
         [TestMethod]
@@ -406,10 +434,14 @@ namespace Tests.Services
             await function.UpdateJobStatusAsync(request);
         }
 
-        private async Task<AzureADGroup> CallSourceGroupsReaderFunctionAsync(GroupReaderRequest request)
+        private async Task<(AzureADGroup,string)> CallSourceGroupsReaderFunctionAsync(GroupReaderRequest request)
         {
             var function = new GroupReaderFunction(_loggingRepository.Object, _membershipCalculator);
-            return await function.GetGroupAsync(request);
+            var (group, groupId) = function.GetSourceGroup(request);
+            AzureADGroup azureAdGroup = request.IsDestinationPart
+                                ? azureAdGroup = new AzureADGroup { ObjectId = request.SyncJob.TargetOfficeGroupId }
+                                : azureAdGroup = group;
+            return (azureAdGroup, groupId);
         }
 
         private async Task<string> CallUsersSenderFunctionAsync(UsersSenderRequest request)
@@ -429,5 +461,6 @@ namespace Tests.Services
             var function = new QueueMessageSenderFunction(_loggingRepository.Object, _serviceBusQueueRepository.Object);
             await function.SendMessageAsync(request);
         }
+
     }
 }

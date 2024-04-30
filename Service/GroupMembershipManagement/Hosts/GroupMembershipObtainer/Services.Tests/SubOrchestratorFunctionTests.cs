@@ -22,6 +22,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Net.Http;
 using Repositories.ServiceBusQueue;
+using Repositories.TeamsChannel;
+using Repositories.EntityFramework;
 
 namespace Tests.Services
 {
@@ -40,6 +42,8 @@ namespace Tests.Services
         private Mock<IBlobStorageRepository> _blobStorageRepository;
         private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
+        private Mock<IDatabaseDestinationAttributesRepository> _destinationAttributesRepository;
+        private Mock<ITeamsChannelRepository> _teamsChannelRepository;
 
         private int _userCount;
         private bool _groupExists;
@@ -69,6 +73,9 @@ namespace Tests.Services
             _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
+            _destinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
+
             _userCount = 10;
             var content = new GroupMembership
             {
@@ -132,6 +139,7 @@ namespace Tests.Services
                                             _blobStorageRepository.Object,
                                             _syncJobRepository.Object,
                                             _serviceBusQueueRepository.Object,
+                                            _destinationAttributesRepository.Object,
                                             _loggingRepository.Object,
                                             _dryRunValue.Object
                                             );

@@ -106,7 +106,7 @@ namespace Services
         }
         public async Task<string> GetDestinationNameAsync(SyncJob job)
         {
-            var destination = (await ParseDestinationAsync(job));
+            var destination = DestinationParser.ParseDestination(job);
 
             // Try to get the name from the DestinationNames table first
 
@@ -191,8 +191,8 @@ namespace Services
             await _serviceBusTopicsRepository.AddMessageAsync(job);
         }
         public async Task<DestinationVerifierResult> DestinationExistsAndGMMCanWriteToItAsync(SyncJob job)
-        {
-            var destinationType = (await ParseDestinationAsync(job)).Type;
+        {            
+            var destinationType =  DestinationParser.ParseDestination(job).Type;
 
             if (destinationType == "TeamsChannelMembership")
                 return await TeamsChannelExistsAndGMMCanWriteToItAsync(job);
@@ -203,12 +203,12 @@ namespace Services
         }
         public async Task<List<string>> GetGroupEndpointsAsync(SyncJob job)
         {
-            var destinationObjectId = (await ParseDestinationAsync(job)).Value.ObjectId;
+            var destinationObjectId =  DestinationParser.ParseDestination(job).Value.ObjectId;
             return await _graphGroupRepository.GetGroupEndpointsAsync(destinationObjectId);
         }
         public async Task<(bool IsValid, string DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob)
         {
-            var destinationObject = await ParseDestinationAsync(syncJob);
+            var destinationObject = DestinationParser.ParseDestination(syncJob);
 
             if (destinationObject == null)
             {
@@ -221,48 +221,6 @@ namespace Services
 
                 return (true, serializedDestinationObject);
             }
-        }
-        public async Task<DestinationObject> ParseDestinationAsync(SyncJob syncJob)
-        {
-            if (string.IsNullOrWhiteSpace(syncJob.Destination)) return null;
-
-            JObject destinationQuery = JArray.Parse(syncJob.Destination)[0] as JObject;
-            Guid objectIdGuid;
-            string type;
-
-            if (destinationQuery["value"] == null ||
-                destinationQuery["type"] == null ||
-                destinationQuery["value"].SelectToken("objectId") == null ||
-                !Guid.TryParse(destinationQuery["value"]["objectId"].Value<string>(), out objectIdGuid)) return null;
-
-            type = destinationQuery["type"].Value<string>();
-
-            if (type == "TeamsChannelMembership")
-            {
-                if (destinationQuery["value"].SelectToken("channelId") == null) return null;
-
-                return new DestinationObject
-                {
-                    Type = type,
-                    Value = new TeamsChannelDestinationValue
-                    {
-                        ObjectId = objectIdGuid,
-                        ChannelId = destinationQuery["value"]["channelId"].Value<string>()
-                    }
-                };
-            }
-            else if (type == "GroupMembership")
-            {
-                return new DestinationObject
-                {
-                    Type = type,
-                    Value = new GroupDestinationValue
-                    {
-                        ObjectId = objectIdGuid,
-                    }
-                };
-            }
-            else { return null; }
         }
         private IEnumerable<SyncJob> ApplyJobTriggerFilters(IEnumerable<SyncJob> jobs)
         {
@@ -290,7 +248,7 @@ namespace Services
         }
         private async Task<DestinationVerifierResult> GroupExistsAndGMMCanWriteToItAsync(SyncJob job)
         {
-            var groupId = (await ParseDestinationAsync(job)).Value.ObjectId;
+            var groupId =  DestinationParser.ParseDestination(job).Value.ObjectId;
 
             if (!(await CheckGroupExists(job, groupId)))
                 return DestinationVerifierResult.NotFound;
@@ -300,7 +258,7 @@ namespace Services
         }
         private async Task<DestinationVerifierResult> TeamsChannelExistsAndGMMCanWriteToItAsync(SyncJob job)
         {
-            var destinationObject = await ParseDestinationAsync(job);
+            var destinationObject = DestinationParser.ParseDestination(job);
             var channel = new AzureADTeamsChannel
             {
                 ObjectId = destinationObject.Value.ObjectId,

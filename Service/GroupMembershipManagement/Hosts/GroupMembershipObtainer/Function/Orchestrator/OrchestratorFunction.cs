@@ -60,24 +60,35 @@ namespace Hosts.GroupMembershipObtainer
                         return;
                     }
 
-                if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-                var sourceGroup = await context.CallActivityAsync<AzureADGroup>(nameof(GroupReaderFunction),
-                                                                                    new GroupReaderRequest
-                                                                                    {
-                                                                                        SyncJob = syncJob,
-                                                                                        CurrentPart = mainRequest.CurrentPart,
-                                                                                        IsDestinationPart = mainRequest.IsDestinationPart,
-                                                                                        RunId = runId
-                                                                                    });
+                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
+                    var (sourceGroup, sourceGroupId) = await context.CallActivityAsync<(AzureADGroup, string)>(nameof(GroupReaderFunction),
+                                                                                        new GroupReaderRequest
+                                                                                        {
+                                                                                            SyncJob = syncJob,
+                                                                                            CurrentPart = mainRequest.CurrentPart,
+                                                                                            IsDestinationPart = mainRequest.IsDestinationPart,
+                                                                                            RunId = runId
+                                                                                        });
 
                     if (sourceGroup.ObjectId == Guid.Empty)
                     {
                         if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Source group id is not a valid, Part# {mainRequest.CurrentPart} {syncJob.Query}. Marking job as {SyncStatus.QueryNotValid}." });
+                        
+                        var destinationName = await context.CallActivityAsync<string>(nameof(DestinationNameReaderFunction), syncJob);
+                        if (destinationName == null)
+                        {
+                            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest
+                            {
+                                SyncJob = syncJob,
+                                Status = SyncStatus.Error
+                            });
+                            return;
+                        }
                         var additionalContentParams = new[]
                         {
+                            destinationName.ToString(),
                             syncJob.TargetOfficeGroupId.ToString(),
-                            syncJob.Query,
-                            _emailSenderRecipient.SupportEmailAddresses          
+                            sourceGroupId.ToString(),
                         };
                         await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest {                                                         
                                                         SyncJob = syncJob,

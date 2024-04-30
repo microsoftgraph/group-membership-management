@@ -1015,19 +1015,16 @@ Please reach out to support to update the source definition and re-enable the me
     </value>
   </data>
   <data name="CustomerPausedJobEmailBody" xml:space="preserve">
-    <value>You received this notification because you are listed as the owner of {0}.
-Your group {0} with Id {1} is currently offboarded from Group Membership Management (GMM) due to one of the following reasons:
+    <value>You received this notification because you are listed as the owner of **{0}**.
+Your group **{0}** is currently disabled from Group Membership Management (GMM) due to one of the following reasons:
 
-•	Group Owner Requested a Pause for more than 30 days.
-•	Source or Destination group has been deleted by group owner
-•	No response from group owner about membership adding/removal threshold hitting
+•	Source and/or destination group(s) no longer exist.
+•	Group owner did not take action on a drastic membership change alert.
+•	Group owner paused syncs for more than 30 days.
 
-If you believe this group should be continued managed by Group Membership Management (GMM), please reach out to GMM support before {2} to restore the current onboarding details. Otherwise, you may submit a new GMM onboarding request after the deadline if GMM is still needed.
+If you believe this group should still be managed by Group Membership Management (GMM), please take the necessary actions via GMM UI or reach out to support to request the assistance before {2}.
 
-Please feel free to contact support if you have any questions.
-
-Thank you,
-GMM Team</value>
+If not remediated by {2}, your group's affiliation with GMM (including its membership definition) will be removed.  You will need to re-onboard if you still want GMM to manage your group after that date.</value>
   </data>
   <data name="CustomerPausedJobEmailSubject" xml:space="preserve">
     <value>Group Membership Management (GMM) update</value>
@@ -1039,22 +1036,21 @@ GMM Team</value>
     <value>Increase membership threshold {0}%. Detected threshold {1}%.</value>
   </data>
   <data name="NoDataEmailContent" xml:space="preserve">
-    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group {1} with Id: {0}.
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of **{1}**.
 
-The group sync will be PAUSED since there is no data to sync to group {1} with Id: {0}.
+Membership syncs for **{1}** with Id {0} have been paused since the membership definition provided currently indicates that there should be no users in the destination..
 
-Please reach out to your GMM team to get this issue resolved.
+Please reach out to support to get this issue resolved.
 
-Regards,
-GMM Team</value>
+</value>
   </data>
   <data name="NoDataEmailSubject" xml:space="preserve">
     <value>Group Membership Management - No data found for group {1}</value>
   </data>
   <data name="SyncDisabledNoValidGroupIds" xml:space="preserve">
-    <value>The sync with destination id {0} has been disabled because the object ID(s) {1} are not valid GUIDs and do not refer to valid groups.
-
-This is an auto-generated email. Please reach out to {2} if you have further questions about GMM.</value>
+    <value>You received this notification because you are listed as an owner of **{0}**.
+Membership syncs for **{0}** with Id {1} have been disabled because its following source group object ID(s) are not valid:
+{2}</value>
   </data>
   <data name="SyncJobDisabledEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group. Please visit {3} to learn more about GMM.
@@ -1064,9 +1060,7 @@ The synchronization job for group {0} with Id: {1} has been disabled.
 If you would like to have it re-enabled please reach out to {2}.
 
 The group sync will be PAUSED until your response is received.
-
-Regards,
-GMM Team</value>
+</value>
   </data>
   <data name="SyncThresholdBothEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group. Please visit {3} to learn more about GMM.
@@ -1089,9 +1083,7 @@ Actions needed - Please 'Reply All' indicating what GMM should do about the thre
 4. The projected increase or decrease does not look right to me. Please do not allow the sync to exceed the threshold. I will contact support to follow up.
 
 The group sync will be PAUSED until your response is received.
-
-Regards,
-GMM Team</value>
+</value>
   </data>
   <data name="SyncThresholdDisablingJobEmailSubject" xml:space="preserve">
     <value>[Action Required] GMM: Synchronization job for group {1} has been disabled.</value>

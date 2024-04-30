@@ -14,7 +14,6 @@ namespace Services.Contracts
         public Guid RunId { get; set; }
         Task<(List<SyncJob> jobs, bool jobTriggerThresholdExceeded, int maxJobsAllowed)> GetSyncJobsAsync();
         Task<(bool IsValid, string DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob);
-        Task<DestinationObject> ParseDestinationAsync(SyncJob syncJob);
         Task<string> GetDestinationNameAsync(SyncJob job);
         Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters);
         Task<DestinationVerifierResult> DestinationExistsAndGMMCanWriteToItAsync(SyncJob job);
