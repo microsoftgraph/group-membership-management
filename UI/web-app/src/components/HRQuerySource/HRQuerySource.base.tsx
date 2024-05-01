@@ -937,7 +937,26 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         disabled={isEditingExistingJob}
       />
 
-      {(includeFilter || source.filter) ?
+      {((source.filter && (source.filter.includes("(") || source.filter.includes(")")))) ?
+       (
+        <><div className={classNames.labelContainer}>
+        <Label>{strings.HROnboarding.filter}</Label>
+        <TooltipHost content={strings.HROnboarding.filterInfo} id="toolTipFilterId" calloutProps={{ gapSpace: 0 }}>
+          <IconButton title={strings.HROnboarding.filterInfo} iconProps={{ iconName: "Info" }} aria-describedby="toolTipFilterId" />
+        </TooltipHost>
+        </div>
+        <TextField
+          placeholder={strings.HROnboarding.filterPlaceHolder}
+          multiline rows={3}
+          resizable={true}
+          value={source.filter?.toString()}
+          onChange={handleFilterChange}
+          styles={{ root: classNames.textField, fieldGroup: classNames.textFieldGroup }}
+          validateOnLoad={false}
+          validateOnFocusOut={false}
+          disabled={isEditingExistingJob}
+        ></TextField></>
+        ) : attributes && attributes.length > 0 && (includeFilter || source.filter) ?
         (
           <div>
           <DetailsList
