@@ -16,6 +16,10 @@ namespace Common.DependencyInjection
             {
                 var configuration = services.GetService<IConfiguration>();
                 var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
+                if (graphCredentials.AuthenticationType == AuthenticationType.Unknown || graphCredentials.AuthenticationType == default(AuthenticationType))
+                {
+                    graphCredentials.AuthenticationType = MapStringToAuthenticationType("ClientSecret");
+                }
                 var credential = FunctionAppDI.CreateAuthenticationProvider(graphCredentials, graphCredentials.AuthenticationType);
                 return new GraphServiceClient(credential);
             });
