@@ -27,7 +27,12 @@ namespace Services.Tests
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
-                new Claim(ClaimTypes.Role, Roles.HYPERLINK_ADMINISTRATOR)
+                new Claim(ClaimTypes.Role, Roles.JOB_OWNER_READER),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim(ClaimTypes.Role, Roles.SUBMISSION_REVIEWER),
+                new Claim(ClaimTypes.Role, Roles.HYPERLINK_ADMINISTRATOR),
+                new Claim(ClaimTypes.Role, Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR),
             };
 
             _rolesController.ControllerContext = CreateControllerContext(claims);
@@ -40,7 +45,12 @@ namespace Services.Tests
             var rolesStatuses = okResult.Value as RolesObject;
             Assert.IsNotNull(rolesStatuses);
             Assert.IsTrue(rolesStatuses.IsJobOwnerWriter);
+            Assert.IsTrue(rolesStatuses.IsJobOwnerReader);
+            Assert.IsTrue(rolesStatuses.IsJobTenantReader);
+            Assert.IsTrue(rolesStatuses.IsJobTenantWriter);
+            Assert.IsTrue(rolesStatuses.IsSubmissionReviewer);
             Assert.IsTrue(rolesStatuses.IsHyperlinkAdministrator);
+            Assert.IsTrue(rolesStatuses.IsCustomMembershipProviderAdministrator);
         }
 
         private ControllerContext CreateControllerContext(List<Claim> claims)
