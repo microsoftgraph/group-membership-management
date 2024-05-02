@@ -14,19 +14,31 @@ namespace WebApi.Controllers.v1.OrgLeaderDetails
     public class OrgLeaderDetailsController : ControllerBase
     {
         private readonly IRequestHandler<GetOrgLeaderDetailsRequest, GetOrgLeaderDetailsResponse> _getOrgLeaderDetailsRequestHandler;
-        
-        public OrgLeaderDetailsController(IRequestHandler<GetOrgLeaderDetailsRequest, GetOrgLeaderDetailsResponse> getOrgLeaderDetailsRequestHandler)
+        private readonly IRequestHandler<GetOrgLeaderRequest, GetOrgLeaderResponse> _getOrgLeaderRequestHandler;
+
+        public OrgLeaderDetailsController(
+            IRequestHandler<GetOrgLeaderDetailsRequest, GetOrgLeaderDetailsResponse> getOrgLeaderDetailsRequestHandler,
+             IRequestHandler<GetOrgLeaderRequest, GetOrgLeaderResponse> getOrgLeaderRequestHandler)
         {
             _getOrgLeaderDetailsRequestHandler = getOrgLeaderDetailsRequestHandler ?? throw new ArgumentNullException(nameof(getOrgLeaderDetailsRequestHandler));
+            _getOrgLeaderRequestHandler = getOrgLeaderRequestHandler ?? throw new ArgumentNullException(nameof(getOrgLeaderRequestHandler));
         }
 
         [Authorize()]
-        [HttpGet("{objectId}")]
+        [HttpGet("ObjectId/{objectId}")]
         public async Task<ActionResult<int>> GetOrgLeaderDetailsAsync(string objectId)
         {
             var response = await _getOrgLeaderDetailsRequestHandler.ExecuteAsync(new GetOrgLeaderDetailsRequest(objectId));
             return Ok(response);
-        }        
+        }
+
+        [Authorize()]
+        [HttpGet("EmployeeId/{employeeId}")]
+        public async Task<ActionResult<int>> GetOrgLeaderAsync(int employeeId)
+        {
+            var response = await _getOrgLeaderRequestHandler.ExecuteAsync(new GetOrgLeaderRequest(employeeId));
+            return Ok(response);
+        }
     }
 }
 

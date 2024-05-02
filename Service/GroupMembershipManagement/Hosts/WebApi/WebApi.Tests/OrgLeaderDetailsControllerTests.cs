@@ -20,6 +20,7 @@ namespace Services.Tests
         private Mock<ISqlMembershipRepository> _sqlMembershipRepository = null!;
 
         private GetOrgLeaderDetailsHandler _getOrgLeaderDetailsHandler = null!;
+        private GetOrgLeaderHandler _getOrgLeaderHandler = null!;
         private OrgLeaderDetailsController _orgLeaderDetailsController = null!;
 
         [TestInitialize]
@@ -30,7 +31,8 @@ namespace Services.Tests
             _sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
 
             _getOrgLeaderDetailsHandler = new GetOrgLeaderDetailsHandler(_loggingRepository.Object, _sqlMembershipRepository.Object, _dataFactoryRepository.Object);
-            _orgLeaderDetailsController = new OrgLeaderDetailsController(_getOrgLeaderDetailsHandler)
+            _getOrgLeaderHandler = new GetOrgLeaderHandler(_loggingRepository.Object, _sqlMembershipRepository.Object, _dataFactoryRepository.Object);
+            _orgLeaderDetailsController = new OrgLeaderDetailsController(_getOrgLeaderDetailsHandler, _getOrgLeaderHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
