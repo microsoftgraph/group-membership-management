@@ -1,9 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-
 import { classNamesFunction, type IProcessedStyleSet } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 
 import { useSelector, useDispatch } from 'react-redux';
 import { Outlet } from 'react-router-dom';
@@ -20,7 +19,7 @@ import { setLanguage } from '../store/localization.api';
 import { fetchSettings } from '../store/settings.api';
 import { AppFooter } from '../components/AppFooter';
 import { fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes } from '../store/sqlMembershipSources.api';
-import { selectHasAccess } from '../store/roles.slice';
+import { selectHasAccess, selectIsFetchingRoles } from '../store/roles.slice';
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
@@ -37,6 +36,7 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
   const profile = useSelector(selectProfile);
   const loggedIn = useSelector(selectLoggedIn);
   const hasAccess = useSelector(selectHasAccess);
+  const isFetchingRoles = useSelector(selectIsFetchingRoles);
 
   // run once after load.
   useEffect(() => {
@@ -58,7 +58,15 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
     dispatch(setLanguage(profile?.userPreferredLanguage));
   }, [dispatch, profile?.userPreferredLanguage]);
 
-  if (loggedIn) {
+  const showLoader = !loggedIn || isFetchingRoles;
+
+  if (showLoader) {
+    return (
+      <div className={classNames.root}>
+        <Loader />
+      </div>
+    );
+  } else {
     return (
       <div className={classNames.root}>
         <AppHeader />
@@ -71,12 +79,6 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
           }
         </div>
         <AppFooter />
-      </div>
-    );
-  } else {
-    return (
-      <div className={classNames.root}>
-        <Loader />
       </div>
     );
   }

@@ -54,7 +54,7 @@ import {
 import { JobDetails } from '../../models/JobDetails';
 import { useStrings } from '../../store/hooks';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
-import { selectIsSubmissionReviewer } from '../../store/roles.slice';
+import { selectIsJobOwnerWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { SyncStatus } from '../../models';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { fetchJobs } from '../../store/jobs.api';
@@ -96,6 +96,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const removeGMMError = useSelector(selectRemoveGMMError);
   const jobsLoading = useSelector(selectJobsLoading);
   const removeGMMPending = useSelector(selectRemoveGMMLoading);
+  const isJobWriter = useSelector(selectIsJobOwnerWriter);
   const showLoader = jobsLoading || removeGMMPending;
 
   const OpenInNewWindowIcon: IIconProps = { iconName: 'OpenInNewWindow' };
@@ -206,13 +207,14 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               actionOnClick={openMembershipConfiguration}
             />
             <div className={classNames.removeGMM}>
-              <ActionButton
-                iconProps={{ iconName: 'Delete' }}
-                title={strings.JobDetails.labels.removeGMM}
-                ariaLabel={strings.JobDetails.labels.removeGMM}
-                onClick={onRemoveGMMButtonClick}>
-                {strings.JobDetails.labels.removeGMM}
-              </ActionButton>
+              {isJobWriter &&
+                <ActionButton
+                  iconProps={{ iconName: 'Delete' }}
+                  title={strings.JobDetails.labels.removeGMM}
+                  ariaLabel={strings.JobDetails.labels.removeGMM}
+                  onClick={onRemoveGMMButtonClick}>
+                  {strings.JobDetails.labels.removeGMM}
+                </ActionButton>}
             </div>
           </div>
           <Dialog
@@ -228,10 +230,10 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
             }}
           >
             <DialogFooter>
-              <PrimaryButton 
-                onClick={onConfirmRemove} 
+              <PrimaryButton
+                onClick={onConfirmRemove}
                 text={strings.JobDetails.labels.removeGMMConfirmation}
-                styles={{ root: { padding: '16px'} }}
+                styles={{ root: { padding: '16px' } }}
               />
               <DefaultButton onClick={onDialogClose} text={strings.cancel} />
             </DialogFooter>
@@ -278,6 +280,7 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
   const patchResponse = useSelector(selectPatchJobDetailsResponse);
   const [jobStatus, setJobStatus] = useState(job.status);
   const [isJobEnabled, setIsJobEnabled] = useState(job.enabledOrNot);
+  const isJobWriter = useSelector(selectIsJobOwnerWriter);
 
   useEffect(() => {
     setJobStatus(job.status);
@@ -331,7 +334,7 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
           inlineLabel={true}
           checked={isJobEnabled}
           onChange={handleStatusChange}
-          disabled={jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.SubmissionRejected}
+          disabled={!isJobWriter || jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.SubmissionRejected}
         />
         <div>
           <div className={isJobEnabled ? classNames.jobEnabled : classNames.jobDisabled}>

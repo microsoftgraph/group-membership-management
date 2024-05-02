@@ -61,9 +61,6 @@ param dataFactoryName string = '${solutionAbbreviation}-data-${environmentAbbrev
 @description('Name of the Azure Data Factory pipeline.')
 param adfPipeline string
 
-@description('Enter the subscription id.')
-param authenticationType string = 'ClientSecret'
-
 var subscriptionId = subscription().subscriptionId
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var webapiClientId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'webapiClientId')
@@ -150,10 +147,6 @@ var appSettings = [
   {
     name: 'Settings:GraphCredentials:TenantId'
     value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
-  }
-  {
-    name: 'Settings:GraphCredentials:AuthenticationType'
-    value: authenticationType
   }
   {
     name: 'Settings:ActionableEmailProviderId'
