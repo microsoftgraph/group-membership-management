@@ -43,6 +43,7 @@ namespace Services.Tests
 
             _sqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(It.IsAny<string>())).ReturnsAsync(true);
             _sqlMembershipRepository.Setup(x => x.GetOrgLeaderDetailsAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync((5, 123));
+            _sqlMembershipRepository.Setup(x => x.GetOrgLeaderAsync(It.IsAny<int>(), It.IsAny<string>())).ReturnsAsync((5, "123"));
             _dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("RUN ID");
         }
 
@@ -58,6 +59,20 @@ namespace Services.Tests
             Assert.IsNotNull(orgLeaderDetails);
             Assert.AreEqual(orgLeaderDetails.MaxDepth, 5);
             Assert.AreEqual(orgLeaderDetails.EmployeeId, 123);
+        }
+
+        [TestMethod]
+        public async Task GetOrgLeaderAsyncTestAsync()
+        {
+            var response = await _orgLeaderDetailsController.GetOrgLeaderAsync(0);
+            Assert.IsNotNull(response);
+            var okResult = response.Result as OkObjectResult;
+            Assert.IsNotNull(okResult);
+            Assert.IsNotNull(okResult.Value);
+            var orgLeader = okResult.Value as GetOrgLeaderResponse;
+            Assert.IsNotNull(orgLeader);
+            Assert.AreEqual(orgLeader.MaxDepth, 5);
+            Assert.AreEqual(orgLeader.AzureObjectId, "123");
         }
 
         private ControllerContext CreateControllerContext(List<Claim> claims)
