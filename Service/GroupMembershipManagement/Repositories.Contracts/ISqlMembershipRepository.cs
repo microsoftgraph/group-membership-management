@@ -15,5 +15,6 @@ namespace Repositories.Contracts
         Task<bool> CheckIfTableExistsAsync(string tableName);
         Task<List<string>> GetColumnNamesAsync(string tableName);
         Task<(int maxDepth, string azureObjectId)> GetOrgLeaderAsync(int employeeId, string tableName);
+        Task<List<(string Name, string Type)>> GetColumnDetailsAsync(string tableName);
     }
 }

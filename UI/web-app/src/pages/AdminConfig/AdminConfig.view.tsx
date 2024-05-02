@@ -27,7 +27,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
   const [newSettings, setNewSettings] = useState(settings);
   const [newSource, setNewSource] = useState<SqlMembershipSource | undefined>(sqlMembershipSource);
   const [newAttributes, setNewAttributes] = useState<SqlMembershipAttribute[] | undefined>(sqlMembershipSourceAttributes);
-  const [hasUrlValidationErrors, setHasUrlValidationErrors] = useState<boolean>(true);
+  const [hasUrlValidationErrors, setHasUrlValidationErrors] = useState<boolean>(false);
 
   useEffect(() => {
     setNewSource(sqlMembershipSource);

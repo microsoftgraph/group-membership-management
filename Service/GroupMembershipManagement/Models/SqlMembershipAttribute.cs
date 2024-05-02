@@ -7,5 +7,6 @@ namespace Models
     {
         public string Name { get; set; }
         public string CustomLabel { get; set; }
+        public string Type { get; set; }
     }
 }

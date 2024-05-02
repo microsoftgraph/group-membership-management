@@ -33,7 +33,6 @@ namespace Services
 
         protected override async Task<GetDefaultSqlMembershipSourceAttributesResponse> ExecuteCoreAsync(GetDefaultSqlMembershipSourceAttributesRequest request)
         {
-
             try
             {
                 var sqlFilterAttributes = await GetSqlAttributes();
@@ -41,18 +40,26 @@ namespace Services
 
                 if (storedAttributeSettings != null)
                 {
-                    // Remove attributes from settings that are not present in the Destination SQL table
-                    storedAttributeSettings.RemoveAll(attribute => !sqlFilterAttributes.Contains(attribute.Name));
+                    storedAttributeSettings.RemoveAll(attribute =>
+                        !sqlFilterAttributes.Any(t => t.Name == attribute.Name && t.Type == attribute.Type)
+                    );
 
-                    // update the settings
                     await _databaseSqlMembershipSourcesRepository.UpdateDefaultSourceAttributesAsync(storedAttributeSettings);
                 }
-                
-                // Generate the list of attributes to return
-                var attributesToReturn = sqlFilterAttributes.Select(attributeName =>
-                    storedAttributeSettings?.FirstOrDefault(attribute => attribute.Name == attributeName)
-                    ?? new SqlMembershipAttribute { Name = attributeName, CustomLabel = "" }
-                ).ToList();
+
+                var attributesToReturn = sqlFilterAttributes.Select(attributeTuple =>
+                {
+                    var storedAttribute = storedAttributeSettings?.FirstOrDefault(attribute =>
+                        attribute.Name == attributeTuple.Name && attribute.Type == attributeTuple.Type
+                    );
+
+                    return storedAttribute ?? new SqlMembershipAttribute
+                    {
+                        Name = attributeTuple.Name,
+                        Type = attributeTuple.Type,
+                        CustomLabel = ""
+                    };
+                }).ToList();
 
                 return new GetDefaultSqlMembershipSourceAttributesResponse { Attributes = attributesToReturn };
             }
@@ -61,23 +68,22 @@ namespace Services
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unable to retrieve Sql Filter Attributes: {ex.Message}" });
                 throw ex;
             }
-            
         }
 
-        private async Task<List<string>> GetSqlAttributes()
+        private async Task<List<(string Name, string Type)>> GetSqlAttributes()
         {
             var tableName = await GetTableNameAsync();
             var attributes = await GetColumnNamesAsync(tableName);
             return attributes;
         }
 
-        private async Task<List<string>> GetColumnNamesAsync(string tableName)
+        private async Task<List<(string Name, string Type)>> GetColumnNamesAsync(string tableName)
         {
-            var attributes = new List<string>();
+            var attributes = new List<(string Name, string Type)>();
 
             try
             {
-                attributes = await _sqlMembershipRepository.GetColumnNamesAsync(tableName);
+                attributes = await _sqlMembershipRepository.GetColumnDetailsAsync(tableName);
             }
             catch (SqlException ex)
             {

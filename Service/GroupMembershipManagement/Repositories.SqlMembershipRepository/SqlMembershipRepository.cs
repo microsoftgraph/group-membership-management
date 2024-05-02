@@ -349,6 +349,55 @@ namespace Repositories.SqlMembershipRepository
             return (maxDepth, azureObjectId);
         }
 
+        public async Task<List<(string Name, string Type)>> GetColumnDetailsAsync(string tableName)
+        {
+            var columnDetails = new List<(string Name, string Type)>();
+            var retryPolicy = GetRetryPolicy();
+            try
+            {
+                var selectQuery = $@"
+                    SELECT c.name, t.name AS type 
+                    FROM sys.columns AS c
+                    JOIN sys.types AS t ON c.user_type_id = t.user_type_id
+                    WHERE c.object_id = OBJECT_ID('{tableName}')
+                    ORDER BY c.name";
+
+                var credential = new DefaultAzureCredential();
+                var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
+                await retryPolicy.Execute(async () =>
+                {
+                    using (var conn = new SqlConnection(_sqlServerConnectionString))
+                    {
+                        conn.AccessToken = token.Token;
+                        await conn.OpenAsync();
+                        using (var cmd = new SqlCommand(selectQuery, conn))
+                        {
+                            using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+                            {
+                                int nameOrdinal = reader.GetOrdinal("name");
+                                int typeOrdinal = reader.GetOrdinal("type");
+
+                                while (reader.Read())
+                                {
+                                    var columnName = reader.IsDBNull(nameOrdinal) ? null : reader.GetString(nameOrdinal);
+                                    var columnType = reader.IsDBNull(typeOrdinal) ? null : reader.GetString(typeOrdinal);
+                                    columnDetails.Add((columnName, columnType));
+                                }
+                                reader.Close();
+                            }
+                        }
+                        await conn.CloseAsync();
+                    }
+                });
+            }
+            catch (SqlException ex)
+            {
+                throw ex;
+            }
+
+            return columnDetails;
+        }
+
         private RetryPolicy GetRetryPolicy()
         {
             return Policy.Handle<SqlException>()
