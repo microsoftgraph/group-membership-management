@@ -43,4 +43,9 @@ export class GraphApi extends ApiBase implements IGraphApi {
     }));
 
   }
+
+  public async getUser(objectId: string): Promise<string> {   
+    const response = await this.httpClient.get<UserEntity>(`/users/${objectId}`, {});   
+    return response.data.displayName;
+  }
 }

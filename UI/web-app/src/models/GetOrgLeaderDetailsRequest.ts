@@ -7,3 +7,8 @@ export interface GetOrgLeaderDetailsRequest {
   text: string;
   partId: number;
 }
+
+export interface GetOrgLeaderDetailsUsingIdRequest {
+  employeeId: number;
+  partId: number;
+}

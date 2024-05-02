@@ -3,7 +3,7 @@
 
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { config } from '../authConfig';
-import { type GetOrgLeaderDetailsRequest } from '../models/GetOrgLeaderDetailsRequest';
+import { type GetOrgLeaderDetailsRequest, GetOrgLeaderDetailsUsingIdRequest } from '../models/GetOrgLeaderDetailsRequest';
 import { type GetOrgLeaderDetailsResponse } from '../models/GetOrgLeaderDetailsResponse';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
@@ -26,7 +26,7 @@ export const fetchOrgLeaderDetails = createAsyncThunk<
   try {
     const response = await fetch(
       config.getOrgLeaderDetails +
-        `/${encodeURIComponent(orgLeaderDetailsDetailsRequest.objectId)}`,
+        `/ObjectId/${encodeURIComponent(orgLeaderDetailsDetailsRequest.objectId)}`,
       options
     ).then(async (response) => await response.json());
 
@@ -36,6 +36,43 @@ export const fetchOrgLeaderDetails = createAsyncThunk<
       text: orgLeaderDetailsDetailsRequest.text,        
       maxDepth: response["maxDepth"],
       partId: orgLeaderDetailsDetailsRequest.partId
+    };
+    return payload;
+  } catch (error) {
+    throw new Error('Failed to fetch orgLeaderDetails details data!');
+  }
+});
+
+export const fetchOrgLeaderDetailsUsingId = createAsyncThunk<
+  GetOrgLeaderDetailsResponse,
+  GetOrgLeaderDetailsUsingIdRequest,
+  ThunkConfig
+>('orgLeaderDetails', async (GetOrgLeaderDetailsUsingIdRequest, { extra }) => {
+  const { graphApi } = extra.apis;
+  const { authenticationService } = extra.services;
+  const token = await authenticationService.getTokenAsync(TokenType.GMM);
+  const headers = new Headers();
+  headers.append('Authorization', `Bearer ${token}`);
+
+  const options = {
+    method: 'GET',
+    headers,
+  };
+
+  try {
+    const response = await fetch(
+      config.getOrgLeaderDetails +
+        `/EmployeeId/${encodeURIComponent(GetOrgLeaderDetailsUsingIdRequest.employeeId)}`,
+      options
+    ).then(async (response) => await response.json());
+    var displayName = await graphApi.getUser(response["azureObjectId"]);
+
+    const payload: GetOrgLeaderDetailsResponse = {
+      employeeId: GetOrgLeaderDetailsUsingIdRequest.employeeId,
+      objectId: response["azureObjectId"],
+      text: displayName,
+      maxDepth: response["maxDepth"],
+      partId: GetOrgLeaderDetailsUsingIdRequest.partId
     };
     return payload;
   } catch (error) {

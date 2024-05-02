@@ -15,7 +15,7 @@ import { useStrings } from '../../store/hooks';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { AppDispatch } from '../../store';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchOrgLeaderDetails } from '../../store/orgLeaderDetails.api';
+import { fetchOrgLeaderDetails, fetchOrgLeaderDetailsUsingId } from '../../store/orgLeaderDetails.api';
 import { getJobOwnerFilterSuggestions } from '../../store/jobs.api';
 import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeIdMapping } from '../../store/orgLeaderDetails.slice';
 import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
@@ -186,6 +186,17 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       onSourceChange(newSource, partId);
     }
   }, [orgLeaderDetails.employeeId, orgLeaderDetails.objectId]);
+
+  useEffect(() => {
+    if (source?.manager?.id) {
+      if (objectIdEmployeeIdMapping[source.manager.id] === undefined) {        
+        dispatch(fetchOrgLeaderDetailsUsingId({
+          employeeId: source.manager.id,
+          partId: partId as number
+        }))
+      }
+    }
+  }, [source]);
 
   useEffect(() => {
     if (orgLeaderDetails.employeeId === 0 && orgLeaderDetails.maxDepth === 0 && includeOrg && partId === orgLeaderDetails.partId) {
@@ -848,7 +859,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         disabled={isEditingExistingJob}
       />
 
-      {(includeOrg || source?.manager?.id) && (
+      {(includeOrg || (source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id] && objectIdEmployeeIdMapping[source.manager.id].text !== undefined)) && (
       <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={stackTokens}>
         <Stack.Item align="start">
           <div>
@@ -864,7 +875,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
               key={'normal'}
               resolveDelay={300}
               itemLimit={1}
-              selectedItems={source?.manager?.id && !isDisabled ? [
+              selectedItems={source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id] && !isDisabled ? [
                 {
                   key: objectIdEmployeeIdMapping[source.manager.id]?.objectId.toString() || "",
                   text: objectIdEmployeeIdMapping[source.manager.id]?.text.toString() || ""
