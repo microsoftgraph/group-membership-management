@@ -61,6 +61,10 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       borderColor: theme.palette.neutralQuaternary,
       minWidth: 20
     },
+    upDown: {
+      display: 'flex',
+      flexDirection: 'column'
+    },
     spinButton: {
       '&:after': {
         borderColor: theme.palette.neutralQuaternary

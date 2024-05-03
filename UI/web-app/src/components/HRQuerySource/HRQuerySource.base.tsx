@@ -82,6 +82,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [groupingEnabled, setGroupingEnabled] = useState(false);
+  const [filterTextEnabled, setFilterTextEnabled] = useState(false);
   const [groupQuery, setGroupQuery] = useState<string>();
 
   useEffect(() => {
@@ -206,7 +207,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     }
 
     if (operatorIndex === -1) {
-      throw new Error('No operator found in filter part: ' + part);
+      setFilterTextEnabled(true);
     }
     const attribute = part.slice(0, operatorIndex).trim();
     const value = part.slice(operatorIndex + operatorFound.length).trim();
@@ -838,7 +839,9 @@ const checkType = (value: string, type: string | undefined): string => {
     const selectedValue = newValue;
     let selectedValueAfterConversion: string = "";
 
-    selectedValueAfterConversion = checkType(selectedValue, attributeValues[items[index ?? 0].attribute].type);
+    if (attributeValues[items[index ?? 0].attribute]) {
+      selectedValueAfterConversion = checkType(selectedValue, attributeValues[items[index ?? 0].attribute].type);
+    }
     setItems(updatedItems);
   }
 
@@ -854,7 +857,9 @@ const checkType = (value: string, type: string | undefined): string => {
     var newValue = event.target.value.trim();
     const selectedValue = newValue;
     let selectedValueAfterConversion: string = "";
-    selectedValueAfterConversion = checkType(selectedValue, attributeValues[items[index ?? 0].attribute].type);
+    if (attributeValues[items[index ?? 0].attribute]) {
+      selectedValueAfterConversion = checkType(selectedValue, attributeValues[items[index ?? 0].attribute].type);
+    }
     const regex = /(?<= And | Or )/;
     let segments = props.source.filter?.split(regex);
     if (selectedValueAfterConversion !== "" && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
@@ -973,6 +978,14 @@ const checkType = (value: string, type: string | undefined): string => {
   };
 
   const columns = [
+     {
+      key: 'upDown',
+      name: '',
+      fieldName: 'upDown',
+      minWidth: 20,
+      maxWidth: 20,
+      isResizable: false
+    },
     {
       key: 'attribute',
       name: 'Attribute',
@@ -1015,9 +1028,75 @@ const checkType = (value: string, type: string | undefined): string => {
     }
   ];
 
+  function onUpClick(index: number, items: IFilterPart[]) {
+    // alert("OnUpClick" + index + items.length);
+    console.log("items", items);
+    console.log("groups", groups);
+
+    let newItems = [...items];
+    let newSelectedIndices = [];    
+      const insertIndex = index-1;
+      if (insertIndex < 0) { return; }
+      newItems = newItems.filter(i => i !== items[index]);
+      newItems.splice(insertIndex, 0, items[index]);
+      newSelectedIndices.push(insertIndex);
+      let newChildren: ChildType[] = newItems.map((item) => ({
+        filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
+      }));
+
+
+      const groupIndex = groups.findIndex(group =>
+        group.children?.some(child =>
+            child.items.some(item =>
+                JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
+            )
+        ) || group.items?.some(item =>
+            JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
+        )
+      );
+      const childIndex = groupIndex !== -1 ? groups[groupIndex].children.findIndex(child =>
+        child.items.some(item =>
+            JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
+        )
+      ) : -1;
+
+      console.log("groupIndex", groupIndex);
+      console.log("childIndex", childIndex);
+
+
+      setChildren(newChildren);
+      setItems(newItems);
+      console.log("newItems", newItems);
+  }
+
+  function onDownClick(index: number, items: IFilterPart[]) {
+    // alert("onDownClick" + index + items.length);
+    console.log("items", items);
+    // console.log("selectedItem", items[index]);
+
+    let newItems = [...items];
+    let newSelectedIndices = [];    
+      const insertIndex = index+1;
+      if (insertIndex > items.length) { return; }
+      newItems = newItems.filter(i => i !== items[index]);
+      newItems.splice(insertIndex, 0, items[index]);
+      newSelectedIndices.push(insertIndex);
+      let newChildren: ChildType[] = newItems.map((item) => ({
+        filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
+      }));
+      setChildren(newChildren);
+      setItems(newItems);
+      console.log("newItems", newItems);
+  }
+
   const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn): JSX.Element => {
     if (typeof index !== 'undefined' && items[index]) {
       switch (column?.key) {
+        case 'upDown':
+          return <div className={classNames.upDown}>                 
+            <ActionButton iconProps={{ iconName: 'ChevronUp' }} onClick={() => onUpClick(index, items)} style={{ marginBottom: '2px' }} />
+            <ActionButton iconProps={{ iconName: 'ChevronDown' }} onClick={() => onDownClick(index, items)} style={{ marginTop: '2px' }} />
+          </div>;
         case 'attribute':
           return <ComboBox
           selectedKey={item.attribute}
@@ -1101,12 +1180,14 @@ const checkType = (value: string, type: string | undefined): string => {
   };
 
   const getDragDropEvents = (): IDragDropEvents => {
+    console.log("selection", selection.getSelectedCount());
     return {
       canDrop: () => true,
       canDrag: () => true,
       onDragEnter: () => "",
       onDragLeave: () => {},
       onDrop: (item) => {
+        console.log("selection", selection.getSelectedCount());
         const selectedCount = selection.getSelectedCount();
         let sourceItems;
         if (selectedCount <= 0) {
@@ -1283,6 +1364,8 @@ const checkType = (value: string, type: string | undefined): string => {
   }
 
     function onGroupClick() {
+      console.log("items", items);
+      console.log("selectedIndices", selectedIndices);
       let newGroups = [...groups];
       let indices: { selectedItemIndex: number, groupIndex: number; childIndex: number }[] = [];
       const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
@@ -1419,6 +1502,8 @@ const checkType = (value: string, type: string | undefined): string => {
 
   function handleSelectionChange(selection: Selection, index: number) {
     const selectedItems = selection.getSelection() as any[];
+    console.log("handleSelectionChange selectedItems", selectedItems);
+    console.log("handleSelectionChange items", items);
     const selectedIndices = selectedItems.map(selectedItem => {
       return items.findIndex(item =>
         item.attribute === selectedItem.attribute &&
@@ -1426,6 +1511,7 @@ const checkType = (value: string, type: string | undefined): string => {
         item.value === selectedItem.value &&
         item.andOr === selectedItem.andOr);
     });
+    console.log("handleSelectionChange selectedIndices", selectedIndices);
     setSelectedIndices(selectedIndices);
   }
 
@@ -1532,7 +1618,7 @@ const checkType = (value: string, type: string | undefined): string => {
         disabled={isEditingExistingJob}
       />
 
-      {((source.filter && (source.filter.includes("(") || source.filter.includes(")")))) ?
+      {(source.filter && filterTextEnabled) ?
        (
         <><div className={classNames.labelContainer}>
         <Label>{strings.HROnboarding.filter}</Label>
@@ -1586,7 +1672,7 @@ const checkType = (value: string, type: string | undefined): string => {
               columns={columns}
               selectionPreservedOnEmptyClick={true}
               selection={selection}
-              onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column)}
+              //onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column)}
               dragDropEvents={getDragDropEvents()}
               layoutMode={DetailsListLayoutMode.justified}
               ariaLabelForSelectionColumn="Toggle selection"
