@@ -4,7 +4,6 @@ param location string
 param tenantId string
 param solutionAbbreviation string
 param environmentAbbreviation string
-param keyVaultReaders array
 param isManagedApplication bool = false
 param managedResourceGroupName string = '${solutionAbbreviation}-mrg-${environmentAbbreviation}'
 param appConfigurationName string = '${solutionAbbreviation}-appConfig-${environmentAbbreviation}'
@@ -91,7 +90,6 @@ module gmmResources 'commonResources.bicep' = {
     tenantId: tenantId
     solutionAbbreviation: solutionAbbreviation
     environmentAbbreviation: environmentAbbreviation
-    keyVaultReaders: keyVaultReaders
     isManagedApplication: isManagedApplication
     managedResourceGroupName: managedResourceGroupName
     graphAppCertificateName: graphAppCertificateName
