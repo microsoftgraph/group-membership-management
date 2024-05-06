@@ -288,13 +288,13 @@ namespace Repositories.SqlMembershipRepository
             {
                 var selectDepthQuery = @$"
                     WITH emp AS (
-                            SELECT *, 1 AS Depth
+                            SELECT EmployeeId, 1 AS Depth
                             FROM {tableName}
                             WHERE EmployeeId = {employeeId}
 
                             UNION ALL
 
-                            SELECT e.*, emp.Depth + 1
+                            SELECT e.EmployeeId, emp.Depth + 1
                             FROM {tableName} e INNER JOIN emp
                             ON e.ManagerId = emp.EmployeeId
                     )
@@ -303,14 +303,11 @@ namespace Repositories.SqlMembershipRepository
                 ";
 
                 var selectIdQuery = $"SELECT AzureObjectId FROM {tableName} WHERE EmployeeId = {employeeId}";
-                var credential = new DefaultAzureCredential();
-                var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
 
                 await retryPolicy.Execute(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
-                        conn.AccessToken = token.Token;
                         await conn.OpenAsync();
                         using (var cmd = new SqlCommand(selectDepthQuery, conn))
                         {
@@ -318,11 +315,11 @@ namespace Repositories.SqlMembershipRepository
                             {
                                 int maxDepthOrdinal = reader.GetOrdinal("MaxDepth");
 
-                                while (reader.Read())
+                                if (reader.Read())
                                 {
                                     maxDepth = reader.IsDBNull(maxDepthOrdinal) ? 0 : reader.GetInt32(maxDepthOrdinal);
                                 }
-                                reader.Close();
+                                await reader.CloseAsync();
                             }
                         }
 
@@ -332,15 +329,15 @@ namespace Repositories.SqlMembershipRepository
                             {
                                 int idOrdinal = reader.GetOrdinal("AzureObjectId");
 
-                                while (reader.Read())
+                                if (reader.Read())
                                 {
-                                    azureObjectId = reader.IsDBNull(idOrdinal) ? "" : reader.GetString(idOrdinal);
+                                    azureObjectId = reader.IsDBNull(idOrdinal) ? String.Empty : reader.GetString(idOrdinal);
                                 }
                                 await reader.CloseAsync();
                             }
                         }
 
-                        conn.Close();
+                        await conn.CloseAsync();
                     }
                 });
             }
