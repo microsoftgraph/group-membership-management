@@ -222,76 +222,12 @@ module functionAppSlotTemplate_AzureMaintenance 'functionAppSlot.bicep' = {
   ]
 }
 
-module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'dataKeyVaultPoliciesTemplate-AzureMaintenance'
-  scope: resourceGroup(dataKeyVaultResourceGroup)
-  params: {
-    name: dataKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_AzureMaintenance.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_AzureMaintenance.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_AzureMaintenance
-    functionAppSlotTemplate_AzureMaintenance
-  ]
-}
-module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'prereqsKeyVaultPoliciesTemplate-AzureMaintenance'
-  scope: resourceGroup(prereqsKeyVaultResourceGroup)
-  params: {
-    name: prereqsKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_AzureMaintenance.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-        certificates: [
-          'get'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_AzureMaintenance.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-        certificates: [
-          'get'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_AzureMaintenance
-    functionAppSlotTemplate_AzureMaintenance
-  ]
-}
-
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-AzureMaintenance/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppTemplate_AzureMaintenance
-    dataKeyVaultPoliciesTemplate
   ]
 }
 
@@ -301,6 +237,5 @@ resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
     functionAppSlotTemplate_AzureMaintenance
-    dataKeyVaultPoliciesTemplate
   ]
 }

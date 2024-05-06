@@ -225,77 +225,12 @@ module functionAppSlotTemplate_GroupMembershipObtainer 'functionAppSlot.bicep' =
   ]
 }
 
-module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'dataKeyVaultPoliciesTemplate-GroupMembershipObtainer'
-  scope: resourceGroup(dataKeyVaultResourceGroup)
-  params: {
-    name: dataKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_GroupMembershipObtainer.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_GroupMembershipObtainer.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_GroupMembershipObtainer
-    functionAppSlotTemplate_GroupMembershipObtainer
-  ]
-}
-
-module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'prereqsKeyVaultPoliciesTemplate-GroupMembershipObtainer'
-  scope: resourceGroup(prereqsKeyVaultResourceGroup)
-  params: {
-    name: prereqsKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_GroupMembershipObtainer.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-        certificates: [
-          'get'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_GroupMembershipObtainer.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-        certificates: [
-          'get'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_GroupMembershipObtainer
-    functionAppSlotTemplate_GroupMembershipObtainer
-  ]
-}
-
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-GroupMembershipObtainer/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppTemplate_GroupMembershipObtainer
-    dataKeyVaultPoliciesTemplate
   ]
 }
 
@@ -305,6 +240,5 @@ resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
     functionAppSlotTemplate_GroupMembershipObtainer
-    dataKeyVaultPoliciesTemplate
   ]
 }

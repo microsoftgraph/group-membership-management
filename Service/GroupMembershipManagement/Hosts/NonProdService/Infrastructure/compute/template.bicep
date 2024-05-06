@@ -286,75 +286,12 @@ module functionAppSlotTemplate_NonProdService 'functionAppSlot.bicep' = {
   ]
 }
 
-module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'dataKeyVaultPoliciesTemplate-NonProdService'
-  scope: resourceGroup(dataKeyVaultResourceGroup)
-  params: {
-    name: dataKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_NonProdService.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_NonProdService.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_NonProdService
-    functionAppSlotTemplate_NonProdService
-  ]
-}
-
-module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'prereqsKeyVaultPoliciesTemplate-NonProdService'
-  scope: resourceGroup(prereqsKeyVaultResourceGroup)
-  params: {
-    name: prereqsKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_NonProdService.outputs.msi
-        secrets: [
-          'get'
-        ]
-        certificates: [
-          'get'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_NonProdService.outputs.msi
-        secrets: [
-          'get'
-        ]
-        certificates: [
-          'get'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_NonProdService
-    functionAppSlotTemplate_NonProdService
-  ]
-}
-
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-NonProdService/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppTemplate_NonProdService
-    dataKeyVaultPoliciesTemplate
   ]
 }
 
@@ -364,6 +301,5 @@ resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
     functionAppSlotTemplate_NonProdService
-    dataKeyVaultPoliciesTemplate
   ]
 }

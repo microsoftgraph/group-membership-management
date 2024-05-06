@@ -210,77 +210,12 @@ module functionAppSlotTemplate_TeamsChannelMembershipObtainer 'functionAppSlot.b
   ]
 }
 
-module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'dataKeyVaultPoliciesTemplate-TeamsChannelMembershipObtainer'
-  scope: resourceGroup(dataKeyVaultResourceGroup)
-  params: {
-    name: dataKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_TeamsChannelMembershipObtainer.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_TeamsChannelMembershipObtainer.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_TeamsChannelMembershipObtainer
-    functionAppSlotTemplate_TeamsChannelMembershipObtainer
-  ]
-}
-
-module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'prereqsKeyVaultPoliciesTemplate-TeamsChannelMembershipObtainer'
-  scope: resourceGroup(prereqsKeyVaultResourceGroup)
-  params: {
-    name: prereqsKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_TeamsChannelMembershipObtainer.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-        certificates: [
-          'get'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_TeamsChannelMembershipObtainer.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-        certificates: [
-          'get'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_TeamsChannelMembershipObtainer
-    functionAppSlotTemplate_TeamsChannelMembershipObtainer
-  ]
-}
-
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-TeamsChannelMembershipObtainer/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppTemplate_TeamsChannelMembershipObtainer
-    dataKeyVaultPoliciesTemplate
   ]
 }
 
@@ -290,6 +225,5 @@ resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
     functionAppSlotTemplate_TeamsChannelMembershipObtainer
-    dataKeyVaultPoliciesTemplate
   ]
 }

@@ -40,23 +40,3 @@ module azureDataFactoryTemplate 'azureDataFactory.bicep' = {
 		storageAccountConnectionString: dataKeyVault.getSecret('storageAccountConnectionString')
 	}
 }
-
-module keyVaultPoliciesTemplate 'keyVaultAccessPolicies.bicep' = {
-	name: 'keyVaultPoliciesTemplate-${solutionAbbreviation}'
-	params: {
-		name: dataKeyVaultName
-		policies: [
-			{
-				objectId: azureDataFactoryTemplate.outputs.systemAssignedIdentityId
-				secrets: [
-					'list'
-					'get'
-				]
-			}
-		]
-		tenantId: tenantId
-	}
-	dependsOn: [
-		azureDataFactoryTemplate
-	]
-}

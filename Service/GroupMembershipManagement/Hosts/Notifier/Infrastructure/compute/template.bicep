@@ -237,72 +237,12 @@ module functionAppSlotTemplate_Notifier 'functionAppSlot.bicep' = {
   ]
 }
 
-module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'dataKeyVaultPoliciesTemplate-Notifier'
-  scope: resourceGroup(dataKeyVaultResourceGroup)
-  params: {
-    name: dataKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_Notifier.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_Notifier.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_Notifier
-    functionAppSlotTemplate_Notifier
-  ]
-}
-
-module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'prereqsKeyVaultPoliciesTemplate-Notifier'
-  scope: resourceGroup(prereqsKeyVaultResourceGroup)
-  params: {
-    name: prereqsKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_Notifier.outputs.msi
-        secrets: [
-          'get'
-        ]
-        certificates: [
-          'get'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_Notifier.outputs.msi
-        secrets: [
-          'get'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_Notifier
-    functionAppSlotTemplate_Notifier
-  ]
-}
-
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-Notifier/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppTemplate_Notifier
-    dataKeyVaultPoliciesTemplate
   ]
 }
 
@@ -312,6 +252,5 @@ resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
     functionAppSlotTemplate_Notifier
-    dataKeyVaultPoliciesTemplate
   ]
 }

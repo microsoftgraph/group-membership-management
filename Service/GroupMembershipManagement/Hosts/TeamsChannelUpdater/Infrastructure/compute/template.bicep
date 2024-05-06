@@ -231,77 +231,12 @@ module functionAppSlotTemplate_TeamsChannelUpdater 'functionAppSlot.bicep' = {
   ]
 }
 
-module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'dataKeyVaultPoliciesTemplate-TeamsChannelUpdater'
-  scope: resourceGroup(dataKeyVaultResourceGroup)
-  params: {
-    name: dataKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_TeamsChannelUpdater.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_TeamsChannelUpdater.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_TeamsChannelUpdater
-    functionAppSlotTemplate_TeamsChannelUpdater
-  ]
-}
-
-module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'prereqsKeyVaultPoliciesTemplate-TeamsChannelUpdater'
-  scope: resourceGroup(prereqsKeyVaultResourceGroup)
-  params: {
-    name: prereqsKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_TeamsChannelUpdater.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-        certificates: [
-          'get'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_TeamsChannelUpdater.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-        certificates: [
-          'get'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_TeamsChannelUpdater
-    functionAppSlotTemplate_TeamsChannelUpdater
-  ]
-}
-
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-TeamsChannelUpdater/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppTemplate_TeamsChannelUpdater
-    dataKeyVaultPoliciesTemplate
   ]
 }
 
@@ -311,6 +246,5 @@ resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
     functionAppSlotTemplate_TeamsChannelUpdater
-    dataKeyVaultPoliciesTemplate
   ]
 }

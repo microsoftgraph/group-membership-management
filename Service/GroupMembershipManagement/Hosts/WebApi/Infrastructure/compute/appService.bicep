@@ -62,53 +62,6 @@ resource sites_scm 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-
   }
 }
 
-module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'dataKeyVaultPoliciesTemplate-WebApi'
-  scope: resourceGroup(dataResourceGroup)
-  params: {
-    name: dataKeyVaultName
-    policies: [
-      {
-        objectId: websiteTemplate.identity.principalId
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    sites_ftp
-    sites_scm
-  ]
-}
-
-module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'prereqsKeyVaultPoliciesTemplate-WebApi'
-  scope: resourceGroup(prereqsResourceGroup)
-  params: {
-    name: prereqsKeyVaultName
-    policies: [
-      {
-        objectId: websiteTemplate.identity.principalId
-        secrets: [
-          'get'
-          'list'
-        ]
-        certificates: [
-          'get'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    sites_ftp
-    sites_scm
-  ]
-}
-
 resource websiteConfig 'Microsoft.Web/sites/config@2022-03-01' = {
   name: 'web'
   parent: websiteTemplate
@@ -119,8 +72,8 @@ resource websiteConfig 'Microsoft.Web/sites/config@2022-03-01' = {
     appSettings: appSettings
   }
   dependsOn: [
-      dataKeyVaultPoliciesTemplate
-      prereqsKeyVaultPoliciesTemplate
+    sites_ftp
+    sites_scm
     ]
 }
 

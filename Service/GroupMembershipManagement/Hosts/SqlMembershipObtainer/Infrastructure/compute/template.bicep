@@ -260,76 +260,12 @@ module functionAppSlotTemplate_SqlMembershipObtainer 'functionAppSlot.bicep' = {
   ]
 }
 
-module DataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'DataKeyVaultPoliciesTemplate-SqlMembershipObtainer'
-  scope: resourceGroup(dataKeyVaultResourceGroup)
-  params: {
-    name: dataKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_SqlMembershipObtainer.outputs.msi
-        secrets: [
-          'get'
-          'set'
-          'list'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_SqlMembershipObtainer.outputs.msi
-        secrets: [
-          'get'
-          'set'
-          'list'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_SqlMembershipObtainer
-    functionAppSlotTemplate_SqlMembershipObtainer
-  ]
-}
-
-module PrereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'PrereqsKeyVaultPoliciesTemplate-SqlMembershipObtainer'
-  scope: resourceGroup(prereqsKeyVaultResourceGroup)
-  params: {
-    name: prereqsKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_SqlMembershipObtainer.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-        certificates: [
-          'get'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_SqlMembershipObtainer.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_SqlMembershipObtainer
-    functionAppSlotTemplate_SqlMembershipObtainer
-  ]
-}
-
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-SqlMembershipObtainer/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppTemplate_SqlMembershipObtainer
-    DataKeyVaultPoliciesTemplate
   ]
 }
 
@@ -339,6 +275,5 @@ resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
     functionAppSlotTemplate_SqlMembershipObtainer
-    DataKeyVaultPoliciesTemplate
   ]
 }

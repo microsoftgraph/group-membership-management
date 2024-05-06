@@ -194,69 +194,12 @@ module functionAppSlotTemplate_JobScheduler 'functionAppSlot.bicep' = {
   ]
 }
 
-module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'dataKeyVaultPoliciesTemplate-JobScheduler'
-  scope: resourceGroup(dataKeyVaultResourceGroup)
-  params: {
-    name: dataKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_JobScheduler.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_JobScheduler.outputs.msi
-        secrets: [
-          'get'
-          'list'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_JobScheduler
-    functionAppSlotTemplate_JobScheduler
-  ]
-}
-
-module prereqsKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'prereqsKeyVaultPoliciesTemplate-JobScheduler'
-  scope: resourceGroup(prereqsKeyVaultResourceGroup)
-  params: {
-    name: prereqsKeyVaultName
-    policies: [
-      {
-        objectId: functionAppTemplate_JobScheduler.outputs.msi
-        secrets: [
-          'get'
-        ]
-      }
-      {
-        objectId: functionAppSlotTemplate_JobScheduler.outputs.msi
-        secrets: [
-          'get'
-        ]
-      }
-    ]
-    tenantId: tenantId
-  }
-  dependsOn: [
-    functionAppTemplate_JobScheduler
-    functionAppSlotTemplate_JobScheduler
-  ]
-}
-
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   name: '${functionAppName}-JobScheduler/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppTemplate_JobScheduler
-    dataKeyVaultPoliciesTemplate
   ]
 }
 
@@ -266,6 +209,5 @@ resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
     functionAppSlotTemplate_JobScheduler
-    dataKeyVaultPoliciesTemplate
   ]
 }
