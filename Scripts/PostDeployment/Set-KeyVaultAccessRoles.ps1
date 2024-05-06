@@ -16,9 +16,9 @@ A 2-6 character abbreviation for your environment.
 Parameter description
 
 .EXAMPLE
-Set-KeyVaultAccessRoles	-SolutionAbbreviation -SolutionAbbreviation <solution>" `
-											  -EnvironmentAbbreviation "<env>" `
-											  -Verbose
+Set-KeyVaultAccessRoles	-SolutionAbbreviation "<solution>" `
+						-EnvironmentAbbreviation "<env>" `
+						-Verbose
 #>
 
 function Set-KeyVaultAccessRoles {
@@ -33,58 +33,82 @@ function Set-KeyVaultAccessRoles {
 		[Parameter(Mandatory = $False)]
 		[string] $DataResourceGroupName = $null,
 		[Parameter(Mandatory = $False)]
+		[string] $ComputeResourceGroupName = $null,
+		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
 	)
 
+	Write-Host "Granting app service access to keyvaults";
+
+	if ([string]::IsNullOrEmpty($ComputeResourceGroupName)) {
+		$ComputeResourceGroupName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation";
+	}
+
+	if ([string]::IsNullOrEmpty($DataResourceGroupName)) {
+		$DataResourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
+	}
+
+	if ([string]::IsNullOrEmpty($PrereqsResourceGroupName)) {
+		$PrereqsResourceGroupName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation";
+	}
+
+	$prereqsKeyVault = Get-AzKeyVault -ResourceGroupName $PrereqsResourceGroupName -Name "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
+	$dataKeyVault = Get-AzKeyVault -ResourceGroupName $DataResourceGroupName -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
 	$functionApps = Get-AzFunctionApp -ResourceGroupName $ComputeResourceGroupName
 
 	foreach ($functionApp in $functionApps) {
-
-		Write-Host "Granting app service access to keyvaults";
-
-		if ([string]::IsNullOrEmpty($DataResourceGroupName)) {
-			$DataResourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
-		}
-
-		if ([string]::IsNullOrEmpty($PrereqsResourceGroupName)) {
-			$PrereqsResourceGroupName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation";
-		}
-
-		$ProductionFunctionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp"
-		$StagingFunctionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp/slots/staging"
+		$ProductionFunctionAppName = $functionApp.Name
+		$StagingFunctionAppName = "$($functionApp.Name)/slots/staging"
 		$functionAppBasedOnSlots = @($ProductionFunctionAppName, $StagingFunctionAppName)
 
-		$prereqsKeyVault = Get-AzKeyVault -ResourceGroupName $PrereqsResourceGroupName -Name "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-		$dataKeyVault = Get-AzKeyVault -ResourceGroupName $DataResourceGroupName -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-
 		foreach ($fa in $functionAppBasedOnSlots) {
-			$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $fa;
+			$functionServicePrincipal = Get-AzADServicePrincipal -DisplayName $fa;
 
 			# Grant the app service access to the keyvaults
-			if ($appServicePrincipal) {
-
+			if ($functionServicePrincipal) {
 				# prereqs keyvault
-				if ($null -eq (Get-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $prereqsKeyVault.Id -RoleDefinitionName "Key Vault Secrets User")) {
-					New-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $prereqsKeyVault.Id -RoleDefinitionName "Key Vault Secrets User";
-					Write-Host "Added role 'Key Vault Secrets User' to $($functionApp.Name) on the $($prereqsKeyVault.Name) keyvault.";
+				if ($null -eq (Get-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $prereqsKeyVault.ResourceId -RoleDefinitionName "Key Vault Secrets User")) {
+					New-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $prereqsKeyVault.ResourceId -RoleDefinitionName "Key Vault Secrets User";
+					Write-Host "Added role 'Key Vault Secrets User' to $fa on the $($prereqsKeyVault.VaultName) keyvault.";
 				}
 				else {
-					Write-Host "$($functionApp.Name) already has 'Key Vault Secrets User' role on $($prereqsKeyVault.Name).";
+					Write-Host "$fa already has 'Key Vault Secrets User' role on $($prereqsKeyVault.VaultName).";
 				}
 
 				# data keyvault
-				if ($null -eq (Get-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $dataKeyVault.Id -RoleDefinitionName "Key Vault Secrets User")) {
-					New-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $dataKeyVault.Id -RoleDefinitionName "Key Vault Secrets User";
-					Write-Host "Added role 'Key Vault Secrets User' to $($functionApp.Name) on the $($dataKeyVault.Name) keyvault.";
+				if ($null -eq (Get-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $dataKeyVault.ResourceId -RoleDefinitionName "Key Vault Secrets User")) {
+					New-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $dataKeyVault.ResourceId -RoleDefinitionName "Key Vault Secrets User";
+					Write-Host "Added role 'Key Vault Secrets User' to $fa on the $($dataKeyVault.VaultName) keyvault.";
 				}
 				else {
-					Write-Host "$($functionApp.Name) already has 'Key Vault Secrets User' role on $($dataKeyVault.Name).";
+					Write-Host "$fa already has 'Key Vault Secrets User' role on $($dataKeyVault.VaultName).";
 				}
 			}
-			elseif ($null -eq $appServicePrincipal) {
+			elseif ($null -eq $functionServicePrincipal) {
 				Write-Host "Function $fa was not found!"
 			}
 		}
+	}
+
+	$dataFactories = Get-AzResource -ResourceGroupName $DataResourceGroupName -ResourceType "Microsoft.DataFactory/factories"
+	foreach ($dataFactory in $dataFactories) {
+		$dataFactoryName = $dataFactory.Name
+		$dataFactoryServicePrincipal = Get-AzADServicePrincipal -DisplayName $dataFactoryName
+
+		if ($dataFactoryServicePrincipal) {
+			# data keyvault
+			if ($null -eq (Get-AzRoleAssignment -ObjectId $dataFactoryServicePrincipal.Id -Scope $dataKeyVault.ResourceId -RoleDefinitionName "Key Vault Secrets User")) {
+				New-AzRoleAssignment -ObjectId $dataFactoryServicePrincipal.Id -Scope $dataKeyVault.ResourceId -RoleDefinitionName "Key Vault Secrets User";
+				Write-Host "Added role 'Key Vault Secrets User' to $($dataFactoryName) on the $($dataKeyVault.VaultName) keyvault.";
+			}
+			else {
+				Write-Host "$($dataFactoryName) already has 'Key Vault Secrets User' role on $($dataKeyVault.VaultName).";
+			}
+		}
+		elseif ($null -eq $dataFactoryServicePrincipal) {
+			Write-Host "Data Factory $dataFactoryName was not found!"
+		}
+
 	}
 
 	Write-Host "Done attempting to add keyvault role assignments.";
