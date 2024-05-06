@@ -40,6 +40,7 @@ import {
     linkButtonIconName?: string;
     hideSeparator?: boolean;
     removeButton?: boolean;
+    editButton?: boolean;
   }
 
 

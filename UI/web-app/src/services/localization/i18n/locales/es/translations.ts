@@ -317,6 +317,7 @@ export const strings: IStrings = {
       sourcePart: 'Parte de origen',
       noThresholdSet: 'No se estableció un límite',
       savingSyncJob: 'Guardando...',
+      updatingSyncJob: 'Actualizando...',
       group: 'Grupo',
       destinationPickerSuggestionsHeaderText: 'Destinos sugeridos',
       expandCollapse: 'Expandir/Contraer',

@@ -313,6 +313,7 @@ export const strings: IStrings = {
       sourcePart: "Source Part",
       noThresholdSet: 'No threshold set',
       savingSyncJob: 'Saving...',
+      updatingSyncJob: 'Updating...',
       group: 'Group',
       destinationPickerSuggestionsHeaderText: 'Suggested destinations',
       expandCollapse: 'Expand/Collapse',

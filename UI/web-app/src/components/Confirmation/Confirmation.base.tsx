@@ -32,6 +32,7 @@ import {
   manageMembershipThresholdPercentageForRemovals
 } from '../../store/manageMembership.slice';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
+import { useLocation } from 'react-router-dom';
 
 const getClassNames = classNamesFunction<
   IConfirmationStyleProps,
@@ -68,6 +69,9 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const domainName: string = `${process.env.REACT_APP_DOMAINNAME}`;
   const groupName: string | undefined = selectedDestination?.name.replace(/\s/g, '');
 
+  const location = useLocation();
+  const locationState = location.state as { currentStep?: number, jobId?: string };
+
   const hasRequiredEndpoints = () => {
     if (!selectedDestinationEndpoints) return false;
     return ["Outlook", "Yammer", "SharePoint"].some(endpoint => selectedDestinationEndpoints.includes(endpoint));
@@ -94,7 +98,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
       <PageSection>
         <div className={classNames.ConfirmationContainer}>
 
-          <div>
+        {!locationState.jobId && (<div>
           <div className={classNames.cardHeader}>
               <div className={classNames.cardTitle}>
                 {strings.JobDetails.labels.destination}
@@ -170,9 +174,9 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               </Stack.Item>
               ) : null}
             </Stack>
-          </div>
+          </div>)}
 
-          <div>
+          {!locationState.jobId && (<div>
             <div className={classNames.cardHeader}>
               <div className={classNames.cardTitle}>
                 {strings.JobDetails.labels.configuration}
@@ -219,7 +223,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 </Text>
               </Stack.Item>
             </Stack>
-          </div>
+          </div>)}
 
           <div>
           <div className={classNames.cardHeader}>

@@ -11,6 +11,7 @@ import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
 import { Job } from '../models/Job';
 import { RemoveGMMResponse } from '../models';
+import { PatchJobRequest } from '../models/PatchJobRequest';
 
 export const fetchJobDetails = createAsyncThunk<
   JobDetails,
@@ -43,31 +44,26 @@ export const fetchJobDetails = createAsyncThunk<
 
 export const patchJobDetails = createAsyncThunk<
   PatchJobResponse,
-  Job,
+  PatchJobRequest,
   ThunkConfig
->('jobs/patchJobDetails', async (job, { extra }) => {
+>('jobs/patchJobDetails', async (request, { extra }) => {
   const { authenticationService } = extra.services;
   const token = await authenticationService.getTokenAsync(TokenType.GMM);
   const headers = new Headers();
   headers.append('Authorization', `Bearer ${token}`);
   headers.append('Content-Type', 'application/json-patch+json');
 
-  const patchOperations = [{
-    op: "replace",
-    path: "/Status",
-    value: job.status
-  }];
 
   const options = {
     method: 'PATCH',
     headers,
-    body: JSON.stringify(patchOperations),
+    body: JSON.stringify(request.patchOperation),
   };
 
   try {
     const response = await fetch(
       `${config.patchJobDetails}/${encodeURIComponent(
-        job.syncJobId
+        request.syncJobId
       )}`,
       options
     ).then(async (response) => {

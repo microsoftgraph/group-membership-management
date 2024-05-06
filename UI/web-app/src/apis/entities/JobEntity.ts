@@ -9,6 +9,7 @@ export type JobEntity = {
   startDate: string;
   lastSuccessfulStartTime: string;
   lastSuccessfulRunTime: string;
+  query: string;
   actionRequired: string;
   enabledOrNot: boolean;
   status: string;

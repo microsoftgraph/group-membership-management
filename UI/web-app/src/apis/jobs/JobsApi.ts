@@ -56,6 +56,7 @@ export class JobsApi extends ApiBase implements IJobsApi {
       startDate: entity.startDate,
       lastSuccessfulStartTime: entity.lastSuccessfulStartTime,
       lastSuccessfulRunTime: entity.lastSuccessfulRunTime,
+      query: entity.query,
       actionRequired: entity.actionRequired,
       enabledOrNot: entity.enabledOrNot,
       status: entity.status,

@@ -14,6 +14,7 @@ import {
     type IContentContainerStyleProps,
     type IContentContainerStyles,
 } from './ContentContainer.types';
+import { strings } from '../../services/localization/i18n/locales/en/translations';
 
 export const getClassNames = classNamesFunction<IContentContainerStyleProps, IContentContainerStyles>();
 
@@ -21,7 +22,7 @@ export const ContentContainerBase: React.FunctionComponent<IContentContainerProp
     props: IContentContainerProps
 ) => {
     const { title, actionOnClick, actionText, actionIcon, className, styles,
-            children, useLinkButton, linkButtonIconName, hideSeparator, removeButton } = props;
+            children, useLinkButton, linkButtonIconName, hideSeparator, removeButton, editButton } = props;
     const classNames: IProcessedStyleSet<IContentContainerStyles> = getClassNames(styles, {
         className,
         theme: useTheme(),
@@ -47,6 +48,16 @@ export const ContentContainerBase: React.FunctionComponent<IContentContainerProp
                             onClick={actionOnClick}
                         >
                             {actionText}
+                        </ActionButton>
+                    )}
+                {editButton === true &&
+                    (
+                        <ActionButton
+                            iconProps={{ iconName: 'Edit' }}
+                            title={strings.JobDetails.editButton}
+                            ariaLabel={strings.JobDetails.editButton}
+                            onClick={actionOnClick}>
+                            {strings.JobDetails.editButton}
                         </ActionButton>
                     )}
             </div>

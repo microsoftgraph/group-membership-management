@@ -53,8 +53,10 @@ import { setPagingBarVisible } from '../../store/pagingBar.slice';
 import { MembershipConfiguration } from '../../components/MembershipConfiguration';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { selectSelectedJobDetails, selectSelectedJobLoading } from '../../store/jobs.slice';
-import { fetchJobDetails } from '../../store/jobDetails.api';
+import { fetchJobDetails, patchJobDetails } from '../../store/jobDetails.api';
 import { Loader } from '../../components/Loader';
+import { selectIsJobOwnerWriter, selectIsJobTenantWriter } from '../../store/roles.slice';
+import { Job, SyncStatus } from '../../models';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
 
 const getClassNames = classNamesFunction<
@@ -86,18 +88,23 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
 
   const [showLeaveManageMembershipDialog, setShowLeaveManageMembershipDialog] = useState(false);
   const [isPostingJob, setIsPostingJob] = useState(false);
-
+  const [isEditingJob, setIsEditingJob] = useState(false);
   const currentStep = useSelector(manageMembershipCurrentStep);
   const hasChanges = useSelector(manageMembershipHasChanges);
   const selectedDestination = useSelector(manageMembershipSelectedDestination);
   const isGroupReadyForOnboarding = useSelector(manageMembershipIsGroupReadyForOnboarding);
+  const isJobOwnerWriter = useSelector(selectIsJobOwnerWriter);
+  const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
 
   // Existing job
   const jobDetails = useSelector(selectSelectedJobDetails);
   const isLoading = useSelector(selectSelectedJobLoading);
 
   useEffect(() => {
-    const editingExistingJob = !!locationState.jobId;
+    let editingExistingJob = !!locationState.jobId;
+    if (editingExistingJob && (isJobOwnerWriter || isJobTenantWriter)) {
+      editingExistingJob = false;
+    }
     dispatch(setIsEditingExistingJob(editingExistingJob));
 
     if (locationState.currentStep) {
@@ -112,7 +119,6 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       dispatch(resetManageMembership());
     }
   }, [dispatch, locationState]);
-
 
   useEffect(() => {
     if (jobDetails) {
@@ -149,7 +155,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         name: groupName,
         type: 'GroupMembership' // Make type configurable once we support Teams Channels
       };
-  
+
       dispatch(setSelectedDestination(selectedDestination));
       dispatch(getGroupEndpoints(selectedGroupId));
       dispatch(getGroupOnboardingStatus(selectedGroupId));
@@ -191,32 +197,58 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   };
 
   const handleSaveButtonClick = async () => {
-    const destinationJson = JSON.stringify([{
-      value: { objectId: selectedDestination?.id },
-      type: selectedDestination?.type
-    }]);
+    if (locationState.jobId !== undefined) {
+      const patchOperation = [{
+        op: "replace",
+        path: "/Query",
+        value: JSON.stringify(finalQuery)
+      },
+      {
+        op: "replace",
+        path: "/Status",
+        value: SyncStatus.PendingReview
+      }];
 
-    const newJob: NewJob = {
-      destination: destinationJson,
-      requestor: requestor ?? '',
-      startDate: startDate,
-      period: period,
-      query: finalQuery,
-      thresholdPercentageForAdditions: thresholdPercentageForAdditions,
-      thresholdPercentageForRemovals: thresholdPercentageForRemovals,
-      status: 'Idle',
-    };
+      setIsEditingJob(true);
 
-    setIsPostingJob(true);
+      try {
+        await dispatch(patchJobDetails({syncJobId: locationState.jobId, patchOperation: patchOperation}));
+        dispatch(resetManageMembership());
+        await dispatch(fetchJobs());
+        navigate('/');
+        setIsEditingJob(false);
+      } catch (error) {
+        console.error("Error editing job:", error);
+      }
 
-    try {
-      await dispatch(postJob(newJob));
-      dispatch(resetManageMembership());
-      await dispatch(fetchJobs());
-      navigate('/');
-      setIsPostingJob(false);
-    } catch (error) {
-      console.error("Error posting job:", error);
+    } else {
+      const destinationJson = JSON.stringify([{
+        value: { objectId: selectedDestination?.id },
+        type: selectedDestination?.type
+      }]);
+
+      const newJob: NewJob = {
+        destination: destinationJson,
+        requestor: requestor ?? '',
+        startDate: startDate,
+        period: period,
+        query: finalQuery,
+        thresholdPercentageForAdditions: thresholdPercentageForAdditions,
+        thresholdPercentageForRemovals: thresholdPercentageForRemovals,
+        status: 'Idle',
+      };
+
+      setIsPostingJob(true);
+
+      try {
+        await dispatch(postJob(newJob));
+        dispatch(resetManageMembership());
+        await dispatch(fetchJobs());
+        navigate('/');
+        setIsPostingJob(false);
+      } catch (error) {
+        console.error("Error posting job:", error);
+      }
     }
   };
 
@@ -318,9 +350,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
           <DefaultButton onClick={onDialogClose} text={strings.cancel} />
         </DialogFooter>
       </Dialog>
-      {isPostingJob && (
+      {(isPostingJob || isEditingJob) && (
         <div className={classNames.overlay}>
-          <Spinner label={strings.ManageMembership.labels.savingSyncJob} ariaLive="assertive" labelPosition="right" />
+          <Spinner label={isPostingJob ? strings.ManageMembership.labels.savingSyncJob : strings.ManageMembership.labels.updatingSyncJob} ariaLive="assertive" labelPosition="right" />
         </div>
       )}
     </Page>

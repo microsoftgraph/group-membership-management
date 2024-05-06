@@ -54,7 +54,7 @@ import {
 import { JobDetails } from '../../models/JobDetails';
 import { useStrings } from '../../store/hooks';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
-import { selectIsJobOwnerWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
+import { selectIsJobOwnerWriter, selectIsJobTenantWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { SyncStatus } from '../../models';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { fetchJobs } from '../../store/jobs.api';
@@ -97,7 +97,8 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const removeGMMError = useSelector(selectRemoveGMMError);
   const jobsLoading = useSelector(selectJobsLoading);
   const removeGMMPending = useSelector(selectRemoveGMMLoading);
-  const isJobWriter = useSelector(selectIsJobOwnerWriter);
+  const isJobOwnerWriter = useSelector(selectIsJobOwnerWriter);
+  const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
   const showLoader = jobsLoading || removeGMMPending;
 
   const OpenInNewWindowIcon: IIconProps = { iconName: 'OpenInNewWindow' };
@@ -199,16 +200,27 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
             // useLinkButton={true}
             // linkButtonIconName='edit'
             />
-            <ContentContainer
+            {(isJobOwnerWriter || isJobTenantWriter) ?
+            (<ContentContainer
               title={strings.JobDetails.labels.sourceParts}
               children={<label>{jobDetails?.source}</label>}
-              removeButton={false}
+              removeButton={true}
+              editButton={true}
               actionText={strings.JobDetails.viewDetails}
               useLinkButton={true}
               actionOnClick={openMembershipConfiguration}
-            />
+            />) :
+            (<ContentContainer
+              title={strings.JobDetails.labels.sourceParts}
+              children={<label>{jobDetails?.source}</label>}
+              removeButton={false}
+              editButton={false}
+              actionText={strings.JobDetails.viewDetails}
+              useLinkButton={true}
+              actionOnClick={openMembershipConfiguration}
+            />)}
             <div className={classNames.removeGMM}>
-              {isJobWriter &&
+              {isJobOwnerWriter &&
                 <ActionButton
                   iconProps={{ iconName: 'Delete' }}
                   title={strings.JobDetails.labels.removeGMM}
@@ -294,8 +306,14 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
       status: newStatus,
     };
 
+    const patchOperation = [{
+      op: "replace",
+      path: "/Status",
+      value: newStatus
+    }];
+
     try {
-      await dispatch(patchJobDetails(updatedJob))
+      await dispatch(patchJobDetails({syncJobId: updatedJob.syncJobId, patchOperation: patchOperation}));
       setIsJobEnabled(newStatus === SyncStatus.Idle);
       setJobStatus(newStatus);
     } catch (error) {
@@ -390,7 +408,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
 
   const SharePointDomain: string = `${process.env.REACT_APP_SHAREPOINTDOMAIN}`;
   const domainName: string = `${process.env.REACT_APP_DOMAINNAME}`;
-  const groupName: string = job.targetGroupName.replace(/\s/g, '');
+  const groupName: string = job?.targetGroupName?.replace(/\s/g, '');
 
   const openOutlookLink = (): void => {
     const url = `https://outlook.office.com/mail/group/${domainName}/${groupName}`;

@@ -308,6 +308,7 @@ export type IStrings = {
       sourcePart: string;
       noThresholdSet: string;
       savingSyncJob: string;
+      updatingSyncJob: string;
       group: string;
       destinationPickerSuggestionsHeaderText: string;
       expandCollapse: string;
