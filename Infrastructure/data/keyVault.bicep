@@ -18,7 +18,7 @@ param location string
 @description('Key vault tenant id.')
 param tenantId string
 
-resource keyVault 'Microsoft.KeyVault/vaults@2019-09-01' = {
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: name
   location: location
   properties: {
@@ -27,6 +27,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2019-09-01' = {
     enabledForDiskEncryption: true
     enableSoftDelete: true
     enablePurgeProtection: true
+    enableRbacAuthorization: true
     sku: {
       name: skuName
       family: skuFamily
