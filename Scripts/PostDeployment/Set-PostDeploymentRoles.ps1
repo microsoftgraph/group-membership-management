@@ -77,4 +77,9 @@ function Set-PostDeploymentRoles {
                                             -Verbose
     }
 
+    . ($scriptsDirectory + '\PostDeployment\Set-KeyVaultAccessRoles.ps1')
+    Set-KeyVaultAccessRoles `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -Verbose
 }
