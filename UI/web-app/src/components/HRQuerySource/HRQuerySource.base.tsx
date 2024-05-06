@@ -84,6 +84,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [groupingEnabled, setGroupingEnabled] = useState(false);
   const [filterTextEnabled, setFilterTextEnabled] = useState(false);
   const [groupQuery, setGroupQuery] = useState<string>();
+  const [forceUpdate, setForceUpdate] = useState<number>(0);
 
   useEffect(() => {
     if (!groupingEnabled) {
@@ -313,6 +314,7 @@ function setItemsBasedOnGroups(groups: Group[]) {
       });
       setItemsBasedOnGroups(group.children);
   });
+  console.log("items", items);
   setItems(items);
 }
 
@@ -1029,73 +1031,124 @@ const checkType = (value: string, type: string | undefined): string => {
   ];
 
   function onUpClick(index: number, items: IFilterPart[]) {
-    // alert("OnUpClick" + index + items.length);
+    console.log("onUpClick");
     console.log("items", items);
-    console.log("groups", groups);
+    console.log("index", index);
+    console.log("groupingEnabled", groupingEnabled);
+
+    
 
     let newItems = [...items];
-    let newSelectedIndices = [];    
-      const insertIndex = index-1;
-      if (insertIndex < 0) { return; }
-      newItems = newItems.filter(i => i !== items[index]);
-      newItems.splice(insertIndex, 0, items[index]);
-      newSelectedIndices.push(insertIndex);
-      let newChildren: ChildType[] = newItems.map((item) => ({
-        filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
-      }));
+    const insertIndex = index - 1;
+    if (insertIndex < 0) { return; }
+    setIsDragAndDropEnabled(true);
+    newItems = newItems.filter((_, i) => i !== index);
+    newItems.splice(insertIndex, 0, { ...items[index] });
+    console.log("newItems", newItems);
+    let newChildren: ChildType[] = newItems.map((item) => ({
+      filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
+    }));
+    console.log("groups", groups);
 
-
+    if (groupingEnabled) {
       const groupIndex = groups.findIndex(group =>
         group.children?.some(child =>
             child.items.some(item =>
-                JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
+                JSON.stringify(item) === JSON.stringify(items[index])
             )
         ) || group.items?.some(item =>
-            JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
+            JSON.stringify(item) === JSON.stringify(items[index])
         )
       );
       const childIndex = groupIndex !== -1 ? groups[groupIndex].children.findIndex(child =>
         child.items.some(item =>
-            JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
+            JSON.stringify(item) === JSON.stringify(items[index])
         )
       ) : -1;
+
 
       console.log("groupIndex", groupIndex);
       console.log("childIndex", childIndex);
 
-
+      if (groupIndex !== -1 && childIndex === -1) {
+        groups[groupIndex].items = newItems;
+        console.log("groups", groups);
+        setGroups(groups);
+        getGroupLabels(groups);
+        setItemsBasedOnGroups(groups);
+      }
+      else if (groupIndex !== -1 && childIndex !== -1) {
+        groups[groupIndex].children[childIndex].items = newItems;
+        console.log("groups", groups);
+        setGroups(groups);
+        getGroupLabels(groups);
+        setItemsBasedOnGroups(groups);
+      }
+    }
+    else {
+      groups[0].items = newItems;
+      setGroups(groups);
       setChildren(newChildren);
       setItems(newItems);
-      console.log("newItems", newItems);
+    }
+
+
+
+
   }
 
   function onDownClick(index: number, items: IFilterPart[]) {
-    // alert("onDownClick" + index + items.length);
-    console.log("items", items);
-    // console.log("selectedItem", items[index]);
-
     let newItems = [...items];
-    let newSelectedIndices = [];    
-      const insertIndex = index+1;
-      if (insertIndex > items.length) { return; }
-      newItems = newItems.filter(i => i !== items[index]);
-      newItems.splice(insertIndex, 0, items[index]);
-      newSelectedIndices.push(insertIndex);
-      let newChildren: ChildType[] = newItems.map((item) => ({
-        filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
-      }));
+    const insertIndex = index + 1;
+    if (insertIndex > items.length) { return; }
+    setIsDragAndDropEnabled(true);
+    newItems = newItems.filter(i => i !== items[index]);
+    newItems.splice(insertIndex, 0, items[index]);
+    let newChildren: ChildType[] = newItems.map((item) => ({
+      filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
+    }));
+
+    if (groupingEnabled) {
+      const groupIndex = groups.findIndex(group =>
+        group.children?.some(child =>
+            child.items.some(item =>
+                JSON.stringify(item) === JSON.stringify(items[index])
+            )
+        ) || group.items?.some(item =>
+            JSON.stringify(item) === JSON.stringify(items[index])
+        )
+      );
+      const childIndex = groupIndex !== -1 ? groups[groupIndex].children.findIndex(child =>
+        child.items.some(item =>
+            JSON.stringify(item) === JSON.stringify(items[index])
+        )
+      ) : -1;
+
+
+      console.log("groupIndex", groupIndex);
+      console.log("childIndex", childIndex);
+
+      if (groupIndex !== -1) {
+        groups[groupIndex].items = newItems;
+        setGroups(groups);
+        setItemsBasedOnGroups(groups);
+      }
+    }
+    else {
       setChildren(newChildren);
       setItems(newItems);
-      console.log("newItems", newItems);
+    }
+
+
   }
 
   const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn): JSX.Element => {
     if (typeof index !== 'undefined' && items[index]) {
       switch (column?.key) {
         case 'upDown':
-          return <div className={classNames.upDown}>                 
-            <ActionButton iconProps={{ iconName: 'ChevronUp' }} onClick={() => onUpClick(index, items)} style={{ marginBottom: '2px' }} />
-            <ActionButton iconProps={{ iconName: 'ChevronDown' }} onClick={() => onDownClick(index, items)} style={{ marginTop: '2px' }} />
+          return <div className={classNames.upDown}>
+            <ActionButton iconProps={{ iconName: 'ChevronUp' }} onClick={() => onUpClick(index, items)} style={{ marginTop: '-15px', marginBottom: '-5px' }} />
+            <ActionButton iconProps={{ iconName: 'ChevronDown' }} onClick={() => onDownClick(index, items)} style={{ marginTop: '-5px', marginBottom: '-15px' }} />
           </div>;
         case 'attribute':
           return <ComboBox
@@ -1364,8 +1417,8 @@ const checkType = (value: string, type: string | undefined): string => {
   }
 
     function onGroupClick() {
-      console.log("items", items);
-      console.log("selectedIndices", selectedIndices);
+      console.log("onGroupClick - items", items);
+      console.log("onGroupClick - selectedIndices", selectedIndices);
       let newGroups = [...groups];
       let indices: { selectedItemIndex: number, groupIndex: number; childIndex: number }[] = [];
       const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
@@ -1503,7 +1556,7 @@ const checkType = (value: string, type: string | undefined): string => {
   function handleSelectionChange(selection: Selection, index: number) {
     const selectedItems = selection.getSelection() as any[];
     console.log("handleSelectionChange selectedItems", selectedItems);
-    console.log("handleSelectionChange items", items);
+
     const selectedIndices = selectedItems.map(selectedItem => {
       return items.findIndex(item =>
         item.attribute === selectedItem.attribute &&
