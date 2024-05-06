@@ -4,7 +4,6 @@ param location string
 param tenantId string
 param solutionAbbreviation string
 param environmentAbbreviation string
-param keyVaultReaders array
 param isManagedApplication bool
 param managedResourceGroupName string
 param appConfigurationName string
@@ -77,7 +76,6 @@ module prereqResources 'prereqResources.bicep' = {
     prereqsKeyVaultSkuFamily: prereqsKeyVaultSkuFamily
     location: location
     tenantId: tenantId
-    keyVaultReaders: keyVaultReaders
     graphAppCertificateName: graphAppCertificateName
     graphAppClientId: graphAppClientId
     graphAppClientSecret: graphAppClientSecret
@@ -105,7 +103,6 @@ module dataResources 'dataResources.bicep' = {
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    keyVaultReaders: keyVaultReaders
     notifierProviderId: notifierProviderId
     serviceBusMembershipUpdatersTopicSubscriptions: serviceBusMembershipUpdatersTopicSubscriptions
     serviceBusTopicSubscriptions: serviceBusTopicSubscriptions

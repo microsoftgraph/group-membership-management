@@ -55,9 +55,6 @@ param keyVaultSkuFamily string = 'A'
 @description('Resource location.')
 param location string
 
-@description('User(s) and/or Group(s) AAD Object Ids to which access to the keyvault will be granted to.')
-param keyVaultReaders array
-
 @description('Enter application insights name.')
 param appInsightsName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
 
@@ -386,18 +383,6 @@ module dataKeyVaultTemplate 'keyVault.bicep' = if(!isDataKVPresent) {
   }
 }
 
-module dataKeyVaultPoliciesTemplate 'keyVaultAccessPolicy.bicep' = {
-  name: 'dataKeyVaultPoliciesTemplate'
-  params: {
-    name: keyVaultName
-    policies: keyVaultReaders
-    tenantId: tenantId
-  }
-  dependsOn: [
-    dataKeyVaultTemplate
-  ]
-}
-
 module graphUserAssignedManagedIdentity 'userAssignedIdentity.bicep' = {
   name: 'graphUserAssignedManagedIdentity'
   params: {
@@ -406,7 +391,6 @@ module graphUserAssignedManagedIdentity 'userAssignedIdentity.bicep' = {
   }
   dependsOn:[
     dataKeyVaultTemplate
-    dataKeyVaultPoliciesTemplate
   ]
 }
 
@@ -504,7 +488,7 @@ module storageAccountTemplate 'storageAccount.bicep' = {
     location: location
   }
   dependsOn:[
-    dataKeyVaultPoliciesTemplate
+    dataKeyVaultTemplate
   ]
 }
 
@@ -518,7 +502,7 @@ module jobsStorageAccountTemplate 'storageAccount.bicep' = {
     location: location
   }
   dependsOn:[
-    dataKeyVaultPoliciesTemplate
+    dataKeyVaultTemplate
   ]
 }
 

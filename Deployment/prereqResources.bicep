@@ -3,7 +3,6 @@ param prereqsKeyVaultSkuName string
 param prereqsKeyVaultSkuFamily string
 param location string
 param tenantId string
-param keyVaultReaders array
 
 //secrets
 param graphAppCertificateName string
@@ -37,18 +36,6 @@ module prereqsKeyVault '../Infrastructure/data/keyVault.bicep' = {
     location: location
     tenantId: tenantId
   }
-}
-
-module prereqsKeyVaultPoliciesTemplate '../Infrastructure/data/keyVaultAccessPolicy.bicep' = {
-  name: 'prereqsKeyVaultPoliciesTemplate'
-  params: {
-    name: prereqsKeyVaultName
-    policies: keyVaultReaders
-    tenantId: tenantId
-  }
-  dependsOn: [
-    prereqsKeyVault
-  ]
 }
 
 module prereqsScretsTemplate '../Infrastructure/data/keyVaultSecrets.bicep' = {
@@ -124,6 +111,5 @@ module prereqsScretsTemplate '../Infrastructure/data/keyVaultSecrets.bicep' = {
   }
   dependsOn: [
     prereqsKeyVault
-    prereqsKeyVaultPoliciesTemplate
   ]
 }

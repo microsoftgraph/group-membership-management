@@ -1,7 +1,6 @@
 param location string
 param environmentAbbreviation string
 param solutionAbbreviation string
-param keyVaultReaders array
 param notifierProviderId string
 param serviceBusMembershipUpdatersTopicSubscriptions object
 param serviceBusTopicSubscriptions array
@@ -21,7 +20,6 @@ module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    keyVaultReaders: keyVaultReaders
     notifierProviderId: notifierProviderId
     serviceBusMembershipUpdatersTopicSubscriptions: serviceBusMembershipUpdatersTopicSubscriptions
     serviceBusTopicSubscriptions: serviceBusTopicSubscriptions
