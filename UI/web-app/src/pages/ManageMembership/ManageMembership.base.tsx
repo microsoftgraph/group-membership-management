@@ -41,7 +41,8 @@ import {
   setJobDetailsForExistingJob,
   setIsEditingExistingJob,
   manageMembershipIsEditingExistingJob,
-  manageMembershipCompositeQuery
+  manageMembershipCompositeQuery,
+  clearSourceParts
 } from '../../store/manageMembership.slice';
 import { getGroupEndpoints, getGroupOnboardingStatus } from '../../store/manageMembership.api';
 import { NewJob } from '../../models/NewJob';
@@ -214,6 +215,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       try {
         await dispatch(patchJobDetails({syncJobId: locationState.jobId, patchOperation: patchOperation}));
         dispatch(resetManageMembership());
+        dispatch(clearSourceParts());
         await dispatch(fetchJobs());
         navigate('/');
         setIsEditingJob(false);
@@ -243,6 +245,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       try {
         await dispatch(postJob(newJob));
         dispatch(resetManageMembership());
+        dispatch(clearSourceParts());
         await dispatch(fetchJobs());
         navigate('/');
         setIsPostingJob(false);
