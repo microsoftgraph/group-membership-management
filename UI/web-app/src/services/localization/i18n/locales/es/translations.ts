@@ -331,6 +331,7 @@ export const strings: IStrings = {
       groupMembership: 'Membresía de grupo',
       groupOwnership: 'Propietario de grupo',
       clickHere: 'Haz click aquí',
+      requestor: 'Solicitante',
     }
   },
   copy: 'Copiar',

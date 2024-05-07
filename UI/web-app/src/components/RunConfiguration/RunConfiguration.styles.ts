@@ -63,7 +63,14 @@ import {
         borderWidth: 1,
         borderColor: theme.palette.neutralQuaternary,
         background: theme.palette.white,
-      }
+      },
+      textFieldFieldGroup: {
+        borderRadius: 4,
+        border: '1px solid',
+        borderColor: theme.palette.neutralQuaternary,
+        backgroud: theme.palette.white,
+        width: 300
+      },
     };
   };
   

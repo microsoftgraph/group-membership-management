@@ -6,7 +6,8 @@ import {
   IProcessedStyleSet,
   classNamesFunction,
   useTheme,
-  ChoiceGroup, IChoiceGroupOption, DatePicker, Dropdown, Checkbox
+  ChoiceGroup, IChoiceGroupOption, DatePicker, Dropdown, Checkbox,
+  TextField
 } from '@fluentui/react';
 import {
   IRunConfigurationProps,
@@ -26,6 +27,7 @@ import {
   manageMembershipUseThresholdLimits,
   setNewJobPeriod,
   setNewJobStartDate,
+  setNewJobRequestor,
   setNewJobThresholdPercentageForAdditions,
   setNewJobThresholdPercentageForRemovals,
   setShowDecreaseDropdown,
@@ -35,6 +37,7 @@ import {
 } from '../../store/manageMembership.slice';
 import { AppDispatch } from '../../store';
 import { useDispatch, useSelector } from 'react-redux';
+import { selectIsJobTenantWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<
   IRunConfigurationStyleProps,
@@ -61,6 +64,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
   const startDateOption = useSelector(manageMembershipStartDateOption);
   const showIncreaseDropdown = useSelector(manageMembershipShowIncreaseDropdown);
   const showDecreaseDropdown = useSelector(manageMembershipShowDecreaseDropdown);
+  const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
 
   const defaultIncreaseThreshold: number = 100;
   const defaultDecreaseThreshold: number = 20;
@@ -84,8 +88,22 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
   const increaseOptions = Array.from({ length: 10 }, (_, i) => ({ key: `${(i + 1) * 10}`, text: `${(i + 1) * 10}%` }));
   const decreaseOptions = Array.from({ length: 11 }, (_, i) => ({ key: `${i * 5}`, text: `${i * 5}%` }));
 
+  const handleRequestorChange = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
+    dispatch(setNewJobRequestor(newValue || ''));
+  };
+
   return (
     <div className={classNames.root}>
+      {isJobTenantWriter &&
+        <TextField
+          label={strings.ManageMembership.labels.requestor}
+          placeholder={strings.ManageMembership.labels.requestor}
+          onChange={handleRequestorChange}
+          styles={{
+            fieldGroup: classNames.textFieldFieldGroup,
+          }}
+        />
+      }
       <ChoiceGroup
         styles={{
           root: classNames.horizontalChoiceGroup,

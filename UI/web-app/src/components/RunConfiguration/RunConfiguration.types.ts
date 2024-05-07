@@ -18,6 +18,7 @@ import {
     checkboxPairsContainer: IStyle;
     thresholdDropdown: IStyle;
     dropdownTitle: IStyle;
+    textFieldFieldGroup: IStyle;
   }
   
   export interface IRunConfigurationStyleProps {

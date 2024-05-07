@@ -42,7 +42,8 @@ import {
   setIsEditingExistingJob,
   manageMembershipIsEditingExistingJob,
   manageMembershipCompositeQuery,
-  clearSourceParts
+  clearSourceParts,
+  manageMembershipRequestor
 } from '../../store/manageMembership.slice';
 import { getGroupEndpoints, getGroupOnboardingStatus } from '../../store/manageMembership.api';
 import { NewJob } from '../../models/NewJob';
@@ -133,7 +134,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const period = useSelector(manageMembershipPeriod);
   const thresholdPercentageForAdditions = useSelector(manageMembershipThresholdPercentageForAdditions);
   const thresholdPercentageForRemovals = useSelector(manageMembershipThresholdPercentageForRemovals);
-  const requestor = useSelector(selectAccountUsername);
+  const currentUser = useSelector(selectAccountUsername) ?? '';
+  const inputRequestor = useSelector(manageMembershipRequestor);
+  const requestor: string = inputRequestor === '' ? currentUser : inputRequestor;
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const advancedViewQuery = useSelector(manageMembershipQuery);
   const sourcePartsQuery = useSelector(manageMembershipCompositeQuery);
@@ -144,7 +147,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   } else {
     finalQuery = sourcePartsQuery;
   }
-
+  
   const handleSearchDestinationChange = (selectedDestinations: IPersonaProps[] | undefined) => {
     dispatch(setHasChanges(true));
 

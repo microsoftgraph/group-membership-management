@@ -92,6 +92,9 @@ const manageMembershipSlice = createSlice({
         setNewJobQuery: (state, action: PayloadAction<SyncJobQuery>) => {
             state.newJob.query = action.payload;
         },
+        setNewJobRequestor: (state, action: PayloadAction<string>) => {
+            state.newJob.requestor = action.payload;
+        },
         setIsAdvancedQueryValid: (state, action: PayloadAction<boolean>) => {
             state.isAdvancedQueryValid = action.payload;
         },
@@ -274,6 +277,7 @@ export const {
     setHasChanges,
     setCurrentStep,
     setNewJobQuery,
+    setNewJobRequestor,
     setIsAdvancedQueryValid,
     setSelectedDestination,
     setNewJobStartDate,
@@ -313,6 +317,7 @@ export const manageMembershipStartDate = (state: RootState) => state.manageMembe
 export const manageMembershipPeriod = (state: RootState) => state.manageMembership.newJob.period;
 export const manageMembershipThresholdPercentageForAdditions = (state: RootState) => state.manageMembership.newJob.thresholdPercentageForAdditions;
 export const manageMembershipThresholdPercentageForRemovals = (state: RootState) => state.manageMembership.newJob.thresholdPercentageForRemovals;
+export const manageMembershipRequestor = (state: RootState) => state.manageMembership.newJob.requestor;
 
 // 1- Select Destination
 export const manageMembershipSearchResults = (state: RootState) => state.manageMembership.searchResults;

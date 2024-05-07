@@ -25,6 +25,7 @@ import {
   manageMembershipIsAdvancedView,
   manageMembershipPeriod,
   manageMembershipQuery,
+  manageMembershipRequestor,
   manageMembershipSelectedDestination,
   manageMembershipSelectedDestinationEndpoints,
   manageMembershipStartDate,
@@ -33,6 +34,7 @@ import {
 } from '../../store/manageMembership.slice';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { useLocation } from 'react-router-dom';
+import { selectIsJobTenantWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<
   IConfirmationStyleProps,
@@ -60,9 +62,14 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const startDate: string = useSelector(manageMembershipStartDate);
   const thresholdPercentageForAdditions: number = useSelector(manageMembershipThresholdPercentageForAdditions);
   const thresholdPercentageForRemovals: number = useSelector(manageMembershipThresholdPercentageForRemovals);
+  const requestor: string = useSelector(manageMembershipRequestor);
+  
   const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
   const compositeQuery = useSelector(manageMembershipCompositeQuery);
   const globalQuery = useSelector(manageMembershipQuery);
+
+  const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+
   const displayQuery: string = isAdvancedView ? JSON.stringify(globalQuery, null, 2) : JSON.stringify(compositeQuery, null, 2);
 
   const SharePointDomain: string = `${process.env.REACT_APP_SHAREPOINTDOMAIN}`;
@@ -222,6 +229,16 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                   {thresholdPercentageForRemovals === -1 ? `${strings.ManageMembership.labels.noThresholdSet}`: `${thresholdPercentageForRemovals}%`}
                 </Text>
               </Stack.Item>
+              {isJobTenantWriter &&
+                <Stack.Item align="start">
+                  <Text className={classNames.itemTitle} block>
+                    {strings.JobDetails.labels.requestor}
+                  </Text>
+                  <Text className={classNames.itemData} block>
+                    {requestor}
+                  </Text>
+                </Stack.Item>
+              }
             </Stack>
           </div>)}
 

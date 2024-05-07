@@ -322,6 +322,7 @@ export type IStrings = {
       groupMembership: string;
       groupOwnership: string;
       clickHere: string;
+      requestor: string;
     }
   };
   copy: string;
