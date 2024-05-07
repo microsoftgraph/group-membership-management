@@ -27,14 +27,19 @@ export function formatLastRunTime(lastSuccessfulRunTime: string, period: number)
 
 export function formatNextRunTime(lastSuccessfulRunTime: string, period: number, enabled: boolean): [string, number] {
     const currentTime = moment.utc();
-    const lastRunMoment = moment.utc(lastSuccessfulRunTime);
+    let lastRunMoment = moment.utc(lastSuccessfulRunTime);
+    let estimatedNextRunTime = lastRunMoment.add(period, 'hours');
 
-    const estimatedNextRunTime = lastRunMoment.add(period, 'hours');
-    const formattedDate = estimatedNextRunTime.local().format('MM/DD/YYYY');
-    const isNextRunInThePast = estimatedNextRunTime.isBefore(currentTime);
-    const hoursLeft = isNextRunInThePast ? 0 : Math.abs(currentTime.diff(estimatedNextRunTime, 'hours'));
+    // Adjust the next run time until it is in the future
+    while (estimatedNextRunTime.isBefore(currentTime) && enabled) {
+        lastRunMoment = estimatedNextRunTime; // Set new base for calculation
+        estimatedNextRunTime = lastRunMoment.add(period, 'hours');
+    }
 
-    if (isNextRunInThePast || !enabled) {
+    const formattedDate: string = estimatedNextRunTime.local().format('MM/DD/YYYY');
+    const hoursLeft = Math.abs(currentTime.diff(estimatedNextRunTime, 'hours'));
+
+    if (!enabled) {
         return ['', 0];
     } else {
         return [formattedDate, hoursLeft];
