@@ -54,7 +54,7 @@ import {
 import { JobDetails } from '../../models/JobDetails';
 import { useStrings } from '../../store/hooks';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
-import { selectIsJobOwnerWriter, selectIsJobTenantWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
+import { selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { SyncStatus } from '../../models';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { fetchJobs } from '../../store/jobs.api';
@@ -97,8 +97,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const removeGMMError = useSelector(selectRemoveGMMError);
   const jobsLoading = useSelector(selectJobsLoading);
   const removeGMMPending = useSelector(selectRemoveGMMLoading);
-  const isJobOwnerWriter = useSelector(selectIsJobOwnerWriter);
-  const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+  const isJobWriter = useSelector(selectIsJobWriter);
   const showLoader = jobsLoading || removeGMMPending;
 
   const OpenInNewWindowIcon: IIconProps = { iconName: 'OpenInNewWindow' };
@@ -200,27 +199,17 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
             // useLinkButton={true}
             // linkButtonIconName='edit'
             />
-            {(isJobOwnerWriter || isJobTenantWriter) ?
-            (<ContentContainer
-              title={strings.JobDetails.labels.sourceParts}
-              children={<label>{jobDetails?.source}</label>}
-              removeButton={true}
-              editButton={true}
-              actionText={strings.JobDetails.viewDetails}
-              useLinkButton={true}
-              actionOnClick={openMembershipConfiguration}
-            />) :
-            (<ContentContainer
-              title={strings.JobDetails.labels.sourceParts}
-              children={<label>{jobDetails?.source}</label>}
-              removeButton={false}
-              editButton={false}
-              actionText={strings.JobDetails.viewDetails}
-              useLinkButton={true}
-              actionOnClick={openMembershipConfiguration}
-            />)}
+              <ContentContainer
+                title={strings.JobDetails.labels.sourceParts}
+                children={<label>{jobDetails?.source}</label>}
+                removeButton={isJobWriter}
+                editButton={isJobWriter}
+                actionText={strings.JobDetails.viewDetails}
+                useLinkButton={true}
+                actionOnClick={openMembershipConfiguration}
+              />
             <div className={classNames.removeGMM}>
-              {isJobOwnerWriter &&
+              {isJobWriter &&
                 <ActionButton
                   iconProps={{ iconName: 'Delete' }}
                   title={strings.JobDetails.labels.removeGMM}
@@ -293,7 +282,7 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
   const patchResponse = useSelector(selectPatchJobDetailsResponse);
   const [jobStatus, setJobStatus] = useState(job.status);
   const [isJobEnabled, setIsJobEnabled] = useState(job.enabledOrNot);
-  const isJobWriter = useSelector(selectIsJobOwnerWriter);
+  const isJobWriter = useSelector(selectIsJobWriter);
 
   useEffect(() => {
     setJobStatus(job.status);
@@ -313,7 +302,7 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
     }];
 
     try {
-      await dispatch(patchJobDetails({syncJobId: updatedJob.syncJobId, patchOperation: patchOperation}));
+      await dispatch(patchJobDetails({ syncJobId: updatedJob.syncJobId, patchOperation: patchOperation }));
       setIsJobEnabled(newStatus === SyncStatus.Idle);
       setJobStatus(newStatus);
     } catch (error) {
