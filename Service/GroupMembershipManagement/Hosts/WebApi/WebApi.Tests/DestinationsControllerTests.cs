@@ -60,7 +60,7 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, Roles.JOB_CREATOR),
+                    new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
                 })
             };
