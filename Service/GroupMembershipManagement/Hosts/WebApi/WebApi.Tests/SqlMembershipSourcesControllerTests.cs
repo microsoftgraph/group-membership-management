@@ -61,13 +61,14 @@ namespace Services.Tests
                 new SqlMembershipAttribute
                 {
                     Name = "Name1",
-                    CustomLabel = "CustomLabel1"
+                    CustomLabel = "CustomLabel1",
+                    Type = "nvarchar"
                 }
             };
 
             _databaseSqlMembershipSourcesRepository.Setup(x => x.GetDefaultSourceAsync()).ReturnsAsync(() => _defaultSource);
             _databaseSqlMembershipSourcesRepository.Setup(x => x.GetDefaultSourceAttributesAsync()).ReturnsAsync(() => _storedAttributeSettings);
-            _sqlMembershipRepository.Setup(x => x.GetColumnNamesAsync(It.IsAny<string>())).ReturnsAsync(new List<string> { "Name1", "Name2", "Name3" });
+            _sqlMembershipRepository.Setup(x => x.GetColumnDetailsAsync(It.IsAny<string>())).ReturnsAsync(new List<(string Name, string Type)> { ("Name1", "nvarchar"), ("Name2", "int"), ("Name3", "nvarchar") });
             _sqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(It.IsAny<string>())).ReturnsAsync(true);
             _dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("RUN ID");
         }
@@ -123,12 +124,14 @@ namespace Services.Tests
                 new SqlMembershipAttribute
                 {
                     Name = "Name1",
-                    CustomLabel = "CustomLabel1"
+                    CustomLabel = "CustomLabel1",
+                    Type = "nvarchar"
                 },
                 new SqlMembershipAttribute
                 {
                     Name = "RemovedAttribute1",
-                    CustomLabel = "RemovedCustomLabel1"
+                    CustomLabel = "RemovedCustomLabel1",
+                    Type = "nvarchar"
                 }
             };
 
@@ -157,7 +160,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestExceptionWithinHandlerAsync()
         {
-            _sqlMembershipRepository.Setup(x => x.GetColumnNamesAsync(It.IsAny<string>())).Throws(new Exception("Unexpected exception triggered for testing"));
+            _sqlMembershipRepository.Setup(x => x.GetColumnDetailsAsync(It.IsAny<string>())).Throws(new Exception("Unexpected exception triggered for testing"));
 
             var response = await _sqlMembershipSourcesController.GetDefaultSourceAttributesAsync();
 
