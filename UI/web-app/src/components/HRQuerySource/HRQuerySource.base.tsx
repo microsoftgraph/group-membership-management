@@ -1529,7 +1529,7 @@ const checkType = (value: string, type: string | undefined): string => {
         <ActionButton iconProps={{ iconName: 'ChevronDown' }} onClick={() => onGroupDownClick(index)} style={{ marginBottom: '-15px'}} />
       </div>)}
       <DetailsList
-        styles={{ root: classNames.detailsList }}
+        styles={{ root: groups.length > 1 && items.length > 1 ? classNames.detailsListWithBorder : classNames.detailsList }}
         items={items}
         columns={columns}
         onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column)}

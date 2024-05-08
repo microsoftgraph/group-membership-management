@@ -8,6 +8,7 @@ import { HRSourcePartSource } from '../../models/HRSourcePart';
 export type HRQuerySourceStyles = {
   root: IStyle;
   detailsList: IStyle;
+  detailsListWithBorder: IStyle;
   textFieldGroup: IStyle;
   textField: IStyle;
   spinButton: IStyle;

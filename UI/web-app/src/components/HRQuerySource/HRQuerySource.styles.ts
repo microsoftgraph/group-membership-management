@@ -45,7 +45,14 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       border: 'none'
     },
     detailsList: {
-      minWidth: 1500
+      minWidth: 1200
+    },
+    detailsListWithBorder: {
+      minWidth: 1200,
+      borderStyle: 'solid',
+      borderRadius: 15,
+      borderColor: theme.palette.themeLighter,
+      marginLeft: 50
     },
     dropdownTitle: {
       borderRadius: 4,
