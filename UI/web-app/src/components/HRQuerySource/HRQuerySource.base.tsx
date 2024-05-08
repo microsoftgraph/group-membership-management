@@ -1144,8 +1144,31 @@ const checkType = (value: string, type: string | undefined): string => {
       setChildren(newChildren);
       setItems(newItems);
     }
+  }
 
 
+  function onGroupUpClick(index: number) { 
+    let newGroups = [...groups];
+    const insertIndex = index - 1;
+    if (insertIndex < 0) { return; }
+
+    setIsDragAndDropEnabled(true);
+    newGroups = newGroups.filter((_, i) => i !== index);
+    newGroups.splice(insertIndex, 0, { ...groups[index] });  
+
+    setGroups(newGroups);
+  }
+
+  function onGroupDownClick(index: number) { 
+    let newGroups = [...groups];
+    const insertIndex = index + 1;
+    if (insertIndex > groups.length) { return; }
+
+    setIsDragAndDropEnabled(true);
+    newGroups = newGroups.filter((_, i) => i !== index);
+    newGroups.splice(insertIndex, 0, { ...groups[index] });  
+
+    setGroups(newGroups);
   }
 
   const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn): JSX.Element => {
@@ -1495,12 +1518,16 @@ const checkType = (value: string, type: string | undefined): string => {
     dropdown: { width: 100 },
   };
 
-  const renderItems = (items: IFilterPart[], conjunction: string, index: number, isLastItem: boolean) => {
+  const renderItems = (items: IFilterPart[], conjunction: string, index: number, isLastItem: boolean, isUpDownEnabled: boolean) => {
     const selection: Selection = new Selection({
       onSelectionChanged: () => handleSelectionChange(selection, index)
     });
     return (
       <div>
+      {isUpDownEnabled && groups.length > 1 && (<div className={classNames.upDown}>
+        <ActionButton iconProps={{ iconName: 'ChevronUp' }} onClick={() => onGroupUpClick(index)} style={{ marginTop: '15px', marginBottom: '-15px'}} />
+        <ActionButton iconProps={{ iconName: 'ChevronDown' }} onClick={() => onGroupDownClick(index)} style={{ marginBottom: '-15px'}} />
+      </div>)}
       <DetailsList
         styles={{ root: classNames.detailsList }}
         items={items}
@@ -1519,7 +1546,7 @@ const checkType = (value: string, type: string | undefined): string => {
       <div>
       <Stack key={parentIndex}>
         <Stack tokens={{ childrenGap: 10 }}>
-          {group.items.length > 0 && renderItems(group.items, 'And', parentIndex, parentIndex === groups.length - 1)}
+          {group.items.length > 0 && renderItems(group.items, 'And', parentIndex, parentIndex === groups.length - 1, true)}
           {((group.items && group.items.length > 0 && parentIndex !== groups.length - 1) || (group.children && group.children.length > 0)) && (
           <div>
           <Dropdown
@@ -1542,7 +1569,7 @@ const checkType = (value: string, type: string | undefined): string => {
       <Stack key={parentIndex + '-' + childIndex} tokens={{ childrenGap: 10 }} style={{ paddingLeft: '50px' }}>
         <Label>{childGroup.name}</Label>
         <Stack tokens={{ childrenGap: 10 }}>
-          {childGroup.items.length > 0 && renderItems(childGroup.items, childGroup.items[childGroup.items.length-1].andOr, parentIndex, childIndex === children.length - 1)}
+          {childGroup.items.length > 0 && renderItems(childGroup.items, childGroup.items[childGroup.items.length-1].andOr, parentIndex, childIndex === children.length - 1, false)}
           {((childGroup.items && childGroup.items.length > 0 && (childIndex !== children.length - 1 || parentIndex !== groups.length - 1)) || (childGroup.children && childGroup.children.length > 0)) && (
           <div>
           <Dropdown
