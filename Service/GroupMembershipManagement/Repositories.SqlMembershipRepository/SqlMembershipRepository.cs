@@ -219,7 +219,7 @@ namespace Repositories.SqlMembershipRepository
                     {
                         conn.AccessToken = token.Token;
                         await conn.OpenAsync();
-                        var selectQuery = $"SELECT count(TABLE_NAME) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}'";
+                        var selectQuery = $"SELECT count(TABLE_NAME) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}' AND TABLE_SCHEMA = 'users'";
                         using (var cmd = new SqlCommand(selectQuery, conn))
                         {
                             var result = (int)cmd.ExecuteScalar();
@@ -289,20 +289,20 @@ namespace Repositories.SqlMembershipRepository
                 var selectDepthQuery = @$"
                     WITH emp AS (
                             SELECT EmployeeId, 1 AS Depth
-                            FROM {tableName}
+                            FROM [users].[{tableName}]
                             WHERE EmployeeId = {employeeId}
 
                             UNION ALL
 
                             SELECT e.EmployeeId, emp.Depth + 1
-                            FROM {tableName} e INNER JOIN emp
+                            FROM [users].[{tableName}] e INNER JOIN emp
                             ON e.ManagerId = emp.EmployeeId
                     )
                     SELECT MAX(Depth) AS MaxDepth
                     FROM emp e
                 ";
 
-                var selectIdQuery = $"SELECT AzureObjectId FROM {tableName} WHERE EmployeeId = {employeeId}";
+                var selectIdQuery = $"SELECT AzureObjectId FROM [users].[{tableName}] WHERE EmployeeId = {employeeId}";
 
                 await retryPolicy.Execute(async () =>
                 {
@@ -359,7 +359,7 @@ namespace Repositories.SqlMembershipRepository
                     SELECT c.name, t.name AS type 
                     FROM sys.columns AS c
                     JOIN sys.types AS t ON c.user_type_id = t.user_type_id
-                    WHERE c.object_id = OBJECT_ID('{tableName}')
+                    WHERE c.object_id = OBJECT_ID('[users].[{tableName}]')
                     ORDER BY c.name";
 
                 var credential = new DefaultAzureCredential();
