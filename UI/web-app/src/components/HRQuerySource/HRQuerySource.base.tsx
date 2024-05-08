@@ -1030,25 +1030,26 @@ const checkType = (value: string, type: string | undefined): string => {
     }
   ];
 
-  function onUpClick(index: number, items: IFilterPart[]) {
-    console.log("onUpClick");
-    console.log("items", items);
-    console.log("index", index);
-    console.log("groupingEnabled", groupingEnabled);
-
-    
-
+  function onUpClick(index: number, items: IFilterPart[]) { 
     let newItems = [...items];
     const insertIndex = index - 1;
     if (insertIndex < 0) { return; }
-    setIsDragAndDropEnabled(true);
-    newItems = newItems.filter((_, i) => i !== index);
-    newItems.splice(insertIndex, 0, { ...items[index] });
-    console.log("newItems", newItems);
-    let newChildren: ChildType[] = newItems.map((item) => ({
+
+    let sourceItems: IFilterPart[] = [];
+    sourceItems.push(items[index]);
+    sourceItems.push(items[insertIndex]);
+    let transformedItems: ChildType[] = sourceItems.map((item) => ({
       filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
     }));
-    console.log("groups", groups);
+    const hasUndefined = transformedItems.some((item) => item.filter.includes("undefined"));
+    if (hasUndefined) { return; }
+
+    setIsDragAndDropEnabled(true);
+    newItems = newItems.filter((_, i) => i !== index);
+    newItems.splice(insertIndex, 0, { ...items[index] });  
+    let newChildren: ChildType[] = newItems.map((item) => ({
+      filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
+    }));   
 
     if (groupingEnabled) {
       const groupIndex = groups.findIndex(group =>
@@ -1066,20 +1067,14 @@ const checkType = (value: string, type: string | undefined): string => {
         )
       ) : -1;
 
-
-      console.log("groupIndex", groupIndex);
-      console.log("childIndex", childIndex);
-
       if (groupIndex !== -1 && childIndex === -1) {
-        groups[groupIndex].items = newItems;
-        console.log("groups", groups);
+        groups[groupIndex].items = newItems;       
         setGroups(groups);
         getGroupLabels(groups);
         setItemsBasedOnGroups(groups);
       }
       else if (groupIndex !== -1 && childIndex !== -1) {
-        groups[groupIndex].children[childIndex].items = newItems;
-        console.log("groups", groups);
+        groups[groupIndex].children[childIndex].items = newItems;     
         setGroups(groups);
         getGroupLabels(groups);
         setItemsBasedOnGroups(groups);
@@ -1091,19 +1086,25 @@ const checkType = (value: string, type: string | undefined): string => {
       setChildren(newChildren);
       setItems(newItems);
     }
-
-
-
-
   }
 
   function onDownClick(index: number, items: IFilterPart[]) {
     let newItems = [...items];
     const insertIndex = index + 1;
     if (insertIndex > items.length) { return; }
+
+    let sourceItems: IFilterPart[] = [];
+    sourceItems.push(items[index]);
+    sourceItems.push(items[insertIndex]);
+    let transformedItems: ChildType[] = sourceItems.map((item) => ({
+      filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
+    }));
+    const hasUndefined = transformedItems.some((item) => item.filter.includes("undefined"));
+    if (hasUndefined) { return; }
+
     setIsDragAndDropEnabled(true);
-    newItems = newItems.filter(i => i !== items[index]);
-    newItems.splice(insertIndex, 0, items[index]);
+    newItems = newItems.filter((_, i) => i !== index);
+    newItems.splice(insertIndex, 0, { ...items[index] });  
     let newChildren: ChildType[] = newItems.map((item) => ({
       filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
     }));
@@ -1124,17 +1125,22 @@ const checkType = (value: string, type: string | undefined): string => {
         )
       ) : -1;
 
-
-      console.log("groupIndex", groupIndex);
-      console.log("childIndex", childIndex);
-
-      if (groupIndex !== -1) {
-        groups[groupIndex].items = newItems;
+      if (groupIndex !== -1 && childIndex === -1) {
+        groups[groupIndex].items = newItems;        
         setGroups(groups);
+        getGroupLabels(groups);
+        setItemsBasedOnGroups(groups);
+      }
+      else if (groupIndex !== -1 && childIndex !== -1) {
+        groups[groupIndex].children[childIndex].items = newItems;        
+        setGroups(groups);
+        getGroupLabels(groups);
         setItemsBasedOnGroups(groups);
       }
     }
     else {
+      groups[0].items = newItems;
+      setGroups(groups);
       setChildren(newChildren);
       setItems(newItems);
     }
@@ -1555,8 +1561,8 @@ const checkType = (value: string, type: string | undefined): string => {
 
   function handleSelectionChange(selection: Selection, index: number) {
     const selectedItems = selection.getSelection() as any[];
-    console.log("handleSelectionChange selectedItems", selectedItems);
-
+    console.log("handleSelectionChange items", items);
+    console.log("handleSelectionChange group[0].items", groups[0].items);
     const selectedIndices = selectedItems.map(selectedItem => {
       return items.findIndex(item =>
         item.attribute === selectedItem.attribute &&
@@ -1564,7 +1570,6 @@ const checkType = (value: string, type: string | undefined): string => {
         item.value === selectedItem.value &&
         item.andOr === selectedItem.andOr);
     });
-    console.log("handleSelectionChange selectedIndices", selectedIndices);
     setSelectedIndices(selectedIndices);
   }
 
