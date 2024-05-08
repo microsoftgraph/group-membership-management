@@ -515,12 +515,27 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
   const hoursMessage: React.CSSProperties = {
     fontWeight: 100
   }
-
   const SQL_MIN_DATE = new Date('1753-01-01T00:00:00');
+  
+  function splitDateString(value: string) {
+    const isEmpty = value === '';
+    if (isEmpty) {
+      return ['-', ''];
+    }
 
-  const lastRunFormatted = formatLastRunTime(job.lastSuccessfulRunTime, job.period);
-  const nextRunFormatted = formatNextRunTime(job.estimatedNextRunTime, job.period, job.enabledOrNot);
+    const spaceIndex = value.indexOf(' ');
+    const datePart = value.substring(0, spaceIndex);
+    const hoursPart = value.substring(spaceIndex + 1);
 
+    const parsedDate = new Date(datePart);
+
+    const isMinDate = parsedDate <= SQL_MIN_DATE;
+
+    return [isMinDate ? '' : datePart, isMinDate ? '-' : hoursPart];
+  }
+
+  const lastRunDetails = splitDateString(job.lastSuccessfulRunTime);
+  const nextRunDetails = splitDateString(job.estimatedNextRunTime);
 
   return (
     <Stack
@@ -565,10 +580,10 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
         />
         <div className={classNames.itemData}>
           <Text variant="medium" block>
-            {lastRunFormatted[0]}
+            {lastRunDetails[0]}
           </Text>
           <Text style={hoursMessage} variant="medium" block>
-            {lastRunFormatted[1]}
+            {lastRunDetails[1]}
           </Text>
         </div>
       </Stack.Item>
@@ -580,10 +595,10 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
         />
         <div className={classNames.itemData}>
           <Text variant="medium" block>
-            {nextRunFormatted[0]}
+            {nextRunDetails[0]}
           </Text>
           <Text style={hoursMessage} variant="medium" block>
-            {nextRunFormatted[1]}
+            {nextRunDetails[1]}
           </Text>
         </div>
       </Stack.Item>

@@ -350,7 +350,7 @@ export const strings: IStrings = {
   or: 'Or',
   and: 'And',
   privacyPolicy: 'Privacy Policy',
-  hoursAgo: 'hrs ago',
-  hoursLeft: 'hrs left',
+  hoursAgo: '{0}, {1} hrs ago',
+  hoursLeft: '{0}, {1} hrs left',
   pendingInitialSync: 'Pending initial sync',
 };

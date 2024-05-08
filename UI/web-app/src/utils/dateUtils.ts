@@ -2,46 +2,37 @@
 // Licensed under the MIT license.
 
 import moment from 'moment';
-import { useStrings } from '../store/hooks';
+const SQLMinDateMoment = moment.utc('1753-01-01T00:00:00');
 
-export function formatLastRunTime(lastSuccessfulRunTime: string, period: number): [string, number] {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const strings = useStrings();
-    const currentTime = moment.utc();
+export function formatLastRunTime(lastSuccessfulRunTime: string): [string, number] {
     const lastRunMoment = moment.utc(lastSuccessfulRunTime);
-    const SQL_MIN_DATE = new Date('1753-01-01T00:00:00');
-    const hoursAgo = currentTime.diff(lastRunMoment, 'hours');
-    const formattedDate = lastRunMoment.local().format('MM/DD/YYYY');
 
-    if (lastRunMoment.isSame(SQL_MIN_DATE)) {
-        return [strings.pendingInitialSync, 0];  
+    const lastRunTime = new Date(lastSuccessfulRunTime);
+    const today = new Date();
+    const hoursAgo = Math.round(Math.abs(today.valueOf() - lastRunTime.valueOf()) / 36e5);
+
+    const formattedDate = lastRunMoment.format('MM/DD/YYYY');
+
+    if (lastRunMoment.isSame(SQLMinDateMoment, 'day')) {
+        return [SQLMinDateMoment.toLocaleString(), 0];
     }
 
-    if (hoursAgo > period) {
-        return [formattedDate, period];
-    } else {
-        return [formattedDate, hoursAgo];
-    }
+    return [formattedDate, hoursAgo];
 }
 
-
 export function formatNextRunTime(lastSuccessfulRunTime: string, period: number, enabled: boolean): [string, number] {
-    const currentTime = moment.utc();
     let lastRunMoment = moment.utc(lastSuccessfulRunTime);
     let estimatedNextRunTime = lastRunMoment.add(period, 'hours');
 
-    // Adjust the next run time until it is in the future
-    while (estimatedNextRunTime.isBefore(currentTime) && enabled) {
-        lastRunMoment = estimatedNextRunTime; // Set new base for calculation
-        estimatedNextRunTime = lastRunMoment.add(period, 'hours');
-    }
-
     const formattedDate: string = estimatedNextRunTime.local().format('MM/DD/YYYY');
-    const hoursLeft = Math.abs(currentTime.diff(estimatedNextRunTime, 'hours'));
+    const lastRunTime = new Date(lastSuccessfulRunTime);
+    const today = new Date();
+    const hoursLeft = Math.round(Math.abs(today.valueOf() - lastRunTime.valueOf()) / 36e5);
 
     if (!enabled) {
-        return ['', 0];
-    } else {
+        return ['-', 0];
+    }
+    else {
         return [formattedDate, hoursLeft];
     }
 }

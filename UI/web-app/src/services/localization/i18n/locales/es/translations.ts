@@ -354,7 +354,7 @@ export const strings: IStrings = {
   or: 'O',
   and: 'Y',
   privacyPolicy: 'Política de Privacidad',
-  hoursAgo: 'horas atrás',
-  hoursLeft: 'horas restantes',
+  hoursAgo: '{0}, {1} horas atrás',
+  hoursLeft: '{0}, {1} horas restantes',
   pendingInitialSync: 'En espera de correr el primer sync',
 };

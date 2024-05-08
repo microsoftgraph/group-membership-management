@@ -318,7 +318,11 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             <></> :
             <div className={classNames.bottomContainer}>
               {currentStep !== OnboardingSteps.SelectDestination && <div className={classNames.backButtonContainer}>
-                <DefaultButton text={strings.back} onClick={onBackStepClick} />
+                <DefaultButton 
+                  text={strings.back}
+                  onClick={onBackStepClick}
+                  disabled={isEditingExistingJob && currentStep === OnboardingSteps.RunConfiguration}
+                />
               </div>}
               <div className={classNames.circlesContainer}>
                 {Array.from({ length: 4 }, (_, index) => (

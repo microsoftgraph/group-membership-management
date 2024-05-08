@@ -13,6 +13,9 @@ import {
   PeoplePickerPersona
 } from '../models';
 import { formatLastRunTime, formatNextRunTime } from '../utils/dateUtils';
+import { format } from '@fluentui/react';
+import { strings } from '../services/localization/i18n/locales/en/translations';
+import moment from 'moment';
 
 export interface JobsResponse {
   jobs: Job[];
@@ -30,8 +33,23 @@ export const fetchJobs = createAsyncThunk<Page<Job>, PagingOptions | undefined, 
       const mapped = jobsPage.items.map((index) => {
         index['enabledOrNot'] =
         index['status'] === SyncStatus.Idle || index['status'] === SyncStatus.InProgress ? true : false;
-        index['lastSuccessfulRunTime'] = formatLastRunTime(index['lastSuccessfulRunTime'], index['period']).join(' ');
-        index['estimatedNextRunTime'] = formatNextRunTime(index['estimatedNextRunTime'], index['period'], index['enabledOrNot']).join(' ');
+        const lastRunTime = formatLastRunTime(index['lastSuccessfulRunTime']);
+        const estimatedNextRunTime = formatNextRunTime(index['estimatedNextRunTime'], index['period'], index['enabledOrNot']);
+        const SQLMinDateMoment = moment.utc('1753-01-01T00:00:00');
+        
+        if(lastRunTime[0] === SQLMinDateMoment.toLocaleString()) { // Jobs that haven't run yet
+          index['lastSuccessfulRunTime'] = "Pending initial sync";
+          index['estimatedNextRunTime'] = "Pending initial sync";
+        }
+        else if (estimatedNextRunTime[0] === "-") { // Disabled jobs
+          index['lastSuccessfulRunTime'] = `${format(strings.hoursAgo, lastRunTime[0], lastRunTime[1])}`;
+          index['estimatedNextRunTime'] = "-";
+        }
+        else {
+          index['lastSuccessfulRunTime'] = `${format(strings.hoursAgo, lastRunTime[0], lastRunTime[1])}`;
+          index['estimatedNextRunTime'] = `${format(strings.hoursLeft, estimatedNextRunTime[0], estimatedNextRunTime[1])}`;
+        }
+        
         index['arrow'] = '';
 
         return index;
