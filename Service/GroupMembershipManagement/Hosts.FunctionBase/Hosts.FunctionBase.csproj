@@ -29,6 +29,7 @@
     <ProjectReference Include="..\Repositories.Mail\Repositories.Mail.csproj" />
     <ProjectReference Include="..\Repositories.ServiceBusQueue\Repositories.ServiceBusQueue.csproj" />
     <ProjectReference Include="..\Repositories.Notifications\Repositories.NotificationRepository.csproj" />
+    <ProjectReference Include="..\Repositories.RetryPolicyProvider\Repositories.RetryPolicyProvider.csproj" />
   </ItemGroup>
 
 </Project>

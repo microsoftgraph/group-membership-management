@@ -27,19 +27,6 @@ namespace Hosts.AzureUserReader
 
             builder.Services.AddGraphAPIClient();
 
-            builder.Services.AddSingleton<IGraphServiceAttemptsValue>(services =>
-            {
-                var parseMaxRetryAfterAttempts = int.TryParse(GetValueOrThrow("maxRetryAfterAttempts"), out int maxRetryAfterAttempts);
-                var parseMaxExceptionHandlingAttempts = int.TryParse(GetValueOrThrow("maxExceptionHandlingAttempts"), out int maxExceptionHandlingAttempts);
-                if (!parseMaxRetryAfterAttempts || !parseMaxExceptionHandlingAttempts)
-                {
-                    maxRetryAfterAttempts = 4;
-                    maxExceptionHandlingAttempts = 2;
-                }
-
-                return new GraphServiceAttemptsValue(maxRetryAfterAttempts, maxExceptionHandlingAttempts);
-            });
-
             builder.Services.AddSingleton<IStorageAccountSecret>(services =>
                 new StorageAccountSecret(GetValueOrThrow("storageAccountConnectionString")));
 

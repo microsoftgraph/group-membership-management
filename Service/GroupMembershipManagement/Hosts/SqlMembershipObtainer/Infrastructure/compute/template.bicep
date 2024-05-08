@@ -86,12 +86,6 @@ param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmen
 @description('Name of the resource group where the \'prereqs\' key vault is located.')
 param prereqsKeyVaultResourceGroup string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
 
-@description('Maximum number of times to execute the retry after policy in graph service.')
-param maxRetryAfterAttempts int = 4
-
-@description('Maximum number of times to execute the exception policy in graph service.')
-param maxExceptionHandlingAttempts int = 2
-
 @description('Determines if a sync should be stopped in all graph profiles aren\'t retrieved.')
 param shouldStopSyncIfSourceNotPresentInGraph bool = false
 
@@ -169,8 +163,6 @@ var appSettings = {
   serviceBusMembershipAggregatorQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipAggregatorQueue, '2019-09-01').secretUriWithVersion})'
   sqlServerMSIConnectionString: '@Microsoft.KeyVault(SecretUri=${reference(sqlServerMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   serviceBusTopicName: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusTopicName, '2019-09-01').secretUriWithVersion})'
-  maxRetryAfterAttempts: maxRetryAfterAttempts
-  maxExceptionHandlingAttempts: maxExceptionHandlingAttempts
   shouldStopSyncIfSourceNotPresentInGraph: shouldStopSyncIfSourceNotPresentInGraph
   appConfigurationEndpoint: appConfigurationEndpoint
   senderAddress: '@Microsoft.KeyVault(SecretUri=${reference(senderUsername, '2019-09-01').secretUriWithVersion})'

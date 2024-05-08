@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Options;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
+using Repositories.ServiceBusQueue;
 using Services.Contracts.Notifications;
 using Services.Notifications;
 using Services.Notifier;
@@ -73,12 +75,19 @@ namespace Hosts.Notifier
                         services.GetService<IOptions<ThresholdConfig>>().Value.NumberOfThresholdViolationsToDisableJob
                     );
             });
+            builder.Services.AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
+            {
+                var configuration = services.GetRequiredService<IConfiguration>();
+                var failedNotificationsQueue = configuration["serviceBusFailedNotificationsQueue"];
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(failedNotificationsQueue);
+                return new ServiceBusQueueRepository(sender);
+            });
             builder.Services.AddScoped<IThresholdNotificationConfig>((sp) =>
             {
                 return new ThresholdNotificationConfig(true);
             });
             builder.Services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
-
             builder.Services.AddHttpClient();
         }
 

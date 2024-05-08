@@ -18,6 +18,7 @@ using Repositories.Localization;
 using Repositories.Logging;
 using Repositories.Mail;
 using Repositories.NotificationsRepository;
+using Repositories.RetryPolicyProvider;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -100,18 +101,34 @@ namespace Hosts.FunctionBase
                 ServiceLifetime.Scoped
             );
 
+            builder.Services.AddOptions<GraphServiceAttemptsValue>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.MaxRetryAfterAttempts = GetIntSetting(configuration, "MaxRetryAfterAttempts", 4);
+                settings.MaxExceptionHandlingAttempts = GetIntSetting(configuration, "MaxExceptionHandlingAttempts", 2);
+            });
+
+            builder.Services.AddSingleton<IGraphServiceAttemptsValue>(services =>
+            {
+                var options = services.GetRequiredService<IOptions<GraphServiceAttemptsValue>>();
+                return new GraphServiceAttemptsValue
+                {
+                    MaxRetryAfterAttempts = options.Value.MaxRetryAfterAttempts,
+                    MaxExceptionHandlingAttempts = options.Value.MaxExceptionHandlingAttempts
+                };
+            });
+
+            builder.Services.AddSingleton<ILoggingRepository, LoggingRepository>();
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
             builder.Services.AddScoped<IDatabaseSettingsRepository, DatabaseSettingsRepository>();
             builder.Services.AddScoped<IDatabaseDestinationAttributesRepository, DatabaseDestinationAttributesRespository>();
             builder.Services.AddScoped<INotificationTypesRepository, NotificationTypesRepository>();
             builder.Services.AddScoped<IJobNotificationsRepository, JobNotificationRepository>();
-
+            builder.Services.AddScoped<IRetryPolicyProvider, RetryPolicyProvider>();
             builder.Services.AddSingleton<IAppConfigVerbosity>(services =>
             {
                 var creds = services.GetService<IOptions<AppConfigVerbosity>>();
                 return new AppConfigVerbosity(creds.Value.Verbosity);
             });
-            builder.Services.AddSingleton<ILoggingRepository, LoggingRepository>();
 
             builder.Services.AddOptions<GMMResources>().Configure<IConfiguration>((settings, configuration) =>
             {
@@ -188,7 +205,9 @@ namespace Hosts.FunctionBase
                         services.GetService<ILoggingRepository>(),
                         GetValueOrDefault("actionableEmailProviderId"),
                         services.GetService<IGraphGroupRepository>(),
-                        services.GetService<IDatabaseSettingsRepository>());
+                        services.GetService<IDatabaseSettingsRepository>(),
+                        services.GetService<IRetryPolicyProvider>()
+                        );
             });
 
             builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>
@@ -241,6 +260,11 @@ namespace Hosts.FunctionBase
         public string GetValueOrDefault(string key, [CallerFilePath] string callerFile = "", [CallerLineNumber] int callerLine = 0)
         {
             return Environment.GetEnvironmentVariable(key, EnvironmentVariableTarget.Process) ?? string.Empty;
+        }
+        private int GetIntSetting(IConfiguration configuration, string settingName, int defaultValue)
+        {
+            var checkParse = int.TryParse(configuration[settingName], out int value);
+            return checkParse ? value : defaultValue;
         }
     }
 }

@@ -101,6 +101,9 @@ param serviceBusMembershipAggregatorQueue string = 'membershipAggregator'
 @description('Enter notifications service bus queue name')
 param serviceBusNotificationsQueue string = 'notifications'
 
+@description('Enter notifications service bus queue name')
+param serviceBusFailedNotificationsQueue string = 'failedNotifications'
+
 @description('Enter storage account name.')
 @minLength(1)
 @maxLength(24)
@@ -182,6 +185,22 @@ param appConfigurationKeyData array = [
     contentType: 'integer'
     tag: {
       tag1: 'JobTrigger'
+    }
+  }
+  {
+    key: 'MaxExceptionHandlingAttempts'
+    value: '2'
+    contentType: 'integer'
+    tag: {
+      tag1: 'RetryPolicy'
+    }
+  }
+  {
+    key: 'MaxRetryAfterAttempts'
+    value: '4'
+    contentType: 'integer'
+    tag: {
+      tag1: 'RetryPolicy'
     }
   }
   {
@@ -497,6 +516,19 @@ module notificationsQueue 'serviceBusQueue.bicep' = {
   ]
 }
 
+module failedNotificationsQueue 'serviceBusQueue.bicep' = {
+  name: 'failedNotificationsQueue'
+  params: {
+    queueName: serviceBusFailedNotificationsQueue
+    serviceBusName: serviceBusName
+    requiresSession: false
+    maxDeliveryCount: 5
+  }
+  dependsOn:[
+    serviceBusTemplate
+  ]
+}
+
 module storageAccountTemplate 'storageAccount.bicep' = {
   name: 'storageAccountTemplate'
   params: {
@@ -637,6 +669,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'serviceBusNotificationsQueue'
         value: serviceBusNotificationsQueue
+      }
+      {
+        name: 'serviceBusFailedNotificationsQueue'
+        value: serviceBusFailedNotificationsQueue
       }
       {
         name: 'graphUserAssignedManagedIdentityName'

@@ -5,6 +5,8 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
+using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace Repositories.Mocks
@@ -12,10 +14,14 @@ namespace Repositories.Mocks
 	public class MockMailRepository : IMailRepository
 	{
 		public List<EmailMessage> SentEmails { get; set; } = new List<EmailMessage>();
-		public Task SendMailAsync(EmailMessage emailMessage, Guid? runId)
+		public Task<HttpResponseMessage> SendMailAsync(EmailMessage emailMessage, Guid? runId)
 		{
 			SentEmails.Add(emailMessage);
-			return Task.CompletedTask;
+            var responseMessage = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("Mock email sent successfully.")
+            };
+            return Task.FromResult(responseMessage);
 		}
 	}
 

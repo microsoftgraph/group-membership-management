@@ -16,6 +16,9 @@ using Services.Contracts;
 using Microsoft.ApplicationInsights;
 using System.Text.Json;
 using Models.Entities;
+using System.Net.Http;
+using System.Net;
+using Models.ServiceBus;
 
 namespace Services.Notifier
 {
@@ -33,6 +36,8 @@ namespace Services.Notifier
         private readonly IJobNotificationsRepository _jobNotificationRepository;
         private readonly IThresholdConfig _thresholdConfig;
         private readonly IGMMResources _gmmResources;
+        private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
+
         enum MembershipType
         {
             GroupMembership,
@@ -50,6 +55,7 @@ namespace Services.Notifier
             IJobNotificationsRepository jobNotificationRepository,
             IThresholdConfig thresholdConfig,
             IGMMResources gmmResources,
+            IServiceBusQueueRepository serviceBusQueueRepository,
             TelemetryClient telemetryClient)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
@@ -63,6 +69,7 @@ namespace Services.Notifier
             _jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
             _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
             _gmmResources = gmmResources ?? throw new ArgumentException(nameof(gmmResources));
+            _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
@@ -198,7 +205,24 @@ namespace Services.Notifier
             {
                 message.AdditionalSubjectParams = additionalContentParameters;
             }
-            await _mailRepository.SendMailAsync(message, job.RunId);
+            var response =  await _mailRepository.SendMailAsync(message, job.RunId);
+
+            if (response != null && response.StatusCode != HttpStatusCode.Accepted) {
+                var messageContent = new Dictionary<string, Object>
+                {
+                    { "MessageBody", messageBody },
+                    { "MessageType", messageType },
+                    { "HttpStatusCode", response.StatusCode.ToString() },
+                    { "ReasonPhrase", response.ReasonPhrase.ToString() }
+                };
+                var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(messageContent));
+                var failedMessage = new ServiceBusMessage
+                {
+                    MessageId = $"{job.Id}_{job.RunId}_{messageType}",
+                    Body = body
+                };
+                await _serviceBusQueueRepository.SendMessageAsync(failedMessage);
+            }
         }
 
         public async Task<bool> IsNotificationDisabledAsync(Guid jobId, string contentTemplate)

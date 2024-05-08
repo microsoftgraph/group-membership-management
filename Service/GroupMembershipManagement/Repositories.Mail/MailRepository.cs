@@ -14,6 +14,11 @@ using System.Security;
 using System.Threading.Tasks;
 using AdaptiveCards.Templating;
 using System.Text.RegularExpressions;
+using System.Net.Http;
+using Polly.Wrap;
+using Microsoft.Kiota.Abstractions;
+using Microsoft.Azure.Documents;
+using System.Net;
 
 namespace Repositories.Mail
 {
@@ -26,9 +31,18 @@ namespace Repositories.Mail
         private readonly string _actionableEmailProviderId;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IDatabaseSettingsRepository _settingsRepository;
-        private Guid groupId;
+        private readonly IRetryPolicyProvider _retryPolicyProvider;
 
-        public MailRepository(GraphServiceClient graphClient, IMailConfig mailAdaptiveCardConfig, ILocalizationRepository localizationRepository, ILoggingRepository loggingRepository, string actionableEmailProviderId, IGraphGroupRepository graphGroupRepository, IDatabaseSettingsRepository settingsRepository)
+        public MailRepository(
+            GraphServiceClient graphClient, 
+            IMailConfig mailAdaptiveCardConfig, 
+            ILocalizationRepository localizationRepository, 
+            ILoggingRepository loggingRepository, 
+            string actionableEmailProviderId, 
+            IGraphGroupRepository graphGroupRepository,
+            IDatabaseSettingsRepository settingsRepository,
+            IRetryPolicyProvider retryPolicyProvider
+            )
         {
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
             _mailConfig = mailAdaptiveCardConfig ?? throw new ArgumentNullException(nameof(mailAdaptiveCardConfig));
@@ -37,9 +51,10 @@ namespace Repositories.Mail
             _actionableEmailProviderId = actionableEmailProviderId ?? throw new ArgumentNullException(nameof(actionableEmailProviderId));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _settingsRepository = settingsRepository ?? throw new ArgumentNullException(nameof(settingsRepository));
+            _retryPolicyProvider = retryPolicyProvider ?? throw new ArgumentNullException(nameof(retryPolicyProvider));
         }
 
-        public async Task SendMailAsync(EmailMessage emailMessage, Guid? runId)
+        public async Task<HttpResponseMessage> SendMailAsync(EmailMessage emailMessage, Guid? runId)
         {
             if (_mailConfig.SkipEmailNotifications)
             {
@@ -49,7 +64,10 @@ namespace Repositories.Mail
                     Message = "Email notifications are disabled."
                 });
 
-                return;
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Accepted)
+                {
+                    ReasonPhrase = "Email notifications are disabled."
+                };
             }
 
             if (emailMessage is null)
@@ -84,28 +102,44 @@ namespace Repositories.Mail
             foreach (char c in emailMessage?.SenderPassword)
                 securePassword.AppendChar(c);
 
+            HttpResponseMessage httpResponse = null;
+
             try
             {
-                if (_mailConfig.GMMHasSendMailApplicationPermissions)
-                {
-                    var body = new Microsoft.Graph.Users.Item.SendMail.SendMailPostRequestBody
-                    {
-                        Message = message,
-                        SaveToSentItems = true
-                    };
+                var executionPolicy = GetHttpResponseMessageRetryPolicy(runId);
 
-                    await _graphClient.Users[_mailConfig.SenderAddress].SendMail.PostAsync(body);
-                }
-                else
+                httpResponse = await executionPolicy.ExecuteAsync(async () =>
                 {
-                    var body = new Microsoft.Graph.Me.SendMail.SendMailPostRequestBody
+                    var nativeResponseHandler = new NativeResponseHandler();
+                    if (_mailConfig.GMMHasSendMailApplicationPermissions)
                     {
-                        Message = message,
-                        SaveToSentItems = true
-                    };
+                        var body = new Microsoft.Graph.Users.Item.SendMail.SendMailPostRequestBody
+                        {
+                            Message = message,
+                            SaveToSentItems = true
+                        };
 
-                    await _graphClient.Me.SendMail.PostAsync(body);
-                }
+                        await _graphClient.Users[_mailConfig.SenderAddress].SendMail.PostAsync(body, config =>
+                        {
+                            config.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                        });
+                        return nativeResponseHandler.Value as HttpResponseMessage;
+                    }
+                    else
+                    {
+                        var body = new Microsoft.Graph.Me.SendMail.SendMailPostRequestBody
+                        {
+                            Message = message,
+                            SaveToSentItems = true
+                        };
+
+                        await _graphClient.Me.SendMail.PostAsync(body, config =>
+                        {
+                            config.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                        });
+                        return nativeResponseHandler.Value as HttpResponseMessage;
+                    }
+                });
             }
             catch (ServiceException ex) when (ex.GetBaseException().GetType().Name == "MsalUiRequiredException")
             {
@@ -131,7 +165,36 @@ namespace Repositories.Mail
                     Message = $"Email cannot be sent due to an unexpected exception.\n{ex}"
                 });
             }
-
+            if (httpResponse == null)
+            {
+                string errorMessage = "Failed to send email due to an unexpected exception.";
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = errorMessage
+                });
+                return new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError)
+                {
+                    ReasonPhrase = errorMessage
+                };
+            }
+            if (httpResponse.IsSuccessStatusCode)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = "Email sent successfully."
+                });
+            }
+            else
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = $"Failed to send email: {httpResponse.StatusCode} - {await httpResponse.Content.ReadAsStringAsync()}"
+                });
+            }
+            return httpResponse;
         }
 
         private Message GetHTMLMessage(EmailMessage emailMessage)
@@ -258,6 +321,13 @@ namespace Repositories.Mail
                     Message = $"The provided value '{emailMessage.AdditionalContentParams[0]}' is not a valid GUID."
                 });
             }
+        }
+        private AsyncPolicyWrap<HttpResponseMessage> GetHttpResponseMessageRetryPolicy(Guid? runId)
+        {
+            var retryAfterPolicy = _retryPolicyProvider.CreateRetryAfterPolicy(runId);
+            var exceptionHandlingPolicy = _retryPolicyProvider.CreateExceptionHandlingPolicy(runId);
+
+            return retryAfterPolicy.WrapAsync(exceptionHandlingPolicy);
         }
     }
 }

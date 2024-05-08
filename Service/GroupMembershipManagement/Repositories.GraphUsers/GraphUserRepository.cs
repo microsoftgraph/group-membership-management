@@ -34,31 +34,18 @@ namespace Repositories.GraphAzureADUsers
         private readonly Dictionary<string, GraphProfileInformation> _cache;
         private readonly GraphServiceClient _graphClient;
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IGraphServiceAttemptsValue _maxGraphServiceAttempts;
+        private readonly IRetryPolicyProvider _retryPolicyProvider;
 
         public GraphUserRepository(
                 ILoggingRepository loggingRepository,
                 GraphServiceClient graphClient,
-                IGraphServiceAttemptsValue maxGraphServiceAttempts
+                IRetryPolicyProvider retryPolicyProvider
             )
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
             _cache = new Dictionary<string, GraphProfileInformation>();
-            _maxGraphServiceAttempts = maxGraphServiceAttempts;
-        }
-
-        public TimeSpan GetSleepDuration(int retryCount, DelegateResult<HttpResponseMessage> response, Context context)
-        {
-            var waitTime = response.Result.Headers.RetryAfter.Date.Value - DateTime.UtcNow;
-
-            _ = _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Wait time set to {waitTime}",
-                RunId = null
-            });
-
-            return waitTime;
+            _retryPolicyProvider = retryPolicyProvider ?? throw new ArgumentNullException( nameof(retryPolicyProvider));
         }
 
         public async Task<IList<GraphProfileInformation>> GetAzureADObjectIdsAsync(IList<string> personnelNumbers, Guid? runId)
@@ -392,44 +379,8 @@ namespace Repositories.GraphAzureADUsers
 
         private AsyncPolicyWrap<HttpResponseMessage> GetHttpResponseMessageRetryPolicy(Guid? runId)
         {
-            HttpStatusCode[] httpsStatusCodesWithRetryAfterHeader = {
-                HttpStatusCode.TooManyRequests, // 429
-                HttpStatusCode.ServiceUnavailable // 503
-            };
-
-            var retryAfterPolicy = Policy
-                            .HandleResult<HttpResponseMessage>(result =>
-                                httpsStatusCodesWithRetryAfterHeader.Contains(result.StatusCode) && result.Headers?.RetryAfter != null)
-                            .WaitAndRetryAsync(
-                                    _maxGraphServiceAttempts.MaxRetryAfterAttempts,
-                                    sleepDurationProvider: GetSleepDuration,
-                                    onRetryAsync: async (response, timeSpan, retryCount, context) =>
-                                    {
-                                        await _loggingRepository.LogMessageAsync(new LogMessage
-                                        {
-                                            Message = $"Throttled by Graph for the timespan: {timeSpan}. The retry count is {retryCount}.",
-                                            RunId = runId
-                                        });
-                                    });
-
-            HttpStatusCode[] httpStatusCodesWorthRetryingExponentially = {
-                HttpStatusCode.InternalServerError, // 500
-                HttpStatusCode.BadGateway, // 502
-                HttpStatusCode.ServiceUnavailable, // 503
-                HttpStatusCode.GatewayTimeout // 504
-            };
-
-            var exceptionHandlingPolicy = Policy
-                            .Handle<HttpRequestException>()
-                            .OrResult<HttpResponseMessage>(r => httpStatusCodesWorthRetryingExponentially.Contains(r.StatusCode))
-                            .WaitAndRetryAsync(
-                                _maxGraphServiceAttempts.MaxExceptionHandlingAttempts,
-                                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
-                                onRetryAsync: async (timeSpan, retryCount, context) =>
-                                {
-                                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Exponential backoff {retryCount}.", RunId = runId });
-                                }
-                            );
+            var retryAfterPolicy = _retryPolicyProvider.CreateRetryAfterPolicy(runId);
+            var exceptionHandlingPolicy = _retryPolicyProvider.CreateExceptionHandlingPolicy(runId);
 
             return retryAfterPolicy.WrapAsync(exceptionHandlingPolicy);
         }

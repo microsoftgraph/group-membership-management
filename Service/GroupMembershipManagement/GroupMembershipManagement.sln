@@ -61,7 +61,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramewor
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.FeatureFlag", "Repositories.FeatureFlag\Repositories.FeatureFlag.csproj", "{694A5629-D09B-4855-93E1-96D6DE6D07F3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.Contracts.Tests", "Repositories.Contracts.Tests\Repositories.Contracts.Tests.csproj", "{36E351DC-46F2-40FE-9F07-D15334B99AC1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Contracts.Tests", "Repositories.Contracts.Tests\Repositories.Contracts.Tests.csproj", "{36E351DC-46F2-40FE-9F07-D15334B99AC1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.RetryPolicyProvider", "Repositories.RetryPolicyProvider\Repositories.RetryPolicyProvider.csproj", "{1536370F-54D6-4325-B212-8AC535357DDF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -181,6 +183,10 @@ Global
 		{36E351DC-46F2-40FE-9F07-D15334B99AC1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{36E351DC-46F2-40FE-9F07-D15334B99AC1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{36E351DC-46F2-40FE-9F07-D15334B99AC1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1536370F-54D6-4325-B212-8AC535357DDF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1536370F-54D6-4325-B212-8AC535357DDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1536370F-54D6-4325-B212-8AC535357DDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1536370F-54D6-4325-B212-8AC535357DDF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

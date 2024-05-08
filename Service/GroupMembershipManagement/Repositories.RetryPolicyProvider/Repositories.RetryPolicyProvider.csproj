@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <AssemblyName>Repositories.RetryPolicyProvider</AssemblyName>
+        <RootNamespace>Repositories.RetryPolicyProvider</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Polly" Version="7.2.3" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Repositories.Contracts\Repositories.Contracts.csproj" />
+    </ItemGroup>
+
+</Project>

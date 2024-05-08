@@ -44,17 +44,6 @@ namespace SqlMembershipObtainer
             builder.Services.AddSingleton<ISqlMembershipRepository, SqlMembershipRepository>();
 
             builder.Services.AddSingleton<IDataFactorySecret<IDataFactoryRepository>>(new DataFactorySecrets<IDataFactoryRepository>(GetValueOrThrow("pipeline"), GetValueOrThrow("dataFactoryName"), GetValueOrThrow("subscriptionId"), GetValueOrThrow("dataResourceGroup")));
-            builder.Services.AddSingleton<IGraphServiceAttemptsValue>(services =>
-            {
-                var parseMaxRetryAfterAttempts = int.TryParse(GetValueOrThrow("maxRetryAfterAttempts"), out int maxRetryAfterAttempts);
-                var parseMaxExceptionHandlingAttempts = int.TryParse(GetValueOrThrow("maxExceptionHandlingAttempts"), out int maxExceptionHandlingAttempts);
-                if (!parseMaxRetryAfterAttempts || !parseMaxExceptionHandlingAttempts)
-                {
-                    maxRetryAfterAttempts = 4;
-                    maxExceptionHandlingAttempts = 2;
-                }
-                return new GraphServiceAttemptsValue(maxRetryAfterAttempts, maxExceptionHandlingAttempts);
-            });
 
             builder.Services.AddSingleton<IDataFactoryRepository, DataFactoryRepository>();
 
