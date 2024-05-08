@@ -77,7 +77,8 @@ namespace WebApi
                     {
                         refreshOptions.Register("WebAPI:Settings:Sentinel", refreshAll: true);
                     })
-                    .Select("Mail:*");
+                    .Select("Mail:*")
+                    .Select("GraphAPI:*");
             });
 
             // Add services to the container.
