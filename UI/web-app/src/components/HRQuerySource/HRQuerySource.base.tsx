@@ -1091,9 +1091,6 @@ const checkType = (value: string, type: string | undefined): string => {
     let newItems = [...items];
     const insertIndex = index + 1;
 
-    console.log("insertIndex", insertIndex);
-    console.log("items.length", items.length);
-
     if (insertIndex >= items.length) { return; }
 
     let sourceItems: IFilterPart[] = [];
@@ -1376,8 +1373,6 @@ const checkType = (value: string, type: string | undefined): string => {
   }
 
     function onGroupClick() {
-      console.log("onGroupClick - items", items);
-      console.log("onGroupClick - selectedIndices", selectedIndices);
       let newGroups = [...groups];
       let indices: { selectedItemIndex: number, groupIndex: number; childIndex: number }[] = [];
       const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
@@ -1527,8 +1522,6 @@ const checkType = (value: string, type: string | undefined): string => {
 
   function handleSelectionChange(selection: Selection, index: number) {
     const selectedItems = selection.getSelection() as any[];
-    console.log("handleSelectionChange items", items);
-    console.log("handleSelectionChange group[0].items", groups[0].items);
     const selectedIndices = selectedItems.map(selectedItem => {
       return items.findIndex(item =>
         item.attribute === selectedItem.attribute &&
