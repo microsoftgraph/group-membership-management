@@ -4,18 +4,15 @@ using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
-using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Microsoft.Graph;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
 using Repositories.ServiceBusQueue;
-using Repositories.TeamsChannel;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
 [assembly: FunctionsStartup(typeof(Hosts.GroupMembershipObtainer.Startup))]

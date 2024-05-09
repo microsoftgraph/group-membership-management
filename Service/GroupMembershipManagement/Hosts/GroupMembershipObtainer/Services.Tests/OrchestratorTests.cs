@@ -6,27 +6,20 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Helpers;
+using Models.Notifications;
 using Models.ServiceBus;
 using Moq;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.FeatureFlag;
-using Hosts.GroupMembershipObtainer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Repositories.ServiceBusQueue;
-using Models.Notifications;
-using Repositories.EntityFramework;
-using Repositories.TeamsChannel;
 
 namespace Tests.Services
 {

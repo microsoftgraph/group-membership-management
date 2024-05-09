@@ -1,11 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Hosts.GroupMembershipObtainer;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Helpers;
@@ -15,15 +13,11 @@ using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.Mocks;
-using Hosts.GroupMembershipObtainer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Net.Http;
-using Repositories.ServiceBusQueue;
-using Repositories.TeamsChannel;
-using Repositories.EntityFramework;
+using System.Threading.Tasks;
 
 namespace Tests.Services
 {
