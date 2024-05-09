@@ -1268,83 +1268,6 @@ const checkType = (value: string, type: string | undefined): string => {
     }
   };
 
-  const getDragDropEvents = (): IDragDropEvents => {
-    console.log("selection", selection.getSelectedCount());
-    return {
-      canDrop: () => true,
-      canDrag: () => true,
-      onDragEnter: () => "",
-      onDragLeave: () => {},
-      onDrop: (item) => {
-        console.log("selection", selection.getSelectedCount());
-        const selectedCount = selection.getSelectedCount();
-        let sourceItems;
-        if (selectedCount <= 0) {
-          sourceItems = items;
-        } else {
-          sourceItems = selection.getSelection() as any[];
-        }
-        let transformedItems: ChildType[] = sourceItems.map((item) => ({
-          filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
-        }));
-
-        const hasUndefined = transformedItems.some((item) => item.filter.includes("undefined"));
-        if (hasUndefined) { return; }
-        setIsDragAndDropEnabled(true);
-        let newItems = [...items];
-        let newSelectedIndices = [];
-        if (selectedCount > 1) {
-            const selectedItems = selection.getSelection() as any[];
-            const insertIndex = newItems.indexOf(item);
-            newItems = newItems.filter(i => !selectedItems.includes(i));
-            newItems.splice(insertIndex, 0, ...selectedItems);
-            let allItems: ChildType[] = items.map((item) => ({
-              filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
-            }));
-
-            const index = allItems.findIndex((item) => item.filter.includes("undefined"));
-            if (insertIndex === index) {
-              return;
-            }
-            newSelectedIndices = selectedItems.map(item => newItems.indexOf(item));
-            let newChildren: ChildType[] = newItems.map((item) => ({
-              filter: `${item.attribute} ${item.equalityOperator} ${valueNeedsQuotes(item.value, item.attribute)} ${item.andOr}`,
-            }));
-            setChildren(newChildren);
-            setItems(newItems);
-        } else {
-            const insertIndex = newItems.indexOf(item);
-            newItems = newItems.filter(i => i !== draggedItem.current);
-            newItems.splice(insertIndex, 0, draggedItem.current);
-            newSelectedIndices.push(insertIndex);
-            let allItems: ChildType[] = items.map((item) => ({
-              filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
-            }));
-
-            const index = allItems.findIndex((item) => item.filter.includes("undefined"));
-            if (insertIndex === index) {
-              return;
-            }
-            let newChildren: ChildType[] = newItems.map((item) => ({
-              filter: `${item.attribute} ${item.equalityOperator} ${valueNeedsQuotes(item.value,  item.attribute)} ${item.andOr}`,
-            }));
-            setChildren(newChildren);
-            setItems(newItems);
-        }
-        selection.setAllSelected(false);
-        newSelectedIndices.forEach(index => selection.setIndexSelected(index, true, false));
-      },
-      onDragStart: (item?: any, itemIndex?: number) => {
-        draggedItem.current = item;
-        draggedIndex.current = itemIndex!;
-      },
-      onDragEnd: () => {
-        draggedItem.current = undefined;
-        draggedIndex.current = -1;
-      },
-    };
-  };
-
   const valueNeedsQuotes = (value: string, attribute: string) => {
     return attributeValues[attribute].values.length > 0 && attributeValues[attribute].type === "nvarchar" ? `'${value}'` : value;
   };
@@ -1764,8 +1687,7 @@ const checkType = (value: string, type: string | undefined): string => {
               columns={columns}
               selectionPreservedOnEmptyClick={true}
               selection={selection}
-              //onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column)}
-              dragDropEvents={getDragDropEvents()}
+              onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column)}
               layoutMode={DetailsListLayoutMode.justified}
               ariaLabelForSelectionColumn="Toggle selection"
               ariaLabelForSelectAllCheckbox="Toggle selection for all items"
