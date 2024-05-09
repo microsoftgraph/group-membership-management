@@ -45,14 +45,10 @@ namespace Repositories.SqlMembershipRepository
                         SELECT *
                         FROM emp e {depthQuery} {filterQuery}";
 
-                var credential = new DefaultAzureCredential();
-                var token = await credential.GetTokenAsync(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
-
                 await retryPolicy.Execute(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
-                        conn.AccessToken = token.Token;
                         await conn.OpenAsync();
                         using (var cmd = new SqlCommand(selectQuery, conn))
                         {
@@ -110,14 +106,11 @@ namespace Repositories.SqlMembershipRepository
                 ";
 
                 var selectIdQuery = $"SELECT EmployeeId FROM [users].[{tableName}] WHERE AzureObjectId = '{azureObjectId}'";
-                var credential = new DefaultAzureCredential();
-                var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
 
                 await retryPolicy.Execute(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
-                        conn.AccessToken = token.Token;
                         await conn.OpenAsync();
                         using (var cmd = new SqlCommand(selectDepthQuery, conn))
                         {
@@ -166,13 +159,11 @@ namespace Repositories.SqlMembershipRepository
             try
             {
                 var selectQuery = $"SELECT EmployeeId, AzureObjectId FROM [users].[{tableName}] WHERE {query}";
-                var credential = new DefaultAzureCredential();
-                var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
+
                 await retryPolicy.Execute(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
-                        conn.AccessToken = token.Token;
                         await conn.OpenAsync();
                         using (var cmd = new SqlCommand(selectQuery, conn))
                         {
@@ -210,14 +201,10 @@ namespace Repositories.SqlMembershipRepository
             var retryPolicy = GetRetryPolicy();
             try
             {
-                var credential = new DefaultAzureCredential();
-                var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
-
                 await retryPolicy.Execute(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
-                        conn.AccessToken = token.Token;
                         await conn.OpenAsync();
                         var selectQuery = $"SELECT count(TABLE_NAME) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}' AND TABLE_SCHEMA = 'users'";
                         using (var cmd = new SqlCommand(selectQuery, conn))
@@ -244,13 +231,11 @@ namespace Repositories.SqlMembershipRepository
             try
             {
                 var selectQuery = $"SELECT name FROM sys.columns WHERE object_id = OBJECT_ID('[users].[{tableName}]') ORDER BY name";
-                var credential = new DefaultAzureCredential();
-                var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
+
                 await retryPolicy.Execute(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
-                        conn.AccessToken = token.Token;
                         await conn.OpenAsync();
                         using (var cmd = new SqlCommand(selectQuery, conn))
                         {
@@ -362,13 +347,10 @@ namespace Repositories.SqlMembershipRepository
                     WHERE c.object_id = OBJECT_ID('[users].[{tableName}]')
                     ORDER BY c.name";
 
-                var credential = new DefaultAzureCredential();
-                var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
                 await retryPolicy.Execute(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
-                        conn.AccessToken = token.Token;
                         await conn.OpenAsync();
                         using (var cmd = new SqlCommand(selectQuery, conn))
                         {
