@@ -1421,6 +1421,7 @@ const checkType = (value: string, type: string | undefined): string => {
           andOr: ""
         };
         clonedNewGroups.push(newGroup);
+        clonedNewGroups[clonedNewGroups.length-2].andOr = selectedItems[0].andOr; // between groups
         filterItems(groupIndices[0]);
       }
 
@@ -1434,6 +1435,14 @@ const checkType = (value: string, type: string | undefined): string => {
             andOr: ""
           }
         ];
+        if (clonedNewGroups[groupIndices[0]].children.length === 1)
+        {
+          clonedNewGroups[groupIndices[0]].andOr = selectedItems[0].andOr; // between group & children
+        }
+        else if (clonedNewGroups[groupIndices[0]].children.length > 1)
+        {
+          clonedNewGroups[groupIndices[0]].children[clonedNewGroups[groupIndices[0]].children.length-2].andOr = selectedItems[0].andOr; // between children
+        }
         filterItems(groupIndices[0]);
       }
       clonedNewGroups = clonedNewGroups.filter((group: { items: string | any[]; children: string | any[]; }) => group.items?.length > 0 || group.children?.length > 0);
