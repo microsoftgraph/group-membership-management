@@ -221,14 +221,61 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     };
   }
 
+  
+function findPartsOfString(string: string, substringArray: { currentSegment: string, start: number; end: number }[]): { currentSegment: string, start: number; end: number, andOr: string }[] {
+  const output: { currentSegment: string, start: number; end: number, andOr: "" }[] = [];
+  let lastEnd = 0;
+
+  for (const substringInfo of substringArray) {
+      const { currentSegment, start, end } = substringInfo;
+
+      // Add the segment between the end of the previous segment and the start of the current segment
+      if (start > lastEnd) {
+          output.push({
+              currentSegment: string.substring(lastEnd, start),
+              start: lastEnd,
+              end: start - 1,
+              andOr: ""
+          });
+      }
+
+      // Add the current segment
+      output.push({ currentSegment, start, end, andOr: "" });
+
+      // Update lastEnd
+      lastEnd = end + 1;
+  }
+
+  // Add the remaining part of the string after the last segment
+  if (lastEnd < string.length) {
+      output.push({
+          currentSegment: string.substring(lastEnd),
+          start: lastEnd,
+          end: string.length - 1,
+          andOr: ""
+      });
+  }
+
+  return output;
+}
+
 
   function parseGroup(input: string): Group[] {
     const groups: Group[] = [];
+    const subStrings: string[] = [];
+    let subStringsWithMoreDetails: { currentSegment: string, start: number; end: number}[] = [];
     let depth = 0;
     let currentSegment = '';
+    // let start: number;
+    // let end: number;
     let operators: string[] = [];
 
     input = input.trim();
+    let start: number = 0;
+    let end: number = input.length - 1;
+    console.log("start", start);
+    console.log("end", end);
+
     for (let i = 0; i < input.length; i++) {
         const char = input[i];
 
@@ -237,10 +284,15 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
                 currentSegment += char;
             }
             depth++;
+            if (depth === 1) start = i;
         } else if (char === ')') {
             depth--;
             if (depth === 0) {
-                groups.push(parseSegment(currentSegment));
+                end = i;
+                //groups.push(parseSegment(currentSegment));
+                subStrings.push(currentSegment); 
+                // const index: number = input.indexOf(currentSegment);             
+                subStringsWithMoreDetails.push({ currentSegment, start, end});
                 currentSegment = '';
             } else {
                 currentSegment += char;
@@ -253,9 +305,81 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         }
     }
 
+    // for (let i = 0; i < groups.length - 1; i++) {
+    //     groups[i].andOr = operators[i] || '';
+    // }
+
+    // console.log("subStrings", subStrings);
+    // console.log("subStringsWithMoreDetails", subStringsWithMoreDetails);
+    // console.log("NEW", input.substr(63, 140));    
+    var a = findPartsOfString(input, subStringsWithMoreDetails);
+    // console.log("a", a);
+    // console.log("operators", operators);
+
+
+    a.forEach((segment, index) => {
+      let modifiedSegment = segment.currentSegment.trim();
+      console.log(`Modified Segment before: ${modifiedSegment}`);
+      let startWord = '';
+      let endWord = '';
+      
+      const lowerCaseSegment = modifiedSegment.toLowerCase(); 
+      
+      if (lowerCaseSegment.startsWith('and ')) {
+          startWord = 'And';
+          modifiedSegment = modifiedSegment.substring(4).trim();
+      } else if (lowerCaseSegment.startsWith('or ')) {
+          startWord = 'Or';
+          modifiedSegment = modifiedSegment.substring(3).trim();
+      }
+      
+      if (lowerCaseSegment.endsWith(' and')) {
+          endWord = 'And';
+          modifiedSegment = modifiedSegment.substring(0, modifiedSegment.length - 4).trim();
+      } else if (lowerCaseSegment.endsWith(' or')) {
+          endWord = 'Or';
+          modifiedSegment = modifiedSegment.substring(0, modifiedSegment.length - 3).trim();
+      }
+
+      if (lowerCaseSegment === 'and') { // Additional condition for exact match
+        startWord = 'And';
+        modifiedSegment = '';
+      } else if (lowerCaseSegment === 'or') { // Additional condition for exact match
+        startWord = 'Or';
+        modifiedSegment = '';
+      }
+      
+      if (startWord !== '') {
+          console.log(`Start word: ${startWord}`);
+          a[index-1].andOr = startWord;
+      }
+      if (endWord !== '') {
+          console.log(`End word: ${endWord}`);
+          a[index].andOr = endWord;
+      }
+      
+      console.log(`Modified Segment after: ${modifiedSegment}`);
+      a[index].currentSegment = modifiedSegment;
+
+      if (modifiedSegment === '') {
+        a.splice(index, 1);
+      } else {
+          a[index].currentSegment = modifiedSegment;
+      }
+
+    });
+
+    // console.log("A", a);
+
+    a.forEach((currentSegment) => {
+      groups.push(parseSegment(currentSegment.currentSegment));
+    });
+
     for (let i = 0; i < groups.length - 1; i++) {
-        groups[i].andOr = operators[i] || '';
+      groups[i].andOr = a[i].andOr || '';
     }
+
+    console.log("groups", groups);
 
     return groups;
 }
