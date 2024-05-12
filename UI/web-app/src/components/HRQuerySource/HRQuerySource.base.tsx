@@ -221,7 +221,6 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     };
   }
 
-  
 function findPartsOfString(string: string, substringArray: { currentSegment: string, start: number; end: number }[]): { currentSegment: string, start: number; end: number, andOr: string }[] {
   const output: { currentSegment: string, start: number; end: number, andOr: "" }[] = [];
   let lastEnd = 0;
@@ -290,8 +289,8 @@ function findPartsOfString(string: string, substringArray: { currentSegment: str
             if (depth === 0) {
                 end = i;
                 //groups.push(parseSegment(currentSegment));
-                subStrings.push(currentSegment); 
-                // const index: number = input.indexOf(currentSegment);             
+                subStrings.push(currentSegment);
+                // const index: number = input.indexOf(currentSegment);
                 subStringsWithMoreDetails.push({ currentSegment, start, end});
                 currentSegment = '';
             } else {
@@ -311,7 +310,7 @@ function findPartsOfString(string: string, substringArray: { currentSegment: str
 
     // console.log("subStrings", subStrings);
     // console.log("subStringsWithMoreDetails", subStringsWithMoreDetails);
-    // console.log("NEW", input.substr(63, 140));    
+    // console.log("NEW", input.substr(63, 140));
     var a = findPartsOfString(input, subStringsWithMoreDetails);
     // console.log("a", a);
     // console.log("operators", operators);
@@ -322,9 +321,9 @@ function findPartsOfString(string: string, substringArray: { currentSegment: str
       console.log(`Modified Segment before: ${modifiedSegment}`);
       let startWord = '';
       let endWord = '';
-      
-      const lowerCaseSegment = modifiedSegment.toLowerCase(); 
-      
+
+      const lowerCaseSegment = modifiedSegment.toLowerCase();
+
       if (lowerCaseSegment.startsWith('and ')) {
           startWord = 'And';
           modifiedSegment = modifiedSegment.substring(4).trim();
@@ -332,7 +331,7 @@ function findPartsOfString(string: string, substringArray: { currentSegment: str
           startWord = 'Or';
           modifiedSegment = modifiedSegment.substring(3).trim();
       }
-      
+
       if (lowerCaseSegment.endsWith(' and')) {
           endWord = 'And';
           modifiedSegment = modifiedSegment.substring(0, modifiedSegment.length - 4).trim();
@@ -348,7 +347,7 @@ function findPartsOfString(string: string, substringArray: { currentSegment: str
         startWord = 'Or';
         modifiedSegment = '';
       }
-      
+
       if (startWord !== '') {
           console.log(`Start word: ${startWord}`);
           a[index-1].andOr = startWord;
@@ -357,7 +356,7 @@ function findPartsOfString(string: string, substringArray: { currentSegment: str
           console.log(`End word: ${endWord}`);
           a[index].andOr = endWord;
       }
-      
+
       console.log(`Modified Segment after: ${modifiedSegment}`);
       a[index].currentSegment = modifiedSegment;
 
@@ -401,7 +400,7 @@ function parseSegment(segment: string, groupOperator?: string): Group {
           let remainingSegment = segment.substring(0, start) + segment.substring(end + 1);
           var match = remainingSegment.match(/\s*(Or|And)\s*$/i);
           var operator = match ? match[1] : null;
-          remainingSegment = remainingSegment.replace(/\s*(Or|And)\s*$/, '').trim();
+          remainingSegment = remainingSegment.replace(/\s*(Or|And)\s*/gi, '').trim();
 
           if (remainingSegment) {
             return {
@@ -412,8 +411,8 @@ function parseSegment(segment: string, groupOperator?: string): Group {
             };
         }
     }
-    const items = segment.split(/ And | Or /).map(parseFilterPart);
-    const operators = segment.match(/ And | Or /g) || [];
+    const items = segment.split(/ And | Or /gi).map(parseFilterPart);
+    const operators = segment.match(/(?: And | Or )/gi) || [];
 
     items.forEach((item, index) => {
         if (index < items.length - 1) {
@@ -492,7 +491,7 @@ const checkType = (value: string, type: string | undefined): string => {
       setGroupingEnabled(true);
     }
     else {
-      const regex = /( And | Or )/g;
+      const regex = /( And | Or )/gi;
       if (props.source.filter != undefined) {
         const parts = props.source.filter.split(regex);
         let childFilters = [];
@@ -1039,7 +1038,7 @@ const checkType = (value: string, type: string | undefined): string => {
       updateGroupItem(updateParams, index);
       return;
     }
-    const regex = /(?<= And | Or )/;
+    const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
     let segments = props.source.filter?.split(regex);
     if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
       const a = item.text;
@@ -1349,7 +1348,7 @@ const checkType = (value: string, type: string | undefined): string => {
           return (
             !groupingEnabled ? (
               <Dropdown
-                selectedKey={item.andOr ? item.andOr : ""}
+                selectedKey={item.andOr ? item.andOr.charAt(0).toUpperCase() + item.andOr.slice(1).toLowerCase() : ""}
                 onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
                 options={orAndOperatorOptions}
                 styles={{ root: classNames.root, title: classNames.dropdownTitle }}
@@ -1357,7 +1356,7 @@ const checkType = (value: string, type: string | undefined): string => {
             ) : (
               index >= 0 && index < items.length - 1 ? (
                 <Dropdown
-                  selectedKey={item.andOr ? item.andOr : ""}
+                  selectedKey={item.andOr ? item.andOr.charAt(0).toUpperCase() + item.andOr.slice(1).toLowerCase() : ""}
                   onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
                   options={orAndOperatorOptions}
                   styles={{ root: classNames.root, title: classNames.dropdownTitle }}
@@ -1609,7 +1608,7 @@ const checkType = (value: string, type: string | undefined): string => {
           <div>
           <Dropdown
             onChange={(event, option) => handleGroupOrAndOperatorChange(event, option, parentIndex)}
-            selectedKey={group.andOr}
+            selectedKey={group.andOr.charAt(0).toUpperCase() + group.andOr.slice(1).toLowerCase()}
             options={orAndOperatorOptions}
             styles={dropdownStyles}
           />
@@ -1632,7 +1631,7 @@ const checkType = (value: string, type: string | undefined): string => {
           <div>
           <Dropdown
             onChange={(event, option) => handleGroupOrAndOperatorChange(event, option, parentIndex, childIndex)}
-            selectedKey={childGroup.andOr}
+            selectedKey={childGroup.andOr.charAt(0).toUpperCase() + childGroup.andOr.slice(1).toLowerCase()}
             options={orAndOperatorOptions}
             styles={dropdownStyles}
           />
