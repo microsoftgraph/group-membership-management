@@ -606,16 +606,103 @@ const checkType = (value: string, type: string | undefined): string => {
 
   const removeComponent = (indexToRemove: number) => {
     if (indexToRemove === -1) return;
-    setFilteredOptions({});
-    setFilteredValueOptions({});
-    const childToRemove = children[indexToRemove];
-    const newFilter = props.source.filter?.replace(childToRemove.filter, '').trim();
-    setSource(prevSource => {
-        const newSource = { ...prevSource, filter: newFilter };
-        onSourceChange(newSource, partId);
-        return newSource;
-    });
-    setChildren(prevChildren => prevChildren.filter((_, index) => index !== indexToRemove));
+    if (groupingEnabled) {
+      let clonedNewGroups: Group[] = JSON.parse(JSON.stringify(groups));
+      const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
+      const groupIndex = groups.findIndex(group =>
+        group.children?.some(child =>
+            child.items.some(item =>
+                JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
+            )
+        ) || group.items?.some(item =>
+            JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
+        )
+      );
+      const childIndex = groupIndex !== -1 ? groups[groupIndex].children.findIndex(child =>
+        child.items.some(item =>
+            JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
+        )
+      ) : -1;
+
+      const ifGroupItem = groups.some(group => isGroupItem(group, items[selectedIndices[0]]));
+      const ifGroupChild = groups.some(group => isGroupChild(group, items[selectedIndices[0]]));
+
+      if (ifGroupItem && groups[groupIndex].items[indexToRemove ?? 0]) {
+        console.log("it's a group item", groups[groupIndex].items[indexToRemove ?? 0]);
+        if (groups[groupIndex].children.length > 0) { return; }
+        const childItems = selectedItems;
+        const filterItems = (groupIndex: number) => {
+          clonedNewGroups[groupIndex].items = clonedNewGroups[groupIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
+            !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
+          if (clonedNewGroups[groupIndex].items.length === 0) {
+            clonedNewGroups[groupIndex].andOr = "";
+            //if last group, delete andOr from previous group / previous group's last child
+            if (groupIndex === groups.length-1) {
+              const previousGroupIndex = groupIndex - 1;
+              if (previousGroupIndex >= 0){
+                const prevGroupChildren = clonedNewGroups[previousGroupIndex].children;
+                if (prevGroupChildren.length > 0) {
+                  clonedNewGroups[previousGroupIndex].children[clonedNewGroups[previousGroupIndex].children.length-1].andOr = "";
+                }
+                else {
+                  clonedNewGroups[previousGroupIndex].andOr = "";
+                }
+              }
+            }
+          }
+        };
+        filterItems(groupIndex);
+      }
+
+      if (ifGroupChild && groups[groupIndex].children[childIndex].items[indexToRemove ?? 0]) {
+        console.log("it's a child item", groups[groupIndex].children[childIndex].items[indexToRemove ?? 0]);
+        const childItems = selectedItems;
+        const filterChildren = (groupIndex: number, childIndex: number) => {
+          clonedNewGroups[groupIndex].children[childIndex].items = clonedNewGroups[groupIndex].children[childIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
+            !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
+          if (clonedNewGroups[groupIndex].children[childIndex].items.length === 0) {
+            clonedNewGroups[groupIndex].children[childIndex].andOr = "";
+            if (groupIndex === groups.length-1 && childIndex === clonedNewGroups[groupIndex].children.length-1) {
+              //if it's last group and last child, delete andOr from previous child / current group
+              const previousChildIndex = childIndex - 1;
+              if (previousChildIndex >= 0){
+                  clonedNewGroups[groupIndex].children[previousChildIndex].andOr = "";
+              }
+              else {
+                clonedNewGroups[groupIndex].andOr = "";
+              }
+            }
+          }
+        };
+        filterChildren(groupIndex, childIndex);
+      }
+
+      clonedNewGroups = clonedNewGroups.filter((group: { items: any[]; children: any[]; }) =>
+        group.items.length > 0 || group.children.some((child: { items: any[]; }) => child.items.length > 0)
+      );
+
+      clonedNewGroups.forEach((group: { children: any[]; andOr: string}) => {
+        group.children = group.children.filter((child: { items: any[]; }) => child.items.length > 0);
+      });
+
+      setGroups(clonedNewGroups);
+      getGroupLabels(clonedNewGroups);
+      setSelectedIndices([]);
+      selection.setAllSelected(false);
+    }
+    else
+    {
+      setFilteredOptions({});
+      setFilteredValueOptions({});
+      const childToRemove = children[indexToRemove];
+      const newFilter = props.source.filter?.replace(childToRemove.filter, '').trim();
+      setSource(prevSource => {
+          const newSource = { ...prevSource, filter: newFilter };
+          onSourceChange(newSource, partId);
+          return newSource;
+      });
+      setChildren(prevChildren => prevChildren.filter((_, index) => index !== indexToRemove));
+    }
   };
 
   const yesNoOptions: IChoiceGroupOption[] = [
@@ -1339,14 +1426,14 @@ const checkType = (value: string, type: string | undefined): string => {
           );
         case 'remove':
           return (
-            !groupingEnabled ? (
+
             <ActionButton
             className={classNames.removeButton}
             iconProps={{ iconName: "Blocked2" }}
             onClick={() => removeComponent(index ?? -1)}>
             {strings.remove}
           </ActionButton>
-          ) : (<div />)
+
         );
         default:
           return (
