@@ -49,28 +49,17 @@ namespace Services
                 }
 
                 var destinationName = await _graphGroupRepository.GetGroupNameAsync(destinationId);
-                newSyncJobEntity.DestinationName = new DestinationName { Name = destinationName };
-
-                var destinationIds = new List<Guid> { destinationId };
-                var ownersDictionary = await _graphGroupRepository.GetDestinationOwnersAsync(destinationIds);
-
-                var destinationOwners = new List<DestinationOwner>();
-
-                if (ownersDictionary.TryGetValue(destinationId, out List<Guid> ownerGuids))
-                {
-                    foreach (var ownerGuid in ownerGuids)
-                    {
-                        var destinationOwner = new DestinationOwner
-                        {
-                            ObjectId = ownerGuid
-                        };
-                        destinationOwners.Add(destinationOwner);
-                    }
-                }
-
-                newSyncJobEntity.DestinationOwners = destinationOwners;
+                var ownersDictionary = await _graphGroupRepository.GetDestinationOwnersAsync(new List<Guid> { destinationId });
 
                 var newSyncJobId = await _syncJobRepository.CreateSyncJobAsync(newSyncJobEntity);
+
+                var destinationAttributes = new DestinationAttributes
+                {
+                    Id = newSyncJobId,
+                    Name = destinationName,
+                    Owners = ownersDictionary.GetValueOrDefault(destinationId)
+                };
+                await _destinationAttributesRepository.UpdateAttributes(destinationAttributes);
 
                 if (newSyncJobId != Guid.Empty)
                 {
