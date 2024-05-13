@@ -882,9 +882,8 @@ const checkType = (value: string, type: string | undefined): string => {
       });
 
       const selectedValue = item.key.toString();
-      let selectedValueAfterConversion: string = "";
+      const selectedValueAfterConversion = attributeValues[updatedItems[index ?? 0].attribute] ? checkType(selectedValue, attributeValues[updatedItems[index ?? 0].attribute.toString()].type) : selectedValue;
 
-      selectedValueAfterConversion = checkType(selectedValue, attributeValues[updatedItems[index ?? 0].attribute.toString()].type);
       setItems(updatedItems);
 
       if (groupingEnabled && index != null) {
@@ -939,30 +938,25 @@ const checkType = (value: string, type: string | undefined): string => {
         return it;
     });
 
-    const selectedValue = newValue;
-    let selectedValueAfterConversion: string = "";
-
-    if (attributeValues[items[index ?? 0].attribute]) {
-      selectedValueAfterConversion = checkType(selectedValue, attributeValues[items[index ?? 0].attribute].type);
-    }
     setItems(updatedItems);
-  }
 
-  const handleBlur = (event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, index?: number) => {
     if (groupingEnabled && index != null) {
       const updateParams: UpdateParam = {
         property: "value",
-        newValue: event.target.value.trim()
+        newValue: newValue
       };
       updateGroupItem(updateParams, index);
       return;
     }
+  }
+
+  const handleBlur = (event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, index?: number) => {
+    if (groupingEnabled && index != null) {
+      return;
+    }
     var newValue = event.target.value.trim();
     const selectedValue = newValue;
-    let selectedValueAfterConversion: string = "";
-    if (attributeValues[items[index ?? 0].attribute]) {
-      selectedValueAfterConversion = checkType(selectedValue, attributeValues[items[index ?? 0].attribute].type);
-    }
+    const selectedValueAfterConversion = attributeValues[items[index ?? 0].attribute] ? checkType(selectedValue, attributeValues[items[index ?? 0].attribute].type) : selectedValue;
     const regex = /(?<= And | Or )/;
     let segments = props.source.filter?.split(regex);
     if (selectedValueAfterConversion !== "" && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
@@ -1365,10 +1359,6 @@ const checkType = (value: string, type: string | undefined): string => {
     else {
       return (<div />);
     }
-  };
-
-  const valueNeedsQuotes = (value: string, attribute: string) => {
-    return attributeValues[attribute].values.length > 0 && attributeValues[attribute].type === "nvarchar" ? `'${value}'` : value;
   };
 
   const handleSelectionChanged = () => {
