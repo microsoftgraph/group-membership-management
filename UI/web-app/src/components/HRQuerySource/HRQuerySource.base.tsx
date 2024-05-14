@@ -1161,14 +1161,14 @@ const checkType = (value: string, type: string | undefined): string => {
   };
 
   const columns = [
-     {
-      key: 'upDown',
-      name: '',
-      fieldName: 'upDown',
-      minWidth: 20,
-      maxWidth: 20,
-      isResizable: false
-    },
+    //  {
+    //   key: 'upDown',
+    //   name: '',
+    //   fieldName: 'upDown',
+    //   minWidth: 20,
+    //   maxWidth: 20,
+    //   isResizable: false
+    // },
     {
       key: 'attribute',
       name: 'Attribute',
@@ -1360,11 +1360,11 @@ const checkType = (value: string, type: string | undefined): string => {
   const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn): JSX.Element => {
     if (typeof index !== 'undefined' && items[index]) {
       switch (column?.key) {
-        case 'upDown':
-          return <div className={classNames.upDown}>
-            <ActionButton iconProps={{ iconName: 'ChevronUp' }} onClick={() => onUpClick(index, items)} style={{ marginTop: '-15px', marginBottom: '-5px' }} />
-            <ActionButton iconProps={{ iconName: 'ChevronDown' }} onClick={() => onDownClick(index, items)} style={{ marginTop: '-5px', marginBottom: '-15px' }} />
-          </div>;
+        // case 'upDown':
+        //   return <div className={classNames.upDown}>
+        //     <ActionButton iconProps={{ iconName: 'ChevronUp' }} onClick={() => onUpClick(index, items)} style={{ marginTop: '-15px', marginBottom: '-5px' }} />
+        //     <ActionButton iconProps={{ iconName: 'ChevronDown' }} onClick={() => onDownClick(index, items)} style={{ marginTop: '-5px', marginBottom: '-15px' }} />
+        //   </div>;
         case 'attribute':
           return <ComboBox
           selectedKey={item.attribute}
@@ -1636,10 +1636,10 @@ const checkType = (value: string, type: string | undefined): string => {
     });
     return (
       <div>
-      {isUpDownEnabled && groups.length > 1 && (<div className={classNames.upDown}>
+      {/* {isUpDownEnabled && groups.length > 1 && (<div className={classNames.upDown}>
         <ActionButton iconProps={{ iconName: 'ChevronUp' }} onClick={() => onGroupUpClick(index)} style={{ marginTop: '15px', marginBottom: '-15px'}} />
         <ActionButton iconProps={{ iconName: 'ChevronDown' }} onClick={() => onGroupDownClick(index)} style={{ marginBottom: '-15px'}} />
-      </div>)}
+      </div>)} */}
       <DetailsList
         styles={{ root: groups.length > 1 && items.length > 1 ? classNames.detailsListWithBorder : classNames.detailsList }}
         items={items}
@@ -1649,6 +1649,9 @@ const checkType = (value: string, type: string | undefined): string => {
         selectionPreservedOnEmptyClick={true}
         layoutMode={DetailsListLayoutMode.justified}
       />
+      {/* <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent(index, childIndex)}>
+        {strings.HROnboarding.addAttribute}
+      </ActionButton> */}
       </div>
     );
   };
@@ -1878,7 +1881,7 @@ const checkType = (value: string, type: string | undefined): string => {
             />
           )}
 
-          {!groupingEnabled && <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={addComponent}>
+          {groups.length <= 0 && <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent()}>
             {strings.HROnboarding.addAttribute}
           </ActionButton>}
           </div>
