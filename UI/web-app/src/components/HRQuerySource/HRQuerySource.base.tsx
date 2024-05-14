@@ -379,8 +379,7 @@ function parseSegment(segment: string, groupOperator?: string): Group {
           let remainingSegment = segment.substring(0, start) + segment.substring(end + 1);
           var match = remainingSegment.match(/\b(Or|And)\b/i);
           var operator = match ? match[1] : null;
-          remainingSegment = remainingSegment.replace(/\s*(Or|And)\s*/gi, '').trim();
-
+          remainingSegment = remainingSegment.replace(/^\s*(Or|And)|\s*(Or|And)\s*$/gi, '').trim();
           if (remainingSegment) {
             return {
                 name: '',
