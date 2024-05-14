@@ -76,6 +76,24 @@ namespace Services
             foreach (var job in jobs)
             {
                 var type = job.Destination.Contains("GroupMembership") ? "Group" : "Channel";
+                var currentTime = DateTime.UtcNow;
+                var jobStartsInFuture = currentTime < job.StartDate;
+                var jobScheduledForFuture = currentTime < job.ScheduledDate;
+
+                DateTime estimatedNextRunTime;
+                if (!jobStartsInFuture && !jobScheduledForFuture)
+                {
+                    estimatedNextRunTime = job.LastRunTime.AddHours(job.Period);
+                }
+                else if (jobStartsInFuture)
+                {
+                    estimatedNextRunTime = job.StartDate;
+                }
+                else
+                {
+                    estimatedNextRunTime = job.ScheduledDate;
+                }
+
                 var dto = new SyncJobDTO
                 (
                     job.Id,
@@ -83,7 +101,7 @@ namespace Services
                     job.Status,
                     job.Period,
                     job.LastSuccessfulRunTime,
-                    job.StartDate > job.ScheduledDate ? job.StartDate : job.ScheduledDate
+                    estimatedNextRunTime
                 )
                 {
                     TargetGroupName = targetGroups.ContainsKey(job.TargetOfficeGroupId) ? targetGroups[job.TargetOfficeGroupId].Name : null,
