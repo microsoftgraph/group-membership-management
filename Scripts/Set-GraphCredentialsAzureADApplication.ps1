@@ -250,7 +250,8 @@ function Set-GraphAppKeyVaultSecrets {
 
     Write-Verbose "Graph application (client) ID is $graphAppClientId"
 	if($SkipPrompts){
-		$graphClientIdSecret = ConvertTo-SecureString -String $graphAppClientId -AsPlainText -Force
+		$graphClientIdSecret = New-Object System.Security.SecureString
+		$graphAppClientId.ToCharArray() | ForEach-Object { $graphClientIdSecret.AppendChar($_) }
 	} else {
 		$graphClientIdSecret = Read-Host -AsSecureString -Prompt "Please take the graph application ID from above and paste it here"
 	}
@@ -265,7 +266,8 @@ function Set-GraphAppKeyVaultSecrets {
 
     Write-Verbose "Graph application client secret is $($graphAppClientSecret.SecretText)"
 	if($SkipPrompts){
-		$graphClientSecret = ConvertTo-SecureString -String $graphAppClientSecret.SecretText -AsPlainText -Force
+		$graphClientSecret = New-Object System.Security.SecureString
+		$graphAppClientSecret.SecretText.ToCharArray() | ForEach-Object { $graphClientSecret.AppendChar($_) }
 	} else {
 		$graphClientSecret = Read-Host -AsSecureString -Prompt "Please take the graph application client secret from above and paste it here"
 	}
@@ -280,7 +282,8 @@ function Set-GraphAppKeyVaultSecrets {
 
     Write-Verbose "Graph application tenant id is $graphAppTenantId"
 	if($SkipPrompts){
-		$graphTenantSecret = ConvertTo-SecureString -String $graphAppTenantId -AsPlainText -Force
+		$graphTenantSecret = New-Object System.Security.SecureString
+		$graphAppTenantId.ToCharArray() | ForEach-Object { $graphTenantSecret.AppendChar($_) }
 	} else {
 		$graphTenantSecret = Read-Host -AsSecureString -Prompt "Please take the graph application tenant id from above and paste it here"
 	}
@@ -305,7 +308,8 @@ function Set-GraphAppKeyVaultSecrets {
 	if($setGraphAppCertificate){
 		Write-Verbose "Certificate name is $CertificateName"
 		if($SkipPrompts){
-			$graphAppCertificateSecret = ConvertTo-SecureString -String $CertificateName -AsPlainText -Force
+			$graphAppCertificateSecret = New-Object System.Security.SecureString
+			$CertificateName.ToCharArray() | ForEach-Object { $graphAppCertificateSecret.AppendChar($_) }
 		} else {
 			$graphAppCertificateSecret = Read-Host -AsSecureString -Prompt "Please take the certificate name from above and paste it here"
 		}

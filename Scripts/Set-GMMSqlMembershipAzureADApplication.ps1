@@ -121,7 +121,9 @@ function Set-GMMSqlMembershipAzureADApplication {
     Write-Verbose "Application (client) ID is $($sqlMembershipApp.AppId)"
 
     $sqlMembershipAppIdKeyVaultSecretName = "sqlMembershipAppId"
-	$sqlMembershipAppIdSecret = ConvertTo-SecureString -AsPlainText -Force $sqlMembershipAppID
+	$sqlMembershipAppIdSecret = New-Object System.Security.SecureString
+	$sqlMembershipAppId.ToCharArray() | ForEach-Object { $sqlMembershipAppIdSecret.AppendChar($_) }
+
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $sqlMembershipAppIdKeyVaultSecretName `
 						 -SecretValue $sqlMembershipAppIdSecret
@@ -131,7 +133,9 @@ function Set-GMMSqlMembershipAzureADApplication {
 	$passwordCredential = New-AzADAppCredential -ObjectId $sqlMembershipApp.Id -StartDate (Get-Date).AddHours(-1) -EndDate (Get-Date).AddYears(1)
 	$sqlMembershipAppPasswordCredentialValue = $passwordCredential.SecretText
 	$sqlMembershipAppPasswordCredentialValueSecretName = "sqlMembershipAppPasswordCredentialValue"
-	$sqlMembershipAppPasswordCredentialValueSecret = ConvertTo-SecureString -AsPlainText -Force  $sqlMembershipAppPasswordCredentialValue
+	$sqlMembershipAppPasswordCredentialValueSecret = New-Object System.Security.SecureString
+	$sqlMembershipAppPasswordCredentialValue.ToCharArray() | ForEach-Object { $sqlMembershipAppPasswordCredentialValueSecret.AppendChar($_) }
+
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $sqlMembershipAppPasswordCredentialValueSecretName `
 						 -SecretValue $sqlMembershipAppPasswordCredentialValueSecret
@@ -147,7 +151,9 @@ function Set-GMMSqlMembershipAzureADApplication {
 	}
 
 	$sqlMembershipAppServicePrincipalObjectIDKeyVaultSecretName = "sqlMembershipAppServicePrincipalObjectId"
-	$sqlMembershipAppServicePrincipalObjectIDSecret = ConvertTo-SecureString -AsPlainText -Force $sqlMembershipAppServicePrincipal.Id
+	$sqlMembershipAppServicePrincipalObjectIDSecret = New-Object System.Security.SecureString
+	$sqlMembershipAppServicePrincipal.Id.ToCharArray() | ForEach-Object { $sqlMembershipAppServicePrincipalObjectIDSecret.AppendChar($_) }
+
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 	                     -Name $sqlMembershipAppServicePrincipalObjectIDKeyVaultSecretName `
 						 -SecretValue $sqlMembershipAppServicePrincipalObjectIDSecret

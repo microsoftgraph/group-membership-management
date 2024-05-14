@@ -295,7 +295,8 @@ function Set-WebAPIKeyVaultSecrets {
 
 	Write-Verbose "WebApi application (client) ID is $webApiAppClientId"
 	if($SkipPrompts){
-		$webApiClientIdSecret = ConvertTo-SecureString -String $webApiAppClientId -AsPlainText -Force
+		$webApiClientIdSecret = New-Object System.Security.SecureString
+		$webApiAppClientId.ToCharArray() | ForEach-Object { $webApiClientIdSecret.AppendChar($_) }
 	} else {
 		$webApiClientIdSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi application ID from above and paste it here"
 	}
@@ -310,7 +311,8 @@ function Set-WebAPIKeyVaultSecrets {
 
 	Write-Verbose "WebApi application client secret is $($webApiAppClientSecret.SecretText)"
 	if($SkipPrompts){
-		$webApiClientSecret = ConvertTo-SecureString -String $webApiAppClientSecret.SecretText -AsPlainText -Force
+		$webApiClientSecret = New-Object System.Security.SecureString
+		$webApiAppClientSecret.SecretText.ToCharArray() | ForEach-Object { $webApiClientSecret.AppendChar($_) }
 	} else {
 		$webApiClientSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi application client secret from above and paste it here"
 	}
@@ -325,7 +327,8 @@ function Set-WebAPIKeyVaultSecrets {
 
 	Write-Verbose "WebApi tenant ID is $webApiAppTenantId"
 	if($SkipPrompts){
-		$webApiTenantSecret = ConvertTo-SecureString -String $webApiAppTenantId -AsPlainText -Force
+		$webApiTenantSecret = New-Object System.Security.SecureString
+		$webApiAppTenantId.ToCharArray() | ForEach-Object { $webApiTenantSecret.AppendChar($_) }
 	} else {
 		$webApiTenantSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi tenant ID from above and paste it here"
 	}
@@ -352,7 +355,8 @@ function Set-WebAPIKeyVaultSecrets {
 
 		Write-Verbose "Certificate name is $CertificateName"
 		if($SkipPrompts){
-			$webApiAppCertificateSecret = ConvertTo-SecureString -String $CertificateName -AsPlainText -Force
+			$webApiAppCertificateSecret = New-Object System.Security.SecureString
+			$CertificateName.ToCharArray() | ForEach-Object { $webApiAppCertificateSecret.AppendChar($_) }
 		} else {
 			$webApiAppCertificateSecret = Read-Host -AsSecureString -Prompt "Please take the certificate name from above and paste it here"
 		}

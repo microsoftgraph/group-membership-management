@@ -156,7 +156,7 @@ function Get-TemplateParameters {
         [Parameter(Mandatory = $true)]
         [string]$ParametersFilePath,
         [Parameter(Mandatory = $false)]
-        [Hashtable]$AdditionalParameters = @{}
+        [Hashtable]$AdditionalParameters = @{ parameters = @{} }
     )
 
     $TemplateObject = Get-TemplateAsHashtable -TemplateFilePath $TemplateFilePath
@@ -264,7 +264,7 @@ function Set-PrereqResources {
         [Parameter(Mandatory = $true)]
         [string]$ParameterFilePath,
         [Parameter(Mandatory = $false)]
-        [Hashtable]$AdditionalParameters = @{},
+        [Hashtable]$AdditionalParameters = @{ parameters = @{} },
         [Parameter(Mandatory = $false)]
         [bool] $SetRBACPermissions
     )
@@ -306,7 +306,7 @@ function Set-DataResources {
         [Parameter(Mandatory = $true)]
         [string]$ParameterFilePath,
         [Parameter(Mandatory = $false)]
-        [Hashtable]$AdditionalParameters = @{},
+        [Hashtable]$AdditionalParameters = @{ parameters = @{} },
         [Parameter(Mandatory = $false)]
         [bool] $SetRBACPermissions
     )
@@ -348,7 +348,7 @@ function Set-ComputeResources {
         [Parameter(Mandatory = $true)]
         [string]$ParameterFilePath,
         [Parameter(Mandatory = $false)]
-        [Hashtable]$AdditionalParameters = @{}
+        [Hashtable]$AdditionalParameters = @{ parameters = @{} }
     )
 
     $directoryPath = $TemplateFilePath
@@ -482,7 +482,8 @@ function Set-GMMResources {
     foreach ($secret in $adfDataSecrets) {
         $secretExists = Check-IfKeyVaultSecretExists -VaultName $dataResourceGroup -SecretName $secret
         if (-not $secretExists) {
-            $secretValue = ConvertTo-SecureString -String "not-set" -AsPlainText -Force
+            $secretValue = = New-Object System.Security.SecureString
+            "not-set".ToCharArray() | ForEach-Object { $secretValue.AppendChar($_) }
             Set-AzKeyVaultSecret -VaultName $dataResourceGroup -Name $secret -SecretValue $secretValue
         }
     }
