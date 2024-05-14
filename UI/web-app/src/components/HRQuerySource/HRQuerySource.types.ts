@@ -14,7 +14,6 @@ export type HRQuerySourceStyles = {
   spinButton: IStyle;
   labelContainer: IStyle;
   dropdownTitle: IStyle;
-  andor: IStyle;
   upDown: IStyle;
   horizontalChoiceGroup: IStyle;
   horizontalChoiceGroupContainer: IStyle;

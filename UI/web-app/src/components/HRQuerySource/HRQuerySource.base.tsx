@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useRef, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, IDragDropEvents, SelectionMode, IDropdownStyles} from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, IDropdownStyles} from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
@@ -22,7 +22,7 @@ import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
 import { manageMembershipIsEditingExistingJob } from '../../store/manageMembership.slice';
 import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
 import { fetchAttributeValues } from '../../store/sqlMembershipSources.api';
-import { selectAttributes, selectSource, selectAttributeValues, selectFilterGroups, setFilterGroups } from '../../store/sqlMembershipSources.slice';
+import { selectAttributes, selectSource, selectAttributeValues } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipAttribute, SqlMembershipAttributeValue } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
 
@@ -60,12 +60,12 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const objectIdEmployeeIdMapping = useSelector(selectObjectIdEmployeeIdMapping);
   const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions);
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
-  const filterGroups = useSelector(selectFilterGroups);
   const [isDragAndDropEnabled, setIsDragAndDropEnabled] = useState(false);
   const [isDisabled, setIsDisabled] = useState(true);
   const [includeOrg, setIncludeOrg] = useState(false);
   const [includeFilter, setIncludeFilter] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [orgErrorMessage, setOrgErrorMessage] = useState<string>('');
+  const [filterErrorMessage, setFilterErrorMessage] = useState<string>('');
   const [source, setSource] = useState<HRSourcePartSource>(props.source);
   const [children, setChildren] = useState<ChildType[]>([]);
   const excludeLeaderQuery = `EmployeeId <> ${source.manager?.id}`
@@ -77,14 +77,10 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [items, setItems] = useState<IFilterPart[]>([]);
   let options: IComboBoxOption[] = [];
   let valueOptions: IComboBoxOption[] = [];
-  const draggedItem = useRef<any | undefined>();
-  const draggedIndex = useRef<number>(-1);
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [groupingEnabled, setGroupingEnabled] = useState(false);
   const [filterTextEnabled, setFilterTextEnabled] = useState(false);
-  const [groupQuery, setGroupQuery] = useState<string>();
-  const [forceUpdate, setForceUpdate] = useState<number>(0);
 
   useEffect(() => {
     if (!groupingEnabled) {
@@ -123,7 +119,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   }, [items]);
 
   useEffect(() => {
-    if (!includeOrg) { setErrorMessage(''); }
+    if (!includeOrg) { setOrgErrorMessage(''); }
   }, [includeOrg]);
 
 
@@ -420,16 +416,12 @@ function setItemsBasedOnGroups(groups: Group[]) {
 
 const getGroupLabels = (groups: Group[]) => {
   const str = stringifyGroups(groups);
-  setGroupQuery(str);
-  const groupQuery = str;
-  const groupingEnabled = true;
   const filter = str;
   setSource(prevSource => {
       const newSource = { ...prevSource, filter };
       onSourceChange(newSource, partId);
       return newSource;
   });
-  dispatch(setFilterGroups({partId, groupQuery, groupingEnabled}));
 }
 
 const checkType = (value: string, type: string | undefined): string => {
@@ -520,7 +512,7 @@ const checkType = (value: string, type: string | undefined): string => {
 
   useEffect(() => {
     if (orgLeaderDetails.employeeId === 0 && orgLeaderDetails.maxDepth === 0 && includeOrg && partId === orgLeaderDetails.partId) {
-      setErrorMessage(hrSource?.name && hrSource?.name !== "" ?
+      setOrgErrorMessage(hrSource?.name && hrSource?.name !== "" ?
       orgLeaderDetails.text + strings.HROnboarding.customOrgLeaderMissingErrorMessage + hrSource?.name + strings.HROnboarding.source :
       orgLeaderDetails.text + strings.HROnboarding.orgLeaderMissingErrorMessage);
     }
@@ -534,7 +526,7 @@ const checkType = (value: string, type: string | undefined): string => {
 
   const handleOrgLeaderInputChange = (input: string): string => {
     setIncludeOrg(true);
-    setErrorMessage('');
+    setOrgErrorMessage('');
     dispatch(getJobOwnerFilterSuggestions({displayName: input, alias: input}))
     return input;
   }
@@ -555,7 +547,7 @@ const checkType = (value: string, type: string | undefined): string => {
   const handleDepthChange = React.useCallback((event: React.SyntheticEvent<HTMLElement>, newValue?: string) => {
     const nonNumericRegex = /[^0-9]/g;
     if (newValue && nonNumericRegex.test(newValue)) {
-      setErrorMessage(strings.HROnboarding.invalidInputErrorMessage);
+      setOrgErrorMessage(strings.HROnboarding.invalidInputErrorMessage);
       return;
     }
     const depth = newValue?.trim() !== '' ? Number(newValue) : undefined;
@@ -582,7 +574,7 @@ const checkType = (value: string, type: string | undefined): string => {
   };
 
   const addComponent = () => {
-    setErrorMessage('');
+    setFilterErrorMessage('');
     setSource(props.source);
     const regex = /(?<= And | Or )/;
     let segments = props.source.filter?.split(regex);
@@ -599,7 +591,7 @@ const checkType = (value: string, type: string | undefined): string => {
     if (result || children.length === 0) {
     setChildren(prevChildren => [...prevChildren, { filter: ''}]);
     } else {
-      setErrorMessage(strings.HROnboarding.missingAttributeErrorMessage);
+      setFilterErrorMessage(strings.HROnboarding.missingAttributeErrorMessage);
     }
   };
 
@@ -766,12 +758,12 @@ const checkType = (value: string, type: string | undefined): string => {
   }
 
   const handleIncludeLeaderChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
-    setErrorMessage('');
+    setOrgErrorMessage('');
     let filter: string;
     if (option?.key === "No") {
       if (!source.manager?.id)
       {
-        setErrorMessage(hrSource?.name && hrSource?.name !== "" ?
+        setOrgErrorMessage(hrSource?.name && hrSource?.name !== "" ?
           orgLeaderDetails.text + strings.HROnboarding.customOrgLeaderMissingErrorMessage + hrSource?.name + strings.HROnboarding.source :
           orgLeaderDetails.text + strings.HROnboarding.orgLeaderMissingErrorMessage);
         return;
@@ -1800,7 +1792,7 @@ const checkType = (value: string, type: string | undefined): string => {
 
 
       <div className={classNames.error}>
-        {errorMessage}
+        {orgErrorMessage}
       </div>
       <br />
 
@@ -1847,13 +1839,13 @@ const checkType = (value: string, type: string | undefined): string => {
             <ActionButton
               iconProps={{ iconName: 'GroupObject' }}
               onClick={onUnGroupClick}
-              disabled={!(selectedIndices.length > 0 && groups.length > 0 && (groupingEnabled || (filterGroups[partId] && filterGroups[partId].groupingEnabled)))}>
+              disabled={!(selectedIndices.length > 0 && groups.length > 0 && groupingEnabled)}>
               Ungroup
             </ActionButton>
           <br/>
 
 
-          {(groupingEnabled || (filterGroups[partId] && filterGroups[partId].groupingEnabled) || groups != null) ? (
+          {(groupingEnabled || groups != null) ? (
             <div>
               {groups.map((group: Group, index: number) => (
                 <div>
@@ -1872,16 +1864,13 @@ const checkType = (value: string, type: string | undefined): string => {
               selection={selection}
               onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column)}
               layoutMode={DetailsListLayoutMode.justified}
-              ariaLabelForSelectionColumn="Toggle selection"
-              ariaLabelForSelectAllCheckbox="Toggle selection for all items"
-              checkButtonAriaLabel="select row"
               styles={{
                 root: classNames.detailsList
               }}
             />
           )}
 
-          {groups.length <= 0 && <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent()}>
+          {(groups.length <= 0 || !groupingEnabled) && <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent()}>
             {strings.HROnboarding.addAttribute}
           </ActionButton>}
           </div>
@@ -1889,7 +1878,7 @@ const checkType = (value: string, type: string | undefined): string => {
       }
 
       <div className={classNames.error}>
-        {errorMessage}
+        {filterErrorMessage}
       </div>
     </div>
   );
